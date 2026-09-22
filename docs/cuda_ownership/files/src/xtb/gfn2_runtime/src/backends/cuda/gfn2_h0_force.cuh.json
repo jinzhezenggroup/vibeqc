@@ -1,0 +1,7 @@
+{
+  "path": "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_h0_force.cuh",
+  "reason": "GFN2 H0-force descriptor, workspace, error and launch ABI declarations; scientific pair and response equations are supplied by generated TensorIR helpers.",
+  "regions": [],
+  "role": "runtime",
+  "subsystem": "gfn2"
+}

@@ -65,12 +65,16 @@ def generate(directory: typing.Any) -> typing.Any:
     ]
     manifests = []
     for name, atoms, basis, representation, charge in fixtures:
-        atoms = tuple(Atom.from_value(a) for a in atoms)
-        shells = _named_basis_shells(basis, atoms) if isinstance(basis, str) else basis
+        normalized_atoms = tuple(Atom.from_value(a) for a in atoms)
+        shells = (
+            _named_basis_shells(basis, normalized_atoms)
+            if isinstance(basis, str)
+            else basis
+        )
         inputs = {
             "name": name,
-            "atomic_numbers": [a.atomic_number for a in atoms],
-            "coordinates": [a.position for a in atoms],
+            "atomic_numbers": [a.atomic_number for a in normalized_atoms],
+            "coordinates": [a.position for a in normalized_atoms],
             "shells": [
                 {
                     "atom_index": s.atom_index,

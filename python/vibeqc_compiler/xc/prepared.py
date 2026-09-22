@@ -9,6 +9,7 @@ import json
 import threading
 import typing
 from contextlib import ExitStack
+from dataclasses import asdict
 from time import perf_counter
 
 import numpy as np
@@ -26,10 +27,18 @@ from vibeqc_compiler.common.resources import (
     plan_resources,
 )
 from vibeqc_compiler.dft import DensitySource, ExplicitGrid, MolecularGrid, NativeAO
+from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.cuda import CudaGrid
 from vibeqc_compiler.dft.features import density_feature_block, spin_densities
 from vibeqc_compiler.dft.grid import checked_int
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
+from vibeqc_compiler.dft.xc_schedule import (
+    DEVICE_FUSED,
+    HOST_UNFUSED,
+    GridXcExecutionSchedule,
+    GridXcScientificIdentity,
+    grid_xc_schedule,
+)
 
 from .contractions import GeometryPartials
 from .integration import _tiles
@@ -71,6 +80,7 @@ class PreparedXCContractions:
         resource_budget: typing.Any = None,
         spatial: typing.Any = None,
         density_grid: typing.Any = None,
+        schedule: GridXcExecutionSchedule | str | None = None,
     ) -> None:
         # Reconfiguration publishes several related fields under this lock.
         # Keep validation, identity capture and resource composition in one
@@ -88,6 +98,7 @@ class PreparedXCContractions:
                 resource_budget=resource_budget,
                 spatial=spatial,
                 density_grid=density_grid,
+                schedule=schedule,
             )
 
     def _initialize(
@@ -100,6 +111,7 @@ class PreparedXCContractions:
         resource_budget: typing.Any,
         spatial: typing.Any,
         density_grid: typing.Any,
+        schedule: GridXcExecutionSchedule | str | None,
     ) -> None:
         """Capture the complete borrowed configuration under its spatial lock."""
         if not isinstance(program, NativeContractionProgram) or not isinstance(
@@ -130,6 +142,18 @@ class PreparedXCContractions:
                 )
             tile_points = spatial.tile_plan.tile_points
             density_grid = spatial._cuda
+        device_xc_available = _native_device_xc(program, spatial, density_grid)
+        selected_schedule = (
+            DEVICE_FUSED
+            if schedule is None and device_xc_available
+            else HOST_UNFUSED
+            if schedule is None
+            else grid_xc_schedule(schedule)
+        )
+        if selected_schedule.name == "device_fused" and not device_xc_available:
+            raise ValueError(
+                "device_fused grid/XC schedule is incompatible with this prepared consumer"
+            )
         if density_grid is not None:
             if not isinstance(density_grid, CudaGrid):
                 raise TypeError("density_grid must be a CudaGrid owner")
@@ -144,7 +168,7 @@ class PreparedXCContractions:
                 required.add("gradient")
                 # Native CUDA XC forms sigma from gradients. The CPU fallback
                 # consumes an explicit sigma feature in its collocation tiles.
-                if not _native_device_xc(program, spatial, density_grid):
+                if selected_schedule.name != "device_fused":
                     required.add("sigma")
             if program.contract.ingredients.family == "mgga":
                 required.add("tau")
@@ -158,6 +182,7 @@ class PreparedXCContractions:
                     "CUDA density basis or requested ingredients do not match XC"
                 )
             tile_points = density_grid.plan.tile_points
+        selected_schedule = selected_schedule.resolved(tile_points)
         npoint = grid.npoint if isinstance(grid, MolecularGrid) else len(grid.points)
         grid_bytes = (
             grid.numeric_bytes
@@ -173,6 +198,8 @@ class PreparedXCContractions:
         )
         self.tile_points, self.npoint = tile_points, npoint
         self.density_grid = density_grid
+        self.schedule = selected_schedule
+        self.schedule_identity = selected_schedule.identity
         self._density_signature = self._density_contract()
         self.budget = resource_budget or ResourceBudget()
         self._lock, self._closed = threading.RLock(), False
@@ -187,12 +214,23 @@ class PreparedXCContractions:
             grid.identity,
             self._mask,
         )
+        self.scientific_identity = canonical_hash(
+            {
+                "schema": "vibeqc.prepared-xc-scientific.v1",
+                "contract": program.contract.identity,
+                "native_math": canonical_hash(program.metadata),
+                "basis": basis.identity,
+                "grid": grid.identity,
+                "mask": self._mask,
+            }
+        )
         self.identity = canonical_hash(
             {
                 "schema": "vibeqc.prepared-xc-contractions.v1",
                 "scientific": self._signature,
                 "native": program.artifact.metadata["key"],
                 "tile_points": tile_points,
+                "schedule": selected_schedule.to_payload(),
                 **(
                     {"density_collocation": self._density_signature}
                     if density_grid is not None
@@ -311,6 +349,54 @@ class PreparedXCContractions:
         """Immutable boundary-only ProgramIR, or None for unqualified routes."""
         return self._tile_program
 
+    def tuning_workload(
+        self,
+        *,
+        architecture: str,
+        source_identity: str,
+        density_route: str,
+    ) -> GridXcScientificIdentity:
+        """Bind one actual prepared scientific workload for DFT09 profile lookup."""
+
+        self._check()
+        if density_route not in ("density_matrix", "orbitals"):
+            raise ValueError(
+                "DFT tuning requires an explicit D or occupied-orbital route"
+            )
+        family = self.program.contract.ingredients.family
+        ingredients = (
+            ("rho",)
+            if family == "lda"
+            else ("rho", "gradient", "sigma", "tau")
+            if family == "mgga"
+            else ("rho", "gradient", "sigma")
+        )
+        grid_model = canonical_hash(
+            {
+                "kind": type(self.grid).__name__,
+                "model": (
+                    asdict(self.grid.spec)
+                    if isinstance(self.grid, MolecularGrid)
+                    else self.grid.provenance
+                ),
+            }
+        )
+        return GridXcScientificIdentity(
+            architecture=architecture,
+            functional=self.program.spec.identifier,
+            functional_identity=self.program.spec.identity,
+            ingredients=ingredients,
+            jet_outputs=jet_indices(self.program.contract.ao_order),
+            grid_identity=self.grid.identity,
+            grid_model=grid_model,
+            screening_identity=self._mask,
+            precision="fp64",
+            spin=self.program.spec.spin,
+            observable=self.program.contract.request.observable,
+            density_route=density_route,
+            source_identity=source_identity,
+        )
+
     def _density_contract(self) -> typing.Any:
         """Borrow only fixed CUDA topology/code; each call uploads its current D/B."""
         cuda = self.density_grid
@@ -329,6 +415,11 @@ class PreparedXCContractions:
     def _check(self) -> None:
         if self._closed:
             raise RuntimeError("prepared XC contractions are closed")
+        if (
+            not isinstance(self.schedule, GridXcExecutionSchedule)
+            or self.schedule.identity != self.schedule_identity
+        ):
+            raise ValueError("stale XC execution schedule; prepare a new XC consumer")
         mask = None if self.spatial is None else self.spatial.tasks.identity
         if (
             self.program.contract.identity,
@@ -538,7 +629,11 @@ class PreparedXCContractions:
                 raise UnsupportedXC(
                     "unpolarized native XC requires equal spin matrices and directions"
                 )
-            device_xc = _native_device_xc(self.program, self.spatial, self.density_grid)
+            device_xc = self.schedule.name == "device_fused"
+            if device_xc and not _native_device_xc(
+                self.program, self.spatial, self.density_grid
+            ):
+                raise ValueError("stale device-fused grid/XC schedule capability")
             if self.density_grid is not None:
                 before_metrics = self.density_grid.metrics()
                 if not device_xc:
@@ -659,6 +754,9 @@ class PreparedXCContractions:
                     immutable(centers), immutable(points), immutable(weights)
                 )
             self.statistics = {
+                "schedule": self.schedule.to_payload(),
+                "schedule_identity": self.schedule_identity,
+                "scientific_identity": self.scientific_identity,
                 "tiles": tiles,
                 "seconds": perf_counter() - started,
                 "scalar_calls": evaluated_tiles,

@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from test_cc_api import fixture_problem
 from vibeqc.profiles import find_nvcc
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.resources import ResourceBudget
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import execute as cpu_execute
 
 from tools.vibeqc_cc import (

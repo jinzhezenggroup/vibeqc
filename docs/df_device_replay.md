@@ -75,7 +75,12 @@ resolved workload rather than an unconditional 50/50 split. With a zero request,
 the resolver uses AO/auxiliary/atom/batch/DIIS dimensions plus live CUDA
 free/total memory when available, reserving explicit headroom. If the live probe
 is unavailable, the same dimensions produce a deterministic conservative
-fallback. The prepared owner records the resolved value/response allowances,
+fallback capped at 1 GiB. A successful live probe instead bounds the workload
+request by its actual available-memory envelope, without applying that fallback
+ceiling. Explicit positive budgets are never enlarged. Full-rank resident
+forward tensors feed both partial and full-width response panels; sufficient
+scratch must not switch a resident reader back to raw integral regeneration.
+The prepared owner records the resolved value/response allowances,
 headroom, observed memory and policy version for replay/cache identity and
 progress diagnostics. UHF continues to charge its host total density against
 the response portion. Insufficient budgets fail transactionally.
@@ -135,3 +140,8 @@ neighbors, and measured global resource caps. All 16 native CPU tests and
 also pass.
 
 The workload/device-aware zero-budget policy and its replay invariants are documented in the [#598 resource-policy decision](../.agents/notes/implemented/performance/2026-09-20-df-resource-policy.md).
+
+The resident-source/full-panel boundary and live-memory ceiling are covered by
+`test_df_resident_source_reuse_cuda.py` and `test_df_preparation_budget.py`.
+See the [resident source reuse decision](../.agents/notes/implemented/performance/2026-09-21-df-resident-source-reuse.md)
+for the diagnosed regression and retained fallback boundaries.

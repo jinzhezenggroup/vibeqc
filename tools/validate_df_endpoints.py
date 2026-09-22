@@ -30,9 +30,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "python"))
 
 from vibeqc import Calculator
+from vibeqc_compiler.common.evidence import file_hash
 
 from tools.vibeqc_validation.f_shell_numerics import numerical_error
-from tools.vibeqc_validation.schema import file_hash
 
 
 def run_endpoint(

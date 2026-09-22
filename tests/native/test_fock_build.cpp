@@ -230,7 +230,7 @@ void verify_unrestricted_coefficients_and_capabilities() {
   const auto& cpu_registration =
       fock_provider_registration(FockApproximation::Exact, FockBackend::Cpu);
   require(cpu.available && cpu.restricted && cpu.unrestricted && cpu.full_range &&
-              !cpu.short_range && !cpu.long_range && cpu.maximum_derivative_order == 1 &&
+              cpu.short_range && cpu.long_range && cpu.maximum_derivative_order == 1 &&
               cpu.maximum_angular_momentum == 3 && cpu.cartesian && cpu.spherical &&
               cpu.independent_terms && cpu.arbitrary_coefficients && !cpu.legacy_adapter_only &&
               cpu.provider_version == cpu_registration.identity.version &&
@@ -287,16 +287,22 @@ void verify_preflight_and_approximation_identity() {
   const auto exact = resolve_fock_build(exact_spec, FockBackend::Cpu);
   require_exact_direct_strategy(exact, FockSpin::Restricted, FockBackend::Cpu);
   for (const auto op : {FockOperator::ShortRange, FockOperator::LongRange}) {
-    // Both J and K capability checks must occur during resolution, before any
-    // integral provider executes or returns one successful partial term.
-    for (const bool exchange : {false, true}) {
-      auto unsupported = exact_spec;
-      auto& term = exchange ? unsupported.exchange : unsupported.coulomb;
-      term.op = op;
-      term.omega = 0.4;
-      require_rejected([&] { (void)resolve_fock_build(unsupported, FockBackend::Cpu); },
-                       "unsupported range operator survived preflight");
-    }
+    auto range_coulomb = exact_spec;
+    range_coulomb.coulomb.op = op;
+    range_coulomb.coulomb.omega = 0.4;
+    require_rejected([&] { (void)resolve_fock_build(range_coulomb, FockBackend::Cpu); },
+                     "unsupported range Coulomb survived preflight");
+
+    auto range_exchange = exact_spec;
+    range_exchange.derivative_order = 0;
+    range_exchange.exchange.op = op;
+    range_exchange.exchange.omega = 0.4;
+    const auto range_value = resolve_fock_build(range_exchange, FockBackend::Cpu);
+    require(range_value.spec.exchange.op == op && range_value.spec.exchange.omega == 0.4,
+            "value-only range exchange lost its operator identity");
+    range_exchange.derivative_order = 1;
+    require_rejected([&] { (void)resolve_fock_build(range_exchange, FockBackend::Cpu); },
+                     "range exchange incorrectly advertised common Fock derivatives");
   }
   auto second_derivative = exact_spec;
   second_derivative.derivative_order = 2;
@@ -434,7 +440,7 @@ void verify_cosx_provider_semantics() {
       fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   const auto& capability = registration.domain.capabilities;
   require(capability.restricted && capability.unrestricted && capability.full_range &&
-              capability.maximum_derivative_order == 0 &&
+              capability.maximum_derivative_order == 1 &&
               capability.maximum_angular_momentum == 3 && capability.cartesian &&
               capability.spherical && !capability.batching && !capability.coulomb &&
               capability.exchange && capability.independent_terms &&
@@ -447,7 +453,7 @@ void verify_cosx_provider_semantics() {
   const auto executable =
       fock_provider_capabilities(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   require(executable.available && executable.exchange && !executable.coulomb &&
-              executable.maximum_derivative_order == 0,
+              executable.maximum_derivative_order == 1,
           "executable COSX capability query differs from its registration");
 #else
   require(!vibeqc::runtime::provider_executable(registration),
@@ -465,8 +471,14 @@ void verify_cosx_provider_semantics() {
 
   auto derivative = spec;
   derivative.derivative_order = 1;
-  require_rejected([&] { (void)resolve_fock_build(derivative, FockBackend::Cuda); },
-                   "COSX silently inherited first-derivative capability");
+  const auto resolved_derivative = resolve_fock_build(derivative, FockBackend::Cuda);
+  require(resolved_derivative.spec == derivative &&
+              resolved_derivative.schedule == FockSchedule::CudaIndependent,
+          "COSX first-derivative capability was not preserved by resolution");
+  auto second_derivative = spec;
+  second_derivative.derivative_order = 2;
+  require_rejected([&] { (void)resolve_fock_build(second_derivative, FockBackend::Cuda); },
+                   "COSX silently inherited unsupported second-derivative capability");
 
   auto coulomb_cosx = spec;
   coulomb_cosx.coulomb.approximation = FockApproximation::SeminumericalCosx;

@@ -4,7 +4,7 @@ import typing
 from dataclasses import replace
 
 import pytest
-from vibeqc_compiler.integral.backend import TargetInfo, TargetScheduleShape
+from vibeqc_compiler.common.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral.runtime_backend import (
     CompiledArtifactIdentity,
     ExecutionShape,

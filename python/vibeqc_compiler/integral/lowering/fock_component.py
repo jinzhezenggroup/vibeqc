@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from ..fused_schedule import (
         FusedShellPlan,
     )
+    from ..ir import IntegralIR
     from ..shell_spec import (
         ShellClassSpec,
     )
@@ -25,6 +26,8 @@ def _emit_rys_component_lane_fock_consumer_cuda(
     spec: ShellClassSpec,
     plan: FusedShellPlan,
     minimum_blocks_per_sm: int,
+    *,
+    support_integral: IntegralIR | None = None,
 ) -> str:
     """Emit fixed-root Rys value contraction with one lane per component.
 
@@ -36,9 +39,12 @@ def _emit_rys_component_lane_fock_consumer_cuda(
     canonical Fock scatter conventions.
     """
 
-    program = build_rys_force_program(spec, integral=plan.kernel.integral)
+    recurrence_integral = (
+        plan.kernel.integral if support_integral is None else support_integral
+    )
+    program = build_rys_force_program(spec, integral=recurrence_integral)
     recurrence = f"rys{program.nroots}"
-    if plan.kernel.integral.recurrence != recurrence:
+    if recurrence_integral.recurrence != recurrence:
         raise ValueError(
             f"component-lane Rys Fock for {spec.name} requires {recurrence}"
         )

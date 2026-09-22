@@ -15,7 +15,8 @@ struct CosxFockPreparationDiagnostic {
   scf::ResolvedFockBuild strategy{};
   scf::FockPreparationDiagnostic coulomb{};
   CudaCosxStagingDiagnostic exchange{};
-  std::size_t device_bytes{}, device_budget_bytes{}, tile_points{};
+  CudaCosxMolecularDerivativeDiagnostic derivative{};
+  std::size_t device_bytes{}, derivative_peak_device_bytes{}, device_budget_bytes{}, tile_points{};
 };
 
 /** DFT-owned prepared composition of an existing J provider and CUDA COSX K.
@@ -42,6 +43,10 @@ class PreparedCosxFockPlan {
 
   scf::DirectJkMatrices build(const std::vector<double>& density,
                               const std::vector<double>& beta = {});
+  /** Fixed-density two-electron molecular gradient using exactly the prepared
+   * RI-J/COSX-K semantics. One-electron/Pulay/nuclear terms remain method-owned. */
+  std::vector<double> energy_derivative(const std::vector<double>& density,
+                                        const std::vector<double>& beta = {});
 
  private:
   struct Impl;

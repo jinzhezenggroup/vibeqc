@@ -206,14 +206,14 @@ void verify_cached_cuda_warm_density_sequence(bool unrestricted) {
               second_fixed[0].status == VIBEQC_STATUS_SUCCESS && second_fixed[0].scf.converged &&
               second_fixed[0].scf.iterations == 1,
           "fixed CUDA dm0 did not retain its one-iteration energy baseline");
-  double advanced_density_change = 0.0;
+  double returned_density_change = 0.0;
   for (std::size_t element = 0; element < valid_density.size(); ++element) {
-    advanced_density_change =
-        std::max(advanced_density_change,
+    returned_density_change =
+        std::max(returned_density_change,
                  std::abs(first_fixed[0].scf.density[element] - valid_density[element]));
   }
-  require(advanced_density_change > 0.0,
-          "fixed-dm0 regression did not exercise an advanced resident density");
+  require(returned_density_change == 0.0,
+          "force-ready fixed dm0 returned a different density generation");
 
   std::vector<double> invalid_density = valid_density;
   for (double& value : invalid_density) value = -value;
@@ -231,10 +231,11 @@ void verify_cached_cuda_warm_density_sequence(bool unrestricted) {
               std::abs(recovered[0].scf.energy - first_fixed[0].scf.energy) < 5.0e-10,
           "cached CUDA plan did not recover after rejecting a warm density");
 
-  // Re-enabling updates must discard the fixed baseline. Because the current
-  // resident density has advanced past valid_density, replaying that old dm0
-  // once more must take the ordinary baseline-free (at least two iteration)
-  // path. Clearing then invalidates even an exact resident replay.
+  // The rejected external density invalidated resident provenance. Recovery
+  // above was authorized only by the separately frozen seed and therefore ran
+  // the canonical fallback, which may publish a newer resident generation.
+  // Re-enabling updates discards the frozen baseline, so replaying the old
+  // frozen dm0 must return to the ordinary baseline-free (>1 iteration) path.
   vibeqc::scf::set_rhf_cuda_bucket_warm_start_updates(plan, true);
   std::vector<vibeqc::scf::RhfBucketItem> after_enable = run_cached(valid_input);
   require(after_enable[0].status == VIBEQC_STATUS_SUCCESS && after_enable[0].scf.converged &&
@@ -272,9 +273,9 @@ void verify_fleet_fixed_warm_start() {
   fleet.set_warm_start_updates(true);
   const std::vector<vibeqc::scf::FleetItemResult> resumed = fleet.execute({});
   const std::vector<vibeqc::scf::FleetItemResult> updated = fleet.execute({});
-  require(resumed[0].status == VIBEQC_STATUS_SUCCESS && resumed[0].scf.iterations > 1 &&
+  require(resumed[0].status == VIBEQC_STATUS_SUCCESS && resumed[0].scf.iterations == 1 &&
               updated[0].status == VIBEQC_STATUS_SUCCESS && updated[0].scf.iterations == 1,
-          "Fleet did not resume advancing CUDA warm-start state");
+          "Fleet lost the force-ready CUDA resident warm state");
 
   fleet.clear_warm_starts();
   const std::vector<vibeqc::scf::FleetItemResult> cleared = fleet.execute({});

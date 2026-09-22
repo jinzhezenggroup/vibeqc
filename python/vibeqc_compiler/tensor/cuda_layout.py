@@ -73,6 +73,7 @@ def select_layouts(
     schedule: typing.Any,
     *,
     alignment: typing.Any,
+    disabled_gemm: typing.Iterable[int] = (),
 ) -> typing.Any:
     """Return legal layouts, lowering kinds and a reproducible cost decision.
 
@@ -83,8 +84,10 @@ def select_layouts(
         None if virtual[i] else DenseLayout(node.spec.shape, alignment=alignment)
         for i, (node, _) in enumerate(nodes)
     )
+    disabled_gemm = frozenset(disabled_gemm)
     contracts = tuple(
-        None if virtual[i] else gemm_contract(n) for i, (n, _) in enumerate(nodes)
+        None if virtual[i] or i in disabled_gemm else gemm_contract(n)
+        for i, (n, _) in enumerate(nodes)
     )
     leaves = []
     for _, operands in nodes:

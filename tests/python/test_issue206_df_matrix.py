@@ -1,5 +1,6 @@
 """Hardware-free checks of failure retention and the Slurm launch contract."""
 
+import hashlib
 import json
 import os
 import subprocess
@@ -10,6 +11,92 @@ from pathlib import Path
 import pytest
 
 from benchmarks import issue206_df_matrix as matrix
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
+
+
+def test_manifest_hashes_requested_library_in_bounded_chunks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A preflight identifies file bytes without loading or whole-file reads."""
+    library = tmp_path / "libvibeqc.so"
+    content = b"protocol-only native library" * 100_000
+    library.write_bytes(content)
+    alias = tmp_path / "selected-library.so"
+    alias.symlink_to(library)
+    original_open = Path.open
+    reads = []
+
+    class BoundedReader:
+        def __enter__(self) -> "Self":
+            self.stream = original_open(library, "rb")
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            self.stream.close()
+
+        def read(self, size: int) -> bytes:
+            assert 0 < size <= 1 << 20
+            reads.append(size)
+            return self.stream.read(size)
+
+    def open_file(path: Path, *args: typing.Any, **kwargs: typing.Any) -> typing.Any:
+        if path == library:
+            return BoundedReader()
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_file)
+    payload = matrix.manifest_payload(
+        cases=matrix.MATRIX,
+        repeats=5,
+        python=sys.executable,
+        library=alias,
+        output_dir=tmp_path / "output",
+    )
+    assert payload["source"]["native_library"] == {
+        "path": str(library.resolve()),
+        "status": "recorded",
+        "sha256": hashlib.sha256(content).hexdigest(),
+        "size_bytes": len(content),
+    }
+    assert len(reads) >= 3
+    assert all(row["status"] == "pending" for row in payload["matrix"])
+
+
+def test_manifest_only_cli_records_unbuilt_library_without_gpu(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Planning before compilation cannot be mistaken for qualified evidence."""
+    output = tmp_path / "plan"
+    library = tmp_path / "not-built.so"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["matrix", "--library", str(library), "--output-dir", str(output)],
+    )
+    matrix.main()
+    payload = json.loads((output / "manifest.json").read_text())
+    assert payload["schema"] == "vibeqc.issue206.df_matrix"
+    assert payload["version"] == 1
+    assert payload["source"]["native_library"] == {
+        "path": str(library),
+        "status": "missing",
+        "sha256": None,
+        "size_bytes": None,
+    }
+    assert len(payload["matrix"]) == 4
+    assert all(row["result"] is None for row in payload["matrix"])
+
+
+def test_library_identity_changes_when_same_path_is_rebuilt(tmp_path: Path) -> None:
+    library = tmp_path / "libvibeqc.so"
+    library.write_bytes(b"original")
+    before = matrix._native_library_metadata(library)
+    library.write_bytes(b"rebuilt")
+    after = matrix._native_library_metadata(library)
+    assert before["path"] == after["path"]
+    assert before["sha256"] != after["sha256"]
 
 
 @pytest.mark.parametrize("method", ("rhf", "uhf"))
@@ -263,6 +350,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
         assert command[
             command.index("--density-fitting-memory-budget-bytes") + 1
         ] == str(32 << 20)
+        assert "--reference-full-fock" in command
         assert kwargs["env"].get("CUDA_VISIBLE_DEVICES") == os.environ.get(
             "CUDA_VISIBLE_DEVICES"
         )
@@ -308,10 +396,16 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
     assert Path(rows[1]["result"]).is_file()
 
 
+def test_slurm_runner_is_kept_out_of_repository_root() -> None:
+    root = Path(matrix.ROOT)
+    assert not list(root.glob("*.slurm"))
+    assert (root / "benchmarks" / "run_issue206_df.slurm").is_file()
+
+
 def test_sbatch_spool_copy_uses_submission_checkout(tmp_path: typing.Any) -> None:
     root = Path(matrix.ROOT)
     spool = tmp_path / "slurm_script"
-    spool.write_text((root / "run_issue206_df.slurm").read_text())
+    spool.write_text((root / "benchmarks" / "run_issue206_df.slurm").read_text())
     # A harmless interpreter stub reports argv; even --run never reaches Python.
     interpreter = tmp_path / "python-stub"
     interpreter.write_text('#!/bin/bash\nprintf "%s\\n" "$PWD" "$@"\n')

@@ -1,8 +1,10 @@
 """CUDA lowering of pruned, shared one-electron S/T/V scalar DAGs.
 
 The native contraction layer owns normalized coefficients and output layouts.
-This module emits a bounded s/p/d/f primitive family, with pair geometry hoisted
-out of the nuclear loop and S/T lowered together for common-subexpression reuse.
+Production builds retain the bounded s/p/d/f primitive family.  Qualification
+tools may opt into g-shell emission without promoting that larger artifact into
+the default runtime; pair geometry remains hoisted out of the nuclear loop and
+S/T are lowered together for common-subexpression reuse.
 """
 
 import typing
@@ -18,9 +20,54 @@ from .one_electron_values import (
 )
 from .shell_spec import cartesian_components
 
+_MAXIMUM_GENERATED_ANGULAR_MOMENTUM = 4
 
-def one_electron_program_inventory() -> typing.Any:
+
+def _validate_maximum_angular_momentum(value: typing.Any) -> int:
+    """Validate the bounded generated one-electron shell family."""
+
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, int)
+        or not 0 <= value <= _MAXIMUM_GENERATED_ANGULAR_MOMENTUM
+    ):
+        raise ValueError(
+            "generated one-electron shells require maximum angular momentum in [0,4]"
+        )
+    return value
+
+
+def _component_layout(
+    maximum_angular_momentum: typing.Any,
+) -> tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...], int]:
+    """Return per-shell counts, offsets, upper bounds and flattened AO count."""
+
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
+    counts = tuple(len(cartesian_components(l)) for l in range(maximum + 1))
+    offsets = []
+    total = 0
+    limits = []
+    for count in counts:
+        offsets.append(total)
+        total += count
+        limits.append(total)
+    return counts, tuple(offsets), tuple(limits), total
+
+
+def _shell_index_expression(component: str, limits: tuple[int, ...]) -> str:
+    """Emit a branch-only shell lookup for one flattened Cartesian component."""
+
+    expression = str(len(limits) - 1)
+    for angular in range(len(limits) - 2, -1, -1):
+        expression = f"{component} < {limits[angular]} ? {angular} : {expression}"
+    return expression
+
+
+def one_electron_program_inventory(
+    maximum_angular_momentum: int = 3,
+) -> typing.Any:
     """Record scientific signatures separately from runtime/promotion evidence."""
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
     return {
         "schema": "vibeqc.one_electron_values",
         "version": 1,
@@ -29,7 +76,7 @@ def one_electron_program_inventory() -> typing.Any:
         "programs": [
             integral_to_payload(build_one_electron_value_ir(family, angular))
             for family in ("overlap", "kinetic", "nuclear_attraction")
-            for angular in product(range(4), repeat=2)
+            for angular in product(range(maximum + 1), repeat=2)
         ],
     }
 
@@ -98,14 +145,19 @@ def _emit_pair_geometry() -> typing.Any:
     return "\n".join(lines + emitter.lines + ["  return pair;", "}"])
 
 
-def _emit_operator_helpers(attraction: typing.Any) -> typing.Any:
+def _emit_operator_helpers(
+    attraction: typing.Any, maximum_angular_momentum: int = 3
+) -> typing.Any:
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
+    counts, offsets, limits, total_components = _component_layout(maximum)
+    shell_count = maximum + 1
     name = "attraction" if attraction else "overlap_kinetic"
     return_type = "double" if attraction else "ST"
     arguments = "const PairGeometry& pair, unsigned component"
     if attraction:
         arguments += ", double c_x, double c_y, double c_z"
     lines = []
-    for angular in product(range(4), repeat=2):
+    for angular in product(range(maximum + 1), repeat=2):
         suffix = f"{angular[0]}{angular[1]}"
         lines += [
             f"static __device__ __noinline__ {return_type} {name}_{suffix}({arguments}) {{",
@@ -160,35 +212,32 @@ def _emit_operator_helpers(attraction: typing.Any) -> typing.Any:
         f"__device__ __forceinline__ {return_type} {name}(",
         "    const PairGeometry& pair, unsigned first, unsigned second"
         + (", double c_x, double c_y, double c_z) {" if attraction else ") {"),
-        "  const unsigned a = first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : 3;",
-        "  const unsigned b = second < 1 ? 0 : second < 4 ? 1 : second < 10 ? 2 : 3;",
-        "  const unsigned offsets[] = {0, 1, 4, 10};",
-        "  const unsigned counts[] = {1, 3, 6, 10};",
+        "  const unsigned a = " + _shell_index_expression("first", limits) + ";",
+        "  const unsigned b = " + _shell_index_expression("second", limits) + ";",
+        "  const unsigned offsets[] = {" + ", ".join(map(str, offsets)) + "};",
+        "  const unsigned counts[] = {" + ", ".join(map(str, counts)) + "};",
         "  const unsigned component = (first - offsets[a]) * counts[b] + second - offsets[b];",
-        "  if (first >= 20 || second >= 20) return " + invalid + ";",
-        "  switch (a * 4U + b) {",
+        f"  if (first >= {total_components} || second >= {total_components}) return "
+        + invalid
+        + ";",
+        f"  switch (a * {shell_count}U + b) {{",
     ]
-    for a, b in product(range(4), repeat=2):
+    for a, b in product(range(maximum + 1), repeat=2):
         args = "pair, component" + (", c_x, c_y, c_z" if attraction else "")
-        lines.append(f"    case {a * 4 + b}U: return {name}_{a}{b}({args});")
+        lines.append(f"    case {a * shell_count + b}U: return {name}_{a}{b}({args});")
     lines += ["  }", f"  return {invalid};", "}"]
     return "\n".join(lines)
 
 
-def _emit_support_cuda() -> typing.Any:
-    """Shared scalar support; derivative lowering increases the Boys bound by one."""
-    prefix = r"""// Generated by tools/generate_one_electron_kernels.py; do not edit.
-#ifndef VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH
-#define VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH
-#include <cuda_runtime.h>
-#include <cmath>
-namespace vibeqc::scf::generated_one_electron {
-struct ST { double overlap, kinetic; };
-
-/** Positive-term series plus downward recurrence avoids cancellation at small T.
- * F_m(T) = exp(-T) sum_k (2T)^k / [(2m+1)(2m+3)...(2m+2k+1)].
- * Above 20, upward recurrence through order six is well conditioned. */
-template<unsigned Order>
+def _emit_boys_support(maximum_boys_order: int = 6) -> typing.Any:
+    """Emit the shared Boys evaluator body without backend/header wrappers."""
+    if (
+        isinstance(maximum_boys_order, bool)
+        or not isinstance(maximum_boys_order, int)
+        or not 0 <= maximum_boys_order <= 9
+    ):
+        raise ValueError("generated Boys support requires maximum order in [0,9]")
+    source = r"""template<unsigned Order>
 __device__ __forceinline__ void boys_values(double argument, double* values) {
   static_assert(Order <= 6);
   const double decay = exp(-argument);
@@ -210,32 +259,68 @@ __device__ __forceinline__ void boys_values(double argument, double* values) {
   }
 }
 """
-    return prefix
+    if maximum_boys_order != 6:
+        source = source.replace(
+            "static_assert(Order <= 6);",
+            f"static_assert(Order <= {maximum_boys_order});",
+        )
+    return source
 
 
-def _emit_component_index() -> typing.Any:
+def _emit_support_cuda(maximum_boys_order: int = 6) -> typing.Any:
+    """Wrap the shared Boys evaluator in the CUDA values header preamble."""
+    return "\n".join(
+        (
+            "// Generated by tools/generate_one_electron_kernels.py; do not edit.",
+            "#ifndef VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH",
+            "#define VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH",
+            "#include <cuda_runtime.h>",
+            "#include <cmath>",
+            "namespace vibeqc::scf::generated_one_electron {",
+            "struct ST { double overlap, kinetic; };",
+            "",
+            "/** Positive-term series plus downward recurrence avoids cancellation at small T.",
+            " * F_m(T) = exp(-T) sum_k (2T)^k / [(2m+1)(2m+3)...(2m+2k+1)].",
+            " * The generated bound is explicit in the shared evaluator. */",
+            _emit_boys_support(maximum_boys_order),
+        )
+    )
+
+
+def _emit_component_index(maximum_angular_momentum: int = 3) -> typing.Any:
     """Map normalized basis expansion powers to the common public AO order."""
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
+    _, _, _, total_components = _component_layout(maximum)
+    radix = maximum + 1
     index = [
         "/** Public Cartesian order, shared by all native basis expansion terms. */",
         "__device__ __forceinline__ unsigned component_index(unsigned x, unsigned y, unsigned z) {",
-        "  switch (x * 16U + y * 4U + z) {",
+        f"  if (x > {maximum}U || y > {maximum}U || z > {maximum}U ||",
+        f"      x + y + z > {maximum}U) return {total_components}U;",
+        f"  switch (x * {radix * radix}U + y * {radix}U + z) {{",
     ]
-    for i, component in enumerate(c for l in range(4) for c in cartesian_components(l)):
+    for i, component in enumerate(
+        c for l in range(maximum + 1) for c in cartesian_components(l)
+    ):
         x, y, z = (component.count(axis) for axis in "xyz")
-        index.append(f"    case {x * 16 + y * 4 + z}U: return {i}U;")
-    index += ["  }", "  return 20U;", "}"]
+        key = x * radix * radix + y * radix + z
+        index.append(f"    case {key}U: return {i}U;")
+    index += ["  }", f"  return {total_components}U;", "}"]
     return "\n".join(index)
 
 
-def emit_one_electron_values_cuda() -> typing.Any:
+def emit_one_electron_values_cuda(
+    maximum_angular_momentum: int = 3,
+) -> typing.Any:
     """Emit primitive S/T and signed unit-charge V; charge is applied by consumer."""
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
     return "\n".join(
         [
-            _emit_support_cuda(),
+            _emit_support_cuda(2 * maximum),
             _emit_pair_geometry(),
-            _emit_component_index(),
-            _emit_operator_helpers(False),
-            _emit_operator_helpers(True),
+            _emit_component_index(maximum),
+            _emit_operator_helpers(False, maximum),
+            _emit_operator_helpers(True, maximum),
             "}  // namespace vibeqc::scf::generated_one_electron",
             "#endif",
             "",

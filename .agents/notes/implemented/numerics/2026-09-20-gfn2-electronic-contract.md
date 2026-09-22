@@ -21,8 +21,8 @@ axes and do not replace the existing history, orbital or pair spaces.
 Restricted and unrestricted graphs have different identities. Unrestricted
 channels use charge plus/minus magnetization potentials. TensorIR owns the
 S/D/Q reverse programs; topology and fixed potentials are not differentiated.
-The result is fixed-state Hamiltonian algebra, not an SCC solve, population
-analysis, relaxed total-energy derivative or complete nuclear force.
+The result is fixed-state Hamiltonian and Mulliken population algebra, not an
+SCC solve, relaxed total-energy derivative or complete nuclear force.
 
 ## Evidence and limits
 
@@ -54,3 +54,14 @@ References: #505, #624; method/gfn2_electronic.py; the two tests named above.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro
+
+## Completion addendum (2026-09-20)
+
+The remaining #505 compiler algebra is now represented directly in TensorIR: fixed-density Mulliken shell/atom charge and magnetization contractions; atomic dipole and quadrupole charge/magnetization contractions with ket-AO ownership; per-system P:H0 core-energy bookkeeping; and one heterogeneous system-major spin-packed Hamiltonian graph for mixed restricted/unrestricted batches. Generated S/D/Q adjoints remain compiler-owned and the spin layout participates in graph identity.
+
+The pinned xTBloom two-AO Mulliken fixture is reproduced exactly. A mixed restricted/unrestricted ragged fixture validates charge/magnetization signs and spin packing. CUDA source lowering covers the population, mixed Hamiltonian, and generated VJP graphs. Real-device parity was executed on node3 with an RTX 5090 (sm_120) using cached CUDA 12.9 compiler/runtime packages: the new population+mixed CUDA parity test passed, and the pre-existing restricted primal+VJP plus unrestricted ragged CUDA tests also passed.
+
+SCC/Broyden iteration, eigensolvers, occupations, and convergence policy remain outside TensorIR and belong to the solver/runtime boundary.
+
+Agent: ChatGPT
+Model: GPT-5.6 Sol

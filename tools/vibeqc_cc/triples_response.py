@@ -141,6 +141,7 @@ def tile_triples_vjp(
     denominator_threshold: float = 1e-10,
     optimize_graph: bool = False,
     max_elements: int = 1_000_000,
+    executor: Any = None,
 ) -> dict[str, np.ndarray]:
     """Execute a compiler-generated unit-seeded VJP for one (T) energy tile."""
 
@@ -160,10 +161,12 @@ def tile_triples_vjp(
         _arrays(ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v),
         a_end,
     )
-    result = execute(
-        program,
-        {**feeds, "bar_triples_energy": np.asarray(1.0, dtype=np.float64)},
-    ).outputs
+    run_feeds = {**feeds, "bar_triples_energy": np.asarray(1.0, dtype=np.float64)}
+    result = (
+        execute(program, run_feeds).outputs
+        if executor is None
+        else executor.execute(program, run_feeds)
+    )
     return {name: np.asarray(result[f"bar_{name}"]) for name in selected}
 
 
@@ -205,6 +208,7 @@ def accumulate_tile_triples_vjp(
     denominator_threshold: float = 1e-10,
     optimize_graph: bool = False,
     max_elements: int = 1_000_000,
+    executor: Any = None,
 ) -> dict[str, np.ndarray]:
     """Sum VJPs of disjoint (T) energy tiles into full response tensors.
 
@@ -240,6 +244,7 @@ def accumulate_tile_triples_vjp(
             denominator_threshold=denominator_threshold,
             optimize_graph=optimize_graph,
             max_elements=max_elements,
+            executor=executor,
         )
         for name in selected:
             _scatter_prefix(totals[name], local[name], name, tile.a_end)
@@ -262,6 +267,7 @@ def full_triples_vjp(
     denominator_threshold: float = 1e-10,
     optimize_graph: bool = False,
     max_elements: int = 1_000_000,
+    executor: Any = None,
 ) -> dict[str, np.ndarray]:
     """Execute the untiled VJP oracle for tiny validation cases."""
 
@@ -276,8 +282,10 @@ def full_triples_vjp(
     )
     program = optimize(derivative.program) if optimize_graph else derivative.program
     feeds = _arrays(ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
-    result = execute(
-        program,
-        {**feeds, "bar_triples_energy": np.asarray(1.0, dtype=np.float64)},
-    ).outputs
+    run_feeds = {**feeds, "bar_triples_energy": np.asarray(1.0, dtype=np.float64)}
+    result = (
+        execute(program, run_feeds).outputs
+        if executor is None
+        else executor.execute(program, run_feeds)
+    )
     return {name: np.asarray(result[f"bar_{name}"]) for name in selected}

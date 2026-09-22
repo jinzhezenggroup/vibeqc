@@ -62,6 +62,42 @@ def _variables(graph: typing.Any, roots: typing.Any) -> typing.Any:
     )
 
 
+def _packed_scalar_layout(program: typing.Any) -> tuple[tuple[int, ...], int] | None:
+    """Map potential roots into the complete consumer feature-gradient ABI."""
+    if (
+        program.contract.request.observable != "potential"
+        or program.spec.spin != "polarized"
+    ):
+        return None
+    rows = []
+    for output in program.program.outputs:
+        if output == ():
+            rows.append(0)
+        elif (
+            isinstance(output, tuple)
+            and len(output) == 1
+            and type(output[0]) is int
+            and 0 <= output[0] < len(program.spec.features)
+        ):
+            rows.append(output[0] + 1)
+        else:
+            raise ValueError("packed scalar layout requires energy/gradient roots")
+    if len(set(rows)) != len(rows):
+        raise ValueError("packed scalar layout has duplicate physical rows")
+    return tuple(rows), 1 + len(program.spec.features)
+
+
+def _packed_coefficient_reference(name: str) -> str:
+    """Address one generated coefficient leaf in producer-owned dense buffers."""
+    if name.startswith("v") and name[1:].isdigit():
+        return f"feature_gradient[{int(name[1:])} * npoint + point]"
+    if name.startswith("g") and "_" in name:
+        spin, axis = name[1:].split("_", 1)
+        if spin.isdigit() and axis.isdigit():
+            return f"density_gradient[({int(spin)} * npoint + point) * 3 + {int(axis)}]"
+    raise ValueError(f"unsupported packed coefficient variable {name!r}")
+
+
 def emit_native(program: typing.Any) -> typing.Any:
     """Emit checked point loops around shared scalar C lowering, with no AO expansion."""
     graphs = {"xc_scalar": (program.program.graph, program.program.roots)}
@@ -81,7 +117,7 @@ def emit_native(program: typing.Any) -> typing.Any:
             program.jet_pullback.roots,
         )
     lines = [
-        "// Generated XC roots; scalar functional provenance: external/libxc-7.0.0.",
+        "// Generated XC roots; scalar functional provenance: manifests/libxc/7.0.0.",
         "#include <cmath>",
         "#include <cstddef>",
         "#include <cstdint>",
@@ -118,11 +154,87 @@ def emit_native(program: typing.Any) -> typing.Any:
             "outputs": len(roots),
             "ssa": graph.analyze_ssa(roots).to_payload(),
         }
+    packed_layouts = {}
+    packed_scalar = _packed_scalar_layout(program)
+    if packed_scalar is not None:
+        root_rows, output_rows = packed_scalar
+        graph, roots = program.program.graph, program.program.roots
+        variables = _variables(graph, roots)
+        emitter = ScalarCEmitter(
+            graph,
+            {key: f"input[{i} * npoint + point]" for i, key in enumerate(variables)},
+        )
+        emitter.emit(roots)
+        lines.extend(
+            [
+                'extern "C" int xc_scalar_packed(const double* input, size_t input_count, double* output, size_t output_count, size_t npoint) noexcept {',
+                f"  if (npoint > SIZE_MAX / {max(1, len(variables), output_rows)} || input_count != {len(variables)} * npoint || output_count != {output_rows} * npoint) return -1;",
+                "  if (!npoint) return 0;",
+                "  if (!output || (input_count && !input)) return -1;",
+                "  for (size_t point = 0; point < npoint; ++point) {",
+                *[
+                    f"    output[{row} * npoint + point] = 0.0;"
+                    for row in range(output_rows)
+                    if row not in root_rows
+                ],
+                *emitter.lines,
+            ]
+        )
+        for i, (root, row) in enumerate(zip(roots, root_rows, strict=True)):
+            target = f"output[{row} * npoint + point]"
+            lines.extend(
+                [
+                    f"    {target} = {emitter.reference(root)};",
+                    f"    if (!std::isfinite({target})) return {i + 1};",
+                ]
+            )
+        lines.extend(["  }", "  return 0;", "}"])
+        packed_layouts["scalar"] = {
+            "variables": variables,
+            "outputs": output_rows,
+            "root_rows": root_rows,
+        }
+
+        graph, roots = program.coefficients.graph, program.coefficients.roots
+        variables = _variables(graph, roots)
+        emitter = ScalarCEmitter(
+            graph, {key: _packed_coefficient_reference(key) for key in variables}
+        )
+        emitter.emit(roots)
+        feature_rows = len(program.spec.features)
+        density_gradient = program.contract.ingredients.family != "lda"
+        density_rows = 6 if density_gradient else 0
+        lines.extend(
+            [
+                'extern "C" int xc_coefficients_packed(const double* feature_gradient, size_t feature_count, const double* density_gradient, size_t density_count, double* output, size_t output_count, size_t npoint) noexcept {',
+                f"  if (npoint > SIZE_MAX / {max(1, feature_rows, density_rows, len(roots))} || feature_count != {feature_rows} * npoint || density_count != {density_rows} * npoint || output_count != {len(roots)} * npoint) return -1;",
+                "  if (!npoint) return 0;",
+                "  if (!feature_gradient || !output || (density_count && !density_gradient)) return -1;",
+                "  for (size_t point = 0; point < npoint; ++point) {",
+                *emitter.lines,
+            ]
+        )
+        for i, root in enumerate(roots):
+            target = f"output[{i} * npoint + point]"
+            lines.extend(
+                [
+                    f"    {target} = {emitter.reference(root)};",
+                    f"    if (!std::isfinite({target})) return {i + 1};",
+                ]
+            )
+        lines.extend(["  }", "  return 0;", "}"])
+        packed_layouts["coefficients"] = {
+            "feature_rows": feature_rows,
+            "density_gradient": density_gradient,
+            "outputs": len(roots),
+        }
+
     source = "\n".join(lines) + "\n"
     return source, {
-        "schema": "vibeqc.xc-native-contractions.v1",
+        "schema": "vibeqc.xc-native-contractions.v2",
         "contract": program.contract.to_payload(),
         "layouts": layouts,
+        "packed_layouts": packed_layouts,
         "source_sha256": sha256(source.encode()).hexdigest(),
         "source_bytes": len(source.encode()),
         # Point-source cache reuse is valid for byte-identical native kernels,
@@ -185,11 +297,93 @@ class _PointFunction:
         return self.evaluate_matrix(immutable(values))
 
 
+class _PackedFeatureGradient(np.ndarray):
+    """Marker view for a scalar producer's consumer-ready derivative rows."""
+
+
+class _NativeScalarRows(dict):
+    """Logical scalar roots backed by one producer-owned physical row matrix."""
+
+    def __init__(self, values: typing.Any, feature_gradient: np.ndarray) -> None:
+        super().__init__(values)
+        self.feature_gradient = feature_gradient.view(_PackedFeatureGradient)
+
+
+class _PackedCoefficientFunction:
+    """Consume producer-owned feature/density-gradient layouts without stacking."""
+
+    def __init__(self, library: typing.Any, name: str, layout: typing.Any) -> None:
+        self.feature_rows = layout["feature_rows"]
+        self.density_gradient = layout["density_gradient"]
+        self.outputs = layout["outputs"]
+        self.function = getattr(library, name)
+        self.function.argtypes = [
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+            ct.POINTER(ct.c_double),
+            ct.c_size_t,
+            ct.c_size_t,
+        ]
+        self.function.restype = ct.c_int
+
+    def evaluate(self, gradient: typing.Any, v: typing.Any) -> typing.Any:
+        if (
+            not isinstance(v, _PackedFeatureGradient)
+            or v.dtype != np.float64
+            or v.ndim != 2
+            or v.shape[0] != self.feature_rows
+            or not v.flags.c_contiguous
+            or not np.isfinite(v).all()
+        ):
+            raise ValueError("invalid packed XC feature-gradient owner")
+        npoint = v.shape[1]
+        density = None
+        if self.density_gradient:
+            if not isinstance(gradient, np.ndarray):
+                raise ValueError("packed density-gradient owner must be an ndarray")
+            density = gradient
+            if (
+                density.dtype != np.float64
+                or density.shape != (2, npoint, 3)
+                or not density.flags.c_contiguous
+                or not np.isfinite(density).all()
+            ):
+                raise ValueError("invalid packed density-gradient owner")
+        elif gradient is not None:
+            raise ValueError("LDA packed coefficients do not accept density gradients")
+        output = np.empty((self.outputs, npoint))
+        null = ct.POINTER(ct.c_double)()
+        code = self.function(
+            v.ctypes.data_as(ct.POINTER(ct.c_double)),
+            v.size,
+            null
+            if density is None
+            else density.ctypes.data_as(ct.POINTER(ct.c_double)),
+            0 if density is None else density.size,
+            output.ctypes.data_as(ct.POINTER(ct.c_double)),
+            output.size,
+            npoint,
+        )
+        if code:
+            raise ArithmeticError(
+                f"native packed XC coefficient evaluation failed at output {code}"
+            )
+        return output
+
+
 class _NativeCoefficients:
     """Keep diagnostic/native binding and root-label interpretation identical."""
 
-    def __init__(self, program: typing.Any, function: typing.Any) -> None:
+    def __init__(
+        self,
+        program: typing.Any,
+        function: typing.Any,
+        packed_function: _PackedCoefficientFunction | None = None,
+    ) -> None:
         self.program, self.function = program, function
+        self.packed_function = packed_function
 
     def evaluate(
         self,
@@ -199,6 +393,15 @@ class _NativeCoefficients:
         delta_gradient: typing.Any = None,
         delta_v: typing.Any = None,
     ) -> typing.Any:
+        if isinstance(v, _PackedFeatureGradient):
+            if delta_gradient is not None or delta_v is not None:
+                raise ValueError(
+                    "packed coefficient path does not accept response inputs"
+                )
+            if self.packed_function is None:
+                raise ValueError("packed coefficient function is unavailable")
+            values = self.packed_function.evaluate(gradient, v)
+            return self.program.unpack(values, v.shape[1])
         variables, npoint = self.program.bind(
             gradient, v, delta_gradient=delta_gradient, delta_v=delta_v
         )
@@ -258,9 +461,24 @@ class NativeContractionProgram(ContractionProgram):
             for name, layout in self.metadata["layouts"].items()
         }
         self._scalar = functions["xc_scalar"]
+        packed = self.metadata["packed_layouts"]
+        self._packed_scalar = (
+            _PointFunction(self._library, "xc_scalar_packed", packed["scalar"])
+            if "scalar" in packed
+            else None
+        )
+        packed_coefficients = (
+            _PackedCoefficientFunction(
+                self._library, "xc_coefficients_packed", packed["coefficients"]
+            )
+            if "coefficients" in packed
+            else None
+        )
         if "xc_coefficients" in functions:
             self.coefficients = _NativeCoefficients(
-                self.coefficients, functions["xc_coefficients"]
+                self.coefficients,
+                functions["xc_coefficients"],
+                packed_coefficients,
             )
         if self.response_coefficients is not None:
             self.response_coefficients = _NativeCoefficients(
@@ -293,9 +511,16 @@ class NativeContractionProgram(ContractionProgram):
         )
         if not np.all(active):
             raise UnsupportedXC("packed derivative XC requires an all-active tile")
-        count = len(self._scalar.variables)
+        if self._packed_scalar is None:
+            raise ValueError("packed native scalar function is unavailable")
+        count = len(self._packed_scalar.variables)
         expected = tuple(self.spec.features[:count])
-        if tuple(self._scalar.variables) != expected:
+        if tuple(self._packed_scalar.variables) != expected:
             raise ValueError("native scalar variables are not a dense feature prefix")
-        raw = self._scalar.evaluate_matrix(x[:count])
-        return dict(zip(self.program.outputs, raw, strict=True))
+        raw = self._packed_scalar.evaluate_matrix(x[:count])
+        root_rows = tuple(self.metadata["packed_layouts"]["scalar"]["root_rows"])
+        values = {
+            output: raw[row]
+            for output, row in zip(self.program.outputs, root_rows, strict=True)
+        }
+        return _NativeScalarRows(values, raw[1:])

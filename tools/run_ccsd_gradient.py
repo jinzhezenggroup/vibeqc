@@ -90,7 +90,7 @@ def main() -> None:
     parser.add_argument("--device-id", type=int, default=0)
     parser.add_argument("--derivative-stage-budget-bytes", type=int, default=128 << 20)
     parser.add_argument(
-        "--one-electron-schedule", type=int, choices=(0, 1, 2), default=0
+        "--one-electron-schedule", type=int, choices=(0, 1, 2, 3), default=0
     )
     parser.add_argument(
         "--eri-weight-mode",

@@ -20,6 +20,7 @@ from .resources import (
     byte_product,
     checked_bytes,
 )
+from .storage import BufferOp, BufferValue, MemoryEffect, analyze_storage
 
 
 def _text(value: typing.Any, name: typing.Any) -> typing.Any:
@@ -165,21 +166,42 @@ class ProgramIR:
             converted = []
             for item in data[field]:
                 _keys(item, item_type.__dataclass_fields__, field)
-                item = dict(item)
-                if item_type is ProgramBuffer and item["layout"] is not None:
+                item_data = dict(item)
+                if item_type is ProgramBuffer and item_data["layout"] is not None:
                     _keys(
-                        item["layout"],
+                        item_data["layout"],
                         DenseLayout.__dataclass_fields__,
                         "buffer layout",
                     )
-                    item["layout"] = DenseLayout(**item["layout"])
-                converted.append(item_type(**item))
+                    item_data["layout"] = DenseLayout(**item_data["layout"])
+                converted.append(item_type(**item_data))
             data[field] = tuple(converted)
         return cls(**data)
 
     @property
     def identity(self) -> typing.Any:
         return canonical_hash(self.to_payload())
+
+    def storage_analysis(self) -> typing.Any:
+        """Describe compiler-visible storage without becoming an allocator."""
+        return analyze_storage(
+            tuple(
+                BufferValue(
+                    buffer.name,
+                    buffer.bytes,
+                    buffer.space,
+                    buffer.layout,
+                    compiler_owned=buffer.name not in self.inputs,
+                )
+                for buffer in self.buffers
+            ),
+            tuple(
+                BufferOp(call.name, call.reads, call.writes, MemoryEffect.EXPLICIT)
+                for call in self.calls
+            ),
+            inputs=self.inputs,
+            outputs=self.outputs,
+        )
 
     def lifetimes(self, *, retain_temporaries: typing.Any = False) -> typing.Any:
         """Derive inclusive #203 intervals, without assuming buffer alias/reuse.
@@ -190,22 +212,14 @@ class ProgramIR:
         if type(retain_temporaries) is not bool:
             raise ValueError("retain_temporaries must be bool")
         end = len(self.calls) + 1
-        first = dict.fromkeys(self.inputs, 0)
-        last = dict.fromkeys(self.inputs, end)
-        for phase, call in enumerate(self.calls, 1):
-            for name in call.reads:
-                last[name] = max(last[name], phase)
-            for name in call.writes:
-                first[name] = last[name] = phase
-        for name in self.outputs:
-            last[name] = end
+        ranges = {item.owner: item for item in self.storage_analysis().ranges}
         return tuple(
             ResourceEstimate(
                 buffer.name,
                 buffer.bytes,
                 buffer.space,
-                first[buffer.name],
-                end if retain_temporaries else last[buffer.name],
+                ranges[buffer.name].first_phase,
+                end if retain_temporaries else ranges[buffer.name].last_phase,
                 kind=(
                     "persistent"
                     if buffer.name in self.inputs

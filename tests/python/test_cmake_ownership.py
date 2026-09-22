@@ -57,6 +57,67 @@ def test_generated_command_preserves_list_valued_arguments(
     ]
 
 
+def test_generated_command_depfile_tracks_loaded_python_modules(
+    tmp_path: typing.Any,
+) -> None:
+    """Only Python modules loaded by a generator should invalidate its output."""
+    dependency = tmp_path / "used_dep.py"
+    dependency.write_text("VALUE = 1\n")
+    unused = tmp_path / "unused_dep.py"
+    unused.write_text("VALUE = 1\n")
+    generator = tmp_path / "generate.py"
+    output = tmp_path / "generated.txt"
+    counter = tmp_path / "runs.txt"
+    generator.write_text(
+        "import pathlib, sys\n"
+        "import used_dep\n"
+        "output, counter = map(pathlib.Path, sys.argv[1:3])\n"
+        "runs = int(counter.read_text()) + 1 if counter.exists() else 1\n"
+        "counter.write_text(str(runs))\n"
+        "output.write_text(str(used_dep.VALUE))\n"
+    )
+    (tmp_path / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.24)\n"
+        "project(GeneratorDepfile LANGUAGES NONE)\n"
+        f'include("{ROOT / "cmake/VibeQCGenerated.cmake"}")\n'
+        f'set(Python3_EXECUTABLE "{sys.executable}")\n'
+        "vibeqc_register_generated_sources(\n"
+        "  NAME generate\n"
+        f'  GENERATOR "{generator}"\n'
+        f'  OUTPUTS "{output}"\n'
+        f'  ARGS "{output}" "{counter}")\n'
+    )
+    build = tmp_path / "build"
+    subprocess.run(["cmake", "-S", str(tmp_path), "-B", str(build)], check=True)
+    command = ["cmake", "--build", str(build), "--target", "generate"]
+    subprocess.run(command, check=True)
+    assert counter.read_text() == "1"
+
+    unused.write_text("VALUE = 2\n")
+    subprocess.run(command, check=True)
+    assert counter.read_text() == "1"
+
+    dependency.write_text("VALUE = 200\n")
+    subprocess.run(command, check=True)
+    assert counter.read_text() == "2"
+    assert output.read_text() == "200"
+    depfile = (tmp_path / "generated.txt.d").read_text()
+    assert str(dependency) in depfile
+    assert str(unused) not in depfile
+
+
+def test_project_codegen_does_not_depend_on_every_compiler_module() -> None:
+    """Keep generator invalidation narrower than the complete source identity."""
+    assert "DEPFILE" in _read("cmake/VibeQCGenerated.cmake")
+    assert "run_codegen.py" in _read("cmake/VibeQCGenerated.cmake")
+    for relative in (
+        "CMakeLists.txt",
+        "cmake/VibeQCGeneratedSources.cmake",
+        "cmake/VibeQCCuda.cmake",
+    ):
+        assert "VIBEQC_SCIENTIFIC_COMPILER_INPUTS" not in _read(relative)
+
+
 def test_production_sources_are_explicit_and_component_owned() -> None:
     """Do not trade a monolithic list for implicit recursive source globbing."""
     sources = _read("cmake/VibeQCSources.cmake")

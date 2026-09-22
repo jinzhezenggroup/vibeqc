@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--inventory", type=Path)
     parser.add_argument("--derivatives", action="store_true")
+    parser.add_argument("--cpu", action="store_true")
     parser.add_argument("--policy-output", type=Path)
     parser.add_argument("--schedule-output", type=Path)
     parser.add_argument("--shell-output", type=Path)
@@ -47,13 +48,21 @@ def main() -> None:
     if args.derivatives:
         from vibeqc_compiler.integral.df_derivatives_cuda import (
             df_derivative_inventory,
+            emit_df_derivatives_cpu,
             emit_df_derivatives_cuda,
         )
 
-        emitter, inventory = emit_df_derivatives_cuda, df_derivative_inventory
+        emitter = emit_df_derivatives_cpu if args.cpu else emit_df_derivatives_cuda
+        inventory = df_derivative_inventory
     else:
-        emitter, inventory = emit_df_values_cuda, df_program_inventory
-    if not args.derivatives:
+        if args.cpu:
+            from vibeqc_compiler.integral.df_cuda import emit_df_values_cpu
+
+            emitter = emit_df_values_cpu
+        else:
+            emitter = emit_df_values_cuda
+        inventory = df_program_inventory
+    if not args.derivatives and not args.cpu:
         from vibeqc_compiler.integral.df_value_candidates import (
             emit_df_value_candidates_cuda,
         )

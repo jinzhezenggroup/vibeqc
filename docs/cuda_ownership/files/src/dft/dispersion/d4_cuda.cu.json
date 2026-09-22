@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d4_cuda.cu",
+  "role": "runtime",
+  "subsystem": "d4_dispersion",
+  "reason": "Bounded block-cooperative CUDA scheduling for fixed-charge D4 pair, ATM and derivative work while retaining d4_reference.hpp as the scalar numerical oracle.",
+  "regions": []
+}

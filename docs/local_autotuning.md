@@ -1,6 +1,7 @@
 # User-local CUDA autotuning
 
-Untuned GPUs use `portable_cuda` and the generic CUDA implementation immediately.
+Builds for untuned GPUs must opt into `portable_cuda` explicitly; `auto`
+never hides a missing tuned profile behind the generic CUDA implementation.
 Autotuning is optional and never runs during installation. A local profile
 contains a validated native library and its evidence, so later calculations can
 use the generated kernels without rebuilding them.
@@ -97,6 +98,58 @@ errors, noisy timings, and slower endpoints preserve the working configuration.
 Only complete accepted bundles are activated through an atomic index update.
 Unfinished staging directories are never read by runtime selection.
 
+DFT grid/XC schedule tuning reuses the same bundle and activation index. Its
+optional `dft_schedules` winners have a separate scientific workload identity
+(architecture, functional/ingredients and jet outputs, grid/screening model,
+FP64 precision, spin/observable, density route, and source identity) plus a
+schedule hash. Before a DFT winner can be stored, legality and measured resource
+bounds, an independent numerical reference, and at least five synchronized,
+interleaved, matched complete energy-plus-analytic-force endpoint samples must
+all pass. Schedule JSON alone is not acceptance evidence. A slower/noisy DFT
+candidate simply leaves no winner and keeps the unfused or current path usable.
+
+The prepared grid/XC layer and the native CUDA KS owner expose the same two
+execution choices. `device_fused` keeps supported semilocal XC/Vxc resident on
+CUDA; `host_unfused` downloads the current density for the audited CPU
+semilocal integrator and uploads Vxc back into the unchanged CUDA SCF loop. The
+native KS options ABI carries this execution policy as a v3 suffix, so v1/v2
+callers retain the historical device-fused default.
+
+Runtime DFT profile selection is batch-local and fail-closed. The calculator
+derives the exact scientific workload from the actual geometry, GridSpec,
+functional, spin, source and target architecture without materializing another
+quadrature. A validated local bundle may replace the portable schedule only
+when every batch item has an exact workload match and all matched items select
+the same resolved schedule, including its point tile. A changed geometry or
+mixed batch with any miss keeps the portable default. `VIBEQC_PROFILE=off`
+continues to provide the tuning/A-B bypass.
+
+Real-device component qualification has exercised this boundary on an NVIDIA
+GeForce RTX 4090 with CUDA 12.9.86. At revision `cc3fc40d`, a complete native
+CUDA build and seven focused schedule/fallback tests passed. A separate
+fixed-density PBE ablation used seven alternating-order warm pairs at three
+scales: H2 (2 AO/32 points), water (7 AO/48 points), and spherical-f (16 AO/32
+points). The device-fused median wall time was 1.84x, 1.23x, and 1.58x faster
+than the host-unfused path respectively, with every execution still passing the
+independent stored energy/potential gate. These measurements establish that
+both lowerings really execute and that fusion can remove this prepared-boundary
+cost.
+
+A follow-up native-KS qualification at source
+`39c31ff8bfd9e532aee7ac02638b4ea64089d31a` used the public
+`energy+forces` endpoint on an RTX 4090. After independent compile-cold
+records, seven synchronized alternating-order warm pairs were retained for H2,
+water, and a two-system H2 batch. Taking `host_unfused` as the baseline,
+`device_fused` passed the complete DFT endpoint gate in all three cases:
+median speedups were 1.116x, 1.141x, and 1.146x, with 95% bootstrap lower
+bounds 1.085x, 1.134x, and 1.140x respectively. SCF iteration branches matched;
+the maximum measured energy/force discrepancies remained below
+`2e-13`/`2e-14`, and changed-geometry replay preserved the same numerical
+agreement. The raw evidence remains a benchmark record rather than an
+installable local profile bundle; profile installation still requires the
+bundle validator's matching legality/resource/independent-numerical/source
+records and resolved schedule identity.
+
 ## Reuse and diagnostics
 
 Profiles live under `$XDG_CACHE_HOME/vibeqc/profiles`, defaulting to
@@ -127,7 +180,8 @@ print(calculator.profile_diagnostics)
 ```
 
 Diagnostics report `official`, `local`, or `portable`, the selected identity,
-tuned consumers, and incompatible-cache rejection reasons. `vibeqc profile
+tuned consumers, optional validated DFT schedule winners, and incompatible-cache
+rejection reasons. `vibeqc profile
 diagnose` probes the allocated GPU and prints the same selection. Static
 management commands require no GPU:
 

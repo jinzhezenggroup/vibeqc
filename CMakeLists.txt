@@ -4,26 +4,29 @@ project(VibeQC VERSION 0.1.0 LANGUAGES CXX)
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 find_package(Threads REQUIRED)
+include(GNUInstallDirs)
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGenerated.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGeneratedSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSources.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCuda.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCudaImplib.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCCpuLinalg.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCGfn2Runtime.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.cmake")
-
-# Leaf lowering/tuning modules are scientific generator inputs too. Track
-# nested files for regeneration; facade timestamps alone cannot invalidate them.
-file(GLOB_RECURSE VIBEQC_SCIENTIFIC_COMPILER_INPUTS CONFIGURE_DEPENDS
-     "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/*.py")
 
 option(VIBEQC_ENABLE_CUDA "Build the CUDA runtime backend" ON)
 option(VIBEQC_ENABLE_AOT_SHELLS
        "Build generated shell kernels in addition to the generic CUDA path" ON)
+option(VIBEQC_ENABLE_STATIONARY_FORCE_AOT
+       "Build packaged stationary CUDA force artifacts" ON)
 option(VIBEQC_BUILD_TESTS "Build native tests" ON)
 option(VIBEQC_PYTHON_WHEEL
        "Install one unversioned shared library for a Python wheel" OFF)
+option(VIBEQC_BUNDLE_XTB_OPENBLAS
+       "Bundle the reviewed private LP64 OpenBLAS provider for GFN2 wheels"
+       ${VIBEQC_PYTHON_WHEEL})
 option(VIBEQC_CUDA_SEPARABLE_COMPILATION
        "Enable CUDA relocatable device code and the device-link stage" OFF)
 option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
@@ -44,7 +47,7 @@ set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
     "CUDA execution provider identity: nvidia or cumetal")
 set_property(CACHE VIBEQC_CUDA_PROVIDER PROPERTY STRINGS nvidia cumetal)
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
-    "AOT profile for every target: auto, portable, sm_XX, or a named profile")
+    "AOT profile for every target: strict auto, explicit portable, sm_XX, or a named profile")
 set(VIBEQC_AOT_PROFILES "" CACHE STRING
     "Optional explicit list of AOT profiles, independent of architecture order")
 set(VIBEQC_AOT_SHARDS "8" CACHE STRING
@@ -78,11 +81,21 @@ elseif(NOT VIBEQC_COMPILER_CACHE STREQUAL "off"
   endif()
 endif()
 if(_vibeqc_compiler_cache)
+  get_filename_component(_vibeqc_compiler_cache_name
+                         "${_vibeqc_compiler_cache}" NAME)
+  set(_vibeqc_compiler_cache_launcher "${_vibeqc_compiler_cache}")
+  if(_vibeqc_compiler_cache_name STREQUAL "ccache")
+    # Generated CUDA/AOT sources live below the build tree. Without a stable
+    # base directory, their absolute paths make byte-identical objects miss
+    # when the same source is rebuilt in another worktree or build directory.
+    set(_vibeqc_compiler_cache_launcher
+        "${CMAKE_COMMAND};-E;env;CCACHE_BASEDIR=${CMAKE_BINARY_DIR};${_vibeqc_compiler_cache}")
+  endif()
   if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   if(NOT CMAKE_CUDA_COMPILER_LAUNCHER)
-    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache}")
+    set(CMAKE_CUDA_COMPILER_LAUNCHER "${_vibeqc_compiler_cache_launcher}")
   endif()
   message(STATUS "VibeQC compiler cache: ${_vibeqc_compiler_cache}")
 endif()
@@ -117,30 +130,33 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if(VIBEQC_ENABLE_CUDA)
+  # Resolve only caller-supplied target sources before CUDA language enablement.
+  # CMake may otherwise initialize CMAKE_CUDA_ARCHITECTURES from NVCC's legacy
+  # compiler default, which must not become an implicit VibeQC target.
+  set(_vibeqc_cuda_requested_architectures "")
+  if(VIBEQC_CUDA_COMPILE_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures
+        ${VIBEQC_CUDA_COMPILE_ARCHITECTURES})
+  elseif(VIBEQC_CUDA_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures ${VIBEQC_CUDA_ARCHITECTURES})
+  elseif(DEFINED CMAKE_CUDA_ARCHITECTURES AND CMAKE_CUDA_ARCHITECTURES)
+    set(_vibeqc_cuda_requested_architectures ${CMAKE_CUDA_ARCHITECTURES})
+  elseif(DEFINED ENV{CUDAARCHS} AND NOT "$ENV{CUDAARCHS}" STREQUAL "")
+    set(_vibeqc_cuda_requested_architectures "$ENV{CUDAARCHS}")
+  endif()
+
   include(CheckLanguage)
   check_language(CUDA)
   if(CMAKE_CUDA_COMPILER)
-    # Set the project default before enabling CUDA.  Once CUDA is enabled,
-    # CMake may populate CMAKE_CUDA_ARCHITECTURES from NVCC's legacy default
-    # (commonly sm_52), which cannot compile the FP64 atomic force consumers.
-    # An explicit VIBEQC_CUDA_ARCHITECTURES or CMAKE_CUDA_ARCHITECTURES value
-    # remains authoritative for callers targeting another supported device.
-    if(VIBEQC_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
-    elseif(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
+    if(NOT _vibeqc_cuda_requested_architectures)
+      message(FATAL_ERROR
+        "CUDA target architecture is required; set VIBEQC_CUDA_ARCHITECTURES, "
+        "CMAKE_CUDA_ARCHITECTURES, VIBEQC_CUDA_COMPILE_ARCHITECTURES, or CUDAARCHS")
     endif()
+    set(CMAKE_CUDA_ARCHITECTURES ${_vibeqc_cuda_requested_architectures})
     enable_language(CUDA)
     set(CMAKE_CUDA_STANDARD 20)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-    if(VIBEQC_CUDA_COMPILE_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_COMPILE_ARCHITECTURES})
-    elseif(VIBEQC_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES ${VIBEQC_CUDA_ARCHITECTURES})
-    endif()
-    if(NOT CMAKE_CUDA_ARCHITECTURES)
-      set(CMAKE_CUDA_ARCHITECTURES 120)
-    endif()
     # Preserve NVCC's real/virtual suffixes for compilation. A separate
     # numeric profile identity is derived below for manifest and cache paths.
     set(_vibeqc_cuda_compile_architectures ${CMAKE_CUDA_ARCHITECTURES})
@@ -171,6 +187,11 @@ if(VIBEQC_ENABLE_CUDA)
         endif()
       endforeach()
     else()
+      if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+        # Native GFN2 resolves its driver metadata calls lazily as well. Enable
+        # import-source languages here, not inside a function-local scope.
+        enable_language(C ASM)
+      endif()
       find_package(CUDAToolkit 12.9 REQUIRED)
       set(VIBEQC_CUDA_TOOLKIT_INCLUDE_DIRS ${CUDAToolkit_INCLUDE_DIRS})
     endif()
@@ -180,8 +201,11 @@ if(VIBEQC_ENABLE_CUDA)
   endif()
 endif()
 
+# Scoped VibeQC-owned GFN2 CPU runtime is registered below.
 add_library(vibeqc SHARED)
 target_link_libraries(vibeqc PRIVATE Threads::Threads)
+vibeqc_configure_cpu_linalg(vibeqc)
+vibeqc_add_gfn2_runtime(vibeqc)
 vibeqc_add_component_sources(vibeqc)
 vibeqc_register_host_generated_sources(vibeqc)
 
@@ -221,6 +245,20 @@ endif()
 target_compile_options(vibeqc PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Wpedantic>)
 
 if(VIBEQC_ENABLE_CUDA)
+  # A single real architecture may use that architecture's measured host-side
+  # candidate schedule. Fat binaries and virtual/PTX-only targets keep host
+  # scheduling portable: their active runtime device is not a compile-time
+  # property of shared host code and may differ from the PTX target.
+  list(LENGTH _vibeqc_cuda_compile_architectures _vibeqc_cuda_architecture_count)
+  if(_vibeqc_cuda_architecture_count EQUAL 1)
+    list(GET _vibeqc_cuda_compile_architectures 0 _vibeqc_cuda_profile_architecture)
+    if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")
+      string(REGEX REPLACE "-real$" "" _vibeqc_cuda_profile_architecture
+             "${_vibeqc_cuda_profile_architecture}")
+      target_compile_definitions(
+        vibeqc PRIVATE VIBEQC_CUDA_PROFILE_ARCHITECTURE=${_vibeqc_cuda_profile_architecture})
+    endif()
+  endif()
   vibeqc_register_cuda_generated_sources(vibeqc)
   vibeqc_configure_cuda_backend(vibeqc)
 else()
@@ -244,7 +282,6 @@ endif()
 
 vibeqc_add_codegen_pilot()
 
-include(GNUInstallDirs)
 install(TARGETS vibeqc
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

@@ -6,7 +6,9 @@ snapshots. Export is explicit and may transfer the final CUDA matrices.
 """
 
 import ctypes as ct
+import threading
 import typing
+from dataclasses import replace
 from hashlib import sha256
 from types import MappingProxyType
 
@@ -16,7 +18,7 @@ from vibeqc_compiler.common.provenance import canonical_hash
 
 from . import _native
 from .batch import PreparedBatch
-from .ks import SCF_DOMAIN, resolve_ks_method
+from .ks import native_xc_functional_code, scf_domain_for_method
 
 
 def _scf_xc_points(
@@ -25,12 +27,14 @@ def _scf_xc_points(
     rho: typing.Any,
     gradient: typing.Any,
     tau: typing.Any = None,
+    *,
+    scales: typing.Any = (1.0, 1.0),
 ) -> typing.Any:
     """Evaluate the exact native semilocal SCF point model."""
     if type(functional) is bool:
         functional = int(functional)
-    if type(functional) is not int or functional not in (0, 1, 2):
-        raise TypeError("SCF point evaluator requires functional code 0, 1, or 2")
+    if type(functional) is not int or functional not in (0, 1, 2, 3):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, 2, or 3")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)
@@ -53,13 +57,23 @@ def _scf_xc_points(
     tau = np.ascontiguousarray(raw_tau, dtype=np.float64)
     output = np.empty((rho.shape[1], 11), dtype=np.float64)
     try:
-        evaluate = library.vibeqc_xc_point_batch_v2
+        evaluate = (
+            library.vibeqc_xc_point_batch_v2
+            if scales == (1.0, 1.0)
+            else library.vibeqc_xc_point_batch_v3
+        )
     except AttributeError as error:
         raise NotImplementedError(
-            "native library lacks the semilocal XC point bridge v2"
+            "native library lacks the required semilocal XC point bridge"
         ) from error
+    prefix_types = (
+        [ct.c_uint32]
+        if scales == (1.0, 1.0)
+        else [ct.c_uint32, ct.c_double, ct.c_double]
+    )
+    prefix_values = [functional] if scales == (1.0, 1.0) else [functional, *scales]
     evaluate.argtypes = [
-        ct.c_uint32,
+        *prefix_types,
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
         ct.POINTER(ct.c_double),
@@ -71,7 +85,7 @@ def _scf_xc_points(
     _native.check(
         library,
         evaluate(
-            functional,
+            *prefix_values,
             rho.ctypes.data_as(ct.POINTER(ct.c_double)),
             gradient.ctypes.data_as(ct.POINTER(ct.c_double)),
             tau.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -102,13 +116,17 @@ class NativeKsSnapshot:
         "_residual",
         "atomic_weights",
         "backend",
+        "coefficients",
         "ecp_cores",
         "ecp_terms",
         "export_work",
+        "functional",
         "grid",
+        "grid_provenance",
         "grid_spec",
         "hamiltonian",
         "metadata",
+        "method_ir",
         "values",
     )
     _fixed = frozenset(__slots__)
@@ -116,6 +134,10 @@ class NativeKsSnapshot:
     def __setattr__(self, name: typing.Any, value: typing.Any) -> None:
         if name in self._fixed and hasattr(self, name):
             raise AttributeError("native KS snapshot provenance is immutable")
+        if name == "grid_provenance" and value is not None:
+            # Own the mapping as well as the attribute: write-once storage alone
+            # does not prevent a caller from mutating model-defining provenance.
+            value = MappingProxyType(dict(value))
         super().__setattr__(name, value)
 
     def __delattr__(self, name: typing.Any) -> None:
@@ -164,11 +186,16 @@ class NativeKsSnapshot:
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
-            if metadata[0] not in (1, 2, 3, 4, 5) or metadata[7] != 1:
+            method_name = self._batch._calculator._method_name
+            expected_domain_version = 2 if method_name.startswith("b3lyp-") else 1
+            if (
+                metadata[0] not in (1, 2, 3, 4, 5, 6, 7)
+                or metadata[7] != expected_domain_version
+            ):
                 raise NotImplementedError(
                     "unsupported native KS snapshot/domain version"
                 )
-            cpu = metadata[0] in (2, 4)
+            cpu = metadata[0] in (2, 4, 6, 7)
             if (metadata[12] == 2**64 - 1) != cpu:
                 raise ValueError("native KS snapshot backend/device mismatch")
             self.backend = "cpu" if cpu else "cuda"
@@ -260,8 +287,8 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.metadata[0] in (2, 3, 4, 5):
-            from vibeqc_compiler.dft.grid import GridSpec
+        if self.metadata[0] in (2, 3, 4, 5, 6, 7):
+            from vibeqc_compiler.dft.grid import GridSpec, grid_policy_provenance
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
             radii = take((119,))
@@ -276,16 +303,18 @@ class NativeKsSnapshot:
                     (z, float(r)) for z, r in enumerate(radii) if z and r
                 ),
             )
+            self.grid_provenance = grid_policy_provenance(self.grid_spec)
             self.atomic_weights = take((npoint,))
         else:
             self.grid_spec = None  # CUDA v1 has no prescription suffix.
+            self.grid_provenance = None
             self.atomic_weights = None
         self.export_work = MappingProxyType(
             dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
             if self.metadata[0] in (3, 5)
             else {}
         )
-        if self.metadata[0] in (4, 5):
+        if self.metadata[0] in (4, 5, 7):
             cores = take((natom,))
             count = float(take((1,))[0])
             if not np.isfinite(count) or count < 1 or not count.is_integer():
@@ -306,10 +335,57 @@ class NativeKsSnapshot:
         else:
             self.ecp_cores = (0,) * natom
             self.ecp_terms = ()
-            # CUDA v1/v3 do not export ECP Hamiltonian records. Their existing
-            # gradient consumer independently rejects core-adjusted occupations;
-            # this CPU extension must not label such snapshots all-electron.
-            self.hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
+            # Legacy CUDA v1/v3 do not carry Hamiltonian records. Only the
+            # live native proof may promote them to all-electron; absence of
+            # an ECP suffix alone is insufficient provenance for CPKS.
+            hamiltonian = "all-electron" if self.backend == "cpu" else "unbound"
+            proof = getattr(self._library, "vibeqc_ks_snapshot_hamiltonian_v1", None)
+            if self.backend == "cuda" and proof is not None:
+                proof.argtypes = [ct.c_void_p, ct.c_void_p, ct.POINTER(ct.c_uint32)]
+                proof.restype = ct.c_int
+                kind = ct.c_uint32()
+                _native.check(
+                    self._library,
+                    proof(self._batch._batch, self._handle, ct.byref(kind)),
+                )
+                if kind.value == 0:
+                    hamiltonian = "all-electron"
+            self.hamiltonian = hamiltonian
+        self.coefficients = (
+            tuple(take((3,))) if self.metadata[0] in (6, 7) else (1.0, 1.0, 0.0)
+        )
+        options = self._batch._calculator.ks_options
+        if (
+            options is None
+            or options.coefficients != self.coefficients
+            or functional
+            != native_xc_functional_code(self._batch._calculator._method_name)
+            or (options.method_ir.spin == "polarized") != (spins == 2)
+        ):
+            raise ValueError("native stationary composition mismatch")
+        full_method_ir = options.method_ir
+        method = self._batch._calculator._method_name
+        if method == "pbe-d4-rks":
+            from vibeqc_compiler.method import DispersionCorrectionPrimitive
+
+            electronic_primitives = tuple(
+                primitive
+                for primitive in full_method_ir.primitives
+                if not isinstance(primitive, DispersionCorrectionPrimitive)
+            )
+            if len(electronic_primitives) != 1:
+                raise ValueError(
+                    "PBE-D4 stationary projection requires one electronic primitive"
+                )
+            self.method_ir = replace(
+                full_method_ir,
+                identifier=f"{full_method_ir.identifier}/electronic",
+                primitives=electronic_primitives,
+            )
+            method = "pbe-rks"
+        else:
+            self.method_ir = full_method_ir
+        self.functional = options.functional
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         if self.hamiltonian != "unbound" and not np.isclose(
@@ -346,13 +422,12 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        functional_names = {0: "lda", 1: "pbe", 2: "r2scan"}
-        try:
-            family = functional_names[functional]
-        except KeyError as error:
-            raise NotImplementedError("unsupported native KS functional id") from error
-        method = family + ("-rks" if spins == 1 else "-uks")
-        _, spec = resolve_ks_method(method)
+        spec = self.functional
+        composition_identity = (
+            {"method_ir": self.method_ir.identity, "coefficients": self.coefficients}
+            if self.coefficients != (1.0, 1.0, 0.0)
+            else {}
+        )
         basis_identity = basis.identity
         identity = StationaryKsIdentity(
             method=method,
@@ -360,16 +435,22 @@ class NativeKsSnapshot:
                 {
                     "native_owner": owner,
                     "functional": spec.identity,
-                    "scf_domain": SCF_DOMAIN,
+                    "scf_domain": scf_domain_for_method(method),
                     "grid": grid.identity,
+                    **(
+                        {"grid_provenance": dict(self.grid_provenance)}
+                        if self.grid_provenance is not None
+                        else {}
+                    ),
                     "basis": basis_identity,
+                    **composition_identity,
                     **(
                         {
                             "hamiltonian": self.hamiltonian,
                             "ecp_cores": self.ecp_cores,
                             "ecp_terms": self.ecp_terms,
                         }
-                        if self.metadata[0] in (4, 5)
+                        if self.metadata[0] in (4, 5, 7)
                         else {}
                     ),
                 }
@@ -387,12 +468,13 @@ class NativeKsSnapshot:
             functional_identity=spec.identity,
             # The derivative bridge consumes this exact SCF point model;
             # interior-v1 remains a separate diagnostic contract.
-            regularization_identity=scf_regularization_identity(),
+            regularization_identity=scf_regularization_identity(method),
             provider_identity=canonical_hash(
                 {
-                    "provider": f"native-{self.backend}-exact-j-fp64",
+                    "provider": f"native-{self.backend}-exact-{'jk' if self.coefficients[2] else 'j'}-fp64",
                     "owner": owner,
                     "device": -1 if self.backend == "cpu" else device,
+                    **composition_identity,
                 }
             ),
             owner=owner,
@@ -425,7 +507,12 @@ class NativeKsSnapshot:
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        values = _scf_xc_points(self._library, functional, rho, gradient, tau)
+        expected = native_xc_functional_code(self._batch._calculator._method_name)
+        if functional != expected:
+            raise ValueError("XC point family disagrees with native composition")
+        values = _scf_xc_points(
+            self._library, functional, rho, gradient, tau, scales=self.coefficients[:2]
+        )
         self.check_current()
         return values
 
@@ -457,6 +544,14 @@ class NativeKsSnapshot:
         """
         return self._evaluate_response_points(
             pbe, rho, gradient, delta_rho, delta_gradient, spins=1
+        )
+
+    def prepare_cuda_response(
+        self, *, tile_points: int, budget_bytes: int
+    ) -> typing.Any:
+        """Copy this live state's exact sources into a bounded CUDA XC owner."""
+        return _NativeCudaXCPlan(
+            self, tile_points=tile_points, budget_bytes=budget_bytes
         )
 
     def evaluate_uks_response_points(
@@ -495,8 +590,10 @@ class NativeKsSnapshot:
             )
         # The snapshot's functional wire code is not a boolean: newer SCF
         # methods (for example r2SCAN=2) must never be interpreted as PBE.
-        if self.metadata[6] not in (0, 1):
-            raise NotImplementedError("native point response supports LDA/PBE only")
+        if self.metadata[6] not in (0, 1) or self.coefficients != (1.0, 1.0, 0.0):
+            raise NotImplementedError(
+                "native point response requires unscaled LDA/PBE only"
+            )
         if type(pbe) is not bool or pbe != bool(self.metadata[6]):
             raise ValueError("native response functional mismatch")
         values = [np.asarray(x) for x in (rho, gradient, delta_rho, delta_gradient)]
@@ -608,4 +705,163 @@ class NativeKsSnapshot:
 
     def __del__(self) -> None:
         if hasattr(self, "_handle"):
+            self.close()
+
+
+class _NativeCudaXCPlan:
+    """Owned XC arena/stream with native token checks before publication.
+
+    Only density directions and final AO matrices cross the host/device seam.
+    AO values, base/directional features, point derivatives and assembly execute
+    on device. Preparation retains the native reference density once.
+    """
+
+    def __init__(
+        self, snapshot: NativeKsSnapshot, *, tile_points: int, budget_bytes: int
+    ) -> None:
+        self._lock = threading.RLock()
+        self._handle = ct.c_void_p()
+        self.snapshot = snapshot
+        self._library = lib = snapshot._library
+        snapshot.check_current()
+        if snapshot.backend != "cuda" or snapshot.hamiltonian != "all-electron":
+            raise NotImplementedError(
+                "CUDA response requires a proven all-electron CUDA state"
+            )
+        if type(tile_points) is not int or not 0 < tile_points < 2**31:
+            raise ValueError("CUDA response tile_points must be a positive int32")
+        if type(budget_bytes) is not int or not 0 < budget_bytes < 2**64:
+            raise ValueError("CUDA response budget must be a positive uint64")
+        pointer = ct.POINTER(ct.c_double)
+        signatures = {
+            "create": [
+                ct.c_void_p,
+                ct.c_void_p,
+                ct.c_size_t,
+                ct.c_size_t,
+                ct.POINTER(ct.c_void_p),
+            ],
+            "apply": [
+                ct.c_void_p,
+                ct.c_void_p,
+                pointer,
+                ct.c_size_t,
+                pointer,
+                ct.c_size_t,
+            ],
+            "diagnostic": [ct.c_void_p, ct.POINTER(ct.c_uint64), ct.c_size_t],
+            "destroy": [ct.c_void_p],
+        }
+        for name, signature in signatures.items():
+            function = getattr(lib, f"vibeqc_ks_xc_response_{name}_v1")
+            function.argtypes = signature
+            function.restype = None if name == "destroy" else ct.c_int
+        try:
+            self._check(
+                lib.vibeqc_ks_xc_response_create_v1(
+                    snapshot._batch._batch,
+                    snapshot._handle,
+                    tile_points,
+                    budget_bytes,
+                    ct.byref(self._handle),
+                )
+            )
+            self.shape = (
+                snapshot.metadata[2],
+                snapshot.metadata[1],
+                snapshot.metadata[1],
+            )
+            self.identity = canonical_hash(
+                {
+                    "owner": "native-cuda-xc-response/v1",
+                    "state": snapshot._identity.to_payload(),
+                    "tile_points": tile_points,
+                    "device": snapshot.metadata[12],
+                    "device_bytes": self.diagnostics["device_bytes"],
+                }
+            )
+        except BaseException:
+            self.close()
+            raise
+
+    def _check(self, status: int) -> None:
+        if status == 7:
+            raise MemoryError("native CUDA XC response device budget exhausted")
+        _native.check(self._library, status, context=self.snapshot._batch._context)
+
+    def _ensure_open(self) -> None:
+        if not self._handle:
+            raise RuntimeError("native CUDA XC response owner is closed")
+        self.snapshot.check_current()
+
+    @property
+    def diagnostics(self) -> dict:
+        """Actual native arena/transfer counters; no inferred PCIe byte counts."""
+        with self._lock:
+            self._ensure_open()
+            values = (ct.c_uint64 * 12)()
+            self._check(
+                self._library.vibeqc_ks_xc_response_diagnostic_v1(
+                    self._handle, values, 12
+                )
+            )
+            return dict(
+                zip(
+                    (
+                        "device_bytes",
+                        "setup_h2d_bytes",
+                        "action_h2d_bytes",
+                        "d2h_bytes",
+                        "synchronizations",
+                        "enqueues",
+                        "spins",
+                        "nbf",
+                        "grid_points",
+                        "preparation_export_d2h_bytes",
+                        "preparation_export_reads",
+                        "preparation_export_synchronizations",
+                    ),
+                    map(int, values),
+                    strict=True,
+                )
+            )
+
+    def apply(self, direction: typing.Any) -> np.ndarray:
+        """Publish only a complete finite AO response for the still-live state."""
+        raw = np.asarray(direction)
+        if (
+            raw.shape != self.shape
+            or np.iscomplexobj(raw)
+            or not np.isfinite(raw).all()
+        ):
+            raise ValueError("CUDA XC response requires finite real spin AO directions")
+        values = np.array(raw, dtype=np.float64, order="C", copy=True)
+        output = np.empty_like(values)
+        pointer = ct.POINTER(ct.c_double)
+        with self._lock:
+            self._ensure_open()
+            self._check(
+                self._library.vibeqc_ks_xc_response_apply_v1(
+                    self.snapshot._batch._batch,
+                    self._handle,
+                    values.ctypes.data_as(pointer),
+                    values.size,
+                    output.ctypes.data_as(pointer),
+                    output.size,
+                )
+            )
+            self._ensure_open()
+            if not np.isfinite(output).all():
+                raise ArithmeticError("nonfinite CUDA XC response")
+        return immutable(output)
+
+    def close(self) -> None:
+        """Destroy this arena/stream while preserving the borrowed native state."""
+        with self._lock:
+            if self._handle:
+                self._library.vibeqc_ks_xc_response_destroy_v1(self._handle)
+                self._handle = ct.c_void_p()
+
+    def __del__(self) -> None:
+        if hasattr(self, "_lock"):
             self.close()

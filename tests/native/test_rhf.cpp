@@ -1,5 +1,6 @@
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -317,11 +318,19 @@ void verify_precision_provenance_gate() {
                 foreign_abi.mixed_precision_reserved_error == 0.0 &&
                 foreign_abi.refinement_iterations == 0,
             "a rejected descriptor must not be modified");
-    vibeqc_precision_provenance short_size{sizeof(vibeqc_precision_provenance) - 1U,
-                                           VIBEQC_ABI_VERSION};
+    constexpr std::uint32_t legacy_precision_size =
+        static_cast<std::uint32_t>(offsetof(vibeqc_precision_provenance, mixed_stage_fock_builds));
+    vibeqc_precision_provenance legacy_prefix{legacy_precision_size, VIBEQC_ABI_VERSION};
+    legacy_prefix.mixed_stage_fock_builds = 4242U;
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, &legacy_prefix) ==
+                    VIBEQC_STATUS_SUCCESS &&
+                legacy_prefix.struct_size == legacy_precision_size &&
+                legacy_prefix.mixed_stage_fock_builds == 4242U,
+            "legacy precision-provenance prefix was not preserved");
+    vibeqc_precision_provenance short_size{legacy_precision_size - 1U, VIBEQC_ABI_VERSION};
     require(vibeqc_calculation_get_precision_provenance(he.calculation, &short_size) ==
                 VIBEQC_STATUS_ABI_MISMATCH,
-            "a short descriptor must be rejected");
+            "a descriptor shorter than the legacy precision prefix must be rejected");
     vibeqc_calculation_destroy(he.calculation);
     vibeqc_system_destroy(he.system);
     vibeqc_context_destroy(he.context);
@@ -386,9 +395,10 @@ int main() {
     require(vibeqc_method_get_capabilities(VIBEQC_METHOD_RCCSD_T, &capabilities) ==
                     VIBEQC_STATUS_SUCCESS &&
                 capabilities.family == VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER &&
-                capabilities.available == 0 && capabilities.supported_properties == 0 &&
-                capabilities.supports_batch == 0,
-            "RCCSD(T) reserved registry leaked executable capabilities");
+                capabilities.available == 1 &&
+                capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
+                capabilities.supports_batch == 1,
+            "RCCSD(T) native energy capability is incorrect");
 
     const Evaluation center = h2(1.4, true);
     require(std::abs(center.energy - (-1.11671432506255)) < 2.0e-9,

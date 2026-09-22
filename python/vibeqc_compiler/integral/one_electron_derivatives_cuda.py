@@ -7,11 +7,14 @@ from .cuda import CudaEmitter
 from .expr import Graph
 from .ir_serialization import integral_to_payload
 from .one_electron_cuda import (
+    _component_layout,
     _emit_component_index,
     _emit_pair_geometry,
     _emit_support_cuda,
     _geometry_boundary,
     _pair_geometry_inventory,
+    _shell_index_expression,
+    _validate_maximum_angular_momentum,
 )
 from .one_electron_derivatives import (
     build_one_electron_derivative_ir,
@@ -20,8 +23,11 @@ from .one_electron_derivatives import (
 from .shell_spec import cartesian_components
 
 
-def one_electron_derivative_inventory() -> typing.Any:
+def one_electron_derivative_inventory(
+    maximum_angular_momentum: int = 3,
+) -> typing.Any:
     """Record mathematical center/sign/layout contracts before runtime scheduling."""
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
     return {
         "schema": "vibeqc.one_electron_derivatives",
         "version": 1,
@@ -31,13 +37,13 @@ def one_electron_derivative_inventory() -> typing.Any:
                 build_one_electron_derivative_ir(family, angular, weighted=weighted)
             )
             for family in ("overlap", "kinetic", "nuclear_attraction")
-            for angular in product(range(4), repeat=2)
+            for angular in product(range(maximum + 1), repeat=2)
             for weighted in (False, True)
         ],
     }
 
 
-def _emit_axis_permutations() -> typing.Any:
+def _emit_axis_permutations(maximum_angular_momentum: int = 3) -> typing.Any:
     """Exploit Cartesian-axis covariance without widening the public AO family.
 
     Every primitive operator is a scalar under an x/y or x/z coordinate swap.
@@ -45,7 +51,9 @@ def _emit_axis_permutations() -> typing.Any:
     derivative into the emitted x derivative. Radial/component normalization is
     invariant under these permutations. This bounds live CSE roots to two.
     """
-    components = tuple(c for l in range(4) for c in cartesian_components(l))
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
+    _, _, _, total_components = _component_layout(maximum)
+    components = tuple(c for l in range(maximum + 1) for c in cartesian_components(l))
     lines = [
         "__device__ __forceinline__ unsigned permute_component(unsigned index, unsigned axis) {",
         "  if (axis == 0) return index;",
@@ -63,7 +71,7 @@ def _emit_axis_permutations() -> typing.Any:
         )
     lines += [
         "  }",
-        "  return 20U;",
+        f"  return {total_components}U;",
         "}",
         "__device__ __forceinline__ PairGeometry permute_pair(const PairGeometry& pair, unsigned axis) {",
         "  PairGeometry result = pair;",
@@ -84,7 +92,9 @@ def _emit_axis_permutations() -> typing.Any:
     return "\n".join(lines + ["  return result;", "}"])
 
 
-def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
+def _emit_gradient_helpers(
+    attraction: typing.Any, maximum_angular_momentum: int = 3
+) -> typing.Any:
     """Emit two x-axis roots; reuse them for y/z through exact permutations.
 
     Attraction evaluates Boys values once before all three axis calls. Keeping
@@ -92,14 +102,18 @@ def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
     cross-axis CSE ancestors simultaneously. This trades modest recomputation
     for a smaller optimization unit and bounded register pressure.
     """
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
+    counts, offsets, limits, total_components = _component_layout(maximum)
+    shell_count = maximum + 1
+    maximum_boys_order = 2 * maximum + 1
     name = "attraction_gradient" if attraction else "overlap_kinetic_gradient"
     arguments = "const PairGeometry& pair, unsigned component"
     if attraction:
         arguments += ", double c_x, double c_y, double c_z, const double* boys"
     lines = []
-    for angular in product(range(4), repeat=2):
+    for angular in product(range(maximum + 1), repeat=2):
         lines += [
-            f"__device__ __noinline__ GradientAxis {name}_x_{angular[0]}{angular[1]}({arguments}) {{",
+            f"static __device__ __noinline__ GradientAxis {name}_x_{angular[0]}{angular[1]}({arguments}) {{",
             "  switch (component) {",
         ]
         for index, components in enumerate(
@@ -145,16 +159,19 @@ def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
         "    const PairGeometry& pair, unsigned first, unsigned second"
         + external
         + ") {",
-        "  if (first >= 20 || second >= 20) return {NAN,NAN};",
-        "  const unsigned a = first < 1 ? 0 : first < 4 ? 1 : first < 10 ? 2 : 3;",
-        "  const unsigned b = second < 1 ? 0 : second < 4 ? 1 : second < 10 ? 2 : 3;",
-        "  const unsigned offsets[] = {0,1,4,10}, counts[] = {1,3,6,10};",
+        f"  if (first >= {total_components} || second >= {total_components}) return {{NAN,NAN}};",
+        "  const unsigned a = " + _shell_index_expression("first", limits) + ";",
+        "  const unsigned b = " + _shell_index_expression("second", limits) + ";",
+        "  const unsigned offsets[] = {" + ",".join(map(str, offsets)) + "};",
+        "  const unsigned counts[] = {" + ",".join(map(str, counts)) + "};",
         "  const unsigned component = (first-offsets[a])*counts[b]+second-offsets[b];",
-        "  switch (a*4U+b) {",
+        f"  switch (a*{shell_count}U+b) {{",
     ]
-    for a, b in product(range(4), repeat=2):
+    for a, b in product(range(maximum + 1), repeat=2):
         args = "pair, component" + (", c_x, c_y, c_z, boys" if attraction else "")
-        lines.append(f"    case {a * 4 + b}U: return {name}_x_{a}{b}({args});")
+        lines.append(
+            f"    case {a * shell_count + b}U: return {name}_x_{a}{b}({args});"
+        )
     lines += [
         "  }",
         "  return {NAN,NAN};",
@@ -176,8 +193,8 @@ def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
         emitter.emit(roots)
         lines += [
             *emitter.lines,
-            "  double boys[8];",
-            f"  boys_values<7>({emitter.reference(roots[0])},boys);",
+            f"  double boys[{maximum_boys_order + 1}];",
+            f"  boys_values<{maximum_boys_order}>({emitter.reference(roots[0])},boys);",
         ]
     lines += [
         "  for (unsigned axis=0; axis<3; ++axis) {",
@@ -197,17 +214,18 @@ def _emit_gradient_helpers(attraction: typing.Any) -> typing.Any:
     return "\n".join(lines)
 
 
-def emit_one_electron_derivatives_cuda() -> typing.Any:
+def emit_one_electron_derivatives_cuda(
+    maximum_angular_momentum: int = 3,
+) -> typing.Any:
     """Emit primitive gradient roots; normalized AO weights belong to the caller."""
+    maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
     prefix = (
-        _emit_support_cuda()
+        _emit_support_cuda(2 * maximum + 1)
         .replace(
             "VIBEQC_GENERATED_ONE_ELECTRON_VALUES_CUH",
             "VIBEQC_GENERATED_ONE_ELECTRON_DERIVATIVES_CUH",
         )
         .replace("generated_one_electron {", "generated_one_electron_derivatives {")
-        .replace("Order <= 6", "Order <= 7")
-        .replace("through order six", "through order seven")
     )
     return "\n".join(
         [
@@ -216,10 +234,10 @@ def emit_one_electron_derivatives_cuda() -> typing.Any:
             "struct GradientAxis { double first, second; };",
             "__device__ __forceinline__ GradientPair invalid_gradient() { const double n = NAN; return {{n,n,n},{n,n,n}}; }",
             _emit_pair_geometry(),
-            _emit_component_index(),
-            _emit_axis_permutations(),
-            _emit_gradient_helpers(False),
-            _emit_gradient_helpers(True),
+            _emit_component_index(maximum),
+            _emit_axis_permutations(maximum),
+            _emit_gradient_helpers(False, maximum),
+            _emit_gradient_helpers(True, maximum),
             "}  // namespace vibeqc::scf::generated_one_electron_derivatives",
             "#endif",
             "",

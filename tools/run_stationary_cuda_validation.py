@@ -32,7 +32,10 @@ def main() -> typing.Any:
     parser.add_argument("--cpu-regression", action="store_true")
     parser.add_argument("--full-fd", action="store_true")
     parser.add_argument("--time", default="00:20:00")
+    parser.add_argument("--compile-threads", type=int, default=8)
     args, pytest_args = parser.parse_known_args()
+    if not 1 <= args.compile_threads <= 32:
+        parser.error("--compile-threads must be in [1,32]")
     toolkit = Path(os.environ.get("CUDA_HOME", "/group/software/cuda-12.9.1"))
     if not (toolkit / "bin/nvcc").is_file():
         raise SystemExit("set CUDA_HOME to a complete CUDA 12.9 toolkit")
@@ -62,6 +65,7 @@ def main() -> typing.Any:
             )
         ),
         VIBEQC_DFT_CUDA_TEST="1",
+        VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS=str(args.compile_threads),
         VIBEQC_STATIONARY_CACHE=str(
             args.cache
             or os.environ.get("VIBEQC_STATIONARY_CACHE")
@@ -73,7 +77,9 @@ def main() -> typing.Any:
             or ROOT / "build-cuda/stationary-evidence"
         ),
     )
-    profile = resolve_cuda_execution_profile(local=False, slurm_time=args.time)
+    profile = resolve_cuda_execution_profile(
+        local=False, slurm_time=args.time, cpus_per_task=args.compile_threads
+    )
     if args.full_fd:
         env["VIBEQC_STATIONARY_FULL_FD"] = "1"
     test = "tests/python/test_dft_complete_cuda.py"

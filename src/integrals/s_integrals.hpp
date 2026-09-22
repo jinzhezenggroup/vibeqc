@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "integrals/range_moments.hpp"
 
 namespace vibeqc::integrals {
 
@@ -53,6 +54,30 @@ struct EspIntegralData {
   std::vector<double> values;
 };
 
+/** AO ESP matrices and analytic derivatives with respect to each probe point.
+ *
+ * probe_derivative is point-major, then Cartesian-axis, then row-major AO
+ * matrix:
+ *   probe_derivative[((point * 3 + axis) * nbf + mu) * nbf + nu].
+ *
+ * Only the explicit probe coordinate moves. Gaussian centers, contractions,
+ * and all other probes are held fixed.
+ */
+struct EspProbeDerivativeData {
+  std::size_t nbf{};
+  std::size_t npoint{};
+  std::vector<double> values;
+  std::vector<double> probe_derivative;
+};
+
+/** Direct contraction of one ESP matrix cotangent with molecular-center and
+ * explicit-probe derivatives. This bounded reference/oracle path never forms
+ * a coordinate-major ESP derivative tensor. */
+struct EspContractedGeometryDerivative {
+  std::vector<double> nuclear_derivative;
+  std::array<double, 3> probe_derivative{};
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -65,8 +90,27 @@ struct EspIntegralData {
 IntegralData build_integrals(const core::System& system, bool include_derivatives = true,
                              bool include_eri = true);
 
+/** Evaluate value-only short-/long-range two-electron integrals in the public AO basis.
+ *
+ * This CPU reference path reuses the #166 positive-interval radial moments, so
+ * short range is evaluated directly rather than as Coulomb-minus-long-range.
+ * It deliberately exposes values only; analytic range-separated derivatives
+ * remain owned by the weighted derivative provider.
+ */
+std::vector<double> build_range_eri(const core::System& system, CoulombRange range, double omega);
+
 /** Evaluate analytic AO ESP matrices on explicit probe points. */
 EspIntegralData build_esp_integrals(const core::System& system, std::span<const double> points_xyz);
+
+/** Evaluate AO ESP matrices and analytic explicit-probe coordinate derivatives. */
+EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
+    const core::System& system, std::span<const double> points_xyz);
+
+/** Contract arbitrary public-AO ESP weights with analytic basis-center and
+ * probe-coordinate derivatives at one explicit point. */
+EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
+    const core::System& system, std::span<const double> point_xyz,
+    std::span<const double> matrix_weights);
 
 /** Contract one ordered public-AO shell quartet with arbitrary weights.
  *
@@ -113,6 +157,17 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
                                                            const core::System& auxiliary_system,
                                                            bool include_derivatives = true);
 
+/** Contract public-basis DF derivative weights directly into nuclear coordinates.
+ *
+ * metric_weights and three_center_weights use the same public AO layouts as
+ * DensityFittingIntegralData::metric and three_center. Generated s/p/d/f
+ * derivatives are consumed immediately, so no coordinate-resolved dM/dR or
+ * d(mu nu|P)/dR tensor is materialized. Higher angular momentum retains the
+ * full-tensor oracle as an explicit correctness fallback.
+ */
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> metric_weights, std::span<const double> three_center_weights);
 /**
  * Transform Cartesian density-fitting tensors into the public AO
  * representations selected by the two systems.

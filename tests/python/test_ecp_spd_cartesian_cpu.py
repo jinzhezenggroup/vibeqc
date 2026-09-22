@@ -33,3 +33,9 @@ def test_spd_arbitrary_ordered_weights_against_libcint_energy_differences() -> N
     gates.check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
         "cartesian"
     )
+
+
+def test_spd_paired_endpoint(
+    monkeypatch: typing.Any, record_property: typing.Any
+) -> None:
+    gates.check_spd_paired_endpoint("cartesian", monkeypatch, record_property)

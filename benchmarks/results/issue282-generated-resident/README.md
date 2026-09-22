@@ -1,5 +1,23 @@
 # Generated resident DF evidence (#282, resident slice)
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue282-generated-resident/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue282-generated-resident/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For commands below that previously unpacked the checkout directly, pass the
+restored archive explicitly:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue282-generated-resident \
+  --archive .artifacts/issue282-generated-resident/raw-evidence.zip \
+  --output .artifacts/issue282-generated-resident-unpacked
+```
+
 This checkpoint permits a generated source to retain its transformed tensor
 when the complete value-plan allowance fits. It changes forward storage policy,
 not the DF model or its derivative. It does not yet optimize the constrained
@@ -62,6 +80,7 @@ Every member was restored and compared byte for byte:
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue282-generated-resident \
+  --archive .artifacts/issue282-generated-resident/raw-evidence.zip \
   --output build/issue282-generated-resident-restored
 ```
 

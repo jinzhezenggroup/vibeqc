@@ -80,7 +80,7 @@ HostView pack(const core::System& system, unsigned schedule) {
         host.shell_second.push_back(sj);
       }
   }
-  if (schedule == 0)
+  if (schedule == 0 || schedule == 3)
     for (std::int32_t i = 0; i < static_cast<std::int32_t>(host.ao_shells.size()); ++i)
       for (std::int32_t j = 0; j <= i; ++j) {
         host.pair_first.push_back(i);
@@ -141,7 +141,7 @@ vibeqc_status execute_cuda_one_electron_gradient(
     OneElectronGradientResources* resources, double overlap_scale) {
   if (resources) *resources = {};
   const std::size_t n = molecule::ao_count(system), atoms = system.atoms.size();
-  if (device_id < 0 || schedule > 2 || !maximum_bytes || !n || !atoms ||
+  if (device_id < 0 || schedule > 3 || !maximum_bytes || !n || !atoms ||
       !std::isfinite(overlap_scale) ||
       atoms > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()) ||
       n > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()) ||

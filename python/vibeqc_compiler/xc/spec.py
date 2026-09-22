@@ -10,6 +10,16 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
+from .b88_vwn_maple import b88_vwn_maple_provenance
+from .ityh_maple import ityh_maple_provenance
+from .p86_pz_maple import p86_pz_maple_provenance
+from .pbe_maple import pbe_maple_provenance
+from .pw91_maple import pw91_maple_provenance
+from .pw_maple import pw_maple_provenance
+from .rsh_maple import rsh_maple_provenance
+from .scan_maple import scan_maple_provenance
+from .wb97mv_maple import wb97mv_maple_provenance
+
 VERSION = "libxc-7.0.0/interior-v1"
 POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
@@ -33,8 +43,9 @@ RSH_COMPONENTS = (
 )
 PW91_COMPONENTS = ("GGA_X_PW91", "GGA_C_PW91")
 P86_COMPONENTS = ("LDA_C_PZ", "GGA_C_P86")
+WB97MV_COMPONENTS = ("MGGA_X_WB97M_V", "MGGA_C_WB97M_V")
 SPECIAL_EXPRESSION_COMPONENTS = RSH_COMPONENTS + PW91_COMPONENTS + P86_COMPONENTS
-COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS
+COMPONENTS = PUBLIC_COMPONENTS + SPECIAL_EXPRESSION_COMPONENTS + WB97MV_COMPONENTS
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
@@ -106,12 +117,12 @@ class FunctionalSpec:
                     "exchange metadata requires nonnegative exact fractions"
                 )
         has_range_semilocal = any(
-            name == "GGA_X_ITYH" and coefficient
+            name in ("GGA_X_ITYH", "MGGA_X_WB97M_V") and coefficient
             for name, coefficient in self.components
         )
         if has_range_semilocal and not self.range_omega:
             raise UnsupportedXC(
-                "ITYH short-range exchange requires one positive range_omega"
+                "range-dependent semilocal exchange requires one positive range_omega"
             )
 
     @property
@@ -143,8 +154,48 @@ class FunctionalSpec:
             name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
             for name, coefficient in self.components
         )
-        manifest = "rsh-manifest.json" if special else "manifest.json"
-        expression_source = "rsh_expressions.py" if special else "expressions.py"
+        wb97mv = any(
+            name in WB97MV_COMPONENTS and coefficient
+            for name, coefficient in self.components
+        )
+        if wb97mv:
+            manifest = "wb97mv-manifest.json"
+            expression_source = "wb97mv_maple.py"
+        else:
+            manifest = "rsh-manifest.json" if special else "manifest.json"
+            expression_source = "rsh_expressions.py" if special else "expressions.py"
+        sources = tuple(
+            record
+            for record in (
+                pbe_maple_provenance(self.components),
+                ityh_maple_provenance(self.components, self.range_omega),
+                pw_maple_provenance(self.components),
+                pw91_maple_provenance(self.components),
+                p86_pz_maple_provenance(self.components),
+                b88_vwn_maple_provenance(self.components),
+                rsh_maple_provenance(self.components),
+                scan_maple_provenance(self.components),
+                wb97mv_maple_provenance(self.components, self.range_omega),
+            )
+            if record is not None
+        )
+        expression_provenance = sources[0] if sources else None
+        if len(sources) > 1:
+            for record in sources[1:]:
+                for key in ("kind", "importer_semantics", "importer_sha256"):
+                    if record[key] != sources[0][key]:
+                        raise UnsupportedXC("incompatible Libxc Maple provenance")
+            expression_provenance = {
+                **sources[0],
+                "adapter_sha256": canonical_hash(
+                    sorted(record["adapter_sha256"] for record in sources)
+                ),
+                "components": {
+                    key: value
+                    for record in sources
+                    for key, value in record["components"].items()
+                },
+            }
         return {
             **payload,
             "ingredients": self.ingredients,
@@ -153,16 +204,26 @@ class FunctionalSpec:
             "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
             "license": "MPL-2.0",
             "source_manifest_sha256": file_hash(
-                asset_path(f"external/libxc-7.0.0/{manifest}")
+                asset_path(f"manifests/libxc/7.0.0/{manifest}")
             ),
             "expression_source_sha256": file_hash(
                 Path(__file__).with_name(expression_source)
             ),
+            **(
+                {"expression_provenance": expression_provenance}
+                if expression_provenance is not None
+                else {}
+            ),
             "domain": (
-                "rsh-interior-v1: interior-v1 plus explicit ITYH attenuation "
-                "branch support; no clipping"
-                if self.range_omega
-                else "interior-v1: no clipping; see docs/xc_expressions.md"
+                "wb97mv-interior-v1: Libxc-7.0 B97M polynomial plus direct "
+                "erf attenuation branch a<1.35; no clipping"
+                if wb97mv
+                else (
+                    "rsh-interior-v1: interior-v1 plus explicit ITYH attenuation "
+                    "branch support; no clipping"
+                    if self.range_omega
+                    else "interior-v1: no clipping; see docs/xc_expressions.md"
+                )
             ),
         }
 

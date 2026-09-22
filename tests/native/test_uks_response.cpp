@@ -119,6 +119,33 @@ void layout_and_domain() {
               "zero direction failed");
       for (unsigned c = 0; c < 8; ++c) require(output[c] == 0., "zero direction not exact");
     }
+    // Zero density can retain a numerically-null SCF gradient residue. This
+    // changes reference admission only; empty-spin tangents remain exactly zero.
+    r[0] = r[1] = 0.0;
+    for (double residue :
+         {std::numeric_limits<double>::denorm_min(), -std::numeric_limits<double>::denorm_min(),
+          std::nextafter(std::numeric_limits<double>::min(), 0.0),
+          -std::nextafter(std::numeric_limits<double>::min(), 0.0)}) {
+      for (unsigned component = 0; component < 6; ++component) {
+        double reference_gradient[6]{};
+        reference_gradient[component] = residue;
+        require(
+            call(method, r, reference_gradient, zero, zero, 1, output, 8) == VIBEQC_STATUS_SUCCESS,
+            "SCF-admitted vacuum reference rejected by UKS response");
+        for (unsigned c = 0; c < 8; ++c)
+          require(output[c] == 0.0, "vacuum residue changed zero spin response");
+        require(call(method, r, zero, zero, reference_gradient, 1, output, 8) ==
+                    VIBEQC_STATUS_NUMERICAL_FAILURE,
+                "nonzero vacuum spin gradient tangent admitted");
+      }
+    }
+    for (double normal :
+         {std::numeric_limits<double>::min(), -std::numeric_limits<double>::min()}) {
+      double reference_gradient[6]{normal, 0.0, 0.0, 0.0, 0.0, 0.0};
+      require(call(method, r, reference_gradient, zero, zero, 1, output, 8) ==
+                  VIBEQC_STATUS_NUMERICAL_FAILURE,
+              "normal empty-spin reference gradient admitted");
+    }
     for (double invalid :
          {-1., std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN()}) {
       r[0] = invalid;

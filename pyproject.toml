@@ -1,5 +1,6 @@
 [build-system]
-requires = ["scikit-build-core>=1.0.3", "numpy>=1.24"]
+# GFN2 wheel CMake resolves this reviewed provider inside PEP 517 isolation.
+requires = ["scikit-build-core>=1.0.3", "numpy>=1.24", "scipy-openblas32==0.3.34.0.0"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -23,7 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8", "pytest-cov>=6", "pytest-xdist>=3.8"]
-reference-test = ["scipy>=1.10", "pyscf==2.14.0", "mpmath>=1.3"]
+reference-test = ["scipy>=1.10", "pyscf==2.14.0", "mpmath>=1.3", "threadpoolctl>=3.1"]
 torch = ["torch>=2"]
 autotune = ["pyscf>=2.8"]
 # Compatibility alias retained for callers that already install
@@ -75,16 +76,20 @@ wheel.py-api = "py3"
 "src/integrals/first_component_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_component_runtime.hpp"
 "src/integrals/first_directional_runtime.cuh" = "vibeqc_compiler/assets/src/integrals/first_directional_runtime.cuh"
 "src/integrals/first_derivative_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_derivative_runtime.hpp"
+"src/integrals/first_derivative_component_runtime.hpp" = "vibeqc_compiler/assets/src/integrals/first_derivative_component_runtime.hpp"
 "src/scf/cuda_weighted_eri.hpp" = "vibeqc_compiler/assets/src/scf/cuda_weighted_eri.hpp"
 "src/scf/weighted_eri_runtime.hpp" = "vibeqc_compiler/assets/src/scf/weighted_eri_runtime.hpp"
 "include/vibeqc/vibeqc.h" = "vibeqc_compiler/assets/include/vibeqc/vibeqc.h"
 "include/vibeqc/generated_method_ids.h" = "vibeqc_compiler/assets/include/vibeqc/generated_method_ids.h"
-"external/libxc-7.0.0" = "vibeqc_compiler/assets/external/libxc-7.0.0"
-"external/xtbloom-d3" = "vibeqc_compiler/assets/external/xtbloom-d3"
+"manifests/libxc/7.0.0" = "vibeqc_compiler/assets/manifests/libxc/7.0.0"
+"upstream/libxc/7.0.0" = "vibeqc_compiler/assets/upstream/libxc/7.0.0"
+"upstream/libxc-fulltree/7.0.0" = "vibeqc_compiler/assets/upstream/libxc-fulltree/7.0.0"
+"upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3" = "vibeqc_compiler/assets/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
 
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }
 VIBEQC_ENABLE_AOT_SHELLS = { env = "VIBEQC_ENABLE_AOT_SHELLS", default = "ON" }
+VIBEQC_ENABLE_STATIONARY_FORCE_AOT = { env = "VIBEQC_ENABLE_STATIONARY_FORCE_AOT", default = "ON" }
 VIBEQC_CUDA_ARCHITECTURES = { env = "VIBEQC_CUDA_ARCHITECTURES", default = "" }
 
 # Keep wheel production aligned with xTBloom's proven cibuildwheel path. Because
@@ -102,7 +107,8 @@ test-command = "python -c 'import ctypes; from vibeqc import _native; from vibeq
 # libraries are not build inputs: VibeQC's wheel-mode Implib.so trampolines
 # compile from nvcc headers and resolve the separately installed providers only
 # at runtime, matching xTBloom's provider-free build boundary.
-before-build = "bash {package}/python/ci/install-ccache.sh"
+# Keep a second provider environment alive for the later auditwheel repair.
+before-build = "bash {package}/python/ci/prepare-wheel-build.sh"
 repair-wheel-command = "bash {package}/python/ci/repair-wheel.sh {dest_dir} {wheel}"
 
 [tool.coverage.run]
@@ -111,10 +117,26 @@ relative_files = true
 source = ["python/vibeqc"]
 
 [tool.ruff]
-extend-exclude = ["external/libxc-7.0.0", "cmake/3rdparty/implib", "benchmarks/results"]
+extend-exclude = ["upstream", "cmake/3rdparty/implib", "benchmarks/results"]
 
 [tool.ruff.lint]
-extend-select = ["ANN", "TC", "NPY001", "NPY003", "NPY201", "PGH003", "PGH004", "S"]
+extend-select = [
+  "ANN",
+  "TC",
+  "NPY001",
+  "NPY003",
+  "NPY201",
+  "PGH003",
+  "PGH004",
+  "S",
+  "RET502",
+  "RET503",
+  "PLW2901",
+  "RUF102",
+  "RUF103",
+  "RUF104",
+  "A005",
+]
 # Assertions are pervasive internal/test invariants; subprocess invocation is a core compiler/tooling boundary.
 # Keep the narrower shell-injection checks active while avoiding blanket S603/S607 noise.
 ignore = ["ANN401", "S101", "S603", "S607"]
@@ -126,3 +148,44 @@ ignore = ["ANN401", "S101", "S603", "S607"]
 "tests/**/*.py" = ["S108", "S311", "S314", "S324"]
 "tools/**/*.py" = ["S108"]
 "tools/vibeqc_validation/retention.py" = ["S314"]
+
+# Python compiler type checking with Astral ty.
+# Files in the override contain remaining pre-existing type debt as of 2026-09-20.
+# Diagnostics stay visible as warnings; clean files must return to normal strict checking.
+
+[tool.ty.environment]
+root = ["python"]
+
+[tool.ty.src]
+include = ["python/vibeqc_compiler"]
+
+[tool.ty.terminal]
+error-on-warning = false
+output-format = "github"
+
+[[tool.ty.overrides]]
+include = [
+  "python/vibeqc_compiler/common/resources.py",
+  "python/vibeqc_compiler/integral/batch_benchmark.py",
+  "python/vibeqc_compiler/integral/capabilities.py",
+  "python/vibeqc_compiler/integral/df_rys_shell.py",
+  "python/vibeqc_compiler/integral/expr.py",
+  "python/vibeqc_compiler/integral/fused_schedule.py",
+  "python/vibeqc_compiler/integral/ir.py",
+  "python/vibeqc_compiler/integral/ir_serialization.py",
+  "python/vibeqc_compiler/integral/rys.py",
+  "python/vibeqc_compiler/integral/second_derivatives_execute.py",
+  "python/vibeqc_compiler/integral/shell_class.py",
+  "python/vibeqc_compiler/integral/tuning/analysis.py",
+  "python/vibeqc_compiler/integral/tuning/driver.py",
+  "python/vibeqc_compiler/integral/weighted_eri_execute.py",
+  "python/vibeqc_compiler/integral/weighted_eri_native.py",
+  "python/vibeqc_compiler/tensor/cuda_emit.py",
+  "python/vibeqc_compiler/tensor/cuda_plan.py",
+  "python/vibeqc_compiler/tensor/cuda_resident.py",
+  "python/vibeqc_compiler/tensor/cuda_tune.py",
+  "python/vibeqc_compiler/xc/prepared.py",
+]
+
+[tool.ty.overrides.rules]
+all = "warn"

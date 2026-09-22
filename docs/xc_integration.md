@@ -198,7 +198,7 @@ controlled inputs, so agreement does not establish quadrature convergence.
 Remaining #162 work includes complete component timing/transport diagnostics and
 permanent source-bound workload evidence under the shared #138 protocol.
 The independent closed-shell PBE H2 endpoint is recorded in
-`experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`; this does not
+`benchmarks/results/xc-integration-162/pbe-rks-endpoint-20260912.md`; this does not
 establish broader PBE coverage. #203 owns composed resource planning, and #163
 owns nuclear gradients. Broader methods should
 reuse the existing orthogonalization, provider and SCF infrastructure rather

@@ -109,22 +109,14 @@ cudaError_t launch_packets(std::span<const DfShellBasisView> orbital,
   SignaturePacket packet;
   const auto flush = [&]() -> cudaError_t {
     if (!packet.count) return cudaSuccess;
-    // Start expensive, often small signatures first so their final blocks can
-    // overlap the larger cheap slices. Ranking changes scheduling only.
-    std::sort(packet.slices, packet.slices + packet.count,
-              [](const SignatureSlice& a, const SignatureSlice& b) {
-                const long double wa =
-                    static_cast<long double>(a.a_primitives) * a.b_primitives * a.c_primitives;
-                const long double wb =
-                    static_cast<long double>(b.a_primitives) * b.b_primitives * b.c_primitives;
-                return wa != wb ? wa > wb : a.first_block < b.first_block;
-              });
-    packet.blocks = 0;
-    for (unsigned i = 0; i < packet.count; ++i) {
-      packet.slices[i].first_block = packet.blocks;
-      packet.blocks +=
-          static_cast<unsigned>((packet.slices[i].tasks + Schedule::groups - 1) / Schedule::groups);
-    }
+    // Start expensive homogeneous signatures first. The shared runtime packet
+    // planner owns stable profitability ordering and bounded block prefixes;
+    // DF owns only the legal signature descriptors and their primitive work.
+    runtime::order_homogeneous_task_packet(packet, [](const SignatureSlice& slice) {
+      return static_cast<long double>(slice.a_primitives) * slice.b_primitives * slice.c_primitives;
+    });
+    if (!runtime::finalize_homogeneous_task_packet(packet, Schedule::groups, maximum))
+      return cudaErrorInvalidValue;
     if (profiling) {
       // Stop the preparation clock before driver submission/backpressure.
       runtime::cuda_trace::trace_counter(

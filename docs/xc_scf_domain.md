@@ -4,7 +4,7 @@ The native SCF point evaluator uses the identity
 `semilocal-scaled-v1/pbe-spin-c2-1e-18`. Its compositions are exactly
 `LDA_X + LDA_C_PW` and `GGA_X_PBE + GGA_C_PBE`; PBE correlation uses modified
 PW constants. The source parameters and conventions follow the audited
-Libxc 7.0.0 sources in `external/libxc-7.0.0` and
+Libxc 7.0.0 sources in `upstream/libxc/7.0.0` and
 `python/vibeqc_compiler/xc/expressions.py`. There is no exact exchange or
 density fitting in these method compositions.
 
@@ -44,9 +44,13 @@ first spatial derivatives. Neither computes tau or higher jets.
 ## Stable positive-density algebra
 
 The evaluator does not clip rho or sigma and has no positive density floor.
-It rejects negative/nonfinite densities, nonfinite gradients, a nonzero
-gradient in an exactly empty spin, and any unrepresentable output. Exact
-vacuum has zero energy and potential coefficients. Positive-density
+It rejects negative/nonfinite densities, nonfinite gradients, a normal nonzero
+gradient in an exactly empty spin, and any unrepresentable output. When AO
+contractions round density to zero, subnormal reference gradient components
+(`abs(gradient) < DBL_MIN`) retain the existing SCF vacuum admission. SCF and
+RKS/UKS response share this reference check. RKS takes total gradients and
+checks their rounded equal-spin halves; the cutoff applies per spin, including
+rounding at its boundary. Exact vacuum has zero energy and potential coefficients. Positive-density
 underflow of a final energy follows ordinary FP64 arithmetic; density
 derivatives are evaluated independently and are retained when representable.
 
@@ -136,8 +140,12 @@ admissible; the other spin may vary. No finite full spin-endpoint Hessian is
 claimed. At positive-density zero-gradient points where rho^(4/3) underflows,
 the exchange reduced-gradient direction uses (gradient/rho)/cbrt(rho), retaining
 finite directional coefficients without constructing an infinite Hessian.
-Exact vacuum requires a zero direction, and nonrepresentable directional
-coefficients reject the action. The interior diagnostic domain is unchanged.
+Exact vacuum requires a zero direction, including when a valid reference
+contains subnormal gradient residues. The empty-spin tangent still requires
+exactly zero density and gradient components; the reference admission does
+not extend its tangent domain. Nonrepresentable directional coefficients reject
+the action. The interior diagnostic domain is unchanged. See the
+[shared vacuum reference decision](../.agents/notes/implemented/numerics/2026-09-20-cpks-vacuum-reference-admission.md).
 
 Libxc has its own low-density and spin-boundary screening conventions.
 Therefore exact endpoint comparisons use the independently differentiated
@@ -182,6 +190,14 @@ one-sided with extra working precision; the response direction preserves the
 empty spin. The per-component gate is `3e-10*abs(reference)` plus 64 machine
 epsilons times independent `abs(delta_X)+abs(delta_C)` and 8 minimum subnormals.
 The target also verifies spin permutation, batched layout and domain errors.
+
+With CUDA enabled, `vibeqc_xc_response_cuda_tests` evaluates the same 30 RKS
+and 48 UKS fixture directions through the shared point differential on device,
+using the same relative, independently scaled cancellation and subnormal gates.
+`tests/python/test_response_native_cuda.py` qualifies complete native CUDA
+LDA/PBE CPKS actions and solves against independent molecular references; see
+[the response boundary](response.md#native-cuda-cpks) for host/device ownership
+and the required Slurm allocation.
 
 `vibeqc_dft_tests` retains the #214 identical-grid oracle and adds unequal
 spin directional tests, isolated symmetric off-diagonal perturbations,

@@ -1,5 +1,23 @@
 # #310 cold setup provider qualification
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue310-setup-eigen/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue310-setup-eigen/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For the standard raw-evidence bundle, verify or unpack it against the retained
+member manifest with:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue310-setup-eigen \
+  --archive .artifacts/issue310-setup-eigen/raw-evidence.zip \
+  --output .artifacts/issue310-setup-eigen-unpacked
+```
+
 CUDA DF RHF/UHF single/bucket setup borrows the ordinary FP64 provider already
 used by finalization. Symmetric X, the exact strict `<1e-10` cutoff, core-guess
 UHF mixing and lazy/cache semantics remain. Post-plan invalid setup frames are
@@ -57,6 +75,7 @@ hashed, compressed and restored byte for byte before publication.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue310-setup-eigen \
+  --archive .artifacts/issue310-setup-eigen/raw-evidence.zip \
   --output /tmp/issue310-setup-evidence
 ```
 

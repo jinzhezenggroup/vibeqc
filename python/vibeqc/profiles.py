@@ -164,8 +164,11 @@ def validate_bundle(
         path = directory / name
         if path.is_symlink() or file_hash(path) != digest:
             raise ValueError(f"local profile artifact hash differs: {name}")
-    kernels = profile["kernels"]
-    if not kernels:
+    kernels = profile.get("kernels", [])
+    dft_schedules = profile.get("dft_schedules", [])
+    if not isinstance(kernels, list) or not isinstance(dft_schedules, list):
+        raise TypeError("local profile winners must be arrays")
+    if not kernels and not dft_schedules:
         raise ValueError("a local profile requires at least one validated winner")
     seen = set()
     for kernel in kernels:
@@ -187,7 +190,7 @@ def validate_bundle(
         }:
             raise ValueError("candidate did not pass all local promotion gates")
     evidence = json.loads((directory / "evidence.json").read_text())
-    if not evidence.get("endpoint", {}).get("passed"):
+    if kernels and not evidence.get("endpoint", {}).get("passed"):
         raise ValueError("complete endpoint acceptance is missing")
     accepted = {
         (row["shell_class"], row["consumer"]): row
@@ -235,14 +238,129 @@ def validate_bundle(
             raise ValueError(
                 "kernel lacks matching independent numerical/endpoint evidence"
             )
+    _validate_dft_schedule_winners(dft_schedules, evidence, identity)
     return profile
 
 
-def verify_library(directory: Path, probe: dict, device_id: int = 0) -> ctypes.CDLL:
+def _validate_dft_schedule_winners(
+    winners: list[dict], evidence: dict, identity: dict
+) -> None:
+    """Validate optional DFT09 schedule winners without changing HF bundle semantics."""
+
+    if not winners:
+        return
+    expected_architecture = (
+        f"sm_{identity['device']['major']}{identity['device']['minor']}"
+    )
+    accepted_rows = {
+        (row.get("workload_hash"), row.get("schedule_hash")): row
+        for row in evidence.get("dft_schedules", [])
+        if row.get("accepted")
+    }
+    seen_workloads: set[str] = set()
+    selected: set[tuple[str, str]] = set()
+    gate_names = ("legality", "resources", "numerical", "performance", "endpoint")
+    from vibeqc_compiler.dft.xc_schedule import grid_xc_schedule
+
+    for winner in winners:
+        workload = winner.get("workload")
+        schedule = winner.get("schedule")
+        if not isinstance(workload, dict) or not isinstance(schedule, dict):
+            raise TypeError(
+                "DFT schedule winner requires workload and schedule objects"
+            )
+        workload_hash = winner.get("workload_hash")
+        schedule_hash = winner.get("schedule_hash")
+        if workload_hash != canonical_hash(workload):
+            raise ValueError("DFT workload hash differs")
+        if schedule_hash != canonical_hash(schedule):
+            raise ValueError("DFT schedule hash differs")
+        if workload_hash in seen_workloads:
+            raise ValueError("a DFT workload may select only one schedule")
+        seen_workloads.add(workload_hash)
+        selected.add((workload_hash, schedule_hash))
+        if workload.get("schema") != "vibeqc.grid-xc-scientific.v1":
+            raise ValueError("unsupported DFT workload identity schema")
+        if schedule.get("schema") != "vibeqc.grid-xc-schedule.v1":
+            raise ValueError("unsupported DFT schedule identity schema")
+        grid_xc_schedule(schedule)
+        if (
+            workload.get("architecture") != expected_architecture
+            or workload.get("source_identity") != identity.get("source_identity")
+            or workload.get("precision") != "fp64"
+        ):
+            raise ValueError("DFT workload is incompatible with profile target/source")
+        for field in (
+            "functional",
+            "functional_identity",
+            "ingredients",
+            "jet_outputs",
+            "grid_identity",
+            "grid_model",
+            "screening_identity",
+            "spin",
+            "observable",
+            "density_route",
+        ):
+            if field not in workload:
+                raise ValueError(f"DFT workload identity is missing {field}")
+            if field != "screening_identity" and workload[field] in ("", [], None):
+                raise ValueError(f"DFT workload identity is missing {field}")
+        source_hash = winner.get("source_hash")
+        if (
+            not isinstance(source_hash, str)
+            or len(source_hash) != 64
+            or any(c not in "0123456789abcdef" for c in source_hash)
+        ):
+            raise ValueError("DFT winner is missing generated source identity")
+        if winner.get("gates") != {name: "pass" for name in gate_names}:
+            raise ValueError("DFT candidate did not pass all local promotion gates")
+        row = accepted_rows.get((workload_hash, schedule_hash), {})
+        endpoint = row.get("endpoint", {})
+        numerical = row.get("numerical", {})
+        resources = row.get("resources", {})
+        legality = row.get("legality", {})
+        if (
+            not legality.get("legal")
+            or legality.get("schedule_hash") != schedule_hash
+            or not resources.get("passed")
+            or resources.get("schedule_hash") != schedule_hash
+            or resources.get("source_hash") != source_hash
+            or not numerical.get("passed")
+            or not numerical.get("independent_reference")
+            or numerical.get("schedule_hash") != schedule_hash
+            or numerical.get("source_hash") != source_hash
+            or not endpoint.get("passed")
+            or not endpoint.get("complete_energy_force")
+            or endpoint.get("scientific_identity") != workload_hash
+            or endpoint.get("candidate_schedule_hash") != schedule_hash
+            or endpoint.get("candidate_source_hash") != source_hash
+            or not endpoint.get("baseline_schedule_hash")
+            or endpoint.get("baseline_schedule_hash") == schedule_hash
+            or not endpoint.get("interleaved")
+            or not endpoint.get("synchronized")
+            or len(endpoint.get("baseline", [])) < 5
+            or len(endpoint.get("candidate", [])) < 5
+            or len(endpoint.get("baseline", [])) != len(endpoint.get("candidate", []))
+        ):
+            raise ValueError(
+                "DFT winner lacks matching independent numerical/resource/endpoint evidence"
+            )
+    if set(accepted_rows) != selected:
+        raise ValueError("DFT profile winners differ from accepted schedule evidence")
+
+
+def verify_library(
+    directory: Path,
+    probe: dict,
+    device_id: int = 0,
+    *,
+    require_tuned: bool = True,
+) -> ctypes.CDLL:
     """Verify the binary itself against source/ABI and actual CUDA identity."""
     selected = ctypes.CDLL(str(directory / "libvibeqc.so"))
     actual = probe_device(selected, device_id)
-    if actual["device"]["portable"]:
+    if require_tuned and actual["device"]["portable"]:
         raise ValueError("cached binary has no tuned profile for the allocated GPU")
     if compatibility_identity(actual) != compatibility_identity(probe):
         raise ValueError(
@@ -263,7 +381,10 @@ def install_bundle(
 
     root = cache_root() if root is None else root
     profile = validate_bundle(directory, probe, toolchain)
-    verify_library(directory, probe)
+    if profile.get("kernels", []):
+        verify_library(directory, probe)
+    else:
+        verify_library(directory, probe, require_tuned=False)
     bundle_id = canonical_hash(profile)
     root.mkdir(parents=True, exist_ok=True)
     bundles = root / "bundles"
@@ -355,7 +476,9 @@ def select_library(base: ctypes.CDLL, device_id: int = 0) -> tuple[ctypes.CDLL, 
     diagnostics = {
         "source": "official",
         "identity": None,
+        "target": None,
         "kernels": [],
+        "dft_schedules": [],
         "rejected": [],
     }
     if os.environ.get("VIBEQC_PROFILE") == "off":
@@ -394,11 +517,17 @@ def select_library(base: ctypes.CDLL, device_id: int = 0) -> tuple[ctypes.CDLL, 
         nvcc = find_nvcc()
         toolchain = toolchain_identity(nvcc) if nvcc else None
         profile = validate_bundle(directory, probe, toolchain)
-        selected = verify_library(directory, probe, device_id)
+        selected = (
+            verify_library(directory, probe, device_id)
+            if profile.get("kernels", [])
+            else verify_library(directory, probe, device_id, require_tuned=False)
+        )
         diagnostics.update(
             source="local",
             identity=canonical_hash(profile),
-            kernels=profile["kernels"],
+            target=profile["identity"],
+            kernels=profile.get("kernels", []),
+            dft_schedules=profile.get("dft_schedules", []),
             directory=str(directory),
         )
         return selected, diagnostics
@@ -413,3 +542,19 @@ def select_library(base: ctypes.CDLL, device_id: int = 0) -> tuple[ctypes.CDLL, 
     ) as error:
         diagnostics["rejected"].append(str(error))
         return base, diagnostics
+
+
+def select_dft_schedule(diagnostics: dict, workload: dict) -> dict | None:
+    """Select one strictly compatible DFT schedule from the already selected bundle."""
+
+    if diagnostics.get("source") != "local":
+        return None
+    workload_hash = canonical_hash(workload)
+    matches = [
+        winner
+        for winner in diagnostics.get("dft_schedules", [])
+        if winner.get("workload_hash") == workload_hash
+    ]
+    if len(matches) > 1:
+        raise ValueError("local profile contains duplicate DFT workload winners")
+    return None if not matches else dict(matches[0]["schedule"])

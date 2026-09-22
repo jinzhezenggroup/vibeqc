@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d3_model.hpp",
+  "role": "scientific",
+  "subsystem": "d3_dispersion",
+  "reason": "Shared CPU/CUDA production D3 variant model and pair-term arithmetic that dispatches the separately qualified BJ and original zero-damping two-body definitions while preserving explicit ATM composition boundaries.",
+  "regions": []
+}

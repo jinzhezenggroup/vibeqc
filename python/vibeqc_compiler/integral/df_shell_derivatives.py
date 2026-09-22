@@ -11,20 +11,39 @@ import typing
 from dataclasses import dataclass
 from itertools import product
 
+from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.homogeneous_schedule import (
+    HomogeneousExecution,
+    HomogeneousTaskSchedule,
+)
+
+from .cooperative_schedule import CooperativeLaneSchedule
 from .cuda import CudaEmitter
 from .df_derivatives import axis_polynomial
 
 PROTOTYPE_CLASSES = tuple(a for a in product(range(2), repeat=3) if any(a))
 SHELL_CLASSES = tuple(product(range(4), repeat=3))
+DF_SIGNATURE_PACKET_SCHEDULE = HomogeneousTaskSchedule(
+    packet_capacity=24,
+    execution=HomogeneousExecution.ORDINARY,
+    profitability=GpuProfitability(launch_count=1),
+)
 
 
 @dataclass(frozen=True)
 class ShellSchedule:
-    """One bounded ownership variant; the scientific cache is unchanged."""
+    """DF-specific storage bound around the shared cooperative ownership IR."""
 
-    component_lanes: int
-    triples_per_block: int
+    cooperative: CooperativeLaneSchedule
     shared_bytes: int
+
+    @property
+    def component_lanes(self) -> int:
+        return self.cooperative.lanes_per_group
+
+    @property
+    def triples_per_block(self) -> int:
+        return self.cooperative.groups_per_workgroup
 
 
 def shell_schedule(angular: typing.Any, variant: typing.Any) -> typing.Any:
@@ -44,7 +63,14 @@ def shell_schedule(angular: typing.Any, variant: typing.Any) -> typing.Any:
     lanes = 32 if variant != 2 else min(32, max(4, 1 << (components - 1).bit_length()))
     limit = 1 if variant == 0 else min(128 // lanes, (48 * 1024 - 1024) // group_bytes)
     groups = 1 << (limit.bit_length() - 1)
-    return ShellSchedule(lanes, groups, groups * group_bytes + 1024)
+    cooperative = CooperativeLaneSchedule(
+        subgroup_size=32,
+        lanes_per_group=lanes,
+        groups_per_workgroup=groups,
+        shared_state=True,
+        group_reduction=True,
+    )
+    return ShellSchedule(cooperative, groups * group_bytes + 1024)
 
 
 def axis_cache_layout(angular: typing.Any) -> typing.Any:
@@ -127,8 +153,10 @@ def emit_df_shell_derivatives_cuda(*, classes: typing.Any = None) -> typing.Any:
 #define VIBEQC_GENERATED_DF_SHELL_DERIVATIVES_CUH
 #include "generated_df_derivatives.cuh"
 namespace vibeqc::scf::generated_df_shell {
-namespace scalar = generated_df_derivatives;
-template<unsigned A,unsigned B,unsigned C> struct Shell;
+namespace scalar = generated_df_derivatives;""",
+        f"inline constexpr unsigned signature_packet_capacity={DF_SIGNATURE_PACKET_SCHEDULE.packet_capacity};",
+        f'inline constexpr const char* signature_packet_execution="{DF_SIGNATURE_PACKET_SCHEDULE.execution.value}";',
+        r"""template<unsigned A,unsigned B,unsigned C> struct Shell;
 template<unsigned A,unsigned B,unsigned C,unsigned Variant> struct Schedule;
 struct Contracted { double gradient[3][3]; };
 
@@ -240,7 +268,7 @@ struct Moments {
     }
   }
 };
-"""
+""",
     ]
     lines += [
         "template<unsigned A,unsigned B,unsigned C> struct Shell : Moments<A,B,C> {};"
@@ -282,6 +310,7 @@ struct Moments {
                 f"  static constexpr unsigned lanes={schedule.component_lanes};",
                 f"  static constexpr unsigned groups={schedule.triples_per_block};",
                 f"  static constexpr unsigned shared_bytes={schedule.shared_bytes};",
+                f'  static constexpr const char* cooperative_schedule_identity="{schedule.cooperative.identity}";',
                 "};",
             ]
     if classes is None:

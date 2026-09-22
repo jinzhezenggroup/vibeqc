@@ -1,4 +1,8 @@
-"""Correctness tests for build-time shell-class symbolic code generation."""
+"""Legacy cross-cutting codegen tests while compiler-domain suites are split out.
+
+Add new domain-owned coverage to focused ``test_codegen_*.py`` modules instead of
+growing this compatibility surface. See #489.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,6 @@ import math
 import os
 import re
 import subprocess
-import sys
 import time
 import typing
 from dataclasses import replace
@@ -16,6 +19,11 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from codegen_fixtures import (
+    boys_values,
+    factored_dppp_variables,
+    sample_variables,
+)
 from vibeqc_compiler.integral import (
     DDDD_SPEC,
     DDPS_SPEC,
@@ -23,27 +31,16 @@ from vibeqc_compiler.integral import (
     DPPP_SPEC,
     FDDD_SPEC,
     FFPS_SPEC,
-    FOUR_CENTER_ERI_OPERATOR,
     FUSED_SHELL_SPEC_BY_NAME,
-    FUSED_SHELL_SPECS,
-    PPSS_SPEC,
     PSPS_SPEC,
     PSSS_SPEC,
-    SSSS_SPEC,
     AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     AlgebraPlacement,
-    ContractionConsumer,
-    ContractionOutput,
     ContractionSpec,
     CudaTargetInfo,
-    DensityModel,
-    DerivativeSpec,
-    IntegralIR,
     KernelConsumer,
-    NuclearCoordinates,
-    NvrtcCacheSpec,
     OperatorFamily,
     OperatorSpec,
     PairOrientation,
@@ -60,7 +57,6 @@ from vibeqc_compiler.integral import (
     build_fused_shell_plan,
     build_integral_ir,
     build_ppps_rys_force_program,
-    build_psss_kernel,
     build_rys_axis_program,
     build_rys_force_program,
     build_shell_class_component_kernel,
@@ -69,29 +65,13 @@ from vibeqc_compiler.integral import (
     cartesian_components,
     cuda_target_info,
     dppp_components,
-    emit_dppp_fused_cuda,
-    emit_ppps_resident_bra_rys3_cuda,
-    emit_ppps_rys3_root_body_cuda,
-    emit_rys2_roots_cuda,
-    emit_rys3_roots_cuda,
-    emit_rys4_roots_cuda,
-    emit_rys5_roots_cuda,
     emit_rys_force_root_body_cuda,
     emit_shell_class_fused_cuda,
-    evaluate_dppp_fused_component,
     evaluate_fused_shell_component,
     evaluate_fused_shell_observables,
     evaluate_fused_shell_value,
     evaluate_ppps_rys_component,
     evaluate_rys_component,
-    nvrtc_cache_key,
-    rys2_table_roots_weights,
-    rys3_roots_weights,
-    rys3_table_roots_weights,
-    rys4_roots_weights,
-    rys4_table_roots_weights,
-    rys5_roots_weights,
-    rys5_table_roots_weights,
     rys_boys_values,
     schedule_candidates,
     supports_component_lane_rys,
@@ -104,22 +84,18 @@ from vibeqc_compiler.integral.autotune import (
     _packed_force_geometry_analysis,
     _production_fock_schedule_index,
     _read_shell_class_file,
-    _requested_schedule_kinds,
     _requested_shell_class_names,
     _resolve_specifications,
     _run_autotune,
     emit_schedule_driver,
     emit_schedule_oracle_translation_unit,
-    emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
     estimate_occupancy,
     schedule_payload,
     static_algebra_model,
     supported_schedule_trials,
-    update_manifest_payload,
     write_tuned_manifest,
 )
-from vibeqc_compiler.integral.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral.batch_benchmark import (
     DEFAULT_CANDIDATES,
     KernelResources,
@@ -138,7 +114,6 @@ from vibeqc_compiler.integral.benchmark import (
     benchmark_command as standalone_benchmark_command,
 )
 from vibeqc_compiler.integral.benchmark import (
-    emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
 )
@@ -150,7 +125,6 @@ from vibeqc_compiler.integral.capabilities import (
 from vibeqc_compiler.integral.production import (
     _PRODUCTION_PRELUDE,
     _partition_production_selections,
-    _schedule_from_payload,
     emit_registry_header,
     emit_registry_source,
     load_production_fock_manifest,
@@ -162,11 +136,8 @@ from vibeqc_compiler.integral.production import (
 )
 from vibeqc_compiler.integral.shell_class import (
     AXES,
-    CENTERS,
-    emit_dppp_component_cuda,
-    emit_dppp_contraction_cuda,
-    emit_psss_cuda,
 )
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 
@@ -275,24 +246,14 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_queue_diagnostics.cu",
             "cuda/direct_native_cartesian.cuh",
             "cuda/direct_native_contraction.cuh",
-            "cuda/direct_native_dsss_gradient.cuh",
             "cuda/direct_native_eri_order2.cuh",
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
-            "cuda/direct_native_high_order_coulomb.cuh",
-            "cuda/direct_native_order01_gradient.cuh",
-            "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
-            "cuda/direct_native_order3_gradient.cuh",
-            "cuda/direct_native_order456_gradient.cuh",
-            "cuda/direct_native_pair_high_order_gradient.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
-            "cuda/direct_native_pair_order3_gradient.cuh",
-            "cuda/direct_native_ppss_gradient.cuh",
-            "cuda/direct_native_psps_gradient.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",
             "cuda/direct_native_shell_pair_hermite.cuh",
@@ -306,6 +267,7 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_force_density.cuh",
             "cuda/direct_force_low_order.cuh",
             "cuda/direct_force_order2.cuh",
+            "cuda/direct_force_order3.cuh",
             "cuda/direct_force_quartet.cuh",
             "cuda/direct_bounded_contraction.cuh",
             "cuda/direct_cached_tensor_kernels.cu",
@@ -355,36 +317,11 @@ def test_generated_low_order_boys_thresholds_preserve_upward_recurrence(
         )
 
 
-def test_integral_ir_has_no_accelerator_schedule_fields() -> None:
-    """Keep scientific intent independent of backend execution geometry."""
-
-    assert set(IntegralIR.__dataclass_fields__) == {
-        "spec",
-        "operator",
-        "derivative",
-        "contractions",
-        "recurrence",
-    }
-    synthetic = TargetInfo(
-        backend="synthetic",
-        architecture="wave64",
-        subgroup_size=64,
-        maximum_workgroup_threads=256,
-        maximum_resident_workgroups=8,
-    )
-    TargetScheduleShape(128, 64).validate_for(synthetic)
-    with pytest.raises(ValueError, match="subgroup size"):
-        TargetScheduleShape(128, 32).validate_for(synthetic)
-
-
 def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> None:
     """Keep generic compilation independent of historical shell adapters."""
 
     emitter = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "cuda_emitter.py"
-    ).read_text(encoding="utf-8")
-    compatibility = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
     ).read_text(encoding="utf-8")
     production = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
@@ -394,8 +331,9 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
-    assert "from .cuda_lowering import" in compatibility
-    assert "emit_shell_class_fused_cuda" not in compatibility
+    assert not (
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
+    ).exists()
     assert "from .dppp_dispatch import" not in production
     assert "from .dppp_dispatch import" not in benchmark
 
@@ -410,627 +348,6 @@ def test_cuda_target_catalog_covers_the_compile_matrix(architecture: str) -> Non
     assert target.warp_size == 32
     assert target.maximum_threads_per_block == 1024
     assert target.tuning_maximum_shared_bytes <= target.shared_memory_per_block
-
-
-def test_integral_and_schedule_irs_separate_math_from_cuda_mapping() -> None:
-    """Expose derivative/contraction intent independently from CUDA mapping."""
-
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-    )
-    assert integral.operator == FOUR_CENTER_ERI_OPERATOR
-    assert integral.derivative == DerivativeSpec(
-        order=1,
-        parameters=NuclearCoordinates(),
-        invariants=(TranslationInvariant(),),
-    )
-    assert {item.consumer for item in integral.contractions} == {
-        ContractionConsumer.DIRECT_FOCK,
-        ContractionConsumer.DIRECT_FORCE,
-    }
-    assert all(
-        item.density == frozenset(DensityModel) for item in integral.contractions
-    )
-    assert integral.value_coulomb_order == 5
-    assert integral.maximum_coulomb_order == 6
-    assert integral.requested_derivative_centers == (0, 1, 2, 3)
-    assert integral.independent_force_centers == (0, 1, 2)
-    assert integral.recovered_derivative_centers == (3,)
-    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.COMPONENT_LANES,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-    ]
-    assert candidates[0].block_threads == 192
-    assert [item.component_tile for item in candidates[1:]] == [64, 128]
-
-
-def test_integral_ir_retains_higher_derivative_intent_until_cuda_boundary() -> None:
-    """Keep Hessian intent explicit while rejecting the first-gradient ABI."""
-
-    derivative = FOUR_CENTER_ERI_OPERATOR.nuclear_derivative(order=2)
-    integral = build_integral_ir(DPPP_SPEC, derivative=derivative)
-
-    assert integral.derivative == derivative
-    assert integral.contractions[0].output == ContractionOutput.NUCLEAR_DERIVATIVE
-    assert integral.maximum_coulomb_order == 7
-    assert integral.required_rys_roots == 4
-    with pytest.raises(
-        ValueError,
-        match="CUDA force result ABI currently exposes only order-one derivatives",
-    ):
-        build_fused_shell_plan(DPPP_SPEC, integral=integral, target=TEST_CUDA_TARGET)
-
-
-def test_fock_autotune_reuses_manifest_declared_baseline_schedules() -> None:
-    """Keep high-component Fock baselines out of a second shell-name table."""
-
-    schedules = dict(_production_fock_schedule_index("sm_120"))
-    assert schedules["dppp"].tasks_per_warp == 4
-    assert schedules["dpdp"].pair_storage == PairStorage.RECOMPUTED
-    assert schedules["ddds"].tasks_per_warp == 2
-    assert schedules["dddp"].minimum_blocks_per_sm == 2
-
-
-def test_operator_invariant_selects_derivative_recovery_without_force_magic() -> None:
-    """Drive Rys derivative centers from operator-declared translation semantics."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    assert integral.independent_derivative_centers == (0, 2, 3)
-    assert integral.recovered_derivative_centers == (1,)
-
-    program = build_rys_force_program(DPPP_SPEC, integral=integral)
-    assert program.operator == operator
-    assert program.derivative == integral.derivative
-    assert program.independent_derivative_centers == (0, 2, 3)
-    assert program.recovered_derivative_centers == (1,)
-    assert program.independent_force_centers == (0, 2, 3)
-    assert program.recovered_force_centers == (1,)
-
-
-def test_fused_shell_plan_preserves_an_explicit_integral_ir() -> None:
-    """Carry derivative/contraction intent into scheduling without rebuilding it."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    plan = build_fused_shell_plan(DPPP_SPEC, integral=integral, target=TEST_CUDA_TARGET)
-    assert plan.kernel.integral is integral
-    assert plan.kernel.integral.independent_derivative_centers == (0, 2, 3)
-    assert plan.kernel.integral.recovered_derivative_centers == (1,)
-
-    with pytest.raises(ValueError, match="consumer and integral"):
-        build_fused_shell_plan(
-            DPPP_SPEC,
-            integral=integral,
-            consumers=(KernelConsumer.FOCK,),
-            target=TEST_CUDA_TARGET,
-        )
-
-
-def test_symbolic_kernel_builders_preserve_explicit_integral_ir() -> None:
-    """Keep one mathematical request attached across every shell builder."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    dppp_integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    component = DPPP_SPEC.components[0]
-
-    assert (
-        build_shell_class_component_kernel(
-            DPPP_SPEC,
-            component,
-            integral=dppp_integral,
-        ).integral
-        is dppp_integral
-    )
-    assert (
-        build_dppp_component_kernel(
-            component[0],
-            component[1:],
-            integral=dppp_integral,
-        ).integral
-        is dppp_integral
-    )
-    assert (
-        build_shell_class_contraction_kernel(
-            DPPP_SPEC,
-            component,
-            integral=dppp_integral,
-        ).integral
-        is dppp_integral
-    )
-    assert (
-        build_weighted_shell_contraction_kernel(
-            DPPP_SPEC,
-            component_indices=(0,),
-            integral=dppp_integral,
-        ).integral
-        is dppp_integral
-    )
-
-    psss_integral = build_integral_ir(
-        PSSS_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    assert build_psss_kernel("x", integral=psss_integral).integral is psss_integral
-
-
-def test_shell_contraction_kernel_uses_explicit_derivative_centers() -> None:
-    """Generate direct center-D roots when the IR recovers center B."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    component = DPPP_SPEC.components[0]
-    full = build_shell_class_component_kernel(DPPP_SPEC, component)
-    full_values = sample_variables()
-    argument = full.graph.evaluate(full.boys_argument, full_values)
-    for order, value in enumerate(
-        boys_values(argument, DPPP_SPEC.maximum_force_coulomb_order + 1)
-    ):
-        full_values[f"boys_{order}"] = value
-    factored_values = factored_dppp_variables(full_values)
-    custom = build_shell_class_contraction_kernel(
-        DPPP_SPEC,
-        component,
-        integral=integral,
-    )
-    custom_component = build_shell_class_component_kernel(
-        DPPP_SPEC,
-        component,
-        integral=integral,
-    )
-
-    for center in (0, 2, 3):
-        for axis in range(3):
-            assert custom_component.graph.evaluate(
-                custom_component.gradients[center][axis],
-                full_values,
-            ) == pytest.approx(
-                full.graph.evaluate(full.gradients[center][axis], full_values),
-                rel=1.0e-13,
-                abs=1.0e-13,
-            )
-    for axis in range(3):
-        recovered = custom_component.graph.evaluate(
-            custom_component.gradients[1][axis],
-            full_values,
-        )
-        independent_sum = sum(
-            custom_component.graph.evaluate(
-                custom_component.gradients[center][axis],
-                full_values,
-            )
-            for center in (0, 2, 3)
-        )
-        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
-
-    for center in (0, 2, 3):
-        for axis in range(3):
-            assert custom.graph.evaluate(
-                custom.gradients[center][axis], factored_values
-            ) == pytest.approx(
-                full.graph.evaluate(full.gradients[center][axis], full_values),
-                rel=3.0e-11,
-                abs=3.0e-11,
-            )
-    for axis in range(3):
-        recovered = custom.graph.evaluate(custom.gradients[1][axis], factored_values)
-        independent_sum = sum(
-            custom.graph.evaluate(custom.gradients[center][axis], factored_values)
-            for center in (0, 2, 3)
-        )
-        assert recovered == pytest.approx(-independent_sum, rel=1.0e-13, abs=1.0e-13)
-
-
-def test_numeric_recurrence_oracles_follow_explicit_derivative_centers() -> None:
-    """Keep fused and Rys host oracles aligned with non-final recovery."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    values = factored_dppp_variables(sample_variables())
-    component = DPPP_SPEC.components[0]
-
-    fused = evaluate_fused_shell_observables(
-        DPPP_SPEC,
-        component,
-        values,
-        integral=integral,
-    )
-    rys = evaluate_rys_component(
-        DPPP_SPEC,
-        component,
-        values,
-        integral=integral,
-    )
-    for actual in (fused, rys):
-        for center in (0, 2, 3):
-            for axis in range(3):
-                assert actual.gradients[center][axis] == pytest.approx(
-                    fused.gradients[center][axis],
-                    rel=2.0e-12,
-                    abs=2.0e-12,
-                )
-        for axis in range(3):
-            recovered = actual.gradients[1][axis]
-            independent_sum = sum(
-                actual.gradients[center][axis] for center in (0, 2, 3)
-            )
-            assert recovered == pytest.approx(
-                -independent_sum,
-                rel=2.0e-12,
-                abs=2.0e-12,
-            )
-
-
-def test_rys_root_body_packs_nonfinal_recovery_centers_by_ir_order() -> None:
-    """Keep force slots dense when translation recovers a non-final center."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    body = emit_rys_force_root_body_cuda(
-        DPPP_SPEC,
-        component_group=1,
-        integral=integral,
-    )
-
-    # Independent centers are A/C/D, so their force slots are 0..2, 3..5,
-    # and 6..8.  The D derivative must use its own exponent instead of being
-    # accidentally emitted at the old center*3 offset (or recovered as D).
-    assert "force_3 += (gamma2 *" in body
-    assert "force_6 += (delta2 *" in body
-    assert "force_9" not in body
-
-
-def test_ppps_resident_rys_lowering_uses_nonfinal_recovery_centers() -> None:
-    """Keep resident Rys force slots and atomics aligned with explicit IR."""
-
-    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        spec,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-        recurrence="rys3",
-    )
-    source = emit_ppps_resident_bra_rys3_cuda(integral=integral)
-
-    # A/C/D are independent under center-B recovery and must occupy dense
-    # slots 0..8; the resident path must not regress to a force_9 write.
-    assert "force_3 += (gamma2 *" in source
-    assert "force_6 += (delta2 *" in source
-    assert "force_9" not in source
-    assert "const double cdx = fourth.x - third.x;" in source
-    assert "const double delta2 = 2.0 * q * fourth_product_scale;" in source
-
-    recovery_begin = source.index("const double fourth_force_0")
-    recovery = source[recovery_begin : recovery_begin + 900]
-    assert "static_cast<std::size_t>(task.atom[1])" in recovery
-    assert "static_cast<std::size_t>(task.atom[3])" not in recovery
-
-    # Only independent bra center A is warp-reduced now; center B is the
-    # recovered output and must not be treated as a resident bra slot.
-    assert "context.ket_tasks[resident.ket_begin].atom[0]" in source
-    assert "context.ket_tasks[resident.ket_begin].atom[1]" not in source
-
-
-def test_fock_only_ir_has_no_implicit_derivative() -> None:
-    """Avoid increasing Coulomb order when only a value contraction is requested."""
-
-    integral = build_integral_ir(DPPP_SPEC, consumers=(KernelConsumer.FOCK,))
-    assert integral.derivative is None
-    assert integral.independent_derivative_centers == ()
-    assert integral.recovered_derivative_centers == ()
-    assert integral.maximum_coulomb_order == integral.value_coulomb_order
-
-    # The symbolic builders consume the same boundary rather than silently
-    # constructing the extra first-derivative Boys state for a value-only IR.
-    component_kernel = build_shell_class_component_kernel(
-        DPPP_SPEC,
-        DPPP_SPEC.components[0],
-        integral=integral,
-    )
-    contraction_kernel = build_shell_class_contraction_kernel(
-        DPPP_SPEC,
-        DPPP_SPEC.components[0],
-        integral=integral,
-    )
-    for kernel in (component_kernel, contraction_kernel):
-        boys_variables = {
-            str(node.payload)
-            for node in kernel.graph.nodes
-            if node.operation == "variable"
-            and isinstance(node.payload, str)
-            and node.payload.startswith("boys_")
-        }
-        assert "boys_5" in boys_variables
-        assert "boys_6" not in boys_variables
-
-    with pytest.raises(ValueError, match="requires at least one contraction"):
-        build_integral_ir(DPPP_SPEC, consumers=())
-
-
-def test_derivative_cannot_invent_an_operator_invariant() -> None:
-    """Require exact recovery relations to originate on the operator spec."""
-
-    undeclared_recovery = DerivativeSpec(
-        order=1,
-        parameters=NuclearCoordinates(),
-        invariants=(TranslationInvariant(dependent_center=0),),
-    )
-    with pytest.raises(ValueError, match="must be declared by the operator"):
-        build_integral_ir(DPPP_SPEC, derivative=undeclared_recovery)
-
-
-def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -> None:
-    """Allow tuning to choose task packing instead of one fixed mapping."""
-
-    candidates = schedule_candidates(
-        build_integral_ir(PSPS_SPEC), target=TEST_CUDA_TARGET
-    )
-    assert [item.kind for item in candidates[:5]] == [
-        ScheduleKind.PACKED_TASKS,
-        ScheduleKind.SHELL_TASK,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.COMPONENT_LANES,
-    ]
-    assert candidates[0].tasks_per_warp == 32
-    assert candidates[2].subgroup_lanes == 16
-    assert candidates[2].tasks_per_block == 16
-    assert candidates[3].subgroup_lanes == 8
-    assert candidates[3].tasks_per_block == 32
-
-
-def test_subgroup_schedule_advances_independent_ppps_tasks_per_block() -> None:
-    """Keep task-local barriers and reductions inside each lane subgroup."""
-
-    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
-    schedule = next(
-        item
-        for item in schedule_candidates(
-            build_integral_ir(
-                spec,
-                consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-            ),
-            target=TEST_CUDA_TARGET,
-        )
-        if item.kind == ScheduleKind.SUBGROUP_TASKS and item.tasks_per_warp == 4
-    )
-    plan = build_fused_shell_plan(
-        spec,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    source = emit_shell_class_fused_cuda(spec, plan)
-    assert schedule.block_threads == 256
-    assert schedule.subgroup_lanes == 8
-    assert schedule.tasks_per_block == 32
-    assert "GeneratedPppsSubgroupForceStorage" in source
-    assert "GeneratedPppsSubgroupFockStorage" in source
-    assert "state += 8U" in source
-    assert "atomicAdd(task_head, 1U)" in source
-    assert "__syncwarp(subgroup_mask)" in source
-    assert (
-        "__syncthreads()"
-        not in source.split("GeneratedPppsSubgroupForceStorage", maxsplit=1)[1]
-    )
-    assert "blockIdx.x) * 32U + subgroup" in source
-
-
-def test_subgroup_force_lowering_uses_explicit_nonfinal_recovery_slots() -> None:
-    """Keep subgroup force output aligned with a center-B recovery IR."""
-
-    spec = PSPS_SPEC
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        spec,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    schedule = ScheduleIR(
-        kind=ScheduleKind.SUBGROUP_TASKS,
-        block_threads=128,
-        component_tile=spec.component_count,
-        tasks_per_warp=4,
-        shared_coulomb=True,
-    )
-    source = emit_shell_class_fused_cuda(
-        spec,
-        build_fused_shell_plan(
-            spec, integral=integral, schedule=schedule, target=TEST_CUDA_TARGET
-        ),
-    )
-
-    assert "GeneratedPspsSubgroupForceStorage" in source
-    assert "double decay_gradients[4][3]" in source
-    assert "geometry.decay_gradients[3][coordinate]" in source
-    assert "gradient[1][coordinate] = -gradient[0][coordinate]" in source
-
-
-@pytest.mark.parametrize("name", ("dpss", "ppps", "dsps"))
-def test_one_warp_component_schedule_strides_larger_coulomb_table(
-    name: typing.Any,
-) -> None:
-    """Do not retain an idle second warp after a short Coulomb setup."""
-
-    spec = FUSED_SHELL_SPEC_BY_NAME[name]
-    integral = build_integral_ir(
-        spec,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-    )
-    component_schedules = [
-        item
-        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
-        if item.kind == ScheduleKind.COMPONENT_LANES
-    ]
-    assert [item.block_threads for item in component_schedules] == [64, 32]
-    compact = component_schedules[1]
-    source = emit_shell_class_fused_cuda(
-        spec,
-        build_fused_shell_plan(
-            spec,
-            consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-            schedule=compact,
-            target=TEST_CUDA_TARGET,
-        ),
-    )
-    class_name = name[0].upper() + name[1:]
-    assert f"kGenerated{class_name}BlockThreads = 32U" in source
-    assert f"state += kGenerated{class_name}BlockThreads" in source
-    assert "shared.coulomb[state] = generated_" in source
-    assert "candidate_density_coefficient" not in source
-    assert "fabs(candidate_density_coefficient)" not in source
-    assert "__syncthreads_or(density_coefficient != 0.0)" in source
-    assert "double component_force[9]{};" in source
-    assert "double component_force[12]{};" not in source
-    assert "double warp_sums[kGenerated" in source
-    assert "WarpCount][9];" in source
-    assert "const double fourth_value =" in source
-    assert "shared.task.atom[3]" in source
-
-
-def test_ppps_scalar_thread_schedule_emits_component_scoped_dag() -> None:
-    """Keep every scalar recurrence inside a bounded no-spill helper."""
-
-    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
-    schedule = ScheduleIR(
-        kind=ScheduleKind.THREAD_TASKS,
-        block_threads=32,
-        component_tile=spec.component_count,
-        tasks_per_warp=32,
-        shared_coulomb=False,
-        minimum_blocks_per_sm=8,
-    )
-    source = emit_shell_class_fused_cuda(
-        spec,
-        build_fused_shell_plan(spec, schedule=schedule, target=TEST_CUDA_TARGET),
-    )
-    assert "storage.component_weights[0] = 0.0;" in source
-    assert "storage.component_weights[26] = 0.0;" in source
-    assert "double force_0 = storage.task_force[0];" in source
-    assert "double force_8 = storage.task_force[8];" in source
-    assert "component_weights[component]" not in source
-    assert "primitive_gradient[" not in source
-    assert "generated_ppps_scalar_thread_accumulate_components_0_3" in source
-    assert "generated_ppps_scalar_thread_accumulate_components_24_27" in source
-    assert (
-        source.count(
-            "__device__ __noinline__ void "
-            "generated_ppps_scalar_thread_accumulate_components_"
-        )
-        == 9
-    )
-    assert "__launch_bounds__(32, 8)" in source
-    assert source.count("force_0 += primitive_scale") == 27
 
 
 @pytest.mark.parametrize("name", ("fsss", "fsps"))
@@ -1216,211 +533,6 @@ def test_dppp_rys_program_bounds_four_root_state_groups() -> None:
     assert body.count("double rys_state_") == 1375
     assert "boys_" not in body
     assert "component_gradient" not in body
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 25.0, 80.0))
-def test_gpu4pyscf_rys2_table_matches_moment_oracle(argument: float) -> None:
-    """Verify the attributed low-order table used by four production shells."""
-
-    roots, weights = rys2_table_roots_weights(argument)
-    moments = rys_boys_values(argument, 4)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=3.0e-11, abs=3.0e-14)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
-def test_rys3_rule_reproduces_first_six_boys_moments(argument: float) -> None:
-    """Treat the host eigensolve only as a high-accuracy Rys3 oracle."""
-
-    roots, weights = rys3_roots_weights(argument)
-    assert all(0.0 < root < 1.0 for root in roots)
-    assert all(weight > 0.0 for weight in weights)
-    moments = rys_boys_values(argument, 6)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=3.0e-13, abs=3.0e-14)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 50.0, 80.0))
-def test_gpu4pyscf_rys3_table_matches_moment_oracle(argument: float) -> None:
-    """Verify the attributed nroots=3 table before CUDA emission."""
-
-    roots, weights = rys3_table_roots_weights(argument)
-    moments = rys_boys_values(argument, 6)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=3.0e-11, abs=3.0e-14)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
-def test_rys4_rule_reproduces_first_eight_boys_moments(argument: float) -> None:
-    """Treat the host eigensolve only as a high-accuracy Rys4 oracle."""
-
-    roots, weights = rys4_roots_weights(argument)
-    assert all(0.0 < root < 1.0 for root in roots)
-    assert all(weight > 0.0 for weight in weights)
-    moments = rys_boys_values(argument, 8)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=8.0e-12, abs=5.0e-14)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 55.0, 80.0))
-def test_gpu4pyscf_rys4_table_matches_moment_oracle(argument: float) -> None:
-    """Verify the attributed nroots=4 slice before CUDA integration."""
-
-    roots, weights = rys4_table_roots_weights(argument)
-    moments = rys_boys_values(argument, 8)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=4.0e-11, abs=5.0e-13)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
-def test_rys5_rule_reproduces_first_ten_boys_moments(argument: float) -> None:
-    """Treat the host eigensolve only as a high-accuracy Rys5 oracle."""
-
-    roots, weights = rys5_roots_weights(argument)
-    assert all(0.0 < root < 1.0 for root in roots)
-    assert all(weight > 0.0 for weight in weights)
-    moments = rys_boys_values(argument, 10)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=3.0e-11, abs=8.0e-13)
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999, 25.0, 60.0, 80.0))
-def test_gpu4pyscf_rys5_table_matches_moment_oracle(argument: float) -> None:
-    """Verify the attributed nroots=5 slice before CUDA integration."""
-
-    roots, weights = rys5_table_roots_weights(argument)
-    moments = rys_boys_values(argument, 10)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=5.0e-10, abs=5.0e-12)
-
-
-@pytest.mark.parametrize(
-    "argument",
-    (
-        3.0e-7 - 1.0e-14,
-        3.0e-7,
-        3.0e-7 + 1.0e-14,
-        2.5 - 1.0e-12,
-        2.5,
-        2.5 + 1.0e-12,
-        55.0 - 1.0e-10,
-        55.0,
-        55.0 + 1.0e-10,
-    ),
-)
-def test_gpu4pyscf_rys4_table_is_accurate_across_branch_boundaries(
-    argument: float,
-) -> None:
-    """Cover the small-x, interpolation-interval, and large-x boundaries."""
-
-    roots, weights = rys4_table_roots_weights(argument)
-    moments = rys_boys_values(argument, 8)
-    for order, expected in enumerate(moments):
-        assert sum(
-            weight * root**order for root, weight in zip(roots, weights, strict=True)
-        ) == pytest.approx(expected, rel=4.0e-11, abs=5.0e-13)
-
-
-def test_dppp_rys4_cuda_emits_only_the_fixed_root_slice() -> None:
-    """Keep Rys4 tables compact enough for generated CUDA compilation."""
-
-    roots = emit_rys4_roots_cuda()
-    assert "Copyright 2021-2024 The PySCF Developers" in roots
-    assert "generated_dppp_rys4_rw[4480]" in roots
-    assert "generated_dppp_rys4_roots" in roots
-    assert "series < 8U" in roots
-    assert "argument > 55.0" in roots
-
-
-def test_dddp_rys5_cuda_emits_only_the_fixed_root_slice() -> None:
-    """Keep Rys5 tables compact enough for generated CUDA compilation."""
-
-    roots = emit_rys5_roots_cuda()
-    assert "Copyright 2021-2024 The PySCF Developers" in roots
-    assert "generated_dddp_rys5_rw[5600]" in roots
-    assert "generated_dddp_rys5_roots" in roots
-    assert "series < 10U" in roots
-    assert "argument > 60.0" in roots
-
-
-def test_low_order_rys2_cuda_emits_only_the_fixed_root_slice() -> None:
-    """Keep the shared two-root table compact and attributed."""
-
-    roots = emit_rys2_roots_cuda()
-    assert "Copyright 2021-2024 The PySCF Developers" in roots
-    assert "generated_low_order_rys2_rw[2240]" in roots
-    assert "series < 4U" in roots
-    assert "argument > 45.0" in roots
-
-
-def test_ppps_rys_cuda_emits_compact_state_program_and_attributed_table() -> None:
-    """Prevent the direct recurrence from regressing into a scalar DAG."""
-
-    roots = emit_rys3_roots_cuda()
-    body = emit_ppps_rys3_root_body_cuda()
-    assert "Copyright 2021-2024 The PySCF Developers" in roots
-    assert "generated_ppps_rys3_rw[3360]" in roots
-    assert "generated_ppps_rys3_roots" in roots
-    assert 80 <= body.count("double rys_state_") <= 93
-    assert body.count("rys_state_") > 69
-    assert body.count("const double component_density_weight") == 27
-    assert body.count("force_") == 243
-    assert "boys_" not in body
-    assert "component_gradient" not in body
-
-    spec = FUSED_SHELL_SPEC_BY_NAME["ppps"]
-    schedule = ScheduleIR(
-        kind=ScheduleKind.THREAD_TASKS,
-        block_threads=32,
-        component_tile=spec.component_count,
-        tasks_per_warp=32,
-        shared_coulomb=False,
-        minimum_blocks_per_sm=12,
-    )
-    plan = build_fused_shell_plan(
-        spec, schedule=schedule, recurrence="rys3", target=TEST_CUDA_TARGET
-    )
-    source = emit_shell_class_fused_cuda(spec, plan)
-    assert "generated_ppps_rys3_force_task" in source
-    assert "generated_ppps_rys3_roots" in source
-    assert "component_weights[kGeneratedPppsComponentCount][32]" in source
-    assert "generated_ppps_scalar_thread" not in source
-
-    dpss_spec = FUSED_SHELL_SPEC_BY_NAME["dpss"]
-    dpss_schedule = ScheduleIR(
-        kind=ScheduleKind.THREAD_TASKS,
-        block_threads=32,
-        component_tile=dpss_spec.component_count,
-        tasks_per_warp=32,
-        shared_coulomb=False,
-        minimum_blocks_per_sm=8,
-    )
-    dpss_source = emit_shell_class_fused_cuda(
-        dpss_spec,
-        build_fused_shell_plan(
-            dpss_spec,
-            schedule=dpss_schedule,
-            recurrence="rys3",
-            target=TEST_CUDA_TARGET,
-        ),
-    )
-    assert "generated_dpss_rys3_force_task" in dpss_source
-    assert "generated_dpss_rys3_roots" in dpss_source
-    assert "generated_ppps_rys3_roots" not in dpss_source
 
 
 @pytest.mark.parametrize("name", ("psss", "psps", "ppss", "dsss"))
@@ -1725,139 +837,6 @@ def test_component_lane_rys_fock_lowering_uses_structural_capabilities(
     assert f"generated_{name}_component_value" not in fock_source
 
 
-@pytest.mark.parametrize(
-    "spec",
-    (
-        PSPS_SPEC,
-        PPSS_SPEC,
-        FUSED_SHELL_SPEC_BY_NAME["dsss"],
-    ),
-)
-def test_packed_schedule_models_low_order_fock_workers(spec: typing.Any) -> None:
-    """Keep the accepted Fock topology while force moves to scalar Rys2."""
-
-    selection = next(
-        selection
-        for selection in load_production_kernel_selections(
-            REPOSITORY_ROOT
-            / "python"
-            / "vibeqc_compiler"
-            / "integral"
-            / "production_shell_classes.json"
-        )
-        if selection.spec == spec
-    )
-    schedule = selection.fock_schedule
-    assert selection.recurrence == "rys2"
-    assert selection.schedule.kind == ScheduleKind.THREAD_TASKS
-    assert schedule is not None
-    assert schedule.kind == ScheduleKind.PACKED_TASKS
-    assert schedule.block_threads == 32
-    assert schedule.tasks_per_warp == 32
-    assert not schedule.shared_coulomb
-
-
-def test_zero_order_pairs_lower_through_shell_task_schedule() -> None:
-    """Generate low-order force/Fock code without handwritten psss algebra."""
-
-    assert len(FUSED_SHELL_SPECS) == 55
-    assert PSSS_SPEC.angular == (1, 0, 0, 0)
-    assert SSSS_SPEC.angular == (0, 0, 0, 0)
-    integral = build_integral_ir(
-        PSSS_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-    )
-    shell_schedule = next(
-        item
-        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
-        if item.kind == ScheduleKind.SHELL_TASK
-    )
-    plan = build_fused_shell_plan(
-        PSSS_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=shell_schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    source = emit_shell_class_fused_cuda(PSSS_SPEC, plan)
-    assert "kGeneratedPsssComponentCount = 3U" in source
-    assert "generated_psss_pair_term<0U>" in source
-    assert "const unsigned second_axes[1]" in source
-    assert "generated_psss_component_gradient<false>" in source
-    assert "generated_psss_component_value<false>" in source
-
-    trials = supported_schedule_trials(PSSS_SPEC, target=TEST_CUDA_TARGET)
-    assert any(trial.schedule.kind == ScheduleKind.PACKED_TASKS for trial in trials)
-    assert any(trial.schedule.kind == ScheduleKind.SHELL_TASK for trial in trials)
-    assert (
-        sum(trial.schedule.kind == ScheduleKind.COMPONENT_LANES for trial in trials)
-        == 8
-    )
-
-    packed_schedule = next(
-        item
-        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
-        if item.kind == ScheduleKind.PACKED_TASKS
-    )
-    packed_plan = build_fused_shell_plan(
-        PSSS_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=packed_schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    packed = emit_shell_class_fused_cuda(PSSS_SPEC, packed_plan)
-    assert "generated_psss_packed_force_lane" in packed
-    assert "generated_psss_packed_fock_lane" in packed
-    assert "generated_psss_weighted_component_gradient" in packed
-    assert "candidate_density_coefficient" not in packed
-    assert "fabs(candidate_density_coefficient)" not in packed
-    assert "if (!any_component) return;" in packed
-    assert "generated_psss_component_gradient<false>" not in packed
-    assert "atomicAdd(task_head, 32U)" in packed
-    assert "blockIdx.x) * 32U + threadIdx.x" in packed
-    assert "generated_psss_shell_class_force_task" not in packed
-
-    benchmark = emit_shell_class_benchmark_cuda(
-        PSSS_SPEC,
-        task_count=33,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-        schedule=packed_schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    assert "<<<(kTaskCount + 31U) / 32U," in benchmark
-
-
-@pytest.mark.parametrize(
-    ("spec", "component"),
-    (
-        (PSSS_SPEC, ("y", "", "", "")),
-        (SSSS_SPEC, ("", "", "", "")),
-    ),
-)
-def test_zero_order_pair_recurrence_matches_symbolic_oracle(
-    spec: typing.Any, component: typing.Any
-) -> None:
-    """Verify generated low-order values and all-center force derivatives."""
-
-    values = factored_dppp_variables(sample_variables())
-    direct = build_shell_class_contraction_kernel(spec, component)
-    fused = evaluate_fused_shell_component(spec, component, values)
-    assert evaluate_fused_shell_value(spec, component, values) == pytest.approx(
-        values["prefactor"] * direct.graph.evaluate(direct.value, values),
-        rel=2.0e-12,
-        abs=2.0e-12,
-    )
-    for center in range(4):
-        for axis in range(3):
-            assert fused[center][axis] == pytest.approx(
-                direct.graph.evaluate(direct.gradients[center][axis], values),
-                rel=3.0e-12,
-                abs=3.0e-12,
-            )
-
-
 def test_weighted_psss_graph_cse_matches_component_oracle() -> None:
     """Combine density-weighted components before CUDA primitive traversal."""
 
@@ -1963,12 +942,26 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert DDDD_SPEC.pair_orders == (4, 4)
     integral = build_integral_ir(DDDD_SPEC)
     candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
+    # Search now exposes all target-legal mappings; the production default
+    # below must still use the qualified 64-component tile.
+    tiled = [item for item in candidates if item.kind == ScheduleKind.TILED_COMPONENTS]
+    limit = min(
+        TEST_CUDA_TARGET.maximum_threads_per_block,
+        TEST_CUDA_TARGET.maximum_threads_per_sm,
+    )
+    expected_tiles = [
+        TEST_CUDA_TARGET.warp_size * 2**power
+        for power in range(1, limit.bit_length())
+        if TEST_CUDA_TARGET.warp_size * 2**power <= limit
+        and TEST_CUDA_TARGET.warp_size * 2**power < DDDD_SPEC.component_count
     ]
-    assert [item.component_tile for item in candidates] == [64, 128, 256]
+    assert [item.component_tile for item in tiled] == expected_tiles
+    assert {item.kind for item in candidates} == {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.TILED_COMPONENTS,
+    }
     plan = build_fused_shell_plan(DDDD_SPEC, target=TEST_CUDA_TARGET)
     assert plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
     assert plan.block_threads == 64
@@ -1981,8 +974,16 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert "component_tile_begin += 64U" in source
 
     trials = supported_schedule_trials(DDDD_SPEC, target=TEST_CUDA_TARGET)
-    assert len(trials) == 24
     assert len({trial.schedule_id for trial in trials}) == len(trials)
+    tiled_trials = [
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.TILED_COMPONENTS
+    ]
+    assert (
+        len(tiled_trials)
+        == len(expected_tiles) * len(PairStorage) * len(PairOrientation) * 2
+    )
     assert {
         (
             trial.schedule.component_tile,
@@ -1990,113 +991,14 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
             trial.schedule.pair_orientation,
             trial.schedule.unroll_pair_terms,
         )
-        for trial in trials
+        for trial in tiled_trials
     } == {
         (tile, storage, orientation, unrolled)
-        for tile in (64, 128, 256)
+        for tile in expected_tiles
         for storage in PairStorage
         for orientation in PairOrientation
         for unrolled in (True, False)
     }
-
-
-def test_large_pair_recompute_schedule_avoids_materialized_term_arrays() -> None:
-    """Trade repeated pair algebra for bounded stack use in large tiled shells."""
-
-    base = build_fused_shell_plan(
-        DDDD_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        target=TEST_CUDA_TARGET,
-    ).schedule
-    schedule = replace(
-        base,
-        component_tile=256,
-        block_threads=256,
-        pair_storage=PairStorage.RECOMPUTED,
-        unroll_pair_terms=False,
-    )
-    plan = build_fused_shell_plan(
-        DDDD_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    source = emit_shell_class_fused_cuda(DDDD_SPEC, plan)
-    assert "GeneratedDdddPairTerm first_terms" not in source
-    assert "GeneratedDdddPairTerm second_terms" not in source
-    assert "GeneratedDdddValueTerm first_terms" not in source
-    assert "GeneratedDdddValueTerm second_terms" not in source
-    assert "#pragma unroll 1" in source
-
-
-@pytest.mark.parametrize(
-    "component",
-    (
-        ("xx", "xx", "xx", "xx"),
-        ("xy", "xz", "yz", "zz"),
-        ("zz", "zz", "zz", "zz"),
-    ),
-)
-def test_dddd_tiled_recurrence_matches_symbolic_oracle(
-    component: typing.Any,
-) -> None:
-    """Audit representative order-four/order-four Cartesian recurrences."""
-
-    values = factored_dppp_variables(sample_variables())
-    for order, value in enumerate(
-        boys_values(
-            values["rho"] * sum(values[f"difference_{axis}"] ** 2 for axis in AXES),
-            10,
-        )
-    ):
-        values[f"boys_{order}"] = value
-    direct = build_shell_class_contraction_kernel(DDDD_SPEC, component)
-    fused = evaluate_fused_shell_component(DDDD_SPEC, component, values)
-    assert evaluate_fused_shell_value(DDDD_SPEC, component, values) == pytest.approx(
-        values["prefactor"] * direct.graph.evaluate(direct.value, values),
-        rel=2.0e-11,
-        abs=2.0e-11,
-    )
-    for center in range(4):
-        for axis in range(3):
-            assert fused[center][axis] == pytest.approx(
-                direct.graph.evaluate(direct.gradients[center][axis], values),
-                rel=3.0e-11,
-                abs=3.0e-11,
-            )
-
-
-@pytest.mark.parametrize(
-    ("spec", "component"),
-    (
-        (FFPS_SPEC, ("xxx", "xyz", "z", "")),
-        (FDDD_SPEC, ("xyz", "xy", "yz", "zz")),
-    ),
-)
-def test_f_shell_recurrence_matches_symbolic_oracle(
-    spec: typing.Any, component: typing.Any
-) -> None:
-    """Automate representative f-shell values and all-center gradients."""
-
-    values = factored_dppp_variables(sample_variables())
-    maximum_order = spec.maximum_force_coulomb_order
-    argument = values["rho"] * sum(values[f"difference_{axis}"] ** 2 for axis in AXES)
-    for order, value in enumerate(boys_values(argument, maximum_order + 1)):
-        values[f"boys_{order}"] = value
-    direct = build_shell_class_contraction_kernel(spec, component)
-    fused = evaluate_fused_shell_component(spec, component, values)
-    assert evaluate_fused_shell_value(spec, component, values) == pytest.approx(
-        values["prefactor"] * direct.graph.evaluate(direct.value, values),
-        rel=4.0e-11,
-        abs=4.0e-11,
-    )
-    for center in range(4):
-        for axis in range(3):
-            assert fused[center][axis] == pytest.approx(
-                direct.graph.evaluate(direct.gradients[center][axis], values),
-                rel=5.0e-11,
-                abs=5.0e-11,
-            )
 
 
 def test_f_shell_cuda_lowering_emits_axes_triple_matchings_and_tiles() -> None:
@@ -2115,19 +1017,6 @@ def test_f_shell_cuda_lowering_emits_axes_triple_matchings_and_tiles() -> None:
     fddd_source = emit_shell_class_fused_cuda(FDDD_SPEC, fddd_plan)
     assert "generated_fddd_f_axes[10][3]" in fddd_source
     assert "component_tile_begin += 64U" in fddd_source
-
-
-def test_shell_spec_component_schedule_round_trips_without_manual_decoding() -> None:
-    for index, component in enumerate(DPPP_SPEC.components):
-        assert DPPP_SPEC.component_index(component) == index
-        assert DPPP_SPEC.component_from_index(index) == component
-    assert DPPP_SPEC.component_quantums(("xy", "z", "x", "y")) == (
-        (0, 0),
-        (0, 1),
-        (1, 2),
-        (2, 0),
-        (3, 1),
-    )
 
 
 def test_shell_spec_rejects_invalid_metadata_and_components() -> None:
@@ -2177,324 +1066,6 @@ def test_generic_shell_ad_matches_factored_lowering(
             assert actual == pytest.approx(expected, rel=3.0e-11, abs=3.0e-11)
 
 
-@pytest.mark.parametrize("spec", (DPDS_SPEC, DDPS_SPEC))
-def test_generic_fused_schedule_preserves_every_component_gradient(
-    spec: typing.Any,
-) -> None:
-    """Audit generated lane schedules, including ddps double Wick matching."""
-
-    plan = build_fused_shell_plan(spec, target=TEST_CUDA_TARGET)
-    assert plan.components == spec.components
-    assert plan.block_threads == 128
-    assert plan.warp_count == 4
-    assert len(plan.coulomb_states) == 84
-    assert len(plan.coulomb_indices) == 7**3
-
-    values = factored_dppp_variables(sample_variables())
-    for component in plan.components:
-        direct = build_shell_class_contraction_kernel(spec, component)
-        fused = evaluate_fused_shell_component(spec, component, values)
-        assert evaluate_fused_shell_value(spec, component, values) == pytest.approx(
-            values["prefactor"] * direct.graph.evaluate(direct.value, values),
-            rel=8.0e-12,
-            abs=8.0e-12,
-        )
-        for center in range(4):
-            for axis in range(3):
-                expected = direct.graph.evaluate(direct.gradients[center][axis], values)
-                assert fused[center][axis] == pytest.approx(
-                    expected, rel=8.0e-12, abs=8.0e-12
-                )
-
-
-def boys_values(argument: float, count: int = 3) -> list[float]:
-    """Reference Boys sequence sufficient for the psss pilot."""
-
-    if argument < 1.0e-8:
-        return [
-            sum(
-                (-argument) ** term
-                / (math.factorial(term) * (2 * order + 2 * term + 1))
-                for term in range(18)
-            )
-            for order in range(count)
-        ]
-    root = math.sqrt(argument)
-    values = [0.5 * math.sqrt(math.pi / argument) * math.erf(root)]
-    exponential = math.exp(-argument)
-    for order in range(count - 1):
-        values.append(((2 * order + 1) * values[-1] - exponential) / (2 * argument))
-    return values
-
-
-@pytest.mark.parametrize("argument", (0.0, 1.0e-10, 0.05, 1.0, 5.999))
-@pytest.mark.parametrize("count", (1, 3, 7, 13))
-def test_highest_order_boys_series_supports_downward_recurrence(
-    argument: float, count: int
-) -> None:
-    """One highest-order series must reproduce every lower Boys value."""
-
-    maximum_order = count - 1
-    term = 1.0
-    highest = 0.0
-    for k in range(80):
-        highest += term / (2 * maximum_order + 2 * k + 1)
-        term *= -argument / (k + 1)
-        if abs(term) < 1.0e-18:
-            break
-    candidate = [0.0] * count
-    candidate[maximum_order] = highest
-    exponential = math.exp(-argument)
-    for order in range(maximum_order, 0, -1):
-        candidate[order - 1] = (2.0 * argument * candidate[order] + exponential) / (
-            2 * order - 1
-        )
-
-    reference = [
-        sum(
-            (-argument) ** k / (math.factorial(k) * (2 * order + 2 * k + 1))
-            for k in range(80)
-        )
-        for order in range(count)
-    ]
-    assert candidate == pytest.approx(reference, rel=2.0e-12, abs=2.0e-14)
-
-
-def sample_variables() -> dict[str, float]:
-    values = {
-        "alpha": 1.3,
-        "beta": 0.7,
-        "gamma": 0.9,
-        "delta": 0.5,
-        "kPi": math.pi,
-    }
-    positions = {
-        "first": (0.1, -0.3, 0.2),
-        "second": (-0.4, 0.2, 0.5),
-        "third": (0.6, -0.1, -0.2),
-        "fourth": (-0.2, 0.4, -0.6),
-    }
-    for center, position in positions.items():
-        for axis, coordinate in zip(AXES, position, strict=True):
-            values[f"{center}_{axis}"] = coordinate
-    return values
-
-
-def factored_dppp_variables(values: dict[str, float]) -> dict[str, float]:
-    """Construct the common primitive geometry consumed by factored lowering."""
-
-    alpha = values["alpha"]
-    beta = values["beta"]
-    gamma = values["gamma"]
-    delta = values["delta"]
-    p = alpha + beta
-    q = gamma + delta
-    mu = alpha * beta / p
-    nu = gamma * delta / q
-    result = {
-        "inverse_two_p": 0.5 / p,
-        "inverse_two_q": 0.5 / q,
-        "rho": p * q / (p + q),
-        "first_product_scale": alpha / p,
-        "second_product_scale": beta / p,
-        "third_product_scale": gamma / q,
-        "fourth_product_scale": delta / q,
-    }
-    product_p = {}
-    product_q = {}
-    pair_distance_squared = 0.0
-    for axis in AXES:
-        first = values[f"first_{axis}"]
-        second = values[f"second_{axis}"]
-        third = values[f"third_{axis}"]
-        fourth = values[f"fourth_{axis}"]
-        product_p[axis] = (alpha * first + beta * second) / p
-        product_q[axis] = (gamma * third + delta * fourth) / q
-        result[f"pa_{axis}"] = product_p[axis] - first
-        result[f"pb_{axis}"] = product_p[axis] - second
-        result[f"qc_{axis}"] = product_q[axis] - third
-        result[f"qd_{axis}"] = product_q[axis] - fourth
-        result[f"difference_{axis}"] = product_p[axis] - product_q[axis]
-        first_difference = first - second
-        second_difference = third - fourth
-        pair_distance_squared += (
-            -mu * first_difference * first_difference
-            - nu * second_difference * second_difference
-        )
-        result[f"decay_first_{axis}"] = -2.0 * mu * first_difference
-        result[f"decay_second_{axis}"] = 2.0 * mu * first_difference
-        result[f"decay_third_{axis}"] = -2.0 * nu * second_difference
-        result[f"decay_fourth_{axis}"] = 2.0 * nu * second_difference
-    result["prefactor"] = (
-        2.0
-        * math.pi**2.5
-        / (p * q * math.sqrt(p + q))
-        * math.exp(pair_distance_squared)
-    )
-    argument = result["rho"] * sum(result[f"difference_{axis}"] ** 2 for axis in AXES)
-    # Order-eight shell quartets such as DDDD require the ninth Boys moment
-    # for their first-derivative oracle.
-    for order, value in enumerate(boys_values(argument, 10)):
-        result[f"boys_{order}"] = value
-    return result
-
-
-def evaluate_value(
-    kernel: typing.Any, values: dict[str, float], boys_count: int = 3
-) -> float:
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument, boys_count)):
-        values[f"boys_{order}"] = value
-    return kernel.graph.evaluate(kernel.value, values)
-
-
-@pytest.mark.parametrize("p_axis", AXES)
-def test_psss_symbolic_gradients_match_finite_difference(p_axis: str) -> None:
-    kernel = build_psss_kernel(p_axis)
-    values = sample_variables()
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument)):
-        values[f"boys_{order}"] = value
-
-    step = 2.0e-6
-    for center_index, center in enumerate(CENTERS[:3]):
-        for axis_index, axis in enumerate(AXES):
-            variable = f"{center}_{axis}"
-            plus = dict(values)
-            minus = dict(values)
-            plus[variable] += step
-            minus[variable] -= step
-            numerical = (
-                evaluate_value(kernel, plus) - evaluate_value(kernel, minus)
-            ) / (2.0 * step)
-            analytic = kernel.graph.evaluate(
-                kernel.gradients[center_index][axis_index], values
-            )
-            assert analytic == pytest.approx(numerical, rel=2.0e-8, abs=2.0e-9)
-
-
-def test_psss_fourth_center_uses_exact_translation_recovery() -> None:
-    kernel = build_psss_kernel("x")
-    values = sample_variables()
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument)):
-        values[f"boys_{order}"] = value
-    for axis in range(3):
-        total = sum(
-            kernel.graph.evaluate(kernel.gradients[center][axis], values)
-            for center in range(4)
-        )
-        assert total == pytest.approx(0.0, abs=2.0e-14)
-
-
-def test_psss_oracle_uses_explicit_nonfinal_recovery_centers() -> None:
-    """Keep the handwritten psss oracle aligned with derivative IR metadata."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        PSSS_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    kernel = build_psss_kernel("x", integral=integral)
-    values = sample_variables()
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument)):
-        values[f"boys_{order}"] = value
-
-    # Center B is recovered, so the independent oracle roots are A/C/D and
-    # the generated gradient tuple must retain the physical center positions.
-    for center in (0, 2, 3):
-        for axis, coordinate in enumerate(AXES):
-            variable = f"{CENTERS[center]}_{coordinate}"
-            plus = dict(values)
-            minus = dict(values)
-            plus[variable] += 2.0e-6
-            minus[variable] -= 2.0e-6
-            numerical = (
-                evaluate_value(kernel, plus) - evaluate_value(kernel, minus)
-            ) / 4.0e-6
-            analytic = kernel.graph.evaluate(kernel.gradients[center][axis], values)
-            assert analytic == pytest.approx(numerical, rel=2.0e-8, abs=2.0e-9)
-    for axis in range(3):
-        recovered = kernel.graph.evaluate(kernel.gradients[1][axis], values)
-        independent_sum = sum(
-            kernel.graph.evaluate(kernel.gradients[center][axis], values)
-            for center in (0, 2, 3)
-        )
-        assert recovered == pytest.approx(-independent_sum, abs=2.0e-14)
-
-
-@pytest.mark.parametrize(
-    ("d_component", "p_components"),
-    (("xx", "xxx"), ("xy", "xyz"), ("zz", "zyx")),
-)
-def test_dppp_symbolic_gradients_match_finite_difference(
-    d_component: str, p_components: str
-) -> None:
-    kernel = build_dppp_component_kernel(d_component, tuple(p_components))
-    values = sample_variables()
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument, 7)):
-        values[f"boys_{order}"] = value
-
-    step = 1.0e-6
-    for center_index, center in enumerate(CENTERS[:3]):
-        for axis_index, axis in enumerate(AXES):
-            variable = f"{center}_{axis}"
-            plus = dict(values)
-            minus = dict(values)
-            plus[variable] += step
-            minus[variable] -= step
-            numerical = (
-                evaluate_value(kernel, plus, 7) - evaluate_value(kernel, minus, 7)
-            ) / (2.0 * step)
-            analytic = kernel.graph.evaluate(
-                kernel.gradients[center_index][axis_index], values
-            )
-            assert analytic == pytest.approx(numerical, rel=3.0e-7, abs=3.0e-8)
-
-
-def test_dppp_translation_and_ket_pair_permutation_invariants() -> None:
-    kernel = build_dppp_component_kernel("xy", tuple("xyz"))
-    values = sample_variables()
-    argument = kernel.graph.evaluate(kernel.boys_argument, values)
-    for order, value in enumerate(boys_values(argument, 7)):
-        values[f"boys_{order}"] = value
-    for axis in range(3):
-        total = sum(
-            kernel.graph.evaluate(kernel.gradients[center][axis], values)
-            for center in range(4)
-        )
-        assert total == pytest.approx(0.0, abs=2.0e-12)
-
-    swapped_kernel = build_dppp_component_kernel("xy", tuple("xzy"))
-    swapped_values = dict(values)
-    swapped_values["gamma"], swapped_values["delta"] = (
-        swapped_values["delta"],
-        swapped_values["gamma"],
-    )
-    for axis in AXES:
-        third = swapped_values[f"third_{axis}"]
-        swapped_values[f"third_{axis}"] = swapped_values[f"fourth_{axis}"]
-        swapped_values[f"fourth_{axis}"] = third
-    assert evaluate_value(kernel, dict(values), 7) == pytest.approx(
-        evaluate_value(swapped_kernel, swapped_values, 7),
-        rel=2.0e-13,
-        abs=2.0e-13,
-    )
-
-
 @pytest.mark.parametrize(
     ("d_component", "p_components"),
     (("xx", "xxx"), ("xy", "xyz"), ("zz", "zyx")),
@@ -2539,48 +1110,6 @@ def test_dppp_fused_plan_covers_components_and_shared_coulomb_states() -> None:
         dense_index = (x_order * 7 + y_order) * 7 + z_order
         assert plan.coulomb_indices[dense_index] == index
         assert x_order + y_order + z_order <= 6
-
-
-def test_dppp_fused_schedule_preserves_all_component_gradients() -> None:
-    values = factored_dppp_variables(sample_variables())
-    for component in dppp_components():
-        direct = build_dppp_contraction_kernel(component[0], component[1:])
-        fused = evaluate_dppp_fused_component(component, values)
-        for center in range(4):
-            for axis in range(3):
-                expected = direct.graph.evaluate(direct.gradients[center][axis], values)
-                actual = fused[center][axis]
-                assert actual == pytest.approx(expected, rel=4.0e-12, abs=4.0e-12)
-
-
-def test_dppp_fused_cuda_emits_one_shared_shell_class_schedule() -> None:
-    source = emit_dppp_fused_cuda()
-    assert "kGeneratedDpppComponentCount = 162U" in source
-    assert "kGeneratedDpppCoulombStateCount = 84U" in source
-    assert "kGeneratedDpppBlockThreads = 192U" in source
-    assert "__shared__ Shared shared" in source
-    assert "generated_dppp_density_coefficient" in source
-    assert "generated_dppp_component_gradient" in source
-    assert "generated_dppp_shell_class_force_rhf_kernel" in source
-    assert "generated_dppp_shell_class_force_uhf_kernel" in source
-    assert "generated_dppp_shell_class_force_rhf_persistent_kernel" in source
-    assert "generated_dppp_shell_class_force_uhf_persistent_kernel" in source
-    assert "GeneratedDpppPrimitivePairData" in source
-    assert "primitive_pair_offsets" in source
-    assert "reversed_shell_pair_mask" in source
-    assert "primitive_exponents" not in source
-    assert "retained_by_schwarz" in source
-    assert source.count("boys_values<6>") == 1
-    assert "__noinline__" not in source
-    assert "generated_dppp_orbit_" not in source
-    density_helper = source[
-        source.index("double generated_dppp_density_coefficient(") : source.index(
-            "/** Combine two reusable shell-pair records"
-        )
-    ]
-    assert "orbit_scale" in density_helper
-    assert "4.0 * density[offset + ij] * density[offset + kl]" in density_helper
-    assert "for (unsigned permutation" not in density_helper
 
 
 @pytest.mark.parametrize("unrestricted", (False, True))
@@ -2685,47 +1214,6 @@ def test_fused_cuda_can_emit_fock_values_and_force_gradients_together() -> None:
     assert "shell_class_fock" not in force_only
     assert "coordinate_gradient" not in source
     assert "Dual3" not in source
-
-
-def test_tiled_component_schedule_covers_force_fock_and_benchmark_oracle() -> None:
-    """Lower component tiles without silently dropping high-index AO quartets."""
-
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-    )
-    schedule = next(
-        item
-        for item in schedule_candidates(integral, target=TEST_CUDA_TARGET)
-        if item.kind == ScheduleKind.TILED_COMPONENTS and item.component_tile == 64
-    )
-    plan = build_fused_shell_plan(
-        DPPP_SPEC,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        schedule=schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    source = emit_shell_class_fused_cuda(DPPP_SPEC, plan)
-    assert "kGeneratedDpppBlockThreads = 64U" in source
-    assert source.count("component_tile_begin += 64U") == 2
-    assert source.count("state += kGeneratedDpppBlockThreads") == 1
-    assert source.count("state += kGeneratedDpppFockBlockThreads") == 1
-    assert "generated_dppp_component_gradient<true>" in source
-    assert "generated_dppp_component_value<true>" in source
-
-    benchmark = emit_shell_class_benchmark_cuda(
-        DPPP_SPEC,
-        task_count=2,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-        schedule=schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    # The generated candidate and independent recompute oracle must both walk
-    # every tile; otherwise a partial-component benchmark can falsely pass.
-    assert benchmark.count("component_tile_begin += 64U") == 2
 
 
 def test_dpds_fused_cuda_is_generated_from_shell_spec() -> None:
@@ -2972,46 +1460,6 @@ def test_packed_force_lowering_uses_explicit_derivative_center_slots() -> None:
     recovery = source[recovery_begin : recovery_begin + 600]
     assert "static_cast<std::size_t>(task.atom[1])" in recovery
     assert "static_cast<std::size_t>(task.atom[3])" not in recovery
-
-
-@pytest.mark.parametrize(
-    ("name", "component_count", "state_count", "block_threads"),
-    (
-        ("ppps", 27, 20, 32),
-        ("dpps", 54, 35, 64),
-        ("dsps", 18, 20, 32),
-    ),
-)
-def test_generated_fock_workers_use_value_only_shell_schedules(
-    name: typing.Any,
-    component_count: typing.Any,
-    state_count: typing.Any,
-    block_threads: typing.Any,
-) -> None:
-    """Keep force-only gradients out of the generated SCF hot path."""
-
-    spec = FUSED_SHELL_SPEC_BY_NAME[name]
-    plan = build_fused_shell_plan(
-        spec,
-        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
-        target=TEST_CUDA_TARGET,
-    )
-    source = emit_shell_class_fused_cuda(spec, plan)
-    class_name = name[0].upper() + name[1:]
-    assert f"kGenerated{class_name}ComponentCount = {component_count}U" in source
-    assert (
-        f"kGenerated{class_name}FockCoulombStateCount =\n    {state_count}U" in source
-    )
-    assert f"kGenerated{class_name}FockBlockThreads = {block_threads}U" in source
-    assert f"Generated{class_name}ValueTerm" in source
-    assert f"generated_{name}_component_value" in source
-    assert f"generated_{name}_shell_class_fock_rhf_persistent_kernel" in source
-    assert f"generated_{name}_shell_class_fock_uhf_persistent_kernel" in source
-    fock_fragment = source.split(
-        "/** Coefficient-only pair term used by the SCF Fock recurrence. */",
-        maxsplit=1,
-    )[1]
-    assert f"generated_{name}_density_coefficient" not in fock_fragment
 
 
 def test_explicit_component_lane_fock_width_reaches_streaming_wrapper() -> None:
@@ -3309,6 +1757,41 @@ def test_production_manifest_drives_generated_registry_and_shards(
         selection.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
         for selection in selections
     )
+    canonical_spd = {
+        "ssss",
+        "psss",
+        "psps",
+        "ppss",
+        "ppps",
+        "pppp",
+        "dsss",
+        "dsps",
+        "dspp",
+        "dsds",
+        "dpss",
+        "dpps",
+        "dppp",
+        "dpds",
+        "dpdp",
+        "ddss",
+        "ddps",
+        "ddpp",
+        "ddds",
+        "dddp",
+        "dddd",
+    }
+    generated_force = {
+        selection.spec.name
+        for selection in selections
+        if KernelConsumer.FORCE in selection.consumers
+    }
+    # psss force reuses the exact bounded scheduler; every other canonical
+    # s/p/d class has a production-selected generated force consumer.
+    assert (generated_force | {"psss"}) & canonical_spd == canonical_spd
+    direct_source = _direct_cuda_source()
+    assert "unexpected_tuned_spd_fallback_mask" in direct_source
+    assert "kCanonicalSpdShellClassMask" in direct_source
+    assert "aot_shell_class_selection_override_requested()" in direct_source
     shards = _partition_production_selections(selections, shard_count=8)
     shard_by_name = {
         selection.spec.name: shard_index
@@ -3393,10 +1876,10 @@ def test_production_manifest_drives_generated_registry_and_shards(
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90"))
-def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
+def test_unmeasured_cuda_targets_require_explicit_portable_profile(
     architecture: str,
 ) -> None:
-    """Never reuse the measured RTX 5090 schedule on another compute target."""
+    """Never hide a missing tuned profile behind an implicit generic build."""
 
     manifest = (
         REPOSITORY_ROOT
@@ -3405,7 +1888,9 @@ def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
         / "integral"
         / "production_shell_classes.json"
     )
-    resolved = resolve_production_profile(manifest, architecture)
+    with pytest.raises(ValueError, match="portable_cuda.*explicitly"):
+        resolve_production_profile(manifest, architecture)
+    resolved = resolve_production_profile(manifest, architecture, "portable_cuda")
     assert resolved.profile == "portable_cuda"
     assert resolved.portable is True
     assert resolved.tuned is False
@@ -3613,8 +2098,18 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES")' in selection
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
+    assert 'std::strcmp(selection, "reference") == 0' in selection
+    assert 'std::strcmp(selection, "native") == 0' in selection
+    assert 'std::strcmp(selection, "tensor") == 0' in selection
+    assert "silently changing scientific owner" in selection
+    assert selection.count("return true;") >= 2
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
-    assert "if (selection == nullptr) return 1U;" in selection
+    assert (
+        "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"
+        in selection
+    )
+    assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
+    assert "return NucleusCooperativeSchedule::schedule_code;" in selection
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:
@@ -3795,10 +2290,24 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     """Route large grid-addressable buckets before a multi-GiB allocation."""
 
     source = _direct_cuda_source()
-    assert "kFixedGeneratedTaskArenaMaximumBytes" in source
+    assert "direct_schedule.fixed_topology.arena_maximum_bytes" in source
+    assert "direct_jk_bounded_streaming_task_capacity_limit" in source
+    assert "resolve_direct_jk_schedule_policy" in source
     assert "direct_task_layout.exact_tile_count >" in source
     assert "sizeof(GeneratedShellTask)" in source
     assert "requested_bounded_direct_streaming = true" in source
+
+
+def test_direct_task_resource_domains_remain_separate() -> None:
+    """Do not reuse fixed-topology storage to size bounded streaming pages."""
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text()
+    begin = source.index("direct_jk_bounded_streaming_task_capacity_limit")
+    end = source.index("bool reuse_converged_fock_requested", begin)
+    capacity_source = source[begin:end]
+    assert "policy.fixed_topology" not in capacity_source
+    assert "policy.bounded_streaming.task_capacity_ceiling" in capacity_source
+    assert "policy.bounded_streaming.arena_maximum_bytes" in capacity_source
 
 
 def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
@@ -3816,8 +2325,64 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "cudaErrorNotSupported" in mask_source
 
 
-def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None:
-    """Compile generated ssss for A/B while retaining the tuned native default."""
+def test_psss_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep the Direct-HF psss candidate free of unused value/center-four roots."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    begin = source.index("IndependentGradient psss_force(")
+    end = source.index("IndependentGradient ssss_force(", begin)
+    psss_force = source[begin:end]
+    assert "Gradient psss(" in source
+    assert "result.value" not in psss_force
+    assert "result.center[3]" not in psss_force
+    for center in range(3):
+        for axis in range(3):
+            assert f"result.center[{center}][{axis}]" in psss_force
+
+
+def test_psss_force_math_is_unconditionally_generated() -> None:
+    """Keep retired handwritten psss force math and its route selector absent."""
+
+    native_source = (REPOSITORY_ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(
+        encoding="utf-8"
+    )
+    low_order_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
+    ).read_text(encoding="utf-8")
+    policy_source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
+        encoding="utf-8"
+    )
+    assert "GeneratedMath" not in native_source
+    assert "if constexpr (GeneratedMath)" not in native_source
+    assert "generated_weighted_eri::Geometry geometry;" in native_source
+    assert "generated_weighted_eri::Geometry geometry{};" not in native_source
+    assert "generated_weighted_eri::psss_force" in native_source
+    assert "generated_psss_weighted" not in low_order_source
+    assert "VIBEQC_PSSS_WEIGHTED" not in policy_source
+    assert (
+        "contracted_eri_cartesian_source_psss_weighted_gradient<ResidentBra>"
+        in low_order_source
+    )
+
+
+def test_ssss_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep the native-adapter ssss helper free of unused value/center-four work."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    begin = source.index("IndependentGradient ssss_force(")
+    end = source.index("}  // namespace vibeqc::scf::generated_weighted_eri", begin)
+    ssss_force = source[begin:end]
+    assert "result.value" not in ssss_force
+    assert "result.center[3]" not in ssss_force
+    assert "geometry.product_scales[3]" not in ssss_force
+    assert "geometry.decay[3]" not in ssss_force
+    for center in range(3):
+        for axis in range(3):
+            assert f"result.center[{center}][{axis}]" in ssss_force
+
+
+def test_ssss_force_retires_handwritten_math_and_selector() -> None:
+    """Keep ssss force science compiler-owned on the qualified native scheduler."""
 
     manifest = load_production_kernel_selections(
         REPOSITORY_ROOT
@@ -3833,28 +2398,146 @@ def test_ssss_force_candidate_keeps_native_default_until_endpoint_gate() -> None
     types_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_native_gradient_types.cuh"
     ).read_text(encoding="utf-8")
-    gradient_source = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
-    ).read_text(encoding="utf-8")
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
-    assert "SsssWeightedGradient" in types_source
-    assert "contracted_eri_cartesian_source_ssss_weighted_gradient" in gradient_source
+    assert "SsssWeightedGradient" not in types_source
     assert "contract_two_electron_force_ssss_task" in low_order_source
+    assert "generated_weighted_eri::ssss_force" in low_order_source
+    assert "direct_native_order01_gradient.cuh" not in low_order_source
+    assert "generated_math" not in low_order_source
+    assert "geometry.product_scales[3]" not in low_order_source
+    assert "geometry.decay[3][axis]" not in low_order_source
 
     policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
         encoding="utf-8"
     )
-    driver = _direct_cuda_source()
-    assert 'selected("VIBEQC_SSSS_FORCE", "generated")' in policy
-    assert (
-        "plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();"
-        in driver
+    resources = (REPOSITORY_ROOT / "python/vibeqc/resources_hf.py").read_text(
+        encoding="utf-8"
     )
-    assert "plan.generated_ssss_force ? 0U" in driver
-    assert "std::uint64_t{1} << kSsssShellClass" in driver
+    driver = _direct_cuda_source()
+    assert "VIBEQC_SSSS_FORCE" not in policy
+    assert "VIBEQC_SSSS_FORCE" not in resources
+    assert "generated_ssss_force" not in driver
+    assert "const std::uint64_t ssss_shell_class_mask" in driver
+    assert "~ssss_shell_class_mask" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
+
+
+def test_order01_force_retires_handwritten_generic_fallback() -> None:
+    """Keep total-order-zero/one Direct-HF force mathematics compiler-owned."""
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
+    ).exists()
+
+    quartet = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "direct_native_order01_gradient.cuh" not in quartet
+    assert "contracted_eri_cartesian_source_order01_gradient" not in quartet
+    assert "static_assert(AngularOrder >= 2U" in quartet
+
+    bounded = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(0)" not in bounded
+    assert "VIBEQC_BOUNDED_FORCE_CASE(1)" not in bounded
+
+
+def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep PSPS/PPSS/DSSS native schedulers backed by force-only compiler roots."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    names = ("psps_force", "ppss_force", "dsss_force")
+    for index, name in enumerate(names):
+        begin = source.index(f"IndependentGradient {name}(")
+        if index + 1 < len(names):
+            end = source.index(f"IndependentGradient {names[index + 1]}(", begin)
+        else:
+            end = source.index(
+                "}  // namespace vibeqc::scf::generated_weighted_eri", begin
+            )
+        function = source[begin:end]
+        assert "result.value" not in function
+        assert "result.center[3]" not in function
+        for center in range(3):
+            for axis in range(3):
+                assert f"result.center[{center}][{axis}]" in function
+
+
+def test_order2_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep exact order-two Direct-HF force mathematics compiler-owned."""
+
+    for name in ("dsss", "ppss", "psps"):
+        assert not (
+            REPOSITORY_ROOT / f"src/scf/cuda/direct_native_{name}_gradient.cuh"
+        ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order2_generated_weighted_gradient" in source
+    )
+    for name in ("psps", "ppss", "dsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+        assert f"direct_native_{name}_gradient.cuh" not in source
+        assert f"contracted_eri_cartesian_source_{name}_weighted_gradient" not in source
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order2_gradient.cuh"
+    ).exists()
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in source
+    quartet_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
+    ).read_text(encoding="utf-8")
+    assert "direct_native_order2_gradient.cuh" not in quartet_source
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in quartet_source
+    assert "generated_weighted_eri::Geometry geometry;" in source
+    assert "generated_weighted_eri::Geometry geometry{};" not in source
+
+
+def test_order3_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep all total-order-three Direct-HF force mathematics compiler-owned."""
+
+    generated = emit_low_order_weighted_header(inline_single_use=True)
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"IndependentGradient {name}_force(" in generated
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order3_gradient.cuh"
+    ).exists()
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_order3_gradient.cuh"
+    ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order3_generated_weighted_gradient" in source
+    )
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+
+    generic = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "contracted_eri_cartesian_source_order3_gradient" not in generic
+    assert "direct_native_order3_gradient.cuh" not in generic
+
+
+def test_bounded_order3_force_uses_generated_shell_task_math() -> None:
+    """Keep bounded streaming disjoint from the retired order-three AO formula."""
+
+    bounded = (REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "contract_two_electron_force_order3_task<Unrestricted>(" in bounded
+    dispatcher = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(3)" not in dispatcher
 
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
@@ -3965,7 +2648,11 @@ def test_bounded_streaming_uses_monotonic_system_density_tail() -> None:
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -3979,7 +2666,11 @@ def test_bounded_streaming_profiles_executed_precision_per_shell_class() -> None
     """Count actual retained quartets without changing normal kernel work."""
 
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     source = _direct_cuda_source()
     assert "record_fock_precision" in generator
@@ -4017,9 +2708,9 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
 ) -> None:
     """Regenerate production CUDA whenever shared compiler stages change."""
 
-    # The modular build collects compiler inputs recursively. Inspect the actual
-    # dependency graph of its CPU-configurable shell-codegen pilot, rather than
-    # requiring a redundant list of compiler filenames in the top-level CMake.
+    # Dynamic dependencies exist only after the generator has run. Exercise the
+    # real CPU-configurable pilot, then inspect its emitted depfile rather than
+    # requiring the retired all-compiler glob in Ninja's pre-build graph.
     subprocess.run(
         [
             "cmake",
@@ -4036,17 +2727,14 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
         capture_output=True,
         text=True,
     )
-    dependencies = subprocess.check_output(
-        [
-            "ninja",
-            "-C",
-            str(tmp_path),
-            "-t",
-            "query",
-            "generated/shell_kernels/eri_psss_x_gradient.cuh",
-        ],
+    output = "generated/shell_kernels/eri_psss_x_gradient.cuh"
+    subprocess.run(
+        ["cmake", "--build", str(tmp_path), "--target", output],
+        check=True,
+        capture_output=True,
         text=True,
     )
+    dependencies = (tmp_path / f"{output}.d").read_text(encoding="utf-8")
     for dependency in (
         "python/vibeqc_compiler/integral/blocks.py",
         "python/vibeqc_compiler/integral/cache.py",
@@ -4066,12 +2754,53 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
         "python/vibeqc_compiler/integral/shell_spec.py",
     ):
         assert dependency in dependencies
-    # Production AOT generation must consume the same complete compiler input
-    # set. Checking this declaration needs no CUDA compiler or device in CPU CI.
+    # Production AOT uses the same depfile-enabled registration while retaining
+    # its explicit non-Python manifest dependency. Unrelated compiler stages must
+    # not be reintroduced as unconditional dependencies.
+    assert "python/vibeqc_compiler/tensor/layout.py" not in dependencies
     cuda = (REPOSITORY_ROOT / "cmake/VibeQCCuda.cmake").read_text(encoding="utf-8")
     production = cuda.split("vibeqc_register_generated_sources(", 1)[1]
     production_dependencies = production.split("DEPENDS", 1)[1].split("ARGS", 1)[0]
-    assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" in production_dependencies
+    assert "${VIBEQC_AOT_SHELL_MANIFEST}" in production_dependencies
+    assert "${VIBEQC_SCIENTIFIC_COMPILER_INPUTS}" not in production_dependencies
+
+
+def test_cuda_target_request_is_resolved_before_language_enablement() -> None:
+    """Do not let CMake/NVCC invent a compiler-default CUDA target."""
+
+    cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    cuda_block = cmake.split("if(VIBEQC_ENABLE_CUDA)", 1)[1].split(
+        "# Scoped VibeQC-owned GFN2 CPU runtime", 1
+    )[0]
+    target_error = cuda_block.index("CUDA target architecture is required")
+    target_assignment = cuda_block.index(
+        "set(CMAKE_CUDA_ARCHITECTURES ${_vibeqc_cuda_requested_architectures})"
+    )
+    language_enable = cuda_block.index("enable_language(CUDA)")
+    assert target_error < target_assignment < language_enable
+    assert "VIBEQC_CUDA_COMPILE_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "VIBEQC_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "DEFINED CMAKE_CUDA_ARCHITECTURES" in cuda_block[:language_enable]
+    assert "DEFINED ENV{CUDAARCHS}" in cuda_block[:language_enable]
+    assert "set(CMAKE_CUDA_ARCHITECTURES 120)" not in cuda_block
+
+
+def test_virtual_cuda_target_keeps_host_profile_portable() -> None:
+    """Do not apply a measured host schedule to PTX that may JIT on a future GPU."""
+
+    cmake = (REPOSITORY_ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    profile_block = cmake.split("# A single real architecture may use", 1)[1].split(
+        "vibeqc_register_cuda_generated_sources", 1
+    )[0]
+    virtual_guard = profile_block.index(
+        'if(NOT _vibeqc_cuda_profile_architecture MATCHES "-virtual$")'
+    )
+    real_normalization = profile_block.index(
+        'string(REGEX REPLACE "-real$" "" _vibeqc_cuda_profile_architecture'
+    )
+    profile_define = profile_block.index("VIBEQC_CUDA_PROFILE_ARCHITECTURE=")
+    assert virtual_guard < real_normalization < profile_define
+    assert 'REGEX REPLACE "-.*$"' not in profile_block
 
 
 def test_batch_screening_ranks_real_profile_and_emits_one_process_driver() -> None:
@@ -4267,7 +2996,7 @@ def test_standalone_benchmark_command_has_finite_slurm_allocation() -> None:
     ) == [
         "srun",
         "--partition=main",
-        "--gres=gpu:5090:1",
+        "--gres=gpu:1",
         "--nodes=1",
         "--ntasks=1",
         "--time=00:05:00",
@@ -6006,98 +4735,6 @@ def test_low_order_production_rys2_cuda_compiles_when_nvcc_is_configured(
         assert_rtx5090_resources(result.stdout + result.stderr, resource_limits)
 
 
-@pytest.mark.parametrize("shared_coulomb", (True, False))
-def test_schedule_knob_cuda_variants_compile_when_nvcc_is_configured(
-    tmp_path: Path, shared_coulomb: bool
-) -> None:
-    """Compile both cooperative sharing policies through the real frontend."""
-
-    nvcc = os.environ.get("VIBEQC_NVCC")
-    if nvcc is None:
-        pytest.skip("set VIBEQC_NVCC to run the generated CUDA compile gate")
-    cuda_architecture = os.environ.get("VIBEQC_CUDA_ARCH", "sm_90")
-    base = build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule
-    schedule = replace(
-        base,
-        shared_coulomb=shared_coulomb,
-        unroll_pair_terms=False,
-    )
-    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule, target=TEST_CUDA_TARGET)
-    label = "shared" if shared_coulomb else "recomputed"
-    source = tmp_path / f"generated_dpds_{label}.cu"
-    source.write_text(
-        """
-template <unsigned MaximumOrder>
-__device__ __forceinline__ void boys_values(double argument, double* values) {
-  for (unsigned order = 0; order <= MaximumOrder; ++order) {
-    values[order] = 1.0 / (2.0 * static_cast<double>(order) + 1.0 + argument);
-  }
-}
-"""
-        + emit_shell_class_fused_cuda(DPDS_SPEC, plan),
-        encoding="utf-8",
-    )
-    result = subprocess.run(
-        [
-            nvcc,
-            "-std=c++17",
-            f"-arch={cuda_architecture}",
-            "-cubin",
-            str(source),
-            "-o",
-            str(tmp_path / f"generated_dpds_{label}.cubin"),
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-
-
-def test_dppp_benchmark_compares_shared_and_recomputed_schedules() -> None:
-    source = emit_dppp_benchmark_cuda(
-        task_count=32,
-        primitive_count=2,
-        warmups=1,
-        iterations=3,
-        samples=5,
-        target=TEST_CUDA_TARGET,
-    )
-    assert "constexpr unsigned kTaskCount = 32;" in source
-    assert "constexpr unsigned kPrimitiveCount = 2;" in source
-    assert "generated_dppp_component_gradient<true>" in source
-    assert "generated_dppp_component_gradient<false>" in source
-    assert "generated_dppp_component_recompute_rhf_kernel" in source
-    assert "generated_dppp_make_primitive_geometry_uncached" in source
-    assert "device_primitive_pairs" in source
-    assert '\\"speedup\\"' in source
-
-
-def test_fock_benchmark_compares_value_only_shared_and_recomputed_schedules() -> None:
-    """Benchmark the SCF hot consumer with an independent value oracle."""
-
-    source = emit_shell_class_benchmark_cuda(
-        DPDS_SPEC,
-        task_count=32,
-        primitive_count=2,
-        warmups=1,
-        iterations=3,
-        samples=5,
-        consumer=KernelConsumer.FOCK,
-        target=TEST_CUDA_TARGET,
-    )
-    assert "generated_dpds_shell_class_fock_rhf_kernel" in source
-    assert "generated_dpds_component_recompute_fock_rhf_kernel" in source
-    assert "generated_dpds_component_value<false>" in source
-    assert (
-        "generated_dpds_component_gradient<false>"
-        not in source.split("/** Per-component Fock baseline", maxsplit=1)[1]
-    )
-    assert '\\"consumer\\":\\"fock\\"' in source
-    assert '\\"maximum_fock_error\\"' in source
-
-
 def test_high_component_fock_oracle_block_covers_every_component() -> None:
     """Do not truncate the independent oracle for subgroup candidates."""
 
@@ -6215,53 +4852,6 @@ def test_fock_benchmark_runs_when_nvcc_is_configured(tmp_path: Path) -> None:
     )
 
 
-def test_benchmark_accepts_an_explicit_schedule_or_lowered_plan() -> None:
-    """Make the measured code shape an explicit autotuning input."""
-
-    default_plan = build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET)
-    schedule = replace(
-        default_plan.schedule,
-        shared_coulomb=False,
-        unroll_pair_terms=False,
-    )
-    source = emit_shell_class_benchmark_cuda(
-        DPDS_SPEC,
-        task_count=4,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-        schedule=schedule,
-        target=TEST_CUDA_TARGET,
-    )
-    assert "double coulomb[1];" in source
-    assert source.count("generated_dpds_component_gradient<false>") == 2
-    assert "#pragma unroll 1" in source
-    assert "#pragma unroll\n" in source
-    assert "VIBEQC_PAIR_UNROLL" not in source
-    plan = build_fused_shell_plan(DPDS_SPEC, schedule=schedule, target=TEST_CUDA_TARGET)
-    assert source == emit_shell_class_benchmark_cuda(
-        DPDS_SPEC,
-        task_count=4,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-        plan=plan,
-    )
-    with pytest.raises(ValueError, match="either a fused plan or a schedule"):
-        emit_shell_class_benchmark_cuda(
-            DPDS_SPEC,
-            task_count=1,
-            primitive_count=1,
-            warmups=0,
-            iterations=1,
-            samples=1,
-            plan=plan,
-            schedule=schedule,
-        )
-
-
 def test_autotune_compile_timeout_terminates_the_compiler_process_group(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -6362,6 +4952,7 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
     monkeypatch.setattr(driver.CudaBenchmarkExecutor, "run", run_benchmark)
     arguments = argument_parser().parse_args(
         [
+            "--architecture=sm_90",
             "--shell-class=psps",
             "--gres=gpu:explicit:1",
             "--compile-jobs=2",
@@ -6371,168 +4962,6 @@ def test_autotune_keeps_benchmark_executor_distinct_from_compile_pool(
     )
     with pytest.raises(ReachedBenchmark):
         driver._run_autotune(arguments)
-
-
-def test_autotune_emits_unique_schedule_variants_and_manifest_records() -> None:
-    """Keep same-class variants linkable and every winner reproducible."""
-
-    trials = supported_schedule_trials(DPDS_SPEC, target=TEST_CUDA_TARGET)
-    component_trials = tuple(
-        trial for trial in trials if trial.schedule.kind == ScheduleKind.COMPONENT_LANES
-    )
-    assert len(component_trials) == 8
-    assert any(
-        trial.schedule.kind == ScheduleKind.TILED_COMPONENTS
-        and trial.schedule.component_tile == 64
-        for trial in trials
-    )
-    assert {
-        (
-            trial.schedule.pair_orientation,
-            trial.schedule.shared_coulomb,
-            trial.schedule.unroll_pair_terms,
-        )
-        for trial in component_trials
-    } == {
-        (orientation, shared, unrolled)
-        for orientation in PairOrientation
-        for shared in (True, False)
-        for unrolled in (True, False)
-    }
-    sources = [
-        emit_schedule_translation_unit(
-            trial,
-            task_count=2,
-            primitive_count=1,
-            warmups=0,
-            iterations=1,
-            samples=1,
-        )
-        for trial in component_trials[:2]
-    ]
-    for trial, source in zip(component_trials, sources, strict=False):
-        assert trial.entry_point in source
-        assert trial.symbol_prefix in source
-        assert f'\\"schedule_id\\":\\"{trial.schedule_id}\\"' in source
-        assert "shell_class_force_uhf_kernel" not in source
-        assert "shell_class_force_rhf_kernel" not in source
-        assert "shell_class_force_rhf_persistent_kernel" in source
-        assert '\\"topology\\":\\"persistent_shared\\"' in source
-        assert "device_task_head" in source
-    assert component_trials[0].symbol_prefix not in sources[1]
-    separate_source = emit_schedule_translation_unit(
-        component_trials[0],
-        task_count=2,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-        oracle_trial=component_trials[0],
-    )
-    oracle_source = emit_schedule_oracle_translation_unit(component_trials[0])
-    oracle_kernel = (
-        "vibeqc_oracle_dpds_force_component_lanes_b128_t108_w1_"
-        "component_recompute_rhf_kernel"
-    )
-    assert separate_source.count(oracle_kernel) == 2
-    assert oracle_source.count(oracle_kernel) == 1
-    assert "Per-component recurrence baseline" not in separate_source
-    assert "Per-component recurrence baseline" in oracle_source
-    assert "center < 2U ? 1024U : 16U" in separate_source
-    assert "const std::size_t force_count = 24U * 3U" in separate_source
-    driver = emit_schedule_driver(component_trials[:2])
-    assert component_trials[0].entry_point in driver
-    assert component_trials[1].entry_point in driver
-
-    manifest = {
-        "schema_version": 2,
-        "default_architecture": "sm_120",
-        "architectures": {
-            "sm_120": {
-                "kernels": [
-                    {
-                        "shell_class": "dpds",
-                        "consumers": ["force"],
-                        "schedule": {},
-                    }
-                ]
-            }
-        },
-    }
-    updated = update_manifest_payload(
-        manifest,
-        "sm_120",
-        {
-            "dpds": component_trials[0].schedule,
-            "ddps": component_trials[1].schedule,
-        },
-    )
-    kernels = updated["architectures"]["sm_120"]["kernels"]
-    assert kernels[0]["schedule"]["shared_coulomb"] is True
-    assert kernels[0]["schedule"]["unroll_pair_terms"] is True
-    assert kernels[0]["schedule"]["pair_storage"] == "materialized"
-    assert kernels[1]["shell_class"] == "ddps"
-    assert kernels[1]["consumers"] == ["force"]
-
-    fock_trials = supported_schedule_trials(
-        DPDS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
-    )
-    assert all(trial.consumer == KernelConsumer.FOCK for trial in fock_trials)
-    fock_source = emit_schedule_translation_unit(
-        fock_trials[0],
-        task_count=2,
-        primitive_count=1,
-        warmups=0,
-        iterations=1,
-        samples=1,
-    )
-    assert fock_trials[0].entry_point in fock_source
-    assert fock_trials[0].symbol_prefix in fock_source
-    assert '\\"consumer\\":\\"fock\\"' in fock_source
-    assert "shell_class_force_task" not in fock_source
-    assert "shell_class_fock_uhf_kernel" not in fock_source
-    assert "shell_class_fock_rhf_kernel" not in fock_source
-    assert "shell_class_fock_rhf_persistent_kernel" in fock_source
-    assert "task.density_offset = 0U" in fock_source
-    resource_source = emit_schedule_resource_translation_unit(fock_trials[0])
-    assert "shell_class_fock_uhf_kernel" in resource_source
-    assert "shell_class_fock_rhf_persistent_kernel" in resource_source
-
-    fock_manifest = {
-        "schema_version": 2,
-        "default_architecture": "sm_120",
-        "architectures": {
-            "sm_120": {
-                "kernels": [
-                    {
-                        "shell_class": "dpds",
-                        "consumers": ["force"],
-                        "schedule": {"force_marker": "preserve"},
-                    },
-                    {
-                        "shell_class": "dpps",
-                        "consumers": ["force"],
-                        "schedule": {"force_marker": "preserve-dpps"},
-                    },
-                ]
-            }
-        },
-    }
-    fock_updated = update_manifest_payload(
-        fock_manifest,
-        "sm_120",
-        {"dpds": fock_trials[0].schedule, "dpps": fock_trials[1].schedule},
-        KernelConsumer.FOCK,
-    )
-    fock_rows = fock_updated["architectures"]["sm_120"]["kernels"]
-    assert [row["consumers"] for row in fock_rows] == [
-        ["fock", "force"],
-        ["fock", "force"],
-    ]
-    assert fock_rows[0]["schedule"] == {"force_marker": "preserve"}
-    assert fock_rows[0]["fock_schedule"] == schedule_payload(fock_trials[0].schedule)
-    assert fock_rows[1]["schedule"] == {"force_marker": "preserve-dpps"}
-    assert fock_rows[1]["fock_schedule"] == schedule_payload(fock_trials[1].schedule)
 
 
 def test_autotune_expands_shell_class_list_files_for_batch_runs(
@@ -6569,21 +4998,42 @@ def test_autotune_expands_shell_class_list_files_for_batch_runs(
     )
 
 
-def test_autotune_deduplicates_batch_schedule_family_filters() -> None:
-    """Keep a related-family batch small without changing request order."""
+@pytest.mark.parametrize("name", ("ssss", "psss", "psps", "ppss"))
+def test_fock_autotune_includes_shared_production_baseline(name: str) -> None:
+    """Treat a shared primary schedule as the shipped Fock baseline."""
 
-    arguments = SimpleNamespace(
-        schedule_kind=[
-            ScheduleKind.COMPONENT_LANES.value,
-            ScheduleKind.COMPONENT_LANES.value,
-            ScheduleKind.SUBGROUP_TASKS.value,
-        ]
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    expected = dict(_production_fock_schedule_index("sm_120"))[name]
+    trials = supported_schedule_trials(
+        spec, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
     )
-    assert _requested_schedule_kinds(arguments) == (
-        ScheduleKind.COMPONENT_LANES,
-        ScheduleKind.SUBGROUP_TASKS,
+    assert sum(trial.schedule == expected for trial in trials) == 1
+
+
+def test_production_subgroup_fock_baseline_is_not_experimental() -> None:
+    """The shipped subgroup mapping is evidence, not a new proposal."""
+
+    from vibeqc_compiler.integral.tuning.driver import _experimental_subgroup_blocked
+
+    expected = dict(_production_fock_schedule_index("sm_120"))["ppps"]
+    trials = supported_schedule_trials(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
     )
-    assert _requested_schedule_kinds(SimpleNamespace()) == ()
+    baseline = next(trial for trial in trials if trial.schedule == expected)
+    proposal = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule != expected
+    )
+    assert not _experimental_subgroup_blocked(
+        baseline, is_production_baseline=True, allow_experimental=False
+    )
+    assert _experimental_subgroup_blocked(
+        proposal, is_production_baseline=False, allow_experimental=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -6713,7 +5163,10 @@ def test_autotune_trials_preserve_an_explicit_integral_ir() -> None:
     assert trials[0].static_model.recurrence_state_count == 84
 
     source = emit_schedule_oracle_translation_unit(trials[0])
-    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+    assert re.search(
+        r"constexpr unsigned derivative_centers\[3\]\s*=\s*\{\s*0U,\s*2U,\s*3U\s*\};",
+        source,
+    )
 
 
 def test_autotune_trial_identity_includes_explicit_integral_intent() -> None:
@@ -7066,54 +5519,27 @@ def test_packed_autotune_searches_real_algebra_placement_variants() -> None:
     )
 
 
-def test_algebra_placement_schedule_payload_is_backward_compatible() -> None:
-    """Round-trip tuned placement while defaulting older manifests safely."""
+def test_autotune_candidate_limit_samples_distinct_execution_geometries() -> None:
+    """Quick tuning must not spend its budget on one enumeration prefix."""
 
-    inline_schedule = next(
-        trial.schedule
-        for trial in supported_schedule_trials(PSPS_SPEC, target=TEST_CUDA_TARGET)
-        if trial.schedule.kind == ScheduleKind.PACKED_TASKS
-        and trial.schedule.algebra_placement == AlgebraPlacement.INLINE_SINGLE_USE
-        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
-        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
-        and trial.schedule.algebra_form == AlgebraForm.FACTORED_NARY
+    from vibeqc_compiler.integral.tuning.driver import (
+        _diverse_bounded_trials,
+        _schedule_geometry_key,
     )
-    payload = schedule_payload(inline_schedule)
-    assert _schedule_from_payload(payload) == inline_schedule
 
-    del payload["algebra_placement"]
-    del payload["algebra_ordering"]
-    del payload["algebra_fusion"]
-    del payload["algebra_form"]
-    assert (
-        _schedule_from_payload(payload).algebra_placement
-        == AlgebraPlacement.MATERIALIZED_CSE
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
     )
-    assert (
-        _schedule_from_payload(payload).algebra_ordering == AlgebraOrdering.TOPOLOGICAL
-    )
-    assert _schedule_from_payload(payload).algebra_fusion == AlgebraFusion.SEPARATE
-    assert _schedule_from_payload(payload).algebra_form == AlgebraForm.BINARY
-    with pytest.raises(ValueError, match="packed tasks"):
-        replace(
-            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
-            algebra_placement=AlgebraPlacement.INLINE_SINGLE_USE,
-        )
-    with pytest.raises(ValueError, match="packed tasks"):
-        replace(
-            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
-            algebra_ordering=AlgebraOrdering.PRESSURE_AWARE,
-        )
-    with pytest.raises(ValueError, match="packed tasks"):
-        replace(
-            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
-            algebra_fusion=AlgebraFusion.FMA,
-        )
-    with pytest.raises(ValueError, match="packed tasks"):
-        replace(
-            build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
-            algebra_form=AlgebraForm.CANONICAL_NARY,
-        )
+    chosen = _diverse_bounded_trials(trials, 8)
+
+    assert len(chosen) == 8
+    assert len({_schedule_geometry_key(trial) for trial in chosen}) == len(chosen)
+    assert {trial.schedule.kind for trial in chosen} >= {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.COMPONENT_LANES,
+    }
 
 
 def test_autotune_candidate_artifact_includes_static_model(
@@ -7190,6 +5616,14 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["winners"] == []
     assert len(report["candidates"]) == 1
     assert report["candidates"][0]["static_model"] == (trial.static_model.to_payload())
+    profitability = report["candidates"][0]["profitability"]
+    assert profitability["static"]["arithmetic_operation_count"] == (
+        trial.static_model.arithmetic_operation_count
+    )
+    assert profitability["static"]["peak_live_values"] == (
+        trial.static_model.peak_live_values
+    )
+    assert profitability["compiled"]["compiled_registers_per_thread"] is None
     assert report["candidates"][0]["source_bytes"] is None
     assert report["candidates"][0]["object_bytes"] is None
     assert report["candidates"][0]["occupancy"]["available"] is False
@@ -7197,6 +5631,12 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
     assert report["search"] == {
         "schedule_kinds": [trial.schedule.kind.value],
+        "bounded_trial_count": 1,
+        "execution_dedup_enabled": True,
+        "execution_deduplicated_count": 0,
+        "execution_deduplicated": [],
+        "candidate_limit_per_class": None,
+        "candidate_limit_strategy": None,
         "trial_count": 1,
     }
     assert report["manifest"]["write_skipped"] is True
@@ -7264,7 +5704,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "vibeqc_compiler.integral.tuning.driver._compile_trial", successful_compile
     )
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaCompilerAdapter.link",
+        "vibeqc_compiler.common.cuda_adapter.CudaCompilerAdapter.link",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
         ),
@@ -7280,7 +5720,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "fused_ms": 1.0,
     }
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaBenchmarkExecutor.run",
+        "vibeqc_compiler.common.cuda_adapter.CudaBenchmarkExecutor.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -7491,187 +5931,3 @@ def test_benchmark_is_generated_without_shell_specific_harness_code(
     assert f"generated_{spec.name}_component_gradient<false>" in source
     assert f"generated_{spec.name}_component_recompute_rhf_kernel" in source
     assert "generated_dppp" not in source
-
-
-def test_cuda_emission_is_deterministic_and_runtime_ad_free() -> None:
-    first = emit_psss_cuda(build_psss_kernel("z"))
-    second = emit_psss_cuda(build_psss_kernel("z"))
-    assert first == second
-    assert "boys_values<2>" in first
-    assert "generated_psss_z_gradient" in first
-    assert "Dual3" not in first
-
-
-def test_dppp_cuda_emission_is_deterministic_and_runtime_ad_free() -> None:
-    kernel = build_dppp_component_kernel("xy", tuple("xyz"))
-    first = emit_dppp_component_cuda(kernel)
-    second = emit_dppp_component_cuda(build_dppp_component_kernel("xy", tuple("xyz")))
-    assert first == second
-    assert "boys_values<6>" in first
-    assert "generated_dppp_xy_xyz_gradient" in first
-    assert "Dual3" not in first
-
-    factored = emit_dppp_contraction_cuda(
-        build_dppp_contraction_kernel("xy", tuple("xyz"))
-    )
-    assert "GeneratedDpppGeometry" in factored
-    assert "generated_dppp_xy_xyz_factored_gradient" in factored
-    assert "boys_values" not in factored
-    assert "Dual3" not in factored
-
-
-def test_dppp_contraction_cuda_honors_explicit_nonfinal_recovery() -> None:
-    """Pack factored decay rows by IR order when center B is recovered."""
-
-    operator = OperatorSpec(
-        family=OperatorFamily.FOUR_CENTER_ERI,
-        centers=(0, 1, 2, 3),
-        invariants=(TranslationInvariant(dependent_center=1),),
-    )
-    force = ContractionSpec(
-        consumer="direct_force",
-        density="rhf|uhf",
-        output="atomic_force",
-    )
-    integral = build_integral_ir(
-        DPPP_SPEC,
-        operator=operator,
-        derivative=operator.nuclear_derivative(),
-        contractions=(force,),
-    )
-    kernel = build_dppp_contraction_kernel(
-        "xy",
-        tuple("xyz"),
-        integral=integral,
-    )
-    assert kernel.integral is integral
-    source = emit_dppp_contraction_cuda(kernel)
-
-    # The ket fourth-center derivative needs the complement of the stored
-    # third-center product scale.  Decay rows are dense A/C/D slots, not
-    # physical center indices A/B/C/D, so row 1 must remain present while
-    # row 3 is not referenced by this three-independent-center geometry ABI.
-    assert "1.0 - geometry.product_scales[2]" in source
-    assert "geometry.decay_gradients[1]" in source
-    assert "geometry.decay_gradients[2]" in source
-    assert "geometry.decay_gradients[3]" not in source
-
-
-def test_nvrtc_cache_key_covers_binary_compatibility_inputs() -> None:
-    specification = NvrtcCacheSpec(
-        generator_abi="1",
-        shell_class=(2, 1, 2, 0),
-        derivative_centers=(0, 1, 2),
-        precision_policy="fp64",
-        screening_policy="density-v1",
-        source_digest="abc123",
-        compute_capability="sm_120",
-        nvrtc_version="12.9",
-        driver_version="580.95.05",
-    )
-    key = nvrtc_cache_key(specification)
-    assert len(key) == 64
-    assert key == nvrtc_cache_key(specification)
-    assert key != nvrtc_cache_key(
-        replace(specification, precision_policy="mixed-fp32-control")
-    )
-
-
-def test_codegen_cli_writes_deterministic_aot_candidate(tmp_path: Path) -> None:
-    output = tmp_path / "generated" / "psss_x.cuh"
-    command = [
-        sys.executable,
-        "tools/generate_shell_kernels.py",
-        "--shell-class",
-        "psss",
-        "--axis",
-        "x",
-        "--output",
-        str(output),
-    ]
-    subprocess.run(command, check=True)
-    first = output.read_text(encoding="utf-8")
-    subprocess.run(command, check=True)
-    assert output.read_text(encoding="utf-8") == first
-    assert "generated_psss_x_gradient" in first
-
-
-def test_codegen_cli_writes_dppp_component_candidate(tmp_path: Path) -> None:
-    output = tmp_path / "generated" / "dppp_xy_xyz.cuh"
-    command = [
-        sys.executable,
-        "tools/generate_shell_kernels.py",
-        "--shell-class",
-        "dppp",
-        "--d-component",
-        "xy",
-        "--p-components",
-        "xyz",
-        "--output",
-        str(output),
-    ]
-    subprocess.run(command, check=True)
-    first = output.read_text(encoding="utf-8")
-    subprocess.run(command, check=True)
-    assert output.read_text(encoding="utf-8") == first
-    assert "generated_dppp_xy_xyz_gradient" in first
-
-    factored_output = tmp_path / "generated" / "dppp_xy_xyz_factored.cuh"
-    factored_command = [
-        *command[:-2],
-        "--lowering",
-        "factored",
-        "--output",
-        str(factored_output),
-    ]
-    subprocess.run(factored_command, check=True)
-    factored = factored_output.read_text(encoding="utf-8")
-    subprocess.run(factored_command, check=True)
-    assert factored_output.read_text(encoding="utf-8") == factored
-    assert "generated_dppp_xy_xyz_factored_gradient" in factored
-
-    fused_output = tmp_path / "generated" / "dppp_fused.cuh"
-    fused_command = [
-        sys.executable,
-        "tools/generate_shell_kernels.py",
-        "--shell-class",
-        "dppp",
-        "--lowering",
-        "fused",
-        "--architecture",
-        TEST_CUDA_TARGET.architecture,
-        "--output",
-        str(fused_output),
-    ]
-    subprocess.run(fused_command, check=True)
-    fused = fused_output.read_text(encoding="utf-8")
-    subprocess.run(fused_command, check=True)
-    assert fused_output.read_text(encoding="utf-8") == fused
-    assert "generated_dppp_shell_class_force_rhf_kernel" in fused
-
-
-@pytest.mark.parametrize(
-    "spec", (SSSS_SPEC, PSSS_SPEC, DPDS_SPEC, DDPS_SPEC, FDDD_SPEC)
-)
-def test_codegen_cli_writes_generated_fused_candidate(
-    tmp_path: Path, spec: typing.Any
-) -> None:
-    output = tmp_path / "generated" / f"{spec.name}_fused.cuh"
-    command = [
-        sys.executable,
-        "tools/generate_shell_kernels.py",
-        "--shell-class",
-        spec.name,
-        "--lowering",
-        "fused",
-        "--architecture",
-        TEST_CUDA_TARGET.architecture,
-        "--output",
-        str(output),
-    ]
-    subprocess.run(command, check=True)
-    first = output.read_text(encoding="utf-8")
-    subprocess.run(command, check=True)
-    assert output.read_text(encoding="utf-8") == first
-    assert first == emit_shell_class_fused_cuda(spec, target=TEST_CUDA_TARGET)
-    assert f"generated_{spec.name}_shell_class_force_rhf_kernel" in first

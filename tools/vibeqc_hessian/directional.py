@@ -58,6 +58,7 @@ def directional_rhf_response(
     first_backend: typing.Any = "cpu",
     first_compiler: typing.Any = None,
     first_budget_bytes: typing.Any = 64 << 20,
+    resident_reconstruction_consumer: typing.Any = None,
 ) -> typing.Any:
     """Build directional H1/S1 and solve one complete canonical RHF response.
 
@@ -86,6 +87,13 @@ def directional_rhf_response(
         raise ValueError("response_execution must be host or cuda-resident")
     if response_execution == "cuda-resident" and jk_backend != "cuda":
         raise ValueError("cuda-resident response requires jk_backend='cuda'")
+    if (
+        resident_reconstruction_consumer is not None
+        and response_execution != "cuda-resident"
+    ):
+        raise ValueError(
+            "resident reconstruction consumer requires cuda-resident response"
+        )
     if (
         type(response_device_budget_bytes) is not int
         or not 0 < response_device_budget_bytes < 2**63
@@ -156,11 +164,30 @@ def directional_rhf_response(
         else:
             frozen, overlap = generated_directional_first_order(state, vector)
         first_seconds = time.perf_counter() - first_started
+        resident_consumer_seconds = 0.0
+
+        def consume_reconstruction(value: typing.Any) -> None:
+            nonlocal resident_consumer_seconds
+            started = time.perf_counter()
+            resident_reconstruction_consumer(value)
+            resident_consumer_seconds += time.perf_counter() - started
+
         response_started = time.perf_counter()
         response = solve_rhf_nuclear_perturbation(
-            operator, frozen, overlap, options=options
+            operator,
+            frozen,
+            overlap,
+            options=options,
+            resident_reconstruction_consumer=(
+                consume_reconstruction
+                if resident_reconstruction_consumer is not None
+                else None
+            ),
         )
-        response_seconds = time.perf_counter() - response_started
+        response_seconds = max(
+            0.0,
+            time.perf_counter() - response_started - resident_consumer_seconds,
+        )
         resident_diagnostics = (
             resident_owner.diagnostics if resident_owner is not None else None
         )
@@ -203,14 +230,20 @@ def directional_rhf_response(
             "jk_backend": jk_backend,
             "response_execution": response_execution,
             "ao_mo_transforms": (
-                "mixed: rhs/reconstruction host, operator cuda-resident"
+                "mixed: rhs host, reconstruction resident for consumer, host publication retained"
+                if resident_reconstruction_consumer is not None
+                else "mixed: rhs/reconstruction host, operator cuda-resident"
                 if resident_owner is not None
                 else "host"
             ),
             "operator_ao_mo_transforms": (
                 "cuda-resident" if resident_owner is not None else "host"
             ),
-            "rhs_reconstruction": "host",
+            "rhs_reconstruction": (
+                "resident-consumed-before-host-publication"
+                if resident_reconstruction_consumer is not None
+                else "host"
+            ),
             "response_vector_storage": (
                 "cuda-resident" if resident_owner is not None else "host"
             ),
@@ -231,6 +264,7 @@ def directional_rhf_response(
             "operator_actions": response.solve_result.operator_actions,
             "first_source_seconds": first_seconds,
             "response_solve_reconstruct_seconds": response_seconds,
+            "resident_reconstruction_consumer_seconds": resident_consumer_seconds,
             "response_operator_seconds": response.solve_result.operator_seconds,
             "response_orthogonalization_seconds": (
                 response.solve_result.orthogonalization_seconds

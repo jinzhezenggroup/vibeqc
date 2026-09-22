@@ -12,13 +12,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import find_nvcc
 from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.dft import DensitySource, NativeAO, density_features
 from vibeqc_compiler.dft.cuda import CudaGrid, compile_cuda
 from vibeqc_compiler.dft.fixtures import NAMES, basis_arguments, load_fixture
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.xc import functional
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 from vibeqc_compiler.xc.native import NativeContractionProgram

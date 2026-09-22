@@ -1,10 +1,9 @@
-"""Backend-neutral dense physical layouts, separate from logical TensorSpec.
+"""Backend-neutral physical layouts, separate from logical TensorSpec.
 
-Orders name logical axes from slowest to fastest. These layouts own no storage
-and imply neither tensor symmetry nor alias permission. A transpose can describe
-the same storage through another logical view; allocation/lifetime ownership is
-still the execution plan's responsibility. Arbitrary affine strides and padding
-are deliberately outside this first contract.
+Dense orders name logical axes from slowest to fastest. Exact symmetric-pair
+storage is a separate representation whose legality must be supplied by the
+scientific provider. Layouts own no storage or allocation lifetime; arbitrary
+affine strides and padding remain outside this contract.
 """
 
 from __future__ import annotations
@@ -13,6 +12,7 @@ import typing
 from dataclasses import dataclass
 from math import prod
 
+from .provenance import canonical_hash
 from .resources import byte_product, checked_bytes
 
 
@@ -120,6 +120,14 @@ class DenseLayout:
             self.alignment,
         )
 
+    @property
+    def storage_elements(self) -> int:
+        return byte_product(*self.shape)
+
+    def storage_bytes(self, itemsize: int) -> int:
+        checked_bytes(itemsize, "layout item size")
+        return byte_product(self.storage_elements, itemsize)
+
     def to_payload(self) -> dict[str, object]:
         return {
             "schema": "vibeqc.tensor.dense-layout.v1",
@@ -129,3 +137,137 @@ class DenseLayout:
             "alignment": self.alignment,
             "c_contiguous": self.is_c_contiguous,
         }
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(self.to_payload())
+
+
+@dataclass(frozen=True)
+class SymmetricPairLayout:
+    """Exact lower-triangular storage for two interchangeable logical axes.
+
+    The first two logical axes both have extent and are represented by one
+    unit-weight lower-triangle coordinate. Any trailing axes remain dense and
+    contiguous. This is a physical representation contract only: a scientific
+    provider must prove exchange of the first two coordinates is legal.
+    """
+
+    extent: int
+    trailing_shape: tuple[int, ...] = ()
+    alignment: int = 1
+
+    def __post_init__(self) -> None:
+        checked_bytes(self.extent, "symmetric-pair extent")
+        trailing = tuple(self.trailing_shape)
+        object.__setattr__(self, "trailing_shape", trailing)
+        for extent in trailing:
+            checked_bytes(extent, "symmetric-pair trailing dimension")
+        checked_bytes(self.extent + 1, "symmetric-pair extent successor")
+        byte_product(self.pair_count, *trailing)
+        byte_product(self.extent, self.extent, *trailing)
+        checked_bytes(self.alignment, "layout alignment")
+        if not self.alignment or self.alignment & (self.alignment - 1):
+            raise ValueError("layout alignment must be a positive power of two")
+
+    @property
+    def pair_count(self) -> int:
+        successor = self.extent + 1
+        return (
+            byte_product(self.extent, successor // 2)
+            if self.extent % 2
+            else byte_product(self.extent // 2, successor)
+        )
+
+    @property
+    def logical_shape(self) -> tuple[int, ...]:
+        return (self.extent, self.extent, *self.trailing_shape)
+
+    @property
+    def storage_shape(self) -> tuple[int, ...]:
+        return (self.pair_count, *self.trailing_shape)
+
+    @property
+    def storage_elements(self) -> int:
+        return byte_product(*self.storage_shape)
+
+    @property
+    def dense_elements(self) -> int:
+        return byte_product(*self.logical_shape)
+
+    def pair_index(self, first: int, second: int) -> int:
+        """Map either logical pair order to the canonical lower-triangle row."""
+        for coordinate in (first, second):
+            checked_bytes(coordinate, "symmetric-pair coordinate")
+            if coordinate >= self.extent:
+                raise ValueError("symmetric-pair coordinate is outside the layout")
+        high, low = max(first, second), min(first, second)
+        successor = high + 1
+        base = (
+            byte_product(high, successor // 2)
+            if high % 2
+            else byte_product(high // 2, successor)
+        )
+        return checked_bytes(base + low, "symmetric-pair index")
+
+    def storage_bytes(self, itemsize: int) -> int:
+        checked_bytes(itemsize, "layout item size")
+        return byte_product(self.storage_elements, itemsize)
+
+    def dense_equivalent_bytes(self, itemsize: int) -> int:
+        checked_bytes(itemsize, "layout item size")
+        return byte_product(self.dense_elements, itemsize)
+
+    def dense_materialization_bytes(
+        self,
+        itemsize: int,
+        *,
+        rows: int | None = None,
+        trailing_shape: tuple[int, ...] | None = None,
+    ) -> int:
+        """Bytes written by one bounded packed-to-dense logical expansion."""
+        checked_bytes(itemsize, "layout item size")
+        rows = self.extent if rows is None else rows
+        checked_bytes(rows, "materialized symmetric-pair rows")
+        if rows > self.extent:
+            raise ValueError("materialized rows exceed the symmetric-pair extent")
+        tile = self.trailing_shape if trailing_shape is None else tuple(trailing_shape)
+        if len(tile) != len(self.trailing_shape):
+            raise ValueError("materialized trailing rank does not match the layout")
+        for requested, available in zip(tile, self.trailing_shape, strict=True):
+            checked_bytes(requested, "materialized trailing dimension")
+            if requested > available:
+                raise ValueError("materialized trailing tile exceeds the layout")
+        return byte_product(rows, self.extent, *tile, itemsize)
+
+    def unpack_traffic_bytes(
+        self,
+        itemsize: int,
+        *,
+        rows: int | None = None,
+        trailing_shape: tuple[int, ...] | None = None,
+    ) -> int:
+        """Semantic packed reads plus dense writes for the current CUDA unpack."""
+        return byte_product(
+            2,
+            self.dense_materialization_bytes(
+                itemsize, rows=rows, trailing_shape=trailing_shape
+            ),
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "schema": "vibeqc.symmetric-pair-layout.v1",
+            "logical_shape": self.logical_shape,
+            "storage_shape": self.storage_shape,
+            "pair_axes": (0, 1),
+            "triangle": "lower",
+            "pair_index": "max(i,j)*(max(i,j)+1)/2+min(i,j)",
+            "trailing_order": "dense-c",
+            "alignment": self.alignment,
+            "exact": True,
+        }
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(self.to_payload())

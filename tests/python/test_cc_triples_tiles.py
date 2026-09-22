@@ -6,6 +6,7 @@ tests are run manually on qz and record their results as JSON evidence.
 
 import typing
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -16,7 +17,13 @@ from tools.vibeqc_cc.triples import (
 from tools.vibeqc_cc.triples_tiles import (
     TileSpec,
     TriplesTileEnumerator,
+    build_runtime_tile_triples_program,
     build_tile_triples_program,
+    runtime_tile_capacity,
+    runtime_tile_control_batches,
+    runtime_tile_controls,
+    runtime_tile_static_feeds,
+    runtime_tile_triples_energy_tensorir,
     tile_triples_energy,
     tile_triples_energy_masked,
     tile_triples_energy_tensorir,
@@ -259,6 +266,114 @@ def test_tile_tensorir_is_differentiable(
 
 
 # ---------------------------------------------------------------------------
+# Runtime-indexed TensorIR triples (#783)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "o,v,seed,chunk", [(2, 3, 220, 1), (2, 3, 221, 2), (3, 4, 222, 2)]
+)
+def test_runtime_indexed_tile_program_reuses_one_graph_and_matches_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
+    from vibeqc_compiler.tensor import execute as tensor_execute
+
+    arrays = dict(zip(INPUT_NAMES, _random_case(o, v, seed), strict=True))
+    tiles = tuple(TriplesTileEnumerator(o, v, vir_chunk_size=chunk))
+    capacity = runtime_tile_capacity(o, v, chunk)
+    program = build_runtime_tile_triples_program(o, v, capacity=capacity)
+    static = runtime_tile_static_feeds(arrays)
+    total = 0.0
+    for tile in tiles:
+        controls = runtime_tile_controls(tile, capacity)
+        got = float(
+            tensor_execute(program, {**static, **controls}).outputs["triples_energy"]
+        )
+        expected = tile_triples_energy(tile, o, *arrays.values())
+        np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
+        total += got
+    np.testing.assert_allclose(
+        total, triples_energy(o, v, *arrays.values()), atol=1e-11, rtol=1e-10
+    )
+
+
+@pytest.mark.parametrize("o,v,seed,chunk", [(2, 3, 223, 1), (3, 5, 224, 2)])
+def test_runtime_indexed_complete_tiled_reference(
+    o: typing.Any, v: typing.Any, seed: typing.Any, chunk: typing.Any
+) -> None:
+    arrays = dict(zip(INPUT_NAMES, _random_case(o, v, seed), strict=True))
+    got = runtime_tile_triples_energy_tensorir(o, v, arrays, vir_chunk_size=chunk)
+    expected = triples_energy(o, v, *arrays.values())
+    np.testing.assert_allclose(got, expected, atol=1e-11, rtol=1e-10)
+
+
+def test_runtime_control_subbatches_preserve_triangular_order() -> None:
+    tile = TileSpec(0, 3, 3)
+    batches = list(runtime_tile_control_batches(tile, 4))
+    assert [int(np.sum(batch["active"])) for batch in batches] == [4, 4, 2]
+    recovered = []
+    for batch in batches:
+        active = np.flatnonzero(batch["active"])
+        recovered.extend(
+            zip(
+                batch["a_map"][active],
+                batch["b_map"][active],
+                batch["c_map"][active],
+                strict=True,
+            )
+        )
+    assert recovered == list(tile)
+
+
+def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -> None:
+    small = build_runtime_tile_triples_program(2, 3, capacity=4)
+    large = build_runtime_tile_triples_program(3, 8, capacity=64)
+    assert len(small.live_nodes) == len(large.live_nodes)
+    assert not any(node.op == "gather" for node in large.live_nodes)
+    assert sum(node.op == "runtime_indexed_select" for node in large.live_nodes) > 0
+
+
+def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates() -> None:
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+
+    program = build_runtime_tile_triples_program(4, 8, capacity=120)
+    target = cuda_target_info("sm_120")
+    baseline = plan_cuda(program, target, max_bytes=2 << 30)
+    streamed = plan_cuda(
+        program,
+        target,
+        max_bytes=2 << 30,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+
+    assert streamed.identity != baseline.identity
+    assert streamed.arena_bytes * 20 < baseline.arena_bytes
+    assert sum(step.virtual for step in streamed.steps) > 150
+    assert sum(step.gemm != "none" for step in streamed.steps) < sum(
+        step.gemm != "none" for step in baseline.steps
+    )
+
+    q_domain = (
+        next(
+            node
+            for node in program.live_nodes
+            if node.op == "input" and node.attrs["name"] == "a_map"
+        )
+        .spec.indices[0]
+        .domain
+    )
+    for step in streamed.steps:
+        indices = step.node.spec.indices
+        if (
+            step.node.op not in ("input", "constant")
+            and indices
+            and all(index.domain == q_domain for index in indices)
+        ):
+            assert not step.virtual
+
+
+# ---------------------------------------------------------------------------
 # Determinism / chunk size independence
 # ---------------------------------------------------------------------------
 
@@ -380,6 +495,128 @@ def test_build_tile_program_refuses_invalid_inputs() -> None:
         build_tile_triples_program(2, 3, vir_chunk=(-1, 2))
     with pytest.raises(ValueError):
         build_tile_triples_program(2, 3, vir_chunk=(3, 1))
+
+
+def test_runtime_domain_planner_shrinks_only_after_budget_rejection(
+    tmp_path: typing.Any,
+) -> None:
+    from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
+
+    config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)
+    compiler = SimpleNamespace(target=object())
+    executor = CudaTriplesTiles(config, compiler, tmp_path)
+    seen = []
+
+    def fake_plan(
+        program: typing.Any, target: typing.Any, *, max_bytes: typing.Any
+    ) -> typing.Any:
+        assert target is compiler.target
+        assert max_bytes == config.max_bytes
+        capacity = program.provenance["runtime_domain_capacity"]
+        seen.append(capacity)
+        if capacity > 2:
+            raise ValueError("infeasible tensor byte budget: synthetic rejection")
+        return SimpleNamespace(peak_bytes=1234, identity=f"runtime-{capacity}")
+
+    executor._plan_cuda = fake_plan
+    capacity, plan, attempts = executor.plan_runtime_domain()
+    assert seen == [6, 3, 1]
+    assert capacity == 1
+    assert plan.identity == "runtime-1"
+    assert [entry["status"] for entry in attempts] == [
+        "infeasible",
+        "infeasible",
+        "selected",
+    ]
+
+
+def test_cuda_runtime_domain_reuses_one_plan_artifact_and_owner(
+    tmp_path: typing.Any,
+) -> None:
+    """Multiple logical tiles must not rebuild the scientific CUDA program."""
+    from tools.vibeqc_cc.triples_cuda import CudaTriplesTiles, TriplesTileConfig
+
+    arrays = dict(zip(INPUT_NAMES, _random_case(2, 3, 402), strict=True))
+    config = TriplesTileConfig(2, 3, vir_chunk_size=1, max_bytes=256 << 20)
+    compiler = SimpleNamespace(target=object())
+    executor = CudaTriplesTiles(config, compiler, tmp_path)
+    calls: dict[str, typing.Any] = {
+        "plan": 0,
+        "compile": 0,
+        "owners": 0,
+        "uploads": [],
+        "runs": 0,
+    }
+    plan = SimpleNamespace(peak_bytes=1234, identity="runtime-plan")
+    artifact = SimpleNamespace(metadata={"key": "runtime-artifact"})
+
+    def fake_plan(
+        program: typing.Any, target: typing.Any, *, max_bytes: typing.Any
+    ) -> typing.Any:
+        calls["plan"] += 1
+        assert target is compiler.target
+        assert max_bytes == config.max_bytes
+        assert any(node.op == "runtime_indexed_select" for node in program.live_nodes)
+        return plan
+
+    def fake_compile(
+        current_plan: typing.Any, current_compiler: typing.Any, cache: typing.Any
+    ) -> typing.Any:
+        calls["compile"] += 1
+        assert current_plan is plan
+        assert current_compiler is compiler
+        assert cache == tmp_path
+        return artifact
+
+    class FakeResident:
+        def __init__(
+            self,
+            current_plan: typing.Any,
+            current_artifact: typing.Any,
+            *,
+            device: typing.Any,
+        ) -> None:
+            calls["owners"] += 1
+            assert current_plan is plan
+            assert current_artifact is artifact
+            assert device == 0
+            self.device = {"test_only": True}
+            self._last_value = 0.0
+
+        def __enter__(self) -> typing.Any:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+        def upload(self, feeds: typing.Any) -> None:
+            calls["uploads"].append(tuple(sorted(feeds)))
+            if "active" in feeds:
+                self._last_value = float(np.sum(feeds["active"]))
+
+        def run(self, *, profile: typing.Any = False) -> typing.Any:
+            assert profile is False
+            calls["runs"] += 1
+            return {"triples_energy": object()}, {}
+
+        def download(self, _lease: typing.Any) -> np.ndarray:
+            return np.asarray(self._last_value)
+
+    executor._plan_cuda = fake_plan
+    executor._compile_resident = fake_compile
+    executor._PreparedResident = FakeResident
+    result = executor.run_tiles(arrays)
+
+    assert calls["plan"] == calls["compile"] == calls["owners"] == 1
+    assert calls["runs"] == result.tile_count == 3
+    assert calls["uploads"][0] == tuple(sorted(INPUT_NAMES))
+    assert all(
+        upload == ("a_map", "active", "b_map", "c_map", "degeneracy")
+        for upload in calls["uploads"][1:]
+    )
+    assert result.plan_identity == "runtime-plan"
+    assert result.artifact_keys == ["runtime-artifact"]
+    assert result.peak_bytes_per_tile == [1234] * result.tile_count
 
 
 def test_tile_enumerator_refuses_invalid_inputs() -> None:

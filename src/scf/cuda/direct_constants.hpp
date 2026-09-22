@@ -21,12 +21,10 @@ namespace vibeqc::scf::cuda_execution {
 constexpr double kMixedPrecisionFloat32UnitRoundoff = 5.9604644775390625e-08;
 static_assert(kMixedPrecisionFloat32UnitRoundoff ==
               cuda_policy::kMixedPrecisionFloat32UnitRoundoff);
-// Small fixed-topology fleet buckets benefit from evaluating ERIs once and
-// replaying them from the persistent arena. Larger AO spaces switch to fused
-// direct J/K so device memory remains O(N^2), not O(N^4).
+// Workload thresholds still shared with bucket/topology admission. They are
+// intentionally left for the next profile-identity slice; this change first
+// removes device-resource constants whose legality can be resolved now.
 constexpr std::size_t kPersistentEriAoLimit = 16;
-// Below the persistent-ERI boundary, one lightweight kernel avoids cuBLAS
-// launch overhead. Production direct-J/K workloads use batched GEMM.
 constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Schwarz diagonal ERIs use the largest device call frame in the direct path.
 // One thread per block prevents a full warp of those frames from exhausting
@@ -38,25 +36,9 @@ constexpr unsigned kSchwarzThreads = 1;
 // exact-class pages and the same generated consumers. Keeping the cache modest
 // also leaves room for the large AOT module and CUDA Graph on a 32 GiB device.
 constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;
-constexpr std::size_t kBoundedGeneratedMaximumTaskCapacity = 8U * 1024U * 1024U;
-// Keep the fixed-topology generated descriptor arena below one GiB.  The
-// exact tile count is a topology property, so using it as a conservative
-// admission check prevents a 384-AO bucket from attempting an ~11 GiB
-// allocation before it can fall back to the bounded streaming route.
-constexpr std::size_t kFixedGeneratedTaskArenaMaximumBytes = std::size_t{1} << 30;
-constexpr std::size_t kDirectCudaStackLimitBytes = std::size_t{64} << 10;
-// Persistent direct-force workers retain one AO-quartet warp per block. Eight
-// resident workers per SM balance the high-register force kernels while
-// replacing topology-capacity grids with device-side work stealing.
-// Fock, force, and generated-shell queues all launch one-warp workers and use
-// the same occupancy target. Keep one shared limit so their scheduling policy
-// cannot drift when the device SM count changes.
-constexpr unsigned kPersistentQuartetWarpsPerMultiprocessor = 8;
-// Resident psss force blocks keep one p-s primitive-pair list in shared
-// memory while their threads traverse the system's s-s ket pairs. Large
-// contracted bases fall back to the established compact-tile worker.
-constexpr unsigned kResidentPsssThreads = 128;
-constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;
+// Resident-PSSS launch/admission parameters are compiler-owned and emitted
+// through generated_direct_resident_psss_schedule.cuh. Keep this header for
+// native correctness/topology invariants rather than accepted tuning evidence.
 // Orders zero through six have dedicated analytic derivatives and enough work
 // to amortize the device queue. Higher generic Dual3 orders retain fixed grids
 // because queue state raises their already-maximal register footprint without
@@ -109,6 +91,7 @@ constexpr unsigned kDdpsShellClass = 16;
 constexpr unsigned kDdppShellClass = 17;
 constexpr unsigned kDddpShellClass = 19;
 constexpr unsigned kDdddShellClass = 20;
+constexpr unsigned kFsssShellClass = 21;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask = std::uint64_t{1} << kDdddShellClass;
 // The production profile covers the contiguous canonical class range from
@@ -118,7 +101,8 @@ constexpr std::uint64_t kDdddShellClassMask = std::uint64_t{1} << kDdddShellClas
 // separately qualified generated force consumer may still own dddd gradients.
 // Both routes enumerate pair-class segments directly and therefore avoid a
 // whole-topology generic fallback scan.
-constexpr std::uint64_t kStreamingFockShellClassMask = (std::uint64_t{1} << 21U) - 1U;
+constexpr std::uint64_t kCanonicalSpdShellClassMask = (std::uint64_t{1} << 21U) - 1U;
+constexpr std::uint64_t kStreamingFockShellClassMask = kCanonicalSpdShellClassMask;
 constexpr std::uint64_t kGeneratedStreamingFockShellClassMask =
     kStreamingFockShellClassMask & ~kDdddShellClassMask;
 constexpr std::uint64_t kNativeStreamingFockShellClassMask = kDdddShellClassMask;
@@ -158,9 +142,9 @@ constexpr std::uint64_t kBoundedForceSignatureShellClassMask =
     (std::uint64_t{1} << kDpdsShellClass) | (std::uint64_t{1} << kDpdpShellClass) |
     (std::uint64_t{1} << kDdpsShellClass) | (std::uint64_t{1} << kDdppShellClass) |
     (std::uint64_t{1} << kDddpShellClass) | (std::uint64_t{1} << kDdddShellClass);
-// ``ssss`` and ``psss`` remain on the validated handwritten force path.  In
-// bounded mode they use the same exact page stream as generated classes, so
-// neither class is accidentally hidden by the AOT force capability mask.
+// ``ssss`` generated force mathematics and the current ``psss`` low-order path
+// both reuse the exact bounded page scheduler. Keep both classes in this native-
+// scheduler mask so neither is hidden by the standalone AOT force capability mask.
 constexpr std::uint64_t kBoundedNativePagedForceShellClassMask =
     (std::uint64_t{1} << kSsssShellClass) | (std::uint64_t{1} << kPsssShellClass);
 // The scalar PSPS and PPSS force workers assign one complete task to each

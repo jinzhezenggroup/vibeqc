@@ -307,8 +307,13 @@ VIBEQC_D4_EEQ_HD inline std::size_t complete_d4_eeq_workspace_elements(int atoms
          3 * n;
 }
 
-// Complete molecular D4 EEQ energy/gradient. The caller selects a table profile
-// matching p.ga/p.gc; profile mismatches are rejected rather than silently mixed.
+// Qualification/oracle-only complete molecular D4 EEQ composition retained from
+// #551. Production must use generated_d4_derivative.hpp so this duplicate
+// handwritten chain rule cannot silently regain runtime ownership. The primitive
+// EEQ response and fixed-charge D4 evaluators above remain the independently
+// qualified custom scientific providers.
+// The caller selects a table profile matching p.ga/p.gc; profile mismatches are
+// rejected rather than silently mixed.
 VIBEQC_D4_EEQ_HD inline D4Status evaluate_complete_d4_eeq_with_tables(
     int n, const std::int32_t* z, const double* xyz, double total_charge, const D4Parameters& p,
     D4EEQProfile profile, D4Tables d4_tables, EEQTables eeq_tables, double* workspace,

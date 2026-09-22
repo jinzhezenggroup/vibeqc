@@ -5,10 +5,12 @@
 #include <string>
 
 #include "molecule/basis.hpp"
+#include "runtime/resource_usage.hpp"
 #include "scf/fleet.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/fock_provider.hpp"
 #include "scf/mean_field.hpp"
+#include "scf/proposals.hpp"
 
 namespace {
 using namespace vibeqc::scf;
@@ -265,6 +267,136 @@ void molecular_endpoints() {
               "mixed-provider stationary molecular force");
       }
 
+  // #990 first slice: establish exact accepted-iterate delta-D parity before
+  // introducing any density-weighted quartet compaction. Finalization remains
+  // two ordinary full physical builds.
+  for (bool uhf : {false, true}) {
+    ScfOptions baseline_options;
+    baseline_options.energy_tolerance = 1e-12;
+    baseline_options.density_tolerance = 1e-10;
+    const auto direct_spec = make_hf_fock_spec(uhf ? FockSpin::Unrestricted : FockSpin::Restricted);
+    baseline_options.resolved_fock_build =
+        resolve_fock_build(direct_spec, FockBackend::Cpu, baseline_options.screening_tolerance);
+    const auto baseline = run_cpu_fock_strategy(system, nullptr, baseline_options);
+    // One identical full-build iteration isolates retained anchor storage.
+    const auto observed_peak = [&](bool enabled) {
+      auto probe_options = baseline_options;
+      probe_options.max_iterations = 1;
+      probe_options.compute_forces = false;
+      probe_options.incremental_direct_jk = enabled;
+      auto& observation = vibeqc::runtime::cpu_resource_observation;
+      const auto saved = observation;
+      observation = {};
+      observation.active = true;
+      observation.outer_host_bytes = 17;
+      (void)run_cpu_fock_strategy(system, nullptr, probe_options);
+      const auto peak = observation.peak_bytes;
+      require(observation.outer_host_bytes == 17, "incremental observation leaked outer scope");
+      observation = saved;
+      return peak;
+    };
+    const auto ordinary_peak = observed_peak(false);
+    const auto incremental_peak = observed_peak(true);
+    const auto n = vibeqc::molecule::ao_count(system);
+    const auto anchor_bytes = (uhf ? 5U : 3U) * n * n * sizeof(double);
+    require(incremental_peak >= ordinary_peak + anchor_bytes,
+            "incremental density/J/K anchors missing from simultaneous CPU observation");
+
+    auto incremental_options = baseline_options;
+    incremental_options.incremental_direct_jk = true;
+    incremental_options.incremental_direct_jk_rebuild_interval = 0;
+    const auto incremental = run_cpu_fock_strategy(system, nullptr, incremental_options);
+    require(baseline.converged && incremental.converged, "incremental direct J/K SCF failed");
+    close(incremental.energy, baseline.energy, 2e-12, "incremental direct J/K energy drift");
+    matrix(incremental.density, baseline.density, "incremental direct J/K density drift", 2e-11);
+    matrix(incremental.forces, baseline.forces, "incremental direct J/K force drift", 2e-9);
+
+    const auto& d = incremental.incremental_direct_jk;
+    require(d.requested && d.active, "exact direct J/K incremental mode was not admitted");
+    require(d.anchor_full_builds == 1, "incremental direct J/K did not establish one anchor");
+    require(d.delta_builds + d.anchor_full_builds == incremental.iterations,
+            "incremental direct J/K counters do not match accepted SCF evaluations");
+    require(d.anchor_updates == d.delta_builds,
+            "incremental direct J/K anchor-update counter mismatch");
+    require(d.post_scf_full_builds == 2,
+            "incremental direct J/K bypassed strict physical finalization");
+    require(d.periodic_rebuilds == 0, "disabled periodic rebuild unexpectedly executed");
+
+    auto asymmetric = system;
+    asymmetric.atoms[1].atomic_number = 2;
+    asymmetric.electron_count = uhf ? 3 : 2;
+    asymmetric.multiplicity = uhf ? 2 : 1;
+    auto periodic_options = incremental_options;
+    periodic_options.incremental_direct_jk_rebuild_interval = 1;
+    const auto full_asymmetric = run_cpu_fock_strategy(asymmetric, nullptr, baseline_options);
+    const auto periodic = run_cpu_fock_strategy(asymmetric, nullptr, periodic_options);
+    require(full_asymmetric.converged && periodic.converged,
+            "asymmetric periodic incremental solve failed");
+    close(periodic.energy, full_asymmetric.energy, 2e-11, "periodic incremental energy drift");
+    matrix(periodic.forces, full_asymmetric.forces, "periodic incremental force drift", 2e-9);
+    const auto& refresh = periodic.incremental_direct_jk;
+    require(refresh.periodic_rebuilds > 0, "periodic anchor refresh was not exercised");
+    require(refresh.anchor_full_builds == refresh.periodic_rebuilds + 1,
+            "periodic anchor full-build counter mismatch");
+    require(refresh.anchor_full_builds + refresh.delta_builds == periodic.iterations,
+            "periodic counter accounting lost an accepted iterate");
+    require(refresh.post_scf_full_builds == 2, "periodic mode bypassed physical finalization");
+
+    // A physically valid but non-improving proposal must execute full trial
+    // operators without becoming an accepted incremental anchor.
+    unsigned trial_builds = 0;
+    unsigned rejected_proposals = 0;
+    ScfHooks hooks;
+    hooks.propose = [](const ScfSnapshot& snapshot) {
+      if (snapshot.iteration != 1) return ScfProposal{};
+      return ScfProposal{ProposalRepresentation::ensemble_density, snapshot.generation,
+                         snapshot.iteration, snapshot.density};
+    };
+    hooks.observe = [&](const ScfSnapshot& snapshot, const ProposalDecision& decision) {
+      trial_builds += decision.trials;
+      if (snapshot.iteration == 1) {
+        require(decision.action == ProposalAction::rejected && decision.trials == 4,
+                "non-improving physical proposal did not exercise four rejected full builds");
+        ++rejected_proposals;
+      }
+    };
+    auto proposal_options = periodic_options;
+    proposal_options.hooks = &hooks;
+    const auto guarded = run_cpu_fock_strategy(asymmetric, nullptr, proposal_options);
+    require(guarded.converged && rejected_proposals == 1,
+            "incremental proposal rejection lost the converged fallback");
+    const auto& guarded_work = guarded.incremental_direct_jk;
+    require(guarded_work.bypass_full_builds == trial_builds && trial_builds == 4,
+            "incremental proposal bypass work was not counted exactly");
+    require(guarded_work.anchor_full_builds + guarded_work.delta_builds == guarded.iterations,
+            "a rejected trial became an accepted incremental anchor");
+    require(guarded.fock_builds == guarded.iterations + trial_builds + 2,
+            "incremental trial/physical Fock work does not reconcile");
+    require(guarded_work.post_scf_full_builds == 2,
+            "proposal mode bypassed strict full physical finalization");
+    close(guarded.energy, full_asymmetric.energy, 2e-11, "rejected proposal changed energy");
+    matrix(guarded.forces, full_asymmetric.forces, "rejected proposal changed forces", 2e-9);
+  }
+
+  // Approximate providers are deliberately outside #990's exact baseline and
+  // must fail closed to ordinary full builds rather than silently mixing models.
+  {
+    ScfOptions options;
+    options.energy_tolerance = 1e-12;
+    options.density_tolerance = 1e-10;
+    options.incremental_direct_jk = true;
+    auto spec = make_hf_fock_spec(FockSpin::Restricted);
+    spec.coulomb.approximation = FockApproximation::DensityFitted;
+    options.resolved_fock_build = resolve_fock_build(spec, FockBackend::Cpu);
+    const auto result = run_cpu_fock_strategy(system, nullptr, options);
+    require(result.converged, "incremental fail-closed DF control failed");
+    require(result.incremental_direct_jk.requested && !result.incremental_direct_jk.active,
+            "incremental direct J/K incorrectly admitted an approximate provider");
+    require(result.incremental_direct_jk.anchor_full_builds == 0 &&
+                result.incremental_direct_jk.delta_builds == 0,
+            "inactive incremental direct J/K reported provider work");
+  }
+
   auto helium = system;
   helium.atoms = {{2, {0.0, 0.0, 0.0}}};
   helium.shells.resize(1);
@@ -289,6 +421,57 @@ void molecular_endpoints() {
   const auto recovered = fleet.execute({});
   require(recovered[1].status == VIBEQC_STATUS_SUCCESS && recovered[1].warm_start_used,
           "rejected coordinates replaced previous warm state");
+}
+
+void range_exchange_provider() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
+  system.shells = {{0, 0, {{0.8, 1.0}}}, {1, 0, {{0.6, 1.0}}}};
+  system.electron_count = 2;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          "range Fock fixture failed");
+
+  constexpr double omega = 0.33;
+  const auto full = vibeqc::integrals::build_integrals(system, false, true).eri;
+  const auto lr =
+      vibeqc::integrals::build_range_eri(system, vibeqc::integrals::CoulombRange::Long, omega);
+  const auto sr =
+      vibeqc::integrals::build_range_eri(system, vibeqc::integrals::CoulombRange::Short, omega);
+  require(full.size() == lr.size() && full.size() == sr.size(), "range ERI shape mismatch");
+  for (std::size_t i = 0; i < full.size(); ++i)
+    close(sr[i] + lr[i], full[i], 2e-12, "direct SR+LR identity");
+
+  auto spec = make_hf_fock_spec(FockSpin::Restricted);
+  spec.derivative_order = 0;
+  spec.exchange = {true, -0.23, FockOperator::LongRange, omega, FockApproximation::Exact};
+  const auto resolved = resolve_fock_build(spec, FockBackend::Cpu);
+  PreparedFockPlan prepared(system, nullptr, resolved);
+  const std::vector<double> density{0.8, 0.1, 0.1, 0.6};
+  const auto actual = prepared.build(density);
+  require(actual.coulomb.size() == 4 && actual.exchange_alpha.size() == 4,
+          "range provider lost J/K output");
+
+  auto full_k_spec = spec;
+  full_k_spec.coulomb.present = false;
+  full_k_spec.exchange.op = FockOperator::FullRange;
+  full_k_spec.exchange.omega = 0.0;
+  const auto expected_k =
+      build_exact_direct_jk(resolve_fock_build(full_k_spec, FockBackend::Cpu), 2, lr, density);
+  matrix(actual.exchange_alpha, expected_k.exchange_alpha, "native LR K contraction", 2e-12);
+
+  auto changed = spec;
+  changed.exchange.omega = 0.45;
+  require(!prepared.matches(system, nullptr, resolve_fock_build(changed, FockBackend::Cpu), -1, 0),
+          "changed range omega reused prepared source");
+  PreparedFockPlan changed_plan(system, nullptr, resolve_fock_build(changed, FockBackend::Cpu));
+  const auto changed_k = changed_plan.build(density).exchange_alpha;
+  require(std::abs(changed_k[0] - actual.exchange_alpha[0]) > 1e-8,
+          "changed range omega did not change exchange");
+
+  spec.derivative_order = 1;
+  rejected([&] { (void)resolve_fock_build(spec, FockBackend::Cpu); },
+           "range-separated common Fock force was advertised by value-only slice");
 }
 
 void prepared_identity() {
@@ -319,6 +502,13 @@ void prepared_identity() {
   spec.coulomb.approximation = FockApproximation::DensityFitted;
   const auto mixed = resolve_fock_build(spec, FockBackend::Cpu);
   PreparedFockPlan fitted(system, &system, mixed);
+  if (!cpu_materialized_df_derivatives_requested()) {
+    const auto* fused = fitted.cpu_fitted_data();
+    require(fused && fused->raw.metric_derivative.empty() &&
+                fused->raw.three_center_derivative.empty() &&
+                fused->df_gradient_orbital.has_value() && fused->df_gradient_auxiliary.has_value(),
+            "prepared CPU DF force source materialized coordinate derivative tensors");
+  }
   require(!fitted.matches(system, &changed, mixed, -1, 0), "changed auxiliary basis accepted");
   require(!fitted.matches(system, &system, resolve_fock_build(spec, FockBackend::Cpu, 1e-12, 1e-6),
                           -1, 0),
@@ -335,6 +525,7 @@ int main() {
     combinations();
     preflight();
     molecular_endpoints();
+    range_exchange_provider();
     prepared_identity();
     std::cout << "CPU Fock providers: independent raw matrices, energy, metric response, preflight "
                  "PASS\n";

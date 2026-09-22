@@ -27,7 +27,13 @@ FockBuildSpec selected(FockBuildSpec spec, bool j, bool k) {
 }
 }  // namespace
 
-CpuFockProviderView::CpuFockProviderView(const integrals::IntegralData& exact) : exact_(&exact) {}
+CpuFockProviderView::CpuFockProviderView(const integrals::IntegralData& exact,
+                                         const std::vector<double>* range_eri,
+                                         FockOperator range_operator, double range_omega)
+    : exact_(&exact),
+      range_eri_(range_eri),
+      range_operator_(range_operator),
+      range_omega_(range_omega) {}
 CpuFockProviderView::CpuFockProviderView(const DensityFittingScfData& fitted) : fitted_(&fitted) {}
 FockApproximation CpuFockProviderView::approximation() const {
   return exact_ ? FockApproximation::Exact : FockApproximation::DensityFitted;
@@ -42,8 +48,19 @@ void CpuFockProviderView::validate(const ResolvedFockBuild& strategy) const {
   require(nbf() > 0, "empty Fock provider AO basis");
   if (exact_) {
     const std::size_t count = product(matrix, matrix);
-    require(exact_->eri.size() == count, "exact Fock provider ERI shape mismatch");
-    finite(exact_->eri);
+    const bool needs_full =
+        strategy.spec.coulomb.present ||
+        (strategy.spec.exchange.present && strategy.spec.exchange.op == FockOperator::FullRange);
+    if (needs_full) {
+      require(exact_->eri.size() == count, "exact Fock provider ERI shape mismatch");
+      finite(exact_->eri);
+    }
+    if (strategy.spec.exchange.present && strategy.spec.exchange.op != FockOperator::FullRange) {
+      require(range_eri_ && range_operator_ == strategy.spec.exchange.op &&
+                  range_omega_ == strategy.spec.exchange.omega && range_eri_->size() == count,
+              "range-separated Fock provider operator/omega/tensor mismatch");
+      finite(*range_eri_);
+    }
     if (strategy.spec.derivative_order) {
       require(exact_->eri_derivative.size() == product(ncoord(), count),
               "exact Fock provider derivative shape mismatch");
@@ -63,21 +80,47 @@ void CpuFockProviderView::validate(const ResolvedFockBuild& strategy) const {
     finite(raw.metric);
     finite(raw.three_center);
     finite(b.values);
+    if (!b.auxiliary_major_values.empty()) {
+      require(b.auxiliary_major_values.size() == tensor,
+              "DF Fock provider Q-major cache shape mismatch");
+      finite(b.auxiliary_major_values);
+    }
     if (strategy.spec.derivative_order) {
-      require(raw.metric_derivative.size() == product(ncoord(), metric) &&
-                  raw.three_center_derivative.size() == product(ncoord(), tensor),
-              "DF Fock provider derivative shape mismatch");
-      finite(raw.metric_derivative);
-      finite(raw.three_center_derivative);
+      const bool materialized = raw.metric_derivative.size() == product(ncoord(), metric) &&
+                                raw.three_center_derivative.size() == product(ncoord(), tensor);
+      const bool weighted = raw.metric_derivative.empty() && raw.three_center_derivative.empty() &&
+                            fitted_->df_gradient_orbital.has_value() &&
+                            fitted_->df_gradient_auxiliary.has_value();
+      require(materialized || weighted, "DF Fock provider derivative shape/source mismatch");
+      if (materialized) {
+        finite(raw.metric_derivative);
+        finite(raw.three_center_derivative);
+      }
     }
   }
 }
 
 DirectJkMatrices CpuFockProviderView::build(FockBuildSpec spec, const std::vector<double>& density,
                                             const std::vector<double>& beta) const {
-  if (exact_)
-    return build_exact_direct_jk(resolve_fock_build(spec, FockBackend::Cpu), nbf(), exact_->eri,
-                                 density, beta);
+  if (exact_) {
+    const auto strategy = resolve_fock_build(spec, FockBackend::Cpu);
+    if (!spec.exchange.present || spec.exchange.op == FockOperator::FullRange)
+      return build_exact_direct_jk(strategy, nbf(), exact_->eri, density, beta);
+    DirectJkMatrices result;
+    result.nbf = nbf();
+    if (spec.coulomb.present) {
+      auto j =
+          build_exact_direct_jk(resolve_fock_build(selected(spec, true, false), FockBackend::Cpu),
+                                nbf(), exact_->eri, density, beta);
+      result.coulomb = std::move(j.coulomb);
+    }
+    auto k =
+        build_exact_direct_jk(resolve_fock_build(selected(spec, false, true), FockBackend::Cpu),
+                              nbf(), *range_eri_, density, beta);
+    result.exchange_alpha = std::move(k.exchange_alpha);
+    result.exchange_beta = std::move(k.exchange_beta);
+    return result;
+  }
   const JkTermSelection terms{spec.coulomb.present, spec.exchange.present};
   if (spec.spin == FockSpin::Restricted) {
     auto jk = build_density_fitting_rhf_jk(fitted_->three_center, density, terms);
@@ -103,9 +146,23 @@ std::vector<double> CpuFockProviderView::derivative(FockBuildSpec spec,
   }
   const JkCoefficients coefficients{spec.coulomb.present ? spec.coulomb.coefficient : 0.0,
                                     spec.exchange.present ? spec.exchange.coefficient : 0.0};
-  if (spec.spin == FockSpin::Restricted)
+  const bool weighted =
+      fitted_->raw.metric_derivative.empty() && fitted_->raw.three_center_derivative.empty() &&
+      fitted_->df_gradient_orbital.has_value() && fitted_->df_gradient_auxiliary.has_value();
+  if (spec.spin == FockSpin::Restricted) {
+    if (weighted)
+      return build_density_fitting_rhf_weighted_gradient(
+                 *fitted_->df_gradient_orbital, *fitted_->df_gradient_auxiliary, fitted_->raw,
+                 density, fitted_->metric_relative_threshold, coefficients)
+          .derivative;
     return build_density_fitting_rhf_gradient(fitted_->raw, density,
                                               fitted_->metric_relative_threshold, coefficients)
+        .derivative;
+  }
+  if (weighted)
+    return build_density_fitting_uhf_weighted_gradient(
+               *fitted_->df_gradient_orbital, *fitted_->df_gradient_auxiliary, fitted_->raw,
+               density, beta, fitted_->metric_relative_threshold, coefficients)
         .derivative;
   return build_density_fitting_uhf_gradient(fitted_->raw, density, beta,
                                             fitted_->metric_relative_threshold, coefficients)

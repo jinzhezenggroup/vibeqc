@@ -1,8 +1,10 @@
 # VibeQC documentation
 
 VibeQC is an experimental, accelerator-native quantum-chemistry engine. The
-current executable method scope is RHF and UHF; the long-term mission is to
-cover all quantum-chemistry methods through a coherent batched interface.
+public executable registry currently spans Hartree-Fock, density-functional,
+perturbation, coupled-cluster, and semiempirical method families. See the
+[generated public method table](public_methods.md) for canonical names and
+declared properties; method-specific backend and model constraints fail closed.
 
 ## Users
 
@@ -13,12 +15,16 @@ cover all quantum-chemistry methods through a coherent batched interface.
   strict scientific compatibility, corruption handling and per-item restore.
 - [Cross-basis HF initialization](basis_projection.md): rectangular overlaps,
   occupied-space projection and complete source-plus-target cost accounting.
+- [Deterministic progressive HF](progressive_hf.md): immutable target problems,
+  typed two-stage plans, bounded fallback and fail-closed final verification.
 - [External basis data](external_basis.md): offline input, provenance, element/ECP
   bookkeeping, per-operator limits and prepared-state identities.
 - [Scalar Gaussian ECPs](ecp.md): local/nonlocal integrals, complete direct HF
   gradients, supported domains and empirical quadrature convergence checks.
 - [Methods](methods.md): implemented methods, planned method families, and the
   acceptance standard for enabling new capabilities.
+- [Public native methods](public_methods.md): generated canonical method names,
+  aliases, properties, batch capability, and availability.
 - [Local autotuning](local_autotuning.md): optional workload-first CUDA tuning,
   compatible profile reuse, diagnostics, and homogeneous cluster export/import.
 - [Density fitting](density_fitting.md): milestone-1 correctness and planning
@@ -31,6 +37,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
 - [Architecture](architecture.md): scientific and runtime design decisions.
 - [Scientific compiler ownership](compiler_architecture.md): package boundaries,
   source generation, compatibility and dependency checks.
+- [Electronic method orchestration IR](electronic_method_ir.md): shared HF/KS/RCCSD
+  state, operator dataflow, iteration contracts, and lower-level IR identities.
 - [Experimental OpenCL contracts](opencl_backend.md): optional compiler/runtime
   execution, queried capabilities and the boundary before native HF integration.
 - [Shared Fock construction](fock_build.md): method-neutral J/K requests, exact
@@ -45,6 +53,8 @@ cover all quantum-chemistry methods through a coherent batched interface.
   gradients, bounded CUDA contractions and Direct/DF HF adapters.
 - [Density-fitting derivatives](df_derivatives.md): generic A/M responses,
   bounded HF weights, metric subspace response, and fused CUDA contractions.
+- [DF-CCSD(T) gradient composition](df_ccsdt_gradient.md): factorized B
+  cotangents, raw A/M pullback, fixed-rank metric response, and #158 boundaries.
 - [Integral IR contracts](integral_ir.md): operator centers, bounded raw blocks,
   external weights, serialization, and backend capability boundaries.
 - [TensorIR](tensor_ir.md): typed tensor equations, exact factors, symmetry-packed
@@ -65,6 +75,8 @@ Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [RCCSD state transport](state_transport.md): complete compatibility identities,
+  orbital-frame diagnostics and exact T1/T2 rotations.
 - [Conventional CPU RCCSD equations and solver](rccsd_bc.md)
 - [Generated RCCSD Lambda equation actions](rccsd_lambda.md)
 - [Localized occupied and pair-natural-orbital spaces](local_spaces.md)

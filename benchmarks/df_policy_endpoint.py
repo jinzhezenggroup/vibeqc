@@ -16,6 +16,7 @@ import os
 import subprocess
 import time
 import typing
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -38,8 +39,28 @@ CASES = {
     96: "water-tetramer-def2-svp-spherical",
     192: "water-octamer-s4-def2-svp-spherical",
     384: "water-hexadecamer-2s4-def2-svp-spherical",
+    648: "water-27mer-water27-derived-def2-svp-spherical",
     768: "water-32mer-4s4-def2-svp-spherical",
+    864: "water-36mer-water27-derived-def2-svp-spherical",
 }
+
+
+@contextmanager
+def _screening_feature_scope(enabled: bool) -> typing.Iterator[None]:
+    """Keep diagnostic work out of clean samples and restore on every exit."""
+    name = "VIBEQC_DF_SCREENING_FEATURES"
+    previous = os.environ.get(name)
+    if enabled:
+        os.environ[name] = "1"
+    else:
+        os.environ.pop(name, None)
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = previous
 
 
 def independent_reference(
@@ -208,6 +229,11 @@ def main() -> None:
         action="store_true",
         help="Capture detailed shell work only in the separate component pass",
     )
+    parser.add_argument(
+        "--screening-features",
+        action="store_true",
+        help="Capture intrusive #437 response-weight histograms in the component pass",
+    )
     parser.add_argument("--host-trace", action="store_true")
     parser.add_argument("--journal", action="store_true")
     parser.add_argument("--reference", type=Path)
@@ -249,6 +275,8 @@ def main() -> None:
         parser.error("requires Slurm, positive repeats and a nonnegative DF budget")
     if args.shell_work and not args.components_after:
         parser.error("--shell-work requires --components-after")
+    if args.screening_features and not args.shell_work:
+        parser.error("--screening-features requires --shell-work")
     if args.cpu_reference and args.reference:
         parser.error("choose one independent reference source")
     if (
@@ -343,6 +371,11 @@ def main() -> None:
         "source_patch_sha256": hashlib.sha256(patch).hexdigest(),
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "controls": {k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")},
+        "diagnostic_controls": {
+            "components_after": args.components_after,
+            "shell_work": args.shell_work,
+            "screening_features": args.screening_features,
+        },
         "scientific_settings": {
             "density_fitting_memory_budget_bytes": args.df_budget,
             "basis": cpu_orbital,
@@ -386,16 +419,19 @@ def main() -> None:
         """Keep raw numerical evidence even if a subsequent gate fails."""
         args.output.write_text(json.dumps(payload, indent=2) + "\n")
 
-    def execute(batch: typing.Any, *, cold: typing.Any = False) -> typing.Any:
-        """Time the complete strict energy-and-force endpoint."""
-        start = time.perf_counter()
-        result = batch.execute(
-            strict=True,
-            properties=("energy",)
-            if args.energy_only and not cold
-            else ("energy", "forces"),
-        )
-        seconds = time.perf_counter() - start
+    def execute(
+        batch: typing.Any, *, cold: typing.Any = False, screening_features: bool = False
+    ) -> typing.Any:
+        """Time the complete endpoint, excluding diagnostic control changes."""
+        with _screening_feature_scope(screening_features):
+            start = time.perf_counter()
+            result = batch.execute(
+                strict=True,
+                properties=("energy",)
+                if args.energy_only and not cold
+                else ("energy", "forces"),
+            )
+            seconds = time.perf_counter() - start
         return result, seconds
 
     select_policy(args.policies[0])
@@ -549,7 +585,9 @@ def main() -> None:
                 os.environ["VIBEQC_DF_SHELL_COUNTERS"] = "1"
                 if args.shell_work:
                     os.environ["VIBEQC_DF_SHELL_WORK"] = "1"
-            result, seconds = execute(batch)
+            result, seconds = execute(
+                batch, screening_features=diagnostic and args.screening_features
+            )
             if diagnostic:
                 if previous_counters is None:
                     os.environ.pop("VIBEQC_DF_SHELL_COUNTERS", None)

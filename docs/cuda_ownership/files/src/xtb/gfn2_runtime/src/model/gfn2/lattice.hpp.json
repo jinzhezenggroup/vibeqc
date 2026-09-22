@@ -1,0 +1,7 @@
+{
+  "path": "src/xtb/gfn2_runtime/src/model/gfn2/lattice.hpp",
+  "reason": "Pinned transitional GFN2 source for the shared CPU/CUDA binary64 lattice predicate and lattice geometry contract. The CUDA annotations preserve backend-identical acceptance semantics; public GFN2 CUDA execution is not admitted by #692.",
+  "regions": [],
+  "role": "scientific",
+  "subsystem": "gfn2"
+}

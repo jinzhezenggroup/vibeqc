@@ -242,6 +242,23 @@ def test_priority_and_target_resources_participate_in_selection_identity(
         select_specialization(**(case | {"profiles": (case["fallback"],)}))
 
 
+def test_omitted_fallback_is_fail_closed(case: typing.Any) -> None:
+    result = select_specialization(**(case | {"profiles": (), "fallback": None}))
+    assert result.status == "unsupported"
+    assert result.selected is None
+    assert result.fallback is None
+    assert result.to_payload()["fallback"] is None
+
+    target = replace(
+        case["target"], target=replace(case["target"].target, architecture="unknown")
+    )
+    result = select_specialization(**(case | {"target": target, "fallback": None}))
+    assert result.status == "unsupported"
+    assert result.selected is None
+    assert result.evaluations[0].eligible
+    assert not result.evaluations[0].promoted
+
+
 def test_feature_and_conjunction_order_do_not_change_identity(
     case: typing.Any,
 ) -> None:

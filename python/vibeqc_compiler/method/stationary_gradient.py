@@ -29,10 +29,17 @@ from vibeqc_compiler.tensor import (
     transpose_program,
 )
 
-from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
+from .nonlocal_correlation import NonlocalCorrelationPrimitive
+from .spec import (
+    ExactExchangePrimitive,
+    MethodIR,
+    RangeSeparatedExchangePrimitive,
+    SemilocalXCPrimitive,
+    UnsupportedMethod,
+)
 from .typecheck import BackendCapability, verify_method_ir
 
-VERSION = "stationary-gradient-plan-v2"
+VERSION = "stationary-gradient-plan-v3"
 SCF_POINT_MODEL = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 
 _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
@@ -41,7 +48,13 @@ _STATIONARY_GRADIENT_CAPABILITY = BackendCapability(
     ("unpolarized", "polarized"),
     (1,),
     ("rho", "sigma", "tau"),
-    ("semilocal-xc",),
+    (
+        "semilocal-xc",
+        "full-range-exchange",
+        "short-range-exchange",
+        "long-range-exchange",
+        "nonlocal-correlation",
+    ),
 )
 
 
@@ -95,7 +108,16 @@ _SOURCES = (
     GradientSource("overlap_pulay", "overlap_constraint", ("ao_center",)),
     GradientSource("nuclear", "nuclear_repulsion", ("nuclear_center",)),
 )
+_NONLOCAL_SOURCES = (
+    GradientSource("nonlocal_ao", "nonlocal_correlation", ("ao_center",)),
+    GradientSource("nonlocal_grid", "nonlocal_correlation", ("grid_point",)),
+    GradientSource("nonlocal_weight", "nonlocal_correlation", ("partition_weight",)),
+)
 _INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+_RANGE_EXCHANGE_SOURCE = {
+    "short-range": "exchange_short_range",
+    "long-range": "exchange_long_range",
+}
 _ECP_SOURCES = (
     GradientSource("ecp_local", "ecp_local_residual", ("ao_center", "ecp_center")),
     GradientSource(
@@ -168,7 +190,7 @@ class IntegralGradientBlock:
 
 @dataclass(frozen=True)
 class StationaryGradientPlan:
-    """One semilocal mathematical plan shared by future native lowerings.
+    """One stationary plan for semilocal and range-exchange MethodIR sources.
 
     Construction represents a complete inventory, not complete executable
     geometric providers. Integral contractions and the final reduction are
@@ -186,12 +208,35 @@ class StationaryGradientPlan:
             raise TypeError(
                 "stationary gradient requires an explicit mean-field envelope"
             )
+        semilocal = tuple(
+            p for p in self.method.primitives if type(p) is SemilocalXCPrimitive
+        )
+        ranges = tuple(
+            p
+            for p in self.method.primitives
+            if type(p) is RangeSeparatedExchangePrimitive
+        )
+        exchange = tuple(
+            p for p in self.method.primitives if type(p) is ExactExchangePrimitive
+        )
+        nonlocal_primitives = tuple(
+            p for p in self.method.primitives if type(p) is NonlocalCorrelationPrimitive
+        )
         if (
-            len(self.method.primitives) != 1
-            or type(self.method.primitives[0]) is not SemilocalXCPrimitive
+            len(semilocal) != 1
+            or len(exchange) > 1
+            or len(nonlocal_primitives) > 1
+            or len(self.method.primitives)
+            != len(semilocal) + len(ranges) + len(exchange) + len(nonlocal_primitives)
         ):
             raise UnsupportedMethod(
                 "required primitive has no stationary-gradient rule"
+            )
+        # Preserve independently qualified exchange and nonlocal envelopes
+        # without silently promoting a combined hybrid/nonlocal execution domain.
+        if (exchange or ranges) and nonlocal_primitives:
+            raise UnsupportedMethod(
+                "combined hybrid/nonlocal stationary gradients are not qualified"
             )
         verify_method_ir(
             self.method,
@@ -200,19 +245,94 @@ class StationaryGradientPlan:
             derivative_order=1,
         )
         required = {"energy-density", "feature-gradient"}
-        if not required <= set(self.method.primitives[0].derivative_capabilities):
+        if not required <= set(semilocal[0].derivative_capabilities):
             raise UnsupportedMethod("required XC feature derivative is unavailable")
+        if (
+            exchange
+            and "eri-first-derivative" not in exchange[0].derivative_capabilities
+        ):
+            raise UnsupportedMethod("required exchange ERI derivative is unavailable")
+        if any(
+            "nuclear-gradient" not in primitive.derivative_capabilities
+            for primitive in ranges
+        ):
+            raise UnsupportedMethod(
+                "required range-exchange nuclear derivative is unavailable"
+            )
+        if (
+            nonlocal_primitives
+            and "nuclear-gradient" not in nonlocal_primitives[0].derivative_capabilities
+        ):
+            raise UnsupportedMethod(
+                "required nonlocal-correlation nuclear derivative is unavailable"
+            )
+
+    @property
+    def exchange(self) -> typing.Any:
+        """Full-range exchange only; a single SR/LR node is not a global hybrid."""
+        return next(
+            (p for p in self.method.primitives if type(p) is ExactExchangePrimitive),
+            None,
+        )
+
+    @property
+    def range_exchange_primitives(self) -> typing.Any:
+        """Return the canonical SR/LR exchange nodes owned by MethodIR."""
+        return tuple(
+            primitive
+            for primitive in self.method.primitives
+            if type(primitive) is RangeSeparatedExchangePrimitive
+        )
+
+    @property
+    def range_exchange_sources(self) -> typing.Any:
+        return tuple(
+            GradientSource(
+                _RANGE_EXCHANGE_SOURCE[primitive.operator],
+                primitive.operator + "-exchange",
+                ("all_eri_centers",),
+            )
+            for primitive in self.range_exchange_primitives
+        )
+
+    def range_exchange_primitive(self, source: typing.Any) -> typing.Any:
+        """Resolve one source to its exact MethodIR coefficient/operator/omega."""
+        for primitive in self.range_exchange_primitives:
+            if _RANGE_EXCHANGE_SOURCE[primitive.operator] == source:
+                return primitive
+        raise ValueError("source is not a range-exchange gradient primitive")
 
     @property
     def sources(self) -> typing.Any:
-        if self.mean_field.hamiltonian == "scalar-semilocal-ecp":
-            return (
-                replace(_SOURCES[0], primitive="kinetic_effective_charge_attraction"),
+        base = (*_SOURCES[:2], *self.range_exchange_sources, *_SOURCES[2:])
+        sources = (
+            (
+                replace(base[0], primitive="kinetic_effective_charge_attraction"),
                 *_ECP_SOURCES,
-                *_SOURCES[1:-1],
-                replace(_SOURCES[-1], primitive="effective_charge_nuclear_repulsion"),
+                *base[1:-1],
+                replace(base[-1], primitive="effective_charge_nuclear_repulsion"),
             )
-        return _SOURCES
+            if self.mean_field.hamiltonian == "scalar-semilocal-ecp"
+            else base
+        )
+        if self.exchange is not None:
+            sources = (
+                *sources[:2],
+                GradientSource(
+                    "exact_exchange", "exact_exchange", ("all_eri_centers",)
+                ),
+                *sources[2:],
+            )
+        if not any(
+            type(p) is NonlocalCorrelationPrimitive for p in self.method.primitives
+        ):
+            return sources
+        result = []
+        for source in sources:
+            result.append(source)
+            if source.name == "xc_weight":
+                result.extend(_NONLOCAL_SOURCES)
+        return tuple(result)
 
     @property
     def source_names(self) -> typing.Any:
@@ -223,8 +343,10 @@ class StationaryGradientPlan:
         return 2 if self.method.spin == "polarized" else 1
 
     def to_payload(self) -> typing.Any:
-        return {
-            "schema": VERSION,
+        payload = {
+            "schema": VERSION
+            if self.exchange is None
+            else "stationary-gradient-plan-v2/global-hybrid",
             "method": self.method.semantic_payload(),
             "mean_field": asdict(self.mean_field),
             "sources": [asdict(source) for source in self.sources],
@@ -232,7 +354,19 @@ class StationaryGradientPlan:
             "density_convention": "occupation-weighted; sum alpha/beta for Coulomb",
             "integral_layout": "full ordered tuples; no implicit symmetry factors",
             "xc_coefficients": "already applied inside the resolved semilocal primitive",
+            "nonlocal_chain_rule": (
+                "AO-center, grid-point, and partition-weight sources are distinct "
+                "and must each be consumed exactly once"
+            ),
         }
+
+        if self.range_exchange_primitives:
+            payload["schema"] = "stationary-gradient-plan-v3/range-separated-hybrid"
+            payload["range_exchange"] = (
+                "ordered (i,k|j,l); density pairs (i,j)*(k,l); "
+                "RKS -a/4, UKS same-spin -a/2; omega held fixed"
+            )
+        return payload
 
     @property
     def identity(self) -> typing.Any:
@@ -255,6 +389,7 @@ class StationaryGradientPlan:
         terms: typing.Any,
         coordinates: typing.Any = 3,
         max_elements: typing.Any = 65536,
+        differentiate_densities: bool = False,
     ) -> typing.Any:
         """Generate dL/dI and its contraction with a bounded derivative tile.
 
@@ -265,17 +400,29 @@ class StationaryGradientPlan:
         In the J block each t denotes an ordered quartet: left/right densities
         are the corresponding (ab)/(cd) entries. In the h/S blocks t denotes an
         ordered pair. Providers remain responsible for correct center mapping.
-        Only I is differentiated. D/W must come from a validated stationary
-        owner when a later native endpoint binds the plan.
+        Only I is differentiated by this first-order block. Setting
+        ``differentiate_densities`` preserves D/W as differentiable inputs for
+        a later weight JVP; it never differentiates an SCF iteration. D/W must
+        come from a validated stationary owner at native endpoint binding.
         """
-        if (
-            source not in (*_INTEGRAL_SOURCES, *(s.name for s in _ECP_SOURCES))
+        range_primitive = None
+        if source in tuple(s.name for s in self.range_exchange_sources):
+            range_primitive = self.range_exchange_primitive(source)
+        elif (
+            source
+            not in (
+                *_INTEGRAL_SOURCES,
+                *(s.name for s in _ECP_SOURCES),
+                "exact_exchange",
+            )
             or source not in self.source_names
         ):
             raise ValueError("source is not an integral-gradient primitive")
         _positive(terms, "terms")
         _positive(coordinates, "coordinates")
         _positive(max_elements, "max_elements")
+        if type(differentiate_densities) is not bool:
+            raise TypeError("differentiate_densities must be bool")
         # Gate before generating any shape-sized AD constants or executing data.
         if terms * (coordinates + 2 * self.spin_blocks + 4) > max_elements:
             raise ValueError("integral-gradient block exceeds the element budget")
@@ -284,15 +431,47 @@ class StationaryGradientPlan:
         q = Index("q", IndexSpace("coordinate_block", "batch", coordinates))
         integrals = _input("integrals", (t,), differentiable=True)
         left_name = "weighted_density" if source == "overlap_pulay" else "density_left"
-        left = reduce_sum(_input(left_name, (s, t)), (0,))
-        if source == "coulomb":
-            right = reduce_sum(_input("density_right", (s, t)), (0,))
+        # Opt-in typing preserves existing first-gradient artifact identities
+        # while allowing HVP consumers to differentiate this same weight DAG.
+        left_input = _input(left_name, (s, t), differentiable=differentiate_densities)
+        if source == "exact_exchange":
             energy = einsum(
-                "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)
+                "st,st,t->",
+                left_input,
+                _input("density_right", (s, t), differentiable=differentiate_densities),
+                integrals,
+                coefficient=self.exchange.fock_coefficient(self.method.spin) / 2,
+            )
+        elif range_primitive is not None:
+            # For an ordered exchange quartet (i,k|j,l), callers bind the two
+            # density inputs to (i,j) and (k,l). RKS total density carries
+            # occupation two; UKS keeps alpha/beta separate and has no cross-spin
+            # exchange. These are the same coefficients as fixed-density Fock:
+            # Ex_RKS=-a/4 DD(ik|jl), Ex_UKS=-a/2 sum_s D_sD_s(ik|jl).
+            right = _input(
+                "density_right", (s, t), differentiable=differentiate_densities
+            )
+            factor = -range_primitive.coefficient * (
+                Fraction(1, 2) if self.spin_blocks == 2 else Fraction(1, 4)
+            )
+            energy = einsum(
+                "st,st,t->", left_input, right, integrals, coefficient=factor
             )
         else:
-            factor = -1 if source == "overlap_pulay" else 1
-            energy = einsum("t,t->", left, integrals, coefficient=factor)
+            left = reduce_sum(left_input, (0,))
+            if source == "coulomb":
+                right = reduce_sum(
+                    _input(
+                        "density_right", (s, t), differentiable=differentiate_densities
+                    ),
+                    (0,),
+                )
+                energy = einsum(
+                    "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)
+                )
+            else:
+                factor = -1 if source == "overlap_pulay" else 1
+                energy = einsum("t,t->", left, integrals, coefficient=factor)
         provenance = {"stationary_plan": self.identity, "source": source}
         objective = Program({"energy": energy}, provenance=provenance)
         weight = _unit_seeded_weight(objective)

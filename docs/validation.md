@@ -19,10 +19,10 @@ CUDA toolchain.
 ## CUDA benchmark execution profiles
 
 CUDA validation and benchmark tools share one scheduler-resource profile rather
-than embedding a cluster/GPU selector in each script. The current development
-default remains `partition=main`, `gres=gpu:5090:1`, one node and one task,
-with a finite per-tool time limit. These values are defaults for this checkout,
-not hardware requirements.
+than embedding a cluster/GPU selector in each script. The portable development
+default is `partition=main`, `gres=gpu:1`, one node and one task, with a finite
+per-tool time limit. A concrete GPU model such as `gpu:5090:1` is an explicit
+cluster/reproduction choice, not the implicit meaning of CUDA.
 
 Set `VIBEQC_BENCHMARK_PARTITION`, `VIBEQC_BENCHMARK_GRES`,
 `VIBEQC_BENCHMARK_NODES`, `VIBEQC_BENCHMARK_NTASKS`,
@@ -67,9 +67,9 @@ agree within the recorded `1e-8 Eh` threshold. The evidence is summarized in
 `build/issue-162-a/validation-summary.md` and is identified by SHA-256
 `f4f85324ef505576e7231c4ead2056f775a4fefc464e7765a0dcc5d92cc93cf9`.
 The PBE endpoint details and remote environment are recorded in
-`experiments/vibeqc/issue-162-a/pbe-rks-endpoint-20260912.md`. These records
+`benchmarks/results/xc-integration-162/pbe-rks-endpoint-20260912.md`. These records
 establish only the small closed-shell endpoint cases. The independent CPU UKS
-record in `experiments/vibeqc/issue-0162-b/pr305-corrections-20260913.md`
+record in `benchmarks/results/xc-integration-162/pr305-corrections-20260913.md`
 covers H2-, fully polarized H2+ and the OH doublet with LDA/PBE on the same
 GridSpec-v1 prescription. None of these records establish quadrature
 convergence, gradients, batching or GPU execution.
@@ -265,7 +265,7 @@ it might have skipped tests, so inspect/attach its actual numerical evidence.
 
 ## Shared results and performance protocol
 
-`tools/vibeqc_validation/schema.py` defines the `vibeqc.validation` version-1
+`python/vibeqc_compiler/common/evidence.py` defines the `vibeqc.validation` version-1
 envelope. `new_evidence`, `block_error`, `attach_artifact`, and `write_evidence`
 are the registration API for downstream tasks. Every record includes revision,
 equation/IR/source/schedule identities, device/toolchain, actual selected backend,

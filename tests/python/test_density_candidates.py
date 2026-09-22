@@ -17,6 +17,7 @@ from vibeqc_compiler.dft.cuda import CudaGrid
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.dft.spatial import SpatialPolicy
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
+from vibeqc_compiler.dft.xc_schedule import DEVICE_FUSED, HOST_UNFUSED
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 from vibeqc_compiler.xc.prepared import PreparedXCContractions
 
@@ -210,6 +211,66 @@ def test_gpu_registered_execution_and_capacity_fallback(
             # Interleaving other sources does not change the bound original.
             replay, _ = d.execute(stamp=source.stamp)
             compare(replay, actual_d)
+
+
+@GPU
+def test_gpu_executes_distinct_fused_and_unfused_grid_xc_schedules(
+    artifact: typing.Any, native_factory: typing.Any
+) -> None:
+    meta, data, grid = load_integration_fixture("h2")
+    with NativeAO(**basis_arguments(meta)) as basis:
+        source = source_for(basis, data)
+        with PreparedSpatialGrid(
+            basis,
+            grid,
+            backend="cuda",
+            artifact=artifact,
+            tile_points=7,
+            orbital_capacity=(basis.nao, basis.nao),
+            orbital_tile=1,
+            ingredients=("rho", "gradient", "sigma"),
+            policy=SpatialPolicy(region_points=7, screening="off"),
+            resource_budget=ResourceBudget(host_bytes=64 << 20, device_bytes=256 << 20),
+        ) as spatial:
+            with PreparedXCContractions(
+                native_factory("PBE", "potential"),
+                basis,
+                grid,
+                spatial=spatial,
+                schedule=DEVICE_FUSED,
+            ) as fused:
+                fused_result = fused.execute(
+                    source, stamp=source.stamp, route="density_matrix"
+                )
+                fused_stats = dict(fused.statistics)
+                fused_scientific = fused.scientific_identity
+            with PreparedXCContractions(
+                native_factory("PBE", "potential"),
+                basis,
+                grid,
+                spatial=spatial,
+                schedule=HOST_UNFUSED,
+            ) as unfused:
+                unfused_result = unfused.execute(
+                    source, stamp=source.stamp, route="density_matrix"
+                )
+                unfused_stats = dict(unfused.statistics)
+                assert unfused.scientific_identity == fused_scientific
+
+    compare(fused_result, unfused_result)
+    for result in (fused_result, unfused_result):
+        np.testing.assert_allclose(
+            result["energy"], data["PBE_spin_energy"][0], atol=1e-11, rtol=1e-10
+        )
+        np.testing.assert_allclose(
+            result["potential"], data["PBE_spin_potential"], atol=1e-11, rtol=1e-10
+        )
+    assert fused_stats["schedule_identity"] != unfused_stats["schedule_identity"]
+    assert fused_stats["xc_backend"] == "native_cuda"
+    assert fused_stats["spatial"]["potential_scatter_backend"] == "native_cuda"
+    assert unfused_stats["xc_backend"] == "native_cpu"
+    assert unfused_stats["spatial"]["potential_scatter_backend"] == "native_cpu"
+    assert unfused_stats["cpu_contraction_seconds"] > 0
 
 
 @GPU

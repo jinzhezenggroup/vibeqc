@@ -19,6 +19,10 @@ struct CudaRhfBucketPlan {
   cuda_execution::RhfIterationGraphs graphs;
   cuda_execution::ArenaLayout layout;
   cuda_execution::HostBatch topology;
+  // Generation counters are meaningful only together with this plan's
+  // value-checked immutable topology/options identity.
+  std::uint64_t execution_generation{};
+  std::uint64_t geometry_generation{};
   // Geometry-derived arena state is reusable until coordinates change.
   std::vector<double> cached_positions;
   // The current device density and its associated convergence seed are one
@@ -35,6 +39,7 @@ struct CudaRhfBucketPlan {
   std::optional<CudaRhfShellClassProfile> last_shell_class_profile;
   std::optional<CudaPppsQueueProfile> last_ppps_queue_profile;
   std::optional<CudaInactiveEigensolverProfile> last_inactive_eigensolver_profile;
+  CudaDirectFinalStateAudit last_direct_final_state;
   CudaEigensolverDiagnostic eigensolver_diagnostic;
   ScfOptions options;
   std::size_t batch_size{};
@@ -64,10 +69,9 @@ struct CudaRhfBucketPlan {
   std::array<std::uint32_t, detail::kDirectQuartetAngularOrderCount + 1>
       fp32_shell_quartet_tile_offsets{};
   unsigned persistent_quartet_worker_blocks{};
+  unsigned persistent_quartet_warps_per_multiprocessor{};
   std::size_t resident_psss_bra_primitive_pairs{};
   std::size_t resident_psss_task_count{};
-  bool generated_ssss_force{};
-  bool generated_psss_weighted{};
   unsigned one_electron_value_mapping{};
   std::size_t primitive_count{};
   std::size_t diis_history{};
@@ -95,6 +99,74 @@ struct CudaRhfBucketPlan {
   bool cublas_enabled{true};
   bool retry_without_cublas{};
   bool initialized{};
+};
+
+/** Synchronous force-ready Direct-HF state consumed before the owning plan or
+ * stream can be reused.
+ *
+ * The owner pointer is not an identity proof by itself. Its immutable
+ * topology/options have already passed value equality in the bucket admission
+ * path; the generation counters then bind geometry/overlap/operator changes
+ * within that owner. Basis, spin and occupations are immutable for an admitted
+ * plan.
+ */
+struct CudaDirectFinalSCFState {
+  const CudaRhfBucketPlan* owner{};
+  std::uint64_t execution_generation{};
+  std::uint64_t state_generation{};
+  std::uint64_t geometry_generation{};
+  std::uint64_t basis_generation{1};
+  std::uint64_t overlap_generation{};
+  std::uint64_t density_generation{};
+  std::uint64_t operator_generation{};
+  std::uint64_t orbital_generation{};
+  std::uint64_t energy_generation{};
+  std::uint64_t screening_generation{1};
+  std::uint64_t precision_generation{1};
+  std::uint64_t spin_generation{1};
+  std::uint64_t occupation_generation{1};
+  double screening_tolerance{};
+  int precision_mode{};
+  bool unrestricted{};
+  const double* density{};
+  const double* physical_fock{};
+  const double* coefficients{};
+  const double* orbital_energies{};
+  const std::int32_t* occupations{};
+  const double* physical_residual{};
+  double* energy{};
+  const std::uint8_t* active{};
+  cudaStream_t stream{};
+  CudaDirectFinalStateAudit proof{};
+
+  bool force_consumable() const noexcept {
+    const bool publication_bound =
+        state_generation != 0 && state_generation == density_generation &&
+        state_generation == operator_generation && state_generation == orbital_generation &&
+        state_generation == energy_generation;
+    const bool owner_bound = owner != nullptr && stream != nullptr &&
+                             owner->resources.stream_ == stream &&
+                             execution_generation == owner->execution_generation &&
+                             geometry_generation == owner->geometry_generation;
+    const bool buffers_bound = density != nullptr && physical_fock != nullptr &&
+                               coefficients != nullptr && orbital_energies != nullptr &&
+                               occupations != nullptr && physical_residual != nullptr &&
+                               energy != nullptr && active != nullptr;
+    const bool proof_complete = proof.route != CudaDirectFinalStateRoute::none &&
+                                proof.physical_residual_validated && proof.target_precision &&
+                                proof.orbital_frame_bound && proof.physical_orbital_energies &&
+                                proof.restart_same_density_generation;
+    const bool fast_route_valid =
+        proof.route != CudaDirectFinalStateRoute::scf_force_ready ||
+        (proof.seed_provenance &&
+         proof.fallback_reason == CudaDirectFinalStateFallbackReason::none &&
+         proof.additional_physical_fock_builds == 0 && proof.additional_final_eigen_solves == 0);
+    const bool fallback_route_valid =
+        proof.route != CudaDirectFinalStateRoute::canonical_fallback ||
+        proof.fallback_reason != CudaDirectFinalStateFallbackReason::none;
+    return publication_bound && owner_bound && buffers_bound && proof_complete &&
+           fast_route_valid && fallback_route_valid;
+  }
 };
 
 /** Exact captured-option identity shared by admission and driver invariants. */

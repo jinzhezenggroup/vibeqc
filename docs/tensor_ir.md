@@ -153,12 +153,14 @@ dtype, sensitivity class, cast traffic, strict-audit dtype and arithmetic mode.
 
 The default schedule remains strict FP64. `conservative_precision_variants`
 only creates an opt-in FP32 candidate for ordinary elementwise/view subgraphs;
-reductions/contractions and numerically sensitive operations stay FP64.
-Requests for separate compute/accumulation dtype are currently rejected rather
-than approximated, and low-precision sensitive/reduction requests require
-qualification provenance. Generated JVP/VJP programs preserve explicit cast
-boundaries, so derivative execution cannot silently recover a different
-precision policy.
+reductions/contractions and numerically sensitive operations stay FP64 unless a
+caller supplies explicit qualification. Qualified `reduce` and `einsum` values can use FP32
+storage/compute with an FP64 serial accumulator; all other distinct
+compute/accumulation combinations fail closed. Mixed-accumulation einsums use
+the generated reduction kernel rather than pretending SGEMM provides wider
+accumulation. Generated JVP/VJP programs preserve explicit cast boundaries and
+the parent precision identity, but primal qualification never grants derivative
+qualification automatically.
 
 Compile-time coefficients accept integers, `Fraction`, or exact rational
 strings such as `"1/4"`. Float coefficients are rejected. Serialization stores

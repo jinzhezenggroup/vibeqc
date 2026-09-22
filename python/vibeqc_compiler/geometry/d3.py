@@ -12,12 +12,15 @@ import hashlib
 import math
 import typing
 from dataclasses import dataclass
+from itertools import pairwise
 
 import numpy as np
 
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
+    Index,
+    IndexSpace,
     Node,
     Program,
     TensorSpec,
@@ -30,6 +33,7 @@ from vibeqc_compiler.tensor import (
     multiply,
     power,
     reshape,
+    scatter_add,
     transpose_program,
 )
 
@@ -193,14 +197,19 @@ def _sha256(path: typing.Any) -> str:
 def _d3_tables() -> _D3Tables:
     import json
 
-    table_path = asset_path("external/xtbloom-d3/gfn1_d3.json")
-    radii_path = asset_path("external/xtbloom-d3/covalent_radii.json")
+    root = "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    table_path = asset_path(f"{root}/gfn1_d3.json")
+    model_path = asset_path(f"{root}/gfn1.json")
     if _sha256(table_path) != D3_TABLE_SHA256:
         raise ValueError("pinned D3 table digest does not match compiler identity")
-    if _sha256(radii_path) != D3_RADII_SHA256:
-        raise ValueError("pinned D3 radii digest does not match compiler identity")
     raw = json.loads(table_path.read_text())
-    radii = json.loads(radii_path.read_text())
+    model = json.loads(model_path.read_text())
+    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
+        raise ValueError("pinned xTBloom GFN1 element order changed")
+    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
+    radii_bytes = (json.dumps(radii, indent=2) + "\n").encode()
+    if hashlib.sha256(radii_bytes).hexdigest() != D3_RADII_SHA256:
+        raise ValueError("derived D3 radii digest does not match compiler identity")
     if (
         len(raw["elements"]) != 86
         or len(raw["pair_records"]) != 3741
@@ -374,6 +383,75 @@ def _validate_reference_weight_domain(
             )
 
 
+def _normalized_d3_system_atom_offsets(
+    system_atom_offsets: typing.Iterable[int], atom_count: int
+) -> tuple[int, ...]:
+    offsets = tuple(system_atom_offsets)
+    if (
+        len(offsets) < 2
+        or offsets[0] != 0
+        or offsets[-1] != atom_count
+        or any(type(value) is not int for value in offsets)
+        or any(left >= right for left, right in pairwise(offsets))
+    ):
+        raise ValueError(
+            "D3 batch atom offsets must be a strictly increasing partition "
+            "from zero through atom_count"
+        )
+    return offsets
+
+
+def _build_d3_pair_topology_for_ranges(
+    geometry: GeometryIR,
+    compiler_spec: D3CompilerSpec,
+    coordinates: np.ndarray,
+    ranges: typing.Iterable[tuple[int, int]],
+) -> D3PairTopology:
+    pairs: list[tuple[int, int]] = []
+    cn_active: list[bool] = []
+    energy_regions: list[str] = []
+    for begin, end in ranges:
+        for first in range(begin, end):
+            for second in range(first + 1, end):
+                displacement = coordinates[first] - coordinates[second]
+                distance_squared = float(np.dot(displacement, displacement))
+                if (
+                    not math.isfinite(distance_squared)
+                    or distance_squared < D3_MINIMUM_DISTANCE_SQUARED
+                ):
+                    raise ValueError(
+                        "D3 is undefined for coincident or near-coincident atoms"
+                    )
+                distance = math.sqrt(distance_squared)
+                cn = (
+                    compiler_spec.cn_cutoff is None
+                    or distance_squared <= compiler_spec.cn_cutoff**2
+                )
+                region = _energy_region(compiler_spec, distance)
+                if cn or region != "off":
+                    pairs.append((first, second))
+                    cn_active.append(cn)
+                    energy_regions.append(region)
+
+    union_cutoff = None
+    if compiler_spec.cn_cutoff is not None and compiler_spec.pair_cutoff is not None:
+        union_cutoff = PairCutoff(
+            max(compiler_spec.cn_cutoff, compiler_spec.pair_cutoff)
+        )
+    state = D3PairTopology(
+        PairTopology(
+            geometry.atom_count,
+            tuple(pairs),
+            cutoff=union_cutoff,
+        ),
+        compiler_spec.identity,
+        tuple(cn_active),
+        tuple(energy_regions),
+    )
+    _validate_reference_weight_domain(geometry, state, coordinates)
+    return state
+
+
 def build_d3_pair_topology(
     geometry: GeometryIR,
     spec: D3SpecLike | D3CompilerSpec,
@@ -391,49 +469,60 @@ def build_d3_pair_topology(
         raise ValueError("D3 coordinates must have shape (atom_count, 3)")
     if not np.isfinite(xyz).all():
         raise ValueError("D3 coordinates must be finite")
-
-    pairs: list[tuple[int, int]] = []
-    cn_active: list[bool] = []
-    energy_regions: list[str] = []
-    for first in range(geometry.atom_count):
-        for second in range(first + 1, geometry.atom_count):
-            displacement = xyz[first] - xyz[second]
-            distance_squared = float(np.dot(displacement, displacement))
-            if (
-                not math.isfinite(distance_squared)
-                or distance_squared < D3_MINIMUM_DISTANCE_SQUARED
-            ):
-                raise ValueError(
-                    "D3 is undefined for coincident or near-coincident atoms"
-                )
-            distance = math.sqrt(distance_squared)
-            cn = (
-                compiler_spec.cn_cutoff is None
-                or distance_squared <= compiler_spec.cn_cutoff**2
-            )
-            region = _energy_region(compiler_spec, distance)
-            if cn or region != "off":
-                pairs.append((first, second))
-                cn_active.append(cn)
-                energy_regions.append(region)
-
-    union_cutoff = None
-    if compiler_spec.cn_cutoff is not None and compiler_spec.pair_cutoff is not None:
-        union_cutoff = PairCutoff(
-            max(compiler_spec.cn_cutoff, compiler_spec.pair_cutoff)
-        )
-    state = D3PairTopology(
-        PairTopology(
-            geometry.atom_count,
-            tuple(pairs),
-            cutoff=union_cutoff,
-        ),
-        compiler_spec.identity,
-        tuple(cn_active),
-        tuple(energy_regions),
+    return _build_d3_pair_topology_for_ranges(
+        geometry,
+        compiler_spec,
+        xyz,
+        ((0, geometry.atom_count),),
     )
-    _validate_reference_weight_domain(geometry, state, xyz)
-    return state
+
+
+def build_d3_batch_pair_topology(
+    geometry: GeometryIR,
+    spec: D3SpecLike | D3CompilerSpec,
+    system_atom_offsets: typing.Iterable[int],
+    coordinates: object,
+) -> D3PairTopology:
+    """Build one pair-state for a heterogeneous ragged molecular batch."""
+
+    compiler_spec = D3CompilerSpec.from_spec(spec)
+    if geometry.parameter_identity != compiler_spec.identity:
+        raise ValueError(
+            "D3 GeometryIR parameter identity does not match specification"
+        )
+    offsets = _normalized_d3_system_atom_offsets(
+        system_atom_offsets, geometry.atom_count
+    )
+    xyz = np.asarray(coordinates, dtype=np.float64)
+    if xyz.shape != (geometry.atom_count, 3):
+        raise ValueError("D3 coordinates must have shape (atom_count, 3)")
+    if not np.isfinite(xyz).all():
+        raise ValueError("D3 coordinates must be finite")
+    return _build_d3_pair_topology_for_ranges(
+        geometry,
+        compiler_spec,
+        xyz,
+        pairwise(offsets),
+    )
+
+
+def _d3_pair_system_owners(
+    topology: PairTopology, system_atom_offsets: tuple[int, ...]
+) -> tuple[int, ...]:
+    owners = []
+    system = 0
+    for first, second in topology.pairs:
+        while first >= system_atom_offsets[system + 1]:
+            system += 1
+        if not (
+            system_atom_offsets[system]
+            <= first
+            < second
+            < system_atom_offsets[system + 1]
+        ):
+            raise ValueError("D3 batch topology contains a cross-system pair")
+        owners.append(system)
+    return tuple(owners)
 
 
 def _pair_constant(
@@ -736,6 +825,71 @@ class D3GeometryProgram:
         )
 
 
+@dataclass(frozen=True)
+class D3GeometryBatchProgram:
+    """One generated D3(BJ) program for a heterogeneous ragged molecular batch."""
+
+    spec: D3CompilerSpec
+    geometry: GeometryIR
+    system_atom_offsets: tuple[int, ...]
+    pair_state: D3PairTopology
+    program: Program
+    version: str = D3_COMPILER_VERSION
+
+    def __post_init__(self) -> None:
+        if self.version != D3_COMPILER_VERSION:
+            raise ValueError("unsupported D3 compiler lowering version")
+        if self.geometry.parameter_identity != self.spec.identity:
+            raise ValueError("D3 batch GeometryIR/specification identity mismatch")
+        if self.pair_state.spec_identity != self.spec.identity:
+            raise ValueError("D3 batch pair-state/specification identity mismatch")
+        offsets = _normalized_d3_system_atom_offsets(
+            self.system_atom_offsets, self.geometry.atom_count
+        )
+        object.__setattr__(self, "system_atom_offsets", offsets)
+        if self.pair_state.topology.atom_count != self.geometry.atom_count:
+            raise ValueError("D3 batch geometry/topology atom counts disagree")
+        _d3_pair_system_owners(self.pair_state.topology, offsets)
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(self.to_payload())
+
+    def to_payload(self) -> dict:
+        return {
+            "kind": "d3-bj-geometry-ragged-batch-program",
+            "version": self.version,
+            "specification": self.spec.to_payload(),
+            "geometry": self.geometry.to_payload(),
+            "system_atom_offsets": list(self.system_atom_offsets),
+            "pair_state": self.pair_state.to_payload(),
+            "equation": self.program.logical_hash,
+        }
+
+    def validate_execution_identity(self, identity: str) -> None:
+        if identity != self.identity:
+            raise ValueError("stale D3 batch compiler execution state")
+
+    def validate_coordinates(self, coordinates: object) -> None:
+        current = build_d3_batch_pair_topology(
+            self.geometry,
+            self.spec,
+            self.system_atom_offsets,
+            coordinates,
+        )
+        if current.identity != self.pair_state.identity:
+            raise ValueError(
+                "stale D3 batch pair topology/switch state for changed coordinates"
+            )
+
+    def coordinate_vjp(self) -> VJPProgram:
+        return transpose_program(
+            self.program,
+            ["energy"],
+            inputs=[self.geometry.coordinate_name],
+        )
+
+
 def build_d3_geometry_program(
     spec: D3SpecLike | D3CompilerSpec,
     geometry: GeometryIR,
@@ -814,5 +968,109 @@ def compile_d3_bj(
     return build_d3_geometry_program(
         compiler_spec,
         geometry,
+        pair_state,
+    )
+
+
+def build_d3_batch_geometry_program(
+    spec: D3SpecLike | D3CompilerSpec,
+    geometry: GeometryIR,
+    system_atom_offsets: typing.Iterable[int],
+    pair_state: D3PairTopology,
+) -> D3GeometryBatchProgram:
+    """Lower one heterogeneous ragged D3(BJ) batch through shared TensorIR."""
+
+    compiler_spec = D3CompilerSpec.from_spec(spec)
+    if geometry.parameter_identity != compiler_spec.identity:
+        raise ValueError(
+            "D3 GeometryIR parameter identity does not match specification"
+        )
+    offsets = _normalized_d3_system_atom_offsets(
+        system_atom_offsets, geometry.atom_count
+    )
+    if pair_state.spec_identity != compiler_spec.identity:
+        raise ValueError("D3 batch pair state does not match specification")
+    if pair_state.topology.atom_count != geometry.atom_count:
+        raise ValueError("D3 batch geometry/topology atom counts disagree")
+    pair_system_owners = _d3_pair_system_owners(pair_state.topology, offsets)
+
+    context = lower_geometry(
+        geometry,
+        pair_state.topology,
+    )
+    coordination = _coordination(context, pair_state)
+    weights = _reference_weights(geometry, coordination)
+    c6 = _interpolated_c6(context, weights)
+    pair_energy = _pair_energy(
+        context,
+        pair_state,
+        compiler_spec,
+        c6,
+    )
+    system_index = Index(
+        "s",
+        IndexSpace("system", "batch", len(offsets) - 1),
+    )
+    energy = scatter_add(
+        pair_energy,
+        0,
+        pair_system_owners,
+        system_index,
+    )
+    program = Program(
+        {
+            "energy": energy,
+            "coordination": coordination,
+            "c6": c6,
+            "pair_energy": pair_energy,
+        },
+        provenance={
+            "kind": "d3-bj-geometry-pair-ir-ragged-batch",
+            "version": D3_COMPILER_VERSION,
+            "specification": compiler_spec.to_payload(),
+            "table_sha256": D3_TABLE_SHA256,
+            "radii_sha256": D3_RADII_SHA256,
+            "system_atom_offsets": list(offsets),
+            "pair_state": pair_state.to_payload(),
+        },
+    )
+    return D3GeometryBatchProgram(
+        compiler_spec,
+        geometry,
+        offsets,
+        pair_state,
+        program,
+    )
+
+
+def compile_d3_bj_batch(
+    spec: D3SpecLike | D3CompilerSpec,
+    elements: typing.Iterable[int],
+    system_atom_offsets: typing.Iterable[int],
+    coordinates: object,
+    *,
+    coordinate_name: str = "coordinates",
+) -> D3GeometryBatchProgram:
+    """Compile one heterogeneous ragged D3(BJ) batch through PairIR/TensorIR."""
+
+    compiler_spec = D3CompilerSpec.from_spec(spec)
+    geometry = d3_geometry(
+        elements,
+        compiler_spec,
+        coordinate_name=coordinate_name,
+    )
+    offsets = _normalized_d3_system_atom_offsets(
+        system_atom_offsets, geometry.atom_count
+    )
+    pair_state = build_d3_batch_pair_topology(
+        geometry,
+        compiler_spec,
+        offsets,
+        coordinates,
+    )
+    return build_d3_batch_geometry_program(
+        compiler_spec,
+        geometry,
+        offsets,
         pair_state,
     )

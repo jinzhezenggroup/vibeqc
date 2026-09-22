@@ -138,7 +138,8 @@ int main(int argc, char** argv) {
       std::cout << "{\"operation\":" << std::quoted(scf_mode)
                 << ",\"seconds\":" << elapsed(scf_begin)
                 << ",\"converged\":" << (result.converged ? "true" : "false")
-                << ",\"iterations\":" << result.iterations << ",\"energy\":" << result.energy
+                << ",\"iterations\":" << result.iterations
+                << ",\"fock_builds\":" << result.fock_builds << ",\"energy\":" << result.energy
                 << ",\"density_rms\":" << result.density_rms << "}\n";
       if (!result.converged) return 2;
       if (!result.reference) throw std::runtime_error("missing physical RHF export");

@@ -91,6 +91,87 @@ def test_all_cartesian_derivatives_match_independent_libcint(
 
 
 @pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
+@pytest.mark.parametrize("angular", [(4, 0), (0, 4), (4, 4)])
+def test_selected_g_cartesian_derivatives_match_independent_libcint(
+    family: typing.Any, angular: typing.Any
+) -> None:
+    """Qualify representative g-shell gradients without exploding normal PR cost."""
+
+    gto = pytest.importorskip("pyscf.gto")
+    positions = [(0.2, -0.3, 0.1), (-0.4, 0.15, 0.5), (0.17, -0.11, -0.4)]
+    exponents = (0.8, 0.35)
+    components = tuple(cartesian_components(l) for l in angular)
+    mol = gto.M(
+        atom=[("ghost-H", positions[0]), ("ghost-He", positions[1])],
+        basis={
+            "H": [[angular[0], [exponents[0], 1]]],
+            "He": [[angular[1], [exponents[1], 1]]],
+        },
+        unit="Bohr",
+        cart=True,
+        verbose=0,
+    )
+    overlap = mol.intor("int1e_ovlp_cart")
+    norms = [
+        gaussian_norm(exponent, component)
+        for exponent, shell_components in zip(exponents, components, strict=True)
+        for component in shell_components
+    ]
+    scales = np.sqrt(overlap.diagonal() / norms)
+    n = len(components[0])
+    operator, factor = {
+        "overlap": ("ovlp", 1),
+        "kinetic": ("kin", 1),
+        "nuclear_attraction": ("rinv", -2.3),
+    }[family]
+    with mol.with_rinv_origin(positions[2]):
+        first = -factor * mol.intor_by_shell(f"int1e_ip{operator}_cart", (0, 1), comp=3)
+        second = -factor * mol.intor_by_shell(
+            f"int1e_ip{operator}_cart", (1, 0), comp=3
+        ).transpose(0, 2, 1)
+    reference = np.array(
+        [first, second] + ([-first - second] if family == "nuclear_attraction" else [])
+    )
+    reference /= scales[:n][None, None, :, None] * scales[n:][None, None, None, :]
+    first_indices = sorted({0, len(components[0]) // 2, len(components[0]) - 1})
+    second_indices = sorted({0, len(components[1]) // 2, len(components[1]) - 1})
+    actual_positions = positions if family == "nuclear_attraction" else positions[:2]
+    for i in first_indices:
+        for j in second_indices:
+            actual = evaluate_one_electron_derivative_primitive(
+                kernel(family, angular, (components[0][i], components[1][j])),
+                exponents,
+                actual_positions,
+            )
+            np.testing.assert_allclose(
+                actual,
+                reference[:, :, i, j],
+                atol=2e-9,
+                rtol=2e-11,
+            )
+
+
+def test_g_derivative_codegen_is_explicit_and_production_stays_fail_closed() -> None:
+    from vibeqc_compiler.integral.capabilities import query_integral_capability
+    from vibeqc_compiler.integral.one_electron_derivatives_cuda import (
+        _emit_axis_permutations,
+        one_electron_derivative_inventory,
+    )
+
+    assert len(one_electron_derivative_inventory()["programs"]) == 96
+    assert len(one_electron_derivative_inventory(4)["programs"]) == 150
+    permutation_source = _emit_axis_permutations(4)
+    assert "case 34U:" in permutation_source
+    assert "return 35U;" in permutation_source
+    request = build_one_electron_derivative_ir("kinetic", (4, 0))
+    production = query_integral_capability(
+        request, backend="cuda_one_electron_derivatives"
+    )
+    assert not production.supported
+    assert "production one-electron CUDA tables support l<=3" in production.reasons[0]
+
+
+@pytest.mark.parametrize("family", ["overlap", "kinetic", "nuclear_attraction"])
 @pytest.mark.parametrize("coincident", [False, True])
 def test_center_sign_translation_and_arbitrary_fixed_weights(
     family: typing.Any, coincident: typing.Any
@@ -164,6 +245,13 @@ def test_emitted_derivatives_normalized_raw_and_spherical_blocks(
         pytest.skip("host C++ compiler unavailable")
     header = emit_one_electron_derivatives_cuda().replace(
         "#include <cuda_runtime.h>", ""
+    )
+    assert (
+        "static __device__ __noinline__ GradientAxis overlap_kinetic_gradient_x_00"
+        in header
+    )
+    assert (
+        "static __device__ __noinline__ GradientAxis attraction_gradient_x_00" in header
     )
     source = (
         "#define __device__\n#define __forceinline__ inline\n#define __noinline__\n"

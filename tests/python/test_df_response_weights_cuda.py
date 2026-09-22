@@ -48,12 +48,22 @@ def test_raw_upload_attribution_preserves_complete_response(
     ) as owner:
         owner.execute(properties=("energy", "forces"), strict=True)
         expected = None
+        source_backed = False
         probes = (("", ""), ("drain", ""), ("packed", ""), ("", "sharded"), ("", ""))
         for step, (probe, sink) in enumerate(probes):
             monkeypatch.setenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE", probe)
             monkeypatch.setenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE", sink)
             path = tmp_path / f"probe-{step}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(path))
+            if probe and source_backed:
+                # Automatic budgets also use device sources: a host-only
+                # upload diagnostic must reject that owner, not create a copy.
+                # The public batch API reports this unsupported native route
+                # as an item numerical failure; returning to default below
+                # must still preserve the prepared owner and physical result.
+                with pytest.raises(RuntimeError, match="numerical failure"):
+                    owner.execute(properties=("energy", "forces"), strict=True)
+                continue
             item = owner.execute(properties=("energy", "forces"), strict=True).items[0]
             (record,) = [
                 r for r in read_trace(path) if r["operation"] == "force_response"
@@ -61,12 +71,13 @@ def test_raw_upload_attribution_preserves_complete_response(
             counters = record["counters"]
             if expected is None:
                 expected = item
-                raw_bytes = counters["raw_value_upload_bytes"]
+                source_backed = record["source_backed"]
+                raw_bytes = counters.get("raw_value_upload_bytes", 0)
                 blocks = counters["response_auxiliary_blocks"]
                 scratch = counters["response_scratch_bytes"]
             assert abs(item.energy - expected.energy) < 1e-10
             np.testing.assert_allclose(item.forces, expected.forces, rtol=0, atol=1e-9)
-            assert counters["raw_value_upload_bytes"] == raw_bytes
+            assert counters.get("raw_value_upload_bytes", 0) == raw_bytes
             assert counters["response_auxiliary_blocks"] == blocks
             assert counters["response_scratch_bytes"] == scratch
             assert counters.get("derivative_probe_gradient_copies", 0) == (
@@ -84,7 +95,7 @@ def test_raw_upload_attribution_preserves_complete_response(
                 raw_bytes // 8 if probe == "packed" else 0
             )
             assert counters.get("raw_probe_pinned_host_bytes", 0) == (
-                8 * record["nbf"] ** 2 if probe == "packed" else 0
+                8 * record["nbf"] ** 2 if probe == "packed" and raw_bytes else 0
             )
 
 
@@ -160,11 +171,14 @@ def test_response_route_and_host_ablation(
             record = records[0]
             names = {r["name"] for r in record["regions"]}
             counters = record["counters"]
-            on_device = bool(budget) or not host
+            # Public zero now resolves to a positive automatic source budget.
+            # Follow the actual source owner, not the old zero-means-host rule.
+            source_backed = record["source_backed"]
+            on_device = source_backed or bool(budget) or not host
             assert ("response_weights" in names) == on_device
             assert ("host_response_weights" in names) != on_device
             uploaded = counters.get("raw_value_upload_bytes", 0)
-            assert bool(uploaded) == (on_device and not budget)
+            assert bool(uploaded) == (on_device and not source_backed)
             assert uploaded == counters["tensor_host_to_device_bytes"]
             assert bool(counters["response_host_to_device_bytes"]) != on_device
             for dot in ("blas", "serial"):

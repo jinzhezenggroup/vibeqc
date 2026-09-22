@@ -41,6 +41,7 @@ struct Context {
   Metrics metrics;
   size_t free_before_prepare = 0;
   std::mutex mutex;
+  bool static_ready = true;
 
   // All allocations and event/handle creation happen here. No run() path
   // allocates buffers or creates cuBLAS handles, even for partial tiles.

@@ -377,6 +377,22 @@ stamp=source.stamp)` entry returns explicit D and C candidates bound to the
 same current density, functional/output contract, grid, AO mask and resource
 plan. Registration does not search schedules or install a profile. The HF
 profile schema and complete energy-plus-force promotion gate are unchanged.
+The DFT09 schedule layer now gives a prepared XC owner an explicit
+`device_fused` or `host_unfused` execution schedule. The latter is the bounded
+fallback: GPU AO/features are downloaded and consumed by the existing generated
+CPU XC/potential path. The two lowerings share scientific functional/grid/mask
+identity but have distinct schedule identities; explicit fused selection fails
+rather than changing mathematical or source-route identity. Deterministic
+candidate admission also records workspace, generated-source-size and
+conservative live-value bounds before timing.
+
+Optional DFT winners reuse the #136 profile bundle/cache. They require exact
+architecture/functional/ingredient/jet/grid/screening/precision/spin/observable/
+source-route identity, independent numerical evidence, and the DFT-specific
+complete energy-plus-force promotion gate. The current public CUDA KS loop does
+not consume these prepared schedules yet, so the fixed-density registrations
+below remain validation/ablation evidence and cannot themselves promote a
+complete-SCF schedule.
 
 ```python
 from vibeqc.autotune import dft_density_candidates

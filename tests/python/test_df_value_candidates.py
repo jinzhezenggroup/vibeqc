@@ -16,6 +16,14 @@ from vibeqc_compiler.integral.df_value_candidates import (
 from tools.vibeqc_validation.df_values import make_df_value_fixture
 
 
+def test_candidate_codegen_gates_measured_profile_by_architecture() -> None:
+    source = emit_df_value_candidates_cuda()
+    assert "__CUDA_ARCH__ == 1200" in source
+    assert "VIBEQC_CUDA_PROFILE_ARCHITECTURE == 120" in source
+    assert "inline constexpr unsigned candidate_raw_lanes=4;" in source
+    assert "#else\ninline constexpr unsigned candidate_raw_lanes=1;\n#endif" in source
+
+
 @pytest.fixture(scope="module")
 def evaluator(tmp_path_factory: typing.Any) -> typing.Any:
     """Execute emitted FP64 arithmetic on the host without a GPU dependency."""

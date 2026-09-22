@@ -6,19 +6,21 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+from vibeqc import Atom
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft import (
     ExplicitGrid,
+    GridPolicy,
     GridSpec,
     MolecularGrid,
     NativeAO,
     density_features,
+    directional_ao_jets,
     jet_indices,
     orbital_features,
     partition_weights,
 )
 from vibeqc_compiler.dft.fixtures import NAMES, ROOT, basis_arguments, load_fixture
-
-from tools.vibeqc_validation.schema import block_error
 
 
 def check(actual: typing.Any, expected: typing.Any) -> None:
@@ -98,6 +100,55 @@ def test_jet_dictionary_and_spatial_center_chain_rule() -> None:
         with NativeAO(**{**args, "atoms": shifted_atoms}) as shifted:
             check(shifted.evaluate(points + [1e-5, 0, 0], 3), full)
 
+        rng = np.random.default_rng(180)
+        point_motion = rng.normal(size=points.shape) * 0.07
+        center_motion = rng.normal(size=(basis.natom, 3)) * 0.05
+        counts = [
+            2 * shell.angular_momentum + 1
+            if basis.representation == "real_spherical"
+            else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+            for shell in basis.shells
+        ]
+        ao_atoms = np.repeat([shell.atom_index for shell in basis.shells], counts)
+        analytic = directional_ao_jets(
+            full,
+            2,
+            ao_atoms=ao_atoms,
+            point_motion=point_motion,
+            center_motion=center_motion,
+        )
+        errors = []
+        for step in (1e-3, 2e-4, 4e-5):
+            displaced = []
+            for sign in (1, -1):
+                moved_atoms = [
+                    (
+                        z,
+                        np.asarray(xyz) + sign * step * center_motion[atom],
+                    )
+                    for atom, (z, xyz) in enumerate(args["atoms"])
+                ]
+                with NativeAO(**{**args, "atoms": moved_atoms}) as moved:
+                    displaced.append(
+                        moved.evaluate(points + sign * step * point_motion, 2)
+                    )
+            fd = (displaced[0] - displaced[1]) / (2 * step)
+            errors.append(float(np.max(np.abs(fd - analytic))))
+        assert errors[-1] < 3e-8
+        assert errors[-1] < errors[0] / 100
+
+        rigid = np.broadcast_to([0.2, -0.3, 0.1], (basis.natom, 3))
+        np.testing.assert_array_equal(
+            directional_ao_jets(
+                full,
+                2,
+                ao_atoms=ao_atoms,
+                point_motion=np.broadcast_to(rigid[0], points.shape),
+                center_motion=rigid,
+            ),
+            0,
+        )
+
 
 def test_partition_unity_coincidence_extremes_and_permutation() -> None:
     points = np.array(
@@ -117,6 +168,32 @@ def test_partition_unity_coincidence_extremes_and_permutation() -> None:
         )
     same = partition_weights(points, np.zeros((3, 3)))
     np.testing.assert_allclose(same, 1 / 3, atol=1e-15)
+
+
+@pytest.mark.parametrize("atomic_number", [26, 54])
+def test_production_grid_transition_and_heavy_elements_are_finite_and_translation_covariant(
+    atomic_number: typing.Any,
+) -> None:
+    """Fe and Xe exercise sourced v2 radii beyond the light-element fixtures."""
+    spec = GridPolicy().resolve("lda-rks")
+    center = np.array([0.31, -0.27, 0.19])
+    shift = np.array([-0.42, 0.16, 0.23])
+    grid = MolecularGrid([Atom(atomic_number, tuple(center))], spec=spec)
+    moved = MolecularGrid([Atom(atomic_number, tuple(center + shift))], spec=spec)
+    assert grid.spec.version == 2
+    assert grid.resolved_radii == (dict(spec.element_radii)[atomic_number],)
+    explicit = grid.explicit()
+    moved_explicit = moved.explicit()
+    assert np.isfinite(explicit.points).all()
+    assert np.isfinite(explicit.weights).all()
+    assert np.all(explicit.weights > 0)
+    np.testing.assert_allclose(
+        moved_explicit.points, explicit.points + shift, atol=2e-12, rtol=0
+    )
+    np.testing.assert_allclose(
+        moved_explicit.weights, explicit.weights, atol=2e-14, rtol=0
+    )
+    np.testing.assert_array_equal(moved_explicit.owners, explicit.owners)
 
 
 @pytest.mark.parametrize("alpha", [0.01, 1, 100])

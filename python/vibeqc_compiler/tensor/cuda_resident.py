@@ -17,6 +17,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import shutil
 import tempfile
 import time
 import typing
@@ -65,7 +66,14 @@ def compile_resident(
         raise ValueError("ordinary generated source identity mismatch")
     import vibeqc_compiler.tensor.cuda_resident_emit as emit_module
 
-    source = resident_source(plan, extension=extension)
+    source = resident_source(plan, extension=extension, embed_static_data=False)
+    base_static = base.library.parent / "static.bin"
+    if (
+        not base_static.is_file()
+        or base_static.stat().st_size != base.metadata.get("static_data_bytes")
+        or file_hash(base_static) != base.metadata.get("static_data_sha256")
+    ):
+        raise ValueError("ordinary static-data identity mismatch")
     # Resolve the resident header and generated-TU include directory through
     # the same asset helper the ordinary compile uses: a source checkout and
     # an installed wheel must both find them.
@@ -109,6 +117,7 @@ def compile_resident(
         "schema": RESIDENT_SCHEMA,
         "base": base.metadata["key"],
         "base_binary": base.metadata["binary_sha256"],
+        "static_data": base.metadata["identity"]["static_data"],
         "generated": canonical_hash(source),
         "extension": canonical_hash(extension),
         "sources": {
@@ -125,7 +134,9 @@ def compile_resident(
         ) as temporary:
             directory = Path(temporary)
             cu, library = directory / "resident.cu", directory / "program.so"
+            static_path = directory / "static.bin"
             cu.write_text(source)
+            shutil.copyfile(base_static, static_path)
             # The generated TU includes "cuda_runtime.cuh" and the resident
             # ABI includes "cuda_resident.cuh"; both live in the asset
             # directory so the include search path works source and wheel.
@@ -153,6 +164,8 @@ def compile_resident(
                     "key": key,
                     "identity": identity,
                     "binary_sha256": file_hash(library),
+                    "static_data_sha256": file_hash(static_path),
+                    "static_data_bytes": static_path.stat().st_size,
                     "base_artifact": base.metadata,
                     "compile_seconds": result.duration_seconds,
                 },
@@ -164,12 +177,22 @@ def compile_resident(
                     raise
     metadata = json.loads((destination / "artifact.json").read_text())
     library = destination / "program.so"
+    static_path = destination / "static.bin"
     if (
         metadata.get("identity") != json.loads(json.dumps(identity))
         or metadata.get("key") != key
         or file_hash(library) != metadata.get("binary_sha256")
+        or metadata.get("static_data_bytes")
+        != base.metadata["identity"]["static_data"]["bytes"]
+        or metadata.get("static_data_sha256")
+        != base.metadata["identity"]["static_data"]["sha256"]
+        or not static_path.is_file()
+        or static_path.stat().st_size != metadata.get("static_data_bytes")
+        or file_hash(static_path) != metadata.get("static_data_sha256")
     ):
-        raise ValueError("resident artifact identity or binary hash mismatch")
+        raise ValueError(
+            "resident artifact identity, binary, or static-data hash mismatch"
+        )
     return CudaArtifact(library, metadata)
 
 

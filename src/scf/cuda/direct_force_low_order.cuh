@@ -8,11 +8,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <weighted_eri.cuh>
 
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_native_gradient_types.cuh"
-#include "scf/cuda/direct_native_order01_gradient.cuh"
 #include "scf/cuda/direct_native_psss.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/matrix_index.cuh"
@@ -23,16 +23,76 @@
 
 namespace vibeqc::scf::cuda_execution {
 
+/** Generated ssss mathematics over the existing native primitive-pair cache. */
+__device__ __forceinline__ generated_weighted_eri::IndependentGradient
+contracted_eri_cartesian_source_ssss_generated_weighted_gradient(
+    const DeviceBatch& batch, std::size_t first_shell_pair, std::size_t second_shell_pair,
+    std::int32_t first_shell, std::int32_t second_shell, std::int32_t third_shell,
+    std::int32_t fourth_shell, double component_weight) {
+  const Vec3<double> first = atom_position<double>(batch, batch.shell_atoms[first_shell], -1);
+  const Vec3<double> second = atom_position<double>(batch, batch.shell_atoms[second_shell], -1);
+  const Vec3<double> third = atom_position<double>(batch, batch.shell_atoms[third_shell], -1);
+  const Vec3<double> fourth = atom_position<double>(batch, batch.shell_atoms[fourth_shell], -1);
+  const std::int64_t first_pair_begin = batch.shell_pair_primitive_offsets[first_shell_pair];
+  const std::int64_t first_pair_end = batch.shell_pair_primitive_offsets[first_shell_pair + 1];
+  const std::int64_t second_pair_begin = batch.shell_pair_primitive_offsets[second_shell_pair];
+  const std::int64_t second_pair_end = batch.shell_pair_primitive_offsets[second_shell_pair + 1];
+  generated_weighted_eri::IndependentGradient result{};
+  const double weights[1] = {component_weight};
+  for (std::int64_t first_primitive = first_pair_begin; first_primitive < first_pair_end;
+       ++first_primitive) {
+    const PrimitivePairData first_pair = batch.shell_primitive_pairs[first_primitive];
+    const double p = first_pair.exponent_sum;
+    for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
+         ++second_primitive) {
+      const PrimitivePairData second_pair = batch.shell_primitive_pairs[second_primitive];
+      const double q = second_pair.exponent_sum;
+      generated_weighted_eri::Geometry geometry;
+      geometry.rho = p * q / (p + q);
+      geometry.prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
+                           2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+      geometry.product_scales[0] = first_pair.first_product_scale;
+      geometry.product_scales[1] = first_pair.second_product_scale;
+      geometry.product_scales[2] = second_pair.first_product_scale;
+      const Vec3<double> difference{
+          first_pair.product_center.x - second_pair.product_center.x,
+          first_pair.product_center.y - second_pair.product_center.y,
+          first_pair.product_center.z - second_pair.product_center.z,
+      };
+      boys_values<1>(
+          geometry.rho * distance_squared(first_pair.product_center, second_pair.product_center),
+          geometry.boys);
+#pragma unroll
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        geometry.difference[axis] = vec_axis(difference, axis);
+        const double first_separation = vec_axis(first, axis) - vec_axis(second, axis);
+        const double second_separation = vec_axis(third, axis) - vec_axis(fourth, axis);
+        geometry.decay[0][axis] = -2.0 * first_pair.reduced_exponent * first_separation;
+        geometry.decay[1][axis] = -geometry.decay[0][axis];
+        geometry.decay[2][axis] = -2.0 * second_pair.reduced_exponent * second_separation;
+      }
+      const auto gradient = generated_weighted_eri::ssss_force(geometry, weights);
+#pragma unroll
+      for (unsigned center = 0; center < 3; ++center) {
+#pragma unroll
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          result.center[center][axis] += gradient.center[center][axis];
+        }
+      }
+    }
+  }
+  return result;
+}
+
 /** Evaluate and write one complete density-weighted ssss force shell task. */
 template <bool Unrestricted>
 __device__ __forceinline__ void contract_two_electron_force_ssss_task(
     const DeviceBatch& batch, ActiveShellQuartetTile task, double screening_tolerance,
-    const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
-    std::uint64_t generated_shell_class_mask) {
+    const double* schwarz_bounds, const double* density, const std::uint8_t* active,
+    double* forces) {
   // Every s shell contains one Cartesian AO, so a valid ssss shell quartet
   // occupies exactly the first compact tile and needs no AO-pair decoding.
   if (task.tile != 0U) return;
-  if ((generated_shell_class_mask & std::uint64_t{1}) != 0U) return;
   const std::size_t first_pair = task.first_pair;
   const std::size_t second_pair = task.second_pair;
   const std::int32_t system = batch.shell_pair_systems[first_pair];
@@ -91,7 +151,7 @@ __device__ __forceinline__ void contract_two_electron_force_ssss_task(
                                   batch.direct_ao_coefficients[system_ao_begin + ao[1]] *
                                   batch.direct_ao_coefficients[system_ao_begin + ao[2]] *
                                   batch.direct_ao_coefficients[system_ao_begin + ao[3]];
-  const SsssWeightedGradient gradient = contracted_eri_cartesian_source_ssss_weighted_gradient(
+  const auto gradient = contracted_eri_cartesian_source_ssss_generated_weighted_gradient(
       batch, first_pair, second_pair, shells[0], shells[1], shells[2], shells[3], component_weight);
 
   double derivative_sum[3]{};

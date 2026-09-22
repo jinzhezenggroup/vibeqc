@@ -14,6 +14,18 @@ from typing import Self
 import numpy as np
 
 from . import _native
+from ._batch_diagnostics import (
+    DensityFittingMetricDiagnostic,
+    EigensolverDiagnostic,
+    InactiveEigensolverProfileEntry,
+    PppsQueueProfile,
+    ShellClassProfileEntry,
+    read_density_fitting_metric_diagnostics,
+    read_eigensolver_diagnostics,
+    read_inactive_eigensolver_profile,
+    read_ppps_queue_profile,
+    read_shell_class_profile,
+)
 from .calculator import Atom, Calculator, _read_correlation_result
 from .ks_diagnostics import (
     KsDiagnostic,
@@ -54,6 +66,7 @@ class BatchItemResult:
     physical_residual_rms: float | None = None
     ks_diagnostic: KsDiagnostic | None = None
     correlation: CorrelationResult | None = None
+    dispersion: object | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -91,254 +104,6 @@ class BatchResult:
             raise RuntimeError("batched item failures: " + "; ".join(failures))
 
 
-def _decode_triangular_class(index: int) -> tuple[int, int]:
-    """Decode the scheduler's triangular high/low canonical class."""
-
-    high = 0
-    while (high + 1) * (high + 2) // 2 <= index:
-        high += 1
-    return high, index - high * (high + 1) // 2
-
-
-@dataclass(frozen=True)
-class ShellClassProfileEntry:
-    """Final-density direct work retained for one canonical shell class."""
-
-    shell_class: int
-    shell_angular: tuple[int, int, int, int]
-    shell_quartets: int
-    tiles: int
-    ao_quartets: int
-    primitive_quartets: int
-
-    @property
-    def label(self) -> str:
-        """Return the conventional canonical label, for example ``dppp``."""
-
-        angular_labels = "spdf"
-        return "".join(angular_labels[value] for value in self.shell_angular)
-
-
-@dataclass(frozen=True)
-class DensityFittingMetricDiagnostic:
-    """CUDA DF value/J/K plan evidence; peaks exclude generated-force staging."""
-
-    bucket_id: int
-    system_index: int
-    effective_rank: int
-    absolute_threshold: float
-    condition_number: float
-    solver_device_workspace_bytes: int
-    solver_host_workspace_bytes: int
-    device_resident_bytes: int
-    peak_device_bytes: int
-    host_resident_bytes: int
-    peak_host_bytes: int
-    auxiliary_tile: int
-    streamed: bool
-
-    def to_dict(self) -> dict[str, object]:
-        """Return JSON-ready diagnostics for benchmark and telemetry clients."""
-
-        return {
-            "bucket_id": self.bucket_id,
-            "system_index": self.system_index,
-            "effective_rank": self.effective_rank,
-            "absolute_threshold": self.absolute_threshold,
-            "condition_number": self.condition_number,
-            "solver_device_workspace_bytes": self.solver_device_workspace_bytes,
-            "solver_host_workspace_bytes": self.solver_host_workspace_bytes,
-            "device_resident_bytes": self.device_resident_bytes,
-            "peak_device_bytes": self.peak_device_bytes,
-            "host_resident_bytes": self.host_resident_bytes,
-            "peak_host_bytes": self.peak_host_bytes,
-            "auxiliary_tile": self.auxiliary_tile,
-            "streamed": self.streamed,
-        }
-
-
-@dataclass(frozen=True)
-class PppsQueueProfile:
-    """Final-density statistics for the exact resident PPPS force queue.
-
-    Block-indexed tuples use 32, 64, 128, then 256 threads. Orientation
-    tuples use ``1110`` then ``1011``. Primitive histograms use exact buckets
-    0..63 and an overflow bucket at index 64.
-    """
-
-    descriptor_slots: int
-    non_empty_descriptors: int
-    empty_descriptors: int
-    tasks: int
-    primitive_work: int
-    ket_count_min: int
-    ket_count_median: int
-    ket_count_p90: int
-    ket_count_p99: int
-    ket_count_max: int
-    lane_efficiency: tuple[float, ...]
-    primitive_warp_efficiency: float
-    task_tail_imbalance: tuple[float, ...]
-    primitive_tail_imbalance: tuple[float, ...]
-    orientation_tasks: tuple[int, int]
-    orientation_primitive_work: tuple[int, int]
-    bra_primitive_tasks: tuple[int, ...]
-    bra_primitive_work: tuple[int, ...]
-    ket_primitive_tasks: tuple[int, ...]
-    ket_primitive_work: tuple[int, ...]
-
-    @property
-    def hole_rate(self) -> float:
-        """Return the fraction of descriptor slots that launch as no-ops."""
-
-        if self.descriptor_slots == 0:
-            return 0.0
-        return self.empty_descriptors / self.descriptor_slots
-
-
-@dataclass(frozen=True)
-class EigensolverDiagnostic:
-    """Setup-time eigensolver selection and exact Graph probe evidence."""
-
-    bucket_id: int
-    ordinary_family: str
-    graph_family: str
-    selection_source: str
-    matrix_dimension: int
-    physical_system_count: int
-    solver_batch_count: int
-    api_eligible: bool
-    api_reason: str
-    matrix_batch_product: int
-    probe_failure_stage: str
-    device_workspace_bytes: int
-    host_workspace_bytes: int
-    available_device_bytes: int
-    device_id: int
-    device_uuid: str
-    device_name: str
-    compute_capability: tuple[int, int]
-    cuda_runtime_version: int
-    cuda_driver_version: int
-    cusolver_version: int
-    cuda_error: int
-    cusolver_error: int
-    ordinary_execution_passed: bool
-    graph_capture_passed: bool
-    host_graph_replay_passed: bool
-    device_tail_replay_passed: bool
-    graph_eligible: bool
-    maximum_eigenvalue_error: float
-    maximum_residual: float
-    maximum_orthogonality_error: float
-
-    def to_dict(self) -> dict[str, object]:
-        """Return JSON-ready evidence without losing exact status codes."""
-
-        return {
-            "bucket_id": self.bucket_id,
-            "ordinary_family": self.ordinary_family,
-            "graph_family": self.graph_family,
-            "selection_source": self.selection_source,
-            "matrix_dimension": self.matrix_dimension,
-            "physical_system_count": self.physical_system_count,
-            "solver_batch_count": self.solver_batch_count,
-            "api_eligible": self.api_eligible,
-            "api_reason": self.api_reason,
-            "matrix_batch_product": self.matrix_batch_product,
-            "probe_failure_stage": self.probe_failure_stage,
-            "device_workspace_bytes": self.device_workspace_bytes,
-            "host_workspace_bytes": self.host_workspace_bytes,
-            "available_device_bytes": self.available_device_bytes,
-            "device_id": self.device_id,
-            "device_uuid": self.device_uuid,
-            "device_name": self.device_name,
-            "compute_capability": list(self.compute_capability),
-            "cuda_runtime_version": self.cuda_runtime_version,
-            "cuda_driver_version": self.cuda_driver_version,
-            "cusolver_version": self.cusolver_version,
-            "cuda_error": self.cuda_error,
-            "cusolver_error": self.cusolver_error,
-            "ordinary_execution_passed": self.ordinary_execution_passed,
-            "graph_capture_passed": self.graph_capture_passed,
-            "host_graph_replay_passed": self.host_graph_replay_passed,
-            "device_tail_replay_passed": self.device_tail_replay_passed,
-            "graph_eligible": self.graph_eligible,
-            "maximum_eigenvalue_error": self.maximum_eigenvalue_error,
-            "maximum_residual": self.maximum_residual,
-            "maximum_orthogonality_error": self.maximum_orthogonality_error,
-        }
-
-
-@dataclass(frozen=True)
-class InactiveEigensolverProfileEntry:
-    """One device-timed eigensolve from the device-tail SCF loop."""
-
-    bucket_id: int
-    iteration: int
-    family: str
-    physical_system_count: int
-    solver_batch_count: int
-    active_physical_count: int
-    active_solver_count: int
-    solver_elapsed_nanoseconds: int
-    inactive_input_nonfinite_count: int
-    inactive_submission_nonfinite_count: int
-    inactive_info_nonzero_count: int
-    inactive_touch_flags: int
-    provider_invoked: bool
-
-    @property
-    def inactive_solver_count(self) -> int:
-        return self.solver_batch_count - self.active_solver_count
-
-    @property
-    def inactive_fraction(self) -> float:
-        if self.solver_batch_count == 0:
-            return 0.0
-        return self.inactive_solver_count / self.solver_batch_count
-
-    @property
-    def inactive_touches(self) -> tuple[str, ...]:
-        names = []
-        if self.inactive_touch_flags & _native.EIGENSOLVER_INACTIVE_TOUCH_COPY:
-            names.append("copy")
-        if (
-            self.inactive_touch_flags
-            & _native.EIGENSOLVER_INACTIVE_TOUCH_CUBLAS_TRANSFORM
-        ):
-            names.append("cublas_transform")
-        if (
-            self.inactive_touch_flags
-            & _native.EIGENSOLVER_INACTIVE_TOUCH_IDENTITY_SANITIZE
-        ):
-            names.append("identity_sanitize")
-        return tuple(names)
-
-    def to_dict(self) -> dict[str, object]:
-        """Return a JSON-ready record with derived inactive work."""
-
-        return {
-            "bucket_id": self.bucket_id,
-            "iteration": self.iteration,
-            "family": self.family,
-            "physical_system_count": self.physical_system_count,
-            "solver_batch_count": self.solver_batch_count,
-            "active_physical_count": self.active_physical_count,
-            "active_solver_count": self.active_solver_count,
-            "inactive_solver_count": self.inactive_solver_count,
-            "inactive_fraction": self.inactive_fraction,
-            "solver_elapsed_nanoseconds": self.solver_elapsed_nanoseconds,
-            "inactive_input_nonfinite_count": (self.inactive_input_nonfinite_count),
-            "inactive_submission_nonfinite_count": (
-                self.inactive_submission_nonfinite_count
-            ),
-            "inactive_info_nonzero_count": self.inactive_info_nonzero_count,
-            "inactive_touches": list(self.inactive_touches),
-            "provider_invoked": self.provider_invoked,
-        }
-
-
 class PreparedBatch:
     """Persistent topology-aware native fleet plan.
 
@@ -363,6 +128,13 @@ class PreparedBatch:
         if not systems:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
+        self._dispersion_batch: typing.Any = None
+        self._intrinsic_dispersion_energy = (
+            calculator._method == _native.METHOD_PBE_D4_RKS
+        )
+        # The KS ResourcePlan reserves one serialized generated-force staging cap.
+        # Keep one retained execution per PreparedBatch and reprepare on topology drift.
+        self._stationary_cuda_execution: typing.Any = None
         self._restart_indices = set()
         self._projection_indices = set()
         self.projection_diagnostics = None
@@ -388,6 +160,12 @@ class PreparedBatch:
         )
         if len(self._charges) != count or len(self._multiplicities) != count:
             raise ValueError("charges and multiplicities must match the batch size")
+        self._ks_profile_selection = calculator._effective_ks_selection(
+            self._systems,
+            charges=self._charges,
+            multiplicities=self._multiplicities,
+        )
+        self._effective_ks_options = self._ks_profile_selection.options
         for atoms in self._systems:
             calculator._preflight_hf_basis(
                 atoms,
@@ -397,24 +175,33 @@ class PreparedBatch:
         self.resource_plan = resource_plan
         self.resource_diagnostics = None
         self._resource_ledger = None
+        dispersion_request = None
         if resource_plan is not None or calculator._resource_budget is not None:
             request = calculator._resource_request(
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
+            )
+            dispersion_request = calculator._dispersion_resource_request(self._systems)
+            requests = (
+                (request,)
+                if dispersion_request is None
+                else (request, dispersion_request)
             )
             if resource_plan is None:
-                from .resources import plan_resources
+                from vibeqc_compiler.common.resources import plan_resources
 
                 self.resource_plan = plan_resources(
-                    (request,), calculator._resource_budget
+                    requests, calculator._resource_budget
                 )
             else:
                 owned = {r.name: r for r in resource_plan.requests}
-                if owned.get(request.name) != request:
-                    raise ValueError(
-                        f"prepared {request.name.upper()} inputs differ from the global resource plan"
-                    )
+                for expected in requests:
+                    if owned.get(expected.name) != expected:
+                        raise ValueError(
+                            f"prepared {expected.name.upper()} inputs differ from the global resource plan"
+                        )
                 if (
                     calculator._resource_budget is not None
                     and resource_plan.budget != calculator._resource_budget
@@ -483,6 +270,7 @@ class PreparedBatch:
             method = calculator._method_descriptor(
                 auxiliary_handle if auxiliary_handle.value else None,
                 resource_plan=self.resource_plan,
+                ks_options=self._effective_ks_options,
             )
             flags = _native.BATCH_ENABLE_WARM_STARTS if warm_start else 0
             if shell_class_profiling:
@@ -507,7 +295,11 @@ class PreparedBatch:
                     context=(
                         self._context
                         if calculator._method
-                        in (_native.METHOD_MP2, _native.METHOD_RCCSD)
+                        in (
+                            _native.METHOD_MP2,
+                            _native.METHOD_RCCSD,
+                            _native.METHOD_RCCSD_T,
+                        )
                         else None
                     ),
                 )
@@ -523,6 +315,86 @@ class PreparedBatch:
                     phase="preparation",
                 )
                 check_resource_status(self._library, status, self.resource_diagnostics)
+            if calculator._dispersion_method_ir is not None:
+                from vibeqc_compiler.method import (
+                    D4Spec,
+                    DispersionCorrectionPrimitive,
+                    GeometricCounterpoisePrimitive,
+                )
+
+                from .dispersion import D3CorrectionBatch, R2SCAN3CCorrectionBatch
+
+                graph = calculator._dispersion_method_ir
+                correction_nodes = tuple(
+                    node
+                    for node in graph.primitives
+                    if isinstance(node, DispersionCorrectionPrimitive)
+                )
+                gcp_nodes = tuple(
+                    node
+                    for node in graph.primitives
+                    if isinstance(node, GeometricCounterpoisePrimitive)
+                )
+                correction = correction_nodes[0].specification
+                if isinstance(correction, D4Spec):
+                    if len(gcp_nodes) != 1:
+                        raise RuntimeError(
+                            "D4 composite execution requires its canonical gCP primitive"
+                        )
+                    self._dispersion_batch = R2SCAN3CCorrectionBatch(
+                        graph,
+                        [
+                            (
+                                self._atomic_numbers[index],
+                                [atom.position for atom in atoms],
+                                self._charges[index],
+                            )
+                            for index, atoms in enumerate(self._systems)
+                        ],
+                        device=calculator._device_name,
+                        device_id=calculator._device_id,
+                        maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                    )
+                else:
+                    self._dispersion_batch = D3CorrectionBatch(
+                        graph,
+                        [
+                            (
+                                self._atomic_numbers[index],
+                                [atom.position for atom in atoms],
+                            )
+                            for index, atoms in enumerate(self._systems)
+                        ],
+                        device=calculator._device_name,
+                        device_id=calculator._device_id,
+                        maximum_bytes=calculator._dispersion_memory_budget_bytes,
+                    )
+                    if (
+                        self.resource_plan is not None
+                        and dispersion_request is not None
+                    ):
+                        selected = dict(self.resource_plan.selections)[
+                            dispersion_request.name
+                        ]
+                        candidate = next(
+                            candidate
+                            for candidate in dispersion_request.candidates
+                            if candidate.name == selected
+                        )
+                        planned = dict(candidate.decisions)
+                        diagnostic = self._dispersion_batch.diagnostic()
+                        actual = {
+                            "plan_host_bytes": diagnostic.plan_host_bytes,
+                            "execution_host_bytes": diagnostic.execution_host_bytes,
+                            "device_bytes": diagnostic.device_bytes,
+                            "table_bytes": diagnostic.table_bytes,
+                            "workspace_bytes": diagnostic.workspace_bytes,
+                        }
+                        expected = {key: int(planned[key]) for key in actual}
+                        if actual != expected:
+                            raise RuntimeError(
+                                "prepared D3 resource inventory differs from the global ResourcePlan"
+                            )
         except Exception:
             # Construction owns native handles before resource-status conversion,
             # which can raise MemoryError as well as ordinary validation errors.
@@ -561,6 +433,16 @@ class PreparedBatch:
         return deepcopy(self._basis_metadata)
 
     @property
+    def dispersion_diagnostic(self) -> typing.Any:
+        """Return the retained external-correction diagnostic, if present."""
+        self._ensure_open()
+        return (
+            None
+            if self._dispersion_batch is None
+            else self._dispersion_batch.diagnostic()
+        )
+
+    @property
     def ks_transport_diagnostics(self) -> tuple[KsTransportDiagnostic | None, ...]:
         """Input-ordered cumulative CUDA KS movement snapshots."""
         self._ensure_open()
@@ -572,6 +454,15 @@ class PreparedBatch:
     def _ensure_open(self) -> None:
         if not self._batch.value:
             raise RuntimeError("prepared batch is closed")
+
+    def _stationary_cuda_target(self) -> typing.Any:
+        """Resolve the native execution target without discovering a compiler."""
+        from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+        from .profiles import probe_device
+
+        device = probe_device(self._library, self._calculator._device_id)["device"]
+        return cuda_target_info(f"sm_{device['major']}{device['minor']}")
 
     def _stationary_cuda_compiler(self) -> typing.Any:
         """Lazily bind the generated-force compiler to this native device."""
@@ -601,9 +492,17 @@ class PreparedBatch:
         from vibeqc_compiler.dft import NativeAO
 
         from ._dft_gradient import StationaryKsState
-        from ._stationary_cuda import complete_rks_cuda_gradient_diagnostic
+        from ._stationary_cuda import (
+            PreparedStationaryCudaExecution,
+            PreparedStationaryCudaTopologyMismatch,
+            complete_rks_cuda_gradient_diagnostic,
+        )
 
         calculator = self._calculator
+        prepared = self._stationary_cuda_execution
+        if prepared is None:
+            prepared = PreparedStationaryCudaExecution()
+            self._stationary_cuda_execution = prepared
         with NativeAO(
             atoms,
             basis=calculator._basis,
@@ -619,23 +518,39 @@ class PreparedBatch:
                     raise NotImplementedError(
                         "public CUDA DFT forces require a qualified CUDA owner"
                     )
-                result = complete_rks_cuda_gradient_diagnostic(
-                    state,
-                    basis,
-                    compiler=self._stationary_cuda_compiler(),
-                    cache=Path(
+                native_library = Path(str(self._library._name)).resolve()
+                all_electron = state._source.hamiltonian == "all-electron"
+                kwargs = {
+                    "compiler": None
+                    if all_electron
+                    else self._stationary_cuda_compiler(),
+                    "target": self._stationary_cuda_target(),
+                    "cache": Path(
                         os.environ.get(
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
-                )
+                    "aot_directory": native_library.parent,
+                    "native_grid_library": native_library,
+                }
+                try:
+                    result = complete_rks_cuda_gradient_diagnostic(
+                        state, basis, prepared=prepared, **kwargs
+                    )
+                except PreparedStationaryCudaTopologyMismatch:
+                    prepared.close()
+                    prepared = PreparedStationaryCudaExecution()
+                    self._stationary_cuda_execution = prepared
+                    result = complete_rks_cuda_gradient_diagnostic(
+                        state, basis, prepared=prepared, **kwargs
+                    )
                 # StationaryGradientPlan publishes +dE/dR. Public API is force.
                 return -np.asarray(result.gradient).copy(), dict(result.work)
             finally:
                 state._source.close()
 
     def _public_dft_cpu_force(self, index: typing.Any, atoms: typing.Any) -> typing.Any:
-        """Bounded CPU ECP force; checked native CPU ECP is an explicit provider."""
+        """Bounded CPU stationary force for qualified ECP or named direct hybrids."""
         from vibeqc_compiler.dft import NativeAO
 
         from ._cpu_force_resources import (
@@ -648,9 +563,15 @@ class PreparedBatch:
         from .ecp import resolve_ecp
 
         calculator = self._calculator
-        if calculator._device_name != "cpu" or not qualified_basis(calculator._basis):
+        ecp_force = qualified_basis(calculator._basis)
+        direct_all_electron = (
+            calculator._method_name
+            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            and not ecp_force
+        )
+        if calculator._device_name != "cpu" or not (ecp_force or direct_all_electron):
             raise NotImplementedError(
-                "public CPU ECP forces require a qualified CPU owner"
+                "public CPU forces require a qualified ECP or named all-electron owner"
             )
         if len(atoms) > 8:
             raise ValueError("CPU public force dense-export domain exceeded")
@@ -662,7 +583,9 @@ class PreparedBatch:
             multiplicity=self._multiplicities[index],
         ) as basis:
             grid = calculator._ks_options.grid
-            _, terms = resolve_ecp(calculator._basis, atoms)
+            cores, terms = (), ()
+            if ecp_force:
+                cores, terms = resolve_ecp(calculator._basis, atoms)
             inventory = cpu_force_inventory(
                 basis,
                 grid_points=len(atoms)
@@ -670,17 +593,30 @@ class PreparedBatch:
                 * grid.angular_polar
                 * grid.angular_azimuth,
                 ecp_terms=len(terms),
+                nonlocal_correlation=(
+                    getattr(
+                        getattr(calculator._ks_options, "execution_plan", None),
+                        "nonlocal_correlation",
+                        None,
+                    )
+                    is not None
+                ),
             )
             if sum(inventory.values()) > CPU_FORCE_HOST_CAP:
                 raise ValueError("CPU force additional-host byte budget exceeded")
             # Reject before exporting the live SCF/grid snapshot. The consumer
-            # repeats admission using the actual exported shape and term count.
+            # repeats admission using the actual exported shape and provider.
             state = StationaryKsState.from_native(self, basis, index=index)
             try:
                 if state._source.backend != "cpu":
                     raise NotImplementedError(
-                        "public CPU ECP forces require a qualified CPU owner"
+                        "public CPU forces require a qualified CPU owner"
                     )
+                expected_hamiltonian = (
+                    "scalar-semilocal-ecp" if any(cores) else "all-electron"
+                )
+                if state._source.hamiltonian != expected_hamiltonian:
+                    raise ValueError("public CPU force Hamiltonian identity mismatch")
                 result = complete_rks_gradient_diagnostic(
                     state,
                     basis,
@@ -693,7 +629,10 @@ class PreparedBatch:
                     ),
                 )
                 work = dict(result.work)
-                work["ecp_provider"] = "checked-native-cpu-two-grid-v1"
+                if ecp_force:
+                    work["ecp_provider"] = "checked-native-cpu-two-grid-v1"
+                else:
+                    work["hamiltonian_provider"] = "checked-native-cpu-all-electron-v1"
                 work["host_inventory"] = inventory
                 return -np.asarray(result.gradient).copy(), work
             finally:
@@ -758,6 +697,7 @@ class PreparedBatch:
         controls = _controls(self._calculator)
         count = len(self._systems)
         coordinate_storage: list[np.ndarray] = []
+        replay_systems = list(self._systems)
         inputs_pointer = None
         input_count = 0
         if coordinates is not None:
@@ -787,6 +727,24 @@ class PreparedBatch:
                     raise ValueError("coordinates must have shape (natoms, 3)")
                 array = np.ascontiguousarray(raw, dtype=np.float64).reshape(-1)
                 coordinate_storage.append(array)
+                if raw.shape == (self._atom_counts[index], 3) and np.all(
+                    np.isfinite(raw)
+                ):
+                    replay_systems[index] = tuple(
+                        Atom(
+                            atom.atomic_number,
+                            tuple(float(value) for value in position),
+                        )
+                        for atom, position in zip(
+                            self._systems[index], raw, strict=True
+                        )
+                    )
+                else:
+                    # Preserve native per-item failure semantics for malformed or
+                    # nonfinite payloads. Keep the prepared geometry only as the
+                    # profile-selection placeholder for this invalid row; every
+                    # other executable row must still be requalified.
+                    replay_systems[index] = self._systems[index]
                 input_descriptors.append(
                     _native.BatchInputDescriptor(
                         ctypes.sizeof(_native.BatchInputDescriptor),
@@ -798,6 +756,22 @@ class PreparedBatch:
             input_array = (_native.BatchInputDescriptor * count)(*input_descriptors)
             inputs_pointer = input_array
             input_count = count
+            replay_selection = self._calculator._effective_ks_selection(
+                tuple(replay_systems),
+                charges=self._charges,
+                multiplicities=self._multiplicities,
+            )
+            if replay_selection.options != self._effective_ks_options:
+                raise RuntimeError(
+                    "profile-selected KS execution schedule changed for replay coordinates; prepare a new batch"
+                )
+            if (
+                self._ks_profile_selection.exact_profile_match
+                and not replay_selection.exact_profile_match
+            ):
+                raise RuntimeError(
+                    "profile-selected KS execution schedule is not qualified for replay coordinates; prepare a new batch"
+                )
 
         force_storage = [
             (ctypes.c_double * (3 * atom_count))() if native_compute_forces else None
@@ -839,6 +813,7 @@ class PreparedBatch:
                 self._systems,
                 charges=self._charges,
                 multiplicities=self._multiplicities,
+                ks_options=self._effective_ks_options,
             )
             if current != next(
                 r for r in self.resource_plan.requests if r.name == current.name
@@ -863,6 +838,57 @@ class PreparedBatch:
 
             check_resource_status(self._library, status, self.resource_diagnostics)
 
+        correction_results = None
+        if (
+            self._dispersion_batch is None
+            and self._intrinsic_dispersion_energy
+            and compute_forces
+        ):
+            from .dispersion import D4CorrectionBatch
+
+            options = self._calculator._ks_options
+            if options is None:
+                raise RuntimeError(
+                    "PBE-D4 force composition requires resolved KS options"
+                )
+            self._dispersion_batch = D4CorrectionBatch(
+                options.method_ir,
+                [
+                    (
+                        self._atomic_numbers[index],
+                        [atom.position for atom in atoms],
+                        self._charges[index],
+                    )
+                    for index, atoms in enumerate(self._systems)
+                ],
+                device=self._calculator._device_name,
+                device_id=self._calculator._device_id,
+                maximum_bytes=self._calculator._dispersion_memory_budget_bytes,
+            )
+        if self._dispersion_batch is not None and (
+            compute_forces or not self._intrinsic_dispersion_energy
+        ):
+            correction_geometries = None
+            if coordinates is not None:
+                correction_geometries = []
+                for index, output in enumerate(output_array):
+                    if (
+                        output.status == _native.STATUS_SUCCESS
+                        and coordinates[index] is not None
+                    ):
+                        correction_geometries.append(
+                            np.asarray(coordinates[index], dtype=np.float64).reshape(
+                                self._atom_counts[index], 3
+                            )
+                        )
+                    else:
+                        # Preserve the native per-item malformed-input boundary:
+                        # D3 does not inspect a coordinate update already rejected by KS.
+                        correction_geometries.append(None)
+            correction_results = self._dispersion_batch.execute(
+                correction_geometries, gradients=compute_forces
+            )
+
         if self.resource_diagnostics is not None:
             # Separate from the native SCF ledger: generated libraries own
             # their own bounded allocations and export/work observations.
@@ -879,6 +905,14 @@ class PreparedBatch:
             ):
                 _native.check(self._library, count_status)
             succeeded = output.status == _native.STATUS_SUCCESS
+            dispersion = (
+                None if correction_results is None else correction_results[index]
+            )
+            dispersion_failure_message = None
+            if succeeded and dispersion is not None and not dispersion.ok:
+                output.status = dispersion.status
+                succeeded = False
+                dispersion_failure_message = f"external correction failed ({dispersion.status}): {dispersion.message}"
             public_force = None
             if succeeded and public_dft_forces:
                 atoms = self._systems[index]
@@ -930,9 +964,34 @@ class PreparedBatch:
                 if succeeded and native_compute_forces
                 else None
             )
-            message = self._library.vibeqc_status_message(output.status).decode("utf-8")
+            if succeeded and dispersion is not None and compute_forces:
+                if dispersion.gradient is None:
+                    raise RuntimeError(
+                        "successful external correction omitted requested dE/dR"
+                    )
+                if forces is None:
+                    raise RuntimeError(
+                        "external-correction force composition requires an electronic force"
+                    )
+                forces = forces - dispersion.gradient
+            message = (
+                dispersion_failure_message
+                if dispersion_failure_message is not None
+                else self._library.vibeqc_status_message(output.status).decode("utf-8")
+            )
+            total_energy = output.energy
+            if (
+                succeeded
+                and dispersion is not None
+                and not self._intrinsic_dispersion_energy
+            ):
+                total_energy += dispersion.energy
             correlation = None
-            if self._calculator._method in (_native.METHOD_MP2, _native.METHOD_RCCSD):
+            if self._calculator._method in (
+                _native.METHOD_MP2,
+                _native.METHOD_RCCSD,
+                _native.METHOD_RCCSD_T,
+            ):
                 correlation = _read_correlation_result(
                     self._library,
                     self._batch,
@@ -964,7 +1023,7 @@ class PreparedBatch:
                     if count_status == _native.STATUS_SUCCESS
                     else None,
                     status_message=message,
-                    energy=output.energy,
+                    energy=total_energy,
                     forces=forces,
                     converged=bool(output.converged),
                     iterations=output.iterations,
@@ -975,6 +1034,7 @@ class PreparedBatch:
                     if self._calculator._ks_options is not None
                     else None,
                     correlation=correlation,
+                    dispersion=dispersion if succeeded else None,
                     executed_backend={
                         _native.BACKEND_CPU_REFERENCE: "cpu_reference",
                         _native.BACKEND_CUDA: "cuda",
@@ -1147,38 +1207,7 @@ class PreparedBatch:
             raise RuntimeError(
                 "the batch was not prepared with shell_class_profiling=True"
             )
-        native_entries = (
-            _native.ShellClassProfileEntry * _native.DIRECT_SHELL_CLASS_COUNT
-        )()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_shell_class_profile(
-                self._batch,
-                native_entries,
-                len(native_entries),
-            ),
-        )
-        result = []
-        for shell_class, native in enumerate(native_entries):
-            first_pair, second_pair = _decode_triangular_class(shell_class)
-            first_high, first_low = _decode_triangular_class(first_pair)
-            second_high, second_low = _decode_triangular_class(second_pair)
-            result.append(
-                ShellClassProfileEntry(
-                    shell_class=shell_class,
-                    shell_angular=(
-                        first_high,
-                        first_low,
-                        second_high,
-                        second_low,
-                    ),
-                    shell_quartets=int(native.shell_quartets),
-                    tiles=int(native.tiles),
-                    ao_quartets=int(native.ao_quartets),
-                    primitive_quartets=int(native.primitive_quartets),
-                )
-            )
-        return tuple(result)
+        return read_shell_class_profile(self._library, self._batch)
 
     def last_ppps_queue_profile(self) -> PppsQueueProfile:
         """Return production PPPS occupancy and primitive-divergence data.
@@ -1193,45 +1222,7 @@ class PreparedBatch:
             raise RuntimeError(
                 "the batch was not prepared with shell_class_profiling=True"
             )
-        native = _native.PppsQueueProfile()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_ppps_queue_profile(
-                self._batch, ctypes.byref(native)
-            ),
-        )
-        return PppsQueueProfile(
-            descriptor_slots=int(native.descriptor_slots),
-            non_empty_descriptors=int(native.non_empty_descriptors),
-            empty_descriptors=int(native.empty_descriptors),
-            tasks=int(native.tasks),
-            primitive_work=int(native.primitive_work),
-            ket_count_min=int(native.ket_count_min),
-            ket_count_median=int(native.ket_count_median),
-            ket_count_p90=int(native.ket_count_p90),
-            ket_count_p99=int(native.ket_count_p99),
-            ket_count_max=int(native.ket_count_max),
-            lane_efficiency=tuple(float(value) for value in native.lane_efficiency),
-            primitive_warp_efficiency=float(native.primitive_warp_efficiency),
-            task_tail_imbalance=tuple(
-                float(value) for value in native.task_tail_imbalance
-            ),
-            primitive_tail_imbalance=tuple(
-                float(value) for value in native.primitive_tail_imbalance
-            ),
-            orientation_tasks=tuple(int(value) for value in native.orientation_tasks),
-            orientation_primitive_work=tuple(
-                int(value) for value in native.orientation_primitive_work
-            ),
-            bra_primitive_tasks=tuple(
-                int(value) for value in native.bra_primitive_tasks
-            ),
-            bra_primitive_work=tuple(int(value) for value in native.bra_primitive_work),
-            ket_primitive_tasks=tuple(
-                int(value) for value in native.ket_primitive_tasks
-            ),
-            ket_primitive_work=tuple(int(value) for value in native.ket_primitive_work),
-        )
+        return read_ppps_queue_profile(self._library, self._batch)
 
     def last_eigensolver_diagnostics(
         self,
@@ -1239,81 +1230,7 @@ class PreparedBatch:
         """Return one cached setup decision for every CUDA workload bucket."""
 
         self._ensure_open()
-        count = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_eigensolver_diagnostics(
-                self._batch, None, 0, ctypes.byref(count)
-            ),
-        )
-        native_entries = (_native.EigensolverDiagnostic * count.value)()
-        written = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_eigensolver_diagnostics(
-                self._batch,
-                native_entries,
-                len(native_entries),
-                ctypes.byref(written),
-            ),
-        )
-        if written.value != count.value:
-            raise RuntimeError("eigensolver diagnostic count changed during copy")
-        diagnostics = []
-        for native in native_entries:
-            diagnostics.append(
-                EigensolverDiagnostic(
-                    bucket_id=int(native.bucket_id),
-                    ordinary_family=_native.EIGENSOLVER_FAMILY_NAMES[
-                        native.ordinary_family
-                    ],
-                    graph_family=_native.EIGENSOLVER_FAMILY_NAMES[native.graph_family],
-                    selection_source=(
-                        _native.EIGENSOLVER_SELECTION_SOURCE_NAMES[
-                            native.selection_source
-                        ]
-                    ),
-                    matrix_dimension=int(native.matrix_dimension),
-                    physical_system_count=int(native.physical_system_count),
-                    solver_batch_count=int(native.solver_batch_count),
-                    api_eligible=bool(native.api_eligible),
-                    api_reason=_native.XSYEV_ELIGIBILITY_REASON_NAMES[
-                        native.api_reason
-                    ],
-                    matrix_batch_product=int(native.matrix_batch_product),
-                    probe_failure_stage=_native.XSYEV_GRAPH_PROBE_STAGE_NAMES[
-                        native.probe_failure_stage
-                    ],
-                    device_workspace_bytes=int(native.device_workspace_bytes),
-                    host_workspace_bytes=int(native.host_workspace_bytes),
-                    available_device_bytes=int(native.available_device_bytes),
-                    device_id=int(native.device_id),
-                    device_uuid=bytes(native.device_uuid).hex(),
-                    device_name=bytes(native.device_name)
-                    .split(b"\0", 1)[0]
-                    .decode("utf-8", errors="replace"),
-                    compute_capability=(
-                        int(native.compute_capability_major),
-                        int(native.compute_capability_minor),
-                    ),
-                    cuda_runtime_version=int(native.cuda_runtime_version),
-                    cuda_driver_version=int(native.cuda_driver_version),
-                    cusolver_version=int(native.cusolver_version),
-                    cuda_error=int(native.cuda_error),
-                    cusolver_error=int(native.cusolver_error),
-                    ordinary_execution_passed=bool(native.ordinary_execution_passed),
-                    graph_capture_passed=bool(native.graph_capture_passed),
-                    host_graph_replay_passed=bool(native.host_graph_replay_passed),
-                    device_tail_replay_passed=bool(native.device_tail_replay_passed),
-                    graph_eligible=bool(native.graph_eligible),
-                    maximum_eigenvalue_error=float(native.maximum_eigenvalue_error),
-                    maximum_residual=float(native.maximum_residual),
-                    maximum_orthogonality_error=float(
-                        native.maximum_orthogonality_error
-                    ),
-                )
-            )
-        return tuple(diagnostics)
+        return read_eigensolver_diagnostics(self._library, self._batch)
 
     def last_density_fitting_metric_diagnostics(
         self,
@@ -1321,44 +1238,7 @@ class PreparedBatch:
         """Return CUDA DF metric conditioning/allocation records from the last run."""
 
         self._ensure_open()
-        count = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_density_fitting_metric_diagnostics(
-                self._batch, None, 0, ctypes.byref(count)
-            ),
-        )
-        native_entries = (_native.DensityFittingMetricDiagnostic * count.value)()
-        written = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_density_fitting_metric_diagnostics(
-                self._batch,
-                native_entries,
-                len(native_entries),
-                ctypes.byref(written),
-            ),
-        )
-        if written.value != count.value:
-            raise RuntimeError("DF metric diagnostic count changed during copy")
-        return tuple(
-            DensityFittingMetricDiagnostic(
-                bucket_id=int(native.bucket_id),
-                system_index=int(native.system_index),
-                effective_rank=int(native.effective_rank),
-                absolute_threshold=float(native.absolute_threshold),
-                condition_number=float(native.condition_number),
-                solver_device_workspace_bytes=int(native.solver_device_workspace_bytes),
-                solver_host_workspace_bytes=int(native.solver_host_workspace_bytes),
-                device_resident_bytes=int(native.device_resident_bytes),
-                peak_device_bytes=int(native.peak_device_bytes),
-                host_resident_bytes=int(native.host_resident_bytes),
-                peak_host_bytes=int(native.peak_host_bytes),
-                auxiliary_tile=int(native.auxiliary_tile),
-                streamed=bool(native.streamed),
-            )
-            for native in native_entries
-        )
+        return read_density_fitting_metric_diagnostics(self._library, self._batch)
 
     def last_inactive_eigensolver_profile(
         self,
@@ -1370,50 +1250,17 @@ class PreparedBatch:
             raise RuntimeError(
                 "the batch was not prepared with inactive_eigensolver_profiling=True"
             )
-        count = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_inactive_eigensolver_profile(
-                self._batch, None, 0, ctypes.byref(count)
-            ),
-        )
-        native_entries = (_native.InactiveEigensolverProfileEntry * count.value)()
-        written = ctypes.c_uint32()
-        _native.check(
-            self._library,
-            self._library.vibeqc_batch_get_last_inactive_eigensolver_profile(
-                self._batch,
-                native_entries,
-                len(native_entries),
-                ctypes.byref(written),
-            ),
-        )
-        if written.value != count.value:
-            raise RuntimeError("inactive eigensolver profile count changed during copy")
-        return tuple(
-            InactiveEigensolverProfileEntry(
-                bucket_id=int(native.bucket_id),
-                iteration=int(native.iteration),
-                family=_native.EIGENSOLVER_FAMILY_NAMES[native.family],
-                physical_system_count=int(native.physical_system_count),
-                solver_batch_count=int(native.solver_batch_count),
-                active_physical_count=int(native.active_physical_count),
-                active_solver_count=int(native.active_solver_count),
-                solver_elapsed_nanoseconds=int(native.solver_elapsed_nanoseconds),
-                inactive_input_nonfinite_count=int(
-                    native.inactive_input_nonfinite_count
-                ),
-                inactive_submission_nonfinite_count=int(
-                    native.inactive_submission_nonfinite_count
-                ),
-                inactive_info_nonzero_count=int(native.inactive_info_nonzero_count),
-                inactive_touch_flags=int(native.inactive_touch_flags),
-                provider_invoked=bool(native.provider_invoked),
-            )
-            for native in native_entries
-        )
+        return read_inactive_eigensolver_profile(self._library, self._batch)
 
     def close(self) -> None:
+        if self._dispersion_batch is not None:
+            with suppress(Exception):
+                self._dispersion_batch.close()
+            self._dispersion_batch = None
+        if self._stationary_cuda_execution is not None:
+            with suppress(Exception):
+                self._stationary_cuda_execution.close()
+            self._stationary_cuda_execution = None
         if self._batch.value:
             self._library.vibeqc_batch_destroy(self._batch)
             self._batch = ctypes.c_void_p()

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -73,7 +74,7 @@ struct DfResourceEnvelope {
  * for the prepared execution owner even though they are not scientific identity.
  * A positive requested_bytes is always a hard upper bound on total_bytes. */
 struct DfResolvedBudget {
-  static constexpr std::uint32_t policy_version = 1;
+  static constexpr std::uint32_t policy_version = 3;
   std::size_t requested_bytes{};
   std::size_t total_bytes{};
   std::size_t value_bytes{};
@@ -92,11 +93,80 @@ inline std::size_t df_budget_bytes(long double bytes) noexcept {
                           : static_cast<std::size_t>(std::max<long double>(0, bytes));
 }
 
+inline std::size_t df_budget_ceiling(long double bytes) noexcept {
+  constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::size_t>::max());
+  return bytes >= maximum ? std::numeric_limits<std::size_t>::max()
+                          : static_cast<std::size_t>(std::ceil(std::max<long double>(0, bytes)));
+}
+
+/**
+ * Estimate the value-owner floor for a full source-backed resident plan.
+ *
+ * The ordinary workload estimate intentionally describes preparation and
+ * response staging.  It is not sufficient to admit the persistent CUDA J/K
+ * owner: a resident plan keeps one full B tensor and three full-width K
+ * panels live, in addition to the batched SCF/final-state reservations.  Keep
+ * this estimate in the shared policy header so automatic resolution and the
+ * planner agree on the admission boundary without making a low-memory device
+ * borrow the response allowance.  The native planner remains authoritative and
+ * may still select a streamed plan when basis metadata exceeds this shape-only
+ * reserve.
+ */
+inline std::size_t df_resident_value_admission_floor(DfBudgetWorkload workload) noexcept {
+  constexpr long double mib = 1024.0L * 1024.0L;
+  const long double n = static_cast<long double>(std::max<std::size_t>(1, workload.nbf));
+  const long double a = static_cast<long double>(std::max<std::size_t>(1, workload.naux));
+  const long double batch = static_cast<long double>(std::max<std::size_t>(1, workload.batch));
+  const long double diis =
+      static_cast<long double>(std::min<std::size_t>(workload.diis_history, 12U));
+  const long double matrix = n * n;
+  const long double tensor = matrix * a;
+  const long double matrix_bytes = matrix * sizeof(double);
+
+  // Match the fixed DIIS reservation charged before tile selection. The
+  // reserve is zero for the history sizes that do not allocate device DIIS.
+  const long double diis_dimension = diis + 1.0L;
+  const long double diis_bytes = diis < 2.0L
+                                     ? 0.0L
+                                     : batch *
+                                               ((4.0L * diis + 6.0L) * matrix +
+                                                diis_dimension * diis_dimension + diis_dimension) *
+                                               sizeof(double) +
+                                           batch * 2.0L * sizeof(std::uint32_t);
+
+  const long double eigen_workspace = 1.0L * mib + 16.0L * matrix_bytes;
+  const long double eigen_reservation =
+      eigen_workspace + (3.0L * matrix + n) * sizeof(double) + sizeof(int) + sizeof(unsigned char);
+  const long double snapshot =
+      batch * (2.0L * (matrix + n) * sizeof(double) + 2.0L * (sizeof(std::uint64_t) + sizeof(int)));
+  const long double final_validation =
+      (9.0L * matrix + n) * sizeof(double) + (3.0L * 128.0L + 1.0L) * 128.0L;
+  const long double control = batch * 154.0L;
+  const long double solver = 1.0L * mib + 16.0L * a * a * sizeof(double) + batch * eigen_workspace;
+  const long double metric = batch * a * a * sizeof(double);
+
+  // Generated resident B plus the three full-width K panels, the persistent
+  // SCF matrices, setup metric, and a conservative source/metadata margin.
+  const long double setup_doubles = batch * (3.0L * a * a + 2.0L * a);
+  const long double contraction_doubles =
+      7.0L * batch * matrix + batch * a + 3.0L * tensor + batch * tensor;
+  const long double one_electron_doubles = 23.0L * batch * matrix;
+  const long double source_margin = 64.0L * mib + 16.0L * (matrix + a * a) * sizeof(double);
+  return df_budget_bytes(
+      diis_bytes + control + eigen_reservation + snapshot + final_validation + solver + metric +
+      (setup_doubles + contraction_doubles + one_electron_doubles) * sizeof(double) +
+      source_margin);
+}
+
 /** Resolve one value/response allowance without a fixed-size magic default.
  *
- * Automatic mode uses a bounded workload target, then leaves both an absolute
- * and fractional device reservation when live free-memory is available. If the
- * probe is unavailable, the same dimensions deterministically resolve to a
+ * Live automatic mode bounds its workload target by available device memory,
+ * not the probe-failure cap: a 1-GiB cap forces roomy multi-GiB tensors to
+ * regenerate on every replay. When the live envelope can admit a complete
+ * source-backed resident value owner, the target is raised to that admission
+ * floor before splitting response capacity. Tight live envelopes retain the
+ * smaller workload target and therefore the streamed fallback. If the probe
+ * is unavailable, the same dimensions deterministically resolve to a
  * conservative 32 MiB..1 GiB envelope. Force response and value ownership are
  * proportional to their estimated staged work, not an unconditional 50/50.
  */
@@ -104,7 +174,7 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                           std::size_t requested_bytes) noexcept {
   constexpr std::size_t mib = 1024U * 1024U;
   constexpr std::size_t min_auto = 32U * mib;
-  constexpr std::size_t max_auto = 1024U * mib;
+  constexpr std::size_t max_fallback = 1024U * mib;
   constexpr std::size_t min_headroom = 256U * mib;
 
   const long double n = static_cast<long double>(std::max<std::size_t>(1, workload.nbf));
@@ -118,8 +188,15 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
       16.0L * mib + sizeof(double) * (4.0L * n * n * a + batch * (8.0L + 2.0L * diis) * n * n);
   const long double response_demand =
       workload.forces ? 8.0L * mib + sizeof(double) * 3.0L * atoms * (n * n + a * a + n * a) : 0.0L;
-  const auto workload_target =
-      std::clamp(df_budget_bytes(value_demand + response_demand), min_auto, max_auto);
+  const auto workload_target = std::max(df_budget_bytes(value_demand + response_demand), min_auto);
+  const long double demand = value_demand + response_demand;
+  long double response_fraction = demand > 0.0L ? response_demand / demand : 0.5L;
+  response_fraction = std::clamp(response_fraction, 0.20L, 0.70L);
+  const auto resident_value_floor = df_resident_value_admission_floor(workload);
+  const auto resident_target =
+      workload.forces ? df_budget_ceiling(static_cast<long double>(resident_value_floor) /
+                                          (1.0L - response_fraction))
+                      : resident_value_floor;
 
   DfResolvedBudget result;
   result.requested_bytes = requested_bytes;
@@ -140,9 +217,14 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                          : resource.free_bytes - resource.free_bytes / 2U;
     const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
     const auto available = after_absolute - after_absolute / 4U;
-    result.total_bytes = std::min(workload_target, available);
+    // Promote only when the complete resident value owner fits inside the
+    // actual post-reservation envelope. Otherwise preserve the smaller target
+    // so constrained devices still select the bounded streamed route.
+    const auto admitted_target =
+        resident_target <= available ? std::max(workload_target, resident_target) : workload_target;
+    result.total_bytes = std::min(admitted_target, available);
   } else {
-    result.total_bytes = workload_target;
+    result.total_bytes = std::min(workload_target, max_fallback);
   }
 
   if (!workload.forces) {
@@ -157,9 +239,6 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
     return result;
   }
 
-  const long double demand = value_demand + response_demand;
-  long double response_fraction = demand > 0.0L ? response_demand / demand : 0.5L;
-  response_fraction = std::clamp(response_fraction, 0.20L, 0.70L);
   auto response =
       static_cast<std::size_t>(static_cast<long double>(result.total_bytes) * response_fraction);
   response = std::clamp<std::size_t>(response, 1U, result.total_bytes - 1U);

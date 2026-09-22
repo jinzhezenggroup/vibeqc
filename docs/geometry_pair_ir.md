@@ -65,3 +65,26 @@ supports the same dynamic/ragged replay contract. See the
 [D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md)
 for exact cutoff conventions, provenance, normalization fallback boundary, evidence,
 and retirement criteria.
+
+## Ragged D3 execution
+
+D3 now exercises the shared ragged geometry contract with
+`D3GeometryBatchProgram`. A heterogeneous batch is represented by one flattened
+atom space plus strictly increasing system offsets. Pair construction is scoped to
+each system range, so the generated topology cannot contain cross-system pairs.
+The same pair graph supplies CN, C6 interpolation, BJ damping and pair energy;
+`scatter_add` maps pair energies to the system axis and generated reverse AD maps
+the vector energy back to the flattened Cartesian coordinates.
+
+The prepared CUDA candidate treats CN membership and cutoff/switch regions as
+compiler state. Topology-preserving replay reuses the generated artifact; a state
+transition is an explicit rebuild boundary. This supplies the dynamic/ragged
+execution seam required by the D3 retirement plan without moving neighbor-list
+policy into PairIR or adding a method-specific CUDA scientific kernel.
+
+Public production ownership remains native until the candidate also reproduces
+per-item failure isolation, energy-only behavior and qualified endpoint/resource
+performance. The generated equation itself remains the scientific source of truth.
+
+Agent: ChatGPT
+Model: GPT-5.6 Sol

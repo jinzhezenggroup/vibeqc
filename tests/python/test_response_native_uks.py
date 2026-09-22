@@ -24,7 +24,10 @@ from tools.vibeqc_response import (
 
 LIH = [("Li", (0.1, -0.2, 0.0)), ("H", (0.1, -0.2, 2.7))]
 H2 = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
-GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+# These are fixed-grid response/oracle tests, not quadrature convergence tests.
+# Keep a nontrivial atom-centred grid and the same strict independent SCF/fxc/FD
+# checks; production-grid convergence is covered by test_grid_policy_convergence.
+GRID = GridSpec(radial_points=12, angular_polar=4, angular_azimuth=8)
 
 
 def _calculator(method: str) -> Calculator:
@@ -241,7 +244,8 @@ def test_solve_reconverged_spin_densities_and_recycling(native: typing.Any) -> N
             expected, (densities[0] - densities[1]) / (2 * step), atol=3e-6, rtol=3e-5
         )
     columns = np.column_stack([rhs, -0.4 * rhs, np.zeros_like(rhs)])
-    for strategy in ("sequential", "blocked", "recycled"):
+    # Keep full-size physical replay; the strategy matrix below uses H4.
+    for strategy in ("recycled",):
         many = solve_many(
             response, columns, strategy=strategy, options=options, raise_on_failure=True
         )
@@ -379,3 +383,51 @@ def test_meta_gga_snapshot_cannot_be_interpreted_as_pbe(restricted: bool) -> Non
                 evaluate(True, rho, gradient, rho, gradient)
         finally:
             source.close()
+
+
+@pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
+def test_native_multirhs_strategy_matrix_on_small_molecule(method: str) -> None:
+    # H4+ has both occupied and virtual spaces in both spin channels. The larger
+    # open-shell physical fixture above retains the independent three-step FD.
+    atoms = [
+        ("H", (0.0, 0.0, -0.7)),
+        ("H", (0.1, 0.0, 0.7)),
+        ("H", (3.0, 0.2, -0.65)),
+        ("H", (3.2, 0.1, 0.65)),
+    ]
+    with (
+        _calculator(method).prepare_batch(
+            [atoms], charges=[1], multiplicities=[2]
+        ) as batch,
+        NativeAO(atoms, charge=1, multiplicity=2) as basis,
+    ):
+        batch.execute(strict=True)
+        with NativeUKSResponse.from_native(batch, basis, tile_points=257) as response:
+            assert response.problem.layout.block_dimension("alpha") == 4
+            assert response.problem.layout.block_dimension("beta") == 3
+            perturbation = np.random.default_rng(180).normal(
+                size=response.problem.reference.hcore.shape
+            )
+            perturbation = 0.05 * (perturbation + perturbation.T)
+            rhs = -_project(response, np.stack([perturbation, perturbation]))
+            options = GMRESOptions(atol=1e-12, rtol=1e-11, restart=20)
+            result = solve(response, rhs, options=options, raise_on_failure=True)
+            oracle = _independent_mf(response, basis)
+            assert (
+                np.linalg.norm(rhs - _oracle_action(response, oracle, result.solution))
+                < 3e-9
+            )
+            columns = np.column_stack([rhs, -0.4 * rhs, np.zeros_like(rhs)])
+            for strategy in ("sequential", "blocked", "recycled"):
+                many = solve_many(
+                    response,
+                    columns,
+                    strategy=strategy,
+                    options=options,
+                    raise_on_failure=True,
+                )
+                np.testing.assert_allclose(
+                    many.solution,
+                    result.solution[:, None] * np.array([1.0, -0.4, 0.0]),
+                    atol=3e-10,
+                )

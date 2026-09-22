@@ -580,14 +580,6 @@
       "sha256": "628ddb41f9654f211a527c728ebf5f7f25f883e6ac5ecb5f4345e3909838839c"
     },
     {
-      "bytes": 556626,
-      "classification": "required-compact-accepted-evidence",
-      "family": "ecp-grid-171",
-      "path": "benchmarks/results/ecp-grid-171/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "c40f492cf3e1fd3d76bb3964dda6d387082b790582eb242cb1a3fece2e621622"
-    },
-    {
       "bytes": 163839,
       "classification": "required-compact-accepted-evidence",
       "family": "ecp-policy-171",
@@ -732,36 +724,12 @@
       "sha256": "97df4d81c12e157396725d981dcc6a2be193a18b2df81b1514b54032b4af2524"
     },
     {
-      "bytes": 759957,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue206-device-diis-baseline",
-      "path": "benchmarks/results/issue206-device-diis-baseline/evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
-    },
-    {
       "bytes": 444945,
       "classification": "required-compact-accepted-evidence",
       "family": "issue206-device-response",
       "path": "benchmarks/results/issue206-device-response/summary.json",
       "role": "decision-or-audit-record",
       "sha256": "102788881db492a5454326fcde8f4cf6a38cbaee290cd31e36f3384482e48368"
-    },
-    {
-      "bytes": 333662,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue206-final-state-192",
-      "path": "benchmarks/results/issue206-final-state-192/endpoints.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "b80a5ab7fdd085cac3b9df00e2791c0f3163f975cad373481855ea22c6504ae8"
-    },
-    {
-      "bytes": 385632,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue206-final-state-96",
-      "path": "benchmarks/results/issue206-final-state-96/endpoints.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "1abf59bff526de86a4de42747b93ebdd2d4bdb62da83e12486ae4c93529d1cbe"
     },
     {
       "bytes": 142797,
@@ -836,22 +804,6 @@
       "sha256": "aa10acfff00e4f6f44bce0b569bd6e90b05996f581d0b88657453f15872acfc5"
     },
     {
-      "bytes": 216275,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue282-generated-resident",
-      "path": "benchmarks/results/issue282-generated-resident/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "d595839631abb696affd1a45739d91dcb2c90f5afd6d77edba336bf228f458f2"
-    },
-    {
-      "bytes": 249473,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue283-component-baseline",
-      "path": "benchmarks/results/issue283-component-baseline/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "af4be07c779eea5a51685fd94f5310af5839ad2f2c8e304b314c5632c0147629"
-    },
-    {
       "bytes": 143684,
       "classification": "required-compact-accepted-evidence",
       "family": "issue283-host-response",
@@ -892,70 +844,6 @@
       "sha256": "b24b5d2f2b0e930706374c0fb768188fdcc4c78162d2f04e9f456d292d06b463"
     },
     {
-      "bytes": 426905,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue308-large-diagnostics",
-      "path": "benchmarks/results/issue308-large-diagnostics/qualification.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "1e11cf0f3f88fc0d27591d23a46513af670e6ad5e60f5a952ffcebb56edc33a7"
-    },
-    {
-      "bytes": 161562,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue308-stage-ledger",
-      "path": "benchmarks/results/issue308-stage-ledger/historical-followup.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "e987a878948774de9a552b28bef1d45eb95084c34ea1b7a5f33037b1cc7ebe1e"
-    },
-    {
-      "bytes": 371312,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue308-stage-ledger",
-      "path": "benchmarks/results/issue308-stage-ledger/stage-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f"
-    },
-    {
-      "bytes": 213996,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue309-lazy-core",
-      "path": "benchmarks/results/issue309-lazy-core/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "a0510af08da6f8cf66d5e951b5b6ba1370c5c1123bf82e5a79416147f8d2668f"
-    },
-    {
-      "bytes": 157446,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue309-overlap-cache",
-      "path": "benchmarks/results/issue309-overlap-cache/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "b814ac1788b12992a9c0d13aae6483eca3ee1b572d2deb5c4baaa140a595fb1d"
-    },
-    {
-      "bytes": 306496,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue310-final-eigen",
-      "path": "benchmarks/results/issue310-final-eigen/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "c45c759e5b5aa3efd182090e1c6236110f07e2ffd53d4931faa7136ef3a605fe"
-    },
-    {
-      "bytes": 311432,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue310-setup-eigen",
-      "path": "benchmarks/results/issue310-setup-eigen/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "4aa7e3f3f9dccdb6eb444fb0e37452eb27df03982079c2a375fc657ac89dec5d"
-    },
-    {
-      "bytes": 205565,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue311-rhf-energy",
-      "path": "benchmarks/results/issue311-rhf-energy/qualification.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "f3cd99b9fa85018f6d3927deeabcce1ee7e4a61b6545c67565573d58153329f3"
-    },
-    {
       "bytes": 139337,
       "classification": "required-compact-accepted-evidence",
       "family": "issue377-379-df",
@@ -978,14 +866,6 @@
       "path": "benchmarks/results/issue377-379-df/source-validation.json",
       "role": "decision-or-audit-record",
       "sha256": "4d17816ba58e37f9498471a10de40a6a87558e981d2403c1664cadfbf4705483"
-    },
-    {
-      "bytes": 184173,
-      "classification": "required-compact-accepted-evidence",
-      "family": "issue394-batch-rys",
-      "path": "benchmarks/results/issue394-batch-rys/raw-evidence.zip",
-      "role": "legacy-evidence-archive",
-      "sha256": "08b91d9290ea4c1d95fa1f80db84dd4d202ae970a4284e1300c634aa9c5621cc"
     },
     {
       "bytes": 219056,

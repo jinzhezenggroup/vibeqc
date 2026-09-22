@@ -31,6 +31,11 @@ def example() -> typing.Any:
 
 def test_last_use_is_after_call_not_before_its_output_allocation() -> None:
     p = example()
+    storage = p.storage_analysis()
+    assert storage.peak_by_space["pageable"] == 218
+    assert storage.slot_for("a") == storage.slot_for("out")
+    assert ("a", "b") in storage.interference
+    assert ("a", "c") not in storage.interference
     intervals = {e.name: (e.first_phase, e.last_phase, e.kind) for e in p.lifetimes()}
     assert intervals == {
         "x": (0, 5, "persistent"),

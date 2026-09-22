@@ -91,7 +91,7 @@ __device__ __forceinline__ void generated_dppp_packed_fock_lane(
        first_primitive < first_pair_end; ++first_primitive) {{
     for (std::int64_t second_primitive = second_pair_begin;
          second_primitive < second_pair_end; ++second_primitive) {{
-      generated_dppp_make_primitive_geometry(
+      generated_dppp_make_fock_primitive_geometry(
           primitive_pairs[first_primitive],
           primitive_pairs[second_primitive],
           (task.reversed_shell_pair_mask & 1U) != 0U,
@@ -402,7 +402,7 @@ __device__ __forceinline__ void generated_dppp_subgroup_fock_task(
     for (std::int64_t second_primitive = second_pair_begin;
          second_primitive < second_pair_end; ++second_primitive) {{
       if (lane == 0U) {{
-        generated_dppp_make_primitive_geometry(
+        generated_dppp_make_fock_primitive_geometry(
             primitive_pairs[first_primitive],
             primitive_pairs[second_primitive],
             (shared.task.reversed_shell_pair_mask & 1U) != 0U,

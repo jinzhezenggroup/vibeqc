@@ -27,6 +27,22 @@ __global__ void copy_selected_matrices_kernel(std::int32_t batch_size,
   if (selected[system] != 0) destination[element] = source[element];
 }
 
+__global__ void extract_matrix_diagonals_kernel(std::int32_t batch_size,
+                                                std::int32_t matrices_per_system, std::int32_t nbf,
+                                                const std::uint8_t* selected,
+                                                const double* matrices, double* diagonals) {
+  const std::size_t n = static_cast<std::size_t>(nbf);
+  const std::size_t matrix_count = static_cast<std::size_t>(batch_size) * matrices_per_system;
+  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (element >= matrix_count * n) return;
+  const std::size_t state = element / n;
+  const std::size_t system = state / static_cast<std::size_t>(matrices_per_system);
+  if (selected[system] == 0) return;
+  const std::size_t column = element % n;
+  const std::size_t matrix_offset = state * n * n;
+  diagonals[element] = matrices[matrix_offset + matrix_index(column, column, n)];
+}
+
 __global__ void build_orthogonalizer_kernel(std::int32_t batch_size, std::int32_t nbf,
                                             const double* eigenvectors, const double* eigenvalues,
                                             const std::uint8_t* active, double* orthogonalizer,
@@ -157,6 +173,15 @@ void launch_copy_selected_matrices_kernel(dim3 grid, dim3 block, std::size_t sha
                                           double* destination) {
   copy_selected_matrices_kernel<<<grid, block, shared_bytes, stream>>>(
       batch_size, matrices_per_system, nbf, selected, source, destination);
+}
+
+void launch_extract_matrix_diagonals_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+                                            cudaStream_t stream, std::int32_t batch_size,
+                                            std::int32_t matrices_per_system, std::int32_t nbf,
+                                            const std::uint8_t* selected, const double* matrices,
+                                            double* diagonals) {
+  extract_matrix_diagonals_kernel<<<grid, block, shared_bytes, stream>>>(
+      batch_size, matrices_per_system, nbf, selected, matrices, diagonals);
 }
 
 void launch_build_orthogonalizer_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

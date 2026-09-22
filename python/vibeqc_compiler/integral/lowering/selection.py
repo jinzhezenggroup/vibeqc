@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ..fused_schedule import (
         FusedShellPlan,
     )
+    from ..ir import IntegralIR
     from ..shell_spec import (
         ShellClassSpec,
     )
@@ -48,20 +49,22 @@ def supports_component_lane_rys(
 def _supports_rys_component_lane_fock(
     spec: ShellClassSpec,
     plan: FusedShellPlan,
+    *,
+    support_integral: IntegralIR | None = None,
 ) -> bool:
     """Return whether the runtime-indexed fixed-root Fock worker is legal.
 
-    The value worker uses the force plan's fixed-root tables and recurrence
-    state program, so legality is determined by the backend capabilities rather
-    than by the set of classes that happened to be profiled first.  The
-    runtime decoder currently has exact tables for s/p/d centers and allows at
-    most a p shell on center four; the separate force contraction is required
-    because ``IntegralIR`` derives Rys root counts from first-derivative order.
+    ``plan`` owns the requested Fock schedule.  A derivative-bearing
+    ``support_integral`` may separately own the fixed-root tables and
+    recurrence state program that the value worker reuses.  Keeping that
+    lowering dependency explicit lets output pruning remove FORCE from the
+    requested Fock plan without pretending the shared Rys support is dead.
     """
 
-    integral = plan.kernel.integral
+    integral = plan.kernel.integral if support_integral is None else support_integral
     return (
         KernelConsumer.FORCE in integral.consumers
         and supports_component_lane_rys(spec, plan.schedule)
-        and integral.recurrence in ("rys3", "rys4")
+        and integral.recurrence.startswith("rys")
+        and integral.required_rys_roots in (3, 4)
     )

@@ -149,7 +149,12 @@ def test_native_matches_independent_scf(
         # This forces ordinary-stream execution of the larger shared native
         # eigensolver, above the small solver's 16-AO limit.
         assert mol.nao_nr() > 16
-    grid = MolecularGrid(atoms, charge=charge, multiplicity=multiplicity).explicit()
+    grid = MolecularGrid(
+        atoms,
+        spec=calculator.ks_options.grid,
+        charge=charge,
+        multiplicity=multiplicity,
+    ).explicit()
     native = calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
     assert native.converged and native.density_rms < 1e-9
     assert native.physical_residual_rms is not None

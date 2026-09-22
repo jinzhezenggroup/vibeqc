@@ -166,76 +166,36 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
       boys_values<2>(rho * distance_squared(product_p, product_q), boys);
       const double prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
                                2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      if (batch.generated_psss_weighted) {
-        // Retain resident-bra reuse, primitive orientation, normalization, and
-        // one traversal across all p outputs. Only the scalar weighted
-        // expression comes from the generic external-weight DAG lowering.
-        generated_weighted_eri::Geometry geometry{};
-        geometry.inverse_two_p = 0.5 / p;
-        geometry.rho = rho;
-        geometry.prefactor = prefactor;
-        geometry.product_scales[0] = first_product_scale;
-        geometry.product_scales[1] = second_product_scale;
-        geometry.product_scales[2] = second_pair_matches_canonical_order
-                                         ? second_pair.first_product_scale
-                                         : second_pair.second_product_scale;
+      // Retain resident-bra reuse, primitive orientation, normalization, and
+      // one traversal across all p outputs. The force-only helper reads only
+      // the fields initialized below; the scientific derivative algebra is
+      // unconditionally compiler-owned.
+      generated_weighted_eri::Geometry geometry;
+      geometry.inverse_two_p = 0.5 / p;
+      geometry.rho = rho;
+      geometry.prefactor = prefactor;
+      geometry.product_scales[0] = first_product_scale;
+      geometry.product_scales[1] = second_product_scale;
+      geometry.product_scales[2] = second_pair_matches_canonical_order
+                                       ? second_pair.first_product_scale
+                                       : second_pair.second_product_scale;
 #pragma unroll
-        for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-          geometry.shifts[0][coordinate] = vec_axis(pa, coordinate);
-          geometry.difference[coordinate] = vec_axis(product_difference, coordinate);
-          geometry.boys[coordinate] = boys[coordinate];
-          geometry.decay[0][coordinate] =
-              -2.0 * mu * (vec_axis(first, coordinate) - vec_axis(second, coordinate));
-          geometry.decay[1][coordinate] = -geometry.decay[0][coordinate];
-          geometry.decay[2][coordinate] =
-              -2.0 * nu * (vec_axis(third, coordinate) - vec_axis(fourth, coordinate));
-        }
-        const auto generated = generated_weighted_eri::psss(geometry, axis_weight);
-#pragma unroll
-        for (unsigned center = 0; center < 3; ++center) {
-#pragma unroll
-          for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-            result.center[center][coordinate] += generated.center[center][coordinate];
-          }
-        }
-        continue;
+      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
+        geometry.shifts[0][coordinate] = vec_axis(pa, coordinate);
+        geometry.difference[coordinate] = vec_axis(product_difference, coordinate);
+        geometry.boys[coordinate] = boys[coordinate];
+        geometry.decay[0][coordinate] =
+            -2.0 * mu * (vec_axis(first, coordinate) - vec_axis(second, coordinate));
+        geometry.decay[1][coordinate] = -geometry.decay[0][coordinate];
+        geometry.decay[2][coordinate] =
+            -2.0 * nu * (vec_axis(third, coordinate) - vec_axis(fourth, coordinate));
       }
-      const double coulomb_scale = rho / p;
-      const double weighted_pa =
-          axis_weight[0] * pa.x + axis_weight[1] * pa.y + axis_weight[2] * pa.z;
-      const double weighted_pq = axis_weight[0] * product_difference.x +
-                                 axis_weight[1] * product_difference.y +
-                                 axis_weight[2] * product_difference.z;
-      const double weighted_value = weighted_pa * boys[0] - coulomb_scale * weighted_pq * boys[1];
-      const double third_product_scale = second_pair_matches_canonical_order
-                                             ? second_pair.first_product_scale
-                                             : second_pair.second_product_scale;
-      const double product_scales[3] = {first_product_scale, second_product_scale,
-                                        -third_product_scale};
-
+      const auto generated = generated_weighted_eri::psss_force(geometry, axis_weight);
 #pragma unroll
       for (unsigned center = 0; center < 3; ++center) {
 #pragma unroll
         for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-          double decay_derivative = 0.0;
-          if (center < 2) {
-            const double difference = vec_axis(first, coordinate) - vec_axis(second, coordinate);
-            decay_derivative = (center == 0 ? -2.0 * mu : 2.0 * mu) * difference;
-          } else {
-            const double difference = vec_axis(third, coordinate) - vec_axis(fourth, coordinate);
-            decay_derivative = -2.0 * nu * difference;
-          }
-          const double argument_derivative =
-              2.0 * rho * product_scales[center] * vec_axis(product_difference, coordinate);
-          const double pa_derivative =
-              center == 0 ? first_product_scale - 1.0 : (center == 1 ? second_product_scale : 0.0);
-          const double weighted_value_derivative =
-              axis_weight[coordinate] * pa_derivative * boys[0] -
-              weighted_pa * boys[1] * argument_derivative -
-              coulomb_scale * axis_weight[coordinate] * product_scales[center] * boys[1] +
-              coulomb_scale * weighted_pq * boys[2] * argument_derivative;
-          result.center[center][coordinate] +=
-              prefactor * (weighted_value_derivative + weighted_value * decay_derivative);
+          result.center[center][coordinate] += generated.center[center][coordinate];
         }
       }
     }

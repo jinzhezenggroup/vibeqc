@@ -144,7 +144,7 @@ def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct() -> None:
 
 @pytest.mark.parametrize(
     "canonical,alias",
-    [("BHANDHLYP", "BHHLYP"), ("CAM-B3LYP", "CAMB3LYP")],
+    [("CAM-B3LYP", "CAMB3LYP"), ("CAM-B3LYP", "CAM_B3LYP")],
 )
 def test_cross_code_named_aliases_preserve_semantics(
     canonical: typing.Any, alias: typing.Any
@@ -357,6 +357,7 @@ def test_nonlocal_primitive_participates_in_method_identity_and_requirements() -
     assert resolved.primitives[-1].derivative_capabilities == (
         "energy",
         "ks-potential",
+        "nuclear-gradient",
     )
     assert resolved.requirements["ingredients"] == ("rho", "sigma")
     assert resolved.requirements["operators"] == (

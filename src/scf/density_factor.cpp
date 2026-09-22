@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "generated_scf_array_native.hpp"
 #include "runtime/resource_usage.hpp"
 
 namespace vibeqc::scf {
@@ -43,11 +44,8 @@ OccupiedDensityFactor::OccupiedDensityFactor(DensityFactorIdentity identity, Den
   const auto scale = std::sqrt(occupation);
   for (std::size_t i = 0; i < coefficients.size(); ++i) values_[i] = scale * coefficients[i];
   density_.assign(checked_product(nbf, nbf), 0.0);
-  for (std::size_t i = 0; i < nbf; ++i)
-    for (std::size_t j = 0; j < nbf; ++j)
-      for (std::size_t o = 0; o < rank(); ++o)
-        density_[i * nbf + j] +=
-            occupation * coefficients[i * rank() + o] * coefficients[j * rank() + o];
+  generated::density_from_orbitals(density_.data(), coefficients.data(), nbf, rank(), rank(),
+                                   occupation);
   if (!std::all_of(values_.begin(), values_.end(), [](double x) { return std::isfinite(x); }) ||
       !std::all_of(density_.begin(), density_.end(), [](double x) { return std::isfinite(x); }))
     throw std::invalid_argument("occupied density factor overflows its numerical representation");

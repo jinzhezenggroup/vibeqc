@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import typing
+from fractions import Fraction
 from pathlib import Path
 from time import perf_counter
 
@@ -16,6 +17,7 @@ from test_ecp_stationary_cpu import GRID, reference
 from vibeqc import Calculator, KsOptions, ResourceBudget, _native
 from vibeqc._dft_gradient import StationaryKsState
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.method import MethodSpec, resolve_method
 
 
 @pytest.fixture(autouse=True)
@@ -65,6 +67,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
     atoms, record, mol = fixture(
         spin=spin, representation=representation, d_shell=d_shell
     )
+    charge, multiplicity = mol.charge, mol.spin + 1
     # Exercise serialized spherical ECP data through the real public endpoint.
     public_basis = record
     if representation == "spherical":
@@ -73,18 +76,20 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         public_basis = path
     calc = calculator(public_basis, method)
     started = perf_counter()
-    result = calc.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+    result = calc.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
     record_property("complete_endpoint_seconds", perf_counter() - started)
     assert result.executed_backend == "cpu_reference"
     assert result.converged and np.isfinite(result.forces).all()
     with (
-        calc.prepare_batch([atoms], charges=[spin], multiplicities=[spin + 1]) as batch,
+        calc.prepare_batch(
+            [atoms], charges=[charge], multiplicities=[multiplicity]
+        ) as batch,
         NativeAO(
             atoms,
             basis=record,
             representation=representation,
-            charge=spin,
-            multiplicity=spin + 1,
+            charge=charge,
+            multiplicity=multiplicity,
         ) as basis,
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0]
@@ -112,7 +117,10 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
             ]
             energies.append(
                 calc.singlepoint(
-                    moved, charge=spin, multiplicity=spin + 1, properties=("energy",)
+                    moved,
+                    charge=charge,
+                    multiplicity=multiplicity,
+                    properties=("energy",),
                 ).energy
             )
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
@@ -124,7 +132,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         from dataclasses import replace
 
         cartesian = calculator(replace(record, representation="cartesian"), method)
-        other = cartesian.singlepoint(atoms, charge=spin, multiplicity=spin + 1)
+        other = cartesian.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
         assert abs(result.energy - other.energy) < 2e-9
         np.testing.assert_allclose(result.forces, other.forces, atol=1e-9, rtol=0)
         record_property(
@@ -145,8 +153,13 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
     atoms, record, mol = fixture(
         spin=spin, representation=representation, d_shell=d_shell
     )
+    charge, multiplicity = mol.charge, mol.spin + 1
     fragment = [("H", (0, 0, 0))] if spin else [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
-    systems, charges, multiplicities = [atoms, fragment], [spin, 0], [spin + 1] * 2
+    systems, charges, multiplicities = (
+        [atoms, fragment],
+        [charge, 0],
+        [multiplicity, spin + 1],
+    )
     calc = calculator(record, method)
     plan = calc.estimate_resources(
         systems, charges=charges, multiplicities=multiplicities
@@ -186,7 +199,7 @@ def test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
         replay = batch.execute(coordinates=[moved, None], strict=True)
         record_property("batch_changed_geometry_seconds", perf_counter() - started)
         fresh_atoms = [(a, r) for (a, _), r in zip(atoms, moved)]
-        fresh = calc.singlepoint(fresh_atoms, charge=spin, multiplicity=spin + 1)
+        fresh = calc.singlepoint(fresh_atoms, charge=charge, multiplicity=multiplicity)
         np.testing.assert_allclose(
             replay.items[0].forces, fresh.forces, atol=1e-9, rtol=0
         )
@@ -292,6 +305,7 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
     representation: str,
 ) -> None:
     from vibeqc._stationary_cpu_components import ComponentPrimitiveExecutor
+    from vibeqc._stationary_cpu_streaming import CompiledComponentExecutor
     from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 
     atoms, record, mol = fixture(representation=representation, d_shell=True)
@@ -303,6 +317,17 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
             2,
             CppCompilerAdapter(Path(os.environ.get("CXX", "c++"))),
         )
+        candidates = [
+            CompiledComponentExecutor(
+                basis,
+                Path(
+                    os.environ.get("VIBEQC_STATIONARY_CACHE", ".cache/stationary-cpu")
+                ),
+                tile,
+                CppCompilerAdapter(Path(os.environ.get("CXX", "c++"))),
+            )
+            for tile in (1, 2, 128)
+        ]
         n = basis.nao
         norms = np.sqrt(mol.intor("int1e_ovlp").diagonal())
         for op, intor, selections in (
@@ -345,6 +370,20 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
                         else weight * mol.atom_charge(nucleus),
                         nucleus,
                     )
+                    for candidate in candidates:
+                        mapped, actual = candidate.integral(
+                            op,
+                            indices,
+                            weight
+                            if nucleus is None
+                            else weight * mol.atom_charge(nucleus),
+                            nucleus,
+                        )
+                        assert mapped == owners
+                        np.testing.assert_allclose(
+                            actual, values, atol=2e-13, rtol=2e-13
+                        )
+                        assert candidate.records == executor.records
                     np.add.at(gradient, owners, values)
             for step in (3e-4, 1e-4):
                 energies = []
@@ -379,6 +418,126 @@ def check_spd_arbitrary_ordered_weights_against_libcint_energy_differences(
         executor.calls[request] = original
         assert np.isfinite(executor.nuclear(0, 1, mol.atom_charges())).all()
         assert executor.records == before + 1
+        for candidate in candidates:
+            before = candidate.records
+            with pytest.raises(ArithmeticError, match="component derivative failed"):
+                candidate.integral("overlap", (8, n - 1), float("nan"))
+            assert candidate.records == before
+            _, zero = candidate.integral("four_center_eri", (8, 8, n - 1, n - 1), 0.0)
+            np.testing.assert_array_equal(zero, 0)
+
+
+def check_spd_paired_endpoint(
+    representation: str,
+    monkeypatch: typing.Any,
+    record_property: typing.Any,
+) -> None:
+    """Same-runner complete batches, exact budgets, replay and failure recovery.
+
+    The shared mathematical source cache is populated by the numerical gates;
+    cold here means a fresh prepared SCF batch, not a fresh C++ toolchain cache.
+    """
+    from vibeqc import _stationary_cpu
+
+    original = _stationary_cpu.complete_rks_gradient_diagnostic
+    results = {}
+    for strategy in ("python", "native"):
+        measurements = {}
+        gradients = []
+
+        def selected(
+            state: typing.Any,
+            basis: typing.Any,
+            strategy: str = strategy,
+            gradients: list = gradients,
+            **kwargs: typing.Any,
+        ) -> typing.Any:
+            value = original(state, basis, component_execution=strategy, **kwargs)
+            gradients.append(value.gradient.copy())
+            return value
+
+        with monkeypatch.context() as patch:
+            patch.setattr(_stationary_cpu, "complete_rks_gradient_diagnostic", selected)
+            test_public_ecp_budgeted_ragged_replay_and_failure_recovery(
+                "pbe-rks",
+                representation,
+                measurements.__setitem__,
+                d_shell=True,
+            )
+        record_property(strategy, measurements)
+        results[strategy] = (measurements, gradients)
+    baseline, candidate = results["python"], results["native"]
+    assert len(baseline[1]) == len(candidate[1])
+    for old, new in zip(baseline[1], candidate[1], strict=True):
+        np.testing.assert_allclose(new, old, atol=2e-12, rtol=0)
+    for old, new in zip(
+        baseline[0]["generated_force"], candidate[0]["generated_force"], strict=True
+    ):
+        for counter in (
+            "primitive_records",
+            "primitive_record_bound",
+            "ecp_quadrature_pair_samples",
+            "ordered_quartets",
+        ):
+            assert old["work"][counter] == new["work"][counter]
+
+
+@pytest.mark.parametrize("method", ["pbe-rks", "pbe-uks"])
+@pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+def test_ecp_force_promotion_rejects_named_and_custom_hybrids_before_preparation(
+    method: str, representation: str, monkeypatch: typing.Any
+) -> None:
+    """Only unit semilocal, zero-K compositions may inherit public ECP forces."""
+    spin = int(method.endswith("uks"))
+    atoms, record, _ = fixture(spin=spin, representation=representation)
+
+    # Positive controls: the already-qualified pure LDA/PBE ECP endpoints stay public.
+    suffix = "uks" if spin else "rks"
+    for pure_method in (f"lda-{suffix}", f"pbe-{suffix}"):
+        pure = calculator(record, pure_method)
+        assert pure.ks_options.coefficients == (1.0, 1.0, 0.0)
+        assert "forces" in pure._capabilities.supported_properties
+
+    named_hybrids = [
+        calculator(record, f"pbe0-{suffix}"),
+        calculator(record, f"b3lyp-{suffix}"),
+    ]
+    for named in named_hybrids:
+        assert named.ks_options.coefficients != (1.0, 1.0, 0.0)
+        assert "forces" not in named._capabilities.supported_properties
+
+    graph = resolve_method(
+        MethodSpec(
+            "PBE50-ecp-force-boundary",
+            (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 2),
+        ),
+        spin="polarized" if spin else "unpolarized",
+    )
+    custom = Calculator(
+        basis=record,
+        method=method,
+        device="cpu",
+        ks_options=KsOptions(grid=GRID, composition=graph),
+        max_iterations=150,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+    assert custom.ks_options.coefficients != (1.0, 1.0, 0.0)
+    assert "forces" not in custom._capabilities.supported_properties
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
+        pytest.fail("unqualified hybrid forces reached batch preparation")
+
+    monkeypatch.setattr(Calculator, "prepare_batch", forbidden)
+    for candidate in (*named_hybrids, custom):
+        with pytest.raises(ValueError, match="does not support properties: forces"):
+            candidate.singlepoint(
+                atoms,
+                charge=spin,
+                multiplicity=spin + 1,
+                properties=("energy", "forces"),
+            )
 
 
 def test_cpu_f_ecp_forces_rejected_before_preparation(monkeypatch: typing.Any) -> None:

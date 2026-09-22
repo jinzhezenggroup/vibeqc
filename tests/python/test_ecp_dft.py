@@ -19,12 +19,17 @@ def require_device(device: typing.Any) -> None:
 
 
 def reference(
-    mol: typing.Any, atoms: typing.Any, method: typing.Any, guess: typing.Any = "1e"
+    mol: typing.Any,
+    atoms: typing.Any,
+    method: typing.Any,
+    grid_spec: typing.Any,
+    guess: typing.Any = "1e",
 ) -> typing.Any:
     """Independent Libcint/Libxc SCF on the exact declared molecular grid."""
     dft = pytest.importorskip("pyscf.dft")
     grid = MolecularGrid(
         tuple(Atom.from_value(a) for a in atoms),
+        spec=grid_spec,
         charge=mol.charge,
         multiplicity=mol.spin + 1,
     ).explicit()
@@ -75,10 +80,13 @@ def endpoint(
     require_device(device)
     spin = int(method.endswith("uks"))
     atoms, basis, mol = fixture(spin=spin, representation=representation)
-    expected, components, residual_energy, grid_identity = reference(mol, atoms, method)
-    second, _, _, _ = reference(mol, atoms, method, "minao")
-    assert abs(second - expected) < 1e-8
     calc = calculator(basis, method, device)
+    grid_spec = calc.ks_options.grid
+    expected, components, residual_energy, grid_identity = reference(
+        mol, atoms, method, grid_spec
+    )
+    second, _, _, _ = reference(mol, atoms, method, grid_spec, "minao")
+    assert abs(second - expected) < 1e-8
     result = calc.singlepoint(
         atoms, charge=spin, multiplicity=spin + 1, properties=("energy",)
     )
@@ -168,7 +176,9 @@ def test_ecp_dft_budgeted_ragged_replay_and_isolation(
         moved_atoms = [
             (symbol, tuple(position)) for (symbol, _), position in zip(atoms, xyz)
         ]
-        target, _, _, _ = reference(moved_mol, moved_atoms, method)
+        target, _, _, _ = reference(
+            moved_mol, moved_atoms, method, calc.ks_options.grid
+        )
         assert abs(moved.items[0].energy - target) < 1e-8
         assert abs(moved.items[1].energy - cold.items[1].energy) < 2e-9
         bad = batch.execute(

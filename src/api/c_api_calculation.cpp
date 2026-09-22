@@ -5,6 +5,7 @@
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_diagnostic.hpp"
+#include "api/method_descriptor.hpp"
 #include "api/precision.hpp"
 #include "methods/method.hpp"
 #include "runtime/host_component_trace.hpp"
@@ -25,10 +26,10 @@ vibeqc_status vibeqc_calculation_prepare(vibeqc_context* context, const vibeqc_s
   }
   std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
+    const auto method = vibeqc::api::snapshot_method_descriptor(descriptor);
     auto candidate = std::make_unique<vibeqc_calculation>();
     candidate->context = context;
-    candidate->plan =
-        vibeqc::methods::prepare_calculation(context->state, system->data, *descriptor);
+    candidate->plan = vibeqc::methods::prepare_calculation(context->state, system->data, method);
     *calculation = candidate.release();
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {

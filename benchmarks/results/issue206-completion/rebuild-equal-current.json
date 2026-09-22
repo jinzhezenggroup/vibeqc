@@ -1,0 +1,147 @@
+{
+  "schema": "vibeqc.issue206.rebuild.equal_basis",
+  "version": 1,
+  "status": "pass",
+  "native_identity": {
+    "source_identity": "47d4c417aaa8f3ecaf61e62d96f9c0c54b5900cb20d99938abccac764d68dff3",
+    "library_sha256": "8d40c060e65dd0f3bb78209149e91de7da2b68f85ed16d349c58650b0365ad65"
+  },
+  "artifact_root": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion",
+  "protocol": {
+    "comparison": "current VibeQC DF versus current GPU4PySCF DF",
+    "repeats": 5,
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": "same as orbital basis on both sides",
+    "properties": ["energy", "forces"],
+    "changed_displacement_bohr": 0.001,
+    "warm_policy": "fixed post-cold engine-local density snapshot",
+    "changed_policy": "restore and prime original geometry outside each changed timer; include geometry reset, SCF and complete forces",
+    "gates": {
+      "maximum_energy_error_hartree": 3e-11,
+      "maximum_force_error_hartree_per_bohr": 3e-11
+    },
+    "timing_semantics": "cold, unchanged-geometry warm and changed-geometry endpoints are separate; timings are ordinary converged latency, not fixed-work claims"
+  },
+  "cases": [
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "ao": 96,
+      "naux": 96,
+      "batch": 1,
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-equal-96-b1-r2/result.json",
+      "raw_artifact_sha256": "479402ba3407a781b90fb5b3f0b80806121e4165eb680e67358ebb80e3cc4e17",
+      "cold_median_s": {
+        "vibeqc": 0.38066713884472847,
+        "gpu4pyscf": 12.642918288707733,
+        "gpu4pyscf_over_vibeqc": 33.2125287386
+      },
+      "warm_median_s": {
+        "vibeqc": 0.04276636615395546,
+        "gpu4pyscf": 0.2522888947278261,
+        "gpu4pyscf_over_vibeqc": 5.89923618527
+      },
+      "changed_median_s": {
+        "vibeqc": 0.13705825805664062,
+        "gpu4pyscf": 0.6068233214318752,
+        "gpu4pyscf_over_vibeqc": 4.42748456048
+      },
+      "accuracy": {
+        "maximum_warm_energy_error_hartree": 4.433786671143025e-12,
+        "maximum_warm_force_error_hartree_per_bohr": 3.3010469357996897e-12,
+        "maximum_changed_energy_error_hartree": 4.320099833421409e-12,
+        "maximum_changed_force_error_hartree_per_bohr": 8.101075366084842e-12
+      },
+      "gate": true
+    },
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "ao": 96,
+      "naux": 96,
+      "batch": 4,
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-equal-96-b4-r2/result.json",
+      "raw_artifact_sha256": "060441a12bf889962e7f908c6723d49865292ee59d387a03b1d651134ffe34c4",
+      "cold_median_s": {
+        "vibeqc": 0.6178331039845943,
+        "gpu4pyscf": 14.575570464134216,
+        "gpu4pyscf_over_vibeqc": 23.5914365387
+      },
+      "warm_median_s": {
+        "vibeqc": 0.16947737149894238,
+        "gpu4pyscf": 1.0129253417253494,
+        "gpu4pyscf_over_vibeqc": 5.97675862427
+      },
+      "changed_median_s": {
+        "vibeqc": 0.38682904466986656,
+        "gpu4pyscf": 2.4435447268188,
+        "gpu4pyscf_over_vibeqc": 6.3168595029
+      },
+      "accuracy": {
+        "maximum_warm_energy_error_hartree": 4.433786671143025e-12,
+        "maximum_warm_force_error_hartree_per_bohr": 3.2861907639514243e-12,
+        "maximum_changed_energy_error_hartree": 4.433786671143025e-12,
+        "maximum_changed_force_error_hartree_per_bohr": 8.098854920035592e-12
+      },
+      "gate": true
+    },
+    {
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "ao": 192,
+      "naux": 192,
+      "batch": 1,
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-equal-192-b1-r2/result.json",
+      "raw_artifact_sha256": "c61506df95a170750941e6c41c22aa4392a20ac7583bdc1c7a3ea19d3436491d",
+      "cold_median_s": {
+        "vibeqc": 0.7573199085891247,
+        "gpu4pyscf": 12.795704711228609,
+        "gpu4pyscf_over_vibeqc": 16.8960363594
+      },
+      "warm_median_s": {
+        "vibeqc": 0.1022217907011509,
+        "gpu4pyscf": 0.32823254354298115,
+        "gpu4pyscf_over_vibeqc": 3.21098408951
+      },
+      "changed_median_s": {
+        "vibeqc": 0.45995121262967587,
+        "gpu4pyscf": 0.7659928482025862,
+        "gpu4pyscf_over_vibeqc": 1.66537847313
+      },
+      "accuracy": {
+        "maximum_warm_energy_error_hartree": 1.0686562745831907e-11,
+        "maximum_warm_force_error_hartree_per_bohr": 3.141709115084268e-12,
+        "maximum_changed_energy_error_hartree": 3.637978807091713e-12,
+        "maximum_changed_force_error_hartree_per_bohr": 6.884492975700596e-12
+      },
+      "gate": true
+    },
+    {
+      "case": "water-octamer-s4-def2-svp-spherical",
+      "ao": 192,
+      "naux": 192,
+      "batch": 4,
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-equal-192-b4-r2/result.json",
+      "raw_artifact_sha256": "46d85a1e3b03643548052ea7c146a5265e85cdd203ed5724f924dcea0d75cfe2",
+      "cold_median_s": {
+        "vibeqc": 2.307210272178054,
+        "gpu4pyscf": 15.344700736925006,
+        "gpu4pyscf_over_vibeqc": 6.65075954366
+      },
+      "warm_median_s": {
+        "vibeqc": 0.5487935077399015,
+        "gpu4pyscf": 1.3151963334530592,
+        "gpu4pyscf_over_vibeqc": 2.39652312738
+      },
+      "changed_median_s": {
+        "vibeqc": 1.8169849794358015,
+        "gpu4pyscf": 3.065329695120454,
+        "gpu4pyscf_over_vibeqc": 1.68704184669
+      },
+      "accuracy": {
+        "maximum_warm_energy_error_hartree": 1.1482370609883219e-11,
+        "maximum_warm_force_error_hartree_per_bohr": 3.8542502522886934e-12,
+        "maximum_changed_energy_error_hartree": 9.890754881780595e-12,
+        "maximum_changed_force_error_hartree_per_bohr": 7.231770737803345e-12
+      },
+      "gate": true
+    }
+  ]
+}

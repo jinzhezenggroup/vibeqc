@@ -5,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "core/electronic_reference.hpp"
 #include "dft/density_source.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "scf/fock_build.hpp"
@@ -13,6 +14,33 @@
 namespace vibeqc::scf {
 
 struct ScfHooks;
+
+/** Diagnostics for the opt-in exact incremental Direct-J/K controller.
+ *
+ * The controller changes only the density presented to the same exact provider:
+ * after one full anchor build, later accepted SCF iterates evaluate J/K on
+ * delta-D and add that result to the retained anchor matrices. Trial/proposal
+ * and post-SCF physical validation builds deliberately bypass the anchor.
+ */
+struct IncrementalDirectJkDiagnostic {
+  std::uint32_t policy_version{1};
+  bool requested{};
+  bool active{};
+  /** Full builds that establish/refresh the accepted-iterate anchor. */
+  std::uint64_t anchor_full_builds{};
+  /** Exact provider applications to delta-D for accepted SCF iterates. */
+  std::uint64_t delta_builds{};
+  /** Periodic accepted-iterate rebuilds after an existing anchor. */
+  std::uint64_t periodic_rebuilds{};
+  /** Full proposal/audit builds that never mutate the accepted anchor. */
+  std::uint64_t bypass_full_builds{};
+  /** Strict full physical builds performed by ordinary finalization. */
+  std::uint64_t post_scf_full_builds{};
+  /** Number of times a successful delta build became the next anchor. */
+  std::uint64_t anchor_updates{};
+  /** Largest absolute alpha/beta delta-density element observed. */
+  double max_abs_delta_density{};
+};
 
 /** How the requested floating-point precision policy actually resolved. */
 struct PrecisionProvenance {
@@ -29,6 +57,24 @@ struct PrecisionProvenance {
   double mixed_precision_reserved_error{0.0};
   /** FP64 target-precision iterations run after the mixed iterative stage. */
   uint32_t refinement_iterations{0};
+  /** Complete mixed-stage Fock/operator applications for this item. */
+  uint64_t mixed_stage_fock_builds{0};
+  /** Complete strict-FP64 SCF-stage Fock/operator applications for this item. */
+  uint64_t strict_stage_fock_builds{0};
+  /** Additional strict physical-Fock builds performed after SCF convergence. */
+  uint64_t post_scf_fock_builds{0};
+  /** Whole-execution provider retries before this successful/returned attempt. */
+  uint64_t execution_retries{0};
+  /** Certified per-item mixed-capable census used by the admission budget. */
+  uint64_t mixed_admission_census{0};
+  /** Exact final physical-residual audits executed for this item. */
+  uint64_t final_residual_audits{0};
+  /** Final-Fock operator applications skipped by retained-state reuse. */
+  uint64_t skipped_final_fock_builds{0};
+  /** Nonzero only when the operator-work counters above are fully instrumented.
+   * Numerical failures can leave partially executed stages uncounted; their
+   * counters are not certified by this flag. */
+  uint32_t operator_work_counters_valid{0};
 };
 
 /** Numerical controls shared by the implemented mean-field solvers. */
@@ -38,6 +84,13 @@ struct ScfOptions {
   double energy_tolerance{1.0e-10};
   double density_tolerance{1.0e-8};
   double screening_tolerance{1.0e-12};
+  /** Experimental #990 exact incremental Direct-J/K controller. Off by
+   * default. It is admitted only when every requested J/K term is Exact.
+   * The final physical state still uses ordinary full provider builds. */
+  bool incremental_direct_jk{};
+  /** Accepted delta updates before refreshing the full anchor. Zero disables
+   * periodic refresh; strict post-SCF full rebuilds are never disabled. */
+  unsigned incremental_direct_jk_rebuild_interval{8};
   /** Select the DF solver; direct four-center remains the default. */
   vibeqc_density_fitting_mode density_fitting_mode{VIBEQC_DENSITY_FITTING_NONE};
   /** Relative cutoff used when factoring the auxiliary Coulomb metric. */
@@ -68,6 +121,26 @@ struct ScfOptions {
   dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
   /** Bounded AO/XC tile schedule; does not alter the grid or functional. */
   std::size_t xc_tile_points{256};
+  /** #237 experimental CPU PBE-RKS anchor/update path. Default-off and not
+   * exposed by the public descriptor until complete-solve benefit is proven. */
+  bool experimental_incremental_xc{};
+  /** Maximum exact anchor-relative updates before a transactional full rebuild. */
+  std::size_t incremental_xc_max_updates{4};
+  /** Rebuild when RMS(D-D0) exceeds this run-local anchor drift bound. */
+  double incremental_xc_max_density_rms{5.0e-2};
+  /** Below this nonzero anchor-relative RMS, prefer a full build rather than
+   * subtracting nearly identical matrices. Zero disables the noise trigger. */
+  double incremental_xc_noise_density_rms{1.0e-14};
+  /** Consecutive non-improving physical-residual observations before forcing
+   * a full accepted-state rebuild. Zero disables the stagnation trigger. */
+  std::size_t incremental_xc_stagnation_iterations{4};
+  enum class XcExecutionSchedule : std::uint32_t { DeviceFused = 0, HostUnfused = 1 };
+  /** Placement-only semilocal XC schedule; scientific identity is unchanged. */
+  XcExecutionSchedule xc_execution_schedule{XcExecutionSchedule::DeviceFused};
+  /** Resolved semilocal component scales; exact exchange lives only in the
+   * common FockBuildSpec. Unit defaults preserve legacy LDA/PBE callers. */
+  double semilocal_exchange_scale{1.0};
+  double semilocal_correlation_scale{1.0};
   /** Retain the already evaluated CPU RKS F[D] for an explicit snapshot read.
    * No extra Fock build, canonicalization or W is performed by energy-only SCF. */
   bool retain_ks_state{};
@@ -88,6 +161,18 @@ struct PhysicalReference {
   double canonical_density_drift{};
   double eigen_residual{};
   std::size_t numeric_capacity_bytes{};
+
+  /** Borrow this owned RHF state through the method-neutral core contract. */
+  [[nodiscard]] core::ElectronicReferenceView electronic_reference() const noexcept {
+    core::ElectronicReferenceView view;
+    view.basis_functions = nbf;
+    view.spin_channels = 1;
+    view.overlap = overlap;
+    view.hcore = hcore;
+    view.energy = energy;
+    view.channels[0] = {nocc, coefficients, orbital_energies, density, fock, weighted_density};
+    return view;
+  }
 };
 
 struct ScfResult {
@@ -109,6 +194,8 @@ struct ScfResult {
   bool initial_density_used{};
   /** CPU physical operator evaluations, counting a joint UHF J/K as one build. */
   std::size_t fock_builds{};
+  /** Exact incremental Direct-J/K execution provenance, when requested. */
+  IncrementalDirectJkDiagnostic incremental_direct_jk{};
   /**
    * How the requested precision policy resolved. Set by the backend that can
    * report it (the CUDA mixed-precision route); the strict FP64 default

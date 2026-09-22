@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Adapted from xTBloom 2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3.
-// See external/xtbloom-d3/manifest.json and CUDA_MKL_LINKING_EXCEPTION there.
+// See manifests/xtbloom-d3.json and CUDA_MKL_LINKING_EXCEPTION there.
 // Repository-only qualification baseline: NOT a production DFT provider.
 #pragma once
 #include <cmath>

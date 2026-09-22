@@ -69,8 +69,13 @@ the existing IR and scalar graph; splitting files introduces no new equations.
 candidate structure, `policy` enumerates/promotes schedules, `emission` writes
 candidate source, `manifest` serializes promotion records, `resources` applies
 resource gates, `process` handles external processes, `inputs` normalizes input,
-`driver` coordinates a run, and `cli` parses arguments. The type-only reference
-from analysis to policy is guarded by `TYPE_CHECKING`.
+`driver` coordinates a run, and `cli` parses arguments. After the caller's
+candidate bound, policy groups packed schedules that differ only in algebra
+ordering; emission hashes unsuffixed generated CUDA only for those groups and
+removes byte-identical no-op variants while retaining protected
+production/resource baselines. This is compile-work deduplication, never a
+profitability or promotion decision. The type-only reference from analysis to
+policy is guarded by `TYPE_CHECKING`.
 
 Generic CUDA targets, compilation, parsed resource records, artifact handles,
 metrics and preparation synchronization are owned by `common`. Static
@@ -114,10 +119,12 @@ separate work. The module contains no measured thresholds or method policy.
 
 `select_specialization(workload=..., target=..., identity=..., profiles=...,
 fallback=...)` chooses the first eligible promoted implementation in caller
-priority order. If none match, the explicit fallback must pass its own identity
-and correctness checks. Otherwise the result is `unsupported`: no *supplied*
-implementation is eligible, not proof that the mathematical method is impossible.
-There is no implicit CPU execution or compilation on a miss.
+priority order. Callers that require a promoted implementation pass
+`fallback=None`; a miss is then `unsupported` instead of a silent downgrade. If
+an explicit fallback is supplied, it must pass its own identity and correctness
+checks. `unsupported` means no supplied implementation is eligible, not proof
+that the mathematical method is impossible. There is no implicit CPU execution
+or compilation on a miss.
 
 The result exposes the original selected artifact and a detached JSON diagnostic
 record with profile/schedule/scientific/compiler identities and separate rejection
@@ -145,9 +152,19 @@ CMake and `vibeqc.autotune.source_identity` expand the same
 for recursive groups so adding or removing a covered source reconfigures the
 build before the compatibility hash is reused.
 
+Generated-source invalidation is intentionally narrower than that complete
+compatibility identity. The shared codegen runner records repository-local
+Python modules actually loaded by each successful generator invocation and emits
+a Make/Ninja depfile. Explicit manifests, parameter files and other non-imported
+inputs remain ordinary CMake dependencies. An unrelated compiler edit can
+therefore refresh the complete source identity without forcing every generated
+family to run again.
+
 The wheel includes the integral manifests, required native templates and their
-transitive local headers, plus the audited Libxc source and license provenance
-from `external/libxc-7.0.0`. These inputs are included in the sdist too.
+transitive local headers, plus the audited Libxc source and license provenance from
+`upstream/libxc/7.0.0`. The generated compatibility manifests retained
+under `manifests/libxc/7.0.0` remain package assets; the source snapshots are
+included in the sdist for offline regeneration.
 `pyproject.toml` configures scikit-build-core to package the CMake-installed native
 library and copy canonical JIT inputs through `wheel.force-include`, without
 importing either Python package; there is no second editable native source tree.
@@ -177,21 +194,12 @@ inventories use the same logical paths, without absolute installation paths,
 timestamps, bytecode or compatibility shim bytes. Old artifacts must be rebuilt;
 binary content verification and numerical promotion gates are unchanged.
 
-Compatibility modules under `tools/vibeqc_codegen`, `tools/vibeqc_tensor`,
-`tools/vibeqc_xc` and `tools/vibeqc_dft` forward to their canonical owners. The
-same applies to moved generic helpers under former integral/tensor paths.
-Leaf modules alias the canonical module object, preserving enum/dataclass
-identity, `isinstance` checks, monkeypatches and imports through both the former
-`tools.` namespace and bare packages. Package facades delegate exports while
-keeping the legacy search path confined to forwarding modules. They do not
-reuse the canonical package `__path__`, which would load submodules twice.
 
-Remove these shims after downstream callers have migrated for one release and
-compatibility tests are the only remaining repository callers. Hash-pinned
-reference exporters intentionally retain their exact source bytes and legacy
-imports until a deliberate, independently verified reference regeneration;
-they must migrate before removal too. Legacy manifest paths are symlinks to the
-single canonical manifest, with the same removal condition.
+The compiler now has a single import surface under python/vibeqc_compiler.
+The former tools/vibeqc_codegen, tools/vibeqc_tensor, tools/vibeqc_xc and
+tools/vibeqc_dft forwarding packages were removed rather than retained as
+compatibility aliases. Repository generators and tests import canonical owners
+directly; generated-artifact identities therefore contain no shim bytes.
 
 ## Structural verification
 

@@ -204,3 +204,25 @@ __device__ __forceinline__ double three_center(
     return (prefix + tables + emit_df_axis_cuda() + suffix).replace(
         "__device__", "static __device__"
     )
+
+
+def emit_df_values_cpu() -> str:
+    """Lower the same generated DF value algebra and Rys tables to host C++."""
+
+    source = emit_df_values_cuda()
+    source = source.replace(
+        "VIBEQC_GENERATED_DF_VALUES_CUH",
+        "VIBEQC_GENERATED_DF_VALUES_CPU_HPP",
+    )
+    source = source.replace("#include <cuda_runtime.h>\n", "")
+    source = source.replace("static __device__ __forceinline__", "inline")
+    source = source.replace("static __device__ __noinline__", "inline")
+    source = source.replace("static __device__", "static")
+    source = source.replace("__forceinline__", "inline")
+    source = source.replace("__noinline__", "")
+    source = "\n".join(
+        line
+        for line in source.splitlines()
+        if not line.lstrip().startswith("#pragma unroll")
+    )
+    return source + "\n"

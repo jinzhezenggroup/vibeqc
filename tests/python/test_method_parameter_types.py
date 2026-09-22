@@ -19,6 +19,7 @@ from tools.generate_method_parameters import DEFAULT_SOURCE, load_source
         ("d4", "profile", 2),
         ("d4", "reference_model", False),
         ("d3_bj", "unexpected", 1.0),
+        ("d3_zero", "unexpected", 1.0),
     ],
 )
 def test_source_parameter_schema_rejects_type_erasure(
@@ -41,6 +42,7 @@ def test_parameter_accessors_copy_validate_and_preserve_read_only_storage(
 ) -> None:
     for table, getter, name in (
         (generated.D3_BJ_PARAMETER_SETS, generated.d3_parameters, "PBE-D3(BJ)"),
+        (generated.D3_ZERO_PARAMETER_SETS, generated.d3_zero_parameters, "PBE-D3(0)"),
         (generated.D4_PARAMETER_SETS, generated.d4_parameters, "r2SCAN-3c"),
         (generated.GCP_PARAMETER_SETS, generated.gcp_parameters, "r2SCAN-3c"),
     ):

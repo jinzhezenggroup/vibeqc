@@ -27,9 +27,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
+
 from tools.vibeqc_validation.df_gradient import reference_df_matrices
 from tools.vibeqc_validation.f_shell_numerics import numerical_error
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def fixture_systems(

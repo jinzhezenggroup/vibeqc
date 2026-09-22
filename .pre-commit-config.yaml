@@ -1,7 +1,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 # Preserve exact upstream bytes for vendored source trees with provenance manifests.
-exclude: ^(external/libxc-7\.0\.0/|cmake/3rdparty/implib/)
+exclude: ^(upstream/|src/xtb/gfn2_runtime/|cmake/3rdparty/implib/)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -50,8 +50,14 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: electronic-structure-boundaries
+        name: Check cross-method electronic-structure boundaries
+        entry: python3 tools/check_electronic_structure_boundaries.py
+        language: system
+        pass_filenames: false
+        always_run: true
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.7
+    rev: v0.16.8
     hooks:
       # Generated parameter Python is byte-for-byte qualified against its source.
       - id: ruff

@@ -10,6 +10,7 @@
 #include "molecule/basis.hpp"
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/direct_task_layout.hpp"
+#include "scf/generated_shell_task.hpp"
 #include "scf/rhf.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -45,6 +46,81 @@ using Threshold = std::optional<double>;
 using Admission = vibeqc::scf::cuda_policy::AutoMixedPrecisionAdmission;
 /** Binary32 unit roundoff, mirrored from the policy constant. */
 constexpr double kTestFloat32UnitRoundoff = 5.9604644775390625e-08;
+
+void verify_direct_jk_target_policy() {
+  using vibeqc::runtime::CudaTargetInfo;
+  using vibeqc::scf::cuda_policy::direct_jk_bounded_streaming_task_capacity_limit;
+  using vibeqc::scf::cuda_policy::DirectJkTuningProfile;
+  using vibeqc::scf::cuda_policy::resolve_direct_jk_schedule_policy;
+  using vibeqc::scf::detail::GeneratedShellTask;
+
+  CudaTargetInfo qualified;
+  qualified.warp_size = 32;
+  qualified.maximum_threads_per_sm = 1536;
+  qualified.maximum_blocks_per_sm = 24;
+  qualified.multiprocessor_count = 170;
+  // Actual cudaDeviceProp::totalGlobalMem observed on the qualified RTX 5090.
+  qualified.total_global_memory = 33666498560ULL;
+  const auto production = resolve_direct_jk_schedule_policy(qualified);
+  require(production.fixed_topology.arena_maximum_bytes == qualified.total_global_memory / 32U,
+          "fixed-topology storage keeps its independent 1/32 device-memory budget");
+  require(production.bounded_streaming.arena_maximum_bytes == (std::size_t{3} << 29),
+          "5090 bounded streaming preserves the qualified 1.5-GiB page arena");
+  require(production.persistent_quartet_warps_per_sm == 8U,
+          "resource-rich targets preserve the qualified eight-worker schedule");
+  require(direct_jk_bounded_streaming_task_capacity_limit(production, sizeof(GeneratedShellTask)) ==
+              8U * 1024U * 1024U,
+          "5090 bounded streaming preserves the qualified eight-million-task page");
+
+  CudaTargetInfo synthetic;
+  synthetic.warp_size = 32;
+  synthetic.maximum_threads_per_sm = 64;
+  synthetic.maximum_blocks_per_sm = 4;
+  synthetic.multiprocessor_count = 8;
+  synthetic.total_global_memory = std::size_t{2} << 30;
+  const auto constrained = resolve_direct_jk_schedule_policy(synthetic);
+  require(constrained.fixed_topology.arena_maximum_bytes == (std::size_t{64} << 20),
+          "a 2-GiB target selects a smaller fixed-topology arena");
+  require(constrained.bounded_streaming.arena_maximum_bytes == (std::size_t{128} << 20),
+          "a 2-GiB target independently bounds reusable streaming scratch");
+  require(constrained.persistent_quartet_warps_per_sm == 2U,
+          "a 64-thread synthetic SM cannot inherit eight resident warp workers");
+  require(direct_jk_bounded_streaming_task_capacity_limit(constrained,
+                                                          sizeof(GeneratedShellTask)) == 699050U,
+          "bounded task capacity follows only its own constrained scratch budget");
+
+  const CudaTargetInfo unknown{};
+  const auto fallback = resolve_direct_jk_schedule_policy(unknown);
+  require(fallback.fixed_topology.arena_maximum_bytes == (std::size_t{256} << 20),
+          "unknown fixed storage uses the conservative 256-MiB fallback");
+  require(fallback.bounded_streaming.arena_maximum_bytes == (std::size_t{256} << 20),
+          "unknown bounded scratch has its own conservative fallback");
+  require(fallback.persistent_quartet_warps_per_sm == 4U,
+          "unknown occupancy uses the conservative four-worker fallback");
+
+  CudaTargetInfo partial;
+  partial.maximum_blocks_per_sm = 2;
+  require(resolve_direct_jk_schedule_policy(partial).persistent_quartet_warps_per_sm == 2U,
+          "known resource ceilings still tighten a partially unknown target");
+
+  DirectJkTuningProfile fixed_only;
+  fixed_only.fixed_topology.maximum_arena_bytes = std::size_t{64} << 20;
+  const auto fixed_tuned = resolve_direct_jk_schedule_policy(qualified, fixed_only);
+  require(direct_jk_bounded_streaming_task_capacity_limit(
+              fixed_tuned, sizeof(GeneratedShellTask)) == 8U * 1024U * 1024U,
+          "tightening fixed-topology storage must not shrink bounded streaming pages");
+
+  DirectJkTuningProfile bounded_only;
+  bounded_only.bounded_streaming.maximum_arena_bytes = std::size_t{96} << 20;
+  const auto bounded_tuned = resolve_direct_jk_schedule_policy(qualified, bounded_only);
+  require(bounded_tuned.fixed_topology.arena_maximum_bytes ==
+              production.fixed_topology.arena_maximum_bytes,
+          "tightening bounded scratch must not alter fixed-topology admission");
+  require(direct_jk_bounded_streaming_task_capacity_limit(bounded_tuned,
+                                                          sizeof(GeneratedShellTask)) == 524288U,
+          "bounded streaming remains independently tunable");
+}
+
 /**
  * The \p auto cutoff is an accumulated-error budget, not a per-tile constant:
  * `eps32 * cutoff * census` must fit the error reserved for the iterative
@@ -292,6 +368,36 @@ void verify_nullopt_legacy_parity() {
   require(legacy_only_threshold.has_value() && std::abs(*legacy_only_threshold - 1.0e-7) <= 1.0e-19,
           "the legacy diagnostic switch does not consult the budget census");
 }
+/** AOT class filters are diagnostics; the full registry is production. */
+void verify_aot_shell_class_selection_override() {
+  using vibeqc::scf::cuda_policy::aot_shell_class_selection_override_requested;
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", nullptr);
+    require(!aot_shell_class_selection_override_requested(),
+            "an absent AOT class filter keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "");
+    require(!aot_shell_class_selection_override_requested(),
+            "an empty AOT class filter keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "all");
+    require(!aot_shell_class_selection_override_requested(),
+            "the all spelling keeps the full production registry");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "dppp,ppps");
+    require(aot_shell_class_selection_override_requested(),
+            "an explicit class subset is a diagnostic override");
+  }
+  {
+    ScopedEnv selection("VIBEQC_AOT_SHELL_CLASSES", "none");
+    require(aot_shell_class_selection_override_requested(),
+            "disabling AOT classes is an explicit diagnostic override");
+  }
+}
+
 /** A converged-fock reuse RMS scales with the density tolerance. */
 void verify_converged_fock_reuse_rms() {
   require_close(vibeqc::scf::cuda_policy::converged_fock_reuse_density_rms(1.0e-12), 1.0e-12,
@@ -405,11 +511,13 @@ void verify_cpu_provenance() {
 
 int main() {
   try {
+    verify_direct_jk_target_policy();
     verify_auto_budget_admission();
     verify_per_item_budget();
     verify_fp64_strict();
     verify_auto_with_legacy_override();
     verify_nullopt_legacy_parity();
+    verify_aot_shell_class_selection_override();
     verify_converged_fock_reuse_rms();
     verify_one_electron_provider_policy();
     verify_cpu_provenance();

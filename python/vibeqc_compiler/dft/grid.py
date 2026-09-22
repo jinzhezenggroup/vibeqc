@@ -53,12 +53,53 @@ def owned_atoms(atoms: typing.Any) -> typing.Any:
     return tuple(result)
 
 
+def molecular_grid_identity(
+    atoms: typing.Any,
+    spec: GridSpec,
+    *,
+    charge: int = 0,
+    multiplicity: int = 1,
+) -> str:
+    """Hash the exact molecular-grid scientific inputs without materializing quadrature."""
+
+    atoms = owned_atoms(atoms)
+    if not isinstance(spec, GridSpec):
+        raise TypeError("expected GridSpec")
+    checked_int(charge, "charge", low=-(2**31), high=2**31 - 1)
+    checked_int(multiplicity, "multiplicity")
+    radii = dict(spec.element_radii)
+    if spec.version == 1:
+        resolved = tuple(radii.get(a.atomic_number, 1.0) for a in atoms)
+    else:
+        missing = sorted(
+            {a.atomic_number for a in atoms if a.atomic_number not in radii}
+        )
+        if missing:
+            raise ValueError(
+                "production GridSpec v2 has no sourced radius for atomic number(s) "
+                + ", ".join(map(str, missing))
+            )
+        resolved = tuple(radii[a.atomic_number] for a in atoms)
+    return canonical_hash(
+        {
+            "atoms": [asdict(a) for a in atoms],
+            "grid": asdict(spec),
+            "resolved_radii_bohr": resolved,
+            "charge": charge,
+            "multiplicity": multiplicity,
+            "charge_spin_policy": "independent-v1",
+        }
+    )
+
+
 @dataclass(frozen=True)
 class GridSpec:
     """Versioned, fully specified quadrature; all lengths are in Bohr.
 
-    Default radial radii are exactly one Bohr for every element. Overrides are
-    explicit (atomic_number, radius) pairs, not an opaque accuracy level.
+    Version 1 is the historical reference contract: default radial radii are
+    exactly one Bohr for every element. Version 2 is the resolved production
+    contract: every element that is actually used must have an explicit radius.
+    Overrides are explicit (atomic_number, radius) pairs, not an opaque accuracy level.
     Coincident centers within the declared distance use an equal pair split.
     Screening and pruning are disabled; changing either needs a new contract.
     """
@@ -78,13 +119,12 @@ class GridSpec:
     ordering: str = "atom-radial-polar-azimuth"
 
     def __post_init__(self) -> None:
-        checked_int(self.version, "grid version", high=1)
+        checked_int(self.version, "grid version", high=2)
         checked_int(self.radial_points, "radial points", high=512)
         checked_int(self.angular_polar, "polar points", high=256)
         checked_int(self.angular_azimuth, "azimuth points", low=3, high=1024)
         checked_int(self.partition_iterations, "partition iterations", high=5)
         if (
-            self.version,
             self.radial_rule,
             self.angular_rule,
             self.partition,
@@ -92,7 +132,6 @@ class GridSpec:
             self.units,
             self.ordering,
         ) != (
-            1,
             "rational-legendre",
             "legendre-trapezoid",
             "becke-equal-radius",
@@ -112,6 +151,192 @@ class GridSpec:
         if len({z for z, _ in radii}) != len(radii):
             raise ValueError("duplicate element radius")
         object.__setattr__(self, "element_radii", tuple(sorted(radii)))
+
+
+# Canonical production radii. These are the pinned covalent_radius_bohr values
+# extracted from xTBloom GFN1 data. Keep source identity beside the values.
+GRID_POLICY_RADII_SOURCE = (
+    "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/"
+    "gfn1.json#elements[].covalent_radius_bohr@"
+    "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+)
+GRID_POLICY_UPSTREAM_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+_PRODUCTION_RADII = (
+    0.8062831465047213,
+    1.1590320231005369,
+    3.0235617993927044,
+    2.368456742857618,
+    1.9401188212769855,
+    1.8897261246204402,
+    1.7889407313073502,
+    1.5873699446811698,
+    1.6125662930094427,
+    1.6881553379942602,
+    3.5274887659581555,
+    3.1495435410340673,
+    2.8471873610947966,
+    2.620420226140344,
+    2.771598316109979,
+    2.5700275294837986,
+    2.494438484498981,
+    2.4188494395141635,
+    4.434557305775966,
+    3.880237642553971,
+    3.3511143276602473,
+    3.0739544960492493,
+    3.048758147720977,
+    2.771598316109979,
+    2.696009271125162,
+    2.620420226140344,
+    2.5196348328272538,
+    2.494438484498981,
+    2.5448311811555264,
+    2.746401967781707,
+    2.8219910127665244,
+    2.746401967781707,
+    2.8975800577513415,
+    2.771598316109979,
+    2.8723837094230693,
+    2.9479727544078864,
+    4.7621098340435095,
+    4.2077901708215135,
+    3.7038632042560633,
+    3.5022924176298824,
+    3.325917979331975,
+    3.1243471927057946,
+    2.8975800577513415,
+    2.8471873610947966,
+    2.8471873610947966,
+    2.721205619453434,
+    2.8975800577513415,
+    3.0991508443775224,
+    3.2251325860188853,
+    3.1747398893623395,
+    3.1747398893623395,
+    3.0991508443775224,
+    3.325917979331975,
+    3.3007216310037024,
+    5.26603680060896,
+    4.434557305775966,
+    4.0818084291801515,
+    3.7038632042560633,
+    3.9810230358670613,
+    3.9558266875387886,
+    3.9306303392105164,
+    3.9054339908822433,
+    3.8046485975691535,
+    3.8298449458974257,
+    3.8046485975691535,
+    3.7794522492408804,
+    3.754255900912608,
+    3.754255900912608,
+    3.7290595525843355,
+    3.8550412942256984,
+    3.6786668559277906,
+    3.451899720973338,
+    3.3007216310037024,
+    3.0991508443775224,
+    2.9731691027361595,
+    2.922776406079614,
+    2.796794664438252,
+    2.8219910127665244,
+    2.8471873610947966,
+    3.325917979331975,
+    3.27552528267543,
+    3.27552528267543,
+    3.4267033726450653,
+    3.3007216310037024,
+    3.4770960693016097,
+    3.5778814626147004,
+)
+
+
+@dataclass(frozen=True)
+class GridProfile:
+    """Resolved production topology before element radii are attached."""
+
+    name: str
+    radial_points: int
+    angular_polar: int
+    angular_azimuth: int
+    partition_iterations: int = 3
+    pruning: str = "none"
+    screening: str = "none"
+    topology: str = "atom-radial-polar-azimuth"
+
+
+@dataclass(frozen=True)
+class GridPolicy:
+    """Canonical production grid resolver shared by KS and future consumers."""
+
+    accuracy: str = "standard"
+
+    def profile(self, method: str, *, derivative_order: int = 0) -> GridProfile:
+        if self.accuracy not in ("standard", "tight"):
+            raise ValueError("grid accuracy must be 'standard' or 'tight'")
+        if derivative_order not in (0, 1):
+            raise NotImplementedError(
+                "production grid derivatives support orders 0 and 1"
+            )
+        name = str(method).lower().replace("_", "-")
+        if name in ("lda", "lda-rks", "lda-uks"):
+            family = "lda"
+        elif name in ("gga", "pbe", "pbe-rks", "pbe-uks"):
+            family = "gga"
+        else:
+            raise NotImplementedError(
+                "production grid policy is qualified only for LDA and GGA/PBE"
+            )
+        tight = self.accuracy == "tight" or derivative_order == 1
+        if family == "lda":
+            shape = (64, 20, 40) if tight else (54, 16, 32)
+        else:
+            # Keep the qualified standard angular workload at the legacy
+            # 16x32 topology while using the 54-point radial rule that meets
+            # the retained independent energy/force convergence gate.
+            shape = (72, 24, 48) if tight else (54, 16, 32)
+        return GridProfile(f"{family}-{'tight' if tight else 'standard'}-v2", *shape)
+
+    @property
+    def provenance(self) -> dict[str, typing.Any]:
+        return {
+            "policy_version": 2,
+            "radii_source": GRID_POLICY_RADII_SOURCE,
+            "upstream_revision": GRID_POLICY_UPSTREAM_REVISION,
+            "supported_atomic_numbers": (1, len(_PRODUCTION_RADII)),
+            "pruning": "none",
+            "screening": "none",
+            "partition": "becke-equal-radius",
+            "topology": "atom-radial-polar-azimuth",
+            "derivative_topology": "fixed",
+        }
+
+    def resolve(self, method: str, *, derivative_order: int = 0) -> GridSpec:
+        profile = self.profile(method, derivative_order=derivative_order)
+        return GridSpec(
+            version=2,
+            radial_points=profile.radial_points,
+            angular_polar=profile.angular_polar,
+            angular_azimuth=profile.angular_azimuth,
+            partition_iterations=profile.partition_iterations,
+            element_radii=tuple(enumerate(_PRODUCTION_RADII, start=1)),
+        )
+
+
+def grid_policy_provenance(spec: GridSpec) -> dict[str, typing.Any]:
+    """Describe the exact origin of a resolved grid without over-claiming policy provenance."""
+    if spec.version == 1:
+        return {"policy_version": 1, "contract": "reference-grid-v1"}
+    if spec.version != 2:
+        raise ValueError("unsupported grid policy version")
+
+    # Version identifies the representation, not the source of user data.
+    # Only exact prescribed resolver outputs may claim the pinned policy source.
+    for accuracy in ("standard", "tight"):
+        policy = GridPolicy(accuracy)
+        if any(spec == policy.resolve(method) for method in ("lda", "pbe")):
+            return policy.provenance
+    return {"policy_version": 2, "contract": "explicit-grid-v2"}
 
 
 def partition_weights(
@@ -210,7 +435,18 @@ class MolecularGrid:
         object.__setattr__(self, "atoms", atoms)
         centers = immutable([a.position for a in atoms])
         radii = dict(self.spec.element_radii)
-        resolved = tuple(radii.get(a.atomic_number, 1.0) for a in atoms)
+        if self.spec.version == 1:
+            resolved = tuple(radii.get(a.atomic_number, 1.0) for a in atoms)
+        else:
+            missing = sorted(
+                {a.atomic_number for a in atoms if a.atomic_number not in radii}
+            )
+            if missing:
+                raise ValueError(
+                    "production GridSpec v2 has no sourced radius for atomic number(s) "
+                    + ", ".join(map(str, missing))
+                )
+            resolved = tuple(radii[a.atomic_number] for a in atoms)
         z, wz = np.polynomial.legendre.leggauss(self.spec.angular_polar)
         phi = np.arange(self.spec.angular_azimuth) * (
             2 * np.pi / self.spec.angular_azimuth
@@ -240,15 +476,11 @@ class MolecularGrid:
         object.__setattr__(
             self,
             "identity",
-            canonical_hash(
-                {
-                    "atoms": [asdict(a) for a in atoms],
-                    "grid": asdict(self.spec),
-                    "resolved_radii_bohr": resolved,
-                    "charge": self.charge,
-                    "multiplicity": self.multiplicity,
-                    "charge_spin_policy": "independent-v1",
-                }
+            molecular_grid_identity(
+                atoms,
+                self.spec,
+                charge=self.charge,
+                multiplicity=self.multiplicity,
             ),
         )
         object.__setattr__(

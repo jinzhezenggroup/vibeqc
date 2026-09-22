@@ -4,7 +4,20 @@ import typing
 
 import pytest
 from vibeqc import Calculator
-from vibeqc.resources_df import density_fitting_tile_plan
+from vibeqc.resources_df import density_fitting_tile_plan, density_fitting_value_layout
+
+
+def test_df_value_layout_contract_is_explicit_without_native_runtime() -> None:
+    dense = density_fitting_value_layout(4, 7, "dense")
+    packed = density_fitting_value_layout(4, 7, "packed")
+
+    assert dense.storage_elements == 4 * 4 * 7
+    assert packed.storage_elements == 10 * 7
+    assert packed.dense_elements == dense.storage_elements
+    assert packed.identity != dense.identity
+    assert packed.to_payload()["triangle"] == "lower"
+    with pytest.raises(ValueError, match="dense or packed"):
+        density_fitting_value_layout(4, 7, "automatic")
 
 
 def test_packed_query_preserves_complete_u_when_budget_shrinks(
@@ -323,6 +336,58 @@ def test_generated_residency_uses_complete_source_specific_budget() -> None:
     assert constrained.peak_workspace_bytes <= constrained.budget_bytes
 
 
+def test_generated_source_auto_occupied_requires_complete_q_scratch(
+    monkeypatch: typing.Any,
+) -> None:
+    """Automatic RHF factors are admitted only with the full source lease."""
+    library = Calculator()._library
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    dense = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=0,
+        fixed_device_bytes=0,
+        generated_source=True,
+    )
+    assert dense.auxiliary_tile == 128
+    assert dense.automatic_rhf_rank == 0
+
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    full_budget = 1 << 40
+    complete = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=full_budget,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert complete.stores_full_three_center
+    assert complete.ao_pair_tile == 768 * 768
+    assert complete.auxiliary_tile == 768
+    assert complete.automatic_rhf_rank == 160
+
+    constrained = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=complete.peak_workspace_bytes - 1,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert constrained.auxiliary_tile < 768
+    assert constrained.automatic_rhf_rank == 0
+
+
 def test_overlap_storage_is_reserved_in_every_cuda_df_candidate() -> None:
     """Shape-only admission must charge retained S/X/coordinates for each item."""
     import json
@@ -366,15 +431,34 @@ def test_packed_inventory_charges_both_owners_and_separates_identity(
     assert [candidate.name for candidate in packed.candidates] == ["cuda-df-packed"]
     candidate = packed.candidates[0]
     assert candidate.mode == "resident"
-    assert dict(candidate.decisions)["df_pair_storage"] == "packed"
+    decisions = dict(candidate.decisions)
+    assert decisions["df_pair_storage"] == "packed"
+    packed_layout_identities = json.loads(decisions["df_value_layout_identities"])
+    assert packed_layout_identities
     dense_source = next(c for c in dense.candidates if c.name == "cuda-df-source")
+    dense_layout_identities = json.loads(
+        dict(dense_source.decisions)["df_value_layout_identities"]
+    )
+    assert dense_layout_identities
+    assert packed_layout_identities != dense_layout_identities
     dense_rows = json.loads(dict(dense_source.decisions)["bucket_inventory"])
     packed_rows = json.loads(dict(candidate.decisions)["bucket_inventory"])
     for before, after in zip(dense_rows, packed_rows, strict=True):
         b, n, a = (after[key] for key in ("batch", "nbf", "naux"))
         for key in ("energy_tiles", "force_tiles"):
             plan = after[key]
+            dense_plan = before[key]
             assert plan["pair_storage"] == "packed"
+            assert plan["value_layout_identity"] != dense_plan["value_layout_identity"]
+            assert plan["value_layout_elements_per_system"] == n * (n + 1) // 2 * a
+            assert plan["dense_equivalent_elements_per_system"] == n * n * a
+            assert dense_plan["value_layout_elements_per_system"] == n * n * a
+            assert dense_plan["dense_equivalent_elements_per_system"] == n * n * a
+            assert dense_plan["bounded_materialization_bytes"] == 0
+            assert dense_plan["bounded_conversion_traffic_bytes"] == 0
+            q = plan["auxiliary_tile"]
+            assert plan["bounded_materialization_bytes"] == n * n * q * 8
+            assert plan["bounded_conversion_traffic_bytes"] == 2 * n * n * q * 8
             assert (
                 plan["raw_factor_bytes"]
                 == plan["stored_factor_bytes"]

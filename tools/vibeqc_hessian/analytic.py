@@ -43,6 +43,7 @@ from .native import NativeRHFState
 from .perturbation import solve_rhf_nuclear_perturbation
 
 __all__ = [
+    "accumulate_provider_hvp_cuda",
     "analytic_hessian",
     "build_reference",
     "cphf_relaxation",
@@ -201,6 +202,206 @@ def _run_kernel_summed(
     if hvp:
         return _scatter_hvp(full, ci, ca, data)
     return _scatter(full, ci, ca, data)
+
+
+def _run_kernel_summed_device(
+    data: dict[str, object],
+    key: object,
+    build_ir: object,
+    ir_extra: dict[str, object],
+    adapter: object,
+    cache: Path,
+    prims: tuple[object, ...],
+    centers: np.ndarray,
+    weight_full_flat: np.ndarray,
+    component_count: int,
+    *,
+    direction: np.ndarray,
+    accumulator: object,
+    coefficient: float = 1.0,
+) -> None:
+    """Accumulate one generated shell HVP into a molecular device owner."""
+    ca = ir_extra.get("_center_atoms")
+    extra = {k: v for k, v in ir_extra.items() if k != "_center_atoms"}
+    ir = build_ir(**extra)
+    ci = ir.requested_derivative_centers
+    sig = ir.signature
+    mapping = SecondAtomMap(ci, ca)
+    center_direction = mapping.expand_direction(direction[list(mapping.atom_indices)])
+    for ao_chunk in _tile_components(component_count):
+        wc = np.zeros(component_count)
+        wc[list(ao_chunk)] = weight_full_flat[list(ao_chunk)]
+        for oi in second_coordinate_tiles(ci, packing="dense", hvp=True):
+            art = _compile_cached(
+                (key, "hvp"),
+                build_ir,
+                extra,
+                adapter,
+                cache,
+                oi,
+                ao_chunk,
+            )
+            tile = WeightTile(TensorLayout(sig.tensor_indices, sig.component_shape), wc)
+            stream = prepare_second_shell_stream(
+                art,
+                prims,
+                centers,
+                tile,
+                public_signature=sig,
+                projections=None,
+                direction=center_direction,
+            )
+            with PreparedSecondDerivative(
+                art,
+                record_capacity=8,
+                budget=data["resource_budget"],
+                device_id=data["device_id"],
+            ) as plan:
+                diagnostic = plan.contract_device(
+                    stream,
+                    lambda pointer, output_indices: accumulator.scatter_device(
+                        pointer,
+                        output_indices,
+                        ca,
+                        coefficient=coefficient,
+                    ),
+                    profile=True,
+                )
+            data["second_executions"].append(diagnostic)
+
+
+def _accumulate_one_electron_device(
+    data: dict[str, object],
+    family: str,
+    weight: np.ndarray,
+    direction: np.ndarray,
+    accumulator: object,
+    *,
+    coefficient: float = 1.0,
+) -> None:
+    state = data["state"]
+    adapter, cache = data["adapter"], data["cache"]
+    shells = data["shells"]
+    offsets = state.offsets
+    for a in range(len(shells)):
+        for b in range(len(shells)):
+            la = shells[a].angular_momentum
+            lb = shells[b].angular_momentum
+            na = len(cartesian_components(la))
+            nb = len(cartesian_components(lb))
+            packed_weight = weight[
+                offsets[a] : offsets[a] + na,
+                offsets[b] : offsets[b] + nb,
+            ].reshape(na, nb)
+            primitives = (data["primitives"][a], data["primitives"][b])
+            atom_a = shells[a].atom_index
+            atom_b = shells[b].atom_index
+            if family == "nuclear_attraction":
+                for nucleus in range(state.nat):
+                    extra = {
+                        "family": family,
+                        "angular": (la, lb),
+                        "charge": float(state.Z[nucleus]),
+                        "output": "weighted_hvp",
+                        "_center_atoms": (atom_a, atom_b, nucleus),
+                    }
+                    centers = np.array(
+                        [
+                            state.coords[atom_a],
+                            state.coords[atom_b],
+                            state.coords[nucleus],
+                        ]
+                    )
+                    _run_kernel_summed_device(
+                        data,
+                        (family, la, lb, float(state.Z[nucleus])),
+                        build_one_electron_second_ir,
+                        extra,
+                        adapter,
+                        cache,
+                        primitives,
+                        centers,
+                        packed_weight.ravel(),
+                        na * nb,
+                        direction=direction,
+                        accumulator=accumulator,
+                        coefficient=coefficient,
+                    )
+            else:
+                extra = {
+                    "family": family,
+                    "angular": (la, lb),
+                    "output": "weighted_hvp",
+                    "_center_atoms": (atom_a, atom_b),
+                }
+                centers = np.array([state.coords[atom_a], state.coords[atom_b]])
+                _run_kernel_summed_device(
+                    data,
+                    (family, la, lb),
+                    build_one_electron_second_ir,
+                    extra,
+                    adapter,
+                    cache,
+                    primitives,
+                    centers,
+                    packed_weight.ravel(),
+                    na * nb,
+                    direction=direction,
+                    accumulator=accumulator,
+                    coefficient=coefficient,
+                )
+
+
+def _accumulate_eri_device(
+    data: dict[str, object],
+    density: np.ndarray,
+    direction: np.ndarray,
+    accumulator: object,
+) -> None:
+    state = data["state"]
+    adapter, cache = data["adapter"], data["cache"]
+    shells = data["shells"]
+    offsets = state.offsets
+    for a in range(len(shells)):
+        for b in range(len(shells)):
+            for c in range(len(shells)):
+                for d in range(len(shells)):
+                    angular = tuple(
+                        shells[index].angular_momentum for index in (a, b, c, d)
+                    )
+                    extents = tuple(
+                        len(cartesian_components(value)) for value in angular
+                    )
+                    sa, sb, sc, sd = (
+                        slice(offsets[i], offsets[i + 1]) for i in (a, b, c, d)
+                    )
+                    weight = 0.5 * np.einsum(
+                        "uv,wx->uvwx", density[sa, sb], density[sc, sd]
+                    )
+                    weight -= 0.25 * np.einsum(
+                        "uw,vx->uvwx", density[sa, sc], density[sb, sd]
+                    )
+                    primitives = tuple(data["primitives"][i] for i in (a, b, c, d))
+                    atoms = tuple(shells[i].atom_index for i in (a, b, c, d))
+                    centers = np.array([state.coords[atom] for atom in atoms])
+                    _run_kernel_summed_device(
+                        data,
+                        ("eri", *angular),
+                        build_eri_second_ir,
+                        {
+                            "angular": angular,
+                            "output": "weighted_hvp",
+                            "_center_atoms": atoms,
+                        },
+                        adapter,
+                        cache,
+                        primitives,
+                        centers,
+                        weight.ravel(),
+                        int(np.prod(extents)),
+                        direction=direction,
+                        accumulator=accumulator,
+                    )
 
 
 def _checked_second_hvp_options(
@@ -467,6 +668,42 @@ def provider_components(s: NativeRHFState) -> dict[str, np.ndarray]:
     pulay = -_run_one_electron(data, "overlap", data["W_e"])
     two_electron = _run_eri(data, data["density"])
     return {"core": core, "pulay": pulay, "two_electron": two_electron}
+
+
+def accumulate_provider_hvp_cuda(
+    state: NativeRHFState,
+    direction: np.ndarray,
+    accumulator: object,
+    *,
+    compiler: object,
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+) -> dict[str, object]:
+    """Accumulate #178 frozen-skeleton HVP terms without host result tiles."""
+    _validate_analytic_domain(state)
+    vector = checked_direction(direction, state.nat)
+    data = _provider_data(
+        state,
+        backend="cuda",
+        compiler=compiler,
+        device_id=device_id,
+        budget_bytes=budget_bytes,
+    )
+    _accumulate_one_electron_device(data, "kinetic", state.P0, vector, accumulator)
+    _accumulate_one_electron_device(
+        data, "nuclear_attraction", state.P0, vector, accumulator
+    )
+    _accumulate_one_electron_device(
+        data, "overlap", data["W_e"], vector, accumulator, coefficient=-1.0
+    )
+    _accumulate_eri_device(data, data["density"], vector, accumulator)
+    diagnostic = _second_provider_diagnostics(data)
+    diagnostic["result_tile_downloads"] = 0
+    diagnostic["device_result_consumptions"] = sum(
+        item.get("device_result_consumptions", 0) for item in data["second_executions"]
+    )
+    diagnostic["molecular_assembly"] = "device-scatter"
+    return diagnostic
 
 
 def provider_hvp_components(

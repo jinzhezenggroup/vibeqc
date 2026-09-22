@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
+from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.xc import UnsupportedXC, functional
 from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as fixture
@@ -72,6 +73,60 @@ def test_r2scan_vtau_potential_matches_complete_density_directional_derivative()
         minus = consumer.evaluate(jets, density - step * direction, weights)["energy"]
         errors.append(abs((plus - minus) / (2 * step) - analytic))
     assert np.all(np.asarray(errors) < [2e-7, 3e-8, 5e-9]), errors
+
+
+def test_b3lyp_methodir_geometry_matches_moved_collocation() -> None:
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_total"]
+    functional_spec = (
+        resolve_method("B3LYP", spin="unpolarized").primitives[0].functional
+    )
+    geometry = ContractionProgram(functional_spec, "geometry")
+    energy = ContractionProgram(functional_spec, "energy")
+    with NativeAO(**args) as basis:
+        ao_atoms = np.repeat(
+            [shell.atom_index for shell in basis.shells],
+            [
+                2 * shell.angular_momentum + 1
+                if basis.representation == "real_spherical"
+                else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+                for shell in basis.shells
+            ],
+        )
+        partials = geometry.evaluate(
+            basis.evaluate(grid.points, geometry.contract.ao_order),
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            natom=basis.natom,
+        )["geometry"]
+
+    centers = np.array([[0.013, -0.009, 0.011], [-0.007, 0.012, -0.005]])
+    points = np.tile(np.array([[0.002, -0.001, 0.003]]), (len(grid.points), 1))
+    measure = np.linspace(-1.5e-5, 1.5e-5, len(grid.weights))
+    expected = partials.directional(centers=centers, points=points, weights=measure)
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        values = []
+        for sign in (1, -1):
+            moved = [
+                (atom, np.asarray(position) + sign * step * delta)
+                for (atom, position), delta in zip(args["atoms"], centers, strict=True)
+            ]
+            with NativeAO(**{**args, "atoms": moved}) as basis:
+                moved_jets = basis.evaluate(
+                    grid.points + sign * step * points, energy.contract.ao_order
+                )
+                values.append(
+                    energy.evaluate(
+                        moved_jets,
+                        density,
+                        grid.weights + sign * step * measure,
+                    )["energy"]
+                )
+        errors.append(abs((values[0] - values[1]) / (2 * step) - expected))
+    assert np.all(np.asarray(errors) < [3e-7, 4e-8, 8e-9]), errors
 
 
 def test_r2scan_unvalidated_density_response_fails_closed() -> None:
@@ -269,6 +324,122 @@ def test_explicit_geometry_sources_against_moved_native_collocation(
     np.testing.assert_allclose(
         partials.centers.sum(axis=0) + partials.points.sum(axis=0), 0, atol=1e-12
     )
+
+
+@pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
+@pytest.mark.parametrize("spin", ["polarized", "unpolarized"])
+def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
+    name: str, spin: str
+) -> None:
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_spin" if spin == "polarized" else "density_total"]
+    geometry = program(name, spin, "geometry")
+    rng = np.random.default_rng(180236 if spin == "polarized" else 180237)
+    delta_density = rng.normal(size=density.shape) * 0.002
+    delta_density = 0.5 * (delta_density + np.swapaxes(delta_density, -1, -2))
+    left_centers = rng.normal(size=(len(args["atoms"]), 3)) * 0.03
+    right_centers = rng.normal(size=left_centers.shape) * 0.025
+    left_points = rng.normal(size=grid.points.shape) * 0.02
+    right_points = rng.normal(size=grid.points.shape) * 0.018
+    left_weights = rng.normal(size=grid.weights.shape) * 2e-4
+    right_weights = rng.normal(size=grid.weights.shape) * 1.5e-4
+    mixed_weights = rng.normal(size=grid.weights.shape) * 4e-5
+
+    with NativeAO(**args) as basis:
+        counts = [
+            2 * shell.angular_momentum + 1
+            if basis.representation == "real_spherical"
+            else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+            for shell in basis.shells
+        ]
+        ao_atoms = np.repeat([shell.atom_index for shell in basis.shells], counts)
+        full_jets = basis.evaluate(
+            grid.points, geometry.contract.ingredients.ao_order + 2
+        )
+        actual = geometry.mixed_geometry_directional(
+            full_jets,
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            left_centers=left_centers,
+            left_points=left_points,
+            left_weights=left_weights,
+            right_centers=right_centers,
+            right_points=right_points,
+            right_weights=right_weights,
+            mixed_weights=mixed_weights,
+            delta_density=delta_density,
+        )
+
+    errors = []
+    for step in (2e-4, 7e-5, 2e-5):
+        directional = []
+        for sign in (1, -1):
+            moved_atoms = [
+                (
+                    atom,
+                    np.asarray(position) + sign * step * delta,
+                )
+                for (atom, position), delta in zip(
+                    args["atoms"], right_centers, strict=True
+                )
+            ]
+            with NativeAO(**{**args, "atoms": moved_atoms}) as basis:
+                moved_jets = basis.evaluate(
+                    grid.points + sign * step * right_points,
+                    geometry.contract.ao_order,
+                )
+                partials = geometry.evaluate(
+                    moved_jets,
+                    density + sign * step * delta_density,
+                    grid.weights + sign * step * right_weights,
+                    ao_atoms=ao_atoms,
+                    natom=basis.natom,
+                )["geometry"]
+            directional.append(
+                partials.directional(
+                    centers=left_centers,
+                    points=left_points,
+                    weights=left_weights + sign * step * mixed_weights,
+                )
+            )
+        errors.append(
+            abs((directional[0] - directional[1]) / (2 * step) - actual.total)
+        )
+    # These differences reach the floating-point floor already at the
+    # coarsest displacement, so monotonic O(h^2) convergence is not a useful
+    # gate here. Pin the absolute analytic agreement instead.
+    assert max(errors) < 1e-10, errors
+    assert abs(actual.feature_mixed) > 1e-8
+
+    frozen = geometry.mixed_geometry_directional(
+        full_jets,
+        density,
+        grid.weights,
+        ao_atoms=ao_atoms,
+        left_centers=left_centers,
+        left_points=left_points,
+        left_weights=left_weights,
+        right_centers=right_centers,
+        right_points=right_points,
+        right_weights=right_weights,
+        mixed_weights=mixed_weights,
+    )
+    swapped = geometry.mixed_geometry_directional(
+        full_jets,
+        density,
+        grid.weights,
+        ao_atoms=ao_atoms,
+        left_centers=right_centers,
+        left_points=right_points,
+        left_weights=right_weights,
+        right_centers=left_centers,
+        right_points=left_points,
+        right_weights=left_weights,
+        mixed_weights=mixed_weights,
+    )
+    np.testing.assert_allclose(frozen.total, swapped.total, atol=2e-11, rtol=2e-10)
 
 
 def test_contraction_requests_reject_unsupported_axes_domains_and_directions() -> None:

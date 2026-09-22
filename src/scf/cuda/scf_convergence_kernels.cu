@@ -208,14 +208,15 @@ __global__ void update_uhf_convergence_kernel(
 __global__ void validate_force_residual_kernel(std::int32_t batch_size, std::int32_t spin_count,
                                                std::int32_t nbf, double density_tolerance,
                                                const double* residual, std::uint8_t* active,
-                                               std::uint8_t* converged,
-                                               std::uint32_t* tested_count) {
+                                               std::uint8_t* converged, std::uint32_t* tested_count,
+                                               std::uint8_t* tested_items) {
   const auto system = static_cast<std::int32_t>(blockIdx.x);
   if (system >= batch_size || active[system] == 0) return;
   const std::size_t size = static_cast<std::size_t>(spin_count) * nbf * nbf;
   const double maximum = maximum_physical_residual(residual + system * size, size);
   if (threadIdx.x == 0) {
     atomicAdd(tested_count, 1U);
+    if (tested_items != nullptr) tested_items[system] = 1U;
     if (maximum > fmin(1e-8, density_tolerance)) {
       // The canonical projection can change the physical residual. An accepted
       // iterative state alone never licenses forces from a worse final state.
@@ -370,10 +371,11 @@ void launch_validate_force_residual_kernel(cudaStream_t stream, std::int32_t bat
                                            std::int32_t spin_count, std::int32_t nbf,
                                            double density_tolerance,
                                            const double* physical_residual, std::uint8_t* active,
-                                           std::uint8_t* converged, std::uint32_t* tested_count) {
+                                           std::uint8_t* converged, std::uint32_t* tested_count,
+                                           std::uint8_t* tested_items) {
   validate_force_residual_kernel<<<batch_size, 32, 0, stream>>>(
       batch_size, spin_count, nbf, density_tolerance, physical_residual, active, converged,
-      tested_count);
+      tested_count, tested_items);
 }
 
 void launch_tail_rhf_loop_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

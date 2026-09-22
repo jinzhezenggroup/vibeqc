@@ -31,13 +31,22 @@ stale state or failed provider raises rather than selecting a hidden fallback.
 ## Ownership and supported lowering
 
 `tensor.cpu.NativeTensorProgram` consumes ordinary immutable TensorIR, not a
-method/source-name switch. The initial FP64 subset is input, constant, add,
-multiply, reduce and einsum; other operations, declared tensor symmetries and
-other dtypes fail at generation. It reuses existing CUDA scalar-index helpers
-without modifying CUDA emission. Input shape/dtype/finite checks, retained
-numeric byte and scalar-work bounds precede native execution. Every generated
-SSA output is checked; native outputs are copied from staging only on complete
-success. Noncontiguous inputs are admitted with explicit staging.
+method/source-name switch. The FP64 materializing backend now covers input,
+constant, add/multiply/divide, range-safe `scaled_bilinear`, einsum/reduce,
+transpose/reshape/slice/broadcast, gather/indexed-gather, scatter-add and
+segment-sum. Dense declared tensor symmetries do not change storage or arithmetic;
+the executor validates them on inputs with the same tolerance as the reference
+interpreter. Other dtypes and unsupported primitives still fail at generation.
+Index expressions and ragged-map semantics match the CUDA lowering, without
+changing CUDA emission. Input shape/dtype/finite/symmetry checks, retained numeric
+byte and scalar-work bounds precede native execution. Every generated SSA output
+is checked; native outputs are copied from staging only on complete success.
+Noncontiguous inputs are admitted with explicit staging.
+
+This expanded subset is sufficient for the generated RCCSD Lambda transpose,
+raw-Hamiltonian/orbital pullbacks and bounded standard-(T) response VJPs. Those
+consumers remain method-owned; the CPU backend only executes their ordinary
+TensorIR programs and contains no CC-specific dispatch or equations.
 
 `xc.native.NativeContractionProgram` supplies the existing compiler-generated
 local AO-jet pullback. The authoritative point coefficients still come from

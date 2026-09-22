@@ -116,6 +116,20 @@ def _finite_action(
     return (gradient(1.0) - gradient(-1.0)) / (2.0 * step)
 
 
+def test_uhf_reference_rejects_nonfinite_derived_validation_residuals() -> None:
+    reference = _reference()
+    overflowing = np.full_like(reference.coefficients_alpha, 1e308)
+    with (
+        np.errstate(over="ignore", invalid="ignore"),
+        pytest.raises(ValueError, match="non-finite orthogonality residual"),
+    ):
+        replace(
+            reference,
+            coefficients_alpha=overflowing,
+            coefficients_beta=overflowing,
+        )
+
+
 def test_uhf_matrix_free_action_matches_finite_rotation_and_transpose() -> None:
     reference = _reference()
     backend = DenseAOResponseBackend(_symmetric_eri())

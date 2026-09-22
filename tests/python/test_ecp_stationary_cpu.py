@@ -37,7 +37,14 @@ def test_ecp_cpu_ao_spatial_jets_do_not_promote_ecp_higher_derivatives() -> None
     )["eligible"]
 
 
-def reference(mol: typing.Any, state: typing.Any, method: typing.Any) -> typing.Any:
+def reference(
+    mol: typing.Any,
+    state: typing.Any,
+    method: typing.Any,
+    *,
+    initial_guess: str = "1e",
+    maximum_cycles: int = 150,
+) -> typing.Any:
     from pyscf import dft, lib
 
     lib.num_threads(1)
@@ -57,8 +64,8 @@ def reference(mol: typing.Any, state: typing.Any, method: typing.Any) -> typing.
     solver.grids.gen_atomic_grids = lambda *args, **kwargs: atomic
     solver.small_rho_cutoff = 0
     solver.conv_tol, solver.conv_tol_grad = 1e-13, 1e-10
-    solver.max_cycle = 150
-    solver.init_guess = "1e"
+    solver.max_cycle = maximum_cycles
+    solver.init_guess = initial_guess
     solver.kernel()
     assert solver.converged
     gradient = solver.nuc_grad_method()
@@ -172,13 +179,14 @@ def test_same_core_count_different_ecp_is_bound_to_actual_energy_owner() -> None
     atoms, record, _ = fixture(representation="cartesian")
     changed = []
     for element in record.elements:
+        changed_element = element
         if element.ecp_core_electrons:
             potentials = json.loads(element.ecp_data)
             potentials[0]["coefficients"][0][0] = str(
                 float(potentials[0]["coefficients"][0][0]) * 1.01
             )
-            element = replace(element, ecp_data=json.dumps(potentials))
-        changed.append(element)
+            changed_element = replace(element, ecp_data=json.dumps(potentials))
+        changed.append(changed_element)
     other_record = replace(record, elements=tuple(changed))
     options = {
         "method": "lda-rks",

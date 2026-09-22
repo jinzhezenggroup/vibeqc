@@ -444,6 +444,44 @@ def _jvp_segment_sum(
     return result
 
 
+def _jvp_runtime_indexed_select(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    tangents: typing.Sequence[np.ndarray],
+) -> np.ndarray:
+    source_tangent = tangents[0]
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    result = _zeros(node.spec)
+    for domain_coordinate in range(node.spec.shape[0]):
+        source = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(source_tangent.ndim)
+        )
+        result[domain_coordinate] = source_tangent[source]
+    return result
+
+
+def _jvp_runtime_indexed_scatter_add(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    tangents: typing.Sequence[np.ndarray],
+) -> np.ndarray:
+    result = _zeros(node.spec)
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    source = tangents[0]
+    for domain_coordinate in range(source.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(result.ndim)
+        )
+        result[target] += source[domain_coordinate]
+    return result
+
+
 def _jvp_reduce(node: Node, values: typing.Any, tangents: typing.Any) -> np.ndarray:
     return np.sum(tangents[0], axis=node.attrs["axes"], dtype=node.spec.dtype)
 
@@ -504,6 +542,8 @@ _JVP_RULES = {
     "indexed_gather": _jvp_gather,
     "scatter_add": _jvp_scatter_add,
     "segment_sum": _jvp_segment_sum,
+    "runtime_indexed_select": _jvp_runtime_indexed_select,
+    "runtime_indexed_scatter_add": _jvp_runtime_indexed_scatter_add,
     "reduce": _jvp_reduce,
     "broadcast": _jvp_broadcast,
 }
@@ -657,6 +697,42 @@ def _vjp_segment_sum(
     return [np.take(bar, positions, axis=node.attrs["axis"])]
 
 
+def _vjp_runtime_indexed_select(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    bar: np.ndarray,
+) -> list[np.ndarray]:
+    source = _zeros(node.inputs[0].spec)
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    for domain_coordinate in range(node.spec.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(source.ndim)
+        )
+        source[target] += bar[domain_coordinate]
+    return [source, *(_zeros(mapping.spec) for mapping in node.inputs[1:])]
+
+
+def _vjp_runtime_indexed_scatter_add(
+    node: Node,
+    values: typing.Sequence[np.ndarray],
+    bar: np.ndarray,
+) -> list[np.ndarray]:
+    maps = values[1:]
+    axes = tuple(node.attrs["axes"])
+    selected = dict(zip(axes, maps, strict=True))
+    source = np.empty(node.inputs[0].spec.shape, dtype=node.inputs[0].spec.dtype)
+    for domain_coordinate in range(source.shape[0]):
+        target = tuple(
+            int(selected[axis][domain_coordinate]) if axis in selected else slice(None)
+            for axis in range(bar.ndim)
+        )
+        source[domain_coordinate] = bar[target]
+    return [source, *(_zeros(mapping.spec) for mapping in node.inputs[1:])]
+
+
 def _vjp_reduce(node: Node, values: typing.Any, bar: typing.Any) -> list[np.ndarray]:
     input_shape = node.inputs[0].spec.shape
     reduced = set(node.attrs["axes"])
@@ -688,6 +764,8 @@ _VJP_RULES = {
     "indexed_gather": _vjp_gather,
     "scatter_add": _vjp_scatter_add,
     "segment_sum": _vjp_segment_sum,
+    "runtime_indexed_select": _vjp_runtime_indexed_select,
+    "runtime_indexed_scatter_add": _vjp_runtime_indexed_scatter_add,
     "reduce": _vjp_reduce,
     "broadcast": _vjp_broadcast,
 }
@@ -709,8 +787,11 @@ def _vjp_node(
         rule = _VJP_RULES[node.op]
     except KeyError as exc:
         raise ValueError(f"no VJP rule for tensor primitive: {node.op}") from exc
-    if active is not None and node.op in ("divide", "scaled_bilinear"):
-        return rule(node, values, bar, active)
+    if active is not None:
+        if node.op == "divide":
+            return _vjp_divide(node, values, bar, active)
+        if node.op == "scaled_bilinear":
+            return _vjp_scaled_bilinear(node, values, bar, active)
     return rule(node, values, bar)
 
 
@@ -783,17 +864,17 @@ def _vjp_arrays(
         for operand, contribution in zip(node.inputs, contributions):
             if operand not in relevant:
                 continue
-            contribution = np.asarray(contribution)
+            contribution_array = np.asarray(contribution)
             if (
-                contribution.shape != operand.spec.shape
-                or contribution.dtype != np.dtype(operand.spec.dtype)
+                contribution_array.shape != operand.spec.shape
+                or contribution_array.dtype != np.dtype(operand.spec.dtype)
             ):
                 raise ValueError(
                     f"VJP rule for {node.op} violates its operand contract"
                 )
-            if not np.isfinite(contribution).all():
+            if not np.isfinite(contribution_array).all():
                 raise ValueError(f"non-finite VJP contribution at primitive {node.op}")
-            bars[operand] += contribution
+            bars[operand] += contribution_array
     return bars
 
 

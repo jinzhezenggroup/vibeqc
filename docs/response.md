@@ -7,9 +7,10 @@ matrix-free operator, and the linear-solver/recycling state so downstream
 property, Hessian, and correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
 layer (including `export_uhf`), host-orchestrated spin CUDA exact/DF J/K, and
-the native CPU LDA/PBE RKS/UKS CPKS handoffs are delivered. Native CUDA CPKS
-and remaining performance acceptance stay open
-under `#179`.
+native CPU/CUDA LDA/PBE RKS/UKS CPKS handoffs are delivered. Exact-RHF resident
+scalar, blocked and recycled multi-RHS execution share the same solver and are
+qualified for the bounded tools domain. Performance evidence describes measured
+endpoints, not an automatic execution selector.
 
 This internal tooling is not a new public electronic-structure method. It
 consumes the converged native HF/KS endpoints rather than implementing SCF.
@@ -83,7 +84,7 @@ and `finite_rotation_jvp` checks the same action against an explicit
 
 `solve` implements restarted GMRES with a true residual at every configured
 checkpoint. It reports the actual residual, iteration count, operator actions,
-orthogonalization/operator timings, workspace bytes, and a non-success reason.
+orthogonalization/operator/recycling timings, workspace bytes, and a non-success reason.
 It does not silently regularize a singular denominator or claim success after
 a workspace or stagnation failure.
 
@@ -128,7 +129,7 @@ matching `PreparedXCContractions` response owner selects bounded native CPU
 execution through `prepared=...`, with its shared numeric resource plan.
 
 `NativeRKSResponse.from_native(batch, basis, grid=None, index=0)` connects the
-actual successful native CPU LDA/PBE RKS state to this same operator and solver.
+actual successful native CPU or CUDA LDA/PBE RKS state to this same operator and solver.
 The optional explicit grid must exactly match the native points, weights and
 owners. The optional `functional` must match the canonical SCF composition.
 The adapter exports the native canonical orbitals, physical Fock, overlap,
@@ -162,9 +163,10 @@ geometry), failed replay, batch closure and response closure revoke old solves
 and recycle spaces. Changed functional, grid, basis, provider or state are
 rejected before publication.
 
-These handoffs qualify all-electron CPU LDA/PBE RKS and UKS. CUDA CPKS, DF,
+These handoffs qualify all-electron CPU/CUDA LDA/PBE RKS and UKS. DF CPKS,
 ECP, exact/range-separated exchange, and meta-GGA response remain unsupported.
-AO/MO transforms, XC tiling and Krylov orchestration are host-side. Existing
+AO/MO transforms and Krylov orchestration are host-side; CPU XC uses host tiles
+and CUDA XC executes AO evaluation through response assembly on device. Existing
 solver workspace accounting is not a complete endpoint memory/performance
 claim; the native kernel does not yet qualify implicit-response resource binding.
 `tests/python/test_response_native_rks.py` checks independent libcint/Libxc
@@ -177,7 +179,7 @@ LDA/PBE H2 solves. See [point acceptance](xc_scf_domain.md#executable-evidence)
 for the fixture generator and cancellation-aware numerical gate.
 
 `NativeUKSResponse.from_native` uses the same arguments and lifetime contract
-for the actual native CPU LDA/PBE UKS state. It preserves both canonical spin
+for the actual native CPU/CUDA LDA/PBE UKS state. It preserves both canonical spin
 frames and occupations. The existing spin reference/layout contract carries
 an explicit `algorithm="UKS"` tag and functional/grid identities; the UHF
 operator rejects this reference. `UKSResponseOperator` changes only the shared
@@ -199,19 +201,68 @@ lease/domain negatives. `vibeqc_uks_response_tests` checks 48 independent
 high-precision point directions, spin permutations and the private batch ABI.
 See [the spin binding decision](../.agents/notes/implemented/numerics/2026-09-20-native-uks-cpks.md).
 
-## #153 interface
+### Native CUDA CPKS
 
-The correlated-gradient work in #153 should:
+The same `from_native` entry points select CUDA J/XC actions when the borrowed
+batch is a CUDA KS owner. A live native proof must establish that both ECP terms
+and atom core counts are absent. Legacy libraries without this proof remain
+unsupported for CUDA CPKS. Method, exact packed basis/quadrature, canonical spin
+frames, physical residual and revocable native token are bound as on CPU.
 
-1. build its CC-specific orbital RHS and weights outside this package;
-2. create one `ResponseProblem` from the exact converged RHF reference and the
-   shared operator backend;
-3. call `solve`/`solve_many` and require the returned true residual to meet its
-   gradient gate;
-4. retain only CC-specific RHS/weight state, not a second RHF CPHF/Z-vector
-   implementation.
+The Coulomb adapter requests only J from the existing unrestricted `FockPlan`;
+no unused K contraction is performed. XC extends the existing `CudaXcPlan` with
+a directional feature panel, reusing its AO evaluator, density contractions,
+point policy and potential assembler. The CPU and GPU point differentials use
+the same `xc_point_response.hpp` formulas. Preparation copies the native state's
+actual reference density, packed basis, points and weights. It does not regenerate
+the quadrature or rerun SCF. Actions upload a signed AO density direction and
+download the completed AO response; AO values and point features stay on device.
+Invalid directions/domains reject publication and the next action resets the arena.
 
-No SCF/DIIS iteration tape is part of this contract.
+`device_budget_bytes` (default 128 MiB) bounds retained response XC and Coulomb
+allocations together: XC is admitted first, and Coulomb receives the remaining
+budget. `response.diagnostics` separates device J/XC from host transforms and
+Krylov, reports both owners' retained bytes, and exposes native XC setup/action
+transfer and synchronization counters. For each successful XC action with `s`
+spin channels and `n` AOs, H2D is `8*s*n*n` bytes and D2H is `8*s*n*n + 28`
+bytes (matrix plus three scalars and a status), with two explicit fences. Initial
+snapshot export and the second native source export during XC preparation are
+reported separately. Coulomb statistics report host payload, not measured PCIe
+traffic. Borrowed SCF/eigensolver storage, preparation temporaries, host arrays
+and solver workspace, CUDA context and library-private memory are outside the
+retained response budget. This is not a fully resident CPKS solve or a complete
+endpoint memory/performance guarantee.
+
+With `VIBEQC_RESPONSE_CUDA_TEST=1` under an explicit Slurm GPU allocation,
+`tests/python/test_response_native_cuda.py` reuses the independent CPU-tier
+libcint/Libxc, finite-rotation and reconverged-perturbation assertions on real
+CUDA LDA/PBE water RKS and LiH+ UKS states. Tests forbid CPU AO/XC/J fallbacks and
+SCF reruns during actions. They also cover empty-spin tangent directions,
+resource rejection, preparation/export counters, legacy-proof/method/ECP gates
+and lifetime revocation. `vibeqc_xc_response_cuda_tests` runs all 30 restricted
+and 48 unrestricted independent high-precision point directions on device with
+the unchanged CPU-tier numerical gates. See
+[the CUDA CPKS decision](../.agents/notes/implemented/numerics/2026-09-20-native-cuda-cpks.md).
+
+## Downstream consumers
+
+The #153 tools endpoint `BoundCCSDGradient` builds the CC-specific orbital RHS
+and weights, binds the converged RHF reference to `RHFResponseOperator`, and
+calls `checked_transpose_solve` through `ResponseGMRES`. The callback delegates
+to this package's GMRES. A separately generated physical orbital matrix checks
+the final Z-vector residual and the complete gradient's stationarity before
+publication. `test_cc_complete_gradient.py` qualifies the shared action against
+an independent MO matrix, native complete gradients against pinned references,
+and explicit Z-vector nonconvergence. The CC-specific weight/source ownership
+remains in the correlated-gradient consumer; no SCF/DIIS iteration tape is part
+of this contract.
+
+The #180 `solve_rhf_nuclear_perturbations` consumer prepares ordered nuclear and
+metric RHS columns, calls `solve_many` with final basis publication disabled,
+and reconstructs the occupied-orbital/density responses. `rhf_hvp_many` and
+`rhf_hessian` use that same boundary for bounded blocks. Their opt-in exact-RHF
+resident execution and independent complete-HVP gates are described in
+[hessian.md](hessian.md).
 
 ## Backend boundary
 
@@ -245,10 +296,47 @@ problem, and convergence decisions. Thus diagnostics call this
 `cuda-resident-host-controlled`, not an all-device CPHF. During a resident
 operator action no density/J/K matrix crosses the PCIe boundary: only the
 4-byte native numerical-status flag returns; dot/norm reductions return
-scalars, and final solution publication is explicit. Directional Hessian
+scalars, and final solution publication is explicit. Scalar and block Hessian
 consumers suppress final Arnoldi-basis publication. Host preconditioners and
-resident blocked-Arnoldi are not qualified and fail closed rather than falling
-back to host execution.
+non-RHF resident operators are not qualified and fail closed.
+
+`solve_many(..., collect_basis=False)` suppresses final basis publication for
+all three strategies; each solution is still returned on the host. Block Arnoldi
+uses the same vector-engine operations as scalar GMRES: twice-reorthogonalized
+thin QR followed by an SVD of its small factor determines the new range. Neither
+a long host block nor Gram normal equations are constructed. The initial
+sequential/recycled RHS-rank diagnostic still runs a value-only host SVD on
+already-host API inputs; small projected block factors also stay on the host.
+
+An automatic recycled space follows the selected vector engine and releases its
+retained leases on every exit. For reuse across calls, pass
+`KrylovRecycleSpace(problem, vector_engine=resident)` explicitly and close it
+before its borrowed resident owner. The same reference/operator key and exact
+owner must match, including on zero RHS. Replacement is atomic: an unsuccessful
+update preserves the previous space and generation. Explicit diagnostic
+`initial_guess`, `update` and `transport` calls may transfer vectors; the solver's
+bound resident projection/update path does not.
+
+`resident_vector_slots(dimension, options, rhs_count=..., strategy=...)` plans
+conservative lease capacity. Counts above 4096 must be rejected by consumers;
+they must not be clamped. A smaller supplied arena reports `vector_slot_limit`
+before uploading RHS or applying the operator. The arena's physical byte budget
+and the solver's logical numeric-buffer bound are separate reservations.
+
+`MultiRHSResult` exposes aggregate action, orthogonalization and recycling times.
+Blocked per-column records describe one shared solve, so the aggregate counts it
+once. Action time covers engine application only, orthogonalization covers basis
+construction/projection/range factorization, and recycling covers retained-space
+projection/replacement. These components exclude residual vector arithmetic,
+small least squares, validation and publication; use an outer wall-clock timer
+for the complete endpoint. `tools/response_resident_benchmark.py` compares the
+same exact CUDA Hamiltonian with host/resident vector storage and checks every
+sample against an independent committed-integral matrix. See the
+[resident multi-RHS decision](../.agents/notes/implemented/numerics/2026-09-20-resident-multirhs-response.md)
+for numerical, lifecycle and consumer evidence. The
+[matched exact-CUDA endpoint record](../benchmarks/results/response-179-resident/README.md)
+includes every measured sample, native binary/source identity, transfers,
+synchronizations, resource bounds and complete HVP costs.
 
 The response device budget combines retained direct-J/K storage with the
 resident owner allocation. It excludes provider preparation temporaries,
@@ -259,9 +347,14 @@ the relevant performance evidence.
 The caller owns the `NativeSource` lifetime. Closed sources/backends, unrelated
 geometry/basis/reference/Hamiltonian identities, nonsymmetric or nonfinite
 inputs, unavailable CUDA and impossible device allocations fail explicitly.
-Invalid results never increment successful action counts. The backend is
-qualified for closed-shell RHF only; UHF/KS and molecular Hessian/HVP endpoints
-are not enabled by its existence.
+Invalid results never increment successful action counts. The RHF owner is
+qualified for closed-shell RHF only. A separate `CudaResidentUHFResponse`
+owner now covers exact, unscreened unrestricted HF: alpha and beta
+occupied-virtual blocks share one device slot arena, the coupled spin J/K
+action stays on the prepared CUDA stream, and the same blocked/recycled GMRES
+controller consumes the owner. Density-fitted UHF and KS/CPKS resident owners
+remain unsupported until their device action and independent numerical evidence
+are qualified.
 
 ```python
 import numpy as np
@@ -322,8 +415,12 @@ either exact or density-fitted J/K with zero screening. One evaluation produces
 `J[Delta Pa+Delta Pb]`, `K[Delta Pa]`, and `K[Delta Pb]`; the existing UHF operator
 then applies the same orbital action and shared Krylov controller. It uses raw
 J/K rather than subtracting hcore from a total Fock, preserving tiny signed
-directions. CUDA contracts the integrals; AO/MO transforms, returned matrices,
-and Krylov vectors remain on the host. This is not a resident spin solver.
+directions. CUDA contracts the integrals; the default response path keeps
+AO/MO transforms, returned matrices and Krylov vectors on the host. For exact
+conventional UHF, `backend.resident_response(problem)` opts into the resident
+owner described above; it shares the direct provider stream and keeps both
+spin blocks and response scratch on device while returning only scalar
+reductions and the final solution. DF remains host-orchestrated.
 
 The backend borrows a `NativeSource` and owns its copied prepared Fock plan.
 Reference validation binds geometry, actual orbital basis/representation,

@@ -7,6 +7,7 @@ are separately opt-in: VIBEQC_HIGH_L_CUDA_TEST=1.
 
 import ctypes
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -370,8 +371,9 @@ extern "C" int launch(const double* x, double* y) {{
     path.write_text(source)
     library = tmp_path / "component.so"
     command = [compiler, "-std=c++17", "-O1", "-shared"]
+    cuda_arch = os.environ.get("VIBEQC_HIGH_L_CUDA_ARCH", "sm_89")
     command += (
-        ["-Xcompiler", "-fPIC", "-arch=sm_89", "-Xptxas=-v"]
+        ["-Xcompiler", "-fPIC", f"-arch={cuda_arch}", "-Xptxas=-v"]
         if backend == "cuda"
         else ["-fPIC"]
     )
@@ -395,6 +397,7 @@ extern "C" int launch(const double* x, double* y) {{
             {
                 "backend": backend,
                 "family": family,
+                "cuda_arch": cuda_arch if backend == "cuda" else None,
                 "compile_seconds": time.perf_counter() - start,
                 "source_bytes": path.stat().st_size,
                 "binary_bytes": library.stat().st_size,
@@ -538,3 +541,201 @@ def test_bounded_four_center_cpu_codegen_compiles_and_executes(
         numerical[coordinate] = (plus_output[0] - minus_output[0]) / (2.0 * step)
     np.testing.assert_allclose(outputs[1:], numerical, atol=2e-9, rtol=2e-8)
     np.testing.assert_allclose(outputs[1:].reshape(4, 3).sum(axis=0), 0.0, atol=3e-12)
+
+
+def _raw_four_center_ir(
+    angular: tuple[int, int, int, int], *, convention: str = "cartesian"
+) -> typing.Any:
+    from vibeqc_compiler.integral.blocks import RawBlock, TensorLayout
+    from vibeqc_compiler.integral.ir import FOUR_CENTER_ERI_OPERATOR, build_integral_ir
+    from vibeqc_compiler.integral.shell_signature import (
+        BasisShell,
+        CenterBinding,
+        ShellSignature,
+    )
+
+    signature = ShellSignature(
+        tuple(
+            BasisShell(slot, slot, value, convention=convention)
+            for slot, value in enumerate(angular)
+        ),
+        tuple(CenterBinding(center) for center in range(4)),
+    )
+    layout = TensorLayout(
+        ("center", "xyz", *signature.tensor_indices),
+        (4, 3, *signature.component_shape),
+    )
+    return build_integral_ir(
+        signature,
+        operator=FOUR_CENTER_ERI_OPERATOR,
+        derivative=FOUR_CENTER_ERI_OPERATOR.nuclear_derivative(),
+        contractions=(RawBlock(layout, layout.storage_bytes),),
+    )
+
+
+def test_g_four_center_capability_is_generic_but_not_native_cuda() -> None:
+    ir = _raw_four_center_ir((4, 0, 0, 0))
+    for backend in ("cpu_bounded_component", "cuda_bounded_component"):
+        report = query_integral_capability(ir, backend=backend, component_indices=(0,))
+        assert report.supported, report.reasons
+        assert report.schedules == ("explicit_scalar_component_v1",)
+
+    production = query_integral_capability(ir, backend="cuda")
+    assert not production.supported
+    assert any("legacy ShellClassSpec" in reason for reason in production.reasons)
+
+    spherical = _raw_four_center_ir((4, 0, 0, 0), convention="real_spherical")
+    report = query_integral_capability(
+        spherical, backend="cpu_bounded_component", component_indices=(0,)
+    )
+    assert not report.supported
+    assert any("Cartesian primitive signatures" in reason for reason in report.reasons)
+
+
+def _libcint_raw_gsss(
+    exponents: np.ndarray, centers: np.ndarray
+) -> tuple[float, np.ndarray]:
+    gto = pytest.importorskip("pyscf.gto")
+    angular = (4, 0, 0, 0)
+    labels = [f"H{i}" for i in range(4)]
+    mol = gto.M(
+        atom=list(zip(labels, centers)),
+        basis={
+            label: [[value, [exponent, 1.0]]]
+            for label, value, exponent in zip(labels, angular, exponents)
+        },
+        unit="Bohr",
+        cart=True,
+        verbose=0,
+    )
+    from vibeqc_compiler.integral.shell_spec import cartesian_components
+
+    normalization = []
+    for slot, (value, exponent) in enumerate(zip(angular, exponents)):
+        raw_overlap = []
+        for component in cartesian_components(value):
+            powers = tuple(component.count(axis) for axis in "xyz")
+            raw_overlap.append(
+                (math.pi / (2 * exponent)) ** 1.5
+                * math.prod(math.prod(range(1, 2 * power, 2)) for power in powers)
+                / (4 * exponent) ** value
+            )
+        normalization.append(
+            np.sqrt(
+                np.diag(mol.intor_by_shell("int1e_ovlp", (slot, slot))) / raw_overlap
+            )
+        )
+    factors = np.einsum("i,j,k,l->ijkl", *normalization)
+    raw_value = mol.intor_by_shell("int2e", (0, 1, 2, 3)) / factors
+    raw_gradients = []
+    for permutation in ((0, 1, 2, 3), (1, 0, 2, 3), (2, 3, 0, 1), (3, 2, 0, 1)):
+        block = mol.intor_by_shell("int2e_ip1", permutation)
+        block = np.transpose(block, (0, *(permutation.index(i) + 1 for i in range(4))))
+        raw_gradients.append(-block / factors)
+    return float(raw_value[0, 0, 0, 0]), np.asarray(raw_gradients)[:, :, 0, 0, 0, 0]
+
+
+@pytest.mark.parametrize("backend", ["cpu", "cuda"])
+def test_bounded_gsss_four_center_matches_libcint(
+    tmp_path: typing.Any, backend: str
+) -> None:
+    if backend == "cuda" and os.environ.get("VIBEQC_HIGH_L_CUDA_TEST") != "1":
+        pytest.skip("opt-in allocated CUDA device")
+    compiler = shutil.which("nvcc" if backend == "cuda" else "c++")
+    if compiler is None:
+        pytest.skip("native compiler unavailable")
+
+    ir = _raw_four_center_ir((4, 0, 0, 0))
+    report = query_integral_capability(
+        ir, backend=f"{backend}_bounded_component", component_indices=(0,)
+    )
+    assert report.supported, report.reasons
+    source = emit_bounded_component(ir, ("xxxx", "", "", ""), backend=backend)
+    input_count, output_count = 16, 13
+    if backend == "cuda":
+        source = (
+            "#include <cuda_runtime.h>\n"
+            + source
+            + f"""
+__global__ void worker(const double* x, double* y) {{ evaluate(x,y); }}
+extern "C" int launch(const double* x, double* y) {{
+  double *dx=nullptr, *dy=nullptr;
+  cudaError_t status = cudaMalloc(&dx, {input_count}*sizeof(double));
+  if (status != cudaSuccess) return status;
+  status = cudaMalloc(&dy, {output_count}*sizeof(double));
+  if (status == cudaSuccess) status = cudaMemcpy(dx,x,{input_count}*sizeof(double),cudaMemcpyHostToDevice);
+  if (status == cudaSuccess) {{ worker<<<1,1>>>(dx,dy); status=cudaGetLastError(); }}
+  if (status == cudaSuccess) status = cudaMemcpy(y,dy,{output_count}*sizeof(double),cudaMemcpyDeviceToHost);
+  cudaFree(dx); cudaFree(dy); return status;
+}}
+"""
+        )
+    path = tmp_path / ("gsss.cu" if backend == "cuda" else "gsss.cpp")
+    library = tmp_path / "gsss.so"
+    path.write_text(source)
+    cuda_arch = os.environ.get("VIBEQC_HIGH_L_CUDA_ARCH", "sm_89")
+    command = [compiler, "-std=c++17", "-O1", "-shared"]
+    command += (
+        ["-Xcompiler", "-fPIC", f"-arch={cuda_arch}", "-Xptxas=-v"]
+        if backend == "cuda"
+        else ["-fPIC"]
+    )
+    started = time.perf_counter()
+    build = subprocess.run(
+        command + [str(path), "-o", str(library)],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    assert build.returncode == 0, build.stderr
+    compile_seconds = time.perf_counter() - started
+    native = (
+        ctypes.CDLL(str(library)).launch
+        if backend == "cuda"
+        else ctypes.CDLL(str(library)).evaluate
+    )
+    native.argtypes = [
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS")
+    ] * 2
+    native.restype = ctypes.c_int if backend == "cuda" else None
+    print(
+        json.dumps(
+            {
+                "backend": backend,
+                "family": "four_center_eri",
+                "angular": [4, 0, 0, 0],
+                "cuda_arch": cuda_arch if backend == "cuda" else None,
+                "compile_seconds": compile_seconds,
+                "source_bytes": path.stat().st_size,
+                "binary_bytes": library.stat().st_size,
+                "compiler_resources": build.stderr,
+            }
+        )
+    )
+
+    exponents = np.array([0.8, 0.6, 1.1, 0.45])
+    geometries = (
+        np.array(
+            [[0.0, 0.0, 0.0], [0.7, -0.2, 0.1], [-0.4, 0.8, 0.3], [0.3, -0.5, 1.2]]
+        ),
+        np.array(
+            [[0.0, 0.0, 0.0], [1.1, 0.1, -0.2], [-0.2, 0.5, 0.7], [0.6, -0.3, 1.5]]
+        ),
+    )
+    weights = np.array([-1.7, 0.25, 2.3])
+    for centers in geometries:
+        inputs = np.r_[exponents, centers.ravel()].astype(np.float64)
+        output = np.empty(output_count)
+        status = native(inputs, output)
+        assert status in (None, 0)
+        reference, gradients = _libcint_raw_gsss(exponents, centers)
+        np.testing.assert_allclose(output[0], reference, atol=2e-11, rtol=2e-10)
+        np.testing.assert_allclose(
+            output[1:].reshape(4, 3), gradients, atol=3e-10, rtol=3e-9
+        )
+        np.testing.assert_allclose(output[1:].reshape(4, 3).sum(axis=0), 0, atol=2e-11)
+        for weight in weights:
+            np.testing.assert_allclose(
+                weight * output[1:], weight * gradients.ravel(), atol=6e-10, rtol=3e-9
+            )

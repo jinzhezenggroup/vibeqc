@@ -56,9 +56,9 @@ def test_native_rccsd_capability_is_honest_energy_only_batch() -> None:
     assert caps.family == "coupled_cluster"
     assert caps.available and caps.supports_batch
     assert caps.supported_properties == frozenset({"energy"})
-    # (T) remains a separate reserved identity until its own native owner lands.
     triples = method_capabilities("ccsd(t)")
-    assert not triples.available and not triples.supports_batch
+    assert triples.available and triples.supports_batch
+    assert triples.supported_properties == frozenset({"energy"})
 
 
 @pytest.mark.parametrize("case", ("h2", "h2o"))

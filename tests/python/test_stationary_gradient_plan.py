@@ -11,7 +11,12 @@ from itertools import product
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
-from vibeqc_compiler.method import MethodSpec, UnsupportedMethod, resolve_method
+from vibeqc_compiler.method import (
+    MethodSpec,
+    UnsupportedMethod,
+    original_nonlocal_correlation,
+    resolve_method,
+)
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -144,6 +149,69 @@ def test_generated_weights_and_all_coordinate_components_have_independent_oracle
     np.testing.assert_array_equal(execute(replay, feeds).outputs["gradient"], gradient)
 
 
+@pytest.mark.parametrize(
+    "spin,expected_factor",
+    [("unpolarized", Fraction(-1, 16)), ("polarized", Fraction(-1, 8))],
+)
+def test_exact_exchange_weights_are_same_spin_and_use_methodir_fraction(
+    spin: typing.Any, expected_factor: typing.Any
+) -> None:
+    """Independent scalar K oracle: 1/2*cK and no alpha/beta cross terms."""
+    p = plan(spin, method="PBE0")
+    rng = np.random.default_rng(165)
+    tuples = list(product(range(3), repeat=4))
+    density = rng.normal(size=(p.spin_blocks, 3, 3))
+    density += density.transpose(0, 2, 1)
+    left = np.array([[row[a, c] for a, b, c, d in tuples] for row in density])
+    right = np.array([[row[b, d] for a, b, c, d in tuples] for row in density])
+    feeds = {
+        "density_left": left,
+        "density_right": right,
+        "integral_derivatives": rng.normal(size=(len(tuples), 5)),
+    }
+    block = p.integral_block("exact_exchange", terms=len(tuples), coordinates=5)
+    actual = execute(block.weights, feeds).outputs["weights"]
+    expected = np.array(
+        [
+            float(expected_factor)
+            * sum(float(left[s, t]) * float(right[s, t]) for s in range(p.spin_blocks))
+            for t in range(len(tuples))
+        ]
+    )
+    np.testing.assert_allclose(actual, expected, atol=2e-14, rtol=2e-14)
+    np.testing.assert_allclose(
+        execute(block.contraction, feeds).outputs["gradient"],
+        expected @ feeds["integral_derivatives"],
+        atol=2e-13,
+        rtol=2e-13,
+    )
+    if p.spin_blocks == 2:
+        cross_spin = float(expected_factor) * (left[0] * right[1] + left[1] * right[0])
+        assert not np.allclose(actual, expected + cross_spin)
+
+
+def test_exact_exchange_fraction_and_zero_exchange_recover_expected_plans() -> None:
+    pbe = plan(method="PBE")
+    pbe0 = plan(method="PBE0")
+    assert "exact_exchange" not in pbe.source_names
+    assert "exact_exchange" in pbe0.source_names
+
+    custom = MethodSpec(
+        "half-hybrid",
+        (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+        exact_exchange=Fraction(1, 2),
+    )
+    hybrid = plan(method=custom)
+    assert hybrid.exchange.fock_coefficient("unpolarized") == Fraction(-1, 4)
+    assert hybrid.exchange.fock_coefficient("polarized") == Fraction(-1, 2)
+
+    semilocal_only = MethodSpec(
+        "same-semilo-no-k",
+        (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
+    )
+    assert "exact_exchange" not in plan(method=semilocal_only).source_names
+
+
 @pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
 def test_tau_semilocal_method_reuses_stationary_source_inventory(
     spin: typing.Any,
@@ -159,6 +227,187 @@ def test_tau_semilocal_method_reuses_stationary_source_inventory(
         block = r2scan.integral_block(source, terms=3)
         assert block.source == source
         assert block.plan_identity == r2scan.identity
+
+
+@pytest.mark.parametrize(
+    "source,coefficient",
+    [
+        ("exchange_short_range", Fraction(19, 100)),
+        ("exchange_long_range", Fraction(65, 100)),
+    ],
+)
+@pytest.mark.parametrize("spin", ["unpolarized", "polarized"])
+def test_rsh_exchange_gradient_uses_methodir_coefficient_and_same_spin_density(
+    source: typing.Any, coefficient: typing.Any, spin: typing.Any
+) -> None:
+    p = plan(spin, "CAM-B3LYP")
+    primitive = p.range_exchange_primitive(source)
+    assert primitive.coefficient == coefficient
+    assert primitive.omega == Fraction(33, 100)
+    assert primitive.operator.replace("-", "_") in source
+    assert source in p.source_names
+
+    rng = np.random.default_rng(167)
+    terms, coordinates = 19, 6
+    left = rng.normal(size=(p.spin_blocks, terms))
+    right = rng.normal(size=(p.spin_blocks, terms))
+    derivatives = rng.normal(size=(terms, coordinates))
+    integrals = rng.normal(size=terms)
+    feeds = {
+        "density_left": left,
+        "density_right": right,
+        "integral_derivatives": derivatives,
+    }
+    factor = -float(coefficient) * (0.5 if p.spin_blocks == 2 else 0.25)
+    expected_weights = factor * np.sum(left * right, axis=0)
+
+    block = p.integral_block(source, terms=terms, coordinates=coordinates)
+    np.testing.assert_allclose(
+        execute(block.weights, feeds).outputs["weights"],
+        expected_weights,
+        atol=2e-14,
+        rtol=2e-14,
+    )
+    np.testing.assert_allclose(
+        execute(block.contraction, feeds).outputs["gradient"],
+        expected_weights @ derivatives,
+        atol=2e-13,
+        rtol=2e-13,
+    )
+    expected_energy = float(expected_weights @ integrals)
+    assert execute(block.objective, {**feeds, "integrals": integrals}).outputs[
+        "energy"
+    ] == pytest.approx(expected_energy, abs=2e-13)
+
+    # Three displaced-integral steps independently check the analytic derivative.
+    for step in (1e-3, 2e-4, 4e-5):
+        finite = np.array(
+            [
+                (
+                    float(expected_weights @ (integrals + step * derivatives[:, q]))
+                    - float(expected_weights @ (integrals - step * derivatives[:, q]))
+                )
+                / (2 * step)
+                for q in range(coordinates)
+            ]
+        )
+        np.testing.assert_allclose(
+            execute(block.contraction, feeds).outputs["gradient"],
+            finite,
+            atol=4e-9,
+            rtol=4e-10,
+        )
+
+    if p.spin_blocks == 2:
+        # Summing spins before forming exchange would introduce forbidden
+        # alpha-beta cross terms.
+        wrong = factor * left.sum(axis=0) * right.sum(axis=0)
+        assert not np.allclose(expected_weights, wrong)
+
+
+def test_rsh_gradient_inventory_and_identity_bind_operator_and_omega() -> None:
+    p = plan(method="CAM-B3LYP")
+    assert p.source_names == (
+        "one_electron",
+        "coulomb",
+        "exchange_short_range",
+        "exchange_long_range",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    assert tuple(source.primitive for source in p.range_exchange_sources) == (
+        "short-range-exchange",
+        "long-range-exchange",
+    )
+    assert all(
+        "nuclear-gradient" in primitive.derivative_capabilities
+        for primitive in p.range_exchange_primitives
+    )
+
+    from vibeqc_compiler.method.spec import METHOD_CATALOG
+
+    changed_spec = replace(
+        METHOD_CATALOG["CAM-B3LYP"],
+        identifier="CAM-B3LYP-omega-test",
+        range_omega=Fraction(2, 5),
+    )
+    changed = plan(method=changed_spec)
+    assert changed.identity != p.identity
+    for source in ("exchange_short_range", "exchange_long_range"):
+        assert changed.range_exchange_primitive(source).omega == Fraction(2, 5)
+        assert (
+            changed.integral_block(source, terms=3).identity
+            != p.integral_block(source, terms=3).identity
+        )
+    with pytest.raises(ValueError, match="range-exchange"):
+        p.range_exchange_primitive("exchange_full_range")
+
+
+def test_rsh_reduction_requires_both_exchange_components() -> None:
+    p = plan(method="CAM-B3LYP")
+    components = {
+        name: np.full((2, 3), index + 1.0) for index, name in enumerate(p.source_names)
+    }
+    expected = sum(components.values(), np.zeros((2, 3)))
+    np.testing.assert_array_equal(
+        p.reduce_diagnostic(components, atoms=2),
+        expected,
+    )
+    for source in ("exchange_short_range", "exchange_long_range"):
+        with pytest.raises(ValueError, match="coverage"):
+            p.reduce_diagnostic(
+                {name: value for name, value in components.items() if name != source},
+                atoms=2,
+            )
+
+
+def test_nonlocal_correlation_extends_shared_stationary_source_inventory() -> None:
+    method = MethodSpec(
+        "PBE+VV10-test",
+        (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+        nonlocal_correlation=original_nonlocal_correlation("vv10"),
+    )
+    p = plan(method=method)
+    assert p.source_names == (
+        "one_electron",
+        "coulomb",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "nonlocal_ao",
+        "nonlocal_grid",
+        "nonlocal_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    nonlocal_sources = p.sources[5:8]
+    assert tuple(source.primitive for source in nonlocal_sources) == (
+        "nonlocal_correlation",
+        "nonlocal_correlation",
+        "nonlocal_correlation",
+    )
+    assert tuple(source.geometric_sources for source in nonlocal_sources) == (
+        ("ao_center",),
+        ("grid_point",),
+        ("partition_weight",),
+    )
+    components = {
+        name: np.full((2, 3), i + 1.0) for i, name in enumerate(p.source_names)
+    }
+    expected = sum(components.values())
+    np.testing.assert_array_equal(p.reduce_diagnostic(components, atoms=2), expected)
+    with pytest.raises(ValueError, match="coverage"):
+        p.reduce_diagnostic(
+            {
+                name: value
+                for name, value in components.items()
+                if name != "nonlocal_grid"
+            },
+            atoms=2,
+        )
 
 
 def test_uks_coulomb_includes_cross_spin_and_recovers_total_density_rks() -> None:
@@ -280,14 +529,26 @@ def test_unsupported_envelope_is_not_silently_substituted(
         StationaryMeanField(**{"point_model": SCF_POINT_MODEL, **change})
 
 
-def test_unavailable_primitive_or_native_backend_cannot_inherit_force_support() -> None:
-    with pytest.raises(UnsupportedMethod, match="primitive"):
-        plan(method="PBE0")
+def test_global_hybrid_plan_adds_exact_exchange_without_granting_public_forces() -> (
+    None
+):
+    hybrid = plan(method="PBE0")
+    assert hybrid.source_names == (
+        "one_electron",
+        "coulomb",
+        "exact_exchange",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    assert hybrid.exchange.coefficient == Fraction(1, 4)
     for backend in ("cpu", "cuda"):
         with pytest.raises(NotImplementedError, match="qualification"):
-            plan().require_native_endpoint(backend)
+            hybrid.require_native_endpoint(backend)
     with pytest.raises(ValueError, match="backend"):
-        plan().require_native_endpoint("silently-use-pyscf")
+        hybrid.require_native_endpoint("silently-use-pyscf")
 
 
 def test_budget_shape_dtype_and_nonfinite_fail_before_publishing() -> None:
@@ -323,7 +584,15 @@ def test_same_tensor_graph_has_deterministic_cuda_source_and_separate_schedule_i
         p.integral_block(source, terms=5).contraction
         for source in ("one_electron", "coulomb", "overlap_pulay")
     ]
+    rsh = plan("polarized", "CAM-B3LYP")
+    programs.extend(
+        rsh.integral_block(source, terms=5).contraction
+        for source in ("exchange_short_range", "exchange_long_range")
+    )
     programs.append(p.reduction_program(atoms=2))
+    hybrid = plan("polarized", method="PBE0")
+    programs.append(hybrid.integral_block("exact_exchange", terms=5).contraction)
+    programs.append(hybrid.reduction_program(atoms=2))
     target = cuda_target_info("sm_80")
     for program in programs:
         schedule = TensorSchedule(direct_gemm=False)
@@ -355,6 +624,20 @@ def test_missing_xc_derivative_rule_rejects_plan(monkeypatch: typing.Any) -> Non
         plan()
 
 
+def test_missing_exact_exchange_derivative_rule_rejects_hybrid_plan(
+    monkeypatch: typing.Any,
+) -> None:
+    from vibeqc_compiler.method import ExactExchangePrimitive
+
+    monkeypatch.setattr(
+        ExactExchangePrimitive,
+        "derivative_capabilities",
+        property(lambda self: ("energy", "fock")),
+    )
+    with pytest.raises(UnsupportedMethod, match="exchange ERI derivative"):
+        plan(method="PBE0")
+
+
 def test_source_generation_does_not_import_public_runtime_or_reference_frameworks() -> (
     None
 ):
@@ -373,6 +656,10 @@ from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 p = StationaryGradientPlan(resolve_method('PBE'), StationaryMeanField('interior-v1'))
 for source in ('one_electron', 'coulomb', 'overlap_pulay'):
     block = p.integral_block(source, terms=2)
+    assert emit_cuda(plan_cuda(block.contraction, cuda_target_info('sm_80')))
+rsh = StationaryGradientPlan(resolve_method('CAM-B3LYP'), StationaryMeanField('interior-v1'))
+for source in ('exchange_short_range', 'exchange_long_range'):
+    block = rsh.integral_block(source, terms=2)
     assert emit_cuda(plan_cuda(block.contraction, cuda_target_info('sm_80')))
 assert p.reduction_program(atoms=1).logical_hash
 """

@@ -14,10 +14,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.cc_gradient_fixtures import CASES, ROOT, inputs
 from tools.generate_validation_references import pyscf_molecule
-from tools.vibeqc_validation.schema import canonical_hash
 
 
 def generate(name: typing.Any) -> typing.Any:

@@ -15,6 +15,7 @@
 #include "scf/cuda/direct_fock_quartet.cuh"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
+#include "scf/cuda/direct_force_order3.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/direct_queue_profile.cuh"
@@ -149,7 +150,7 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
         if constexpr (Force) {
           if (angular_order == 0U) {
             contract_two_electron_force_ssss_task<Unrestricted>(
-                batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
+                batch, task, screening_tolerance, schwarz_bounds, density, active, output);
           } else if (angular_order == 1U) {
             contract_two_electron_force_psss_task<Unrestricted>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
@@ -159,6 +160,9 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
             contract_two_electron_force_pair_order2_task<Unrestricted, kPpssShellClass>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
             contract_two_electron_force_pair_order2_task<Unrestricted, kDsssShellClass>(
+                batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
+          } else if (angular_order == 3U) {
+            contract_two_electron_force_order3_task<Unrestricted>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
           }
         } else {
@@ -187,7 +191,7 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
         const unsigned angular_order =
             batch.shell_angular[first_shell] + batch.shell_angular[second_shell] +
             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
-        if (angular_order <= 2U) continue;
+        if (angular_order <= 3U) continue;
         const std::size_t first_ao_count = shell_ao_pair_count(batch, base.first_pair);
         const std::size_t second_ao_count = shell_ao_pair_count(batch, base.second_pair);
         const std::size_t ao_quartets = base.first_pair == base.second_pair

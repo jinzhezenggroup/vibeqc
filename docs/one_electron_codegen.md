@@ -1,9 +1,12 @@
 # Generated one-electron CUDA values
 
 The one-electron compiler emits normalized contracted overlap S, kinetic T,
-and nuclear attraction V for Cartesian s/p/d/f shells. Production consumers
-write S and Hcore=T+V directly. The handwritten CUDA implementation remains
-the default and the independent CPU implementation remains an oracle.
+and nuclear attraction V. Production CUDA artifacts remain bounded to
+Cartesian s/p/d/f shells; an explicit qualification mode can generate through
+g without promoting that larger family into the runtime capability table.
+Production consumers write S and Hcore=T+V directly. The handwritten CUDA
+implementation remains the default and the independent CPU implementation
+remains an oracle.
 
 ## Selecting a candidate
 
@@ -32,22 +35,34 @@ through the existing analytic/handwritten implementation.
 
 `python/vibeqc_compiler/integral/one_electron_values.py` builds traceable, pruned Hermite
 DAGs from `IntegralIR`. It includes Gaussian decay and radial prefactors.
-Kinetic raising can reach internal ket powers of five without widening the
-public f-shell dimensions. Attraction carries an independent nuclear center
-and an explicit signed nuclear-charge factor. Its positive-term Boys series
-and stable downward/upward recurrences cover orders zero through six.
+Kinetic raising can reach internal ket powers of six for a public g shell
+without widening the declared output dimensions. Attraction carries an
+independent nuclear center and an explicit signed nuclear-charge factor. The
+default f-family CUDA artifact needs Boys orders zero through six; the g-shell
+qualification artifact extends values through order eight and first
+derivatives through order nine.
 
 `one_electron_cuda.py` shares S/T subexpressions and cuts reusable pair-geometry
 roots out of the nucleus-dependent graph before emitting code. Primitive-pair
 decay, exponent sums and relative shifts are therefore computed outside the
-on-device nuclear loop. The emitted header and its 48-operator-signature
-inventory are build artifacts:
+on-device nuclear loop. The default emitted header and its 48-operator-signature
+inventory are build artifacts. A g-shell qualification artifact is requested
+explicitly and contains 75 value signatures:
 
 ```bash
 python tools/generate_one_electron_kernels.py \
   --output /tmp/generated_one_electron_values.cuh \
   --inventory /tmp/one_electron_inventory.json
+
+python tools/generate_one_electron_kernels.py \
+  --max-angular-momentum 4 \
+  --output /tmp/generated_one_electron_values_g.cuh \
+  --inventory /tmp/one_electron_inventory_g.json
 ```
+
+The g switch is deliberately incompatible with `--policy-output`: current
+production scheduling and endpoint evidence cover through f only. Structural
+g emission therefore cannot silently become an executable production claim.
 
 `src/scf/cuda/one_electron_values.cu` owns bounded contraction loops and output
 consumers in a separate translation unit. It borrows the existing normalized
@@ -75,8 +90,12 @@ current geometry for every invocation.
 ## Validation and promotion
 
 `query_integral_capability(request, backend="cuda_one_electron_values")` checks
-the new primitive executor's semantic boundary. This is separate from the
-legacy quartet-task CUDA ABI and from numerical or production acceptance.
+the production primitive executor's semantic boundary. Requests containing g
+remain fail-closed there until a g artifact has passed CUDA resource and
+endpoint promotion gates. The bounded component executor and the explicit
+`--max-angular-momentum 4` generator provide the structural qualification
+path in the meantime. This is separate from the legacy quartet-task CUDA ABI
+and from numerical or production acceptance.
 
 CPU tests compare every Cartesian component with independent PySCF/libcint
 S/T/V, including same-center, nearly coincident, intermediate and distant

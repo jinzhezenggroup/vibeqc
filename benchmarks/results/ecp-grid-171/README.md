@@ -1,5 +1,23 @@
 # ECP compiler-owned host grid qualification
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/ecp-grid-171/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/ecp-grid-171/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For the standard raw-evidence bundle, verify or unpack it against the retained
+member manifest with:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/ecp-grid-171 \
+  --archive .artifacts/ecp-grid-171/raw-evidence.zip \
+  --output .artifacts/ecp-grid-171-unpacked
+```
+
 This slice generates production host Gauss-Legendre nodes/weights, the radial
 map and Jacobian, sphere coordinates/weights, real s/p/d harmonics and Cartesian
 component coefficients. It preserves the independent CPU ECP implementation,

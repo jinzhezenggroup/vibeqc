@@ -3,34 +3,23 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "generated_scf_array_native.hpp"
+
 namespace vibeqc::scf::reference {
 
 Matrix density_from_orbitals(const Matrix& coefficients, std::size_t n, std::size_t occupied,
                              double occupation_weight) {
   Matrix density(n * n, 0.0);
-  for (std::size_t mu = 0; mu < n; ++mu) {
-    for (std::size_t nu = 0; nu < n; ++nu) {
-      for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
-        density[index(mu, nu, n)] += occupation_weight * coefficients[index(mu, orbital, n)] *
-                                     coefficients[index(nu, orbital, n)];
-      }
-    }
-  }
+  generated::density_from_orbitals(density.data(), coefficients.data(), n, n, occupied,
+                                   occupation_weight);
   return density;
 }
 
 Matrix energy_weighted_density(const Matrix& coefficients, const std::vector<double>& energies,
                                std::size_t n, std::size_t occupied, double occupation_weight) {
   Matrix weighted(n * n, 0.0);
-  for (std::size_t mu = 0; mu < n; ++mu) {
-    for (std::size_t nu = 0; nu < n; ++nu) {
-      for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
-        weighted[index(mu, nu, n)] += occupation_weight * energies[orbital] *
-                                      coefficients[index(mu, orbital, n)] *
-                                      coefficients[index(nu, orbital, n)];
-      }
-    }
-  }
+  generated::weighted_density_from_orbitals(weighted.data(), coefficients.data(), energies.data(),
+                                            n, n, occupied, occupation_weight);
   return weighted;
 }
 

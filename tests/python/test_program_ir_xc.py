@@ -14,6 +14,7 @@ from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.features import density_feature_block, density_features
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.xc import functional
+from vibeqc_compiler.xc.coefficients import coefficient_program
 from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture
 from vibeqc_compiler.xc.native import NativeContractionProgram
@@ -106,7 +107,7 @@ def test_packed_feature_program_records_real_cross_subsystem_layouts(
         12,
     )
     assert layouts["feature_scalar"].shape == (7, 7)
-    assert layouts["xc_rows"].shape[1] == 7
+    assert layouts["xc_rows"].shape == (8, 7)
     assert ("feature_gradient" in layouts) is gradient
     releases = p.release_after("vxc")
     assert releases[0] == "jets"
@@ -241,6 +242,45 @@ def test_native_cpu_releases_previous_tile_before_next_ao_allocation(
             assert prepared.tile_program is description
 
 
+def test_packed_scalar_rows_feed_coefficients_without_gradient_repack(
+    native_factory: typing.Any, monkeypatch: typing.Any
+) -> None:
+    program = native_factory("PBE")
+    npoint = 11
+    scalar = np.zeros((7, npoint))
+    scalar[0] = 0.7
+    scalar[1] = 0.4
+    scalar[2] = 0.02
+    scalar[3] = 0.005
+    scalar[4] = 0.03
+
+    rows = program.scalar_values_packed(scalar)
+    assert program.metadata["packed_layouts"]["scalar"] == {
+        "variables": ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb"),
+        "outputs": 8,
+        "root_rows": (0, 1, 2, 3, 4, 5),
+    }
+    assert rows.feature_gradient.shape == (7, npoint)
+    assert rows.feature_gradient.flags.c_contiguous
+    assert np.count_nonzero(rows.feature_gradient[5:]) == 0
+    for index in range(5):
+        assert np.shares_memory(rows[(index,)], rows.feature_gradient[index])
+
+    v = program._gradient(rows, npoint)
+    assert np.shares_memory(v, rows.feature_gradient)
+    gradient = np.arange(2 * npoint * 3, dtype=np.float64).reshape(2, npoint, 3)
+    gradient *= 1e-3
+    expected = coefficient_program("polarized", "gga").evaluate(gradient, np.asarray(v))
+    monkeypatch.setattr(
+        program.coefficients.function,
+        "evaluate",
+        lambda *_args, **_kwargs: pytest.fail("packed path used generic stacked ABI"),
+    )
+    actual = program.coefficients.evaluate(gradient, v)
+    for key in expected:
+        np.testing.assert_array_equal(actual[key], expected[key])
+
+
 def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
     native_factory: typing.Any, monkeypatch: typing.Any
 ) -> None:
@@ -266,13 +306,14 @@ def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
         assert not block.scalar.flags.writeable
 
         seen = []
-        original = program._scalar.evaluate_matrix
+        assert program._packed_scalar is not None
+        original = program._packed_scalar.evaluate_matrix
 
         def evaluate_matrix(values: typing.Any) -> typing.Any:
             seen.append(values)
             return original(values)
 
-        monkeypatch.setattr(program._scalar, "evaluate_matrix", evaluate_matrix)
+        monkeypatch.setattr(program._packed_scalar, "evaluate_matrix", evaluate_matrix)
         direct = program.scalar_values_packed(block.scalar)
         baseline = program.scalar_values(features)
         for key in baseline:

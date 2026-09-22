@@ -12,11 +12,27 @@ function(vibeqc_register_generated_sources)
     message(FATAL_ERROR "generated sources require GENERATOR and OUTPUTS")
   endif()
 
+  get_filename_component(
+    _vibeqc_codegen_runner
+    "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../tools/run_codegen.py"
+    ABSOLUTE)
+  list(GET VGS_OUTPUTS 0 _vibeqc_primary_output)
+  set(_vibeqc_depfile "${_vibeqc_primary_output}.d")
+  set(_vibeqc_depfile_targets)
+  foreach(_vibeqc_output IN LISTS VGS_OUTPUTS)
+    list(APPEND _vibeqc_depfile_targets --target "${_vibeqc_output}")
+  endforeach()
+
   add_custom_command(
     OUTPUT ${VGS_OUTPUTS}
     BYPRODUCTS ${VGS_BYPRODUCTS}
-    COMMAND "${Python3_EXECUTABLE}" "${VGS_GENERATOR}" ${VGS_ARGS}
-    DEPENDS "${VGS_GENERATOR}" ${VGS_DEPENDS}
+    COMMAND "${Python3_EXECUTABLE}" "${_vibeqc_codegen_runner}"
+            --depfile "${_vibeqc_depfile}"
+            ${_vibeqc_depfile_targets}
+            --source-root "${PROJECT_SOURCE_DIR}"
+            "${VGS_GENERATOR}" ${VGS_ARGS}
+    DEPENDS "${VGS_GENERATOR}" "${_vibeqc_codegen_runner}" ${VGS_DEPENDS}
+    DEPFILE "${_vibeqc_depfile}"
     COMMENT "${VGS_COMMENT}"
     VERBATIM)
   set_source_files_properties(${VGS_OUTPUTS} ${VGS_BYPRODUCTS} PROPERTIES GENERATED TRUE)

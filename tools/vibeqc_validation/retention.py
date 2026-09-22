@@ -18,7 +18,7 @@ from pathlib import Path, PurePosixPath
 
 POLICY_PATH = "benchmarks/evidence-policy.json"
 MAX_TRACKED_BYTES = 1 << 20
-REFERENCE_ROOTS = ("tests/reference_data/", "tests/data/", "external/")
+REFERENCE_ROOTS = ("tests/reference_data/", "tests/data/", "upstream/", "manifests/")
 RESULT_ROOT = "benchmarks/results/"
 TRANSIENT_SUFFIXES = {
     ".log",

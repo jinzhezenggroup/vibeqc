@@ -148,3 +148,61 @@ def test_invalid_screening_budget_is_rejected_on_strict_fallback(
         monkeypatch.setenv("VIBEQC_DF_FORCE_SCREEN_ABS", "off")
         recovered = owner.execute(strict=True).items[0]
         np.testing.assert_allclose(recovered.forces, expected.forces, atol=1e-9, rtol=0)
+
+
+def test_screening_feature_histogram_matches_device_work(
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
+    """Intrusive host histogram must conserve the device shell-work ledger."""
+    assert os.environ.get("SLURM_JOB_ID")
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    for key, value in {
+        "VIBEQC_DF_WEIGHTED_EXECUTION": "shell",
+        "VIBEQC_DF_PRIMITIVE_BUCKETS": "packet",
+        "VIBEQC_DF_SHELL_POLICY": "candidate",
+        "VIBEQC_DF_DERIVATIVE_PAIRS": "symmetric",
+        "VIBEQC_DF_SHELL_WORK": "1",
+        "VIBEQC_DF_SCREENING_FEATURES": "1",
+        "VIBEQC_DF_FORCE_SCREEN_ABS": "off",
+    }.items():
+        monkeypatch.setenv(key, value)
+    trace = tmp_path / "screening-features.jsonl"
+    monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
+    result = Calculator(
+        basis="sto-3g",
+        device="cuda",
+        density_fitting="cuda",
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+        max_iterations=100,
+    ).singlepoint(atoms)
+    assert result.converged
+
+    (row,) = [
+        item for item in read_trace(trace) if item["operation"] == "force_response"
+    ]
+    counters = row["counters"]
+    assert counters["screening_weight_histogram_version"] == 1
+    assert counters["screening_weight_histogram_bin_count"] == 12
+    assert counters["screening_feature_weight_d2h_bytes"] > 0
+    assert counters["screening_feature_stream_drains"] > 0
+    classes = {
+        key.removeprefix("shell_").removesuffix("_work_public_weight_loads")
+        for key in counters
+        if key.startswith("shell_") and key.endswith("_work_public_weight_loads")
+    }
+    assert classes
+    for angular in classes:
+        effective = counters[f"shell_{angular}_weight_effective_samples"]
+        loads = counters[f"shell_{angular}_weight_underlying_loads"]
+        zero = counters[f"shell_{angular}_weight_magnitude_bin_00"]
+        histogram = sum(
+            counters[f"shell_{angular}_weight_magnitude_bin_{index:02d}"]
+            for index in range(12)
+        )
+        assert loads == counters[f"shell_{angular}_work_public_weight_loads"]
+        assert (
+            effective - zero == counters[f"shell_{angular}_work_public_nonzero_weights"]
+        )
+        assert histogram == effective

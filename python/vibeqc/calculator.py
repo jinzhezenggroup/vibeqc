@@ -30,8 +30,14 @@ if TYPE_CHECKING:
     from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
+_COMPOSITE_METHOD_ALIASES = {
+    "r2scan-3c": ("R2SCAN-3c", "unpolarized"),
+    "r2scan-3c-rks": ("R2SCAN-3c", "unpolarized"),
+    "r2scan-3c-uks": ("R2SCAN-3c", "polarized"),
+}
 _HF_METHODS = _method_manifest.HF_METHOD_IDS
-_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, _native.METHOD_RCCSD))
+_COUPLED_CLUSTER_METHODS = frozenset((_native.METHOD_RCCSD, _native.METHOD_RCCSD_T))
+_CORRELATED_METHODS = frozenset((_native.METHOD_MP2, *_COUPLED_CLUSTER_METHODS))
 
 
 @dataclass(frozen=True)
@@ -123,6 +129,10 @@ class CorrelationResult:
     ccsd_amplitude_d2h_bytes: int
     ccsd_synchronizations: int
     ccsd_replay_equation_hash: str
+    ccsd_t_triples_energy: float
+    ccsd_t_virtual_triples: int
+    ccsd_t_workspace_bytes: int
+    ccsd_t_equation_hash: str
 
 
 def _read_correlation_result(
@@ -158,7 +168,12 @@ def _read_correlation_result(
         if name not in ("struct_size", "abi_version")
     }
     values["mo_host_staging"] = bool(values["mo_host_staging"])
-    for key in ("equation_hash", "response_operator_hash", "ccsd_replay_equation_hash"):
+    for key in (
+        "equation_hash",
+        "response_operator_hash",
+        "ccsd_replay_equation_hash",
+        "ccsd_t_equation_hash",
+    ):
         values[key] = values[key].decode("ascii")
     return CorrelationResult(**values)
 
@@ -187,6 +202,7 @@ class Result:
     physical_residual_rms: float | None = None
     ks_diagnostic: KsDiagnostic | None = None
     ks_transport_diagnostic: KsTransportDiagnostic | None = None
+    dispersion: object | None = None
 
 
 @dataclass(frozen=True)
@@ -205,6 +221,11 @@ def method_capabilities(method: str) -> MethodCapabilities:
     """Query method support without constructing a calculator or system."""
 
     canonical = method.lower()
+    composite = _COMPOSITE_METHOD_ALIASES.get(canonical)
+    if composite is not None:
+        _, spin = composite
+        electronic = "r2scan-uks" if spin == "polarized" else "r2scan-rks"
+        return replace(method_capabilities(electronic), method=canonical)
     try:
         method_id = _METHODS[canonical]
     except KeyError as error:
@@ -228,6 +249,7 @@ def method_capabilities(method: str) -> MethodCapabilities:
         _native.METHOD_FAMILY_DENSITY_FUNCTIONAL: "density_functional",
         _native.METHOD_FAMILY_COUPLED_CLUSTER: "coupled_cluster",
         _native.METHOD_FAMILY_PERTURBATION: "perturbation",
+        _native.METHOD_FAMILY_SEMIEMPIRICAL: "semiempirical",
     }[native.family]
     properties = set()
     if native.supported_properties & _native.PROPERTY_ENERGY:
@@ -366,8 +388,8 @@ class Calculator:
 
     def __init__(
         self,
-        method: str = "rhf",
-        basis: str | Path | BasisSet | Sequence[Shell] = "sto-3g",
+        method: typing.Any = "rhf",
+        basis: str | Path | BasisSet | Sequence[Shell] | None = None,
         device: str = "cpu",
         device_id: int = 0,
         basis_representation: str | None = None,
@@ -395,6 +417,7 @@ class Calculator:
         target_accuracy: TargetAccuracy | None = None,
         resource_budget: typing.Any = None,
         ks_options: typing.Any = None,
+        dispersion_memory_budget_bytes: int = 256 * 1024 * 1024,
     ) -> None:
         """Create a calculator, optionally selecting CPU or CUDA DF.
 
@@ -411,8 +434,16 @@ class Calculator:
         successful results report ``unverified`` and numerical defaults remain
         unchanged. It never certifies an error from ``energy_tolerance``.
 
-        ``ks_options`` snapshots an explicit semilocal composition, GridSpec
-        and XC tile schedule for LDA/PBE RKS/UKS. Other methods reject it.
+        ``method`` may be a native selector string, the public
+        ``r2scan-3c[-rks|-uks]`` composite selectors, a spin-explicit PBE-family
+        MethodIR with one production D3(BJ) correction, or the canonical
+        r2SCAN-3c MethodIR. The latter forms bind the exact def2-mTZVPP basis and
+        composes r2SCAN + D4 + gCP without a named native scientific driver.
+        ``ks_options`` snapshots the electronic composition, GridSpec and XC
+        tile schedule. ``dispersion_memory_budget_bytes`` independently bounds
+        the retained external-correction owner. Production two-body D3(BJ)
+        also contributes its retained host/device capacity to the global
+        ResourceBudget; composite D4/gCP planning remains fail-closed.
         """
         if target_accuracy is not None and not isinstance(
             target_accuracy, TargetAccuracy
@@ -420,12 +451,157 @@ class Calculator:
             raise TypeError("target_accuracy must be a TargetAccuracy contract")
         self._target_accuracy = target_accuracy
         if resource_budget is not None:
-            from .resources import ResourceBudget
+            from vibeqc_compiler.common.resources import ResourceBudget
 
             if not isinstance(resource_budget, ResourceBudget):
                 raise TypeError("resource_budget must be a ResourceBudget")
         self._resource_budget = resource_budget
-        if method.lower() not in _METHODS:
+        if (
+            type(dispersion_memory_budget_bytes) is not int
+            or not 0 < dispersion_memory_budget_bytes < 2**64
+        ):
+            raise ValueError(
+                "dispersion_memory_budget_bytes must be a positive uint64 integer"
+            )
+        self._dispersion_memory_budget_bytes = dispersion_memory_budget_bytes
+        self._dispersion_method_ir = None
+
+        from vibeqc_compiler.method import (
+            D3Spec,
+            D4Spec,
+            DispersionCorrectionPrimitive,
+            GeometricCounterpoisePrimitive,
+            MethodIR,
+            SemilocalXCPrimitive,
+            resolve_method,
+            validate_basis_snapshot,
+        )
+
+        if isinstance(method, str):
+            composite = _COMPOSITE_METHOD_ALIASES.get(method.lower())
+            if composite is not None:
+                identifier, spin = composite
+                method = resolve_method(identifier, spin=spin)
+        supplied_method_ir = method if isinstance(method, MethodIR) else None
+        if supplied_method_ir is not None:
+            corrections = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if isinstance(node, DispersionCorrectionPrimitive)
+            )
+            gcp_nodes = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if isinstance(node, GeometricCounterpoisePrimitive)
+            )
+            electronic_family = None
+            if corrections:
+                if len(corrections) != 1:
+                    raise NotImplementedError(
+                        "Calculator MethodIR execution requires exactly one supported dispersion correction"
+                    )
+                correction = corrections[0].specification
+                if isinstance(correction, D3Spec):
+                    if gcp_nodes:
+                        raise NotImplementedError(
+                            "Calculator D3 execution does not accept a gCP primitive"
+                        )
+                    electronic_family = "pbe"
+                elif isinstance(correction, D4Spec):
+                    expected = resolve_method("R2SCAN-3c", spin=supplied_method_ir.spin)
+                    if (
+                        len(gcp_nodes) != 1
+                        or supplied_method_ir.manifest_identity
+                        != expected.manifest_identity
+                    ):
+                        raise NotImplementedError(
+                            "Calculator D4+gCP execution requires the canonical r2SCAN-3c MethodIR"
+                        )
+                    electronic_family = "r2scan"
+                else:
+                    raise NotImplementedError(
+                        "Calculator MethodIR execution does not support this correction family"
+                    )
+            elif gcp_nodes:
+                raise NotImplementedError(
+                    "Calculator MethodIR execution does not accept gCP without its qualified composite owner"
+                )
+
+            electronic_primitives = tuple(
+                node
+                for node in supplied_method_ir.primitives
+                if not isinstance(
+                    node,
+                    (
+                        DispersionCorrectionPrimitive,
+                        GeometricCounterpoisePrimitive,
+                    ),
+                )
+            )
+            electronic_ir = (
+                supplied_method_ir
+                if not corrections and not gcp_nodes
+                else replace(
+                    supplied_method_ir,
+                    identifier=f"{supplied_method_ir.identifier}/electronic",
+                    primitives=electronic_primitives,
+                    basis=None,
+                )
+            )
+            semilocal = tuple(
+                node
+                for node in electronic_ir.primitives
+                if isinstance(node, SemilocalXCPrimitive)
+            )
+            components = (
+                set(dict(semilocal[0].functional.components))
+                if len(semilocal) == 1
+                else set()
+            )
+            if electronic_family is None:
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator electronic MethodIR execution currently supports the PBE family"
+                    )
+                electronic_family = "pbe"
+
+            if electronic_family == "pbe":
+                if not components <= {"GGA_X_PBE", "GGA_C_PBE"}:
+                    raise NotImplementedError(
+                        "Calculator PBE-family MethodIR has incompatible semilocal components"
+                    )
+                method = (
+                    "pbe-uks" if supplied_method_ir.spin == "polarized" else "pbe-rks"
+                )
+            else:
+                if components != {"MGGA_X_R2SCAN", "MGGA_C_R2SCAN"}:
+                    raise NotImplementedError(
+                        "canonical r2SCAN-3c requires the audited r2SCAN electronic graph"
+                    )
+                method = (
+                    "r2scan-uks"
+                    if supplied_method_ir.spin == "polarized"
+                    else "r2scan-rks"
+                )
+
+            from .ks import KsOptions
+
+            if ks_options is None:
+                ks_options = KsOptions(composition=electronic_ir)
+            elif not isinstance(ks_options, KsOptions):
+                raise TypeError("ks_options must be KsOptions")
+            elif (
+                ks_options.functional is not None or ks_options.composition is not None
+            ):
+                raise ValueError(
+                    "a MethodIR calculator owns its KS composition; ks_options may only set execution controls"
+                )
+            else:
+                ks_options = replace(ks_options, composition=electronic_ir)
+            if corrections:
+                self._dispersion_method_ir = supplied_method_ir
+
+        if not isinstance(method, str) or method.lower() not in _METHODS:
             raise ValueError(f"unknown method {method!r}")
         if device not in {"cpu", "cuda"}:
             raise ValueError("device must be 'cpu' or 'cuda'")
@@ -433,24 +609,57 @@ class Calculator:
             "cartesian": _native.BASIS_CARTESIAN,
             "spherical": _native.BASIS_SPHERICAL,
         }
-        basis = _snapshot_basis(basis, basis_representation)
-        if basis_representation is None:
-            basis_representation = (
-                basis.representation if isinstance(basis, BasisSet) else "cartesian"
-            )
-        if basis_representation not in representations:
-            raise ValueError("basis_representation must be 'cartesian' or 'spherical'")
-        if auxiliary_basis is not None:
-            auxiliary_basis = _snapshot_basis(
-                auxiliary_basis,
-                None
-                if isinstance(auxiliary_basis, (BasisSet, os.PathLike))
-                or (
-                    isinstance(auxiliary_basis, str)
-                    and auxiliary_basis.endswith(".json")
+        method_id = _METHODS[method.lower()]
+        intrinsic_xtb_basis = method_id == _native.METHOD_GFN2_XTB
+        if intrinsic_xtb_basis:
+            if basis is not None:
+                raise ValueError(
+                    "GFN2-xTB uses its intrinsic minimal basis; omit the basis argument"
                 )
-                else basis_representation,
-            )
+            if basis_representation not in (None, "cartesian"):
+                raise ValueError(
+                    "GFN2-xTB does not accept a Gaussian basis representation"
+                )
+            if auxiliary_basis is not None:
+                raise ValueError("GFN2-xTB does not accept an auxiliary Gaussian basis")
+            basis_representation = "cartesian"
+        else:
+            if basis is None:
+                if (
+                    supplied_method_ir is not None
+                    and supplied_method_ir.basis is not None
+                ):
+                    if supplied_method_ir.identifier != "R2SCAN-3c":
+                        raise NotImplementedError(
+                            "automatic composite basis loading is qualified only for canonical r2SCAN-3c"
+                        )
+                    from .r2scan3c import load_r2scan3c_basis
+
+                    basis = load_r2scan3c_basis()
+                else:
+                    basis = "sto-3g"
+            basis = _snapshot_basis(basis, basis_representation)
+            if supplied_method_ir is not None and supplied_method_ir.basis is not None:
+                validate_basis_snapshot(supplied_method_ir.basis, basis)
+            if basis_representation is None:
+                basis_representation = (
+                    basis.representation if isinstance(basis, BasisSet) else "cartesian"
+                )
+            if basis_representation not in representations:
+                raise ValueError(
+                    "basis_representation must be 'cartesian' or 'spherical'"
+                )
+            if auxiliary_basis is not None:
+                auxiliary_basis = _snapshot_basis(
+                    auxiliary_basis,
+                    None
+                    if isinstance(auxiliary_basis, (BasisSet, os.PathLike))
+                    or (
+                        isinstance(auxiliary_basis, str)
+                        and auxiliary_basis.endswith(".json")
+                    )
+                    else basis_representation,
+                )
         if isinstance(density_fitting, bool):
             density_fitting = "cpu" if density_fitting else "none"
         density_fitting_modes = {
@@ -479,20 +688,111 @@ class Calculator:
             raise ValueError("density_fitting_memory_budget_bytes must be non-negative")
         self._method_name = method.lower()
         self._method = _METHODS[self._method_name]
+        precision_modes = {
+            "fp64": _native.PRECISION_FP64,
+            "auto": _native.PRECISION_AUTO,
+        }
+        try:
+            self._precision_mode = precision_modes[str(precision).lower()]
+        except KeyError as error:
+            raise ValueError("precision must be 'fp64' or 'auto'") from error
+        if (
+            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("r2SCAN currently requires strict FP64")
+        if (
+            self._method == _native.METHOD_PBE_D4_RKS
+            and self._precision_mode != _native.PRECISION_FP64
+        ):
+            raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
         if self._method_name in (
             "lda-rks",
             "pbe-rks",
             "lda-uks",
             "pbe-uks",
+            "pbe0-rks",
+            "pbe0-uks",
             "r2scan-rks",
             "r2scan-uks",
+            "b3lyp-rks",
+            "b3lyp-uks",
+            "pbe-d4-rks",
         ):
-            from .ks import resolve_ks_options
+            from .ks import KsOptions, resolve_ks_options
 
+            if supplied_method_ir is None and isinstance(ks_options, KsOptions):
+                full_graph = ks_options.composition or ks_options._method_ir
+                if full_graph is not None:
+                    corrections = tuple(
+                        node
+                        for node in full_graph.primitives
+                        if isinstance(node, DispersionCorrectionPrimitive)
+                    )
+                    # Leave non-D3 recipes to the existing native resolver;
+                    # explicit/resolved PBE-D4 options already have an owner.
+                    if any(
+                        isinstance(node.specification, D3Spec) for node in corrections
+                    ):
+                        if len(corrections) != 1 or not isinstance(
+                            corrections[0].specification, D3Spec
+                        ):
+                            raise NotImplementedError(
+                                "Calculator supports exactly one D3 correction primitive"
+                            )
+                        electronic_graph = replace(
+                            full_graph,
+                            identifier=f"{full_graph.identifier}/electronic",
+                            primitives=tuple(
+                                node
+                                for node in full_graph.primitives
+                                if not isinstance(node, DispersionCorrectionPrimitive)
+                            ),
+                        )
+                        ks_options = replace(
+                            ks_options,
+                            functional=None,
+                            composition=electronic_graph,
+                        )
+                        self._dispersion_method_ir = full_graph
             self._ks_options = resolve_ks_options(self._method_name, ks_options)
         elif ks_options is not None:
-            raise ValueError("ks_options requires a supported semilocal RKS/UKS method")
+            raise ValueError("ks_options requires a supported RKS/UKS method")
+        if self._dispersion_method_ir is not None and resource_budget is not None:
+            correction_nodes = tuple(
+                node
+                for node in self._dispersion_method_ir.primitives
+                if isinstance(node, DispersionCorrectionPrimitive)
+            )
+            if len(correction_nodes) != 1 or not isinstance(
+                correction_nodes[0].specification, D3Spec
+            ):
+                raise NotImplementedError(
+                    "global resource_budget currently supports composed D3(BJ) only; "
+                    "composite D4/gCP planning remains unavailable"
+                )
+        if self._method == _native.METHOD_GFN2_XTB:
+            # Backend-specific admission is owned by native calculation preparation.
+            # Native SDK builds may include GFN2 CUDA while CUDA wheels currently do not.
+            if density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise ValueError("GFN2-xTB does not use Gaussian density fitting")
+            if target_accuracy is not None:
+                raise NotImplementedError(
+                    "target_accuracy is not implemented for GFN2-xTB yet"
+                )
+            if resource_budget is not None:
+                raise NotImplementedError(
+                    "resource_budget planning is not implemented for GFN2-xTB yet"
+                )
+            for name, value in (
+                ("max_iterations", max_iterations),
+                ("diis_history", diis_history),
+            ):
+                if type(value) is not int or not 1 <= value <= 2**31 - 1:
+                    raise ValueError(f"{name} must be a positive int32 for GFN2-xTB")
+            if diis_history > 64:
+                raise ValueError("GFN2-xTB mixer history must not exceed 64")
         if self._method in _CORRELATED_METHODS:
             if target_accuracy is not None:
                 raise NotImplementedError(
@@ -519,7 +819,7 @@ class Calculator:
             )
         if not np.isfinite(mp2_denominator_threshold) or mp2_denominator_threshold <= 0:
             raise ValueError("mp2_denominator_threshold must be finite and positive")
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
             for name, value in (
                 ("ccsd_max_iterations", ccsd_max_iterations),
                 ("ccsd_diis_history", ccsd_diis_history),
@@ -553,7 +853,7 @@ class Calculator:
                 raise ValueError("ccsd_frozen_core must be a non-negative integer")
             if ccsd_frozen_core:
                 raise NotImplementedError(
-                    "native RCCSD frozen-core references are not implemented"
+                    "native coupled-cluster frozen-core references are not implemented"
                 )
         self._correlation_memory_budget_bytes = correlation_memory_budget_bytes
         self._mp2_denominator_threshold = float(mp2_denominator_threshold)
@@ -595,24 +895,11 @@ class Calculator:
                 )
         elif self._screening_tolerance <= 0.0:
             raise ValueError("screening_tolerance must be positive")
-        precision_modes = {
-            "fp64": _native.PRECISION_FP64,
-            "auto": _native.PRECISION_AUTO,
-        }
-        try:
-            self._precision_mode = precision_modes[str(precision).lower()]
-        except KeyError as error:
-            raise ValueError("precision must be 'fp64' or 'auto'") from error
         if (
             self._method in _CORRELATED_METHODS
             and self._precision_mode != _native.PRECISION_FP64
         ):
             raise ValueError("canonical correlated methods require precision='fp64'")
-        if (
-            self._method in (_native.METHOD_R2SCAN_RKS, _native.METHOD_R2SCAN_UKS)
-            and self._precision_mode != _native.PRECISION_FP64
-        ):
-            raise NotImplementedError("r2SCAN currently requires strict FP64")
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
@@ -620,13 +907,12 @@ class Calculator:
             if query is not None:
                 query.argtypes, query.restype = [], ctypes.c_uint32
                 self._ks_options_version = query()
-            if self._ks_options_version != 1:
-                from .ks import resolve_ks_options
+            from .ks import resolve_ks_options
 
-                if self._ks_options != resolve_ks_options(self._method_name):
-                    raise NotImplementedError(
-                        "native library does not support KS model options v1"
-                    )
+            if self._ks_options_version != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
+                )
 
         available = ctypes.c_int32()
         _native.check(
@@ -642,30 +928,46 @@ class Calculator:
         self._capabilities = method_capabilities(self._method_name)
         from ._cpu_force_resources import qualified_basis
 
-        if (
-            self._capabilities.family == "density_functional"
+        basis_has_ecp = isinstance(self._basis, BasisSet) and any(
+            element.ecp_core_electrons for element in self._basis.elements
+        )
+        named_cpu_all_electron_force = (
+            self._device_name == "cpu"
+            and self._method_name
+            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            and not basis_has_ecp
+            and self._ks_options is not None
+            and (
+                self._ks_options.coefficients[2] < 0.0
+                or (
+                    self._method_name == "pbe-d4-rks"
+                    and self._ks_options.coefficients == (1.0, 1.0, 0.0)
+                )
+            )
+        )
+        semilocal_force = (
+            self._ks_options is not None
+            and self._ks_options.coefficients == (1.0, 1.0, 0.0)
+            and not (
+                self._device_name == "cuda"
+                and self._ks_options.execution_plan.nonlocal_correlation is not None
+            )
+            and not (self._method_name == "pbe-d4-rks" and basis_has_ecp)
             and (
                 self._device_name == "cuda"
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
-            and (
-                self._device_name != "cuda"
-                or not isinstance(self._basis, BasisSet)
-                or (
-                    any(element.ecp_core_electrons for element in self._basis.elements)
-                    and all(
-                        shell.angular_momentum <= 2
-                        for element in self._basis.elements
-                        for shell in element.shells
-                    )
-                )
-                or (
-                    not any(element.ecp_core_electrons for element in self._basis.elements)
-                    and all(
-                        shell.angular_momentum <= 1
-                        for element in self._basis.elements
-                        for shell in element.shells
-                    )
+        )
+        if (
+            self._capabilities.family == "density_functional"
+            and (semilocal_force or named_cpu_all_electron_force)
+            and not (
+                self._device_name == "cuda"
+                and basis_has_ecp
+                and any(
+                    shell.angular_momentum > 1
+                    for element in self._basis.elements
+                    for shell in element.shells
                 )
             )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
@@ -673,23 +975,26 @@ class Calculator:
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion admits s/p/d on CPU and CUDA, in both layouts. The shared
+            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
             # nine-source consumer also enforces shape, byte and work caps;
-            # higher-angular ECP domains remain energy-only. All-electron CUDA
-            # forces retain the existing s/p boundary.
+            # higher-angular ECP domains remain energy-only.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties
                 | {"forces"},
             )
-        if self._method == _native.METHOD_RCCSD:
+        if self._method in _COUPLED_CLUSTER_METHODS:
+            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
+                raise NotImplementedError(
+                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
-                    "native RCCSD density fitting is not implemented"
+                    "native coupled-cluster density fitting is not implemented"
                 )
             if auxiliary_basis is not None:
                 raise ValueError(
-                    "conventional RCCSD does not accept an auxiliary basis"
+                    "conventional coupled-cluster methods do not accept an auxiliary basis"
                 )
         if self._capabilities.family == "density_functional":
             if (
@@ -709,6 +1014,13 @@ class Calculator:
                 )
 
     @property
+    def method_ir(self) -> typing.Any:
+        """Resolved full KS MethodIR, including an external D3 correction when present."""
+        if self._dispersion_method_ir is not None:
+            return self._dispersion_method_ir
+        return None if self._ks_options is None else self._ks_options.method_ir
+
+    @property
     def ks_options(self) -> typing.Any:
         """Resolved immutable KS model, or None for another method family."""
         return self._ks_options
@@ -725,7 +1037,9 @@ class Calculator:
                 {
                     "source": "cpu",
                     "identity": None,
+                    "target": None,
                     "kernels": [],
+                    "dft_schedules": [],
                     "rejected": [],
                 },
             )
@@ -744,6 +1058,7 @@ class Calculator:
         auxiliary_basis: ctypes.c_void_p | None = None,
         *,
         resource_plan: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> _native.MethodDescriptor:
         df_budget = self._density_fitting_memory_budget_bytes
         if resource_plan is not None and self._method in _HF_METHODS:
@@ -772,11 +1087,12 @@ class Calculator:
             self._correlation_memory_budget_bytes,
             self._mp2_denominator_threshold,
         )
-        if self._ks_options is not None and self._ks_options_version == 1:
+        active_ks_options = self._ks_options if ks_options is None else ks_options
+        if active_ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(native_ks_options(self._ks_options))
-        if self._method == _native.METHOD_RCCSD:
+            descriptor.ks_options = ctypes.pointer(native_ks_options(active_ks_options))
+        if self._method in _COUPLED_CLUSTER_METHODS:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
             descriptor.ccsd_energy_tolerance = self._ccsd_energy_tolerance
@@ -827,6 +1143,16 @@ class Calculator:
                 provenance.mixed_precision_reserved_error
             ),
             "refinement_iterations": provenance.refinement_iterations,
+            "mixed_stage_fock_builds": provenance.mixed_stage_fock_builds,
+            "strict_stage_fock_builds": provenance.strict_stage_fock_builds,
+            "post_scf_fock_builds": provenance.post_scf_fock_builds,
+            "execution_retries": provenance.execution_retries,
+            "mixed_admission_census": provenance.mixed_admission_census,
+            "final_residual_audits": provenance.final_residual_audits,
+            "skipped_final_fock_builds": provenance.skipped_final_fock_builds,
+            "operator_work_counters_valid": bool(
+                provenance.operator_work_counters_valid
+            ),
         }
 
     def _shells_for_atoms(
@@ -900,6 +1226,14 @@ class Calculator:
                 ),
                 **(
                     {
+                        "dispersion_method_ir": self._dispersion_method_ir.to_payload(),
+                        "dispersion_memory_budget_bytes": self._dispersion_memory_budget_bytes,
+                    }
+                    if self._dispersion_method_ir is not None
+                    else {}
+                ),
+                **(
+                    {
                         "correlation_memory_budget_bytes": self._correlation_memory_budget_bytes,
                         "mp2_denominator_threshold": self._mp2_denominator_threshold,
                     }
@@ -918,7 +1252,7 @@ class Calculator:
                         "ccsd_level_shift": self._ccsd_level_shift,
                         "ccsd_frozen_core": self._ccsd_frozen_core,
                     }
-                    if self._method == _native.METHOD_RCCSD
+                    if self._method in _COUPLED_CLUSTER_METHODS
                     else {}
                 ),
                 "density_fitting": self._density_fitting_mode,
@@ -942,6 +1276,24 @@ class Calculator:
         atoms = tuple(Atom.from_value(a) for a in atoms)
         checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
         checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+        if self._method == _native.METHOD_GFN2_XTB:
+            intrinsic = {
+                "name": "GFN2-xTB intrinsic minimal basis",
+                "parameter_source": "xtbloom@5a67cc59ace94c8296e873503b2ae1298e7c2861",
+                "element_domain": [1, 86],
+            }
+            return {
+                "intrinsic_basis": intrinsic,
+                "model_identity": canonical_hash(
+                    {
+                        "method": "gfn2-xtb",
+                        "intrinsic_basis": intrinsic,
+                        "atoms": [a.atomic_number for a in atoms],
+                        "charge": int(charge),
+                        "multiplicity": int(multiplicity),
+                    }
+                ),
+            }
         result = {}
         for role, basis in (
             ("orbital", self._basis),
@@ -1056,11 +1408,16 @@ class Calculator:
     ) -> None:
         """Check operators and AO jets needed by the selected mean-field outputs.
 
-        Runtime shape/resource and occupation checks remain native. This data
-        preflight never turns an ECP or an unsupported auxiliary shell into an
-        all-electron through-f approximation. Energy-only calls deliberately
-        avoid requiring derivative capability that their backend will not use.
+        Runtime shape/resource and occupation checks remain native. GFN2-xTB
+        owns an intrinsic minimal basis and deliberately bypasses Gaussian
+        basis capability checks.
         """
+        if self._method == _native.METHOD_GFN2_XTB:
+            return
+        if self._dispersion_method_ir is not None:
+            self._dispersion_method_ir.preflight_atomic_numbers(
+                tuple(atom.atomic_number for atom in atoms)
+            )
         derivative_orders = (0, 1) if compute_forces else (0,)
         auxiliary_backend = self._density_fitting_backend()
         orbital_operators = ["overlap", "kinetic", "nuclear_attraction", "eri"]
@@ -1106,6 +1463,40 @@ class Calculator:
         multiplicity: int,
         basis: str | Sequence[Shell] | None = None,
     ) -> ctypes.c_void_p:
+        if self._method == _native.METHOD_GFN2_XTB:
+            if basis is not None:
+                raise ValueError("GFN2-xTB does not accept a Gaussian basis")
+            checked_integer(charge, "ionic charge", low=-(2**31), high=2**31 - 1)
+            checked_integer(multiplicity, "multiplicity", low=1, high=2**31 - 1)
+            checked_integer(len(atoms), "atom count", low=1, high=2**32 - 1)
+            atom_array = (_native.AtomDescriptor * len(atoms))(
+                *(
+                    _native.AtomDescriptor(atom.atomic_number, *atom.position)
+                    for atom in atoms
+                )
+            )
+            descriptor = _native.SystemDescriptor(
+                ctypes.sizeof(_native.SystemDescriptor),
+                _native.ABI_VERSION,
+                atom_array,
+                len(atom_array),
+                None,
+                0,
+                None,
+                0,
+                int(charge),
+                int(multiplicity),
+                _native.BASIS_CARTESIAN,
+            )
+            system = ctypes.c_void_p()
+            _native.check(
+                self._library,
+                self._library.vibeqc_system_create(
+                    context, ctypes.byref(descriptor), ctypes.byref(system)
+                ),
+                context=context,
+            )
+            return system
         selected_basis = self._basis if basis is None else basis
         if not isinstance(selected_basis, BasisSet):
             selected_basis = _snapshot_basis(selected_basis, self._representation_name)
@@ -1207,6 +1598,7 @@ class Calculator:
         *,
         charges: typing.Any = None,
         multiplicities: typing.Any = None,
+        ks_options: typing.Any = None,
     ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
@@ -1229,7 +1621,7 @@ class Calculator:
                 energy_tolerance=self._energy_tolerance,
                 density_tolerance=self._density_tolerance,
                 screening_tolerance=self._screening_tolerance,
-                ks_options=self._ks_options,
+                ks_options=self._ks_options if ks_options is None else ks_options,
                 device_id=self._device_id,
                 library=self._library,
             )
@@ -1288,6 +1680,93 @@ class Calculator:
                 )
         return request
 
+    def _dispersion_resource_request(self, systems: typing.Any) -> typing.Any:
+        """Return the bounded D3 owner request for global planning, when present."""
+        if self._dispersion_method_ir is None:
+            return None
+
+        from vibeqc_compiler.method import D3Spec, DispersionCorrectionPrimitive
+
+        corrections = tuple(
+            node
+            for node in self._dispersion_method_ir.primitives
+            if isinstance(node, DispersionCorrectionPrimitive)
+        )
+        if len(corrections) != 1 or not isinstance(
+            corrections[0].specification, D3Spec
+        ):
+            raise NotImplementedError(
+                "global ResourcePlan currently supports composed D3(BJ) only"
+            )
+
+        from .resources_d3 import d3_resource_request
+
+        return d3_resource_request(
+            tuple(tuple(atom.atomic_number for atom in system) for system in systems),
+            method=self._dispersion_method_ir,
+            backend=self._device_name,
+            device_id=self._device_id,
+            maximum_bytes=self._dispersion_memory_budget_bytes,
+        )
+
+    def _effective_ks_selection(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve and ABI-check one batch-local DFT09 profile selection."""
+
+        from .ks import ProfiledKsSelection
+
+        if (
+            self._ks_options is None
+            or self._device_name != "cuda"
+            or self._precision_mode != _native.PRECISION_FP64
+        ):
+            return ProfiledKsSelection(self._ks_options)
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        from .ks import native_ks_options, profiled_ks_selection
+
+        selection = profiled_ks_selection(
+            self._ks_options,
+            self.profile_diagnostics,
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
+        if selection.options is not None:
+            if self._ks_options_version != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
+                )
+            native_ks_options(selection.options)
+        return selection
+
+    def _effective_ks_options(
+        self,
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        """Resolve an exact local DFT09 schedule for this batch without mutation."""
+
+        return self._effective_ks_selection(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        ).options
+
     def estimate_resources(
         self,
         systems: typing.Any,
@@ -1297,15 +1776,39 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
-        from .resources import ResourceBudget, plan_resources
+        from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
 
+        systems = tuple(
+            tuple(Atom.from_value(atom) for atom in system) for system in systems
+        )
+        count = len(systems)
+        charges = tuple(0 for _ in range(count)) if charges is None else tuple(charges)
+        multiplicities = (
+            tuple(1 for _ in range(count))
+            if multiplicities is None
+            else tuple(multiplicities)
+        )
+        if len(charges) != count or len(multiplicities) != count:
+            raise ValueError("charges and multiplicities must match the batch size")
+        effective_ks_options = self._effective_ks_options(
+            systems,
+            charges=charges,
+            multiplicities=multiplicities,
+        )
         budget = self._resource_budget if budget is None else budget
+        requests = [
+            self._resource_request(
+                systems,
+                charges=charges,
+                multiplicities=multiplicities,
+                ks_options=effective_ks_options,
+            )
+        ]
+        dispersion_request = self._dispersion_resource_request(systems)
+        if dispersion_request is not None:
+            requests.append(dispersion_request)
         return plan_resources(
-            (
-                self._resource_request(
-                    systems, charges=charges, multiplicities=multiplicities
-                ),
-            ),
+            tuple(requests),
             ResourceBudget() if budget is None else budget,
         )
 
@@ -1412,12 +1915,19 @@ class Calculator:
         if not native_atoms:
             raise ValueError("at least one atom is required")
         self._preflight_hf_basis(native_atoms, compute_forces=compute_forces)
+        effective_ks_options = self._effective_ks_options(
+            (native_atoms,),
+            charges=(charge,),
+            multiplicities=(multiplicity,),
+        )
         resource_plan = None
         if self._resource_budget is not None:
             resource_plan = self.estimate_resources(
                 [native_atoms], charges=[charge], multiplicities=[multiplicity]
             ).require_feasible()
-        if compute_forces and self._capabilities.family == "density_functional":
+        if self._dispersion_method_ir is not None or (
+            compute_forces and self._capabilities.family == "density_functional"
+        ):
             # Reuse the prepared-batch owner because the stationary snapshot ABI
             # is intentionally tied to a live native owner.  This avoids a second
             # scientific implementation in the single-system path.
@@ -1446,6 +1956,7 @@ class Calculator:
                     physical_residual_rms=item.physical_residual_rms,
                     ks_diagnostic=item.ks_diagnostic,
                     ks_transport_diagnostic=batch.ks_transport_diagnostics[0],
+                    dispersion=item.dispersion,
                 )
         context = ctypes.c_void_p()
         _native.check(
@@ -1483,6 +1994,7 @@ class Calculator:
             method_descriptor = self._method_descriptor(
                 auxiliary_system if auxiliary_system.value else None,
                 resource_plan=resource_plan,
+                ks_options=effective_ks_options,
             )
 
             def prepare() -> typing.Any:

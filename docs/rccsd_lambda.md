@@ -1,11 +1,13 @@
-# RCCSD Lambda and fixed-orbital CPU input response
+# RCCSD Lambda and fixed-orbital input response
 
 `tools.vibeqc_cc.build_lambda_programs(nocc, nvir)` generates the fixed-amplitude
 energy gradient, residual Jacobian-vector product and transpose action for the
 same conventional real RCCSD equations as `build_ccsd_program`. It is an internal
-mathematical frontend. `BoundCCSDLambda` additionally solves the amplitude-response
-equation from a converged internal CPU CCSD result. Neither interface enables
-a native/public response method or a nuclear-gradient capability.
+mathematical frontend. `BoundCCSDLambda` additionally binds a converged internal RCCSD state and solves
+the amplitude-response equation with the shared checked-solver contract. The
+same generated TensorIR actions also have separate native-CPU and CUDA execution
+owners. None of these tooling owners by itself registers a native/public response
+method or a nuclear-gradient capability.
 
 ## Equations and coordinates
 
@@ -77,17 +79,19 @@ exact rational coefficients; no coordinate-incidence matrix is introduced.
 Symbolic group expansion rejects more than 4096 signed permutations. Existing
 explicit `packed=` expansion and its weighted-metric rules are unchanged.
 
-The CPU interpreter's existing logical-buffer budget applies independently to
-each execution; it is not a process-RSS cap. The generated RCCSD action DAGs
-contain no amplitude-by-amplitude Jacobian, dense packing-incidence matrix or
-cross-iteration tape. This does not yet establish a composed native
-primal/adjoint/Krylov peak-memory bound.
+The interpreter and prepared TensorIR owners apply their declared logical/resource
+budgets independently; those budgets are not process-RSS caps. The generated
+RCCSD action DAGs contain no amplitude-by-amplitude Jacobian, dense packing-
+incidence matrix or cross-iteration tape. Host-controlled GMRES remains the
+shared solver owner, so resident CUDA *action state* is not a claim of a fully
+device-resident Krylov loop or a complete method-level peak-memory bound.
 
-CPU numerical tests and CUDA **planning** are covered. The CUDA planner retains
-its normal provider/workspace reservations. Actual CUDA compilation/execution,
-resident Lambda state and native/public response APIs remain unqualified.
-The separate bound CPU consumer below establishes small molecular Lambda solves;
-it does not promote those same actions to a GPU solver.
+CPU interpreter execution, native-CPU TensorIR execution, generated CUDA
+ordinary-stream execution and resident repeated shared-J^T actions are covered.
+`PreparedCUDALambda` reuses the same bound state/equation validation, keeps the
+static CC/Fock/integral inputs for the repeated shared transpose action resident
+on device, and records transfers/resource ownership. Native/public response and
+force APIs remain independently gated.
 
 ## Validation and remaining consumers
 
@@ -104,7 +108,7 @@ PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
   tests/python/test_cc_lambda.py
 ```
 
-## Bound converged-state CPU consumer
+## Bound converged-state consumer
 
 ```python
 from tools.vibeqc_cc import BoundCCSDLambda, LambdaOptions, SolverOptions, solve
@@ -178,11 +182,14 @@ lists, Python IR/layout objects, and opaque NumPy/BLAS workspaces are excluded.
 No complete molecular host/device peak-memory or performance claim is made.
 The existing packing-map reference implementation retains its element limit.
 
-Only CPU interpreter actions and the host-controlled shared GMRES are enabled;
-`backend="cuda"` is rejected explicitly. Fresh small-system native HF inputs use
-the existing `export_rhf` bridge, including its disclosed host canonicalization.
-Neither fixture input nor native export is misrepresented as a resident GPU
-reference provider. CPU/native endpoint tests require no PySCF solver.
+`BoundCCSDLambda` itself accepts the interpreter/native-CPU tooling backends;
+CUDA is intentionally owned by the separate `PreparedCUDALambda` wrapper rather
+than by overloading `BoundCCSDLambda(backend="cuda")`. That owner executes the
+same generated shared/expanded primal, RHS and transpose actions on CUDA and
+keeps the repeated shared-J^T static inputs resident while the shared GMRES
+controller remains host-side. Fresh small-system native HF inputs still use the
+existing `export_rhf` bridge with disclosed host canonicalization; that bridge is
+not misrepresented as a resident GPU reference provider.
 
 ```bash
 PYTHONPATH=python:. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
@@ -196,10 +203,12 @@ Jacobian solves and multi-step Lagrangian stationarity differences, include
 native HF -> CC -> Lambda endpoints with changed geometry and a determinant
 reference, and exercise stale/corrupt states, immutable outputs, false solver
 success, true nonconvergence and resource rejection. Dense Jacobians are
-strictly test-only. GPU execution/residency and native response-provider
-integration remain part of #152 B. The CPU correlation-only input weights below implement the block-streamed
-portion of #152 C; physical RDM conventions and orbital/Z-vector/nuclear
-response remain separate work. No force capability or higher derivative is enabled here.
+strictly test-only. Generated CUDA Lambda execution and resident repeated-action ownership were
+completed by #641/#654 under #152. The correlation-only input weights below
+complete the block-streamed fixed-orbital portion of that issue. Physical RDM
+conventions and orbital/Z-vector/nuclear response remain separate boundaries;
+public/native RCCSD force ownership is tracked by #153. No force capability or
+higher derivative is enabled by this module alone.
 
 See the [bound-state decision](../.agents/notes/implemented/numerics/2026-09-19-bound-ccsd-lambda.md)
 for why this consumer shares the generic checked-solve boundary rather than

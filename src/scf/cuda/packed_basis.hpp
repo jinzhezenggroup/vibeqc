@@ -77,8 +77,6 @@ struct DeviceBatch {
   const double* primitive_exponents;
   const double* primitive_coefficients;
   const std::int32_t* occupied;
-  // Same primitive traversal/queues on both sides of the weighted psss gate.
-  bool generated_psss_weighted{};
 };
 
 }  // namespace vibeqc::scf::cuda_execution

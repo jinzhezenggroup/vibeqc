@@ -108,6 +108,26 @@ def _pair_kernel(
     return -1.5 / (gi * gj * (gi + gj))
 
 
+def _pair_kernel_r2_derivative(
+    r2: typing.Any,
+    wi: typing.Any,
+    wj: typing.Any,
+    ki: typing.Any,
+    kj: typing.Any,
+    spec: typing.Any,
+) -> typing.Any:
+    """Differentiate the audited pair kernel with respect to squared distance."""
+    phi = _pair_kernel(r2, wi, wj, ki, kj, spec)
+    if spec.variant == "rvv10":
+        ai, aj = wi / ki, wj / kj
+        zi, zj = ai * r2 + 1, aj * r2 + 1
+        logarithmic = ai / zi + aj / zj + (ai + aj) / (zi + zj)
+    else:
+        gi, gj = wi * r2 + ki, wj * r2 + kj
+        logarithmic = wi / gi + wj / gj + (wi + wj) / (gi + gj)
+    return -phi * logarithmic
+
+
 @_finite_arithmetic
 def nonlocal_kernel_matrix_reference(
     coords: typing.Any,
@@ -196,6 +216,63 @@ def nonlocal_energy_reference(
         tile_size=tile_size,
     )
     return float(np.dot(weights * density, eps))
+
+
+def nonlocal_explicit_geometry_derivatives_reference(
+    coords: typing.Any,
+    weights: typing.Any,
+    density: typing.Any,
+    gradient: typing.Any,
+    spec: typing.Any,
+    *,
+    tile_size: typing.Any = 256,
+) -> typing.Any:
+    """Return exact discrete ``dE/d(point), dE/d(weight)`` at fixed features.
+
+    Feature motion is deliberately excluded.  The coordinate derivative contains
+    only the explicit pair-distance dependence of the nonlocal kernel; callers
+    add the ``rho``/``grad(rho)`` pullback exactly once.  The weight derivative is
+    the derivative of both quadrature legs, so it is not ``rho * epsilon_nlc``.
+    """
+    coords, weights, density, gradient = _validated_arrays(
+        coords, weights, density, gradient
+    )
+    if not isinstance(tile_size, int) or isinstance(tile_size, bool) or tile_size <= 0:
+        raise ValueError("tile_size must be a positive integer")
+    omega, kappa, beta = _local_scales(density, gradient, spec)
+    weighted_density = weights * density
+    point_derivative = np.zeros_like(coords)
+    weight_derivative = np.empty_like(weights)
+    ngrid = density.size
+
+    with np.errstate(over="raise", invalid="raise", divide="raise"):
+        for i in range(ngrid):
+            kernel_sum = 0.0
+            coordinate_sum = np.zeros(3, dtype=np.float64)
+            for start in range(0, ngrid, tile_size):
+                stop = min(start + tile_size, ngrid)
+                delta = coords[i] - coords[start:stop]
+                r2 = np.einsum("pi,pi->p", delta, delta)
+                phi = _pair_kernel(
+                    r2, omega[i], omega[start:stop], kappa[i], kappa[start:stop], spec
+                )
+                dphi_dr2 = _pair_kernel_r2_derivative(
+                    r2, omega[i], omega[start:stop], kappa[i], kappa[start:stop], spec
+                )
+                partner = weighted_density[start:stop]
+                kernel_sum += float(np.sum(partner * phi, dtype=np.float64))
+                coordinate_sum += np.sum(
+                    (2.0 * partner * dphi_dr2)[:, None] * delta,
+                    axis=0,
+                    dtype=np.float64,
+                )
+            point_derivative[i] = weighted_density[i] * coordinate_sum
+            weight_derivative[i] = density[i] * (beta + kernel_sum)
+    if not (
+        np.isfinite(point_derivative).all() and np.isfinite(weight_derivative).all()
+    ):
+        raise FloatingPointError("nonfinite nonlocal geometry derivative")
+    return point_derivative, weight_derivative
 
 
 @_finite_arithmetic

@@ -7,6 +7,7 @@ from itertools import permutations
 import numpy as np
 import pytest
 from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.layout import SymmetricPairLayout
 from vibeqc_compiler.tensor import (
     DenseLayout,
     Index,
@@ -116,6 +117,63 @@ def test_dense_layout_bijection_matches_independent_numpy(
             expected = reference.transpose(axes).ravel()
             for index, value in enumerate(expected):
                 assert physical[view.physical_index(index)] == value
+
+
+def test_symmetric_pair_layout_matches_native_lower_triangle_and_costs() -> None:
+    layout = SymmetricPairLayout(4, (7,), alignment=8)
+
+    assert layout.logical_shape == (4, 4, 7)
+    assert layout.storage_shape == (10, 7)
+    assert layout.storage_elements == 70
+    assert layout.dense_elements == 112
+    assert layout.storage_bytes(8) == 560
+    assert layout.dense_equivalent_bytes(8) == 896
+    assert (
+        layout.dense_materialization_bytes(8, rows=2, trailing_shape=(3,))
+        == 2 * 4 * 3 * 8
+    )
+    assert (
+        layout.unpack_traffic_bytes(8, rows=2, trailing_shape=(3,)) == 2 * 2 * 4 * 3 * 8
+    )
+
+    expected = {
+        (high, low): high * (high + 1) // 2 + low
+        for high in range(4)
+        for low in range(high + 1)
+    }
+    for first in range(4):
+        for second in range(4):
+            high, low = max(first, second), min(first, second)
+            assert layout.pair_index(first, second) == expected[(high, low)]
+            assert layout.pair_index(first, second) == layout.pair_index(second, first)
+
+    assert layout.to_payload()["exact"] is True
+    assert layout.identity == SymmetricPairLayout(4, (7,), alignment=8).identity
+    assert layout.identity != SymmetricPairLayout(5, (7,), alignment=8).identity
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SymmetricPairLayout(-1),
+        lambda: SymmetricPairLayout(True),
+        lambda: SymmetricPairLayout(2, (-1,)),
+        lambda: SymmetricPairLayout(2, alignment=3),
+    ],
+)
+def test_invalid_symmetric_pair_layouts_fail_closed(factory: typing.Any) -> None:
+    with pytest.raises(ValueError):
+        factory()
+
+    layout = SymmetricPairLayout(3, (5,))
+    with pytest.raises(ValueError, match="outside"):
+        layout.pair_index(3, 0)
+    with pytest.raises(ValueError, match="rank"):
+        layout.dense_materialization_bytes(8, trailing_shape=())
+    with pytest.raises(ValueError, match="exceed"):
+        layout.dense_materialization_bytes(8, rows=4, trailing_shape=(1,))
+    with pytest.raises(ValueError, match="exceed"):
+        layout.dense_materialization_bytes(8, rows=1, trailing_shape=(6,))
 
 
 @pytest.mark.parametrize("shape", [(0,), (2, 0, 3)])

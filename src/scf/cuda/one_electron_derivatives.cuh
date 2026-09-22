@@ -24,8 +24,9 @@ struct OneElectronWeightView {
  * Nuclear repulsion belongs to the independent caller and is never included.
  * The buffer is not cleared; accumulation may follow an existing nuclear term.
  * An optional active mask isolates failed batch items. Schedule 0 owns AO pairs
- * by thread, 1 uses shell-pair warp lanes, and 2 uses one serial owner per system
- * for deterministic diagnostics. No derivative tensors, allocation, transfer,
+ * by thread, 1 uses shell-pair/component warp lanes, 2 uses one serial owner per
+ * system for deterministic diagnostics, and 3 assigns one AO pair to a warp with
+ * lanes owning nuclear centers. No derivative tensors, allocation, transfer,
  * or stream synchronization occurs in this launch.
  */
 cudaError_t launch_generated_one_electron_gradient(

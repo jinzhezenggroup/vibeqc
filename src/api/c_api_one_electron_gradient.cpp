@@ -13,7 +13,7 @@ extern "C" vibeqc_status vibeqc_system_one_electron_gradient_cuda(
     const double* kinetic_weights, const double* attraction_weights, size_t matrix_count,
     unsigned schedule, size_t maximum_bytes, double* gradient, size_t gradient_count,
     vibeqc_one_electron_gradient_resources* resources) {
-  if (!context || !system || !gradient || schedule > 2 || !maximum_bytes)
+  if (!context || !system || !gradient || schedule > 3 || !maximum_bytes)
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   if (resources && !vibeqc::api::valid_descriptor(resources)) return VIBEQC_STATUS_ABI_MISMATCH;
   const auto n = vibeqc::molecule::ao_count(system->data);

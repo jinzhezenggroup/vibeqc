@@ -159,3 +159,33 @@ function(vibeqc_attach_cuda_implib target)
   target_link_libraries(${target} PRIVATE ${CMAKE_DL_LIBS})
   target_link_options(${target} PRIVATE "LINKER:-z,defs")
 endfunction()
+
+# Native GFN2 needs two driver metadata queries, but loading a CUDA-enabled
+# library for CPU preflight must not require an installed NVIDIA driver.
+function(vibeqc_attach_cuda_driver_implib target)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "Lazy CUDA driver imports require Linux ELF")
+  endif()
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" processor)
+  if(processor MATCHES "^(x86_64|amd64)$")
+    set(implib_target x86_64)
+  elseif(processor MATCHES "^(aarch64|arm64)$")
+    set(implib_target aarch64)
+  else()
+    message(FATAL_ERROR "Unsupported CUDA driver import architecture")
+  endif()
+  set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/generated/cuda_driver_implib")
+  file(MAKE_DIRECTORY "${output_dir}")
+  set(symbol_file "${output_dir}/libcuda.so.symbols")
+  vibeqc_write_cuda_symbol_file("${symbol_file}" cuGetErrorString cuMemGetAddressRange_v2)
+  execute_process(
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_cuda_implib.py"
+      --base-name libcuda.so --symbol-list "${symbol_file}" --load-name libcuda.so.1
+      --target "${implib_target}"
+      --implib-root "${CMAKE_CURRENT_SOURCE_DIR}/cmake/3rdparty/implib"
+      --outdir "${output_dir}"
+    COMMAND_ERROR_IS_FATAL ANY)
+  target_sources(${target} PRIVATE
+    "${output_dir}/libcuda.so.tramp.S" "${output_dir}/libcuda.so.init.c")
+  target_link_libraries(${target} PRIVATE ${CMAKE_DL_LIBS})
+endfunction()

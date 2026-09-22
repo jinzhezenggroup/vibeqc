@@ -2,8 +2,8 @@
 
 This directory records partial shared RHF/semilocal-CPKS response-solver
 infrastructure evidence for `#179`; it is not full #179 acceptance.  The
-remaining acceptance items are a shared UHF response action and the native
-converged RKS/UKS CPKS endpoint owned by `#162`.  The shared production path
+records are historical snapshots; their then-missing UHF/native KS boundaries
+are superseded by the current [response documentation](../../../docs/response.md).  The shared production path
 recorded here is the CPU native shell-tile matrix-free RHF J/K operator.  The
 CUDA record is generated only inside a Slurm GPU allocation; the optional CUDA
 MO-block explicit control is not substituted for the matrix-free result.
@@ -92,6 +92,6 @@ See `gpu.json` for per-RHS iterations and all raw timings.
 `FixedDensityXCDerivativeKernel` is checked against central finite differences
 of the fixed-density XC potential.  `CPKSResponseOperator` is wired to the
 same GMRES/recycling layer and tested with a synthetic converged KS reference.
-Exact exchange/RSH and nonzero tau derivatives fail closed.  A native
-converged RKS/UKS endpoint remains owned by `#162`; this directory does not
-claim that endpoint or a production CPKS method.
+Exact exchange/RSH and nonzero tau derivatives fail closed.  This historical
+record does not qualify native RKS/UKS. Current native endpoint support and
+its independent gates are documented in the response documentation above.

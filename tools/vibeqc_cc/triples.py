@@ -64,11 +64,13 @@ inventory as ``einsum``/``transpose``/``gather``/``reduce_sum``/``divide``/
 (issue steps 3 and 11); it is numerically identical to :func:`triples_energy`.
 """
 
+from __future__ import annotations
+
 import typing
 from fractions import Fraction
 from itertools import permutations
 
-import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -84,8 +86,6 @@ from vibeqc_compiler.tensor import (
     reduce_sum,
     transpose,
 )
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 # ---------------------------------------------------------------------------
 # Auditable rational inventory in doubles.DEFINITIONS style:
@@ -246,6 +246,8 @@ def _validate(
     eps_o: typing.Any,
     eps_v: typing.Any,
 ) -> None:
+    import numpy as np
+
     arrays = {
         "ovvv": ovvv,
         "ovoo": ovoo,
@@ -299,6 +301,8 @@ def _views(
 
 
 def _w(np_views: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
+    import numpy as np
+
     _, t2T, vvov, vooo, _, _ = np_views
     w = np.einsum("if,fkj->ijk", vvov[a, b], t2T[c, :])
     w -= np.einsum("ijm,mk->ijk", vooo[a, :], t2T[b, c])
@@ -306,6 +310,8 @@ def _w(np_views: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typ
 
 
 def _v(np_views: typing.Any, a: typing.Any, b: typing.Any, c: typing.Any) -> typing.Any:
+    import numpy as np
+
     t1T, t2T, _, _, vvoo, fvo = np_views
     v = np.einsum("ij,k->ijk", vvoo[a, b], t1T[c])
     v += np.einsum("ij,k->ijk", t2T[a, b], fvo[c])
@@ -335,6 +341,8 @@ def _check_denominators(
     near-degeneracy; both must fail explicitly (issue #150 step 7) rather than
     divide into silence or NaN.
     """
+    import numpy as np
+
     if (
         isinstance(threshold, (bool, np.bool_))
         or not isinstance(threshold, (int, float, np.integer, np.floating))
@@ -383,6 +391,8 @@ def triples_energy(
     virtual domain a>=b>=c, the 6/2 degeneracy folded into the denominator,
     and the literal 36-entry contraction table.
     """
+    import numpy as np
+
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)
     views = _views(ovvv, ovoo, ovov, fov, t1, t2)
@@ -436,6 +446,8 @@ def triples_fullsum(
     (W/V/r3) with the reference; it never touches SLOW_TABLE, the triangular
     domain, or the 6/2 pre-factor.
     """
+    import numpy as np
+
     _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
     _check_denominators(eps_o, eps_v, denominator_threshold)
     views = _views(ovvv, ovoo, ovov, fov, t1, t2)

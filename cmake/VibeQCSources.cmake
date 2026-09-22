@@ -12,6 +12,9 @@ function(vibeqc_add_api_sources target)
     src/api/c_api_projection.cpp
     src/api/c_api_df_gradient.cpp
     src/api/c_api_d3.cpp
+    src/api/c_api_d4.cpp
+    src/api/c_api_nonlocal.cpp
+    src/api/c_api_gcp.cpp
     src/api/c_api_common.cpp
     src/api/c_api_context.cpp
     src/api/c_api_resources.cpp
@@ -24,7 +27,8 @@ endfunction()
 function(vibeqc_add_runtime_sources target)
   target_sources(${target} PRIVATE
     src/runtime/context.cpp
-    src/runtime/cuda_provider.cpp)
+    src/runtime/cuda_provider.cpp
+    src/tensor/cpu_linalg.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/runtime/cuda_runtime.cu
@@ -43,24 +47,34 @@ function(vibeqc_add_dft_sources target)
     src/dft/uks.cpp
     src/dft/xc.cpp
     src/dft/dispersion/d3_runtime.cpp
+    src/dft/dispersion/d4_runtime.cpp
+    src/dft/nonlocal_correlation/vv10_runtime.cpp
+    src/dft/nonlocal_correlation/vv10_integration.cpp
     src/methods/dft_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/dft/cosx_fock_provider.cpp
       src/dft/cosx_scf.cpp
       src/dft/cuda_cosx.cu
+      src/dft/cuda_cosx_derivative.cu
       src/dft/cuda_xc.cpp
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu
-      src/dft/dispersion/d3_cuda.cu)
+      src/dft/dispersion/d3_cuda.cu
+      src/dft/dispersion/d4_cuda.cu
+      src/dft/dispersion/d4_runtime_cuda.cu
+      src/dft/nonlocal_correlation/vv10_runtime_cuda.cu)
   endif()
 endfunction()
 
 function(vibeqc_add_posthf_cc_sources target)
   target_sources(${target} PRIVATE
     src/cc/solver.cpp
+    src/cc/lambda_response.cpp
+    src/cc/triples_response.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
+    src/methods/rccsdt_method.cpp
     src/posthf/bridge.cpp
     src/posthf/cuda_derivative.cpp
     src/posthf/mp2_derivative_common.cpp
@@ -70,18 +84,22 @@ function(vibeqc_add_posthf_cc_sources target)
     src/posthf/mp2_force.cpp
     src/posthf/mp2_gradient.cpp
     src/posthf/native_provider.cpp
-    src/response/native_gmres.cpp)
+    src/response/native_gmres.cpp
+    src/methods/gfn2_runtime_bridge.cpp
+    src/methods/xtb_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
     target_sources(${target} PRIVATE
       src/cc/cuda_solver.cu
       src/posthf/df_bridge.cu
-      src/posthf/cuda_transform.cu)
+      src/posthf/cuda_transform.cu
+      src/posthf/ri_mp2_cuda.cu)
   endif()
 endfunction()
 
 function(vibeqc_add_integrals_scf_sources target)
   target_sources(${target} PRIVATE
     src/integrals/s_integrals.cpp
+    src/integrals/generated_df_cpu.cpp
     src/integrals/ecp.cpp
     src/methods/hf_method.cpp
     src/molecule/basis.cpp
@@ -100,6 +118,7 @@ function(vibeqc_add_integrals_scf_sources target)
     src/scf/solver/mean_field_driver.cpp
     src/scf/solver/eigen_frame.cpp
     src/scf/solver/final_state.cpp
+    src/scf/solver/warm_subspace.cpp
     src/scf/gradient/hf_gradient.cpp
     src/scf/reference/linalg.cpp
     src/scf/reference/mean_field.cpp

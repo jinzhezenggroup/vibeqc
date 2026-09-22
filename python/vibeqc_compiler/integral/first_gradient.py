@@ -192,11 +192,27 @@ extern "C" int vibeqc_first_gradient_reset_v1(void* value,const double* weights,
     char* detail,std::size_t size) {{
   return boundary([&] {{ plan(value).reset(weights,count,runtime_identity); }},detail,size);
 }}
+extern "C" int vibeqc_first_gradient_reset_mixed_v1(void* value,const double* device_weights,
+    std::size_t device_count,const double* host_weights,std::size_t host_count,
+    char* detail,std::size_t size) {{
+  return boundary([&] {{
+    plan(value).reset_mixed(device_weights,device_count,host_weights,host_count,runtime_identity);
+  }},detail,size);
+}}
 extern "C" int vibeqc_first_gradient_append_v1(void* value,const double* records,std::size_t count,
     const Mapping* mapping,char* detail,std::size_t size) {{
   return boundary([&] {{
     if(!mapping) throw std::invalid_argument("null first-gradient mapping");
     append<Program>(plan(value),records,count,*mapping,runtime_identity);
+  }},detail,size);
+}}
+extern "C" int vibeqc_first_gradient_output_device_v1(void* value,const double** output,
+    std::size_t* count,char* detail,std::size_t size) {{
+  return boundary([&] {{
+    if(!output || !count) throw std::invalid_argument("null first-gradient device output");
+    auto& owner=plan(value);
+    *output=owner.output_device(runtime_identity);
+    *count=owner.output_size;
   }},detail,size);
 }}
 extern "C" int vibeqc_first_gradient_finish_v1(void* value,double* output,std::size_t count,

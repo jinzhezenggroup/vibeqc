@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..cuda_schedule import (
+    AlgebraPlacement,
     ScheduleKind,
 )
 from ..rys import (
@@ -102,6 +103,16 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
         "shared.task", "shared.tasks[sq]"
     )
     component_names = _emitted_component_names(spec)
+    # Component-group reuse is the high-order Rys analogue of CSE retention.
+    # The pressure-rematerialized schedule deliberately recomputes each
+    # component's recurrence slice instead of keeping a three-component state
+    # group live. PTXAS/endpoint profitability decides whether that trade is
+    # worthwhile for a target; scientific recurrence semantics are unchanged.
+    component_group = (
+        1
+        if plan.schedule.algebra_placement == AlgebraPlacement.PRESSURE_REMATERIALIZED
+        else 3
+    )
     root_cases: list[str] = []
     for component_lane in range(component_lanes):
         component_indices = tuple(
@@ -115,7 +126,7 @@ def _emit_rys_uniform_warp_force_consumer_cuda(
             ),
             # Small groups bound live recurrence state while retaining reuse
             # across adjacent Cartesian components owned by one warp.
-            component_group=3,
+            component_group=component_group,
             component_indices=component_indices,
             integral=plan.kernel.integral,
         )

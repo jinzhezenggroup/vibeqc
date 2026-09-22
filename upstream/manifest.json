@@ -1,0 +1,3582 @@
+{
+  "derived_manifests": {
+    "manifests/libxc/7.0.0/manifest.json": {
+      "collection": "core",
+      "final_newline": true,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
+    },
+    "manifests/libxc/7.0.0/rsh-manifest.json": {
+      "collection": "rsh",
+      "final_newline": true,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
+    },
+    "manifests/libxc/7.0.0/wb97mv-manifest.json": {
+      "collection": "wb97mv",
+      "final_newline": true,
+      "renderer": "libxc-collection",
+      "source": "libxc-7.0.0"
+    },
+    "tools/parameters/dispersion_parameter_sources.json": {
+      "final_newline": true,
+      "renderer": "dispersion-parameter-sources",
+      "sources": {
+        "dftd4": "dftd4-parameters",
+        "simple_dftd3": "simple-dftd3-parameters"
+      }
+    }
+  },
+  "products": {
+    "d4-eeq-tables": {
+      "generator": "tools/parameters/generate_d4_eeq.py",
+      "generator_sha256": "5e7e8de824e5cfd346e39d66287ac76f12fa98dba81b37ddfb95294ebbe2cbe2",
+      "input_identity_sha256": "8415e712731bb4ee4213c16e0b3c73f92cd212f9ff596380ca868280811ea471",
+      "inputs": [
+        "dftd4-reference",
+        "multicharge-eeq2019",
+        "mctc-lib-eeq"
+      ],
+      "outputs": {
+        "src/dft/dispersion/d4_eeq_data.hpp": "2f49b45445aef88d8f26e577aa3743f2732815d919641a4147bb68467592f7ed",
+        "src/dft/dispersion/d4_eeq_manifest.json": "7983f59469d1a7a872d052040e3854b495d8071fd064867e6a8af024986288ca",
+        "src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp": "2b570532eedef7904873a2eb952a23c5f2bf720fd61e56dabca57fd0e2c1064a"
+      }
+    },
+    "d4-gfn2-tables": {
+      "generator": "tools/parameters/generate_d4.py",
+      "generator_sha256": "2e16df0aa282c44107ddfbda0525ce483ca33ce6ce8af5b373ec854d666bb877",
+      "input_identity_sha256": "62d85b4c32c7b854e7c91457f200db61ebf174dddc66b47b9ec6d32359b05eac",
+      "inputs": [
+        "dftd4-reference",
+        "mctc-lib-eeq"
+      ],
+      "outputs": {
+        "src/dft/dispersion/d4_data.hpp": "d95741d765986ca4915e732454416a022fedbd29e33c261891aee26c70dd3f4e",
+        "src/dft/dispersion/d4_element_data.hpp": "17c1462c0207b78671f9eb7a12f2b6dee3d4bc9da0a91127e4a4d1fe3c2df351",
+        "src/dft/dispersion/d4_manifest.json": "a953b4c5a03d0e2e6a83a364241a413c2ff73633811dcd9dd9e1f4180b4cbdb2"
+      }
+    },
+    "dispersion-method-catalog": {
+      "canonical_inputs": {
+        "tools/parameters/method_parameter_overrides.json": "c3dc0b464f2fa21068f130c8caac5508fce3f66c649ed7283821f1271d211fdf"
+      },
+      "generator": "tools/sync_dispersion_parameters.py",
+      "generator_sha256": "76cb60dc4bd0ef7f4d02f084bf634f18627090efbf3b02852c2b3e6faedf2346",
+      "input_identity_sha256": "7846dbc7afc991e2c4420918d99445041d4fe92a72e2122d98d20b2ab3876703",
+      "inputs": [
+        "simple-dftd3-parameters",
+        "dftd4-parameters"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/method/method_parameters.json": "223d99cc859e3a1fc4b2d92809ed376a8a101eb28e49c53f457b78896e65753d"
+      }
+    },
+    "gfn1-geometry-python-data": {
+      "generator": "tools/parameters/generate_gfn1_geometry.py",
+      "generator_sha256": "fa1479dc13a4653aef2b87a082894274b4b6f66dbe3dbea580e27a7c6f97d243",
+      "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
+      "inputs": [
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/geometry/_gfn1_data.py": "747b332cf082b0ac1bd995780d46a3ae3513c087aaeb70bb8ea63dba901954fa"
+      }
+    },
+    "gfn1-parameter-header": {
+      "generator": "tools/parameters/generate_gfn1.py",
+      "generator_sha256": "a09a247a6b472aecfa2515a0cad1b1c9054918ce0806655b281c6d9ac9e8301f",
+      "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
+      "inputs": [
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp": "ff1391b44f390f4d8d73ffd87013476aebed9075437e17d1b55185c36c1ce2ef"
+      }
+    },
+    "gpu4pyscf-rys-fixed": {
+      "generator": "python/vibeqc_compiler/integral/extract_rys_table.py",
+      "generator_sha256": "13c22fd7e485df832b12a138c0e665eaa85e28cd0f574a28db6997ac90ceb03f",
+      "input_identity_sha256": "993ed8f1830757676aa0b8bacf2210bf118cf2f3ac1fbbb3e4359e868bb182f1",
+      "inputs": [
+        "gpu4pyscf-rys"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/integral/rys2_data.py": "970899c5e2a00d7910db4a198a663c47b847d425efc4e69af9375dcb371cb0bf",
+        "python/vibeqc_compiler/integral/rys3_data.py": "eb5c8d2034eeeecbdf5320abe9decbc9401762a3c4b3a53c5401434e678b14bf",
+        "python/vibeqc_compiler/integral/rys4_data.py": "c3ce5ef1c3244442215b3911ec474f7074803399ad941593908688908c248c58",
+        "python/vibeqc_compiler/integral/rys5_data.py": "d0146bf9e4ddebc7a6a31979547d3ceacb1cf7925c816b8901b9c3d3691e13eb"
+      }
+    },
+    "libxc-bulk-graph-catalog": {
+      "canonical_inputs": {
+        "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
+        "python/vibeqc_compiler/xc/libxc_maple.py": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
+        "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19"
+      },
+      "generator": "tools/import_libxc_bulk.py",
+      "generator_sha256": "9597eae780ad0526986190963f588c9856a35e850d8204b78c0f8be36ad1904d",
+      "input_identity_sha256": "f386c54fdf599ab325eb1ed83209e3fc90f6dfcd37a2d0ef589663e57199136f",
+      "inputs": [
+        "libxc-7.0.0-fulltree"
+      ],
+      "outputs": {
+        "docs/libxc_bulk_import.md": "7e6d090022729d18ac190e490f7cbd78195a51a7ec8c97dc082c283bf1416fdd",
+        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
+      }
+    },
+    "libxc-xc-admission": {
+      "canonical_inputs": {
+        "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",
+        "python/vibeqc_compiler/xc/expressions.py": "5c635a4d9e8b0bedd8020181b20fa1c7d846d2ee40b22adb918e867f81c02e40",
+        "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
+        "python/vibeqc_compiler/xc/p86_pz_maple.py": "4cb700ca356e337ddcce108268d0afe7f4b0c31c807a319b7b3758129d1ee652",
+        "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
+        "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "91993aef91bb6b5043a23577876af8e4674d5a84545850350d79a4fe3a963eda",
+        "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
+        "python/vibeqc_compiler/xc/scan_maple.py": "ecf6efcdc57ec7f207a616abfb178d59442e55d0c91c93713e50ba001b456be3",
+        "python/vibeqc_compiler/xc/spec.py": "85a6e5c12dfce5b8eb571f37adf037903ff20ce6727bd19e58d6c6175fdf56a0",
+        "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
+      },
+      "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
+      "generator_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
+      "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
+      "inputs": [
+        "libxc-7.0.0"
+      ],
+      "outputs": {}
+    },
+    "method-parameter-python": {
+      "canonical_inputs": {
+        "python/vibeqc_compiler/method/method_parameters.json": "223d99cc859e3a1fc4b2d92809ed376a8a101eb28e49c53f457b78896e65753d"
+      },
+      "generator": "tools/generate_method_parameters.py",
+      "generator_sha256": "38c48fec2fd42b26e5158c03a7fa0ab9822488a94fb6c43d472a48d706a8befa",
+      "input_identity_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "inputs": [],
+      "outputs": {
+        "python/vibeqc_compiler/method/_generated_parameters.py": "8838da5668c81f9c2f1cc93f89c49c71830157f4f1dcadd4b5d932dde4e5f6bd"
+      }
+    },
+    "r2scan3c-gcp": {
+      "canonical_inputs": {
+        "tools/parameters/r2scan3c_gcp.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
+      },
+      "generator": "tools/parameters/generate_gcp_r2scan3c.py",
+      "generator_sha256": "cb0130c8e85dbbb72ff45255faf3b88c23d9ca5e2132fabfef486f7da45f33b7",
+      "input_identity_sha256": "78ae1b369893bf081b986bf4a0187611ec823fd046eb8594c71ba4f14779914c",
+      "inputs": [
+        "simple-dftd3-gcp"
+      ],
+      "outputs": {
+        "src/dft/dispersion/gcp_r2scan3c_data.hpp": "c922446ecbdc113d90074af397688dac6ccdac832b5665c8ddaf60795355240c"
+      }
+    },
+    "rys-high-accuracy": {
+      "generation": {
+        "decimal_digits": 90,
+        "degree": 17,
+        "interval_width": 2.5,
+        "roots": [
+          3,
+          4
+        ]
+      },
+      "generator": "tools/generate_rys_high_accuracy_tables.py",
+      "generator_sha256": "a9f4e97ca38ba426ed558c2148b5024294ffe95c36fb6b2138c6d8621e7a8e7b",
+      "input_identity_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "inputs": [],
+      "outputs": {
+        "python/vibeqc_compiler/integral/rys_high_accuracy_data.py": "51f97cfdf2c750fff11a5f09b9435cb7d541c7153eea1826fe521ec248cae079"
+      }
+    }
+  },
+  "schema": "vibeqc.scientific-source-registry",
+  "schema_version": 1,
+  "sources": {
+    "dftd4-parameters": {
+      "files": {
+        "dftd4-82fbaf4.parameters.toml": {
+          "sha256": "8254bfc673e763f7589b9be20506438b202a59ce795dc175d6ea9ba623e23e1f",
+          "upstream_path": "assets/parameters.toml",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4/assets/parameters.toml"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/dftd4/82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4",
+      "repository": "https://github.com/dftd4/dftd4",
+      "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
+    },
+    "dftd4-reference": {
+      "collections": {
+        "d4-generator": [
+          "src/dftd4/reference.inc",
+          "src/dftd4/reference.f90",
+          "src/dftd4/model/d4.f90",
+          "src/dftd4/model/utils.f90",
+          "src/dftd4/data/covrad.f90",
+          "src/dftd4/data/en.f90",
+          "src/dftd4/data/zeff.f90",
+          "src/dftd4/data/hardness.f90",
+          "src/dftd4/data/r4r2.f90"
+        ]
+      },
+      "files": {
+        "src/dftd4/data/covrad.f90": {
+          "git_blob": "6dcd15338c8f02087fab8f3306a461ee79eb7680",
+          "sha256": "66e6888236f46de4c72b075e736d30aa71e8dabafe95f8e5a65eb9c18b98cd7b",
+          "size": 3895,
+          "upstream_path": "src/dftd4/data/covrad.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/data/covrad.f90"
+        },
+        "src/dftd4/data/en.f90": {
+          "git_blob": "d8e720fabb94900fbc8fb522074e03144853d09f",
+          "sha256": "87ccc06465ab37c3ed45d37178977d0f473c2b00035b978c899d126921fad5fe",
+          "size": 3677,
+          "upstream_path": "src/dftd4/data/en.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/data/en.f90"
+        },
+        "src/dftd4/data/hardness.f90": {
+          "git_blob": "c6cc7549a986194c7b488eb56b1c6d401f439bc8",
+          "sha256": "670f52160cfcbbf6df3c0a85b4586e782b0444432432e25f31d26db2ec9b5556",
+          "size": 3948,
+          "upstream_path": "src/dftd4/data/hardness.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/data/hardness.f90"
+        },
+        "src/dftd4/data/r4r2.f90": {
+          "git_blob": "f33475ef22ab4631a8aab6faf56b506600a0880e",
+          "sha256": "57b3c084ac806e37bf95b50207f61e40ff0a7da9483cb98bdcde1e734e2d9fb9",
+          "size": 4465,
+          "upstream_path": "src/dftd4/data/r4r2.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/data/r4r2.f90"
+        },
+        "src/dftd4/data/zeff.f90": {
+          "git_blob": "9845e0552e42ba71f381ba68b79c2c00e6b08aea",
+          "sha256": "b261a5c7e565f765676a119c31b447f7c0c543cc47c6bdc9b19631ec20c7ad73",
+          "size": 2701,
+          "upstream_path": "src/dftd4/data/zeff.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/data/zeff.f90"
+        },
+        "src/dftd4/model/d4.f90": {
+          "git_blob": "33ed0ea918a81bc88a22110cc856d7988b18f956",
+          "sha256": "dc421a2ccf76227ae028f45ad84efd1683505b803f926dfda24be1b5d223b220",
+          "size": 17241,
+          "upstream_path": "src/dftd4/model/d4.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/model/d4.f90"
+        },
+        "src/dftd4/model/utils.f90": {
+          "git_blob": "b18a4ce29ea4553cc6bbd477ef4b488fc18f23d7",
+          "sha256": "e95fa94d7a575b584a5304946f9fd2505c5970b0f1d6e131c5c80e85db06c3ab",
+          "size": 4330,
+          "upstream_path": "src/dftd4/model/utils.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/model/utils.f90"
+        },
+        "src/dftd4/reference.f90": {
+          "git_blob": "a525ae49fe58e13fea0ee0b35902e87213152220",
+          "sha256": "b70b2f2a7145739afdc4b6a1c4feab8d588629f3d1b6318f9f0e352c0be67c6c",
+          "size": 12510,
+          "upstream_path": "src/dftd4/reference.f90",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/reference.f90"
+        },
+        "src/dftd4/reference.inc": {
+          "git_blob": "0fc16333ffe50ec340f682e765d0b0e6a7584a73",
+          "sha256": "0cc90b5f5d8b81dcd5f7a87acb44f575ee3d9e75df6e903f7f1a3ecc728e162f",
+          "size": 598179,
+          "upstream_path": "src/dftd4/reference.inc",
+          "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/reference.inc"
+        }
+      },
+      "git_tree": "caf7bff6f2c842b7ee57ff63322f1d46f74e1c64",
+      "kind": "remote-file-set",
+      "license": "LGPL-3.0-or-later",
+      "repository": "https://github.com/dftd4/dftd4",
+      "revision": "6e1f59c3f39d919a2dbef0601d2576727c8b30e8"
+    },
+    "gpu4pyscf-rys": {
+      "consumers": [
+        "python/vibeqc_compiler/integral/extract_rys_table.py"
+      ],
+      "files": {
+        "gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu": {
+          "sha256": "42d064e05fd7e8bf233ef295556b6ce10162053a74e778c0c39b6ac7213725d0",
+          "upstream_path": "gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu",
+          "url": "https://raw.githubusercontent.com/pyscf/gpu4pyscf/db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d/gpu4pyscf/lib/gvhf-rys/rys_roots_dat.cu"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/pyscf/gpu4pyscf",
+      "revision": "db6bb7f12bf4b6465b7c5ff0a9741bc2be08318d"
+    },
+    "libxc-7.0.0": {
+      "admission": {
+        "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
+        "importer_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
+        "semantics": "libxc-maple-graph/v10"
+      },
+      "collections": {
+        "core": [
+          "COPYING",
+          "gga_c_pbe.c",
+          "gga_c_pbe.mpl",
+          "gga_c_regtpss.mpl",
+          "gga_c_scan_e0.mpl",
+          "gga_x_pbe.c",
+          "gga_x_pbe.mpl",
+          "lda_c_pw.mpl",
+          "lda_x.mpl",
+          "mgga_c_r2scan.c",
+          "mgga_c_r2scan.mpl",
+          "mgga_c_rscan.mpl",
+          "mgga_c_scan.c",
+          "mgga_c_scan.mpl",
+          "mgga_x_r2scan.c",
+          "mgga_x_r2scan.mpl",
+          "mgga_x_rscan.mpl",
+          "mgga_x_scan.c",
+          "mgga_x_scan.mpl",
+          "util.mpl"
+        ],
+        "rsh": [
+          "COPYING",
+          "attenuation.mpl",
+          "gga_c_lyp.c",
+          "gga_c_lyp.mpl",
+          "gga_c_p86.c",
+          "gga_c_p86.mpl",
+          "gga_x_b88.mpl",
+          "gga_x_ityh.mpl",
+          "gga_x_pw91.c",
+          "gga_x_pw91.mpl",
+          "gga_c_pw91.c",
+          "gga_c_pw91.mpl",
+          "hyb_gga_xc_b3lyp.c",
+          "hyb_gga_xc_cam_b3lyp.c",
+          "lda_c_pz.c",
+          "lda_c_pz.mpl",
+          "lda_c_vwn.mpl",
+          "lda_c_vwn_rpa.mpl",
+          "lda_x.mpl",
+          "lda_x_erf.mpl",
+          "util.mpl",
+          "vwn.mpl"
+        ],
+        "wb97mv": [
+          "COPYING",
+          "attenuation.mpl",
+          "lda_c_pw.mpl",
+          "lda_x_erf.mpl",
+          "util.mpl",
+          "b97mv.mpl",
+          "hyb_mgga_xc_wb97mv.mpl",
+          "hyb_mgga_xc_wb97mv.c",
+          "functionals.c",
+          "work_mgga.c",
+          "work_mgga_inc.c"
+        ]
+      },
+      "consumers": [
+        "python/vibeqc_compiler/xc"
+      ],
+      "files": {
+        "COPYING": {
+          "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+          "upstream_path": "COPYING",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/COPYING"
+        },
+        "attenuation.mpl": {
+          "sha256": "6db9179e77650028464dacf6b2bddd3578394b35880bfeed42332e61b299ded8",
+          "upstream_path": "maple/attenuation.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/attenuation.mpl"
+        },
+        "b97mv.mpl": {
+          "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
+          "upstream_path": "maple/b97mv.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "functionals.c": {
+          "sha256": "0e4596fb62e283ebd05ccd400ea2977b28d91d6915db90199ddd0e5297185f65",
+          "upstream_path": "src/functionals.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/functionals.c"
+        },
+        "gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
+        },
+        "gga_c_lyp.mpl": {
+          "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
+          "upstream_path": "maple/gga_exc/gga_c_lyp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lyp.mpl"
+        },
+        "gga_c_p86.c": {
+          "sha256": "52be42531551867932584fd8180f003a2a5607db9fc147e68f93e02d4acf8ab7",
+          "upstream_path": "src/gga_c_p86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_p86.c"
+        },
+        "gga_c_p86.mpl": {
+          "sha256": "48d9fe8f34ac880755d26ca1ec8528d8ac43eb34afe0146a1b8263124764f118",
+          "upstream_path": "maple/gga_exc/gga_c_p86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_p86.mpl"
+        },
+        "gga_c_pbe.c": {
+          "sha256": "d449da1e327e5c5c17dc50174c25793aeea1876c4d1250d53ae12ded3e6395da",
+          "upstream_path": "src/gga_c_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbe.c"
+        },
+        "gga_c_pbe.mpl": {
+          "sha256": "17984d42413bea2eb3eed038a3df1cd4497f8b98e14e86cdc8d457dce8894f53",
+          "upstream_path": "maple/gga_exc/gga_c_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbe.mpl"
+        },
+        "gga_c_pw91.c": {
+          "sha256": "003761f8740b4bb3b8fe25a0007127c5743bf9f8a4660ae1bbda116feae15db7",
+          "upstream_path": "src/gga_c_pw91.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pw91.c"
+        },
+        "gga_c_pw91.mpl": {
+          "sha256": "f44994a89e2ade89756db9000e798eb20b280454ffbe9c05f431cc6c319f55ca",
+          "upstream_path": "maple/gga_exc/gga_c_pw91.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pw91.mpl"
+        },
+        "gga_c_regtpss.mpl": {
+          "sha256": "ee344a26b481f27156e0056ccabcb5bd3bb824e96a101774a41431085e484176",
+          "upstream_path": "maple/gga_exc/gga_c_regtpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_regtpss.mpl"
+        },
+        "gga_c_scan_e0.mpl": {
+          "sha256": "afb66ed80cd96d34c8779300ef23bf797e02e69308ce0dc03f4d55dfa50a3ce5",
+          "upstream_path": "maple/gga_exc/gga_c_scan_e0.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_scan_e0.mpl"
+        },
+        "gga_x_b88.mpl": {
+          "sha256": "5ae2ac54b4cd3fec2cb59f777c3b445999d59b3f7e40e11ed078ec3328a00a4e",
+          "upstream_path": "maple/gga_exc/gga_x_b88.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_b88.mpl"
+        },
+        "gga_x_ityh.mpl": {
+          "sha256": "2a66aec22237d3d6a43d0bd92a8136dd366396ef309c34c099c2f417a21f12aa",
+          "upstream_path": "maple/gga_exc/gga_x_ityh.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh.mpl"
+        },
+        "gga_x_pbe.c": {
+          "sha256": "7ecca3522393cdaad1d5764a19577fb051bc3ed5d27ceb4b72b787f07d283fb3",
+          "upstream_path": "src/gga_x_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbe.c"
+        },
+        "gga_x_pbe.mpl": {
+          "sha256": "7b4bbdf7a57aae3d3de10892f90a6b06c0454ce437569c58f8610313556e4b3b",
+          "upstream_path": "maple/gga_exc/gga_x_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbe.mpl"
+        },
+        "gga_x_pw91.c": {
+          "sha256": "886245b4f3b141bea294b6518b3b20954395470ec5dee7facafa27ae111d3bf7",
+          "upstream_path": "src/gga_x_pw91.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pw91.c"
+        },
+        "gga_x_pw91.mpl": {
+          "sha256": "26544e586680abd3a174c2932f85ef047f1920073dfbfe98ef4b87c6c8ea5aa6",
+          "upstream_path": "maple/gga_exc/gga_x_pw91.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pw91.mpl"
+        },
+        "hyb_gga_xc_b3lyp.c": {
+          "sha256": "0f481a2b55787ce7d6aac346c1c29987dd4f83c70c64ff1b7e90f6ee09ef1e3f",
+          "upstream_path": "src/hyb_gga_xc_b3lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_b3lyp.c"
+        },
+        "hyb_gga_xc_cam_b3lyp.c": {
+          "sha256": "8f542a15f19f084246b038905d04f67afc01bd3720de8e7110e8ae0a86d19384",
+          "upstream_path": "src/hyb_gga_xc_cam_b3lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_cam_b3lyp.c"
+        },
+        "hyb_mgga_xc_wb97mv.c": {
+          "normalization": "trailing-whitespace-only",
+          "sha256": "896263dad36b75bbb9d42b5e4718d62e8d57e261fd326ebcfc0350c80d39c3d2",
+          "upstream_path": "src/hyb_mgga_xc_wb97mv.c",
+          "upstream_sha256": "cec0d3dd7af51dc5d6f45eb802462df4be3f0d184100d9e1db409fd74ece2a8b",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_xc_wb97mv.c"
+        },
+        "hyb_mgga_xc_wb97mv.mpl": {
+          "sha256": "52a120f7a7245aa73e50a126c4fbbc79619d54f55d8649911a08841e10c35a0f",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_xc_wb97mv.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_xc_wb97mv.mpl"
+        },
+        "lda_c_pw.mpl": {
+          "sha256": "b32237332b2fec7a6cdc26a0006e5f6aff99d7ca9c8bc2369d3b155e7d3d0cdd",
+          "upstream_path": "maple/lda_exc/lda_c_pw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pw.mpl"
+        },
+        "lda_c_pz.c": {
+          "sha256": "a50f2e2389c982f9ff8b5344f2b784adcf902f219a7fec62cbabe4f47ad17285",
+          "upstream_path": "src/lda_c_pz.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pz.c"
+        },
+        "lda_c_pz.mpl": {
+          "sha256": "ae94630760acb51ac41eeb480f823bb837d6b76aba9c5df40112ec96dbeacd8d",
+          "upstream_path": "maple/lda_exc/lda_c_pz.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pz.mpl"
+        },
+        "lda_c_vwn.mpl": {
+          "sha256": "ee6d729b737a952adcfb6261a017398b3a99e1c781d75b814ec654f01280dcc6",
+          "upstream_path": "maple/lda_exc/lda_c_vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn.mpl"
+        },
+        "lda_c_vwn_rpa.mpl": {
+          "sha256": "0c35ccbce721122cf924b2ff85b2b7a47e248f709373b3dc184e585d1ce84ac9",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_rpa.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_rpa.mpl"
+        },
+        "lda_x.mpl": {
+          "sha256": "34d3ff595018a13b258019f5c4e56da1fc6b65933ba739c746ac06a3a41a7170",
+          "upstream_path": "maple/lda_exc/lda_x.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x.mpl"
+        },
+        "lda_x_erf.mpl": {
+          "sha256": "b1593bceea88e8bcc82cc33b266f7de17e8eb9b4c9220ee87eb10bed60f33c80",
+          "upstream_path": "maple/lda_exc/lda_x_erf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_erf.mpl"
+        },
+        "mgga_c_r2scan.c": {
+          "sha256": "30f25fbf726011925add29cad4534e2b83c25f4db1f777baf986f617e0a73629",
+          "upstream_path": "src/mgga_c_r2scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_r2scan.c"
+        },
+        "mgga_c_r2scan.mpl": {
+          "sha256": "cc5956e4822614f7b3e294bb4b7ba390b9579b4247c6c0bbe9d54385184f12b0",
+          "upstream_path": "maple/mgga_exc/mgga_c_r2scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_r2scan.mpl"
+        },
+        "mgga_c_rscan.mpl": {
+          "sha256": "1d7e0d079847ead63a3bcbed638d759f60110b0c6e7c72dec2bdbc474bf28a7e",
+          "upstream_path": "maple/mgga_exc/mgga_c_rscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_rscan.mpl"
+        },
+        "mgga_c_scan.c": {
+          "sha256": "a431e6618c53f8bd375ea60809657fba413b7f32af7534f9768be4317c3d7fa9",
+          "upstream_path": "src/mgga_c_scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_scan.c"
+        },
+        "mgga_c_scan.mpl": {
+          "sha256": "7edcb51f884b565c8fa5a5dd3c1fb94ee0ea6ed29fe1f2a77bc029d42f8d3edf",
+          "upstream_path": "maple/mgga_exc/mgga_c_scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_scan.mpl"
+        },
+        "mgga_x_r2scan.c": {
+          "sha256": "81c02ad7bf514162cfefdbec6701ab184a43926d9690982a63c4903688213af2",
+          "upstream_path": "src/mgga_x_r2scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_r2scan.c"
+        },
+        "mgga_x_r2scan.mpl": {
+          "sha256": "a1288820e0e39c69d891d423531bbe82deda0b2cf3968319bea09f91bc38b34f",
+          "upstream_path": "maple/mgga_exc/mgga_x_r2scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_r2scan.mpl"
+        },
+        "mgga_x_rscan.mpl": {
+          "sha256": "50002ea1c1057ca04aedd2bb50a13d40d0781e935eb85b6283dac531564d68f2",
+          "upstream_path": "maple/mgga_exc/mgga_x_rscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_rscan.mpl"
+        },
+        "mgga_x_scan.c": {
+          "sha256": "ff027dbacf8c5b15bc56701f63be1b2530cdf47ef044fc5ae7062a3237a72448",
+          "upstream_path": "src/mgga_x_scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_scan.c"
+        },
+        "mgga_x_scan.mpl": {
+          "sha256": "238e6b7a2294de9aa24f3dea054b7dfd44ca42f1235932bb71987b9dde4e0f7a",
+          "upstream_path": "maple/mgga_exc/mgga_x_scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_scan.mpl"
+        },
+        "util.mpl": {
+          "sha256": "c9790afb37c7eece47d39d0998196335a1adb857bdba814fac4b8937801a04fe",
+          "upstream_path": "maple/util.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/util.mpl"
+        },
+        "vwn.mpl": {
+          "sha256": "9b323c53526caac537ee57f73640b8cf9fd2768fca2d4634ee8d37978d480197",
+          "upstream_path": "maple/vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/vwn.mpl"
+        },
+        "work_mgga.c": {
+          "sha256": "d7f3756b15c00d71227a6f80aafe8e62617ad13107223b694846c212359dfad3",
+          "upstream_path": "src/work_mgga.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga.c"
+        },
+        "work_mgga_inc.c": {
+          "sha256": "a408ffed4036e108d3794db84cf9b9b596301632261d2a78c30273f6caf0c870",
+          "upstream_path": "src/work_mgga_inc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga_inc.c"
+        }
+      },
+      "kind": "file-set",
+      "license": "MPL-2.0",
+      "local_root": "upstream/libxc/7.0.0",
+      "repository": "https://gitlab.com/libxc/libxc",
+      "revision": "7.0.0"
+    },
+    "libxc-7.0.0-fulltree": {
+      "files": {
+        "COPYING": {
+          "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85",
+          "upstream_path": "COPYING",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/COPYING"
+        },
+        "maple/attenuation.mpl": {
+          "sha256": "6db9179e77650028464dacf6b2bddd3578394b35880bfeed42332e61b299ded8",
+          "upstream_path": "maple/attenuation.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/attenuation.mpl"
+        },
+        "maple/b97.mpl": {
+          "sha256": "099418e6736ba1a0a440a8fac80af6e3629c80b282c1b200cfb3fc6648a7f5e1",
+          "upstream_path": "maple/b97.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97.mpl"
+        },
+        "maple/b97mv.mpl": {
+          "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
+          "upstream_path": "maple/b97mv.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "maple/check_attenuation.mpl": {
+          "sha256": "169001c62ea3f17d99d9b932a09bcf22afcf4cfa68cca55d175d55cf46979a3b",
+          "upstream_path": "maple/check_attenuation.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/check_attenuation.mpl"
+        },
+        "maple/gga_exc/gga_c_acgga.mpl": {
+          "sha256": "59d2b463ba96e7a4b60b31c09eb2447ef878e5e3629ebf4b71a90f5b9ade4000",
+          "upstream_path": "maple/gga_exc/gga_c_acgga.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_acgga.mpl"
+        },
+        "maple/gga_exc/gga_c_acggap.mpl": {
+          "sha256": "643ff44c557821dbba02321787fd94edec9f4db1427a5f9582ad83551a466946",
+          "upstream_path": "maple/gga_exc/gga_c_acggap.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_acggap.mpl"
+        },
+        "maple/gga_exc/gga_c_am05.mpl": {
+          "sha256": "d95f74099402bec8daca03a5faea6c66416398cb0f2790363651c94f42dbdda0",
+          "upstream_path": "maple/gga_exc/gga_c_am05.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_am05.mpl"
+        },
+        "maple/gga_exc/gga_c_bmk.mpl": {
+          "sha256": "18b3c07ef43917bad2cfa20fa45794e30519c210e1a23f43673667b32d2484d4",
+          "upstream_path": "maple/gga_exc/gga_c_bmk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_bmk.mpl"
+        },
+        "maple/gga_exc/gga_c_ccdf.mpl": {
+          "sha256": "9c8fd29d1509b43d8d18db41c5870160f0536a75abfadbccdd1408880a3f6b82",
+          "upstream_path": "maple/gga_exc/gga_c_ccdf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_ccdf.mpl"
+        },
+        "maple/gga_exc/gga_c_chachiyo.mpl": {
+          "sha256": "cd7525f28b31d1ee571da8d2ee0682bc2fa91d55b577300b7ea34e517db86a13",
+          "upstream_path": "maple/gga_exc/gga_c_chachiyo.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_chachiyo.mpl"
+        },
+        "maple/gga_exc/gga_c_cs1.mpl": {
+          "sha256": "53b4c4491b1fa489181730fb12e4e17747eea0639b3f575a850dea64f131f567",
+          "upstream_path": "maple/gga_exc/gga_c_cs1.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_cs1.mpl"
+        },
+        "maple/gga_exc/gga_c_ft97.mpl": {
+          "sha256": "55c7f994a95d7cc392700fa815df02bed917ab0c2a8cda469c2b0268577b6c6a",
+          "upstream_path": "maple/gga_exc/gga_c_ft97.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_ft97.mpl"
+        },
+        "maple/gga_exc/gga_c_gapc.mpl": {
+          "sha256": "7d84070af918b4649fa623b78d34496097b112baf4fe859f299749b56d9a420f",
+          "upstream_path": "maple/gga_exc/gga_c_gapc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_gapc.mpl"
+        },
+        "maple/gga_exc/gga_c_gaploc.mpl": {
+          "sha256": "bec91c6c5778ad12b39e939e901579b650eaad2c13f2915da7b71ef624d35174",
+          "upstream_path": "maple/gga_exc/gga_c_gaploc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_gaploc.mpl"
+        },
+        "maple/gga_exc/gga_c_hcth_a.mpl": {
+          "sha256": "a018755bc695eb2162cf9311517ecbba1b0f729bacb78000c85992f553e55dc3",
+          "upstream_path": "maple/gga_exc/gga_c_hcth_a.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_hcth_a.mpl"
+        },
+        "maple/gga_exc/gga_c_lm.mpl": {
+          "sha256": "7d12e36fd1c36b4ee4218cc6beeb3323d1b02bd59b550b4666e77b2a2e3d43f1",
+          "upstream_path": "maple/gga_exc/gga_c_lm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lm.mpl"
+        },
+        "maple/gga_exc/gga_c_lyp.mpl": {
+          "sha256": "8113c2d995ee6ee1463b99a7ff7f3d462cfbefae6e6e70ffca22077a9cde21ac",
+          "upstream_path": "maple/gga_exc/gga_c_lyp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lyp.mpl"
+        },
+        "maple/gga_exc/gga_c_lypr.mpl": {
+          "sha256": "92b08e31d36d7b2d85055a35b9d385a53456821b14f10723685215d41e5570ba",
+          "upstream_path": "maple/gga_exc/gga_c_lypr.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_lypr.mpl"
+        },
+        "maple/gga_exc/gga_c_op_b88.mpl": {
+          "sha256": "4e3a3956898620b10b92fd197ce82060f97711cda003edce68d6532cbec969fa",
+          "upstream_path": "maple/gga_exc/gga_c_op_b88.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_op_b88.mpl"
+        },
+        "maple/gga_exc/gga_c_op_g96.mpl": {
+          "sha256": "18333adde25eb5b6e4760a339b6cffc0d2d7974a1d2969d4b569ca09ab625a6a",
+          "upstream_path": "maple/gga_exc/gga_c_op_g96.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_op_g96.mpl"
+        },
+        "maple/gga_exc/gga_c_op_pbe.mpl": {
+          "sha256": "e1ad2e5778d35b1c0b51b10b31d3e2969d92bd42207bdab6b5e90f61baafe223",
+          "upstream_path": "maple/gga_exc/gga_c_op_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_op_pbe.mpl"
+        },
+        "maple/gga_exc/gga_c_op_pw91.mpl": {
+          "sha256": "1290504485a76f18d19acacdd556d4acb5f683fd76bc9a5bad9c73654092e800",
+          "upstream_path": "maple/gga_exc/gga_c_op_pw91.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_op_pw91.mpl"
+        },
+        "maple/gga_exc/gga_c_op_xalpha.mpl": {
+          "sha256": "b40a3521c4f0162d7ab2a2d185b345ff4baae59ffe79d73cca89518ed3907281",
+          "upstream_path": "maple/gga_exc/gga_c_op_xalpha.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_op_xalpha.mpl"
+        },
+        "maple/gga_exc/gga_c_optc.mpl": {
+          "sha256": "8d9cbe1e57f5af1cb0657e75a160a2eda96537b9e9fe8d8ef7015137f734adfe",
+          "upstream_path": "maple/gga_exc/gga_c_optc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_optc.mpl"
+        },
+        "maple/gga_exc/gga_c_p86.mpl": {
+          "sha256": "48d9fe8f34ac880755d26ca1ec8528d8ac43eb34afe0146a1b8263124764f118",
+          "upstream_path": "maple/gga_exc/gga_c_p86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_p86.mpl"
+        },
+        "maple/gga_exc/gga_c_p86vwn.mpl": {
+          "sha256": "c3c4a47de49aae174504a9cffa740058c8b04e085cca4ba8d045ac548a505cc2",
+          "upstream_path": "maple/gga_exc/gga_c_p86vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_p86vwn.mpl"
+        },
+        "maple/gga_exc/gga_c_pbe.mpl": {
+          "sha256": "17984d42413bea2eb3eed038a3df1cd4497f8b98e14e86cdc8d457dce8894f53",
+          "upstream_path": "maple/gga_exc/gga_c_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbe.mpl"
+        },
+        "maple/gga_exc/gga_c_pbe_erf_gws.mpl": {
+          "sha256": "099413019a4b119dea1f88ddf17618ad1bba26cc3480a84a44e6ee9684600ff5",
+          "upstream_path": "maple/gga_exc/gga_c_pbe_erf_gws.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbe_erf_gws.mpl"
+        },
+        "maple/gga_exc/gga_c_pbe_vwn.mpl": {
+          "sha256": "8313c6eeda9f8ee8bd426aa4e8bb405567d5767c678534fd94751e133e8a6d91",
+          "upstream_path": "maple/gga_exc/gga_c_pbe_vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbe_vwn.mpl"
+        },
+        "maple/gga_exc/gga_c_pbeloc.mpl": {
+          "sha256": "ed4f1b6f45600fb2ab35a3b340ce47afcac1e16b6cfde920e98a1fafc4c58219",
+          "upstream_path": "maple/gga_exc/gga_c_pbeloc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pbeloc.mpl"
+        },
+        "maple/gga_exc/gga_c_pw91.mpl": {
+          "sha256": "f44994a89e2ade89756db9000e798eb20b280454ffbe9c05f431cc6c319f55ca",
+          "upstream_path": "maple/gga_exc/gga_c_pw91.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_pw91.mpl"
+        },
+        "maple/gga_exc/gga_c_q2d.mpl": {
+          "sha256": "8cb50c2de5165cfec53d492a440f2402a10b1d0fbaf5278802c1b25733d5580c",
+          "upstream_path": "maple/gga_exc/gga_c_q2d.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_q2d.mpl"
+        },
+        "maple/gga_exc/gga_c_regtpss.mpl": {
+          "sha256": "ee344a26b481f27156e0056ccabcb5bd3bb824e96a101774a41431085e484176",
+          "upstream_path": "maple/gga_exc/gga_c_regtpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_regtpss.mpl"
+        },
+        "maple/gga_exc/gga_c_revtca.mpl": {
+          "sha256": "5fe04f7461c894f09811fccee0dc003a005ae7ad43d7e21b5b611edb307091b4",
+          "upstream_path": "maple/gga_exc/gga_c_revtca.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_revtca.mpl"
+        },
+        "maple/gga_exc/gga_c_scan_e0.mpl": {
+          "sha256": "afb66ed80cd96d34c8779300ef23bf797e02e69308ce0dc03f4d55dfa50a3ce5",
+          "upstream_path": "maple/gga_exc/gga_c_scan_e0.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_scan_e0.mpl"
+        },
+        "maple/gga_exc/gga_c_sg4.mpl": {
+          "sha256": "f88ce9987e1e9b1a198ff0089d676d3bbd48afc564608ebaa8308a8eb70cb5fd",
+          "upstream_path": "maple/gga_exc/gga_c_sg4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_sg4.mpl"
+        },
+        "maple/gga_exc/gga_c_sogga11.mpl": {
+          "sha256": "11c2bf5d8a1d5cfeaa85bba9c82fd08ea7d8ac0ca5e37fd3a1d4755cd5aace7d",
+          "upstream_path": "maple/gga_exc/gga_c_sogga11.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_sogga11.mpl"
+        },
+        "maple/gga_exc/gga_c_tca.mpl": {
+          "sha256": "a975f7f5fad4ccb027a6ced25961300f7ae0b4ca02a635822ccfacfed8a0877f",
+          "upstream_path": "maple/gga_exc/gga_c_tca.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_tca.mpl"
+        },
+        "maple/gga_exc/gga_c_w94.mpl": {
+          "sha256": "b7575b906c2fccdedb3d2adbde46d58c1dfffe24c6e05c789417917b4651996d",
+          "upstream_path": "maple/gga_exc/gga_c_w94.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_w94.mpl"
+        },
+        "maple/gga_exc/gga_c_wi.mpl": {
+          "sha256": "8075b1d0489c1acc19c8dfcd6240de85559aebad88641de3d56cc1a13c5e2918",
+          "upstream_path": "maple/gga_exc/gga_c_wi.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_wi.mpl"
+        },
+        "maple/gga_exc/gga_c_wl.mpl": {
+          "sha256": "25e4a7c160f94395fa88a9b9c09db5b6ab852e35c16b1ff17def9c8db2213fdf",
+          "upstream_path": "maple/gga_exc/gga_c_wl.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_wl.mpl"
+        },
+        "maple/gga_exc/gga_c_zpbeint.mpl": {
+          "sha256": "e666877c00bb67c1792befd7acdf28af45ee828de8f9aa743d6ba97e9151df1d",
+          "upstream_path": "maple/gga_exc/gga_c_zpbeint.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_zpbeint.mpl"
+        },
+        "maple/gga_exc/gga_c_zvpbeint.mpl": {
+          "sha256": "5b402aa980ee219558e2d947d9c76b7fd87e9e7945d0ca64bd34666929e9f315",
+          "upstream_path": "maple/gga_exc/gga_c_zvpbeint.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_zvpbeint.mpl"
+        },
+        "maple/gga_exc/gga_c_zvpbeloc.mpl": {
+          "sha256": "55a76bbf96f5e3b756ad16d51b25853e689a689a83fe849628ab0a956c76d598",
+          "upstream_path": "maple/gga_exc/gga_c_zvpbeloc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_c_zvpbeloc.mpl"
+        },
+        "maple/gga_exc/gga_k_apbe.mpl": {
+          "sha256": "6e5522a1bb8997a0f36d95ea0e1074015b164944089ba66b8cbb0e49bc182b4f",
+          "upstream_path": "maple/gga_exc/gga_k_apbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_apbe.mpl"
+        },
+        "maple/gga_exc/gga_k_apbeint.mpl": {
+          "sha256": "a62a8d69549b898ee91cc9f93394699ebc659a26862ff1c3f813562b0a9b41ab",
+          "upstream_path": "maple/gga_exc/gga_k_apbeint.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_apbeint.mpl"
+        },
+        "maple/gga_exc/gga_k_dk.mpl": {
+          "sha256": "a862a1af09f89da7b30ed5c71689b106785cf07644b0a4ed862ce6a358a8a70d",
+          "upstream_path": "maple/gga_exc/gga_k_dk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_dk.mpl"
+        },
+        "maple/gga_exc/gga_k_exp4.mpl": {
+          "sha256": "59cb36c623aeacfda0b18c10da174d68e9fb77b0a7c5ea84ba98c626387553b5",
+          "upstream_path": "maple/gga_exc/gga_k_exp4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_exp4.mpl"
+        },
+        "maple/gga_exc/gga_k_lc94.mpl": {
+          "sha256": "2a902b44aed97c391d43a8c1890604f1d5b6c7efa5962076b6159ba7ecd2b402",
+          "upstream_path": "maple/gga_exc/gga_k_lc94.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_lc94.mpl"
+        },
+        "maple/gga_exc/gga_k_lgap.mpl": {
+          "sha256": "d06c9112d6679365aa9f12d8ea0b20a702941d4df4c9b5056f7d8de0727c86d4",
+          "upstream_path": "maple/gga_exc/gga_k_lgap.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_lgap.mpl"
+        },
+        "maple/gga_exc/gga_k_lgap_ge.mpl": {
+          "sha256": "0895aff6eb281767746355c0f26eaec86030ff5d8c230212717ac016a3a90460",
+          "upstream_path": "maple/gga_exc/gga_k_lgap_ge.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_lgap_ge.mpl"
+        },
+        "maple/gga_exc/gga_k_lkt.mpl": {
+          "sha256": "29a2e68925c8897a8ac0626f907f007ce86f3012b0b4bc6169bc54a962221c2a",
+          "upstream_path": "maple/gga_exc/gga_k_lkt.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_lkt.mpl"
+        },
+        "maple/gga_exc/gga_k_llp.mpl": {
+          "sha256": "cc031ea008d8a17f5c87da9c1659957a6a7edae5bbd2e21f7c6d10dd2a7ac7e8",
+          "upstream_path": "maple/gga_exc/gga_k_llp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_llp.mpl"
+        },
+        "maple/gga_exc/gga_k_meyer.mpl": {
+          "sha256": "80812e00c56e67add0e2e3babcf246435d969e5cb3356befd7c673b50fd33eb9",
+          "upstream_path": "maple/gga_exc/gga_k_meyer.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_meyer.mpl"
+        },
+        "maple/gga_exc/gga_k_mpbe.mpl": {
+          "sha256": "3943a83af2b0c45311a45e6e11dd4bd2edc50c46adf6b756d328be8252261978",
+          "upstream_path": "maple/gga_exc/gga_k_mpbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_mpbe.mpl"
+        },
+        "maple/gga_exc/gga_k_ol1.mpl": {
+          "sha256": "157ea6c43af0c310bf32c7b9fee5fa79804b09a16ed49650236b90e7c975ce94",
+          "upstream_path": "maple/gga_exc/gga_k_ol1.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_ol1.mpl"
+        },
+        "maple/gga_exc/gga_k_ol2.mpl": {
+          "sha256": "d36d46eff03b56396085148591d9587e7f6e4e9d5f1220a345ae818a228492e7",
+          "upstream_path": "maple/gga_exc/gga_k_ol2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_ol2.mpl"
+        },
+        "maple/gga_exc/gga_k_pearson.mpl": {
+          "sha256": "28d601df408277470f041453ef886e98c65be7ca2cd6f2df39f2a39678abeff7",
+          "upstream_path": "maple/gga_exc/gga_k_pearson.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_pearson.mpl"
+        },
+        "maple/gga_exc/gga_k_pg.mpl": {
+          "sha256": "2b5d05a0fe77893e4e6b7585d3625375b6fe0780071c4fbb51731406de728b89",
+          "upstream_path": "maple/gga_exc/gga_k_pg.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_pg.mpl"
+        },
+        "maple/gga_exc/gga_k_pw86.mpl": {
+          "sha256": "b5662f34bc8d98bd65d15734d7bd4072844ec7a163d2f58ecf18f0930bd51672",
+          "upstream_path": "maple/gga_exc/gga_k_pw86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_pw86.mpl"
+        },
+        "maple/gga_exc/gga_k_rational_p.mpl": {
+          "sha256": "b03dde370963604edbc2dc5ff12300e8fb3fd17030359ba249a1be7c42323ad0",
+          "upstream_path": "maple/gga_exc/gga_k_rational_p.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_rational_p.mpl"
+        },
+        "maple/gga_exc/gga_k_tflw.mpl": {
+          "sha256": "d42ed78017f36be5bc2a8371d84c5fe069aa8b480c7f273cf7d206f0a29cb421",
+          "upstream_path": "maple/gga_exc/gga_k_tflw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_tflw.mpl"
+        },
+        "maple/gga_exc/gga_k_thakkar.mpl": {
+          "sha256": "eadaee1f273ea140c888149c645a1edc2765935463facd5eb6ee7535e58cb343",
+          "upstream_path": "maple/gga_exc/gga_k_thakkar.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_thakkar.mpl"
+        },
+        "maple/gga_exc/gga_k_vt84f.mpl": {
+          "sha256": "f812a13b82a9c79b684bc0d4a1b3a93fbec4447f50f003659d63a65033ce15ee",
+          "upstream_path": "maple/gga_exc/gga_k_vt84f.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_k_vt84f.mpl"
+        },
+        "maple/gga_exc/gga_x_2d_b86.mpl": {
+          "sha256": "a809d6abd46d50c4802482db56ba40a0865fb23a93f1dfb04b8f0ce4dade5712",
+          "upstream_path": "maple/gga_exc/gga_x_2d_b86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_2d_b86.mpl"
+        },
+        "maple/gga_exc/gga_x_2d_b86_mgc.mpl": {
+          "sha256": "a68b312ba3a322c9094bedaae1556cc79731f62769c1eddbaba3c968e5f2a40c",
+          "upstream_path": "maple/gga_exc/gga_x_2d_b86_mgc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_2d_b86_mgc.mpl"
+        },
+        "maple/gga_exc/gga_x_2d_b88.mpl": {
+          "sha256": "da4ceaa409b69047c9f4b5eec0a1c8eba9af5a10d89ffc49d46868ebb8cf6f9b",
+          "upstream_path": "maple/gga_exc/gga_x_2d_b88.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_2d_b88.mpl"
+        },
+        "maple/gga_exc/gga_x_2d_pbe.mpl": {
+          "sha256": "6eed0a572f0474f3420e62530d56be30227d6008be7fcd5119feb667b0ba8d11",
+          "upstream_path": "maple/gga_exc/gga_x_2d_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_2d_pbe.mpl"
+        },
+        "maple/gga_exc/gga_x_airy.mpl": {
+          "sha256": "221257562d5bce5961f159cd089fa196bbf0a66525f06d84fd24f59794090a0f",
+          "upstream_path": "maple/gga_exc/gga_x_airy.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_airy.mpl"
+        },
+        "maple/gga_exc/gga_x_ak13.mpl": {
+          "sha256": "963bc482a93bcc7f564ba7da3c0b2264a3967f46aa3c13ade18b98fde1dfdd3f",
+          "upstream_path": "maple/gga_exc/gga_x_ak13.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ak13.mpl"
+        },
+        "maple/gga_exc/gga_x_am05.mpl": {
+          "sha256": "ccfb27ef6c050135a23f55c854eb1ccde6f814d356a37a1ceebe6e61bc4283db",
+          "upstream_path": "maple/gga_exc/gga_x_am05.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_am05.mpl"
+        },
+        "maple/gga_exc/gga_x_b86.mpl": {
+          "sha256": "94584ada3ee2cff5c88d97d02361897772e168639cdf34022f5b5f6621da79bf",
+          "upstream_path": "maple/gga_exc/gga_x_b86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_b86.mpl"
+        },
+        "maple/gga_exc/gga_x_b88.mpl": {
+          "sha256": "5ae2ac54b4cd3fec2cb59f777c3b445999d59b3f7e40e11ed078ec3328a00a4e",
+          "upstream_path": "maple/gga_exc/gga_x_b88.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_b88.mpl"
+        },
+        "maple/gga_exc/gga_x_bayesian.mpl": {
+          "sha256": "2b8e5aaa6e51e2032b28cf68cbcca847b21ed81e01a9ae170473fb4e121b4a02",
+          "upstream_path": "maple/gga_exc/gga_x_bayesian.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_bayesian.mpl"
+        },
+        "maple/gga_exc/gga_x_beefvdw.mpl": {
+          "sha256": "fd9038e28452e267b6bd5013340b021511b5768353550c50cf0bc87a824bb096",
+          "upstream_path": "maple/gga_exc/gga_x_beefvdw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_beefvdw.mpl"
+        },
+        "maple/gga_exc/gga_x_bkl.mpl": {
+          "sha256": "2f9dd54f8853300a35f16f65579eb5c01e61f82ca53b4e0afe5918bb174e5c99",
+          "upstream_path": "maple/gga_exc/gga_x_bkl.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_bkl.mpl"
+        },
+        "maple/gga_exc/gga_x_bpccac.mpl": {
+          "sha256": "60b0fbdc4cabe9ab2b61397412b5892ec6131ca443119f807f98f5e2bd5e8929",
+          "upstream_path": "maple/gga_exc/gga_x_bpccac.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_bpccac.mpl"
+        },
+        "maple/gga_exc/gga_x_c09x.mpl": {
+          "sha256": "008470e949122d90dcce6e8ad5132a92882b5ba7a7d9b48fddab770e50aaebb4",
+          "upstream_path": "maple/gga_exc/gga_x_c09x.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_c09x.mpl"
+        },
+        "maple/gga_exc/gga_x_cap.mpl": {
+          "sha256": "3d860e63b1ddf2ff176c5a8f045a3e2e8b267834ca4ffcfa21f69ec822faf4de",
+          "upstream_path": "maple/gga_exc/gga_x_cap.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_cap.mpl"
+        },
+        "maple/gga_exc/gga_x_chachiyo.mpl": {
+          "sha256": "3713bb248cfbad1b3f634e80d8a785e3fc62493664877c5995e9aa19b935d9e6",
+          "upstream_path": "maple/gga_exc/gga_x_chachiyo.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_chachiyo.mpl"
+        },
+        "maple/gga_exc/gga_x_dk87.mpl": {
+          "sha256": "e65ec76d89068484c51db1ea873d8ee38d4750bca1358aa79e330b0e162b9e18",
+          "upstream_path": "maple/gga_exc/gga_x_dk87.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_dk87.mpl"
+        },
+        "maple/gga_exc/gga_x_ev93.mpl": {
+          "sha256": "6e723cc85164ebd536ded0ecaa685b03733e5d2df32c1e6dc140c12c2225b0ca",
+          "upstream_path": "maple/gga_exc/gga_x_ev93.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ev93.mpl"
+        },
+        "maple/gga_exc/gga_x_fd_lb94.mpl": {
+          "sha256": "192f78315c93acdc22feca36bab2ccbfd416ba9f289aa808566f30fb2bcdd2fc",
+          "upstream_path": "maple/gga_exc/gga_x_fd_lb94.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_fd_lb94.mpl"
+        },
+        "maple/gga_exc/gga_x_ft97.mpl": {
+          "sha256": "e76e93782cffd2dd607e1807c55c31ea7925a1d99ff8355144c82689fe4e0124",
+          "upstream_path": "maple/gga_exc/gga_x_ft97.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ft97.mpl"
+        },
+        "maple/gga_exc/gga_x_g96.mpl": {
+          "sha256": "1585ec66d18900cda84721d2a55a3375f3cfd2f49a45d7e51893708fadcabc3c",
+          "upstream_path": "maple/gga_exc/gga_x_g96.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_g96.mpl"
+        },
+        "maple/gga_exc/gga_x_gg99.mpl": {
+          "sha256": "2b74aafed9e60f82dc0e16af0f300f4f65696344f85ec5b71f24b02b27e7245f",
+          "upstream_path": "maple/gga_exc/gga_x_gg99.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_gg99.mpl"
+        },
+        "maple/gga_exc/gga_x_hcth_a.mpl": {
+          "sha256": "eeb2ef7bab0ea5d54c44cbe568697d79a63c541007a61c11877c9308879a4af7",
+          "upstream_path": "maple/gga_exc/gga_x_hcth_a.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_hcth_a.mpl"
+        },
+        "maple/gga_exc/gga_x_hjs.mpl": {
+          "sha256": "22449e9b432d15eaa51639fc36ffe3c0088e0ccdea2591b79e7ac93b895ac356",
+          "upstream_path": "maple/gga_exc/gga_x_hjs.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_hjs.mpl"
+        },
+        "maple/gga_exc/gga_x_hjs_b88_v2.mpl": {
+          "sha256": "05a4c259e36b87b95f059c25a79a218acdc8f3d31f0ae16df3a4390a5d5f63f5",
+          "upstream_path": "maple/gga_exc/gga_x_hjs_b88_v2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_hjs_b88_v2.mpl"
+        },
+        "maple/gga_exc/gga_x_htbs.mpl": {
+          "sha256": "2d31eaf544cf94b40951cd8367cc3b291578a7f8fb54f5814dae4da0dc412c5f",
+          "upstream_path": "maple/gga_exc/gga_x_htbs.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_htbs.mpl"
+        },
+        "maple/gga_exc/gga_x_ityh.mpl": {
+          "sha256": "2a66aec22237d3d6a43d0bd92a8136dd366396ef309c34c099c2f417a21f12aa",
+          "upstream_path": "maple/gga_exc/gga_x_ityh.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh.mpl"
+        },
+        "maple/gga_exc/gga_x_ityh_optx.mpl": {
+          "sha256": "5d26095f5f0e710b05153d482ecc8fcd54a825fa48663277de7ec2f387d4f41e",
+          "upstream_path": "maple/gga_exc/gga_x_ityh_optx.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh_optx.mpl"
+        },
+        "maple/gga_exc/gga_x_ityh_pbe.mpl": {
+          "sha256": "857e9eb7c3bfc7a2f422c65d1926f3f4e2dc4b13b45cb9cf74727057ed6423f1",
+          "upstream_path": "maple/gga_exc/gga_x_ityh_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ityh_pbe.mpl"
+        },
+        "maple/gga_exc/gga_x_kt.mpl": {
+          "sha256": "78ea121d09e4785d97961ece28e1bf6dc60454fc3373bce300d21739a1470197",
+          "upstream_path": "maple/gga_exc/gga_x_kt.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_kt.mpl"
+        },
+        "maple/gga_exc/gga_x_lg93.mpl": {
+          "sha256": "1832b7571c2a6f04bf1a1afa6c714e1bf858aa4ec4299f98ea8d35f7aa595728",
+          "upstream_path": "maple/gga_exc/gga_x_lg93.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_lg93.mpl"
+        },
+        "maple/gga_exc/gga_x_lspbe.mpl": {
+          "sha256": "5ac82012d1b6f3cd8911d4dcc575046d356388af2b259acf035f8e3e47c268a8",
+          "upstream_path": "maple/gga_exc/gga_x_lspbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_lspbe.mpl"
+        },
+        "maple/gga_exc/gga_x_lsrpbe.mpl": {
+          "sha256": "3643b019e778dfa3f93c370d6418be4ad50392f458f4086df9ce9ecefcc66975",
+          "upstream_path": "maple/gga_exc/gga_x_lsrpbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_lsrpbe.mpl"
+        },
+        "maple/gga_exc/gga_x_lv_rpw86.mpl": {
+          "sha256": "4e7b4ddd38d3220ec97a6ae88d93b4d2ec05a1f091ba8d78a43982f9abf8133a",
+          "upstream_path": "maple/gga_exc/gga_x_lv_rpw86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_lv_rpw86.mpl"
+        },
+        "maple/gga_exc/gga_x_mpbe.mpl": {
+          "sha256": "5209fecd6f7a472f74fef2b9c3e71a2c0fa851b1309059d38026725d141b3ce4",
+          "upstream_path": "maple/gga_exc/gga_x_mpbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_mpbe.mpl"
+        },
+        "maple/gga_exc/gga_x_n12.mpl": {
+          "sha256": "fdb82dc2d6d8e3d881a12a3a130b81d756dcd2273374113021b07a8ec8d57a85",
+          "upstream_path": "maple/gga_exc/gga_x_n12.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_n12.mpl"
+        },
+        "maple/gga_exc/gga_x_ncap.mpl": {
+          "sha256": "e5666c13017797590408dd2c9828bdc7d50d1e98f657d8a2582798d0dec03fbc",
+          "upstream_path": "maple/gga_exc/gga_x_ncap.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ncap.mpl"
+        },
+        "maple/gga_exc/gga_x_ol2.mpl": {
+          "sha256": "dd30ed4c929d02d60956b6c440679eb6ffe7846fa32fb48945fc5295ecaa78f6",
+          "upstream_path": "maple/gga_exc/gga_x_ol2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ol2.mpl"
+        },
+        "maple/gga_exc/gga_x_optx.mpl": {
+          "sha256": "62900bd67476d069f5b9a8bb7326d8bd79174ae586baaba49c6652b2371dfacd",
+          "upstream_path": "maple/gga_exc/gga_x_optx.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_optx.mpl"
+        },
+        "maple/gga_exc/gga_x_pbe.mpl": {
+          "sha256": "7b4bbdf7a57aae3d3de10892f90a6b06c0454ce437569c58f8610313556e4b3b",
+          "upstream_path": "maple/gga_exc/gga_x_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbe.mpl"
+        },
+        "maple/gga_exc/gga_x_pbe_erf_gws.mpl": {
+          "sha256": "d4a06359eee9eca1393758b397a33bc497ba887afab9acc99cbc63b938fbeef1",
+          "upstream_path": "maple/gga_exc/gga_x_pbe_erf_gws.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbe_erf_gws.mpl"
+        },
+        "maple/gga_exc/gga_x_pbea.mpl": {
+          "sha256": "0bb474c1a9d6d8dd918592875a3c439b513db9ad00cf452ac995f376977121c6",
+          "upstream_path": "maple/gga_exc/gga_x_pbea.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbea.mpl"
+        },
+        "maple/gga_exc/gga_x_pbeint.mpl": {
+          "sha256": "888408080529cc77356f94f71f719c7bacf636f7d2d707e15b5032f2c0035a2a",
+          "upstream_path": "maple/gga_exc/gga_x_pbeint.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbeint.mpl"
+        },
+        "maple/gga_exc/gga_x_pbepow.mpl": {
+          "sha256": "81815d70511def6970948763e235b2b1d44894456db3bbc739f14e47228e3bde",
+          "upstream_path": "maple/gga_exc/gga_x_pbepow.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbepow.mpl"
+        },
+        "maple/gga_exc/gga_x_pbetrans.mpl": {
+          "sha256": "5e412897d24c339b67c221e4b693250bc687896342c1dcfc739116284ddc90cf",
+          "upstream_path": "maple/gga_exc/gga_x_pbetrans.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pbetrans.mpl"
+        },
+        "maple/gga_exc/gga_x_pw86.mpl": {
+          "sha256": "a2e13b731fcccd372c5a3584806afd9dfc4b9801e29041099c771d67f24d3230",
+          "upstream_path": "maple/gga_exc/gga_x_pw86.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pw86.mpl"
+        },
+        "maple/gga_exc/gga_x_pw91.mpl": {
+          "sha256": "26544e586680abd3a174c2932f85ef047f1920073dfbfe98ef4b87c6c8ea5aa6",
+          "upstream_path": "maple/gga_exc/gga_x_pw91.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_pw91.mpl"
+        },
+        "maple/gga_exc/gga_x_q1d.mpl": {
+          "sha256": "5edddaa3808e201a10a950969c4b5334d5d9ac1845ec61acd21a73c3e8c96c29",
+          "upstream_path": "maple/gga_exc/gga_x_q1d.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_q1d.mpl"
+        },
+        "maple/gga_exc/gga_x_q2d.mpl": {
+          "sha256": "ff062ea9deef39325ddf58e64bb5943770922d00f29de7a5201807371cc13052",
+          "upstream_path": "maple/gga_exc/gga_x_q2d.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_q2d.mpl"
+        },
+        "maple/gga_exc/gga_x_rge2.mpl": {
+          "sha256": "4f4de7aa1634febd1f1f49aad78b900c92bd2c188fa7f98d7c178d0437c19a88",
+          "upstream_path": "maple/gga_exc/gga_x_rge2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_rge2.mpl"
+        },
+        "maple/gga_exc/gga_x_rpbe.mpl": {
+          "sha256": "666889b2a6b6ef35d534d8f401259a73608a76c507c4ae1930fe8bc21e9bebd4",
+          "upstream_path": "maple/gga_exc/gga_x_rpbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_rpbe.mpl"
+        },
+        "maple/gga_exc/gga_x_s12.mpl": {
+          "sha256": "8c6d6b3ae655be78be7d430d895f9e64eefcc75c1e8b39deec413d914927627b",
+          "upstream_path": "maple/gga_exc/gga_x_s12.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_s12.mpl"
+        },
+        "maple/gga_exc/gga_x_sfat.mpl": {
+          "sha256": "171dae796fe355e3cc9cc6ff68c86d61e1a48011fd2fbc7e424618f24e4c4d2d",
+          "upstream_path": "maple/gga_exc/gga_x_sfat.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_sfat.mpl"
+        },
+        "maple/gga_exc/gga_x_sfat_pbe.mpl": {
+          "sha256": "9999a3bd40fe342b6f78b3f1b76d72a6e57669d1027bc89ca26d8afcf5e22592",
+          "upstream_path": "maple/gga_exc/gga_x_sfat_pbe.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_sfat_pbe.mpl"
+        },
+        "maple/gga_exc/gga_x_sg4.mpl": {
+          "sha256": "0b20d2ba9343a0d7e0215e3d830e20de19e1c6093b2bfbd39d8367d4872ac36a",
+          "upstream_path": "maple/gga_exc/gga_x_sg4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_sg4.mpl"
+        },
+        "maple/gga_exc/gga_x_sogga11.mpl": {
+          "sha256": "0bd08708f934ffaa56bc8b039f36a7e1803deca7e7f0dce817b03980485d7025",
+          "upstream_path": "maple/gga_exc/gga_x_sogga11.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_sogga11.mpl"
+        },
+        "maple/gga_exc/gga_x_ssb_sw.mpl": {
+          "sha256": "8a15f1096e90a545008422bd7325ea690a914de2448cb8fd5d1e8fa1732e5721",
+          "upstream_path": "maple/gga_exc/gga_x_ssb_sw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_ssb_sw.mpl"
+        },
+        "maple/gga_exc/gga_x_vmt.mpl": {
+          "sha256": "fcfc580a4fc80d7e2a1655ec300a90e75504480ec1c9f2d9918071f867c4eea5",
+          "upstream_path": "maple/gga_exc/gga_x_vmt.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_vmt.mpl"
+        },
+        "maple/gga_exc/gga_x_vmt84.mpl": {
+          "sha256": "d50b3566d0244d6acf26afe105bb130eabdf788688ce382e6cb69803af6140b0",
+          "upstream_path": "maple/gga_exc/gga_x_vmt84.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_vmt84.mpl"
+        },
+        "maple/gga_exc/gga_x_wc.mpl": {
+          "sha256": "fd653be39e9d5fc8263fee242c0c396c1b10a9a5a04102681a2dec9f281d391d",
+          "upstream_path": "maple/gga_exc/gga_x_wc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_wc.mpl"
+        },
+        "maple/gga_exc/gga_x_wpbeh.mpl": {
+          "sha256": "429835517c3382aeb890b98245f3961e2c6b022c09ce5e5456afdaa5a724385b",
+          "upstream_path": "maple/gga_exc/gga_x_wpbeh.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_x_wpbeh.mpl"
+        },
+        "maple/gga_exc/gga_xc_b97.mpl": {
+          "sha256": "6bd03178172d5d2a15a3576e4a1a62a2904f86a75f7624debf86e93a7fd0e0ff",
+          "upstream_path": "maple/gga_exc/gga_xc_b97.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_xc_b97.mpl"
+        },
+        "maple/gga_exc/gga_xc_th1.mpl": {
+          "sha256": "30696f6b69c9a03012b6ce98f12e767857b7ec7a9d94ed520e5e4c7ea82a8a9c",
+          "upstream_path": "maple/gga_exc/gga_xc_th1.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_xc_th1.mpl"
+        },
+        "maple/gga_exc/gga_xc_th2.mpl": {
+          "sha256": "92bb2c938da07e1a17923bdd76e2f1c70d0dfa06c97c6208032fe0fe3569ca55",
+          "upstream_path": "maple/gga_exc/gga_xc_th2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_xc_th2.mpl"
+        },
+        "maple/gga_exc/gga_xc_th3.mpl": {
+          "sha256": "53b4c0a7a49fa3d559ea6069ed28d88748e6dd27d858d45bde836f0379211bc2",
+          "upstream_path": "maple/gga_exc/gga_xc_th3.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/gga_xc_th3.mpl"
+        },
+        "maple/gga_exc/hyb_gga_x_cam_s12.mpl": {
+          "sha256": "4aae95a63976280aa6653066004cc7df8d0a4fe104c70cee99299ca7e407663c",
+          "upstream_path": "maple/gga_exc/hyb_gga_x_cam_s12.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/hyb_gga_x_cam_s12.mpl"
+        },
+        "maple/gga_exc/hyb_gga_xc_case21.mpl": {
+          "sha256": "8fbeaeb37ac9550f0f182fe1b1ba27063b08777995d567fae5be19d457aea5ec",
+          "upstream_path": "maple/gga_exc/hyb_gga_xc_case21.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/hyb_gga_xc_case21.mpl"
+        },
+        "maple/gga_exc/hyb_gga_xc_wb97.mpl": {
+          "sha256": "ad4101e0a03b6675f62071bd5c2db248e210a8397994066ba0fbd81d58c8d448",
+          "upstream_path": "maple/gga_exc/hyb_gga_xc_wb97.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_exc/hyb_gga_xc_wb97.mpl"
+        },
+        "maple/gga_vxc/gga_x_lb.mpl": {
+          "sha256": "9c63eff84cf5965c4ff56eef6d74de60b40606eef167755474dcffd4be1a6ba3",
+          "upstream_path": "maple/gga_vxc/gga_x_lb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gga_vxc/gga_x_lb.mpl"
+        },
+        "maple/gvt4.mpl": {
+          "sha256": "8b352ab83777886daa271b0134c7573226f12d71b3a951e16637892519f2b1bf",
+          "upstream_path": "maple/gvt4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/gvt4.mpl"
+        },
+        "maple/lda_exc/hyb_lda_xc_bn05.mpl": {
+          "sha256": "6c05146ef05cf33d498287f8cf59eda5a4e96b81307b4ea01b0bd7fe47417c2d",
+          "upstream_path": "maple/lda_exc/hyb_lda_xc_bn05.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/hyb_lda_xc_bn05.mpl"
+        },
+        "maple/lda_exc/lda_c_1d_csc.mpl": {
+          "sha256": "7cac1ae8bd5596072ac1ca88e87532779b2529b39769f236ce1147339fdf3562",
+          "upstream_path": "maple/lda_exc/lda_c_1d_csc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_1d_csc.mpl"
+        },
+        "maple/lda_exc/lda_c_1d_loos.mpl": {
+          "sha256": "6dfce9fc4c503b0603d75c7b629f3b0b36a2531a93a0f89552aa6c5c0905441c",
+          "upstream_path": "maple/lda_exc/lda_c_1d_loos.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_1d_loos.mpl"
+        },
+        "maple/lda_exc/lda_c_2d_amgb.mpl": {
+          "sha256": "3048e96b92df2f39ae48a1cb13842b609b6245a97eb61ca3e183cafdd290c001",
+          "upstream_path": "maple/lda_exc/lda_c_2d_amgb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_2d_amgb.mpl"
+        },
+        "maple/lda_exc/lda_c_2d_prm.mpl": {
+          "sha256": "6419a347efe6bfdc890ba2ac510c633108ff4916d334cc796a4b62a914cfb2d2",
+          "upstream_path": "maple/lda_exc/lda_c_2d_prm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_2d_prm.mpl"
+        },
+        "maple/lda_exc/lda_c_chachiyo.mpl": {
+          "sha256": "a448f964b698d5116740494e663dbc5797e609bd7c07491dd69aad70f42daa08",
+          "upstream_path": "maple/lda_exc/lda_c_chachiyo.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_chachiyo.mpl"
+        },
+        "maple/lda_exc/lda_c_chachiyo_mod.mpl": {
+          "sha256": "15eb7e9e213367e9a9a104a8b3a998bb7b66f4ff9bdee9e20fac5bfabb448a19",
+          "upstream_path": "maple/lda_exc/lda_c_chachiyo_mod.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_chachiyo_mod.mpl"
+        },
+        "maple/lda_exc/lda_c_epc17.mpl": {
+          "sha256": "d2019660b71c2f7b49f9723e8ae50c2324ef1bbb95c0ac9cdedd66966ac5ee05",
+          "upstream_path": "maple/lda_exc/lda_c_epc17.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_epc17.mpl"
+        },
+        "maple/lda_exc/lda_c_epc18.mpl": {
+          "sha256": "7f0056e824947453229269f5219a3b82b8ad6228b2cdebaed9d1183ff9acb462",
+          "upstream_path": "maple/lda_exc/lda_c_epc18.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_epc18.mpl"
+        },
+        "maple/lda_exc/lda_c_gk72.mpl": {
+          "sha256": "85d7da53a7f498eb8fb1ee0ca93c2a0b36d83756183e2460541ab34c84d1b5f1",
+          "upstream_path": "maple/lda_exc/lda_c_gk72.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_gk72.mpl"
+        },
+        "maple/lda_exc/lda_c_gombas.mpl": {
+          "sha256": "f463a404505fd4a4ab6f07e15f6ff0d6dca541aafe9ddeb6d13fea6cf41a6598",
+          "upstream_path": "maple/lda_exc/lda_c_gombas.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_gombas.mpl"
+        },
+        "maple/lda_exc/lda_c_hl.mpl": {
+          "sha256": "017f086a530f1faeb7dd626931b3366410ec5787215f3835b2578407a18b3b67",
+          "upstream_path": "maple/lda_exc/lda_c_hl.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_hl.mpl"
+        },
+        "maple/lda_exc/lda_c_lp96.mpl": {
+          "sha256": "8e6600ab53ec20f43da19f0fc6369bbbfeba4d3ea1df799d0d47cacf0dc94d57",
+          "upstream_path": "maple/lda_exc/lda_c_lp96.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_lp96.mpl"
+        },
+        "maple/lda_exc/lda_c_ml1.mpl": {
+          "sha256": "6da816a83bd76540a91570b02ec8ad4d9b9043e3aa2c935ec98cbcee9c6a52ea",
+          "upstream_path": "maple/lda_exc/lda_c_ml1.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_ml1.mpl"
+        },
+        "maple/lda_exc/lda_c_pk09.mpl": {
+          "sha256": "6c2fd95184598311e5b3ad6cbfe5aa1ae94a3517a024ba7f09b5efc2f6d87fa9",
+          "upstream_path": "maple/lda_exc/lda_c_pk09.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pk09.mpl"
+        },
+        "maple/lda_exc/lda_c_pmgb06.mpl": {
+          "sha256": "c6e5d497b4f4a90921962124f40ec7d69321c541b0ec6f1aa32d35057a1cb5f2",
+          "upstream_path": "maple/lda_exc/lda_c_pmgb06.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pmgb06.mpl"
+        },
+        "maple/lda_exc/lda_c_pw.mpl": {
+          "sha256": "b32237332b2fec7a6cdc26a0006e5f6aff99d7ca9c8bc2369d3b155e7d3d0cdd",
+          "upstream_path": "maple/lda_exc/lda_c_pw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pw.mpl"
+        },
+        "maple/lda_exc/lda_c_pw_erf.mpl": {
+          "sha256": "8cb6053bba60a5124c71a35b981c9c415b7864c80daa0c714eec480287a48486",
+          "upstream_path": "maple/lda_exc/lda_c_pw_erf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pw_erf.mpl"
+        },
+        "maple/lda_exc/lda_c_pz.mpl": {
+          "sha256": "ae94630760acb51ac41eeb480f823bb837d6b76aba9c5df40112ec96dbeacd8d",
+          "upstream_path": "maple/lda_exc/lda_c_pz.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_pz.mpl"
+        },
+        "maple/lda_exc/lda_c_rc04.mpl": {
+          "sha256": "b58cc64226bbb9b972701884193273e475713635d1a67efc8c24fe10bd40b516",
+          "upstream_path": "maple/lda_exc/lda_c_rc04.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_rc04.mpl"
+        },
+        "maple/lda_exc/lda_c_rpa.mpl": {
+          "sha256": "656ecad5a35cd2313bed99b0258e16de7984d82291598f9b97e6497df64b821f",
+          "upstream_path": "maple/lda_exc/lda_c_rpa.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_rpa.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn.mpl": {
+          "sha256": "ee6d729b737a952adcfb6261a017398b3a99e1c781d75b814ec654f01280dcc6",
+          "upstream_path": "maple/lda_exc/lda_c_vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn_1.mpl": {
+          "sha256": "b0cf6b7198d2d6a9ddf3c790c27e434457f905beb031cf9d62b0faccec9f8be5",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_1.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_1.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn_2.mpl": {
+          "sha256": "5dfe44a3f8b13a082293cb72c2b64ab33b655da8a7c65916abf881fbc952c654",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_2.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn_3.mpl": {
+          "sha256": "f76d751869d668af359f5102e34dc1ec80724a54a2dc5002deb6ca12fb0366fd",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_3.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_3.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn_4.mpl": {
+          "sha256": "c6e2a0862106c3605b29f60fa2d42a55857e9a8a346fd63188a4d9e5f51d0526",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_4.mpl"
+        },
+        "maple/lda_exc/lda_c_vwn_rpa.mpl": {
+          "sha256": "0c35ccbce721122cf924b2ff85b2b7a47e248f709373b3dc184e585d1ce84ac9",
+          "upstream_path": "maple/lda_exc/lda_c_vwn_rpa.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_vwn_rpa.mpl"
+        },
+        "maple/lda_exc/lda_c_w20.mpl": {
+          "sha256": "e93192a389f53bfd5ed50fc1ef9594a8f4b4dd508dfb427a7397e64f44df3a98",
+          "upstream_path": "maple/lda_exc/lda_c_w20.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_w20.mpl"
+        },
+        "maple/lda_exc/lda_c_wigner.mpl": {
+          "sha256": "8d7c3b1f4d17526a19944d43a307e3b3ec675d0677e767c34e2fe8a56ed0a402",
+          "upstream_path": "maple/lda_exc/lda_c_wigner.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_c_wigner.mpl"
+        },
+        "maple/lda_exc/lda_k_gds08_worker.mpl": {
+          "sha256": "d599ca63fe5ad9b15038c45b2123cbe977387991dea23cc3fc49912966dc7381",
+          "upstream_path": "maple/lda_exc/lda_k_gds08_worker.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_k_gds08_worker.mpl"
+        },
+        "maple/lda_exc/lda_k_tf.mpl": {
+          "sha256": "5716b427aa24330f7eb21912626676f1fd5c001a1900efe85e280545d7788293",
+          "upstream_path": "maple/lda_exc/lda_k_tf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_k_tf.mpl"
+        },
+        "maple/lda_exc/lda_k_zlp.mpl": {
+          "sha256": "f0cd400c0e0e44df54204773a25187e3d7a00ec491fbd104a70ff2245248688f",
+          "upstream_path": "maple/lda_exc/lda_k_zlp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_k_zlp.mpl"
+        },
+        "maple/lda_exc/lda_x.mpl": {
+          "sha256": "34d3ff595018a13b258019f5c4e56da1fc6b65933ba739c746ac06a3a41a7170",
+          "upstream_path": "maple/lda_exc/lda_x.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x.mpl"
+        },
+        "maple/lda_exc/lda_x_1d_exponential.mpl": {
+          "sha256": "0da0bdfe5e4c9ec113f2a45284619846bc87ad3586fbf6b57e67a0fc609fd51b",
+          "upstream_path": "maple/lda_exc/lda_x_1d_exponential.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_1d_exponential.mpl"
+        },
+        "maple/lda_exc/lda_x_1d_soft.mpl": {
+          "sha256": "318dba351c7c6a51219eeca4b056fa5386fb2d001409112d0e97ecc98b1fd39c",
+          "upstream_path": "maple/lda_exc/lda_x_1d_soft.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_1d_soft.mpl"
+        },
+        "maple/lda_exc/lda_x_2d.mpl": {
+          "sha256": "a1d25087c2e222dbefa84320b5cd69e23b71f21a65869f5be621253f16d02af9",
+          "upstream_path": "maple/lda_exc/lda_x_2d.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_2d.mpl"
+        },
+        "maple/lda_exc/lda_x_erf.mpl": {
+          "sha256": "b1593bceea88e8bcc82cc33b266f7de17e8eb9b4c9220ee87eb10bed60f33c80",
+          "upstream_path": "maple/lda_exc/lda_x_erf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_erf.mpl"
+        },
+        "maple/lda_exc/lda_x_rel.mpl": {
+          "sha256": "174aad7bdb14cfd7c25ed96e4bf4e476020632c32e4cb31b2e33f1a08f2df8d5",
+          "upstream_path": "maple/lda_exc/lda_x_rel.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_rel.mpl"
+        },
+        "maple/lda_exc/lda_x_sloc.mpl": {
+          "sha256": "6558ef1cc582357a682fe3c38dd344f7b08a02583974dc45fcd7c08431e3b0f4",
+          "upstream_path": "maple/lda_exc/lda_x_sloc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_sloc.mpl"
+        },
+        "maple/lda_exc/lda_x_yukawa.mpl": {
+          "sha256": "c8ce5d8938d6fd3ddd90a49389ff5473466242207b91ebbe97d0a25735b98b66",
+          "upstream_path": "maple/lda_exc/lda_x_yukawa.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_x_yukawa.mpl"
+        },
+        "maple/lda_exc/lda_xc_1d_ehwlrg.mpl": {
+          "sha256": "948b139249020e078b85d462b45a9e0081bc76698e0f16528d37f47ed0067e47",
+          "upstream_path": "maple/lda_exc/lda_xc_1d_ehwlrg.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_xc_1d_ehwlrg.mpl"
+        },
+        "maple/lda_exc/lda_xc_ksdt.mpl": {
+          "sha256": "49a0650e6b36148e8b77c82479351a26a3dacf1ea6fa61644e1da3c03f9e7fcb",
+          "upstream_path": "maple/lda_exc/lda_xc_ksdt.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_xc_ksdt.mpl"
+        },
+        "maple/lda_exc/lda_xc_teter93.mpl": {
+          "sha256": "93378cbe14f817d0061cc3c5cf7cb739c7946013362698da56af88d63dea470e",
+          "upstream_path": "maple/lda_exc/lda_xc_teter93.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_xc_teter93.mpl"
+        },
+        "maple/lda_exc/lda_xc_zlp.mpl": {
+          "sha256": "33d15a46f733eb4943ed8cd8b6e3b2f8bdd01bf177ccb576645923b56fbfb5ec",
+          "upstream_path": "maple/lda_exc/lda_xc_zlp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_exc/lda_xc_zlp.mpl"
+        },
+        "maple/lda_vxc/lda_xc_tih.mpl": {
+          "sha256": "7213eb05fda434fb5b9d1b07762ec5b780cef41c463105445c798d3ac2e420b5",
+          "upstream_path": "maple/lda_vxc/lda_xc_tih.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/lda_vxc/lda_xc_tih.mpl"
+        },
+        "maple/mbeef.mpl": {
+          "sha256": "3dcd3f962cd3ce5ada0f8e57f7d2da6700a3273a47d22238c89e917a51e1f03e",
+          "upstream_path": "maple/mbeef.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mbeef.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_x_dldf.mpl": {
+          "sha256": "265650fdd34dd38400b6564c7340ef799d1169b0810ce95b3a8b323f72dbac39",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_x_dldf.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_x_dldf.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_x_js18.mpl": {
+          "sha256": "86e1c19489511a154ff70177c6e0ba37e7cfa37b792c70ebea04093dcc9e7d08",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_x_js18.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_x_js18.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_x_m05.mpl": {
+          "sha256": "77c5ec33a93b92a03b94c1136d9613df5078d24d7d7ddbfd20795d45543d233f",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_x_m05.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_x_m05.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_x_pjs18.mpl": {
+          "sha256": "414ca46811bacc60d8d5ec554ba8705400b6fbaa118fa163ac9555da7d270242",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_x_pjs18.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_x_pjs18.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_xc_gas22.mpl": {
+          "sha256": "a1463f6588534c0788025d548e91f1f677f17131fdedf59079fcbe32ead179e3",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_xc_gas22.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_xc_gas22.mpl"
+        },
+        "maple/mgga_exc/hyb_mgga_xc_wb97mv.mpl": {
+          "sha256": "52a120f7a7245aa73e50a126c4fbbc79619d54f55d8649911a08841e10c35a0f",
+          "upstream_path": "maple/mgga_exc/hyb_mgga_xc_wb97mv.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/hyb_mgga_xc_wb97mv.mpl"
+        },
+        "maple/mgga_exc/mgga_c_b88.mpl": {
+          "sha256": "698e7432f4e477850ed90f978e83a1003f67b138cc12ba43bc9f040381f63b36",
+          "upstream_path": "maple/mgga_exc/mgga_c_b88.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_b88.mpl"
+        },
+        "maple/mgga_exc/mgga_c_b94.mpl": {
+          "sha256": "94e426157307c7595a6e8155b8c79c132a74d4ac7091f4485c282886e47826b3",
+          "upstream_path": "maple/mgga_exc/mgga_c_b94.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_b94.mpl"
+        },
+        "maple/mgga_exc/mgga_c_bc95.mpl": {
+          "sha256": "a260c5a5a6ec15d50a6b8e6e76ee28f7d03ff8ba9b89401416e9eb3a45a777f3",
+          "upstream_path": "maple/mgga_exc/mgga_c_bc95.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_bc95.mpl"
+        },
+        "maple/mgga_exc/mgga_c_cc.mpl": {
+          "sha256": "43b873dd4e8b6c7dad860a32d4e019f22c7a94020ee4c527ade213fc88ad716b",
+          "upstream_path": "maple/mgga_exc/mgga_c_cc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_cc.mpl"
+        },
+        "maple/mgga_exc/mgga_c_ccalda.mpl": {
+          "sha256": "6592d3a29efcdfd37c67e16995c0f2ed4bea2a5ee54c813b6530d6d45472aca1",
+          "upstream_path": "maple/mgga_exc/mgga_c_ccalda.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_ccalda.mpl"
+        },
+        "maple/mgga_exc/mgga_c_cs.mpl": {
+          "sha256": "5cc47e4cde87d6dd2d392ccd5686a2c1d8f5738cf2bde4748dd1fe8799b8f097",
+          "upstream_path": "maple/mgga_exc/mgga_c_cs.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_cs.mpl"
+        },
+        "maple/mgga_exc/mgga_c_kcis.mpl": {
+          "sha256": "bf0f5bb671cdd015e42bd4b828d22cddf5f8438bb98785112ebb7338a7834260",
+          "upstream_path": "maple/mgga_exc/mgga_c_kcis.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_kcis.mpl"
+        },
+        "maple/mgga_exc/mgga_c_kcisk.mpl": {
+          "sha256": "f2f179dd1f8c33003fa42ea8a968a1acf18dbf11a6d83eb2d577b1bbe36987e5",
+          "upstream_path": "maple/mgga_exc/mgga_c_kcisk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_kcisk.mpl"
+        },
+        "maple/mgga_exc/mgga_c_ltapw.mpl": {
+          "sha256": "b2af90498b7afb1d16def5344e3b3a2a0e21d5ba3f7e219a5ff1a5b880d305ef",
+          "upstream_path": "maple/mgga_exc/mgga_c_ltapw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_ltapw.mpl"
+        },
+        "maple/mgga_exc/mgga_c_m05.mpl": {
+          "sha256": "25f74a58e3a80041776f3c0c044468306ef5a7ed33c72bcf2ce78ee12ebb8621",
+          "upstream_path": "maple/mgga_exc/mgga_c_m05.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_m05.mpl"
+        },
+        "maple/mgga_exc/mgga_c_m06l.mpl": {
+          "sha256": "e72f2225216c76d5a23ea7bcddb5ddc60e709d6d881ae3ea4dbe62b210910b50",
+          "upstream_path": "maple/mgga_exc/mgga_c_m06l.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_m06l.mpl"
+        },
+        "maple/mgga_exc/mgga_c_m08.mpl": {
+          "sha256": "48c37c5a91d8a9ea2103cdc9be1b96150a8deadf8c9f6f498cd64205df02c3dd",
+          "upstream_path": "maple/mgga_exc/mgga_c_m08.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_m08.mpl"
+        },
+        "maple/mgga_exc/mgga_c_pkzb.mpl": {
+          "sha256": "339c0c24685e3cf9770580e1d461a5f7326afc84ca29253bd9198e09985876a6",
+          "upstream_path": "maple/mgga_exc/mgga_c_pkzb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_pkzb.mpl"
+        },
+        "maple/mgga_exc/mgga_c_r2scan.mpl": {
+          "sha256": "cc5956e4822614f7b3e294bb4b7ba390b9579b4247c6c0bbe9d54385184f12b0",
+          "upstream_path": "maple/mgga_exc/mgga_c_r2scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_r2scan.mpl"
+        },
+        "maple/mgga_exc/mgga_c_revscan.mpl": {
+          "sha256": "f045739c41278cc016e07396dfa38821aab18430154fb7621d6fd69e036fe305",
+          "upstream_path": "maple/mgga_exc/mgga_c_revscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_revscan.mpl"
+        },
+        "maple/mgga_exc/mgga_c_revtpss.mpl": {
+          "sha256": "e1f6cf2bb1a0176f6383bfe1a2bec55cea075e7fb576055ae6c3ca661e322f22",
+          "upstream_path": "maple/mgga_exc/mgga_c_revtpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_revtpss.mpl"
+        },
+        "maple/mgga_exc/mgga_c_rmggac.mpl": {
+          "sha256": "c0fb262265aaa0d25826ab1a3dfc8ab6f7e5ea2b4b1a8df54fdef3e8b05bd035",
+          "upstream_path": "maple/mgga_exc/mgga_c_rmggac.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_rmggac.mpl"
+        },
+        "maple/mgga_exc/mgga_c_rppscan.mpl": {
+          "sha256": "d9adc1b2702f12c8f0b6e283433dd786f33b46733963067eef7f4d1e4997341a",
+          "upstream_path": "maple/mgga_exc/mgga_c_rppscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_rppscan.mpl"
+        },
+        "maple/mgga_exc/mgga_c_rregtm.mpl": {
+          "sha256": "541d595b59cebbebb559f359b477af9fe46317b23b856f55ee5d741b5cb8a79c",
+          "upstream_path": "maple/mgga_exc/mgga_c_rregtm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_rregtm.mpl"
+        },
+        "maple/mgga_exc/mgga_c_rscan.mpl": {
+          "sha256": "1d7e0d079847ead63a3bcbed638d759f60110b0c6e7c72dec2bdbc474bf28a7e",
+          "upstream_path": "maple/mgga_exc/mgga_c_rscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_rscan.mpl"
+        },
+        "maple/mgga_exc/mgga_c_scan.mpl": {
+          "sha256": "7edcb51f884b565c8fa5a5dd3c1fb94ee0ea6ed29fe1f2a77bc029d42f8d3edf",
+          "upstream_path": "maple/mgga_exc/mgga_c_scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_scan.mpl"
+        },
+        "maple/mgga_exc/mgga_c_tpss.mpl": {
+          "sha256": "a64063e7586a158e3a95eed43f8efc74b4e2a4c91e98e4887b06988823d132a5",
+          "upstream_path": "maple/mgga_exc/mgga_c_tpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_tpss.mpl"
+        },
+        "maple/mgga_exc/mgga_c_tpssloc.mpl": {
+          "sha256": "1d6885a49062af1695afbc06d97cb2c1ea2f81388f54edc080f9b133eda1b5c4",
+          "upstream_path": "maple/mgga_exc/mgga_c_tpssloc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_tpssloc.mpl"
+        },
+        "maple/mgga_exc/mgga_c_vsxc.mpl": {
+          "sha256": "6cc3efa3de9caf0518adbd9381ddce3e4068e67376d6490bfd4480fb7b88df36",
+          "upstream_path": "maple/mgga_exc/mgga_c_vsxc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_c_vsxc.mpl"
+        },
+        "maple/mgga_exc/mgga_k_csk.mpl": {
+          "sha256": "3b254819737138575aa7055c704b5af9c23ea55687dfc72ac3eb218d69401644",
+          "upstream_path": "maple/mgga_exc/mgga_k_csk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_csk.mpl"
+        },
+        "maple/mgga_exc/mgga_k_csk_loc.mpl": {
+          "sha256": "6494fed66b209ec22076f916c09b7ccd874947a48792f3683faa255f2c2a5671",
+          "upstream_path": "maple/mgga_exc/mgga_k_csk_loc.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_csk_loc.mpl"
+        },
+        "maple/mgga_exc/mgga_k_gea2.mpl": {
+          "sha256": "b4973310a4f91927e4a973a57aee922daf7b6a4cdb60077180e58540c8c7c065",
+          "upstream_path": "maple/mgga_exc/mgga_k_gea2.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_gea2.mpl"
+        },
+        "maple/mgga_exc/mgga_k_gea4.mpl": {
+          "sha256": "7cb6c01736b67a2df0817f25caf7e5c95dd046a5ab1b87e3db238fcf4267abb4",
+          "upstream_path": "maple/mgga_exc/mgga_k_gea4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_gea4.mpl"
+        },
+        "maple/mgga_exc/mgga_k_lk.mpl": {
+          "sha256": "0d11e82b4880e7291b64db5e84367cde1d4811a0b536a861b6216ea52134f970",
+          "upstream_path": "maple/mgga_exc/mgga_k_lk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_lk.mpl"
+        },
+        "maple/mgga_exc/mgga_k_pc07.mpl": {
+          "sha256": "5cc86df72e37da4872b57b7f69e91a96ceca1a45f4572d6143521a4fc97414f2",
+          "upstream_path": "maple/mgga_exc/mgga_k_pc07.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_pc07.mpl"
+        },
+        "maple/mgga_exc/mgga_k_pgslb.mpl": {
+          "sha256": "080841b99344a7a372407e2a5691b8cff713a5c803db4e36cbd00b9a866b2982",
+          "upstream_path": "maple/mgga_exc/mgga_k_pgslb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_pgslb.mpl"
+        },
+        "maple/mgga_exc/mgga_k_rda.mpl": {
+          "sha256": "5e4569682871b201c000ef9692ba86d9055515362349730d3a29852088e0f3f9",
+          "upstream_path": "maple/mgga_exc/mgga_k_rda.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_k_rda.mpl"
+        },
+        "maple/mgga_exc/mgga_x_2d_js17.mpl": {
+          "sha256": "79da245946cf76cb636ba92229696c6920742a7fba39c9be9e0c0f650d76ee83",
+          "upstream_path": "maple/mgga_exc/mgga_x_2d_js17.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_2d_js17.mpl"
+        },
+        "maple/mgga_exc/mgga_x_2d_prhg07.mpl": {
+          "sha256": "1f69e3a155049b9600b96a9d5b03fd7be95e99f84cbbce8f93cf0b7043a49379",
+          "upstream_path": "maple/mgga_exc/mgga_x_2d_prhg07.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_2d_prhg07.mpl"
+        },
+        "maple/mgga_exc/mgga_x_br89.mpl": {
+          "sha256": "4314c196de098e56d089f812577e296370482b1faa29e04fd35bd8321b423da1",
+          "upstream_path": "maple/mgga_exc/mgga_x_br89.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_br89.mpl"
+        },
+        "maple/mgga_exc/mgga_x_br89_explicit.mpl": {
+          "sha256": "07768e968e12897a7a86cf9835d9c749321cd6535da63330a89427f527cb01f5",
+          "upstream_path": "maple/mgga_exc/mgga_x_br89_explicit.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_br89_explicit.mpl"
+        },
+        "maple/mgga_exc/mgga_x_edmgga.mpl": {
+          "sha256": "1692a12adfb30cfffbc76606257151924c6993bd49ea0eaa41511b3824e26bef",
+          "upstream_path": "maple/mgga_exc/mgga_x_edmgga.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_edmgga.mpl"
+        },
+        "maple/mgga_exc/mgga_x_eel.mpl": {
+          "sha256": "ec84d5b0dc8dcc9896c705a0772a493d09f4f27274f1af449ca1d302e8875f58",
+          "upstream_path": "maple/mgga_exc/mgga_x_eel.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_eel.mpl"
+        },
+        "maple/mgga_exc/mgga_x_ft98.mpl": {
+          "sha256": "30d4452b861559b23f31a7baf47256c4a95e04227b7adb9e85d6237a3bf2480b",
+          "upstream_path": "maple/mgga_exc/mgga_x_ft98.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_ft98.mpl"
+        },
+        "maple/mgga_exc/mgga_x_gdme.mpl": {
+          "sha256": "0e756cefef43707bf91d4d250d58c3db3113bc771aae6da90b001363cd8f4dc9",
+          "upstream_path": "maple/mgga_exc/mgga_x_gdme.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_gdme.mpl"
+        },
+        "maple/mgga_exc/mgga_x_gvt4.mpl": {
+          "sha256": "4282c49bc85a3231b985ec7a190896a5c5b8d76a2e8983445b7ca8133661d70f",
+          "upstream_path": "maple/mgga_exc/mgga_x_gvt4.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_gvt4.mpl"
+        },
+        "maple/mgga_exc/mgga_x_gx.mpl": {
+          "sha256": "405c947ac592d4856411ee51823f3d611f08079f5ea1da3749854e652f98d91c",
+          "upstream_path": "maple/mgga_exc/mgga_x_gx.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_gx.mpl"
+        },
+        "maple/mgga_exc/mgga_x_jk.mpl": {
+          "sha256": "f9988493ab33c6a50f048ed6f35b5a144c1bec2d2a65c2534d17389d6401c45f",
+          "upstream_path": "maple/mgga_exc/mgga_x_jk.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_jk.mpl"
+        },
+        "maple/mgga_exc/mgga_x_ktbm.mpl": {
+          "sha256": "96fb3e968c66d13e9a40ecf540515d8369194a13c9a15934bc296be9e8933e38",
+          "upstream_path": "maple/mgga_exc/mgga_x_ktbm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_ktbm.mpl"
+        },
+        "maple/mgga_exc/mgga_x_lak.mpl": {
+          "sha256": "3179bfabce93d42b1773ed2d5cb22db34954d0036b0e16c930c1ffec7225b554",
+          "upstream_path": "maple/mgga_exc/mgga_x_lak.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_lak.mpl"
+        },
+        "maple/mgga_exc/mgga_x_lta.mpl": {
+          "sha256": "5f2500b16d32739888989b0286044c144966d8e506ac750c6921b9fb6151949a",
+          "upstream_path": "maple/mgga_exc/mgga_x_lta.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_lta.mpl"
+        },
+        "maple/mgga_exc/mgga_x_m06l.mpl": {
+          "sha256": "d9dee8f53518d02eacd5d463065e17b9b1ba9f9be5cefe398d1b7d4591ecbeea",
+          "upstream_path": "maple/mgga_exc/mgga_x_m06l.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_m06l.mpl"
+        },
+        "maple/mgga_exc/mgga_x_m08.mpl": {
+          "sha256": "2f7e1870fb2d14e168208385408b7c216fa89009a45c47ab360a0c112c2eaf34",
+          "upstream_path": "maple/mgga_exc/mgga_x_m08.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_m08.mpl"
+        },
+        "maple/mgga_exc/mgga_x_m11.mpl": {
+          "sha256": "f80b1b7d34251eb0c546b9fa8c1735678a9532108d990290c46d0d4e240dc894",
+          "upstream_path": "maple/mgga_exc/mgga_x_m11.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_m11.mpl"
+        },
+        "maple/mgga_exc/mgga_x_m11_l.mpl": {
+          "sha256": "9ced1b5945146688ae40156212c23163e957685ac0fd2375824086e9ada8231a",
+          "upstream_path": "maple/mgga_exc/mgga_x_m11_l.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_m11_l.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mbeef.mpl": {
+          "sha256": "2e522eadf1144e704fb335b605ead72c6acf9d7ec13a7b17808f316d9ab2a91c",
+          "upstream_path": "maple/mgga_exc/mgga_x_mbeef.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mbeef.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mbeefvdw.mpl": {
+          "sha256": "72095454cd7857b64bdf71c059f99600813d7ac019c8249317e4d74dc68b940e",
+          "upstream_path": "maple/mgga_exc/mgga_x_mbeefvdw.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mbeefvdw.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mbr.mpl": {
+          "sha256": "ce2cd35c7031be929b6465be594bb85528368ca79d9ff0c99559526e4b047289",
+          "upstream_path": "maple/mgga_exc/mgga_x_mbr.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mbr.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mbrxc_bg.mpl": {
+          "sha256": "2f301fc0f155daad156575e225cf10475ad59d89f75dd564dc88d0afea7aa35d",
+          "upstream_path": "maple/mgga_exc/mgga_x_mbrxc_bg.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mbrxc_bg.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mbrxh_bg.mpl": {
+          "sha256": "228480e7583a10369e3b2c051906b49f0539001147a7884076a27a141028ab9e",
+          "upstream_path": "maple/mgga_exc/mgga_x_mbrxh_bg.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mbrxh_bg.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mcml.mpl": {
+          "sha256": "b6ac9c151394bb296e81ab4e1baa349a0c1d19b369fb30f6c3b88f6bf3634a3f",
+          "upstream_path": "maple/mgga_exc/mgga_x_mcml.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mcml.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mggac.mpl": {
+          "sha256": "908bbe397554bccd0cba29b3a636ad99f96a546cf626e86bf88f799bae81546d",
+          "upstream_path": "maple/mgga_exc/mgga_x_mggac.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mggac.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mn12.mpl": {
+          "sha256": "9140b454d001c7732b94ee2822272803249748769c1ef56d3cd56cc5a919b345",
+          "upstream_path": "maple/mgga_exc/mgga_x_mn12.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mn12.mpl"
+        },
+        "maple/mgga_exc/mgga_x_ms.mpl": {
+          "sha256": "cdcafa03ed6a1bf15c1430086a865221f70b2e1725cb67da21eead4ce3337bde",
+          "upstream_path": "maple/mgga_exc/mgga_x_ms.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_ms.mpl"
+        },
+        "maple/mgga_exc/mgga_x_msb.mpl": {
+          "sha256": "805f3d3f8e124c3dbcfb64acc67a1827c304c69b2f5c4b4366d430cdebfd7931",
+          "upstream_path": "maple/mgga_exc/mgga_x_msb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_msb.mpl"
+        },
+        "maple/mgga_exc/mgga_x_msb86bl.mpl": {
+          "sha256": "1510e1feb338998b2d724bda6521cd53656f40f7913791403d94e17f4271b5bb",
+          "upstream_path": "maple/mgga_exc/mgga_x_msb86bl.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_msb86bl.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mspbel.mpl": {
+          "sha256": "e7bfc6a150c25862c4c1e2f27ce2cae2115177dc3c2ca4b2ec634cf53467a82a",
+          "upstream_path": "maple/mgga_exc/mgga_x_mspbel.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mspbel.mpl"
+        },
+        "maple/mgga_exc/mgga_x_msrpbel.mpl": {
+          "sha256": "4e5b41bc5046801d0a8ea0a8ef632c3981eb94cf0884a0257c1d5878f228f51d",
+          "upstream_path": "maple/mgga_exc/mgga_x_msrpbel.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_msrpbel.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mvs.mpl": {
+          "sha256": "4e66d3d2d0021d81fb82896e35e3367d2371e4643bab4e0ea19fef3d1238888d",
+          "upstream_path": "maple/mgga_exc/mgga_x_mvs.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mvs.mpl"
+        },
+        "maple/mgga_exc/mgga_x_mvsb.mpl": {
+          "sha256": "161d92dbaf00cf54ca926d08ba23d72d8dd033e3ae15154ccea1f35eb47863ab",
+          "upstream_path": "maple/mgga_exc/mgga_x_mvsb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_mvsb.mpl"
+        },
+        "maple/mgga_exc/mgga_x_pbe_gx.mpl": {
+          "sha256": "9b95401fbcff33ef885bd21649392130835d6091f4c87722f4306658756faaf8",
+          "upstream_path": "maple/mgga_exc/mgga_x_pbe_gx.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_pbe_gx.mpl"
+        },
+        "maple/mgga_exc/mgga_x_pkzb.mpl": {
+          "sha256": "6e64971c3895bceaac10bb90d1c81f4364ecf2811a6427b0e173545b5e7c7067",
+          "upstream_path": "maple/mgga_exc/mgga_x_pkzb.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_pkzb.mpl"
+        },
+        "maple/mgga_exc/mgga_x_r2scan.mpl": {
+          "sha256": "a1288820e0e39c69d891d423531bbe82deda0b2cf3968319bea09f91bc38b34f",
+          "upstream_path": "maple/mgga_exc/mgga_x_r2scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_r2scan.mpl"
+        },
+        "maple/mgga_exc/mgga_x_r4scan.mpl": {
+          "sha256": "5a7a47697348f341cce603ffd04d997ab994680311906128d741b3c3df33e2c9",
+          "upstream_path": "maple/mgga_exc/mgga_x_r4scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_r4scan.mpl"
+        },
+        "maple/mgga_exc/mgga_x_regtm.mpl": {
+          "sha256": "21a8162a2c65958051856693f748befb1927169198a2a2fa42925e6c0256c460",
+          "upstream_path": "maple/mgga_exc/mgga_x_regtm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_regtm.mpl"
+        },
+        "maple/mgga_exc/mgga_x_regtpss.mpl": {
+          "sha256": "cd1195dad603f189f9c3296dbd3fecf97c850a94116b8987b3e5bda1c7503535",
+          "upstream_path": "maple/mgga_exc/mgga_x_regtpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_regtpss.mpl"
+        },
+        "maple/mgga_exc/mgga_x_revtm.mpl": {
+          "sha256": "98b9a60bf6908106242b15c04c7bbf57686a6eda028af5aeb2754e509fdb55a0",
+          "upstream_path": "maple/mgga_exc/mgga_x_revtm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_revtm.mpl"
+        },
+        "maple/mgga_exc/mgga_x_rlda.mpl": {
+          "sha256": "6d5f9ab54fd4079421be47519fe73eaa4ba6854dcef4e66befeffd830851337a",
+          "upstream_path": "maple/mgga_exc/mgga_x_rlda.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_rlda.mpl"
+        },
+        "maple/mgga_exc/mgga_x_rppscan.mpl": {
+          "sha256": "e4d8d38a683488685520c147fd14e8c5ff2ad26b9b44e9405822b2e233eca019",
+          "upstream_path": "maple/mgga_exc/mgga_x_rppscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_rppscan.mpl"
+        },
+        "maple/mgga_exc/mgga_x_rscan.mpl": {
+          "sha256": "50002ea1c1057ca04aedd2bb50a13d40d0781e935eb85b6283dac531564d68f2",
+          "upstream_path": "maple/mgga_exc/mgga_x_rscan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_rscan.mpl"
+        },
+        "maple/mgga_exc/mgga_x_rtpss.mpl": {
+          "sha256": "12d0574ce891919703fbb988dbfef2625c3fa88331f48aaacf7881252816fd8b",
+          "upstream_path": "maple/mgga_exc/mgga_x_rtpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_rtpss.mpl"
+        },
+        "maple/mgga_exc/mgga_x_sa_tpss.mpl": {
+          "sha256": "fc27d569a44179c4cb7157200d526e490300daa819a61f91f0e9fdd61f31e972",
+          "upstream_path": "maple/mgga_exc/mgga_x_sa_tpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_sa_tpss.mpl"
+        },
+        "maple/mgga_exc/mgga_x_scan.mpl": {
+          "sha256": "238e6b7a2294de9aa24f3dea054b7dfd44ca42f1235932bb71987b9dde4e0f7a",
+          "upstream_path": "maple/mgga_exc/mgga_x_scan.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_scan.mpl"
+        },
+        "maple/mgga_exc/mgga_x_task.mpl": {
+          "sha256": "7a85c18b67068ca6f0a6bfb6f4bd691c2033c81357de3a54e59ec9d693cf3c02",
+          "upstream_path": "maple/mgga_exc/mgga_x_task.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_task.mpl"
+        },
+        "maple/mgga_exc/mgga_x_tau_hcth.mpl": {
+          "sha256": "b844aad02c0afafa4649adcea2dd88db7c4c7dc07aa60f30e694a39ea4d02e8a",
+          "upstream_path": "maple/mgga_exc/mgga_x_tau_hcth.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_tau_hcth.mpl"
+        },
+        "maple/mgga_exc/mgga_x_th.mpl": {
+          "sha256": "f4d741ef2f529ff3ebd79376291dc92438f1d45cb20cf365a17f58f9cc82b0dc",
+          "upstream_path": "maple/mgga_exc/mgga_x_th.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_th.mpl"
+        },
+        "maple/mgga_exc/mgga_x_tm.mpl": {
+          "sha256": "f10ad88382ea89ddf28dbbb18134f9f674b32d47877540eaaba6add6d7b87130",
+          "upstream_path": "maple/mgga_exc/mgga_x_tm.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_tm.mpl"
+        },
+        "maple/mgga_exc/mgga_x_tpss.mpl": {
+          "sha256": "10fc077e255fd671d653fd776cb114ce4ff6d1a521b00406c3539bb5407e08d7",
+          "upstream_path": "maple/mgga_exc/mgga_x_tpss.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_tpss.mpl"
+        },
+        "maple/mgga_exc/mgga_x_vcml.mpl": {
+          "sha256": "0a7f3ecf920076049c507486e7a07a292c338a69dbd1cfe9d1db6b0d657b76b2",
+          "upstream_path": "maple/mgga_exc/mgga_x_vcml.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_vcml.mpl"
+        },
+        "maple/mgga_exc/mgga_x_vt84.mpl": {
+          "sha256": "c0b6b901e2154c670e38ff55972d2b82f8ac072e042d8020e9e7c6eac11749e2",
+          "upstream_path": "maple/mgga_exc/mgga_x_vt84.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_x_vt84.mpl"
+        },
+        "maple/mgga_exc/mgga_xc_b97mv.mpl": {
+          "sha256": "7dd154d0088c301904682a6fea97a27a4ba28f1dff23ab50f38b91d0c00acd4b",
+          "upstream_path": "maple/mgga_exc/mgga_xc_b97mv.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_xc_b97mv.mpl"
+        },
+        "maple/mgga_exc/mgga_xc_b98.mpl": {
+          "sha256": "63d1fd600d6b85601f54e9b32071e4c4c6b86b4b80d4598c83e21682431f6260",
+          "upstream_path": "maple/mgga_exc/mgga_xc_b98.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_xc_b98.mpl"
+        },
+        "maple/mgga_exc/mgga_xc_cc06.mpl": {
+          "sha256": "6d637dd68731c342945badc3dcadffc569e43cbf9f7e723950aee3e3772f93d0",
+          "upstream_path": "maple/mgga_exc/mgga_xc_cc06.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_xc_cc06.mpl"
+        },
+        "maple/mgga_exc/mgga_xc_lp90.mpl": {
+          "sha256": "3d2a458beeddd97a7348bbe66c08b2fd80bdadc5106de8b246bab7d577894e0a",
+          "upstream_path": "maple/mgga_exc/mgga_xc_lp90.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_xc_lp90.mpl"
+        },
+        "maple/mgga_exc/mgga_xc_zlp.mpl": {
+          "sha256": "8bec63b8c76e37f5abea606fd941fb25f1877867d18561d8b5a0f4d18be097a6",
+          "upstream_path": "maple/mgga_exc/mgga_xc_zlp.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_exc/mgga_xc_zlp.mpl"
+        },
+        "maple/mgga_vxc/mgga_x_2d_prp10.mpl": {
+          "sha256": "b52b73f9f5269c7840f63ae77e8b4a75c8d9c7b6f1d7f3794d2a4eae52329b93",
+          "upstream_path": "maple/mgga_vxc/mgga_x_2d_prp10.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_vxc/mgga_x_2d_prp10.mpl"
+        },
+        "maple/mgga_vxc/mgga_x_tb09.mpl": {
+          "sha256": "7eeb0d28de7d14b02dd26bb8832307fc756b73635e5b924dc7db3e34cad7f600",
+          "upstream_path": "maple/mgga_vxc/mgga_x_tb09.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/mgga_vxc/mgga_x_tb09.mpl"
+        },
+        "maple/op.mpl": {
+          "sha256": "3eda48dd26c9cac69c0f12fb5d8691b1f3441ab0e54dd79d990dd1c411c893e8",
+          "upstream_path": "maple/op.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/op.mpl"
+        },
+        "maple/scaling.mpl": {
+          "sha256": "f31206a129f9fb65120f3d35eb1f7da418a4e506eb60af7af59430fafa96c34a",
+          "upstream_path": "maple/scaling.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/scaling.mpl"
+        },
+        "maple/th.mpl": {
+          "sha256": "da1b14fec5b611a9cf48e0ba16062e7a11bf4e0be31c5ea6bdda38f5e988837d",
+          "upstream_path": "maple/th.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/th.mpl"
+        },
+        "maple/tpss_c.mpl": {
+          "sha256": "1668738bd3bfba5c71e9701c420a850248140ebb235e32d8f748317f4623f2b7",
+          "upstream_path": "maple/tpss_c.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/tpss_c.mpl"
+        },
+        "maple/tpss_x.mpl": {
+          "sha256": "cf925ccb2546f62b5da676597d85a49ccb95330a213a97c1011d1e2b3f627841",
+          "upstream_path": "maple/tpss_x.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/tpss_x.mpl"
+        },
+        "maple/util.mpl": {
+          "sha256": "c9790afb37c7eece47d39d0998196335a1adb857bdba814fac4b8937801a04fe",
+          "upstream_path": "maple/util.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/util.mpl"
+        },
+        "maple/vwn.mpl": {
+          "sha256": "9b323c53526caac537ee57f73640b8cf9fd2768fca2d4634ee8d37978d480197",
+          "upstream_path": "maple/vwn.mpl",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/vwn.mpl"
+        },
+        "src/functionals.c": {
+          "sha256": "0e4596fb62e283ebd05ccd400ea2977b28d91d6915db90199ddd0e5297185f65",
+          "upstream_path": "src/functionals.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/functionals.c"
+        },
+        "src/gga_c_acgga.c": {
+          "sha256": "3012a3533bdd0d7afab1ae367377def920d3202e1730e6f83186c1df45aea669",
+          "upstream_path": "src/gga_c_acgga.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_acgga.c"
+        },
+        "src/gga_c_acggap.c": {
+          "sha256": "1978b5284d01e27cec72951824143b7b1e7f1b3a3fd013280fae4744a1b48c12",
+          "upstream_path": "src/gga_c_acggap.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_acggap.c"
+        },
+        "src/gga_c_am05.c": {
+          "sha256": "ab4cc727e4cdcccc726cc2ddabfc2efc5fee75821ce247d7f8435f5192887a3d",
+          "upstream_path": "src/gga_c_am05.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_am05.c"
+        },
+        "src/gga_c_bmk.c": {
+          "sha256": "a20d6db03313530a9cba792fc955be64e73c18d10f6dfed9d4f8355cfd3ba7c0",
+          "upstream_path": "src/gga_c_bmk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_bmk.c"
+        },
+        "src/gga_c_ccdf.c": {
+          "sha256": "74100bc598a9046c88373f651c1ce6a86086e59fc70f9e2d22b8768d26c6b30f",
+          "upstream_path": "src/gga_c_ccdf.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_ccdf.c"
+        },
+        "src/gga_c_chachiyo.c": {
+          "sha256": "dbf4059530022d0cb10ed981dff9b04ee1895ad1ca7feacde36042218002dbcb",
+          "upstream_path": "src/gga_c_chachiyo.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_chachiyo.c"
+        },
+        "src/gga_c_cs1.c": {
+          "sha256": "3524a93634c108779fe6b1677eed85acd5b252f4548de732583e4e63a84c232a",
+          "upstream_path": "src/gga_c_cs1.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_cs1.c"
+        },
+        "src/gga_c_ft97.c": {
+          "sha256": "f1f3654ec27130d05b3aa4b17615c946f98ea97697b85ea59d414a581d0dcc9d",
+          "upstream_path": "src/gga_c_ft97.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_ft97.c"
+        },
+        "src/gga_c_gapc.c": {
+          "sha256": "291b9ea869ffdbf2677014f68ec6808549c9cfcf9e1a11eb0e9c8439b3a8b8c6",
+          "upstream_path": "src/gga_c_gapc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_gapc.c"
+        },
+        "src/gga_c_gaploc.c": {
+          "sha256": "d09978f5a4c1fed38505cf4149c19b70b8cd8cf4c8057f940544e53c03e698a1",
+          "upstream_path": "src/gga_c_gaploc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_gaploc.c"
+        },
+        "src/gga_c_hcth_a.c": {
+          "sha256": "c2d2611a7810ff12d04a90d7404b851e1184d5079ddb13c1ce8bd79a7ffeaab1",
+          "upstream_path": "src/gga_c_hcth_a.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_hcth_a.c"
+        },
+        "src/gga_c_lm.c": {
+          "sha256": "11d5446e2aa1d6cebe43dd67fdd9bd1304ea95c0db72d552dbdea785342ebc17",
+          "upstream_path": "src/gga_c_lm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lm.c"
+        },
+        "src/gga_c_lyp.c": {
+          "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
+          "upstream_path": "src/gga_c_lyp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lyp.c"
+        },
+        "src/gga_c_lypr.c": {
+          "sha256": "4c3beb62e808c3b6eb51d982d7816f1b6ce3a02e7947c17e97b80eef70542c7e",
+          "upstream_path": "src/gga_c_lypr.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_lypr.c"
+        },
+        "src/gga_c_op_b88.c": {
+          "sha256": "1151822fdae354b3eb42d4d1eeb4201660b9c32497bb8e42963ded48d10a6a12",
+          "upstream_path": "src/gga_c_op_b88.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_op_b88.c"
+        },
+        "src/gga_c_op_g96.c": {
+          "sha256": "f710d365819fa3db4458bc30d1ef28ba142256a4abbb1fed79277a2b378226b8",
+          "upstream_path": "src/gga_c_op_g96.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_op_g96.c"
+        },
+        "src/gga_c_op_pbe.c": {
+          "sha256": "a61e011f059210e088e61d945f8ef3cdb3991d11bf815979b344478b5143e61f",
+          "upstream_path": "src/gga_c_op_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_op_pbe.c"
+        },
+        "src/gga_c_op_pw91.c": {
+          "sha256": "b597ea173baf1aad5e7a48d538524c3ed1346a314460ccca0af3eb6e70d73565",
+          "upstream_path": "src/gga_c_op_pw91.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_op_pw91.c"
+        },
+        "src/gga_c_op_xalpha.c": {
+          "sha256": "b991e31801f6860661f9e4451ed11534f8059f3f5aae35f0ff39d37e525b492b",
+          "upstream_path": "src/gga_c_op_xalpha.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_op_xalpha.c"
+        },
+        "src/gga_c_optc.c": {
+          "sha256": "283e7aa7bfffcb0e9064b2bca1663f89942dbb5759bfbc000ba586abe3c66d80",
+          "upstream_path": "src/gga_c_optc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_optc.c"
+        },
+        "src/gga_c_p86.c": {
+          "sha256": "52be42531551867932584fd8180f003a2a5607db9fc147e68f93e02d4acf8ab7",
+          "upstream_path": "src/gga_c_p86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_p86.c"
+        },
+        "src/gga_c_p86vwn.c": {
+          "sha256": "3ae1a26a394a193aa9e3375aa898c4b4e66257ba9bbae0feab740419737b926d",
+          "upstream_path": "src/gga_c_p86vwn.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_p86vwn.c"
+        },
+        "src/gga_c_pbe.c": {
+          "sha256": "d449da1e327e5c5c17dc50174c25793aeea1876c4d1250d53ae12ded3e6395da",
+          "upstream_path": "src/gga_c_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbe.c"
+        },
+        "src/gga_c_pbe_erf_gws.c": {
+          "sha256": "4ed86d16ca1e719be71a9892fb6b1a6ddeff81e6b2c3a7e3b3adc6e3ea00c9f3",
+          "upstream_path": "src/gga_c_pbe_erf_gws.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbe_erf_gws.c"
+        },
+        "src/gga_c_pbe_vwn.c": {
+          "sha256": "bec0cdd55467049396c938b35876358886fd979e57b8939ae69c6b724122e49e",
+          "upstream_path": "src/gga_c_pbe_vwn.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbe_vwn.c"
+        },
+        "src/gga_c_pbeloc.c": {
+          "sha256": "4c91dcb0dd9769eb606de7b36bb6e138e6975892880b44705f7f5c7e96eca840",
+          "upstream_path": "src/gga_c_pbeloc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pbeloc.c"
+        },
+        "src/gga_c_pw91.c": {
+          "sha256": "003761f8740b4bb3b8fe25a0007127c5743bf9f8a4660ae1bbda116feae15db7",
+          "upstream_path": "src/gga_c_pw91.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_pw91.c"
+        },
+        "src/gga_c_q2d.c": {
+          "sha256": "b9f5a44065c97e663a5928fe0d6ab92386015d1c6d48e131c9ee01ea7b66f8df",
+          "upstream_path": "src/gga_c_q2d.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_q2d.c"
+        },
+        "src/gga_c_regtpss.c": {
+          "sha256": "b77c7e0bdcd4d57c5004695826f1193f12d1f92e2815ae84e62105372adf4174",
+          "upstream_path": "src/gga_c_regtpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_regtpss.c"
+        },
+        "src/gga_c_revtca.c": {
+          "sha256": "27c60bc66bf3209e7b4fafa5be829fcd4a260d2e32613f8f8bdf9ecf40eb447f",
+          "upstream_path": "src/gga_c_revtca.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_revtca.c"
+        },
+        "src/gga_c_scan_e0.c": {
+          "sha256": "4098cd1552c51618ab58c4a36f82c7190531df9c0eb4b9005732a1969ab0b6ba",
+          "upstream_path": "src/gga_c_scan_e0.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_scan_e0.c"
+        },
+        "src/gga_c_sg4.c": {
+          "sha256": "223b3fcb3abdae29d57f6c9a579c26a7b6ddf2a8de2a14b2770e9d2a10f558cd",
+          "upstream_path": "src/gga_c_sg4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_sg4.c"
+        },
+        "src/gga_c_sogga11.c": {
+          "sha256": "9c26efa3106d18ff5006af4abdc89a477c4f8aa50d3894b6c6cc0041cce0b2e0",
+          "upstream_path": "src/gga_c_sogga11.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_sogga11.c"
+        },
+        "src/gga_c_tca.c": {
+          "sha256": "92ee89a758878bc2f51e63ee527b8ac5d9b6d3e004f13cd9ddeaefa7aeda3963",
+          "upstream_path": "src/gga_c_tca.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_tca.c"
+        },
+        "src/gga_c_w94.c": {
+          "sha256": "9d80bdfc47956eb12028d69908b83add34db0afb85aec2bcd1ee552a6118601c",
+          "upstream_path": "src/gga_c_w94.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_w94.c"
+        },
+        "src/gga_c_wi.c": {
+          "sha256": "1adac2892c19999628260beccdf79cd5bb0df31d7bd06b1c4f1fce655ce1d387",
+          "upstream_path": "src/gga_c_wi.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_wi.c"
+        },
+        "src/gga_c_wl.c": {
+          "sha256": "e9d3a79193a1f1f60ce45e1319ea0d973e3c18806e7a48acfcfc24e69e5a1096",
+          "upstream_path": "src/gga_c_wl.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_wl.c"
+        },
+        "src/gga_c_zpbeint.c": {
+          "sha256": "ccf72c607fd0dd858c9c9cb062d75754488b3cf4ae891b34ae534d011ea13a73",
+          "upstream_path": "src/gga_c_zpbeint.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_zpbeint.c"
+        },
+        "src/gga_c_zvpbeint.c": {
+          "sha256": "41e4769e2b724f6a926916c9cbff75839a4347c06d8ca72867d5f61e6c99b313",
+          "upstream_path": "src/gga_c_zvpbeint.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_zvpbeint.c"
+        },
+        "src/gga_c_zvpbeloc.c": {
+          "sha256": "a41fa3284946910523194a909eeb34762b444c20ae873e7d90eb6769bf78c16f",
+          "upstream_path": "src/gga_c_zvpbeloc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_c_zvpbeloc.c"
+        },
+        "src/gga_k_apbe.c": {
+          "sha256": "657e8bad66cd0a972e071f034422874ada9b28bf33ac10c571b1da021b08a549",
+          "upstream_path": "src/gga_k_apbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_apbe.c"
+        },
+        "src/gga_k_apbeint.c": {
+          "sha256": "1b54f0c073d61af1af50302016d42fc470598deed458a448767d65fd7aa33fc6",
+          "upstream_path": "src/gga_k_apbeint.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_apbeint.c"
+        },
+        "src/gga_k_dk.c": {
+          "sha256": "bd585d96f18d5ca303e4d963dbcd9028fb5767d1bc29c9e6dd1e66f4f3e54e8b",
+          "upstream_path": "src/gga_k_dk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_dk.c"
+        },
+        "src/gga_k_exp4.c": {
+          "sha256": "c72ea2ad04a6964ade9cbf66258c1a7e690c425fc79c075e65e3d50b39030437",
+          "upstream_path": "src/gga_k_exp4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_exp4.c"
+        },
+        "src/gga_k_lc94.c": {
+          "sha256": "72bf42f14eae6ac3844c84fb35e2e7079b42f84c6836ad20291ca7dbbedbcf90",
+          "upstream_path": "src/gga_k_lc94.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_lc94.c"
+        },
+        "src/gga_k_lgap.c": {
+          "sha256": "2c29f3bd171542f0255b71405ddb30d3f0f890b67736ee10575f28e343564d6c",
+          "upstream_path": "src/gga_k_lgap.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_lgap.c"
+        },
+        "src/gga_k_lgap_ge.c": {
+          "sha256": "fa7dfce80fabfe9babc9feac01f48a7def3e55f89ea1de06d592ab1c4dc9cfc7",
+          "upstream_path": "src/gga_k_lgap_ge.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_lgap_ge.c"
+        },
+        "src/gga_k_lkt.c": {
+          "sha256": "cb74fcb1ddddd77f4bd655d27a282d57d9bb3471db5e1b6cd8c05b5de5f7328f",
+          "upstream_path": "src/gga_k_lkt.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_lkt.c"
+        },
+        "src/gga_k_llp.c": {
+          "sha256": "037a58abf93a4659485c77b0c60a2bed660919a09a843a6bc13f272b0af4c81f",
+          "upstream_path": "src/gga_k_llp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_llp.c"
+        },
+        "src/gga_k_meyer.c": {
+          "sha256": "8d97a40935f1a9c9bfc63f16c21ac7f4d226158e460545b723360e08bc6d3a91",
+          "upstream_path": "src/gga_k_meyer.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_meyer.c"
+        },
+        "src/gga_k_mpbe.c": {
+          "sha256": "ee6de8afba6415556fd0c405af16968c657efb7070a064d50ede50e98447acc5",
+          "upstream_path": "src/gga_k_mpbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_mpbe.c"
+        },
+        "src/gga_k_ol1.c": {
+          "sha256": "1021a50111a969324a9030832251ea0e8672abef85d212c96b2a96bfb1db314f",
+          "upstream_path": "src/gga_k_ol1.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_ol1.c"
+        },
+        "src/gga_k_ol2.c": {
+          "sha256": "ca1427e52a2e6f88cc72f06a02d895ca1427337d02f9ded15fd3a18432836594",
+          "upstream_path": "src/gga_k_ol2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_ol2.c"
+        },
+        "src/gga_k_pearson.c": {
+          "sha256": "a907a95a05314a80d22e1ae159b407c7ed53a7f73202070f0fba399c1eb16782",
+          "upstream_path": "src/gga_k_pearson.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_pearson.c"
+        },
+        "src/gga_k_pg.c": {
+          "sha256": "16daeecbe11a7dfdc735c3b92fd3cc83687e7d752b93d29090e59f4aecfedd49",
+          "upstream_path": "src/gga_k_pg.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_pg.c"
+        },
+        "src/gga_k_pw86.c": {
+          "sha256": "205b2d8936b83f0f1d71e3970bfae261ed872fb70be475c385a6a7cf3d80a153",
+          "upstream_path": "src/gga_k_pw86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_pw86.c"
+        },
+        "src/gga_k_rational_p.c": {
+          "sha256": "8daeb3208f257c1901744643766ccb8da418ca1182915950672746c840dc8e70",
+          "upstream_path": "src/gga_k_rational_p.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_rational_p.c"
+        },
+        "src/gga_k_tflw.c": {
+          "sha256": "140b97f146983a71844bb4b73fbf60c786af8dfab63780f261925fa9a00b9e29",
+          "upstream_path": "src/gga_k_tflw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_tflw.c"
+        },
+        "src/gga_k_thakkar.c": {
+          "sha256": "be28a2627cbc2e00e48d5e5af75209387b907467adb053e87df9fc10d399d754",
+          "upstream_path": "src/gga_k_thakkar.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_thakkar.c"
+        },
+        "src/gga_k_vt84f.c": {
+          "sha256": "058b7ce96af4e46003ab6b92e5163e64ee13f3d4f5911dc9f37ea1e2cbbd2191",
+          "upstream_path": "src/gga_k_vt84f.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_k_vt84f.c"
+        },
+        "src/gga_x_2d_b86.c": {
+          "sha256": "0fb113fbb34a0afdd03e061eb6c6059f641bb9752f45d4243e035334db06250e",
+          "upstream_path": "src/gga_x_2d_b86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_2d_b86.c"
+        },
+        "src/gga_x_2d_b86_mgc.c": {
+          "sha256": "0f1d1fb915f93b57725754d47807011d9f3f68dbfbf11f56532f2bdcafda6285",
+          "upstream_path": "src/gga_x_2d_b86_mgc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_2d_b86_mgc.c"
+        },
+        "src/gga_x_2d_b88.c": {
+          "sha256": "4b9b67539c283180883ec2ecbc3d2ad89e6ecefb6cb12162070348deb2775f14",
+          "upstream_path": "src/gga_x_2d_b88.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_2d_b88.c"
+        },
+        "src/gga_x_2d_pbe.c": {
+          "sha256": "a1c8f5c0b26d5fb66818894eeba225267cee825444aed1cb3fd10427cd6b807f",
+          "upstream_path": "src/gga_x_2d_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_2d_pbe.c"
+        },
+        "src/gga_x_airy.c": {
+          "sha256": "86e85091985fd7f25dc8c4a45b2041d825059ccca53a7666b04b173e8ff6119a",
+          "upstream_path": "src/gga_x_airy.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_airy.c"
+        },
+        "src/gga_x_ak13.c": {
+          "sha256": "69086d698e04091b1fbbc7e2d8cd4f3797a339eeb188600f2c56e3e593be77bd",
+          "upstream_path": "src/gga_x_ak13.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ak13.c"
+        },
+        "src/gga_x_am05.c": {
+          "sha256": "9c5f5f60431a9660ac299398ba8ae71a0a545a4c11a55d2544a70a5416326b3b",
+          "upstream_path": "src/gga_x_am05.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_am05.c"
+        },
+        "src/gga_x_b86.c": {
+          "sha256": "84733d49020598520c90c6cae4a9d09395ffa8b141eaf28667dff98e7b4034d4",
+          "upstream_path": "src/gga_x_b86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_b86.c"
+        },
+        "src/gga_x_b88.c": {
+          "sha256": "7c42b0724ec4634f38e7ab536f1538d0eead3ad1b15521a0646e7a0883754e84",
+          "upstream_path": "src/gga_x_b88.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_b88.c"
+        },
+        "src/gga_x_bayesian.c": {
+          "sha256": "a8dfe62e0752cc52c5edd810de08ed08527fb339ad7d99b9b5c61b8e0a7058e5",
+          "upstream_path": "src/gga_x_bayesian.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_bayesian.c"
+        },
+        "src/gga_x_beefvdw.c": {
+          "sha256": "0135b7c5b522c850286121285bc3fdba3a67ae6a04668d0806d0749e5c01046d",
+          "upstream_path": "src/gga_x_beefvdw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_beefvdw.c"
+        },
+        "src/gga_x_bkl.c": {
+          "sha256": "cd545022ad981fe2613d041d4670bf3d6c5219471705d4713c43dd951a685c3d",
+          "upstream_path": "src/gga_x_bkl.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_bkl.c"
+        },
+        "src/gga_x_bpccac.c": {
+          "sha256": "a7a34410aeebdee83cf9390042ca1fde042ee6eb8f254a53c22f37f6509bbcc1",
+          "upstream_path": "src/gga_x_bpccac.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_bpccac.c"
+        },
+        "src/gga_x_c09x.c": {
+          "sha256": "41170d7383b5986436e978fc57c1798efd7aa9cf37e9aafd2c6d1af2b03020af",
+          "upstream_path": "src/gga_x_c09x.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_c09x.c"
+        },
+        "src/gga_x_cap.c": {
+          "sha256": "e2223320d56b869cf610587088a372aa4768293efbb5673e88594f8064b9113f",
+          "upstream_path": "src/gga_x_cap.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_cap.c"
+        },
+        "src/gga_x_chachiyo.c": {
+          "sha256": "78407274a3283d5672844b53cde87676b8b93216223be0dcd26587a616dd108c",
+          "upstream_path": "src/gga_x_chachiyo.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_chachiyo.c"
+        },
+        "src/gga_x_dk87.c": {
+          "sha256": "ed766737881bc495cf2d3f9ca24ab080b0580992107671efebdf2770269d3a62",
+          "upstream_path": "src/gga_x_dk87.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_dk87.c"
+        },
+        "src/gga_x_ev93.c": {
+          "sha256": "604b15b8e1a6c1471aca3a15ae52620ad930977c9443711fc7adcff0ed81bbc4",
+          "upstream_path": "src/gga_x_ev93.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ev93.c"
+        },
+        "src/gga_x_fd_lb94.c": {
+          "sha256": "48cf1d1d3d22e08fba833f0d07574a710b6895d09cf90581a08247d91831c088",
+          "upstream_path": "src/gga_x_fd_lb94.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_fd_lb94.c"
+        },
+        "src/gga_x_ft97.c": {
+          "sha256": "4973236ef32b9b512cc83c00b41f535d4298c23b332599fc6a0a836ee82c9824",
+          "upstream_path": "src/gga_x_ft97.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ft97.c"
+        },
+        "src/gga_x_g96.c": {
+          "sha256": "c069fbcfc9288da38310b41b0911fca8c811147322fb22c0448ebda0491bff15",
+          "upstream_path": "src/gga_x_g96.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_g96.c"
+        },
+        "src/gga_x_gg99.c": {
+          "sha256": "4aef322ad60337b30783bf4675bb0e3cc0fbe470cead981c28c1b2ac2cf40888",
+          "upstream_path": "src/gga_x_gg99.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_gg99.c"
+        },
+        "src/gga_x_hcth_a.c": {
+          "sha256": "40f23207018546d21db3b83d67471522077a56eeaf2dc230e124b973537d9072",
+          "upstream_path": "src/gga_x_hcth_a.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_hcth_a.c"
+        },
+        "src/gga_x_hjs.c": {
+          "sha256": "d16dad747bc4f183eb3a037d754f2ea98718ee81636fdaf0e7d2fbeea4af6680",
+          "upstream_path": "src/gga_x_hjs.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_hjs.c"
+        },
+        "src/gga_x_hjs_b88_v2.c": {
+          "sha256": "6e82b3d6ec75f64b335bc4cea6b6e6673774a5c162d8a6a84c8b688b9511daba",
+          "upstream_path": "src/gga_x_hjs_b88_v2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_hjs_b88_v2.c"
+        },
+        "src/gga_x_htbs.c": {
+          "sha256": "6f723b43586134f806b8e869a60d124aeaf6e94aabfec61c6dc47b63346c3945",
+          "upstream_path": "src/gga_x_htbs.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_htbs.c"
+        },
+        "src/gga_x_ityh.c": {
+          "sha256": "70b54d014cc02b52a2e04c9c5bb0e209c071f002c3263d0beb7c8969871c170f",
+          "upstream_path": "src/gga_x_ityh.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ityh.c"
+        },
+        "src/gga_x_ityh_optx.c": {
+          "sha256": "c0f1eabece5c9eec716f25fd90f3b7ed4949b0df0d955f7771bac9a0dc3eea98",
+          "upstream_path": "src/gga_x_ityh_optx.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ityh_optx.c"
+        },
+        "src/gga_x_ityh_pbe.c": {
+          "sha256": "9c6ebd563bce96dd92a5860cf8a08845ce9b56d63aead423031b7fe2304a4c58",
+          "upstream_path": "src/gga_x_ityh_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ityh_pbe.c"
+        },
+        "src/gga_x_kt.c": {
+          "sha256": "0a2091b5f2dce099abc0cdbf0960c3ed198d4ef32bfb95f9ab6e4260126742b6",
+          "upstream_path": "src/gga_x_kt.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_kt.c"
+        },
+        "src/gga_x_lb.c": {
+          "sha256": "41f8e6967f91a49cde9f51cbfbd9d0eabb06f6c84cc3f1a509b8aa8bd36f36bd",
+          "upstream_path": "src/gga_x_lb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_lb.c"
+        },
+        "src/gga_x_lg93.c": {
+          "sha256": "bb7667747f2b812c49567133e1fde311dc0e05ee68fe1ff29351fbfe621eae4f",
+          "upstream_path": "src/gga_x_lg93.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_lg93.c"
+        },
+        "src/gga_x_lspbe.c": {
+          "sha256": "e7d508d12e460775015b35fedbea2eff74a86d6b43ebc6a5921d94ea225c997b",
+          "upstream_path": "src/gga_x_lspbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_lspbe.c"
+        },
+        "src/gga_x_lsrpbe.c": {
+          "sha256": "00ee2168b31c220641eb9fa2cdd0c4e1554cde8be86c057510fa8a7486ec2e3b",
+          "upstream_path": "src/gga_x_lsrpbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_lsrpbe.c"
+        },
+        "src/gga_x_lv_rpw86.c": {
+          "sha256": "849ff3c1688c761f8fcac82de2786e30c07ac7fbf3dcc67b8fe7f90ea35c2ca4",
+          "upstream_path": "src/gga_x_lv_rpw86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_lv_rpw86.c"
+        },
+        "src/gga_x_mpbe.c": {
+          "sha256": "a54e30fe94c01c6ed6f1f465a417c3db74625e9366d16a1b763f82a3fda1e340",
+          "upstream_path": "src/gga_x_mpbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_mpbe.c"
+        },
+        "src/gga_x_n12.c": {
+          "sha256": "5ad79dc64fbae2708be187a3203887cef0b65789cf535c713a4e338f0d0c6e5c",
+          "upstream_path": "src/gga_x_n12.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_n12.c"
+        },
+        "src/gga_x_ncap.c": {
+          "sha256": "b506de019307d09c471c54da75016c14962c48bfb77e6668a239f074e8733872",
+          "upstream_path": "src/gga_x_ncap.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ncap.c"
+        },
+        "src/gga_x_ol2.c": {
+          "sha256": "1aa1257de707c5d25454ae326fc9653373dd8d308887652972e4da06a0863a12",
+          "upstream_path": "src/gga_x_ol2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ol2.c"
+        },
+        "src/gga_x_optx.c": {
+          "sha256": "e97804370b7a7b2a6960580beaeca145bc51c691b9f44cd714dfae3f910669cb",
+          "upstream_path": "src/gga_x_optx.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_optx.c"
+        },
+        "src/gga_x_pbe.c": {
+          "sha256": "7ecca3522393cdaad1d5764a19577fb051bc3ed5d27ceb4b72b787f07d283fb3",
+          "upstream_path": "src/gga_x_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbe.c"
+        },
+        "src/gga_x_pbe_erf_gws.c": {
+          "sha256": "d3abc59bd3bb01a042bf31eba81be9ac21712a4cf63b7e3e7db2263978fb90e0",
+          "upstream_path": "src/gga_x_pbe_erf_gws.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbe_erf_gws.c"
+        },
+        "src/gga_x_pbea.c": {
+          "sha256": "f1f0e62fd9dd2641b4deb401036d639dfe15754ed67f0710ce99ab7c4df367cc",
+          "upstream_path": "src/gga_x_pbea.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbea.c"
+        },
+        "src/gga_x_pbeint.c": {
+          "sha256": "8fe5c6a564d725908f55d4b75f6031d4add686b3b82e08954a2d465880b97afb",
+          "upstream_path": "src/gga_x_pbeint.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbeint.c"
+        },
+        "src/gga_x_pbepow.c": {
+          "sha256": "2d5e74d4e204588331363d1f655dd35aa10742b99176333ede4d0cbfd4c387ad",
+          "upstream_path": "src/gga_x_pbepow.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbepow.c"
+        },
+        "src/gga_x_pbetrans.c": {
+          "sha256": "eecc0073d72491748341b8f7b651ee2ed752b6fcd1158005e94bb709f601ef05",
+          "upstream_path": "src/gga_x_pbetrans.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pbetrans.c"
+        },
+        "src/gga_x_pw86.c": {
+          "sha256": "0deba636b0f0b4e2c9411665a031205d7e1019ca1ac941cef10dd22b4dd1d731",
+          "upstream_path": "src/gga_x_pw86.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pw86.c"
+        },
+        "src/gga_x_pw91.c": {
+          "sha256": "886245b4f3b141bea294b6518b3b20954395470ec5dee7facafa27ae111d3bf7",
+          "upstream_path": "src/gga_x_pw91.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_pw91.c"
+        },
+        "src/gga_x_q1d.c": {
+          "sha256": "084ca0daa8539639190076d09dc2f7e9dd9c62773060bc374009b7c2dbccf08a",
+          "upstream_path": "src/gga_x_q1d.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_q1d.c"
+        },
+        "src/gga_x_q2d.c": {
+          "sha256": "364119ba49cc0f1451c46c0db833d6fb7007866764f3ec648022b0f3ed26fe1f",
+          "upstream_path": "src/gga_x_q2d.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_q2d.c"
+        },
+        "src/gga_x_rge2.c": {
+          "sha256": "573fadb0f2cb5b5d0e9ee273fff5074d9e1190f673fc63a6e699c28ae674f842",
+          "upstream_path": "src/gga_x_rge2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_rge2.c"
+        },
+        "src/gga_x_rpbe.c": {
+          "sha256": "aaa3ba04a1e6f41c2e72f1405f4471967cc87fbd9af52fd5d97246b640da053c",
+          "upstream_path": "src/gga_x_rpbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_rpbe.c"
+        },
+        "src/gga_x_s12.c": {
+          "sha256": "5b9a038369148ac7cf5f9c55678d092b911575f6a1a822d02c7ca6d03895dfcb",
+          "upstream_path": "src/gga_x_s12.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_s12.c"
+        },
+        "src/gga_x_sfat.c": {
+          "sha256": "20ee97197f1ab40dd0e6e320151c26fd1d71d639ea4846e56b42fe2e8ee0d58f",
+          "upstream_path": "src/gga_x_sfat.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_sfat.c"
+        },
+        "src/gga_x_sfat_pbe.c": {
+          "sha256": "fdfa6b14cd515426a96b399e2a76ad6ace0d70ee913229e3c96dc84814b86936",
+          "upstream_path": "src/gga_x_sfat_pbe.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_sfat_pbe.c"
+        },
+        "src/gga_x_sg4.c": {
+          "sha256": "4aa008872238fc48b6590f306d026b1ffc811dc4b1907e3b257bbc665f149006",
+          "upstream_path": "src/gga_x_sg4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_sg4.c"
+        },
+        "src/gga_x_sogga11.c": {
+          "sha256": "e1f55a07d383d747e35f959c28c9873e90b0d661563e78029080d04f63cf50c4",
+          "upstream_path": "src/gga_x_sogga11.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_sogga11.c"
+        },
+        "src/gga_x_ssb_sw.c": {
+          "sha256": "157c0e1bc8f78262c31842af6ef9591a290d3753d9cf458821e700e65cddf089",
+          "upstream_path": "src/gga_x_ssb_sw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_ssb_sw.c"
+        },
+        "src/gga_x_vmt.c": {
+          "sha256": "a37e532857a2a64520f7614b94f7b1e135c423e722d01d3ca3e0daf61cf3b331",
+          "upstream_path": "src/gga_x_vmt.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_vmt.c"
+        },
+        "src/gga_x_vmt84.c": {
+          "sha256": "89bea4230e17bb9f063b209a25ac985317616a49c035a1eafc243ab44402ea8b",
+          "upstream_path": "src/gga_x_vmt84.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_vmt84.c"
+        },
+        "src/gga_x_wc.c": {
+          "sha256": "6935ac2b19ab01f7e803f45fb350ee58cc20121d277369a5302b4a21db96c62b",
+          "upstream_path": "src/gga_x_wc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_wc.c"
+        },
+        "src/gga_x_wpbeh.c": {
+          "sha256": "4ea2f214d1877540211484f04f414c7ae83ab632a1a678c614f7af794445aa24",
+          "upstream_path": "src/gga_x_wpbeh.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_x_wpbeh.c"
+        },
+        "src/gga_xc_b97.c": {
+          "sha256": "87eaa839020b4bc6bf8afd81990efe04a2d8da2045539eb8103585b044c8e03a",
+          "upstream_path": "src/gga_xc_b97.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_xc_b97.c"
+        },
+        "src/gga_xc_th1.c": {
+          "sha256": "f29e655e9625b332978f0b23a2e04d841b73e1616fdcde4526c56981a180b9df",
+          "upstream_path": "src/gga_xc_th1.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_xc_th1.c"
+        },
+        "src/gga_xc_th2.c": {
+          "sha256": "b6acc8c4757d1d9bb0b55b89814c78d5108234b4c9a3b957a2bac26d4f8b6d9b",
+          "upstream_path": "src/gga_xc_th2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_xc_th2.c"
+        },
+        "src/gga_xc_th3.c": {
+          "sha256": "a11963e39979614c60aed32acb239b2fcb3c1f633a51df1f0a8cc053f27b8763",
+          "upstream_path": "src/gga_xc_th3.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/gga_xc_th3.c"
+        },
+        "src/hyb_gga_x_cam_s12.c": {
+          "sha256": "a9966e1b9004fb0b472e71d6b85b59e7786b6be20ffce77eaf64a47ad1c295ec",
+          "upstream_path": "src/hyb_gga_x_cam_s12.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_x_cam_s12.c"
+        },
+        "src/hyb_gga_xc_case21.c": {
+          "sha256": "d654198813814870c08fc2fafa1b3cb0fe3c52d1a99e2b8152b27a7eba42deed",
+          "upstream_path": "src/hyb_gga_xc_case21.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_case21.c"
+        },
+        "src/hyb_gga_xc_wb97.c": {
+          "sha256": "e9a149fb74512ef9ab87d4758bb1ec0dff4855b7ea4be5f4a72a4b801e70f7ce",
+          "upstream_path": "src/hyb_gga_xc_wb97.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_gga_xc_wb97.c"
+        },
+        "src/hyb_lda_xc_bn05.c": {
+          "sha256": "8a8453630da98a1ce67ecef69d8f9d6726c22e96542904aea5eee6c73a307869",
+          "upstream_path": "src/hyb_lda_xc_bn05.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_lda_xc_bn05.c"
+        },
+        "src/hyb_mgga_x_dldf.c": {
+          "sha256": "a4af9aff6f060cb92fb390804afa4f4b811b958e335b059c95b42f6d05245b2b",
+          "upstream_path": "src/hyb_mgga_x_dldf.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_x_dldf.c"
+        },
+        "src/hyb_mgga_x_js18.c": {
+          "sha256": "9e4b02b8435ee88f99e569b62bf00bc45b34acf9007f0c9dcc559b869b908882",
+          "upstream_path": "src/hyb_mgga_x_js18.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_x_js18.c"
+        },
+        "src/hyb_mgga_x_m05.c": {
+          "sha256": "eaf08381d7f16370a46bced3bdf449a663aa089b263264bafcf749814bd387b5",
+          "upstream_path": "src/hyb_mgga_x_m05.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_x_m05.c"
+        },
+        "src/hyb_mgga_x_pjs18.c": {
+          "sha256": "fbf30ac64c5930ba11e9060a4203456e232e289334ed4656d1b606b28739db58",
+          "upstream_path": "src/hyb_mgga_x_pjs18.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_x_pjs18.c"
+        },
+        "src/hyb_mgga_xc_gas22.c": {
+          "sha256": "2e86abe3d4572d00de955e020b216722fb26490ceba7a9eedb0ad1aa5f88b1d6",
+          "upstream_path": "src/hyb_mgga_xc_gas22.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_xc_gas22.c"
+        },
+        "src/hyb_mgga_xc_wb97mv.c": {
+          "sha256": "cec0d3dd7af51dc5d6f45eb802462df4be3f0d184100d9e1db409fd74ece2a8b",
+          "upstream_path": "src/hyb_mgga_xc_wb97mv.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/hyb_mgga_xc_wb97mv.c"
+        },
+        "src/lda_c_1d_csc.c": {
+          "sha256": "c5e9f30439f5b8b3abb4923180ba3f6c7923ec2ea81348cd10c902735251f3ef",
+          "upstream_path": "src/lda_c_1d_csc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_1d_csc.c"
+        },
+        "src/lda_c_1d_loos.c": {
+          "sha256": "97e8c11e0095a6f03dacc4f1e1ca04307f81e8a31d0acb73afd333fc215ffb4c",
+          "upstream_path": "src/lda_c_1d_loos.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_1d_loos.c"
+        },
+        "src/lda_c_2d_amgb.c": {
+          "sha256": "53884edefc489a6ebd181cd80f24e7f3309254f1e12600c26dcd4265cf7d6516",
+          "upstream_path": "src/lda_c_2d_amgb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_2d_amgb.c"
+        },
+        "src/lda_c_2d_prm.c": {
+          "sha256": "bba77102fe7dcb97553d4b729e7f52cae54c426fbeebea50c30647cae662244e",
+          "upstream_path": "src/lda_c_2d_prm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_2d_prm.c"
+        },
+        "src/lda_c_chachiyo.c": {
+          "sha256": "b8bd893728ca9fe63c13fb5ca931c9515981a233fdf5fba1d8e5786aeb7d3773",
+          "upstream_path": "src/lda_c_chachiyo.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_chachiyo.c"
+        },
+        "src/lda_c_chachiyo_mod.c": {
+          "sha256": "d160800f34b9ca0e19d38cc97954a69de0010cab0933c0ac8e31c17b141c2ef3",
+          "upstream_path": "src/lda_c_chachiyo_mod.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_chachiyo_mod.c"
+        },
+        "src/lda_c_epc17.c": {
+          "sha256": "4d896f9b28091828b3976a0477578c949748144004567453e6f5f20e8ab2ad1d",
+          "upstream_path": "src/lda_c_epc17.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_epc17.c"
+        },
+        "src/lda_c_epc18.c": {
+          "sha256": "ebc6b7fe7565296a18bec53259c9d16ff7e8fb6f0121438ca191ad87324ae644",
+          "upstream_path": "src/lda_c_epc18.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_epc18.c"
+        },
+        "src/lda_c_gk72.c": {
+          "sha256": "bfe605b1357554127dc60fae87a6e53186614c43d327429069a3a0f93f0189d8",
+          "upstream_path": "src/lda_c_gk72.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_gk72.c"
+        },
+        "src/lda_c_gombas.c": {
+          "sha256": "cb2bc8491df0b84050f4a85a1cb64886ca151b075185a2b651ba41f716293411",
+          "upstream_path": "src/lda_c_gombas.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_gombas.c"
+        },
+        "src/lda_c_hl.c": {
+          "sha256": "8dd6f93f37deddcf0f9668a5549240efcf8d6811ea5dda27a821820a167a49d2",
+          "upstream_path": "src/lda_c_hl.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_hl.c"
+        },
+        "src/lda_c_lp96.c": {
+          "sha256": "0c7bbabc6e84f1887da36f7d0f3cd3ab9237e3b8241a1d636aa499b1344a82e0",
+          "upstream_path": "src/lda_c_lp96.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_lp96.c"
+        },
+        "src/lda_c_ml1.c": {
+          "sha256": "26cc3db96b74727e9a2de9cb4d67c4b6bb5d80da7de9efe92fce441fbfba0f28",
+          "upstream_path": "src/lda_c_ml1.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_ml1.c"
+        },
+        "src/lda_c_pk09.c": {
+          "sha256": "918e61b8b815e74fb1a968de2cbee7568dcc2be950d4ac5f9d5ead452d674202",
+          "upstream_path": "src/lda_c_pk09.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pk09.c"
+        },
+        "src/lda_c_pmgb06.c": {
+          "sha256": "55f5bd16136aa9494b895fcc052e57f7c47264185e6b109a7ca189ecac7aaee7",
+          "upstream_path": "src/lda_c_pmgb06.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pmgb06.c"
+        },
+        "src/lda_c_pw.c": {
+          "sha256": "37603d1977f7b7baa7723396169205da75fe6262674aa468e8a653af5fb459d6",
+          "upstream_path": "src/lda_c_pw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pw.c"
+        },
+        "src/lda_c_pw_erf.c": {
+          "sha256": "39375dccd9dfe625124bffe6cf5f59faf309b43c92f59c72599c9773da739f12",
+          "upstream_path": "src/lda_c_pw_erf.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pw_erf.c"
+        },
+        "src/lda_c_pz.c": {
+          "sha256": "a50f2e2389c982f9ff8b5344f2b784adcf902f219a7fec62cbabe4f47ad17285",
+          "upstream_path": "src/lda_c_pz.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_pz.c"
+        },
+        "src/lda_c_rc04.c": {
+          "sha256": "96013faa3140eb4c3f66a1ea3d22efa136ee54af92a03b740e19683907d40b00",
+          "upstream_path": "src/lda_c_rc04.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_rc04.c"
+        },
+        "src/lda_c_rpa.c": {
+          "sha256": "0dec4d6da139ed14c86f3ac96491916f319899b66e0c779d21402282ac960984",
+          "upstream_path": "src/lda_c_rpa.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_rpa.c"
+        },
+        "src/lda_c_vwn.c": {
+          "sha256": "e2a186118d8cd3175608bbd46ad4cfccb84e056603ba0b1136ee5feac7b1f526",
+          "upstream_path": "src/lda_c_vwn.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn.c"
+        },
+        "src/lda_c_vwn_1.c": {
+          "sha256": "e69084215b012f8f486675e9ee78e02de05d883e39ed6a229b1e1d683a9be926",
+          "upstream_path": "src/lda_c_vwn_1.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn_1.c"
+        },
+        "src/lda_c_vwn_2.c": {
+          "sha256": "fbe1f496e7deec68363945ab4eeeb52fb43cb548a441d5b102ba180f9d2eb9f9",
+          "upstream_path": "src/lda_c_vwn_2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn_2.c"
+        },
+        "src/lda_c_vwn_3.c": {
+          "sha256": "3876058591cb8ace92afa485005fdbe21495190a0f47ab75140817034613ae16",
+          "upstream_path": "src/lda_c_vwn_3.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn_3.c"
+        },
+        "src/lda_c_vwn_4.c": {
+          "sha256": "262dfb16843d8af86301b3acc30bf04c53d61473109de00cbd2ca491b07a647d",
+          "upstream_path": "src/lda_c_vwn_4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn_4.c"
+        },
+        "src/lda_c_vwn_rpa.c": {
+          "sha256": "4c689bd6ea0fe5e1ee3cc7f833e01c0fb15bb17bb83374447d43b50b568f3aea",
+          "upstream_path": "src/lda_c_vwn_rpa.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_vwn_rpa.c"
+        },
+        "src/lda_c_w20.c": {
+          "sha256": "c3058d9aedc9059020e6db4a79bae8d8ae3c57d0bc1b97bad905a16f52937a81",
+          "upstream_path": "src/lda_c_w20.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_w20.c"
+        },
+        "src/lda_c_wigner.c": {
+          "sha256": "1d6f1fce80f94d1b1633a2f8ccb2e1ba7714bfc7a482af0a235bd50a192bc863",
+          "upstream_path": "src/lda_c_wigner.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_c_wigner.c"
+        },
+        "src/lda_k_gds08_worker.c": {
+          "sha256": "0a78be650dd17b9d7388c1ad589f7580c56ff9a0a9cc001c1e2f1917eac932fa",
+          "upstream_path": "src/lda_k_gds08_worker.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_k_gds08_worker.c"
+        },
+        "src/lda_k_tf.c": {
+          "sha256": "93a20665eea3c527562b70c643245c4f137deab5a73a3bfeb469b0d2e46867ed",
+          "upstream_path": "src/lda_k_tf.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_k_tf.c"
+        },
+        "src/lda_k_zlp.c": {
+          "sha256": "022b5c3364a39a39558618380df2922b4332fdf582c6d5cce4bc2c61892a0996",
+          "upstream_path": "src/lda_k_zlp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_k_zlp.c"
+        },
+        "src/lda_x.c": {
+          "sha256": "1419e3c383a551a80091acab1c9404b78501dd0e42729e48bf8af57ee48e70be",
+          "upstream_path": "src/lda_x.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x.c"
+        },
+        "src/lda_x_1d_exponential.c": {
+          "sha256": "9cdc406ea2fc988f5d85c73f35ecc77014477085b898bdadaafbd13b55f5f05c",
+          "upstream_path": "src/lda_x_1d_exponential.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_1d_exponential.c"
+        },
+        "src/lda_x_1d_soft.c": {
+          "sha256": "c707bcfcfb1f44b9c56c310a87a11cf8745fbc09d8c910d75ac1a4d7b3d26dfb",
+          "upstream_path": "src/lda_x_1d_soft.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_1d_soft.c"
+        },
+        "src/lda_x_2d.c": {
+          "sha256": "1f5cedfd76c1c052b3711d9083baf4e83e56a2cb00e3d926d38e6afc5e674817",
+          "upstream_path": "src/lda_x_2d.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_2d.c"
+        },
+        "src/lda_x_erf.c": {
+          "sha256": "47cdfe9e14e533cf5899a7bc74c45c80266869425c15ecbd4088ed8370f1ed10",
+          "upstream_path": "src/lda_x_erf.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_erf.c"
+        },
+        "src/lda_x_rel.c": {
+          "sha256": "6f51215ab47a92bc5983007892b274510a2bf045e586ec748d7008f89edc9916",
+          "upstream_path": "src/lda_x_rel.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_rel.c"
+        },
+        "src/lda_x_sloc.c": {
+          "sha256": "b4b03b9a00d6039c80f504da2a230573fb495bab52825d503d5c5b6bb8b003e7",
+          "upstream_path": "src/lda_x_sloc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_sloc.c"
+        },
+        "src/lda_x_yukawa.c": {
+          "sha256": "30841472d9829650631a4536c7387b64bb5a47dafc0fa0eb06d339798834eca1",
+          "upstream_path": "src/lda_x_yukawa.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_x_yukawa.c"
+        },
+        "src/lda_xc_1d_ehwlrg.c": {
+          "sha256": "ae35e2cff0eb584ddcd286b5cf20bc043bfeedcd4fda5d3d979b08cdc4cba4f8",
+          "upstream_path": "src/lda_xc_1d_ehwlrg.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_xc_1d_ehwlrg.c"
+        },
+        "src/lda_xc_ksdt.c": {
+          "sha256": "d543748c3d1bea7518e5aeb5a4d2f48f0e3593190cabc93581969a9fee96cde3",
+          "upstream_path": "src/lda_xc_ksdt.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_xc_ksdt.c"
+        },
+        "src/lda_xc_teter93.c": {
+          "sha256": "290354350eeae7f17f8ad38f1fd9222d4b6dc4e6da6a1021f24a8c395c4b015e",
+          "upstream_path": "src/lda_xc_teter93.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_xc_teter93.c"
+        },
+        "src/lda_xc_tih.c": {
+          "sha256": "5d19b28f66e5b624b709a023b0a8e8c9f256e67102266fb5c17ee97cc1c28a9f",
+          "upstream_path": "src/lda_xc_tih.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_xc_tih.c"
+        },
+        "src/lda_xc_zlp.c": {
+          "sha256": "31d825b7f5ac8d058e140cdfc5eb785f2ce535f269618bc05501a6fa4f33b2a0",
+          "upstream_path": "src/lda_xc_zlp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/lda_xc_zlp.c"
+        },
+        "src/mgga_c_b88.c": {
+          "sha256": "b0a4a561af178762ec8a4df9e4335f74a14f072a2b4a38103f3692bed58bcb42",
+          "upstream_path": "src/mgga_c_b88.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_b88.c"
+        },
+        "src/mgga_c_b94.c": {
+          "sha256": "95aab5ac8ee71fd161c1f8e0f810a1d1516cc188f64ae11356ab7390d8528852",
+          "upstream_path": "src/mgga_c_b94.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_b94.c"
+        },
+        "src/mgga_c_bc95.c": {
+          "sha256": "723345e510e4fa08aa6a5898d82f04c183b7017c16418a7ce50f31a115445b77",
+          "upstream_path": "src/mgga_c_bc95.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_bc95.c"
+        },
+        "src/mgga_c_cc.c": {
+          "sha256": "b3f9d8652461e529f98c9c9113b47d20785caed7999ea022a02b238e0538d48b",
+          "upstream_path": "src/mgga_c_cc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_cc.c"
+        },
+        "src/mgga_c_ccalda.c": {
+          "sha256": "6937c46d79c99ecc85132e074ad3f242f8f4e9f1dec77a56dbc727ef656a7146",
+          "upstream_path": "src/mgga_c_ccalda.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_ccalda.c"
+        },
+        "src/mgga_c_cs.c": {
+          "sha256": "cf7783c168efda9f7ba2dedfb40e7557bbdca36358808e0cfa24ff075e6c16e5",
+          "upstream_path": "src/mgga_c_cs.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_cs.c"
+        },
+        "src/mgga_c_kcis.c": {
+          "sha256": "fb635edbb13fc3fcca067969261aa087db27499c125a9fa3244b982774ec421c",
+          "upstream_path": "src/mgga_c_kcis.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_kcis.c"
+        },
+        "src/mgga_c_kcisk.c": {
+          "sha256": "3ab3b281a4f2537d1847c8c4236a70080a4d60df9c2c97e42d230e7ff4785081",
+          "upstream_path": "src/mgga_c_kcisk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_kcisk.c"
+        },
+        "src/mgga_c_ltapw.c": {
+          "sha256": "5fe088056d5ca58b1dac7968f1998919395e2e979422482938de39d5d22a0e17",
+          "upstream_path": "src/mgga_c_ltapw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_ltapw.c"
+        },
+        "src/mgga_c_m05.c": {
+          "sha256": "cbbaed9738f8654d3aa279cdf6d512c0699f6443cff9af0794aad3c15eaf7102",
+          "upstream_path": "src/mgga_c_m05.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_m05.c"
+        },
+        "src/mgga_c_m06l.c": {
+          "sha256": "c02a638cc808d14798afaed2d706eaef00415cd5ac43830d7f89986deb8dc45a",
+          "upstream_path": "src/mgga_c_m06l.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_m06l.c"
+        },
+        "src/mgga_c_m08.c": {
+          "sha256": "cd96d418f543893c6a3dedfcbed58bf86e7d2f0b8d4a4bec00ad1fe132bba6b8",
+          "upstream_path": "src/mgga_c_m08.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_m08.c"
+        },
+        "src/mgga_c_pkzb.c": {
+          "sha256": "8b14885ab0b65fd933060e1afa3f2adf386e42e402319ca35277bd09a9a39ffc",
+          "upstream_path": "src/mgga_c_pkzb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_pkzb.c"
+        },
+        "src/mgga_c_r2scan.c": {
+          "sha256": "30f25fbf726011925add29cad4534e2b83c25f4db1f777baf986f617e0a73629",
+          "upstream_path": "src/mgga_c_r2scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_r2scan.c"
+        },
+        "src/mgga_c_revscan.c": {
+          "sha256": "71c67a7e5688c87d34e32f0c98c046947c92d3fdfe6f83337e98a6886e94f298",
+          "upstream_path": "src/mgga_c_revscan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_revscan.c"
+        },
+        "src/mgga_c_revtpss.c": {
+          "sha256": "dcc74b92233ab46ac44c52ca5acb087a639b1d423b35601dcda09393d9d70660",
+          "upstream_path": "src/mgga_c_revtpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_revtpss.c"
+        },
+        "src/mgga_c_rmggac.c": {
+          "sha256": "09b575f1fe2a174651d49f6b7f307bd201d72780fda0537c9096009c614c447f",
+          "upstream_path": "src/mgga_c_rmggac.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_rmggac.c"
+        },
+        "src/mgga_c_rppscan.c": {
+          "sha256": "a8740ff27ce869bb6312096f525f4b77ce2e0d41f2549ecdd8f15ed4735fcf2f",
+          "upstream_path": "src/mgga_c_rppscan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_rppscan.c"
+        },
+        "src/mgga_c_rregtm.c": {
+          "sha256": "3f8abb4b50cd8fc754d437f71a0e55d763d3eec0deb89b75cf6995d8c3011e80",
+          "upstream_path": "src/mgga_c_rregtm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_rregtm.c"
+        },
+        "src/mgga_c_rscan.c": {
+          "sha256": "b297a339506171fea28fc8928a23415f6f58df6c0f97ef9a6cafb4444558dc74",
+          "upstream_path": "src/mgga_c_rscan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_rscan.c"
+        },
+        "src/mgga_c_scan.c": {
+          "sha256": "a431e6618c53f8bd375ea60809657fba413b7f32af7534f9768be4317c3d7fa9",
+          "upstream_path": "src/mgga_c_scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_scan.c"
+        },
+        "src/mgga_c_tpss.c": {
+          "sha256": "2e384e83f3811079075331941bb6e33041521418d089225b8bc9d3a5b210dea4",
+          "upstream_path": "src/mgga_c_tpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_tpss.c"
+        },
+        "src/mgga_c_tpssloc.c": {
+          "sha256": "e0c2e34671c2aa7c31e1cd3294b7c4a7963e262337a716899c9d807537604567",
+          "upstream_path": "src/mgga_c_tpssloc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_tpssloc.c"
+        },
+        "src/mgga_c_vsxc.c": {
+          "sha256": "d93c3c4c2e87333b4a7fe19fc6dc32f7481f61d7f0239940162c749c6300c141",
+          "upstream_path": "src/mgga_c_vsxc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_c_vsxc.c"
+        },
+        "src/mgga_k_csk.c": {
+          "sha256": "1bb6850580a20245de442c697354c87c20322c3af302745c371088db4f1efe72",
+          "upstream_path": "src/mgga_k_csk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_csk.c"
+        },
+        "src/mgga_k_csk_loc.c": {
+          "sha256": "1d363124bb8390507abc15367fd90e456bd72199a9ad3c14f88910f41ee4b600",
+          "upstream_path": "src/mgga_k_csk_loc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_csk_loc.c"
+        },
+        "src/mgga_k_gea2.c": {
+          "sha256": "a406d00331f6102f8a406eb949ef8633fec1a8a148b1c0df7e8a03b8d7ca8d15",
+          "upstream_path": "src/mgga_k_gea2.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_gea2.c"
+        },
+        "src/mgga_k_gea4.c": {
+          "sha256": "d29bec2205f4a93f8d5f94fbb58a82ab9f13018b6266b9e7303c2f1a24d3a043",
+          "upstream_path": "src/mgga_k_gea4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_gea4.c"
+        },
+        "src/mgga_k_lk.c": {
+          "sha256": "ac7e5c7860e5ed0352797230ecc4dbeb73ba451b15e5ca2e9a8200cc319beddd",
+          "upstream_path": "src/mgga_k_lk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_lk.c"
+        },
+        "src/mgga_k_pc07.c": {
+          "sha256": "e11cde0ed4b642c4a6d9579335bbf92db57f9760e2cb0610c209eda7d01cc05c",
+          "upstream_path": "src/mgga_k_pc07.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_pc07.c"
+        },
+        "src/mgga_k_pgslb.c": {
+          "sha256": "a7da1ddbe0a9a028d84c0003c2ad26460ebdbc5fe4a040d4b7f69bb4d944bc28",
+          "upstream_path": "src/mgga_k_pgslb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_pgslb.c"
+        },
+        "src/mgga_k_rda.c": {
+          "sha256": "1a23c8e5d3c6b543e1e62269ec1e7c77423a7cd943e10feeca8e7d4e90e1a821",
+          "upstream_path": "src/mgga_k_rda.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_k_rda.c"
+        },
+        "src/mgga_x_2d_js17.c": {
+          "sha256": "7f70b7543b1ef4926779c9214df72ceea9b85f6367a670377305c681f7bcee30",
+          "upstream_path": "src/mgga_x_2d_js17.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_2d_js17.c"
+        },
+        "src/mgga_x_2d_prhg07.c": {
+          "sha256": "b5fc2a77ccd3dc86bb24afdb1b44c9755c10f2c4f75aba7104e9ca44d5a243e1",
+          "upstream_path": "src/mgga_x_2d_prhg07.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_2d_prhg07.c"
+        },
+        "src/mgga_x_2d_prp10.c": {
+          "sha256": "2c844e229d32610a973733dee513af7fe9c1eee84ebe6092b1d8236b02801b5a",
+          "upstream_path": "src/mgga_x_2d_prp10.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_2d_prp10.c"
+        },
+        "src/mgga_x_br89.c": {
+          "sha256": "8577457370c37849000f73a5e1724f719f407f8c0be4c016362c6936f8328f29",
+          "upstream_path": "src/mgga_x_br89.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_br89.c"
+        },
+        "src/mgga_x_br89_explicit.c": {
+          "sha256": "e45006f1372c38b2629af2a70db534aafe4a13af199aafb4a27ec690213e0aa4",
+          "upstream_path": "src/mgga_x_br89_explicit.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_br89_explicit.c"
+        },
+        "src/mgga_x_edmgga.c": {
+          "sha256": "c6c6681099059a50e367d8b912ae9a3fd696d1dff15271182480ae43344343f6",
+          "upstream_path": "src/mgga_x_edmgga.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_edmgga.c"
+        },
+        "src/mgga_x_eel.c": {
+          "sha256": "6ad67077ed27ca0c5d00ae2bad993ff8a80b42ac61a400bcaf8d4d7db6dd486a",
+          "upstream_path": "src/mgga_x_eel.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_eel.c"
+        },
+        "src/mgga_x_ft98.c": {
+          "sha256": "024f8a698d7847018719a20e5e8e30d22b32ed0e3d846340b3ff3ebed9c14b85",
+          "upstream_path": "src/mgga_x_ft98.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_ft98.c"
+        },
+        "src/mgga_x_gdme.c": {
+          "sha256": "c9e83cd1293064d4e39f3a784491ed39a08d8fa880df54725482f324e4dff224",
+          "upstream_path": "src/mgga_x_gdme.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_gdme.c"
+        },
+        "src/mgga_x_gvt4.c": {
+          "sha256": "8c50b88afef1746674bfaa22d839a08acaf62fcadc53f4b1a13d65504c4ced11",
+          "upstream_path": "src/mgga_x_gvt4.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_gvt4.c"
+        },
+        "src/mgga_x_gx.c": {
+          "sha256": "96face6abc210b8de22150fb6ac89a7754492b8824ee1272c0cc43804e79c990",
+          "upstream_path": "src/mgga_x_gx.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_gx.c"
+        },
+        "src/mgga_x_jk.c": {
+          "sha256": "aa00aa40c08f677fea2b0b0b3315ba131125b14a241e9fb53b98594fd0dcb147",
+          "upstream_path": "src/mgga_x_jk.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_jk.c"
+        },
+        "src/mgga_x_ktbm.c": {
+          "sha256": "2d5aea267876d367ea747f74c3798968ac12f7c488220efe09c721b7ca88c94d",
+          "upstream_path": "src/mgga_x_ktbm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_ktbm.c"
+        },
+        "src/mgga_x_lak.c": {
+          "sha256": "ceab96781062031f5ff02870d7bc7bd0e9322aa9f05bd3deaac6f100629ccbe9",
+          "upstream_path": "src/mgga_x_lak.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_lak.c"
+        },
+        "src/mgga_x_lta.c": {
+          "sha256": "8f2617ac529a33cc55346112bd4e5170c1b258afa40112e26b767fb7a6228e86",
+          "upstream_path": "src/mgga_x_lta.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_lta.c"
+        },
+        "src/mgga_x_m06l.c": {
+          "sha256": "ba6d39b18cc4ceb505cb2f7185fa7537b7763a36745c8048d50117eb8f32a8dc",
+          "upstream_path": "src/mgga_x_m06l.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_m06l.c"
+        },
+        "src/mgga_x_m08.c": {
+          "sha256": "bfede9ad1b43fe9167589ffb73e570e1a5f69bb6615afa115bf9242678971dc2",
+          "upstream_path": "src/mgga_x_m08.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_m08.c"
+        },
+        "src/mgga_x_m11.c": {
+          "sha256": "0e831b5f55caf03b34b2c49ffc1e947c4b9aa39da237fc11a60de4b9a2ffebef",
+          "upstream_path": "src/mgga_x_m11.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_m11.c"
+        },
+        "src/mgga_x_m11_l.c": {
+          "sha256": "fb01fe78d3d3137aedf1aed5ca595d5e61082cfacbdb6d31d353abfaf85d9867",
+          "upstream_path": "src/mgga_x_m11_l.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_m11_l.c"
+        },
+        "src/mgga_x_mbeef.c": {
+          "sha256": "5e826b7deeb1d5c2ab37e98a8a3087f0f5b50c0e2e72148a6b6480e0e05e9176",
+          "upstream_path": "src/mgga_x_mbeef.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mbeef.c"
+        },
+        "src/mgga_x_mbeefvdw.c": {
+          "sha256": "fdf1875bb182be2cfaf71f5d317c981be84dbe170367bb3ab5bdbd0505e1288c",
+          "upstream_path": "src/mgga_x_mbeefvdw.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mbeefvdw.c"
+        },
+        "src/mgga_x_mbr.c": {
+          "sha256": "28f3e793265b75d8d153b5e6d7ec432af7e89446b124f429de7a7f30d0661200",
+          "upstream_path": "src/mgga_x_mbr.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mbr.c"
+        },
+        "src/mgga_x_mbrxc_bg.c": {
+          "sha256": "fad5c4b368abae1a25622a141acd5319392b401c0a4522b7e25aa27d320bf0ed",
+          "upstream_path": "src/mgga_x_mbrxc_bg.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mbrxc_bg.c"
+        },
+        "src/mgga_x_mbrxh_bg.c": {
+          "sha256": "64ad042e2d1ead0c9b2550a87d4a98621b9fe6f039a67cdb21359d59fde1524c",
+          "upstream_path": "src/mgga_x_mbrxh_bg.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mbrxh_bg.c"
+        },
+        "src/mgga_x_mcml.c": {
+          "sha256": "6a5bc711181f0d63c5070eaceeeb7d16f280d7ca9a6ff4dcfd7845fa36dca562",
+          "upstream_path": "src/mgga_x_mcml.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mcml.c"
+        },
+        "src/mgga_x_mggac.c": {
+          "sha256": "41bf600e6ee0a30cc71d1b795f955467799e71321244863317d3cbccdeab5eb6",
+          "upstream_path": "src/mgga_x_mggac.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mggac.c"
+        },
+        "src/mgga_x_mn12.c": {
+          "sha256": "4f55c4b2b089dd4ea07a4bbd8fa85d1922592bfb09a6e2cc6026a63865544119",
+          "upstream_path": "src/mgga_x_mn12.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mn12.c"
+        },
+        "src/mgga_x_ms.c": {
+          "sha256": "7ac9f0405cb7f14d2d77ef710d27805c6a0d2de7af1d98745c702cae815b0d0e",
+          "upstream_path": "src/mgga_x_ms.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_ms.c"
+        },
+        "src/mgga_x_msb.c": {
+          "sha256": "de7ea812144c4df19ff8a667aa6f25f3f9c7d2b30e833b71c23091176e667706",
+          "upstream_path": "src/mgga_x_msb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_msb.c"
+        },
+        "src/mgga_x_msb86bl.c": {
+          "sha256": "056b89612c9a3d088e034570afa87b3fb76f339ec0798ba4467553bc9fa01504",
+          "upstream_path": "src/mgga_x_msb86bl.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_msb86bl.c"
+        },
+        "src/mgga_x_mspbel.c": {
+          "sha256": "a57b5fdd1e1acf3691e8ee096036ee8af3bb1b77ebf2dc171dfdf78f04e4aaf2",
+          "upstream_path": "src/mgga_x_mspbel.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mspbel.c"
+        },
+        "src/mgga_x_msrpbel.c": {
+          "sha256": "67269a6a157c7509705d3cd450438c79f81b136cbe3d58d75d82a37dc3eb0eea",
+          "upstream_path": "src/mgga_x_msrpbel.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_msrpbel.c"
+        },
+        "src/mgga_x_mvs.c": {
+          "sha256": "bde176cdf64df323d03ec70c93025b31d27dd7c104b62c0dc5dca2c66f8a084d",
+          "upstream_path": "src/mgga_x_mvs.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mvs.c"
+        },
+        "src/mgga_x_mvsb.c": {
+          "sha256": "70cd6ff498209868c15470508b386f27b4652d537f75597cd821004b239d8914",
+          "upstream_path": "src/mgga_x_mvsb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_mvsb.c"
+        },
+        "src/mgga_x_pbe_gx.c": {
+          "sha256": "126d3779d51cd4950230bca38d3453ed38c289ca5e653f14b2a87e7b7092ca18",
+          "upstream_path": "src/mgga_x_pbe_gx.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_pbe_gx.c"
+        },
+        "src/mgga_x_pkzb.c": {
+          "sha256": "91b82b98c117fb23977e1a32c9747b241b14ec1a0d9aa2390f4729c464e4ae15",
+          "upstream_path": "src/mgga_x_pkzb.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_pkzb.c"
+        },
+        "src/mgga_x_r2scan.c": {
+          "sha256": "81c02ad7bf514162cfefdbec6701ab184a43926d9690982a63c4903688213af2",
+          "upstream_path": "src/mgga_x_r2scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_r2scan.c"
+        },
+        "src/mgga_x_r4scan.c": {
+          "sha256": "0464a48883c90ac3222315a5c8066d7e1a93565f04049ccfe1014d8d610267c7",
+          "upstream_path": "src/mgga_x_r4scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_r4scan.c"
+        },
+        "src/mgga_x_regtm.c": {
+          "sha256": "a5992588ae0213d4518473f89b4538a588b6988301b607b24ff6131f320f435c",
+          "upstream_path": "src/mgga_x_regtm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_regtm.c"
+        },
+        "src/mgga_x_regtpss.c": {
+          "sha256": "f0404bcc6642f8908b56a003681952bdcca4566f897e1818f1b0bfd336f8df23",
+          "upstream_path": "src/mgga_x_regtpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_regtpss.c"
+        },
+        "src/mgga_x_revtm.c": {
+          "sha256": "6e6b6815060b88d7d1fb6c9bd872b114a02c9ca335c6e86d9c4743390ead0d9f",
+          "upstream_path": "src/mgga_x_revtm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_revtm.c"
+        },
+        "src/mgga_x_rlda.c": {
+          "sha256": "418b5581c8a1d8dd2361f2f0c6a91ee62d14f7c90e20a34b97a82da20de2bc37",
+          "upstream_path": "src/mgga_x_rlda.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_rlda.c"
+        },
+        "src/mgga_x_rppscan.c": {
+          "sha256": "f8082f6b90309d3a9878d5fba1e3a0aaaa044a9817e414db8143311554e03e0b",
+          "upstream_path": "src/mgga_x_rppscan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_rppscan.c"
+        },
+        "src/mgga_x_rscan.c": {
+          "sha256": "a816ebe0b1a2de188380fac8ad3b8a073c78361f6f88e446dc77858c262e3f0a",
+          "upstream_path": "src/mgga_x_rscan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_rscan.c"
+        },
+        "src/mgga_x_rtpss.c": {
+          "sha256": "421d1f42d2137bbac000021df4dcc8039b9f01413ee8d8c77bd72e28ced47118",
+          "upstream_path": "src/mgga_x_rtpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_rtpss.c"
+        },
+        "src/mgga_x_sa_tpss.c": {
+          "sha256": "17d138ac1081ce49e35ab7cb938ab06e8336aa39d5e9e156adea77bfc218cd44",
+          "upstream_path": "src/mgga_x_sa_tpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_sa_tpss.c"
+        },
+        "src/mgga_x_scan.c": {
+          "sha256": "ff027dbacf8c5b15bc56701f63be1b2530cdf47ef044fc5ae7062a3237a72448",
+          "upstream_path": "src/mgga_x_scan.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_scan.c"
+        },
+        "src/mgga_x_task.c": {
+          "sha256": "c9ca1b605adfab83b9eec9610558e4c4b62cdda89594172d86468ea77ad62ae6",
+          "upstream_path": "src/mgga_x_task.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_task.c"
+        },
+        "src/mgga_x_tau_hcth.c": {
+          "sha256": "801ed1143f9a7a68e62b7da42ef81b4e779e13b8ea153a23437b1406173a8350",
+          "upstream_path": "src/mgga_x_tau_hcth.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_tau_hcth.c"
+        },
+        "src/mgga_x_tb09.c": {
+          "sha256": "a84651924b37b33c7a5fc3708bb766e85ec28d04d739ab6861c296550fddda39",
+          "upstream_path": "src/mgga_x_tb09.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_tb09.c"
+        },
+        "src/mgga_x_th.c": {
+          "sha256": "276566f23a36db77d86caf3d3942dcdb59bcca4fb5a93d328fb424f4278d36bc",
+          "upstream_path": "src/mgga_x_th.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_th.c"
+        },
+        "src/mgga_x_tm.c": {
+          "sha256": "43312ad419123d689c21b679427cfe9075514128da34a167162757842470c41c",
+          "upstream_path": "src/mgga_x_tm.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_tm.c"
+        },
+        "src/mgga_x_tpss.c": {
+          "sha256": "26f3f7814283d8446deb0e8cda6c106b36c0efc0ba38b8c390e63e46251f77a0",
+          "upstream_path": "src/mgga_x_tpss.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_tpss.c"
+        },
+        "src/mgga_x_vcml.c": {
+          "sha256": "61d6863beded2a2e8f423acbdd1f63311951bdc5602d74fdf2e2a94044f0cc38",
+          "upstream_path": "src/mgga_x_vcml.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_vcml.c"
+        },
+        "src/mgga_x_vt84.c": {
+          "sha256": "b92d0584c949642f2f50244bdce248a0a8b45797d1b527511b8cde50931089fb",
+          "upstream_path": "src/mgga_x_vt84.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_x_vt84.c"
+        },
+        "src/mgga_xc_b97mv.c": {
+          "sha256": "7e3e897a94bd2b15e34d34924275954836d35a6f58d0979b71f017c88426d673",
+          "upstream_path": "src/mgga_xc_b97mv.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_xc_b97mv.c"
+        },
+        "src/mgga_xc_b98.c": {
+          "sha256": "28419c42f034e742057c0e5371fdea402b72e0ea00ccdfc8e75a4daff4aa350f",
+          "upstream_path": "src/mgga_xc_b98.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_xc_b98.c"
+        },
+        "src/mgga_xc_cc06.c": {
+          "sha256": "e52d5a3822abb13a90a0eac59598fbdb53cbaf02767fbd9bbec3ecbeb7bcad76",
+          "upstream_path": "src/mgga_xc_cc06.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_xc_cc06.c"
+        },
+        "src/mgga_xc_lp90.c": {
+          "sha256": "d714443b4b747532d918c6fe3f7422730f67331727126ba9f0b8dd34e9deace7",
+          "upstream_path": "src/mgga_xc_lp90.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_xc_lp90.c"
+        },
+        "src/mgga_xc_zlp.c": {
+          "sha256": "59b5e950625fe878ed596070a3d77cf6bf9b30487fce94da7d67f75f03973eef",
+          "upstream_path": "src/mgga_xc_zlp.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/mgga_xc_zlp.c"
+        },
+        "src/util.c": {
+          "sha256": "886463706ae8aa32836654087b7ec19fdd2e38b86e849a78aa7c9b9d980729e7",
+          "upstream_path": "src/util.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/util.c"
+        },
+        "src/util.h": {
+          "sha256": "7679744982b3b944f3054b7d2b298612d7b4f3a1051f4f48f4fded2ef26f04b5",
+          "upstream_path": "src/util.h",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/util.h"
+        },
+        "src/xc.h": {
+          "sha256": "462347f60f5d2f4d2a00cf15305bc7bc85d47e84e6dbb50231b147e77bac99e9",
+          "upstream_path": "src/xc.h",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/xc.h"
+        }
+      },
+      "kind": "file-set",
+      "license": "MPL-2.0",
+      "local_root": "upstream/libxc-fulltree/7.0.0",
+      "repository": "https://gitlab.com/libxc/libxc",
+      "revision": "7.0.0"
+    },
+    "mctc-lib-eeq": {
+      "files": {
+        "src/mctc/data/covrad.f90": {
+          "git_blob": "b3cb9cefd702169d6be662eb438932525990a1ac",
+          "sha256": "fdbd599664a7f113633d96110531d810fdc8e54b6db26d4f584120d9c7cec314",
+          "size": 3850,
+          "upstream_path": "src/mctc/data/covrad.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/data/covrad.f90"
+        },
+        "src/mctc/ncoord/erf.f90": {
+          "git_blob": "5ea3c2c4056c3eca51e76629e0e780061923f253",
+          "sha256": "6bc976e03e290bc01bccfeee3016513e6154ef6267f152d36b7c99a7d706fea9",
+          "size": 4415,
+          "upstream_path": "src/mctc/ncoord/erf.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/erf.f90"
+        },
+        "src/mctc/ncoord/type.f90": {
+          "git_blob": "38eb682efa53b55070b39d8f68d09a8465f5d76f",
+          "sha256": "b8b819f9ea1c0765632fdb4ea9046b0c79f2c1bb13d39555ac3059f498ba1bb5",
+          "size": 15169,
+          "upstream_path": "src/mctc/ncoord/type.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
+        }
+      },
+      "git_tree": "ff26e808ccd00be0ca221656c8de9ce0da4c9265",
+      "kind": "remote-file-set",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/grimme-lab/mctc-lib",
+      "revision": "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
+    },
+    "multicharge-eeq2019": {
+      "files": {
+        "src/multicharge/param/eeq2019.f90": {
+          "git_blob": "3b95b9bafb9b30fd5c1e3e8dacc1433cb53954f2",
+          "sha256": "02b8bee49c10b4c31914caf149d9f58164e58d6dc7ae2ab21e9d12f5bc22797a",
+          "size": 12370,
+          "upstream_path": "src/multicharge/param/eeq2019.f90",
+          "url": "https://raw.githubusercontent.com/grimme-lab/multicharge/6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf/src/multicharge/param/eeq2019.f90"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/grimme-lab/multicharge",
+      "revision": "6a5d63f9e9e29dcf13cc47cc27f33bf9015681bf"
+    },
+    "simple-dftd3-gcp": {
+      "consumers": [
+        "tools/parameters/r2scan3c_gcp.json",
+        "tools/parameters/generate_gcp_r2scan3c.py"
+      ],
+      "files": {
+        "src/dftd3/data/vdwrad.f90": {
+          "sha256": "3f08b5755bfd643d6dbb56fd544c117145473a4b27138978a25d0475af985575",
+          "upstream_path": "src/dftd3/data/vdwrad.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/data/vdwrad.f90"
+        },
+        "src/dftd3/gcp.f90": {
+          "sha256": "c1d69f640c9a7498618998a97b40a1629554ede31001ceab3060dc2f84c8be1e",
+          "upstream_path": "src/dftd3/gcp.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp.f90"
+        },
+        "src/dftd3/gcp/param.f90": {
+          "sha256": "3edc7b569cff3cf47dffd06395de02b3d45aabb4d4be368debf87fbafd56fa4e",
+          "upstream_path": "src/dftd3/gcp/param.f90",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/src/dftd3/gcp/param.f90"
+        }
+      },
+      "kind": "remote-file-set",
+      "license": "LGPL-3.0-or-later",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+    },
+    "simple-dftd3-parameters": {
+      "files": {
+        "simple-dftd3-41d5a07.parameters.toml": {
+          "sha256": "b1d9d1b9882dcad5361a99c34745ad44f8a274d80c907d9d0187255e4323d645",
+          "upstream_path": "assets/parameters.toml",
+          "url": "https://raw.githubusercontent.com/dftd3/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2/assets/parameters.toml"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/simple-dftd3/41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+      "repository": "https://github.com/dftd3/simple-dftd3",
+      "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
+    },
+    "xtbloom-gfn1-d3": {
+      "consumers": [
+        "manifests/xtbloom-d3.json",
+        "tools/vibeqc_d3/generate_native_data.py",
+        "tools/vibeqc_d3/reference.py",
+        "python/vibeqc_compiler/geometry/d3.py"
+      ],
+      "files": {
+        "gfn1_d3.json": {
+          "sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+          "upstream_path": "data/parameters/gfn1_d3.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3.json"
+        },
+        "gfn1_d3_manifest.json": {
+          "sha256": "34344727c84992c566e2445f95e5c249222ba0ff0feeb70a0aa0f567257e8cbf",
+          "upstream_path": "data/parameters/gfn1_d3_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    },
+    "xtbloom-gfn1-parameters": {
+      "consumers": [
+        "python/vibeqc_compiler/geometry/_gfn1_data.py",
+        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
+        "tools/parameters/generate_gfn1.py",
+        "tools/parameters/generate_gfn1_geometry.py",
+        "tools/vibeqc_d3/generate_native_data.py",
+        "tools/vibeqc_d3/reference.py",
+        "python/vibeqc_compiler/geometry/d3.py"
+      ],
+      "files": {
+        "gfn1.json": {
+          "sha256": "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0",
+          "upstream_path": "data/parameters/gfn1.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.json"
+        },
+        "gfn1.toml": {
+          "sha256": "38572810c111e118d03a27137dfbc3363ce5247a400bb25ee83e15e712dcb389",
+          "upstream_path": "data/parameters/gfn1.toml",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1.toml"
+        },
+        "gfn1_manifest.json": {
+          "sha256": "e93710d277aa2216d24215b6c458805ae7d96e27937294cd685c710e2dd4007b",
+          "upstream_path": "data/parameters/gfn1_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later AND Apache-2.0",
+      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    }
+  }
+}

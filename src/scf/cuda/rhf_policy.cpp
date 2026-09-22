@@ -5,8 +5,16 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "generated_one_electron_derivative_policy.cuh"
+
 namespace vibeqc::scf::cuda_policy {
 namespace {
+
+constexpr std::size_t kUnknownTargetFixedTopologyArenaBytes = std::size_t{256} << 20;
+constexpr std::size_t kFixedTopologyArenaDeviceMemoryDivisor = 32;
+constexpr std::size_t kUnknownTargetBoundedStreamingArenaBytes = std::size_t{256} << 20;
+constexpr std::size_t kBoundedStreamingArenaDeviceMemoryDivisor = 16;
+constexpr unsigned kUnknownTargetPersistentQuartetWarpsPerSm = 4;
 
 constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 /**
@@ -26,6 +34,8 @@ constexpr double kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02;
 constexpr double kTightConvergedFockReuseDensityRms = 1.0e-12;
 constexpr double kExpandedConvergedFockReuseDensityTolerance = 1.0e-9;
 constexpr double kExpandedConvergedFockReuseDensityRms = 2.0e-9;
+using NucleusCooperativeSchedule =
+    generated_one_electron_derivative_policy::NucleusCooperativeSchedule;
 
 bool enabled(const char* variable) noexcept {
   const char* selection = std::getenv(variable);
@@ -37,6 +47,13 @@ bool selected(const char* variable, const char* value) noexcept {
   const char* selection = std::getenv(variable);
   return selection != nullptr &&
          (std::strcmp(selection, "1") == 0 || std::strcmp(selection, value) == 0);
+}
+
+std::size_t resolve_target_memory_budget(std::size_t total_global_memory,
+                                         std::size_t profile_ceiling, std::size_t unknown_fallback,
+                                         std::size_t divisor) noexcept {
+  if (total_global_memory == 0) return std::min(profile_ceiling, unknown_fallback);
+  return std::min(profile_ceiling, total_global_memory / divisor);
 }
 
 std::optional<double> parsed_mixed_precision_override(double screening_tolerance) noexcept {
@@ -55,6 +72,53 @@ std::optional<double> parsed_mixed_precision_override(double screening_tolerance
   return value;
 }
 }  // namespace
+
+DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(const runtime::CudaTargetInfo& target,
+                                                         DirectJkTuningProfile profile) noexcept {
+  DirectJkSchedulePolicy policy;
+  policy.cuda_stack_limit_bytes = profile.cuda_stack_limit_bytes;
+
+  // Fixed-topology descriptors are long-lived prepared-state storage. Keep
+  // their historical one-GiB profile ceiling under the conservative 1/32
+  // target-memory budget.
+  policy.fixed_topology.arena_maximum_bytes = resolve_target_memory_budget(
+      target.total_global_memory, profile.fixed_topology.maximum_arena_bytes,
+      kUnknownTargetFixedTopologyArenaBytes, kFixedTopologyArenaDeviceMemoryDivisor);
+
+  // Bounded streaming is a reusable page scratch arena, not fixed-topology
+  // resident storage. Its independently qualified 8M-task page is 1.5 GiB at
+  // the current GeneratedShellTask ABI, so it gets a separate resource budget.
+  // Never derive this capacity from the fixed-topology arena: doing so shrinks
+  // the 768-AO page count and changes endpoint scheduling.
+  policy.bounded_streaming.task_capacity_ceiling = profile.bounded_streaming.maximum_task_capacity;
+  policy.bounded_streaming.arena_maximum_bytes = resolve_target_memory_budget(
+      target.total_global_memory, profile.bounded_streaming.maximum_arena_bytes,
+      kUnknownTargetBoundedStreamingArenaBytes, kBoundedStreamingArenaDeviceMemoryDivisor);
+
+  // Persistent workers are one warp per block. Respect both the resident block
+  // ceiling and the SM thread ceiling; unknown facts choose a smaller
+  // conservative fallback instead of assuming the measured 5090 occupancy.
+  const bool complete_occupancy = target.warp_size != 0 && target.maximum_threads_per_sm != 0 &&
+                                  target.maximum_blocks_per_sm != 0;
+  unsigned legal_warps = kUnknownTargetPersistentQuartetWarpsPerSm;
+  if (target.warp_size != 0 && target.maximum_threads_per_sm != 0) {
+    const unsigned thread_ceiling = std::max(1U, target.maximum_threads_per_sm / target.warp_size);
+    legal_warps = complete_occupancy ? thread_ceiling : std::min(legal_warps, thread_ceiling);
+  }
+  if (target.maximum_blocks_per_sm != 0) {
+    legal_warps = std::min(legal_warps, target.maximum_blocks_per_sm);
+  }
+  policy.persistent_quartet_warps_per_sm =
+      std::max(1U, std::min(profile.maximum_persistent_quartet_warps_per_sm, legal_warps));
+  return policy;
+}
+
+std::size_t direct_jk_bounded_streaming_task_capacity_limit(
+    const DirectJkSchedulePolicy& policy, std::size_t generated_task_bytes) noexcept {
+  if (generated_task_bytes == 0) return 0;
+  return std::min(policy.bounded_streaming.task_capacity_ceiling,
+                  policy.bounded_streaming.arena_maximum_bytes / generated_task_bytes);
+}
 
 bool reuse_converged_fock_requested() noexcept {
   const char* force_rebuild = std::getenv("VIBEQC_FINAL_FOCK_REBUILD");
@@ -215,6 +279,14 @@ bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
 
+bool aot_shell_class_selection_override_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
+  // Match the generated registry: absent, empty, and "all" all mean the full
+  // compiled profile. Any other spelling intentionally narrows the force
+  // registry and may therefore exercise the generic fallback for diagnostics.
+  return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
+}
+
 bool direct_tile_validation_requested() noexcept {
   return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
 }
@@ -277,32 +349,30 @@ unsigned one_electron_value_mapping_requested() noexcept {
 
 bool generated_one_electron_derivatives_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES");
-  return selection == nullptr || std::strcmp(selection, "1") == 0 ||
-         std::strcmp(selection, "generated") == 0 || std::strcmp(selection, "auto") == 0;
+  if (selection == nullptr || std::strcmp(selection, "1") == 0 ||
+      std::strcmp(selection, "generated") == 0 || std::strcmp(selection, "auto") == 0)
+    return true;
+  // The retained native cooperative implementation is an explicit oracle/control,
+  // never an automatic production fallback. Typos/unknown values stay on the
+  // compiler-owned generated path rather than silently changing scientific owner.
+  if (std::strcmp(selection, "0") == 0 || std::strcmp(selection, "reference") == 0 ||
+      std::strcmp(selection, "native") == 0 || std::strcmp(selection, "tensor") == 0)
+    return false;
+  return true;
 }
 
 unsigned one_electron_derivative_mapping_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING");
-  if (selection == nullptr) return 1U;
-  if (std::strcmp(selection, "serial") == 0) return 2U;
+  if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;
+  if (std::strcmp(selection, "serial") == 0 || std::strcmp(selection, "2") == 0) return 2U;
+  if (std::strcmp(selection, "nucleus_cooperative") == 0 ||
+      std::strcmp(selection, "cooperative") == 0 || std::strcmp(selection, "3") == 0)
+    return NucleusCooperativeSchedule::schedule_code;
   if (std::strcmp(selection, "shell_warp") == 0 || std::strcmp(selection, "1") == 0) return 1U;
   return 0U;
 }
 
 bool resident_psss_bra_requested() noexcept { return enabled("VIBEQC_PSSS_RESIDENT_BRA"); }
-
-bool generated_ssss_force_requested() noexcept {
-  // The generated sm_120 ssss force consumer is compiled for A/B validation,
-  // but the tuned native path remains the default until the complete endpoint
-  // gate in #356 passes.
-  return selected("VIBEQC_SSSS_FORCE", "generated");
-}
-
-bool generated_psss_weighted_requested() noexcept {
-  // Keep the handwritten implementation selected until native resource and
-  // complete RHF/UHF endpoint comparisons justify promoting this candidate.
-  return selected("VIBEQC_PSSS_WEIGHTED", "generated");
-}
 
 unsigned df_derivative_mapping_requested() noexcept {
   return selected("VIBEQC_DF_DERIVATIVE_MAPPING", "serial") ? 1U : 0U;

@@ -1,6 +1,7 @@
 #include <cuda_runtime_api.h>
 
 #include "runtime/context.hpp"
+#include "runtime/cuda_target_info.hpp"
 #include "scf/aot_shell_registry.hpp"
 
 namespace vibeqc::runtime {
@@ -34,19 +35,20 @@ vibeqc_status initialize_cuda_context(core::ContextState& state, std::string& de
     detail = cudaGetErrorString(error);
     return VIBEQC_STATUS_CUDA_ERROR;
   }
+  const CudaTargetInfo target = cuda_target_info_from_properties(properties);
   state.device_name = properties.name;
-  state.compute_capability_major = properties.major;
-  state.compute_capability_minor = properties.minor;
-  state.warp_size = properties.warpSize;
-  state.maximum_threads_per_sm = properties.maxThreadsPerMultiProcessor;
-  state.maximum_blocks_per_sm = properties.maxBlocksPerMultiProcessor;
-  state.registers_per_sm = properties.regsPerMultiprocessor;
+  state.compute_capability_major = target.compute_capability_major;
+  state.compute_capability_minor = target.compute_capability_minor;
+  state.warp_size = static_cast<int>(target.warp_size);
+  state.maximum_threads_per_sm = static_cast<int>(target.maximum_threads_per_sm);
+  state.maximum_blocks_per_sm = static_cast<int>(target.maximum_blocks_per_sm);
+  state.registers_per_sm = static_cast<int>(target.registers_per_sm);
   // CUDA exposes register-file limits per block/SM in cudaDeviceProp. The
   // architectural per-thread allocation ceiling is 255 for supported SMs.
   state.maximum_registers_per_thread = 255;
-  state.shared_memory_per_block = properties.sharedMemPerBlock;
-  state.shared_memory_per_sm = properties.sharedMemPerMultiprocessor;
-  state.multiprocessor_count = properties.multiProcessorCount;
+  state.shared_memory_per_block = target.shared_memory_per_block;
+  state.shared_memory_per_sm = target.shared_memory_per_sm;
+  state.multiprocessor_count = static_cast<int>(target.multiprocessor_count);
 
   // Resolve the generated kernel set once for this context/device. Unknown
   // devices retain the generic implementation instead of borrowing a tuned

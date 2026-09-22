@@ -537,7 +537,19 @@ is rejected for:
 - Fock-value or force disagreement with the independent recompute oracle;
 - failure to meet the configured timing threshold.
 
-Passing variants are ranked by measured kernel time. The winner can be written
+After the existing per-class candidate bound is applied, the tuner hashes the
+exact unsuffixed generated CUDA only for packed candidates that differ solely
+in algebra ordering. If two such schedules emit byte-identical CUDA, the
+ordering choice is an exact no-op for that compiler revision and target, so only
+one representative is sent to NVCC. Production baselines and canonical algebra
+resource baselines are protected even when an equivalent peer exists. This is
+exact source deduplication, not a profitability model: it cannot remove a
+candidate merely because estimated FLOPs, liveness, or source size look worse.
+Use `--no-execution-dedup` for exhaustive schedule-ID studies. The report
+preserves skipped trial keys, their retained representative, and the
+generated-source SHA-256 under `search.execution_deduplicated`.
+
+Passing compiled variants are ranked by measured kernel time. The winner can be written
 to a schema-v2, architecture-specific production manifest:
 
 ```bash
@@ -625,9 +637,10 @@ autotune reads that schedule directly from the manifest instead of maintaining
 a second shell-name allowlist.
 
 CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
-`auto` resolves exact measured profile, explicitly compatible profile, empty
-`portable_cuda`, then generic fallback. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all
-generated shell objects.
+`auto` resolves only an exact measured or explicitly compatible profile and is
+fail-closed when neither exists. Generic CUDA remains available through the
+explicit `portable`/`portable_cuda` profile; it is never selected by an `auto`
+miss. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all generated shell objects.
 
 Optional production code shapes are declared per manifest row through the
 `capabilities` list. The current names are `streaming_fock`, `mixed_fock`, and
@@ -742,36 +755,38 @@ and seven timing samples, autotuning selected a 32-thread packed schedule at
 0.539 ms versus 0.932 ms for the independent recompute oracle (`1.73x`). The
 kernel uses 208 registers, a 96-byte stack, and zero spills on `sm_120`.
 
-That kernel still does not beat the committed handwritten endpoint. On the
-real-spherical def2-SVP water tetramer after one-pass bucketing, enabling
-generated `psss` produced `0.9933x` speedup for batch one and `0.9952x` for
-batch four. Maximum energy and force differences remained below `1.0e-12 Eh`
-and `6.4e-13 Eh/bohr`, respectively. The candidate therefore remains outside
-the production manifest: synthetic improvement against a recompute oracle is
-not sufficient evidence for promotion over a tuned handwritten kernel.
+That older component-cloning kernel did not beat the then-committed handwritten
+endpoint. On the real-spherical def2-SVP water tetramer after one-pass bucketing,
+it produced `0.9933x` speedup for batch one and `0.9952x` for batch four.
+Maximum energy and force differences remained below `1.0e-12 Eh` and
+`6.4e-13 Eh/bohr`, respectively. That candidate therefore remains rejected;
+the later force-only weighted-ERI lowering is a distinct implementation and is
+qualified separately under #356.
 
 ## Production AOT policy
 
 The separate [arbitrary-weight ERI consumer](weighted_eri.md) now precontracts
-Hermite coefficients before differentiation. It supplies an opt-in native psss
-expression inside the existing primitive loops and resident/paged queues.
-The older component-cloning candidate above remains recorded as rejected;
-the production manifest and handwritten psss default are unchanged.
+Hermite coefficients before differentiation. Direct-HF psss force uses its
+force-only generated expression unconditionally inside the existing native
+primitive loops and fixed/resident/paged queues. The older component-cloning
+candidate above remains recorded as rejected; it is not the production
+force-only lowering.
 
 `production_shell_classes.json` carries explicit tuned and portable profiles.
 The current `sm_120` profile is measured; `portable_cuda` is intentionally
-empty so unsupported targets retain generic correctness. The `sm_120` force
-profile contains:
+empty for targets whose build explicitly opts into generic correctness. The
+`sm_120` force profile contains:
 
 ```text
 ssss dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps
 ppps dpps dsps dspp pppp psps ppss dsss
 ```
 
-The `ssss` force row is a staged endpoint candidate rather than the production
-default. Runtime clears that class from generated force ownership unless
-`VIBEQC_SSSS_FORCE=generated` is set, so the tuned handwritten path remains
-the default until #356's complete RHF/UHF endpoint gate passes.
+The `ssss` force mathematics is now compiler-owned in production. Runtime still
+keeps the standalone AOT `ssss` force row out of the materialized force queue:
+the generated force-only weighted expression executes inside the already
+qualified bounded/packed scheduler, avoiding a second task stream. The former
+handwritten ssss derivative body and its runtime A/B selector have been deleted.
 
 The generated registry records profile identity, target compute capability,
 class index, consumer mask, block size, and component tile. Every profile uses

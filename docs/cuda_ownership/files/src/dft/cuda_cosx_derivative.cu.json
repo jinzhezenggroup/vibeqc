@@ -1,0 +1,14 @@
+{
+  "path": "src/dft/cuda_cosx_derivative.cu",
+  "reason": "Bounded CUDA execution for the explicit COSX quadrature-point derivative: runtime resource and launch plumbing wrap maintained derivative contractions built from generated one-electron value/derivative primitives.",
+  "regions": [
+    {
+      "reason": "The ESP probe derivative, AO-density response, weighted potential response, and final point-gradient contractions are maintained scientific CUDA kernels; one-electron attraction values and center derivatives are supplied by generated compiler-owned primitives.",
+      "role": "scientific",
+      "start": "__global__ void esp_probe_derivative_kernel",
+      "stop": "unsigned blocks(std::size_t work) {"
+    }
+  ],
+  "role": "runtime",
+  "subsystem": "cosx"
+}

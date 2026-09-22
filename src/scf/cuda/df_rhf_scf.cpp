@@ -88,6 +88,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
   bool occupied_exchange = false;
   const auto policy_status = occupied_scf_policy(*plan, occupied_exchange, detail, occupied);
   if (policy_status != VIBEQC_STATUS_SUCCESS) return policy_status;
+  runtime::df_progress::label("scf_exchange_provider", occupied_exchange ? "occupied" : "dense");
   PersistentScfState* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
   const bool compatible =
       state != nullptr && !state->unrestricted && state->device_id == plan->device_id &&

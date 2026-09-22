@@ -121,3 +121,24 @@ def oracle_system(source: typing.Any) -> typing.Any:
             ]
         )
     return System(build_mol(atoms, basis, source.charge, source.multiplicity - 1))
+
+
+def oracle_analytic_hessian(source: typing.Any) -> typing.Any:
+    """Return an independent PySCF RHF Hessian in (atom, atom, xyz, xyz).
+
+    Only geometry, exact shell primitives, charge and multiplicity are shared
+    with the native source. SCF, integral derivatives and CPHF all run in
+    PySCF; neither native Hessian assembly nor the shared Krylov solver is an
+    oracle. This optional validation helper is never a production dependency.
+    The existing tiny-system reference supplies its domain and SCF gates.
+    """
+    import numpy as np
+
+    from tools.vibeqc_hessian.reference import _converged_rhf
+
+    system = oracle_system(source)
+    mf = _converged_rhf(system.mol)
+    result = np.asarray(mf.Hessian().kernel())
+    if result.shape != (system.nat, system.nat, 3, 3) or not np.isfinite(result).all():
+        raise RuntimeError("independent PySCF Hessian is invalid")
+    return result

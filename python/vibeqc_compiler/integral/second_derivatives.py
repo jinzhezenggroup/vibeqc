@@ -242,7 +242,9 @@ def _one_electron_primal(
     @cache
     def responses(center: typing.Any, axis: typing.Any) -> typing.Any:
         variable = graph.variable(f"{'abc'[center]}_{axis}")
-        dt = None if argument is None else graph.differentiate(argument, variable)
+        if argument is None:
+            return variable, {}
+        dt = graph.differentiate(argument, variable)
         return variable, {
             f"boys_{n}": -graph.variable(f"boys_{n + 1}") * dt for n in range(count - 1)
         }
@@ -274,6 +276,9 @@ def build_second_derivative_kernel(
     if any(l > 3 for l in integral.signature.angular):
         raise ValueError("second derivatives support s/p/d/f shells")
     consumer = require_second_consumer(integral)
+    derivative = integral.derivative
+    if derivative is None:
+        raise ValueError("second derivative lowering requires explicit order two")
     count = integral.signature.component_count
     indices = (
         tuple(range(count)) if component_indices is None else tuple(component_indices)
@@ -296,7 +301,7 @@ def build_second_derivative_kernel(
             "lowering requires the full shell weight layout and an explicit component subset"
         )
     primal_form, output_form = AlgebraForm(primal_form), AlgebraForm(output_form)
-    recovery = second_center_recovery(integral.operator, integral.derivative)
+    recovery = second_center_recovery(integral.operator, derivative)
     dimension = 3 * len(recovery.centers)
     hvp = consumer.output == "weighted_hvp"
     pairs = HessianLayout(recovery.centers, consumer.packing).pairs
@@ -327,7 +332,7 @@ def build_second_derivative_kernel(
         )
         first = replace(
             integral,
-            derivative=replace(integral.derivative, order=1),
+            derivative=replace(derivative, order=1),
             contractions=(
                 WeightedDerivative(
                     weights,

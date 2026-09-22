@@ -32,8 +32,14 @@
     {
       "path": "tools/generate_external_basis_references.py",
       "original_source_sha256": "dd09128d30976fcad0b7bf25af2b99bf5ddbd0ee7307890e3031b563f7a6314c",
-      "annotated_source_sha256": "87807c788ca6cf421ed7a9514d97058e78fadfbdefbb60a2cdadb37d568ab4b3",
-      "executable_ast_sha256": "d132660123d9f9e5b0c6c07c02a4b5abb640cb1bf52e79cdea1649337cc56a21"
+      "annotated_source_sha256": "0ae37d90b8d5d655168076454924cf3d1325e6722d1e64d57d88933408dd9c4d",
+      "executable_ast_sha256": "d132660123d9f9e5b0c6c07c02a4b5abb640cb1bf52e79cdea1649337cc56a21",
+      "module_docstring_rebinding": {
+        "previous_annotated_source_sha256": "87807c788ca6cf421ed7a9514d97058e78fadfbdefbb60a2cdadb37d568ab4b3",
+        "current_source_sha256": "0ae37d90b8d5d655168076454924cf3d1325e6722d1e64d57d88933408dd9c4d",
+        "code_ast_sha256_excluding_module_docstring": "76fab7ba779c5687fad3fb7a0ef03a42c45995bb64a4fa48f38ce53cc8f7f424",
+        "scope": "Reference manifest path in the module docstring only; no new reference execution. The original annotation-audit executable_ast_sha256 is retained as historical evidence."
+      }
     },
     {
       "path": "tools/generate_scf_proposal_references.py",

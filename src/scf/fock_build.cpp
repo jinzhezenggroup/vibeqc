@@ -32,9 +32,12 @@ void canonicalize(FockTermSpec& term) {
     term = {false, 0.0, FockOperator::FullRange, 0.0, FockApproximation::Exact};
     return;
   }
-  require(term.op == FockOperator::FullRange,
-          "short-/long-range Fock providers are not implemented");
-  require(term.omega == 0.0, "full-range Fock terms require omega=0");
+  if (term.op == FockOperator::FullRange) {
+    require(term.omega == 0.0, "full-range Fock terms require omega=0");
+  } else {
+    require(term.approximation == FockApproximation::Exact,
+            "range-separated Fock terms currently require the exact provider");
+  }
   if (term.approximation == FockApproximation::SeminumericalCosx) {
     const auto& cosx = term.cosx;
     require(cosx.version == 1 && cosx.grid_version == 1 && cosx.radial_points > 0 &&
@@ -53,7 +56,7 @@ void canonicalize(FockTermSpec& term) {
   }
   // Eliminate negative zero from serialized mathematical identities.
   if (term.coefficient == 0.0) term.coefficient = 0.0;
-  term.omega = 0.0;
+  if (term.op == FockOperator::FullRange) term.omega = 0.0;
 }
 bool standard_hf_terms(const FockBuildSpec& spec, FockApproximation approximation) {
   return spec.coulomb.present && spec.exchange.present && spec.coulomb.coefficient == 1.0 &&
@@ -71,10 +74,16 @@ void require_cpu_exact_consumer(const ResolvedFockBuild& strategy) {
               strategy.precision == FockPrecision::Float64 && !strategy.legacy_density_fitting,
           "exact raw Fock consumer requires a resolved CPU exact strategy");
   for (const auto* term : {&strategy.spec.coulomb, &strategy.spec.exchange}) {
-    require(std::isfinite(term->coefficient) && term->op == FockOperator::FullRange &&
-                term->omega == 0.0 && term->approximation == FockApproximation::Exact,
-            "exact raw Fock consumer cannot execute another operator/provider");
+    if (!term->present) continue;
+    require(std::isfinite(term->coefficient) && term->approximation == FockApproximation::Exact,
+            "exact raw Fock consumer cannot execute another provider");
+    require(term->op == FockOperator::FullRange ? term->omega == 0.0
+                                                : std::isfinite(term->omega) && term->omega >= 0.0,
+            "exact raw Fock consumer has inconsistent operator/range identity");
   }
+  require(!(strategy.spec.coulomb.present && strategy.spec.exchange.present &&
+            strategy.spec.exchange.op != FockOperator::FullRange),
+          "one dense exact tensor cannot serve Coulomb and range exchange together");
 }
 std::size_t matrix_size(std::size_t nbf) {
   require(nbf > 0 && nbf <= std::numeric_limits<std::size_t>::max() / nbf,
@@ -107,12 +116,19 @@ constexpr FockProviderCapabilities supported_fock_domain() {
   return capabilities;
 }
 
+constexpr FockProviderCapabilities cpu_exact_fock_domain() {
+  auto capabilities = supported_fock_domain();
+  capabilities.short_range = true;
+  capabilities.long_range = true;
+  return capabilities;
+}
+
 constexpr FockProviderCapabilities cosx_fock_domain() {
   FockProviderCapabilities capabilities;
   capabilities.restricted = true;
   capabilities.unrestricted = true;
   capabilities.full_range = true;
-  capabilities.maximum_derivative_order = 0;
+  capabilities.maximum_derivative_order = 1;
   capabilities.maximum_angular_momentum = 3;
   capabilities.cartesian = true;
   capabilities.spherical = true;
@@ -151,7 +167,8 @@ constexpr std::string_view kCosxCudaReason = "CUDA support was not compiled into
 
 constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
     make_registration("cpu.exact", FockApproximation::Exact, runtime::ProviderBackend::Cpu,
-                      runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
+                      runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp",
+                      cpu_exact_fock_domain()),
     make_registration("cpu.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cpu,
                       runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
     make_registration("cuda.exact", FockApproximation::Exact, runtime::ProviderBackend::Cuda,
@@ -242,6 +259,8 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   canonicalize(spec.exchange);
   auto validate_term = [&](const FockTermSpec& term, bool coulomb) {
     if (!term.present) return;
+    if (coulomb && term.op != FockOperator::FullRange)
+      throw std::invalid_argument("range-separated Coulomb is not implemented");
     const auto& capability =
         fock_provider_registration(term.approximation, backend).domain.capabilities;
     require(coulomb ? capability.coulomb : capability.exchange,
@@ -258,6 +277,9 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   };
   validate_term(spec.coulomb, true);
   validate_term(spec.exchange, false);
+  if (spec.derivative_order && spec.exchange.present && spec.exchange.op != FockOperator::FullRange)
+    throw std::invalid_argument(
+        "range-separated Fock derivatives are not integrated into the common provider");
   const bool fitted =
       (spec.coulomb.present && spec.coulomb.approximation == FockApproximation::DensityFitted) ||
       (spec.exchange.present && spec.exchange.approximation == FockApproximation::DensityFitted);
@@ -388,8 +410,10 @@ FockMatrices assemble_fock(const ResolvedFockBuild& strategy, std::span<const do
   return result;
 }
 
-double contract_fock_energy(const ResolvedFockBuild& strategy, const DirectJkMatrices& jk,
-                            std::span<const double> density, std::span<const double> beta) {
+FockEnergyComponents contract_fock_energy_components(const ResolvedFockBuild& strategy,
+                                                     const DirectJkMatrices& jk,
+                                                     std::span<const double> density,
+                                                     std::span<const double> beta) {
   validate_resolved_fock_build(strategy);
   const std::size_t count = matrix_size(jk.nbf);
   validate_densities(strategy.spec.spin, count, density, beta);
@@ -399,18 +423,25 @@ double contract_fock_energy(const ResolvedFockBuild& strategy, const DirectJkMat
           jk.exchange_alpha.size() == (strategy.spec.exchange.present ? count : 0) &&
           jk.exchange_beta.size() == (strategy.spec.exchange.present && unrestricted ? count : 0),
       "raw J/K outputs do not match the resolved Fock energy terms");
-  double result = 0.0;
+  FockEnergyComponents result;
   for (std::size_t ij = 0; ij < density.size(); ++ij) {
     const double total = density[ij] + (unrestricted ? beta[ij] : 0.0);
     if (strategy.spec.coulomb.present)
-      result += 0.5 * total * strategy.spec.coulomb.coefficient * jk.coulomb[ij];
+      result.coulomb += 0.5 * total * strategy.spec.coulomb.coefficient * jk.coulomb[ij];
     if (strategy.spec.exchange.present) {
-      result += 0.5 * density[ij] * strategy.spec.exchange.coefficient * jk.exchange_alpha[ij];
+      result.exchange +=
+          0.5 * density[ij] * strategy.spec.exchange.coefficient * jk.exchange_alpha[ij];
       if (unrestricted)
-        result += 0.5 * beta[ij] * strategy.spec.exchange.coefficient * jk.exchange_beta[ij];
+        result.exchange +=
+            0.5 * beta[ij] * strategy.spec.exchange.coefficient * jk.exchange_beta[ij];
     }
   }
   return result;
+}
+
+double contract_fock_energy(const ResolvedFockBuild& strategy, const DirectJkMatrices& jk,
+                            std::span<const double> density, std::span<const double> beta) {
+  return contract_fock_energy_components(strategy, jk, density, beta).total();
 }
 
 double contract_exact_direct_energy_derivative(const ResolvedFockBuild& strategy, std::size_t nbf,

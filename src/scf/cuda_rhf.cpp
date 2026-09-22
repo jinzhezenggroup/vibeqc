@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
@@ -111,6 +112,7 @@ using namespace cuda_execution;
 //   kExpandedConvergedFockReuseDensityRms = 2.0e-9
 //   kAutoMixedPrecisionErrorBudgetFraction = 6.25e-02
 //   kFloat32UnitRoundoff = 5.9604644775390625e-08
+using cuda_policy::aot_shell_class_selection_override_requested;
 using cuda_policy::bounded_direct_aot_only_diagnostic_requested;
 using cuda_policy::bounded_direct_count_diagnostic_requested;
 using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
@@ -448,6 +450,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   plan.last_ppps_queue_profile.reset();
   plan.last_inactive_eigensolver_profile.reset();
 
+  cudaDeviceProp direct_device_properties{};
+  const cudaError_t direct_target_error =
+      cudaGetDeviceProperties(&direct_device_properties, device_id);
+  if (direct_target_error != cudaSuccess) {
+    fill_global_failure(outputs, cuda_status(direct_target_error));
+    return outputs;
+  }
+  const runtime::CudaTargetInfo direct_target =
+      runtime::cuda_target_info_from_properties(direct_device_properties);
+  const cuda_policy::DirectJkSchedulePolicy direct_schedule =
+      cuda_policy::resolve_direct_jk_schedule_policy(direct_target);
+
   const std::size_t nbf = host.nbf;
   const std::size_t direct_nbf = host.direct_nbf;
   const std::size_t spin_count = host.spin_count;
@@ -592,7 +606,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       direct_task_layout = {};
       total_shell_quartet_tiles = 0;
     } else if (direct_task_layout.exact_tile_count >
-               kFixedGeneratedTaskArenaMaximumBytes / sizeof(GeneratedShellTask)) {
+               direct_schedule.fixed_topology.arena_maximum_bytes / sizeof(GeneratedShellTask)) {
       // The uint32 grid limit is much larger than a practical descriptor
       // arena on a 32 GiB device.  Route large-but-grid-addressable buckets
       // through bounded streaming before make_layout() reserves the complete
@@ -730,7 +744,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
     bounded_generated_task_capacity =
-        std::min(bounded_generated_task_capacity, kBoundedGeneratedMaximumTaskCapacity);
+        std::min(bounded_generated_task_capacity,
+                 cuda_policy::direct_jk_bounded_streaming_task_capacity_limit(
+                     direct_schedule, sizeof(GeneratedShellTask)));
   }
   if (requested_quartet_direct && first_setup && !requested_bounded_direct_streaming) {
     // The shared generated-task arena serves both exact Fock and force
@@ -833,8 +849,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     plan.resident_psss_bra_primitive_pairs = 0;
-    plan.generated_ssss_force = cuda_policy::generated_ssss_force_requested();
-    plan.generated_psss_weighted = cuda_policy::generated_psss_weighted_requested();
     plan.one_electron_value_mapping = cuda_policy::one_electron_value_mapping_requested();
     const bool resident_psss_enabled = resident_psss_bra_requested();
     // The bounded direct force path has its own exact page consumer for psss.
@@ -989,6 +1003,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                             ordinary_eigensolver_family == CudaEigensolverFamily::xsyev_batched ||
                             ordinary_eigensolver_family == CudaEigensolverFamily::xsyevd;
   const bool geometry_changed = first_setup || plan.cached_positions != host.positions;
+  ++plan.execution_generation;
+  if (geometry_changed) ++plan.geometry_generation;
   const bool all_systems_warm = std::all_of(host.warm_mask.begin(), host.warm_mask.end(),
                                             [](std::uint8_t value) { return value != 0; });
   const bool any_system_warm = std::any_of(host.warm_mask.begin(), host.warm_mask.end(),
@@ -1010,6 +1026,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                           plan.frozen_previous_energy.size() == batch_size;
   const bool cached_energy_baseline_hit =
       frozen_energy_baseline_hit || resident_energy_baseline_hit;
+  // A force-ready retained determinant needs provenance, not just a small
+  // density step. Cold/core guesses are projected internally. A warm seed is
+  // trusted only when its complete values, geometry and plan identity match a
+  // previously published resident/frozen state. Arbitrary external dm0,
+  // changed geometry and partial warm batches take the bounded fallback.
+  const bool force_ready_seed_provenance = !any_system_warm || device_resident_density_hit;
+  // Final determinant orbitals are tracked inside the already allocated
+  // weighted-density scratch. The Graph shape depends only on this plan-stable
+  // force/reuse capability, not on whether a particular warm seed has valid
+  // provenance; unproven seeds still execute the copy but cannot publish it.
+  const bool track_force_final_orbitals =
+      options.compute_forces && !options.export_physical_reference && reuse_converged_fock;
   // Copy the tiny seed vector locally before invalidating residency. Any
   // early CUDA or validation failure below may have partially changed the
   // device density; only a fully successful execution republishes it.
@@ -1045,8 +1073,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // once per device; low-order kernels do not consume it.
     std::size_t stack_limit = 0;
     cuda_error = cudaDeviceGetLimit(&stack_limit, cudaLimitStackSize);
-    if (cuda_error == cudaSuccess && stack_limit < kDirectCudaStackLimitBytes) {
-      cuda_error = cudaDeviceSetLimit(cudaLimitStackSize, kDirectCudaStackLimitBytes);
+    if (cuda_error == cudaSuccess && stack_limit < direct_schedule.cuda_stack_limit_bytes) {
+      cuda_error = cudaDeviceSetLimit(cudaLimitStackSize, direct_schedule.cuda_stack_limit_bytes);
     }
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
@@ -1054,18 +1082,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
   }
   if (first_setup && quartet_direct) {
-    int multiprocessor_count = 0;
-    cuda_error =
-        cudaDeviceGetAttribute(&multiprocessor_count, cudaDevAttrMultiProcessorCount, device_id);
-    if (cuda_error != cudaSuccess || multiprocessor_count <= 0 ||
-        static_cast<unsigned>(multiprocessor_count) >
-            std::numeric_limits<unsigned>::max() / kPersistentQuartetWarpsPerMultiprocessor) {
-      fill_global_failure(outputs, cuda_error == cudaSuccess ? VIBEQC_STATUS_INVALID_ARGUMENT
-                                                             : cuda_status(cuda_error));
+    if (direct_target.multiprocessor_count == 0U ||
+        direct_target.multiprocessor_count > std::numeric_limits<unsigned>::max() /
+                                                 direct_schedule.persistent_quartet_warps_per_sm) {
+      fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
       return outputs;
     }
+    plan.persistent_quartet_warps_per_multiprocessor =
+        direct_schedule.persistent_quartet_warps_per_sm;
     plan.persistent_quartet_worker_blocks =
-        static_cast<unsigned>(multiprocessor_count) * kPersistentQuartetWarpsPerMultiprocessor;
+        direct_target.multiprocessor_count * direct_schedule.persistent_quartet_warps_per_sm;
   }
   cublasStatus_t blas_error = CUBLAS_STATUS_SUCCESS;
   cusolverStatus_t solver_error = CUSOLVER_STATUS_SUCCESS;
@@ -1655,8 +1681,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                            primitive_exponents,
                            primitive_coefficients,
                            occupied};
-  device_batch.generated_psss_weighted = plan.generated_psss_weighted;
-
   if (quartet_direct && geometry_changed) {
     launch_build_shell_primitive_pair_cache_kernel(
         static_cast<unsigned>(total_shell_pairs), detail::kDirectQuartetThreads, 0,
@@ -2668,6 +2692,20 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
   }
 
+  if (track_force_final_orbitals && force_ready_seed_provenance) {
+    // Cold/core densities were projected from the coefficient buffer above. A
+    // resident warm hit keeps the previously published final coefficients in
+    // the same persistent arena. Seed the SCF-owned orbital frame before the
+    // iteration eigensolver overwrites the candidate coefficient buffer.
+    launch_copy_matrix_kernel(blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
+                              spin_matrix_elements, coefficients, weighted_density);
+    cuda_error = cudaPeekAtLastError();
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+  }
+
   const EigensolverProfileLaunch graph_eigensolver_profile{
       static_cast<std::int32_t>(batch_size),
       active,
@@ -2746,11 +2784,35 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                          unrestricted ? spin_active : active, graph_eigensolver_profile_pointer);
   };
 
-  // Force accuracy also needs stationarity of the physical operator; a small
-  // DIIS density step alone can hide a much larger localized residual. Reuse
-  // the already computed F(P) commutator within the caller's iteration budget.
-  const bool canonical_force_update = options.compute_forces && !options.export_physical_reference;
-  const double* force_convergence_residual = canonical_force_update ? residual : nullptr;
+  // A direct force is licensed only by the physical F(P) residual evaluated
+  // inside SCF. The common path retains the converged P/F(P) pair atomically:
+  // energy, every force term, Pulay and the returned restart density consume
+  // that same generation. The explicit final-Fock rebuild diagnostic keeps
+  // the legacy canonical correction as a bounded fallback/A-B path.
+  const bool stationary_force_required =
+      options.compute_forces && !options.export_physical_reference;
+  const bool scf_force_ready_state =
+      stationary_force_required && reuse_converged_fock && force_ready_seed_provenance;
+  const bool force_finalization_fallback = stationary_force_required && !scf_force_ready_state;
+  plan.last_direct_final_state = {};
+  if (stationary_force_required) {
+    plan.last_direct_final_state.route = scf_force_ready_state
+                                             ? CudaDirectFinalStateRoute::scf_force_ready
+                                             : CudaDirectFinalStateRoute::canonical_fallback;
+    if (force_finalization_fallback) {
+      plan.last_direct_final_state.fallback_reason =
+          !reuse_converged_fock
+              ? CudaDirectFinalStateFallbackReason::explicit_final_fock_rebuild
+              : (!force_ready_seed_provenance
+                     ? CudaDirectFinalStateFallbackReason::unproven_density_generation
+                     : CudaDirectFinalStateFallbackReason::legacy_finalization);
+    }
+    plan.last_direct_final_state.seed_provenance = force_ready_seed_provenance;
+    // Coarse mixed items cannot leave SCF as a force-ready state: the exact
+    // target refinement re-enters this same physical residual gate first.
+    plan.last_direct_final_state.target_precision = true;
+  }
+  const double* force_convergence_residual = stationary_force_required ? residual : nullptr;
   const auto launch_iteration_post_eigensolver = [&](bool append_device_tail,
                                                      bool allow_mixed_precision) -> vibeqc_status {
     // Only the item's coarse mixed stage may defer stationarity. Exact peers
@@ -2816,6 +2878,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
     if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
+    if (track_force_final_orbitals) {
+      // After the convergence kernel, active selects only items that accepted
+      // P_{n+1} and will continue. Advance their determinant orbital frame with
+      // the same generation; converged items retain C_n alongside P_n/F(P_n).
+      launch_copy_selected_matrices_kernel(
+          blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
+          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
+          static_cast<std::int32_t>(nbf), active, coefficients, weighted_density);
+    }
     if (append_device_tail) {
       launch_tail_rhf_loop_kernel(1, 1, 0, resources.stream_, static_cast<std::int32_t>(batch_size),
                                   options.max_iterations, active, iterations);
@@ -3158,124 +3229,178 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
   }
-  std::uint32_t host_final_fock_rebuild_count = static_cast<std::uint32_t>(batch_size);
-  if (reuse_converged_fock) {
-    // Partition on the device because density RMS is already per-system. This
-    // permits a mixed bucket: tight systems retain P_n/F(P_n), while only
-    // looser systems restore P_{n+1} and execute the exact legacy rebuild.
-    cuda_error =
-        cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
-    if (cuda_error == cudaSuccess) {
-      launch_select_final_fock_rebuild_kernel(
-          blocks_for(batch_size), threads, 0, resources.stream_,
-          static_cast<std::int32_t>(batch_size),
-          converged_fock_reuse_density_rms(options.density_tolerance), density_rms, converged,
-          failed, final_fock_reuse_mask, active, final_fock_rebuild_count);
-      launch_copy_selected_matrices_kernel(
-          blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
-          static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
-          static_cast<std::int32_t>(nbf), active, next_density, density);
-      cuda_error =
-          cudaMemcpyAsync(&host_final_fock_rebuild_count, final_fock_rebuild_count,
-                          sizeof(std::uint32_t), cudaMemcpyDeviceToHost, resources.stream_);
-    }
-    if (cuda_error == cudaSuccess) {
-      // One post-Graph scalar fence avoids launching the expensive Fock
-      // worker family when every system can reuse its retained matrix.
-      cuda_error = cudaStreamSynchronize(resources.stream_);
-    }
+  std::uint32_t post_scf_physical_fock_builds = 0;
+  std::uint32_t post_scf_final_eigen_solves = 0;
+  if (scf_force_ready_state) {
+    // Convergence already certified the un-extrapolated physical F(P_n)
+    // commutator before DIIS and RetainConvergedDensity kept P_n paired with
+    // that exact operator. Publish that pair directly instead of projecting
+    // another determinant and rebuilding the full operator a second time.
+    launch_select_converged_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
+                                   static_cast<std::int32_t>(batch_size), converged, failed,
+                                   active);
+    // weighted_density carried the orbital frame that generated this exact
+    // retained density. Publish it into the ordinary coefficient buffer before
+    // that scratch is reused for the Pulay PFP product.
+    launch_copy_selected_matrices_kernel(
+        blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
+        static_cast<std::int32_t>(nbf), active, weighted_density, coefficients);
+    cuda_error = cudaPeekAtLastError();
     if (cuda_error != cudaSuccess) {
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
-    if (host_final_fock_rebuild_count != 0) {
-      cuda_error = launch_fock_builder(density, false);
-      if (cuda_error != cudaSuccess) {
-        fill_global_failure(outputs, cuda_status(cuda_error));
-        return outputs;
-      }
-    }
-    launch_select_converged_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
-                                   static_cast<std::int32_t>(batch_size), converged, failed,
-                                   active);
-    if (quartet_direct && batch_size > 1 && host_final_fock_rebuild_count != batch_size) {
-      // Later device-tail launches overwrite the shared compact quartet list
-      // after an early peer converges. Recreate only density transforms,
-      // shell-pair bounds, and task metadata for all final snapshots; do not
-      // evaluate any two-electron integrals or modify retained Fock matrices.
+    plan.last_direct_final_state.orbital_frame_bound = true;
+    if (quartet_direct) {
+      // Device-tail iterations can overwrite shared compaction metadata for
+      // peers that converged earlier. Refresh metadata/transforms for all
+      // published final densities; this performs no J/K/Fock evaluation.
       cuda_error = launch_direct_quartet_metadata(density, false);
       if (cuda_error != cudaSuccess) {
         fill_global_failure(outputs, cuda_status(cuda_error));
         return outputs;
       }
     }
+    runtime::df_progress::Scope trace("direct_scf_force_ready_final_state", "cuda_submission");
+    plan.last_direct_final_state.physical_residual_validated = true;
+    plan.last_direct_final_state.restart_same_density_generation = true;
+    plan.last_direct_final_state.additional_physical_fock_builds = 0;
+    plan.last_direct_final_state.additional_final_eigen_solves = 0;
+    runtime::df_progress::Scope::number("additional_density_updates", 0);
+    runtime::df_progress::Scope::number("additional_physical_fock_builds", 0);
+    runtime::df_progress::Scope::number("additional_final_eigen_solves", 0);
+    runtime::df_progress::Scope::number("additional_physical_residual_checks", 0);
+    runtime::df_progress::Scope::number(
+        "retained_orbital_frame_bytes",
+        static_cast<std::uint64_t>(spin_matrix_elements * sizeof(double)));
+    trace.finish("submitted");
   } else {
-    launch_select_converged_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
-                                   static_cast<std::int32_t>(batch_size), converged, failed,
-                                   active);
-    cuda_error = launch_fock_builder(density, false);
-    if (cuda_error != cudaSuccess) {
-      fill_global_failure(outputs, cuda_status(cuda_error));
+    std::uint32_t host_final_fock_rebuild_count = static_cast<std::uint32_t>(batch_size);
+    if (reuse_converged_fock) {
+      // Partition on the device because density RMS is already per-system. This
+      // permits a mixed bucket: tight systems retain P_n/F(P_n), while only
+      // looser systems restore P_{n+1} and execute the exact legacy rebuild.
+      cuda_error =
+          cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
+      if (cuda_error == cudaSuccess) {
+        launch_select_final_fock_rebuild_kernel(
+            blocks_for(batch_size), threads, 0, resources.stream_,
+            static_cast<std::int32_t>(batch_size),
+            converged_fock_reuse_density_rms(options.density_tolerance), density_rms, converged,
+            failed, final_fock_reuse_mask, active, final_fock_rebuild_count);
+        launch_copy_selected_matrices_kernel(
+            blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
+            static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
+            static_cast<std::int32_t>(nbf), active, next_density, density);
+        cuda_error =
+            cudaMemcpyAsync(&host_final_fock_rebuild_count, final_fock_rebuild_count,
+                            sizeof(std::uint32_t), cudaMemcpyDeviceToHost, resources.stream_);
+      }
+      if (cuda_error == cudaSuccess) {
+        // One post-Graph scalar fence avoids launching the expensive Fock
+        // worker family when every system can reuse its retained matrix.
+        cuda_error = cudaStreamSynchronize(resources.stream_);
+      }
+      if (cuda_error != cudaSuccess) {
+        fill_global_failure(outputs, cuda_status(cuda_error));
+        return outputs;
+      }
+      if (host_final_fock_rebuild_count != 0) {
+        cuda_error = launch_fock_builder(density, false);
+        if (cuda_error == cudaSuccess) ++post_scf_physical_fock_builds;
+        if (cuda_error != cudaSuccess) {
+          fill_global_failure(outputs, cuda_status(cuda_error));
+          return outputs;
+        }
+      }
+      launch_select_converged_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
+                                     static_cast<std::int32_t>(batch_size), converged, failed,
+                                     active);
+      if (quartet_direct && batch_size > 1 && host_final_fock_rebuild_count != batch_size) {
+        // Later device-tail launches overwrite the shared compact quartet list
+        // after an early peer converges. Recreate only density transforms,
+        // shell-pair bounds, and task metadata for all final snapshots; do not
+        // evaluate any two-electron integrals or modify retained Fock matrices.
+        cuda_error = launch_direct_quartet_metadata(density, false);
+        if (cuda_error != cudaSuccess) {
+          fill_global_failure(outputs, cuda_status(cuda_error));
+          return outputs;
+        }
+      }
+    } else {
+      launch_select_converged_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
+                                     static_cast<std::int32_t>(batch_size), converged, failed,
+                                     active);
+      cuda_error = launch_fock_builder(density, false);
+      if (cuda_error == cudaSuccess) ++post_scf_physical_fock_builds;
+      if (cuda_error != cudaSuccess) {
+        fill_global_failure(outputs, cuda_status(cuda_error));
+        return outputs;
+      }
+    }
+
+    // Diagonalize each un-extrapolated final Fock. Tight systems consume their
+    // retained P_n/F(P_n); rebuilt systems consume P_{n+1}/F(P_{n+1}). The
+    // active mask now contains every converged system for common finalization.
+    if (unrestricted) {
+      status = multiply_spin_matrices(fock, true, false, orthogonalizer, false, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_spin_matrices(orthogonalizer, false, true, temporary, true, eigensystem);
+      }
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        launch_expand_spin_active_kernel(blocks_for(spin_batch_size), threads, 0, resources.stream_,
+                                         static_cast<std::int32_t>(batch_size), 2, active,
+                                         spin_active);
+        status =
+            launch_solver(resources.eigensolver_view(), ordinary_eigensolver_family,
+                          static_cast<int>(nbf), static_cast<int>(spin_batch_size), eigensystem,
+                          temporary, eigenvalues, lwork, solver_info, spin_active);
+      }
+    } else {
+      status = multiply_matrices(fock, false, orthogonalizer, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_matrices(orthogonalizer, true, temporary, eigensystem);
+      }
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = launch_solver(resources.eigensolver_view(), ordinary_eigensolver_family,
+                               static_cast<int>(nbf), static_cast<int>(batch_size), eigensystem,
+                               temporary, eigenvalues, lwork, solver_info, active);
+      }
+    }
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
       return outputs;
+    }
+    ++post_scf_final_eigen_solves;
+    if (unrestricted) {
+      launch_inspect_spin_solver_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
+                                        static_cast<std::int32_t>(batch_size), 2, solver_info,
+                                        active, failed, converged);
+      status =
+          multiply_spin_matrices(orthogonalizer, false, false, eigensystem, true, coefficients);
+      if (status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
+    } else {
+      launch_inspect_solver_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
+                                   static_cast<std::int32_t>(batch_size), solver_info, active,
+                                   failed, converged);
+      status = multiply_matrices(orthogonalizer, false, eigensystem, coefficients);
+      if (status != VIBEQC_STATUS_SUCCESS) {
+        fill_global_failure(outputs, status);
+        return outputs;
+      }
     }
   }
 
-  // Diagonalize each un-extrapolated final Fock. Tight systems consume their
-  // retained P_n/F(P_n); rebuilt systems consume P_{n+1}/F(P_{n+1}). The
-  // active mask now contains every converged system for common finalization.
-  if (unrestricted) {
-    status = multiply_spin_matrices(fock, true, false, orthogonalizer, false, temporary);
-    if (status == VIBEQC_STATUS_SUCCESS) {
-      status = multiply_spin_matrices(orthogonalizer, false, true, temporary, true, eigensystem);
-    }
-    if (status == VIBEQC_STATUS_SUCCESS) {
-      launch_expand_spin_active_kernel(blocks_for(spin_batch_size), threads, 0, resources.stream_,
-                                       static_cast<std::int32_t>(batch_size), 2, active,
-                                       spin_active);
-      status = launch_solver(resources.eigensolver_view(), ordinary_eigensolver_family,
-                             static_cast<int>(nbf), static_cast<int>(spin_batch_size), eigensystem,
-                             temporary, eigenvalues, lwork, solver_info, spin_active);
-    }
-  } else {
-    status = multiply_matrices(fock, false, orthogonalizer, temporary);
-    if (status == VIBEQC_STATUS_SUCCESS) {
-      status = multiply_matrices(orthogonalizer, true, temporary, eigensystem);
-    }
-    if (status == VIBEQC_STATUS_SUCCESS) {
-      status = launch_solver(resources.eigensolver_view(), ordinary_eigensolver_family,
-                             static_cast<int>(nbf), static_cast<int>(batch_size), eigensystem,
-                             temporary, eigenvalues, lwork, solver_info, active);
-    }
-  }
-  if (status != VIBEQC_STATUS_SUCCESS) {
-    fill_global_failure(outputs, status);
-    return outputs;
-  }
-  if (unrestricted) {
-    launch_inspect_spin_solver_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
-                                      static_cast<std::int32_t>(batch_size), 2, solver_info, active,
-                                      failed, converged);
-    status = multiply_spin_matrices(orthogonalizer, false, false, eigensystem, true, coefficients);
-    if (status != VIBEQC_STATUS_SUCCESS) {
-      fill_global_failure(outputs, status);
-      return outputs;
-    }
-  } else {
-    launch_inspect_solver_kernel(blocks_for(batch_size), threads, 0, resources.stream_,
-                                 static_cast<std::int32_t>(batch_size), solver_info, active, failed,
-                                 converged);
-    status = multiply_matrices(orthogonalizer, false, eigensystem, coefficients);
-    if (status != VIBEQC_STATUS_SUCCESS) {
-      fill_global_failure(outputs, status);
-      return outputs;
-    }
-  }
   // Build the force determinant from the already available canonical orbitals,
   // then explicitly rebuild F at that updated determinant. The
   // additional operator is real work, not elimination of the preceding final
   // build. Energy-only and detached reference exports retain their old path.
   std::uint32_t host_force_validation_count = 0;
-  if (canonical_force_update) {
+  if (force_finalization_fallback) {
     runtime::df_progress::Scope trace("direct_force_canonicalization", "cuda_submission");
     if (unrestricted) {
       launch_build_spin_density_kernel(blocks_for(spin_matrix_elements), threads, 0,
@@ -3289,7 +3414,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                   density);
     }
     cuda_error = cudaGetLastError();
-    if (cuda_error == cudaSuccess) cuda_error = launch_fock_builder(density, false);
+    if (cuda_error == cudaSuccess) {
+      cuda_error = launch_fock_builder(density, false);
+      if (cuda_error == cudaSuccess) ++post_scf_physical_fock_builds;
+    }
     if (cuda_error != cudaSuccess) {
       trace.finish("cuda_failed");
       fill_global_failure(outputs, cuda_status(cuda_error));
@@ -3305,11 +3433,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // it to count every tested determinant, including final-state rejections.
     cuda_error =
         cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
+    // Device warm_mask is dead after initial-state admission. Reuse those
+    // per-item bytes as exact audit participation flags without growing the
+    // arena solely for diagnostics.
+    if (cuda_error == cudaSuccess) {
+      cuda_error =
+          cudaMemsetAsync(warm_mask, 0, batch_size * sizeof(std::uint8_t), resources.stream_);
+    }
     if (cuda_error == cudaSuccess) {
       launch_validate_force_residual_kernel(
           resources.stream_, static_cast<std::int32_t>(batch_size),
           static_cast<std::int32_t>(spin_count), static_cast<std::int32_t>(nbf),
-          options.density_tolerance, residual, active, converged, final_fock_rebuild_count);
+          options.density_tolerance, residual, active, converged, final_fock_rebuild_count,
+          warm_mask);
       cuda_error = cudaGetLastError();
     }
     if (cuda_error != cudaSuccess) {
@@ -3317,10 +3453,88 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, cuda_status(cuda_error));
       return outputs;
     }
+    plan.last_direct_final_state.physical_residual_validated = true;
+    plan.last_direct_final_state.restart_same_density_generation = true;
+    plan.last_direct_final_state.additional_physical_fock_builds = post_scf_physical_fock_builds;
+    plan.last_direct_final_state.additional_final_eigen_solves = post_scf_final_eigen_solves;
     runtime::df_progress::Scope::number("physical_fock_bucket_submissions", 1);
     runtime::df_progress::Scope::number("physical_residual_product_bucket_submissions", 4);
     trace.finish("submitted");
   }
+  if (stationary_force_required) {
+    // Bind eps_final to the same physical operator and determinant orbital
+    // frame without projecting a new density. The off-block orbital residual
+    // is already bounded by the physical commutator gate; diag(C^T F(P) C)
+    // therefore supplies physical orbital energies while preserving P exactly.
+    if (unrestricted) {
+      status = multiply_spin_matrices(fock, true, false, coefficients, true, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_spin_matrices(coefficients, true, true, temporary, true, eigensystem);
+      }
+    } else {
+      status = multiply_matrices(fock, false, coefficients, temporary);
+      if (status == VIBEQC_STATUS_SUCCESS) {
+        status = multiply_matrices(coefficients, true, temporary, eigensystem);
+      }
+    }
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      fill_global_failure(outputs, status);
+      return outputs;
+    }
+    launch_extract_matrix_diagonals_kernel(
+        blocks_for(spin_batch_size * nbf), threads, 0, resources.stream_,
+        static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
+        static_cast<std::int32_t>(nbf), active, eigensystem, eigenvalues);
+    cuda_error = cudaPeekAtLastError();
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
+    }
+    plan.last_direct_final_state.orbital_frame_bound = true;
+    plan.last_direct_final_state.physical_orbital_energies = true;
+  }
+
+  std::optional<CudaDirectFinalSCFState> force_final_state;
+  if (stationary_force_required) {
+    force_final_state.emplace(CudaDirectFinalSCFState{
+        &plan,
+        plan.execution_generation,
+        plan.execution_generation,
+        plan.geometry_generation,
+        1,
+        plan.geometry_generation,
+        plan.execution_generation,
+        plan.execution_generation,
+        plan.execution_generation,
+        plan.execution_generation,
+        1,
+        1,
+        1,
+        1,
+        options.screening_tolerance,
+        static_cast<int>(options.precision_mode.value_or(VIBEQC_PRECISION_FP64)),
+        unrestricted,
+        density,
+        fock,
+        coefficients,
+        eigenvalues,
+        occupied,
+        residual,
+        energy,
+        active,
+        resources.stream_,
+        plan.last_direct_final_state,
+    });
+  }
+  if (force_final_state.has_value() && !force_final_state->force_consumable()) {
+    fill_global_failure(outputs, VIBEQC_STATUS_INTERNAL_ERROR);
+    return outputs;
+  }
+  const double* final_density =
+      force_final_state.has_value() ? force_final_state->density : density;
+  const double* final_fock =
+      force_final_state.has_value() ? force_final_state->physical_fock : fock;
+
   // Energy and every force term consume this same P/F(P). In particular, the
   // Pulay weight below cannot switch to another canonical determinant.
   if (options.compute_forces) {
@@ -3349,14 +3563,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   if (unrestricted) {
     launch_compute_uhf_energy_kernel(static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
                                      resources.stream_, static_cast<std::int32_t>(batch_size),
-                                     static_cast<std::int32_t>(nbf), density, hcore, fock,
-                                     nuclear_repulsion, active, energy);
+                                     static_cast<std::int32_t>(nbf), final_density, hcore,
+                                     final_fock, nuclear_repulsion, active, energy);
     if (options.compute_forces) {
       // With unit spin occupations, W_sigma = P_sigma F_sigma P_sigma.
       // Iteration scratch is free here; keep the selected final P/F untouched.
-      status = multiply_spin_matrices(density, true, false, fock, true, temporary);
+      status = multiply_spin_matrices(final_density, true, false, final_fock, true, temporary);
       if (status == VIBEQC_STATUS_SUCCESS) {
-        status = multiply_spin_matrices(temporary, true, false, density, true, weighted_density);
+        status =
+            multiply_spin_matrices(temporary, true, false, final_density, true, weighted_density);
       }
       if (status != VIBEQC_STATUS_SUCCESS) {
         fill_global_failure(outputs, status);
@@ -3364,7 +3579,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
       launch_sum_uhf_spin_matrices_kernel(blocks_for(matrix_elements), threads, 0,
                                           resources.stream_, static_cast<std::int32_t>(batch_size),
-                                          static_cast<std::int32_t>(nbf), density, active,
+                                          static_cast<std::int32_t>(nbf), final_density, active,
                                           total_density);
       launch_sum_uhf_spin_matrices_kernel(blocks_for(matrix_elements), threads, 0,
                                           resources.stream_, static_cast<std::int32_t>(batch_size),
@@ -3374,15 +3589,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   } else {
     launch_compute_energy_kernel(static_cast<unsigned>(batch_size), matrix_reduction_threads, 0,
                                  resources.stream_, static_cast<std::int32_t>(batch_size),
-                                 static_cast<std::int32_t>(nbf), density, hcore, fock,
+                                 static_cast<std::int32_t>(nbf), final_density, hcore, final_fock,
                                  nuclear_repulsion, active, energy);
     if (options.compute_forces) {
       // P = 2 C_occ C_occ^T, hence the determinant-consistent Pulay weight is
       // W = P F(P) P / 2. At stationarity this equals the canonical expression;
       // at finite residual it preserves the same P as the other force terms.
-      status = multiply_matrices(density, false, fock, temporary);
+      status = multiply_matrices(final_density, false, final_fock, temporary);
       if (status == VIBEQC_STATUS_SUCCESS) {
-        status = multiply_matrices(temporary, false, density, weighted_density, 0.5);
+        status = multiply_matrices(temporary, false, final_density, weighted_density, 0.5);
       }
       if (status != VIBEQC_STATUS_SUCCESS) {
         fill_global_failure(outputs, status);
@@ -3418,7 +3633,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       std::string ecp_detail;
       const auto ecp_status =
           integrals::add_ecp_cuda(device_id, host.ecp_systems[e], resources.stream_, nullptr,
-                                  (unrestricted ? total_density : density) + e * matrix_size,
+                                  (unrestricted ? total_density : final_density) + e * matrix_size,
                                   forces + 3 * host.atom_offsets[e], ecp_detail);
       if (ecp_status != VIBEQC_STATUS_SUCCESS) {
         fill_global_failure(outputs, ecp_status);
@@ -3429,8 +3644,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // candidate-specific geometry or plan buffers that could become stale.
     if (cuda_policy::generated_one_electron_derivatives_requested()) {
       const OneElectronWeightView weights{unrestricted ? total_weighted_density : weighted_density,
-                                          unrestricted ? total_density : density,
-                                          unrestricted ? total_density : density,
+                                          unrestricted ? total_density : final_density,
+                                          unrestricted ? total_density : final_density,
                                           -1.0,
                                           1.0,
                                           1.0};
@@ -3450,16 +3665,17 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       launch_one_electron_force_cooperative_kernel(
           static_cast<unsigned>(one_electron_force_elements), threads, shared_bytes,
           resources.stream_, device_batch, ao_pair_first, ao_pair_second, pair_count,
-          unrestricted ? total_density : density,
+          unrestricted ? total_density : final_density,
           unrestricted ? total_weighted_density : weighted_density, active, forces);
     }
   }
-  // Compile the generated ssss force consumer so complete endpoint A/B runs
-  // can select it without rebuilding the library, but keep the tuned native
-  // route as the production default until #356's endpoint gate passes.
+  // ssss force mathematics is compiler-owned, but executes on the already-qualified
+  // native scheduler. Keep the standalone generated task consumer out of the
+  // production queue because materializing a second task stream regresses endpoints.
+  const std::uint64_t ssss_shell_class_mask = std::uint64_t{1} << kSsssShellClass;
   const std::uint64_t explicit_generated_force_shell_class_mask =
       generated::enabled_shell_class_mask() & host_present_shell_class_mask &
-      ~(plan.generated_ssss_force ? 0U : (std::uint64_t{1} << kSsssShellClass));
+      ~ssss_shell_class_mask;
   // Fock-only AOT entries (currently psss) are deliberately not added to the
   // force queue. The force dispatcher is a separate registry and returns
   // ``cudaErrorNotSupported`` for classes without a validated force consumer.
@@ -3508,6 +3724,21 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
                                                        bounded_native_paged_force_shell_class_mask;
   const std::uint64_t uncovered_force_shell_class_mask =
       host_present_shell_class_mask & ~covered_force_shell_class_mask;
+  // A tuned compatible profile is a production qualification claim. Once all
+  // canonical s/p/d classes are covered, never let a missing registry entry
+  // silently resurrect the handwritten generic bounded mathematics: fail
+  // closed so the coverage regression is visible. Explicit AOT class filters
+  // remain diagnostic/oracle controls, while portable/unmeasured profiles and
+  // higher-l classes retain the bounded correctness fallback.
+  const generated::ProfileInfo& selected_aot_profile = generated::selected_profile();
+  const std::uint64_t unexpected_tuned_spd_fallback_mask =
+      uncovered_force_shell_class_mask & kCanonicalSpdShellClassMask;
+  if (options.compute_forces && bounded_direct_streaming && selected_aot_profile.tuned &&
+      selected_aot_profile.compatible && !aot_shell_class_selection_override_requested() &&
+      unexpected_tuned_spd_fallback_mask != 0U) {
+    fill_global_failure(outputs, cuda_status(cudaErrorNotSupported));
+    return outputs;
+  }
   std::size_t bounded_force_kernel_count = 0;
   const generated::ShellKernelMetadata* bounded_force_kernels =
       generated::selected_shell_kernels(bounded_force_kernel_count);
@@ -4044,14 +4275,15 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // diagnostic isolates only the bounded two-electron force tail.
   } else if (unrestricted && persistent_eri) {
     launch_two_electron_uhf_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                         resources.stream_, device_batch, density, active, forces);
+                                         resources.stream_, device_batch, final_density, active,
+                                         forces);
   } else if (unrestricted && quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening
                                                                ? DirectScreeningPurpose::Force
                                                                : DirectScreeningPurpose::Fock;
       cuda_error = launch_bounded_force(true, bounded_force_purpose,
-                                        transformed_direct ? direct_density : density);
+                                        transformed_direct ? direct_density : final_density);
     } else {
       cuda_error = launch_generated_shell_class_forces(
           resources.stream_, plan.total_shell_quartet_tiles, plan.generated_shell_task_capacity,
@@ -4068,7 +4300,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           resident_ppps_signature_bucketing, psps_signature_bucketing, ppss_signature_bucketing,
           resident_ppps_block_threads, plan.persistent_quartet_worker_blocks, true,
           generated_shell_class_mask, options.screening_tolerance, schwarz_bounds,
-          transformed_direct ? direct_density : density, forces);
+          transformed_direct ? direct_density : final_density, forces);
       if (cuda_error == cudaSuccess) {
         dispatch_angular_force_quartets(
             true, resources.stream_, plan.shell_quartet_tile_capacities,
@@ -4078,7 +4310,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
             psss_resident_ket_pairs, plan.resident_psss_task_count,
             plan.resident_psss_bra_primitive_pairs, options.screening_tolerance, shell_pair_bounds,
             shell_pair_density_bounds, force_density_product_screening, schwarz_bounds,
-            transformed_direct ? direct_density : density, active, forces,
+            transformed_direct ? direct_density : final_density, active, forces,
             generated_shell_class_mask);
         cuda_error = cudaPeekAtLastError();
       }
@@ -4091,17 +4323,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     launch_two_electron_uhf_force_direct_kernel(
         blocks_for(direct_force_elements), threads, 0, resources.stream_, device_batch,
         options.screening_tolerance, ao_pair_first, ao_pair_second, pair_count, schwarz_bounds,
-        density, active, forces);
+        final_density, active, forces);
   } else if (persistent_eri) {
     launch_two_electron_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                     resources.stream_, device_batch, density, active, forces);
+                                     resources.stream_, device_batch, final_density, active,
+                                     forces);
   } else if (quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening
                                                                ? DirectScreeningPurpose::Force
                                                                : DirectScreeningPurpose::Fock;
       cuda_error = launch_bounded_force(false, bounded_force_purpose,
-                                        transformed_direct ? direct_density : density);
+                                        transformed_direct ? direct_density : final_density);
     } else {
       cuda_error = launch_generated_shell_class_forces(
           resources.stream_, plan.total_shell_quartet_tiles, plan.generated_shell_task_capacity,
@@ -4118,7 +4351,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           resident_ppps_signature_bucketing, psps_signature_bucketing, ppss_signature_bucketing,
           resident_ppps_block_threads, plan.persistent_quartet_worker_blocks, false,
           generated_shell_class_mask, options.screening_tolerance, schwarz_bounds,
-          transformed_direct ? direct_density : density, forces);
+          transformed_direct ? direct_density : final_density, forces);
       if (cuda_error == cudaSuccess) {
         dispatch_angular_force_quartets(
             false, resources.stream_, plan.shell_quartet_tile_capacities,
@@ -4128,7 +4361,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
             psss_resident_ket_pairs, plan.resident_psss_task_count,
             plan.resident_psss_bra_primitive_pairs, options.screening_tolerance, shell_pair_bounds,
             shell_pair_density_bounds, force_density_product_screening, schwarz_bounds,
-            transformed_direct ? direct_density : density, active, forces,
+            transformed_direct ? direct_density : final_density, active, forces,
             generated_shell_class_mask);
         cuda_error = cudaPeekAtLastError();
       }
@@ -4141,13 +4374,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     launch_two_electron_force_direct_kernel(
         blocks_for(direct_force_elements), threads, 0, resources.stream_, device_batch,
         options.screening_tolerance, ao_pair_first, ao_pair_second, pair_count, schwarz_bounds,
-        density, active, forces);
+        final_density, active, forces);
   }
 
-  if (reuse_converged_fock && !canonical_force_update) {
-    // The requested outputs above consumed each system's selected consistent
-    // snapshot. Advance only reused systems to the already accepted P_{n+1}
-    // for their returned warm state; rebuilt systems already contain it.
+  if (reuse_converged_fock && !stationary_force_required) {
+    // Energy-only execution may keep its historical warm-start advancement.
+    // A force result must return exactly the density generation consumed by
+    // energy/force/Pulay, so the force-ready path never swaps in P_{n+1}.
     launch_copy_selected_matrices_kernel(
         blocks_for(spin_matrix_elements), threads, 0, resources.stream_,
         static_cast<std::int32_t>(batch_size), static_cast<std::int32_t>(spin_count),
@@ -4168,6 +4401,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::vector<std::uint8_t> host_converged(batch_size);
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
+  std::vector<std::uint8_t> host_final_fock_reuse_mask(batch_size, 0U);
+  std::vector<std::uint8_t> host_final_audit_mask(batch_size, 0U);
   std::uint32_t host_inactive_eigensolver_profile_count = 0U;
   std::vector<DeviceInactiveEigensolverProfileEntry> host_inactive_eigensolver_profile(
       inactive_eigensolver_profiling ? options.max_iterations : 0U);
@@ -4192,6 +4427,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       {host_converged.data(), converged, batch_size * sizeof(std::uint8_t)},
       {host_failed.data(), failed, batch_size * sizeof(std::uint8_t)},
       {host_iterations.data(), iterations, batch_size * sizeof(std::uint32_t)},
+      {host_final_fock_reuse_mask.data(), final_fock_reuse_mask,
+       reuse_converged_fock && !scf_force_ready_state ? batch_size * sizeof(std::uint8_t) : 0U},
+      {host_final_audit_mask.data(), warm_mask,
+       force_finalization_fallback ? batch_size * sizeof(std::uint8_t) : 0U},
   };
   for (const Download& download : downloads) {
     cuda_error = cudaMemcpyAsync(download.host, download.device, download.bytes,
@@ -4249,7 +4488,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       return outputs;
     }
   }
-  if (canonical_force_update) {
+  if (force_finalization_fallback) {
     // Queue stack staging only immediately before its completion fence; no
     // intervening early return may release a pending copy's destination.
     cuda_error = cudaMemcpyAsync(&host_force_validation_count, final_fock_rebuild_count,
@@ -4294,8 +4533,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     plan.last_inactive_eigensolver_profile = std::move(profile);
   }
   if (collect_ppps_queue_profile) {
-    const unsigned multiprocessor_count = std::max(
-        1U, plan.persistent_quartet_worker_blocks / kPersistentQuartetWarpsPerMultiprocessor);
+    const unsigned multiprocessor_count =
+        std::max(1U, plan.persistent_quartet_worker_blocks /
+                         std::max(1U, plan.persistent_quartet_warps_per_multiprocessor));
     CudaPppsQueueProfile ppps_profile = build_ppps_queue_profile(
         host, host_ppps_descriptor_counts, host_ppps_signatures, multiprocessor_count);
     if (ppps_profile.descriptor_slots != 0U) {
@@ -4304,8 +4544,32 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   const bool no_system_failed = std::none_of(host_failed.begin(), host_failed.end(),
                                              [](std::uint8_t value) { return value != 0; });
-  if (canonical_force_update) {
+  if (scf_force_ready_state) {
+    runtime::df_progress::Scope trace("direct_scf_force_ready_final_state_completed",
+                                      "cuda_completed");
+    std::uint64_t completed_items = 0;
+    for (std::size_t system = 0; system < batch_size; ++system)
+      if (host_converged[system] && !host_failed[system]) ++completed_items;
+    runtime::df_progress::Scope::number("force_ready_items", completed_items);
+    runtime::df_progress::Scope::number("fallback_items", 0);
+    runtime::df_progress::Scope::label(
+        "seed_provenance", !any_system_warm ? "internal_projection"
+                                            : (device_resident_density_hit ? "resident_final_state"
+                                                                           : "frozen_final_state"));
+    runtime::df_progress::Scope::number(
+        "reported_scf_updates",
+        std::accumulate(host_iterations.begin(), host_iterations.end(), std::uint64_t{0}));
+  } else if (force_finalization_fallback) {
     runtime::df_progress::Scope trace("direct_force_canonicalization_completed", "cuda_completed");
+    const char* rebuild_reason =
+        plan.last_direct_final_state.fallback_reason ==
+                CudaDirectFinalStateFallbackReason::explicit_final_fock_rebuild
+            ? "explicit_final_fock_rebuild"
+        : plan.last_direct_final_state.fallback_reason ==
+                CudaDirectFinalStateFallbackReason::unproven_density_generation
+            ? "unproven_density_generation"
+            : "legacy_finalization";
+    runtime::df_progress::Scope::label("rebuild_reason", rebuild_reason);
     std::uint64_t completed_items = 0;
     for (std::size_t system = 0; system < batch_size; ++system)
       if (host_converged[system] && !host_failed[system]) ++completed_items;
@@ -4364,6 +4628,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.converged = host_converged[system] != 0 && host_failed[system] == 0;
     result.initial_density_used = host.warm_mask[system] != 0;
     result.precision.requested_mode = requested_precision_mode;
+    // A numerical failure can occur after an operator application but before
+    // the iteration/final-audit counters advance. Do not certify that partial
+    // history as complete. Ordinary exhaustion/audit rejection remains counted.
+    result.precision.operator_work_counters_valid = host_failed[system] == 0 ? 1U : 0U;
     result.precision.effective_bits = precision_item_mixed ? 32U : 64U;
     result.precision.mixed_precision_fock_threshold =
         precision_item_mixed ? host_mixed_item_threshold[system] : 0.0;
@@ -4371,6 +4639,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.precision.mixed_precision_reserved_error =
         precision_item_mixed ? requested_precision_policy.item_budget_error : 0.0;
     result.precision.refinement_iterations = precision_item_mixed ? host_iterations[system] : 0U;
+    result.precision.mixed_stage_fock_builds =
+        precision_item_mixed ? host_mixed_iterations[system] : 0U;
+    result.precision.strict_stage_fock_builds = host_iterations[system];
+    const bool audited_item = host_final_audit_mask[system] != 0U;
+    const bool completed_item = host_converged[system] != 0 && host_failed[system] == 0;
+    const bool entered_finalization = completed_item || audited_item;
+    if (!scf_force_ready_state && entered_finalization) {
+      result.precision.post_scf_fock_builds =
+          reuse_converged_fock ? (host_final_fock_reuse_mask[system] == 0U ? 1U : 0U) : 1U;
+    }
+    if (audited_item) ++result.precision.post_scf_fock_builds;
+    result.precision.mixed_admission_census =
+        precision_item_mixed ? host_mixed_item_census[system] : 0U;
+    result.precision.final_residual_audits = audited_item ? 1U : 0U;
+    if (entered_finalization &&
+        (scf_force_ready_state ||
+         (reuse_converged_fock && host_final_fock_reuse_mask[system] != 0U))) {
+      result.precision.skipped_final_fock_builds = 1U;
+    }
     const std::size_t density_stride = spin_count * matrix_size;
     result.density.assign(host_density.begin() + system * density_stride,
                           host_density.begin() + (system + 1) * density_stride);

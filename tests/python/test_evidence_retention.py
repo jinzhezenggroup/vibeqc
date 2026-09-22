@@ -6,6 +6,7 @@ import typing
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.evidence import block_error, new_evidence, outcome
 
 from tools.vibeqc_validation.publication import publish, validate_publication
 from tools.vibeqc_validation.retention import (
@@ -16,7 +17,6 @@ from tools.vibeqc_validation.retention import (
     inventory,
     tracked_blobs,
 )
-from tools.vibeqc_validation.schema import block_error, new_evidence, outcome
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -63,7 +63,7 @@ def policy(**exceptions: typing.Any) -> typing.Any:
     [
         "tests/reference_data/example.xml",
         "tests/data/checkpoint.npz",
-        "external/libxc/a.log",
+        "upstream/libxc/a.log",
         "tests/reference_data/oracle.zip",
     ],
 )
@@ -150,10 +150,10 @@ def test_inventory_reads_staged_bytes_not_worktree_or_symlink_target(
     subprocess.run(["git", "add", "file.json"], cwd=tmp_path, check=True)
     path.write_bytes(b"unstaged")
     link = tmp_path / "outside"
-    link.symlink_to("/unreadable/external/path")
+    link.symlink_to("/unreadable/outside/path")
     subprocess.run(["git", "add", "outside"], cwd=tmp_path, check=True)
     blobs = tracked_blobs(tmp_path)
-    assert blobs == {"file.json": b"staged", "outside": b"/unreadable/external/path"}
+    assert blobs == {"file.json": b"staged", "outside": b"/unreadable/outside/path"}
     report = inventory(blobs)
     assert sum(row["bytes"] for row in report["files"]) == sum(map(len, blobs.values()))
     assert report["classes"]["unknown"]["files"] == 1

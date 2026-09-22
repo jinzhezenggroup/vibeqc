@@ -247,6 +247,7 @@ class CudaGrid:
         self._handle = ct.c_void_p()
         self._density_ready = False
         self._borrowed = False
+        self._natom = basis.natom
         self._source_stamp = None
         self._source_kind = "density_matrix"
         self._fallback_reason = "missing_orbitals"
@@ -308,6 +309,13 @@ class CudaGrid:
         ]
         lib.grid_cuda_destroy_v1.argtypes = [ct.c_void_p]
         lib.grid_cuda_destroy_v1.restype = None
+        lib.grid_cuda_centers_v1.argtypes = [
+            ct.c_void_p,
+            DOUBLE,
+            ct.c_size_t,
+            ct.c_char_p,
+            ct.c_size_t,
+        ]
         lib.grid_cuda_density_v1.argtypes = [
             ct.c_void_p,
             DOUBLE,
@@ -425,6 +433,25 @@ class CudaGrid:
             raise RuntimeError("CUDA grid plan is closed")
         if self._borrowed:
             raise RuntimeError("CUDA grid buffers are leased to a task consumer")
+
+    def _rebind_centers(self, centers: typing.Any) -> None:
+        """Refresh geometry only; scientific topology and allocation stay fixed."""
+        with self._lock:
+            self._check_open()
+            value = np.asarray(centers)
+            if (
+                value.shape != (self._natom, 3)
+                or value.dtype != np.float64
+                or not np.isfinite(value).all()
+            ):
+                raise ValueError("CUDA grid centers require finite float64 [atom,3]")
+            value = np.ascontiguousarray(value)
+            self._density_ready = False
+            self._source_stamp = None
+            self._source_kind = "density_matrix"
+            self._fallback_reason = "missing_orbitals"
+            self._source_statistics = {}
+            self._call("grid_cuda_centers_v1", self._handle, pointer(value), value.size)
 
     def set_density(self, density: typing.Any) -> None:
         """Validate and replace both spin matrices; no old-density reuse is implicit."""

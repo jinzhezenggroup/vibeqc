@@ -12,7 +12,13 @@ sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
+from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
+from vibeqc_compiler.method.stationary_gradient import (
+    SCF_POINT_MODEL,
+    StationaryGradientPlan,
+    StationaryMeanField,
+)
 
 
 def main() -> None:
@@ -37,6 +43,10 @@ def main() -> None:
     artifact = compile_stationary_cuda(
         emit_first_derivative_cuda(requests),
         functional=2,
+        plan=StationaryGradientPlan(
+            resolve_method("R2SCAN", spin="unpolarized"),
+            StationaryMeanField(SCF_POINT_MODEL),
+        ),
         iterations=3,
         compiler=compiler,
         cache=args.cache,

@@ -14,10 +14,13 @@ import argparse
 import json
 from pathlib import Path
 
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.cuda_emitter import emit_shell_class_fused_cuda
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.ir import KernelConsumer
+from vibeqc_compiler.integral.lowering.fock_accumulation import (
+    emit_direct_fock_accumulation_header,
+)
 from vibeqc_compiler.integral.production import (
     write_production_bundle,
     write_production_bundles,
@@ -69,6 +72,11 @@ def main() -> None:
         help="write generated output to this path instead of standard output",
     )
     parser.add_argument(
+        "--direct-fock-accumulation-output",
+        type=Path,
+        help="write the compiler-owned native Direct-Fock scatter header",
+    )
+    parser.add_argument(
         "--production-manifest",
         type=Path,
         help="generate production CUDA shards from an accepted-class manifest",
@@ -113,7 +121,7 @@ def main() -> None:
     parser.add_argument(
         "--profile",
         default="auto",
-        help="auto, portable, sm_XX, or a named manifest profile",
+        help="strict auto, explicit portable, sm_XX, or a named manifest profile",
     )
     parser.add_argument(
         "--profile-map",
@@ -132,6 +140,20 @@ def main() -> None:
         ),
     )
     arguments = parser.parse_args()
+
+    if arguments.direct_fock_accumulation_output is not None:
+        if arguments.output is not None or arguments.production_manifest is not None:
+            parser.error(
+                "--direct-fock-accumulation-output is a standalone generation mode"
+            )
+        arguments.direct_fock_accumulation_output.parent.mkdir(
+            parents=True, exist_ok=True
+        )
+        arguments.direct_fock_accumulation_output.write_text(
+            emit_direct_fock_accumulation_header(),
+            encoding="utf-8",
+        )
+        return
 
     if arguments.production_manifest is not None:
         if arguments.output_directory is None:

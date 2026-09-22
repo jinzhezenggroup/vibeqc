@@ -1,14 +1,7 @@
 {
   "path": "src/dft/cuda_xc_kernels.cuh",
-  "reason": "Allocation-free native semilocal XC launch adapters. Existing generated AO and ingredient policies are reused; current point coefficients use the separately counted shared XC domain algebra.",
-  "regions": [
-    {
-      "reason": "Dense D*AO contraction, point-layout adaptation and full symmetric E/V reductions remain maintained scientific glue. No scientific-code retirement is claimed for this baseline.",
-      "role": "scientific",
-      "start": "__global__ void density_product",
-      "stop": "void enqueue(const CudaXcLayout& l"
-    }
-  ],
+  "reason": "Allocation-free native semilocal XC launch adapter. AO traversal, D*AO/features, point-domain XC coefficient algebra, symmetric potential assembly and scalar-total reductions are compiler-emitted; native code retains density validation and runtime scheduling.",
+  "regions": [],
   "role": "runtime",
   "subsystem": "xc"
 }

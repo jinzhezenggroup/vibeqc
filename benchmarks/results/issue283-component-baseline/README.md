@@ -1,5 +1,23 @@
 # DF force component baseline
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue283-component-baseline/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue283-component-baseline/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For commands below that previously unpacked the checkout directly, pass the
+restored archive explicitly:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue283-component-baseline \
+  --archive .artifacts/issue283-component-baseline/raw-evidence.zip \
+  --output .artifacts/issue283-component-baseline-unpacked
+```
+
 These are measurements before any mathematical optimization for #282–#284.
 The 96/192-AO probe uses the original zero-budget, host-resident compatibility
 route. Source-backed generated execution is a separate positive-budget route;
@@ -59,6 +77,7 @@ Restore all 11 original files (including the paths cited above) from the reposit
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue283-component-baseline \
+  --archive .artifacts/issue283-component-baseline/raw-evidence.zip \
   --output build/issue283-component-baseline-restored
 ```
 

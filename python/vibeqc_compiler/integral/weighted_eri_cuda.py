@@ -12,6 +12,7 @@ import typing
 
 from .cuda import CudaEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
+from .range_separation import CoulombKernelFamily
 from .weighted_eri import (
     WeightedEriKernel,
     build_weighted_eri_ir,
@@ -26,8 +27,13 @@ def emit_weighted_eri_function(
     inline_single_use: typing.Any = False,
     backend: typing.Any = "cuda",
     packed_weights: typing.Any = False,
+    include_value: bool = True,
+    gradient_centers: tuple[int, ...] = (0, 1, 2, 3),
+    result_type: str = "Gradient",
+    ordering: AlgebraOrdering = AlgebraOrdering.TOPOLOGICAL,
+    fusion: AlgebraFusion = AlgebraFusion.SEPARATE,
 ) -> str:
-    """Emit one complete center-gradient result with shared scalar CSE.
+    """Emit one selected weighted result with shared scalar CSE.
 
     A component subset yields its additive contribution only. Every required
     geometry field is mapped by meaning rather than a density/task ABI; the
@@ -39,14 +45,30 @@ def emit_weighted_eri_function(
         raise ValueError("weighted scalar emission supports cpu or cuda")
     if not name.isascii() or not name.isidentifier():
         raise ValueError("CUDA helper name must be an ASCII identifier")
-    roots = (kernel.value, *(value for row in kernel.gradients for value in row))
-    graph, roots = kernel.graph.apply_algebra_form(roots, AlgebraForm.FACTORED_NARY)
+    if not result_type.isascii() or not result_type.isidentifier():
+        raise ValueError("weighted result type must be an ASCII identifier")
+    if len(set(gradient_centers)) != len(gradient_centers) or any(
+        type(center) is not int or not 0 <= center < 4 for center in gradient_centers
+    ):
+        raise ValueError("weighted gradient centers must be unique center indices")
+    source_roots = []
+    assignments = []
+    if include_value:
+        source_roots.append(kernel.value)
+        assignments.append("value")
+    for output_center, center in enumerate(gradient_centers):
+        for axis, value in enumerate(kernel.gradients[center]):
+            source_roots.append(value)
+            assignments.append(f"center[{output_center}][{axis}]")
+    if not source_roots:
+        raise ValueError("weighted scalar emission requires at least one output root")
+    graph, roots = kernel.graph.apply_algebra_form(
+        tuple(source_roots), AlgebraForm.FACTORED_NARY
+    )
     policy = RematerializationPolicy(
         name="weighted_single_use", inline_single_use=inline_single_use
     )
-    plan = graph.materialization_plan(
-        roots, policy, AlgebraOrdering.TOPOLOGICAL, AlgebraFusion.SEPARATE
-    )
+    plan = graph.materialization_plan(roots, policy, ordering, fusion)
     variables = {
         name: f"geometry.{name}"
         for name in ("inverse_two_p", "inverse_two_q", "rho", "prefactor")
@@ -66,26 +88,26 @@ def emit_weighted_eri_function(
         variables[f"component_weight_{index}"] = f"component_weights[{offset}]"
     emitter = CudaEmitter(graph, variables, plan)
     emitter.emit(roots)
+    output_kind = "derivatives" if include_value else "gradient-only"
     lines = [
-        f"/** Unscreened {kernel.spec.name} external-weight derivatives; {len(kernel.component_indices)} components. */",
-        f"{'__device__ __forceinline__' if backend == 'cuda' else 'inline'} Gradient {name}(const Geometry& geometry, const double* component_weights) {{",
+        f"/** Unscreened {kernel.spec.name} external-weight {output_kind}; {len(kernel.component_indices)} components. */",
+        f"{'__device__ __forceinline__' if backend == 'cuda' else 'inline'} {result_type} {name}(const Geometry& geometry, const double* component_weights) {{",
         *emitter.lines,
-        "  Gradient result{};",
+        f"  {result_type} result{{}};",
     ]
     if kernel.integral.operator.range_separated:
         radial = kernel.integral.operator.coulomb_kernel
+        family = CoulombKernelFamily(radial.family)
+        omega = float(radial.omega)
         # The geometry-factored helper consumes modified moments supplied by
         # its caller. Retain exact operator identity even when the arithmetic
         # DAG is shared with full Coulomb; legacy native streams reject this IR.
         lines.insert(
             0,
-            f"/** Requires {radial.family.value} moments; omega={radial.omega.hex()} inverse bohr, held fixed. */",
+            f"/** Requires {family.value} moments; omega={omega.hex()} inverse bohr, held fixed. */",
         )
-    lines.append(f"  result.value = {emitter.reference(roots[0])};")
-    for i, value in enumerate(roots[1:]):
-        lines.append(
-            f"  result.center[{i // 3}][{i % 3}] = {emitter.reference(value)};"
-        )
+    for assignment, value in zip(assignments, roots, strict=True):
+        lines.append(f"  result.{assignment} = {emitter.reference(value)};")
     lines.extend(["  return result;", "}"])
     return "\n".join(lines) + "\n"
 
@@ -147,4 +169,84 @@ def emit_psss_weighted_header(*, inline_single_use: typing.Any = False) -> str:
     return emit_weighted_eri_header(
         ((build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 0, 0))), "psss"),),
         inline_single_use=inline_single_use,
+    )
+
+
+def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> str:
+    """Generate native low-order helpers with force-only Direct-HF specializations."""
+    ssss = build_weighted_eri_kernel(build_weighted_eri_ir((0, 0, 0, 0)))
+    psss = build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 0, 0)))
+    psps = build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 1, 0)))
+    ppss = build_weighted_eri_kernel(build_weighted_eri_ir((1, 1, 0, 0)))
+    dsss = build_weighted_eri_kernel(build_weighted_eri_ir((2, 0, 0, 0)))
+    order3 = (
+        (build_weighted_eri_kernel(build_weighted_eri_ir((1, 1, 1, 0))), "ppps_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((2, 0, 1, 0))), "dsps_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((2, 1, 0, 0))), "dpss_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((3, 0, 0, 0))), "fsss_force"),
+    )
+    full = emit_weighted_eri_header(
+        ((psss, "psss"),),
+        inline_single_use=inline_single_use,
+    )
+    marker = "}  // namespace vibeqc::scf::generated_weighted_eri\n#endif\n"
+    if not full.endswith(marker):
+        raise ValueError("weighted ERI header footer changed unexpectedly")
+    specialized_result = (
+        "/** Independent-center force result; recovered center is reconstructed by the caller. */\n"
+        "struct IndependentGradient { double center[3][3]; };\n"
+    )
+    psss_force = emit_weighted_eri_function(
+        psss,
+        "psss_force",
+        inline_single_use=inline_single_use,
+        include_value=False,
+        gradient_centers=(0, 1, 2),
+        result_type="IndependentGradient",
+        ordering=AlgebraOrdering.PRESSURE_AWARE,
+    )
+    ssss_force = emit_weighted_eri_function(
+        ssss,
+        "ssss_force",
+        inline_single_use=inline_single_use,
+        include_value=False,
+        gradient_centers=(0, 1, 2),
+        result_type="IndependentGradient",
+    )
+    order2_force = "".join(
+        emit_weighted_eri_function(
+            kernel,
+            name,
+            inline_single_use=inline_single_use,
+            include_value=False,
+            gradient_centers=(0, 1, 2),
+            result_type="IndependentGradient",
+            ordering=AlgebraOrdering.PRESSURE_AWARE,
+        )
+        for kernel, name in (
+            (psps, "psps_force"),
+            (ppss, "ppss_force"),
+            (dsss, "dsss_force"),
+        )
+    )
+    order3_force = "".join(
+        emit_weighted_eri_function(
+            kernel,
+            name,
+            inline_single_use=inline_single_use,
+            include_value=False,
+            gradient_centers=(0, 1, 2),
+            result_type="IndependentGradient",
+            ordering=AlgebraOrdering.PRESSURE_AWARE,
+        )
+        for kernel, name in order3
+    )
+    return (
+        full[: -len(marker)]
+        + specialized_result
+        + psss_force
+        + ssss_force
+        + order2_force
+        + order3_force
+        + marker
     )

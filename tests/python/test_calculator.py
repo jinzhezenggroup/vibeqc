@@ -40,6 +40,7 @@ def test_precision_provenance_reports_the_policy_that_actually_ran() -> None:
         assert result.precision["mixed_precision_fock_threshold"] == 0.0
         assert result.precision["mixed_precision_reserved_error"] == 0.0
         assert result.precision["refinement_iterations"] == 0
+        assert result.precision["operator_work_counters_valid"] is False
     with pytest.raises(ValueError):
         Calculator(method="rhf", basis="sto-3g", device="cpu", precision="tf32")
 
@@ -156,8 +157,9 @@ def test_method_capabilities_report_families_and_properties() -> None:
 
     ccsd_t = method_capabilities("ccsd(t)")
     assert ccsd_t.family == "coupled_cluster"
-    assert not ccsd_t.available
-    assert not ccsd_t.supports_batch
+    assert ccsd_t.available
+    assert ccsd_t.supports_batch
+    assert ccsd_t.supported_properties == frozenset(("energy",))
 
     lda = method_capabilities("lda-rks")
     assert lda.family == "density_functional"

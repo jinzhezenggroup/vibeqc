@@ -14,6 +14,7 @@ from fractions import Fraction
 
 import numpy as np
 
+from .precision import describe_precision
 from .program import Program
 from .scaled_arithmetic import scaled_bilinear_value
 from .types import checked_size
@@ -38,8 +39,45 @@ def _coefficient(pair: typing.Any, dtype: typing.Any) -> typing.Any:
     return np.dtype(dtype).type(float(Fraction(*pair)))
 
 
-def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndarray:
+def _mixed_einsum(
+    node: Node, operands: list[np.ndarray], accumulation_dtype: str
+) -> np.ndarray:
+    """Reference FP32 term arithmetic with an explicit wider serial accumulator."""
+    a = node.attrs
+    compute = np.dtype(node.spec.dtype).type
+    accumulate = np.dtype(accumulation_dtype).type
+    domains: dict[int, int] = {}
+    for value, labels in zip(operands, a["labels"], strict=True):
+        domains.update(zip(labels, value.shape, strict=True))
+    reduced = tuple(label for label in sorted(domains) if label not in a["output"])
+    output_shape = tuple(domains[label] for label in a["output"])
+    reduction_shape = tuple(domains[label] for label in reduced)
+    result = np.empty(output_shape, dtype=node.spec.dtype)
+    coefficient = compute(_coefficient(a["coefficient"], node.spec.dtype))
+    for output_index in np.ndindex(output_shape):
+        coordinates = dict(zip(a["output"], output_index, strict=True))
+        total = accumulate(0.0)
+        for reduction_index in np.ndindex(reduction_shape):
+            coordinates.update(zip(reduced, reduction_index, strict=True))
+            term = compute(1.0)
+            for value, labels in zip(operands, a["labels"], strict=True):
+                index = tuple(coordinates[label] for label in labels)
+                term = compute(term * compute(value[index]))
+            total = accumulate(total + accumulate(term))
+        result[output_index] = compute(compute(total) * coefficient)
+    return result
+
+
+def _evaluate(
+    node: Node,
+    operands: list[np.ndarray],
+    feeds: Mapping,
+    accumulation_dtype: str | None = None,
+) -> np.ndarray:
     a, op = node.attrs, node.op
+    accumulation_dtype = (
+        node.spec.dtype if accumulation_dtype is None else accumulation_dtype
+    )
     if op == "input":
         name = a["name"]
         if name not in feeds:
@@ -51,6 +89,8 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
             )
         tolerance = 1e-11 if node.spec.dtype == "float64" else 1e-6
         for symmetry in node.spec.symmetries:
+            if node.spec.dtype == "int64":
+                raise ValueError("int64 TensorIR controls cannot declare symmetry")
             if not np.allclose(
                 value,
                 symmetry.sign * value.transpose(symmetry.permutation),
@@ -89,6 +129,8 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
             return np.power(value, _coefficient(a["exponent"], node.spec.dtype))
         return {"exp": np.exp, "log": np.log, "sqrt": np.sqrt}[op](value)
     if op == "einsum":
+        if accumulation_dtype != node.spec.dtype:
+            return _mixed_einsum(node, operands, accumulation_dtype)
         arguments = []
         for value, labels in zip(operands, a["labels"]):
             arguments.extend((value, list(labels)))
@@ -96,6 +138,44 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
         # contraction-tree selection is a separate lowering concern.
         result = np.einsum(*arguments, list(a["output"]), optimize=False)
         return result * _coefficient(a["coefficient"], node.spec.dtype)
+    if op == "runtime_indexed_select":
+        value, maps = operands[0], operands[1:]
+        axes = tuple(a["axes"])
+        result = np.empty(node.spec.shape, dtype=node.spec.dtype)
+        for mapping, axis in zip(maps, axes, strict=True):
+            if np.any(mapping < 0) or np.any(mapping >= value.shape[axis]):
+                raise ValueError(
+                    "runtime_indexed_select coordinate is outside its source axis"
+                )
+        selected = dict(zip(axes, maps, strict=True))
+        for domain_coordinate in range(node.spec.shape[0]):
+            source = tuple(
+                int(selected[axis][domain_coordinate])
+                if axis in selected
+                else slice(None)
+                for axis in range(value.ndim)
+            )
+            result[domain_coordinate] = value[source]
+        return result
+    if op == "runtime_indexed_scatter_add":
+        value, maps = operands[0], operands[1:]
+        axes = tuple(a["axes"])
+        result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
+        for mapping, axis in zip(maps, axes, strict=True):
+            if np.any(mapping < 0) or np.any(mapping >= result.shape[axis]):
+                raise ValueError(
+                    "runtime_indexed_scatter_add coordinate is outside its target axis"
+                )
+        selected = dict(zip(axes, maps, strict=True))
+        for domain_coordinate in range(value.shape[0]):
+            target = tuple(
+                int(selected[axis][domain_coordinate])
+                if axis in selected
+                else slice(None)
+                for axis in range(result.ndim)
+            )
+            result[target] += value[domain_coordinate]
+        return result
     value = operands[0]
     if op == "transpose":
         return value.transpose(a["axes"])
@@ -121,7 +201,28 @@ def _evaluate(node: Node, operands: list[np.ndarray], feeds: Mapping) -> np.ndar
             target[segment] = np.sum(source[start:stop], axis=0, dtype=node.spec.dtype)
         return result
     if op == "reduce":
-        return np.sum(value, axis=a["axes"], dtype=node.spec.dtype)
+        if accumulation_dtype == node.spec.dtype:
+            return np.sum(value, axis=a["axes"], dtype=node.spec.dtype)
+        # Match the generated CUDA reduction exactly: iterate reduced
+        # coordinates in C order and widen each FP32 term before one serial
+        # FP64 round-to-nearest addition. NumPy's pairwise sum is intentionally
+        # avoided here because it is a different numerical program.
+        axes = tuple(a["axes"])
+        kept = tuple(axis for axis in range(value.ndim) if axis not in axes)
+        output_shape = tuple(value.shape[axis] for axis in kept)
+        reduction_shape = tuple(value.shape[axis] for axis in axes)
+        result = np.empty(output_shape, dtype=node.spec.dtype)
+        accumulate = np.dtype(accumulation_dtype).type
+        compute = np.dtype(node.spec.dtype).type
+        for output_index in np.ndindex(output_shape):
+            coordinates = dict(zip(kept, output_index, strict=True))
+            total = accumulate(0.0)
+            for reduction_index in np.ndindex(reduction_shape):
+                coordinates.update(zip(axes, reduction_index, strict=True))
+                index = tuple(coordinates[axis] for axis in range(value.ndim))
+                total = accumulate(total + accumulate(compute(value[index])))
+            result[output_index] = compute(total)
+        return result
     if op == "broadcast":
         # The map need not preserve input order: transpose before inserting
         # singleton storage axes so each population lands on its declared slot.
@@ -153,11 +254,25 @@ def _run(
         raise ValueError("tensor interpreter logical retained-byte budget exceeded")
     values, snapshots = {}, {}
     names = program.debug_names
+    precision = (
+        {value.name: value for value in describe_precision(program).values}
+        if program.provenance.get("precision_execution") is not None
+        else None
+    )
     with np.errstate(divide="raise", invalid="raise", over="raise"):
         for node in nodes:
             try:
                 value = np.asarray(
-                    _evaluate(node, [values[n] for n in node.inputs], feeds)
+                    _evaluate(
+                        node,
+                        [values[n] for n in node.inputs],
+                        feeds,
+                        (
+                            None
+                            if precision is None or names[node] not in precision
+                            else precision[names[node]].accumulation_dtype
+                        ),
+                    )
                 )
             except (FloatingPointError, OverflowError) as exc:
                 raise ValueError(

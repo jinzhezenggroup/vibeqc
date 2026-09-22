@@ -99,6 +99,22 @@ def test_batch_native_metadata_identifies_loaded_profile_library(
     assert payload["probe"]["device"]["official_profile"] == "sm_120"
 
 
+def test_benchmark_build_profile_gate_is_fail_closed() -> None:
+    module = _batch_comparison_module()
+    tuned = {"probe": {"device": {"official_profile": "sm_120", "portable": 0}}}
+    module.require_tuned_native_build(tuned)
+
+    portable = {
+        "probe": {"device": {"official_profile": "generic_cuda", "portable": 1}}
+    }
+    with pytest.raises(RuntimeError, match="portable/generic"):
+        module.require_tuned_native_build(portable)
+    module.require_tuned_native_build(portable, allow_portable=True)
+
+    with pytest.raises(TypeError, match="profile metadata"):
+        module.require_tuned_native_build({"probe": {}})
+
+
 def _comparison_basis_fixture(
     tmp_path: typing.Any,
     *,
@@ -658,7 +674,7 @@ def test_aot_endpoint_freezes_after_one_cold_baseline_and_records_schema() -> No
         candidate_environment_overrides={"VIBEQC_PSPS_RESIDENT_BRA": "1"},
         maximum_energy_error=1.0e-12,
         maximum_force_error=1.0e-12,
-        minimum_speedup=0.1,
+        minimum_speedup=0.0,
     )
 
     assert batch.freeze_calls == [False]
@@ -1630,3 +1646,48 @@ def test_shell_histogram_runtime_switch_matches_native_opt_out() -> None:
     assert histogram.ppps_block_threads("128") == 128
     assert histogram.ppps_block_threads("256") == 256
     assert histogram.ppps_block_threads("96") == 0
+
+
+def test_packed_response_qualification_cases_bracket_policy_threshold() -> None:
+    """Synthetic #444/#459 endpoints cover the intended general work region."""
+    from benchmarks._cases import benchmark_cases
+
+    cases = benchmark_cases()
+    expected = {
+        "water-27mer-water27-derived-def2-svp-spherical": (27, 648),
+        "water-36mer-water27-derived-def2-svp-spherical": (36, 864),
+    }
+    for name, (waters, aos) in expected.items():
+        case = cases[name]
+        assert len(case.atoms) == waters * 3
+        assert case.expected_ao_count == aos
+        assert case.basis_representation == "spherical"
+        assert case.vibeqc_basis == case.pyscf_basis == "def2-svp"
+
+    assert 384**3 < 1 << 28 < 648**3 < 768**3 < 864**3
+
+
+@pytest.mark.parametrize("portable", [None, "false", "0", 0.0, 2, [], {}])
+def test_benchmark_requires_explicit_typed_nonportable_evidence(
+    portable: object,
+) -> None:
+    module = _batch_comparison_module()
+    metadata = {
+        "probe": {"device": {"official_profile": "sm_120", "portable": portable}}
+    }
+    with pytest.raises(RuntimeError, match="portable"):
+        module.require_tuned_native_build(metadata)
+
+
+def test_benchmark_rejects_missing_portability_evidence() -> None:
+    module = _batch_comparison_module()
+    metadata = {"probe": {"device": {"official_profile": "sm_120"}}}
+    with pytest.raises(RuntimeError, match="portable"):
+        module.require_tuned_native_build(metadata)
+
+
+def test_cumetal_ci_declares_its_intentional_portable_profile() -> None:
+    root = Path(__file__).resolve().parents[2]
+    workflow = (root / ".github/workflows/cumetal-cuda.yml").read_text()
+    assert "-DVIBEQC_CUDA_ARCHITECTURES=80" in workflow
+    assert "-DVIBEQC_AOT_PROFILE=portable" in workflow

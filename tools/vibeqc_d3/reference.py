@@ -19,21 +19,29 @@ import numpy as np
 from vibeqc_compiler.method.dispersion import D3Spec
 
 _ROOT = Path(__file__).resolve().parents[2]
-_DATA = _ROOT / "external" / "xtbloom-d3"
+_UPSTREAM = _ROOT / "upstream" / "xtbloom" / "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+_MANIFEST = _ROOT / "manifests" / "xtbloom-d3.json"
 _POINTER = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
 
 
 @lru_cache(maxsize=1)
 def _tables() -> typing.Any:
-    manifest = json.loads((_DATA / "manifest.json").read_text())
-    values = {}
-    for name, expected in manifest["data"].items():
-        raw = (_DATA / name).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != expected:
-            raise ValueError(f"D3 source data digest mismatch: {name}")
-        values[name] = json.loads(raw)
-    data = values["gfn1_d3.json"]
-    radii = values["covalent_radii.json"]
+    manifest = json.loads(_MANIFEST.read_text())
+    table_raw = (_UPSTREAM / "gfn1_d3.json").read_bytes()
+    if hashlib.sha256(table_raw).hexdigest() != manifest["data"]["gfn1_d3.json"]:
+        raise ValueError("D3 source data digest mismatch: gfn1_d3.json")
+    model_raw = (_UPSTREAM / "gfn1.json").read_bytes()
+    expected_model = manifest["sources"]["data/parameters/gfn1.json"]["sha256"]
+    if hashlib.sha256(model_raw).hexdigest() != expected_model:
+        raise ValueError("D3 source data digest mismatch: gfn1.json")
+    data = json.loads(table_raw)
+    model = json.loads(model_raw)
+    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
+        raise ValueError("upstream GFN1 element order changed")
+    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
+    radii_raw = (json.dumps(radii, indent=2) + "\n").encode()
+    if hashlib.sha256(radii_raw).hexdigest() != manifest["data"]["covalent_radii.json"]:
+        raise ValueError("derived D3 covalent radii digest mismatch")
     if len(data["elements"]) != 86 or len(radii) != 86:
         raise ValueError("D3 reference domain is exactly H through Rn")
     return data, radii, manifest["data"]

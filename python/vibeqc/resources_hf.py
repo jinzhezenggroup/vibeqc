@@ -15,11 +15,7 @@ import typing
 from dataclasses import asdict, replace
 from pathlib import Path
 
-from .basis import BasisSet
-from .basis_capabilities import require_basis, resolved_basis_metadata
-from .calculator import Atom, _snapshot_basis
-from .elements import electron_state
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -29,6 +25,11 @@ from .resources import (
     checked_bytes,
     plan_resources,
 )
+
+from .basis import BasisSet
+from .basis_capabilities import require_basis, resolved_basis_metadata
+from .calculator import Atom, _snapshot_basis
+from .elements import electron_state
 
 # Newly tracked controls may be absent from earlier schema-1 checkpoints.
 # Preserve that distinction in restart provenance; absence is not a claim
@@ -76,8 +77,6 @@ _CUDA_SCHEDULE_VARIABLES = (
     "VIBEQC_ONE_ELECTRON_DERIVATIVES",
     "VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING",
     "VIBEQC_PSSS_RESIDENT_BRA",
-    "VIBEQC_SSSS_FORCE",
-    "VIBEQC_PSSS_WEIGHTED",
     "VIBEQC_DF_VALUE_MAPPING",
     "VIBEQC_DF_DERIVATIVE_MAPPING",
     "VIBEQC_DF_WEIGHTED_EXECUTION",

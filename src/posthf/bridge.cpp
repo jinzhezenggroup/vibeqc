@@ -665,7 +665,7 @@ VIBEQC_API int vibeqc_posthf_one_electron_gradient_cuda_v1(
     std::size_t stage_budget, double* gradient, std::size_t gradient_elements,
     std::uint64_t* resources, std::size_t resource_elements, char* error, std::size_t error_size) {
   return guarded(error, error_size, [&] {
-    if (!source || !gradient || device < 0 || schedule > 2 || !stage_budget)
+    if (!source || !gradient || device < 0 || schedule > 3 || !stage_budget)
       throw std::invalid_argument("invalid one-electron CUDA gradient request");
     const auto& raw = *static_cast<RawSource*>(source);
     const auto& system = raw.orbital();

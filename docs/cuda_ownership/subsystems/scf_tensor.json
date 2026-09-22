@@ -1,12 +1,12 @@
 {
-  "current_default": "native RHF/UHF/DF density, J/K, energy and force contractions and DIIS Gram/solve/extrapolation; direct J/K host adapters in cuda/direct_jk.cpp remain native after leaving the CUDA-only source census",
+  "current_default": "CPU SCF density, energy-weighted density, DIIS residual Gram, and DIIS Fock extrapolation use build-time generated SCF TensorIR helpers; native CPU retains history mutation, metric normalization, augmented solve/retry and solver state. CUDA RHF/UHF/DF density, J/K, energy/force contractions and resident DIIS remain native; direct J/K host adapters in cuda/direct_jk.cpp remain native after leaving the CUDA-only source census",
   "evidence": [
     "docs/architecture.md",
     "benchmarks/results/issues388-391-df/README.md"
   ],
-  "generated_capability": "TensorIR owns general contractions/AD; current native SCF bridges remain concrete",
-  "missing_capability": "integration of method equations into shared generated tensor execution, including DIIS circular-history Gram construction, normalization, dependent-history retirement and Fock extrapolation",
+  "generated_capability": "TensorIR owns general contractions/AD plus SCF density, energy-weighted density, DIIS Gram, and DIIS extrapolation equations. CPU production consumes checked build-time specializations with shape-independent equation hashes and preserves historical FP64 accumulation order.",
+  "missing_capability": "CUDA integration of the same SCF equations remains open, especially circular live-history materialization, residual Gram execution, Fock extrapolation, and complete resident/ragged DIIS endpoint qualification. Metric normalization, dependent-history retirement and the augmented small solve remain explicit runtime/solver policy rather than TensorIR equations.",
   "owner": "scf_tensor",
-  "retirement_condition": "retain native scientific adapters until generated method endpoint passes; preserve generic solver/BLAS runtime. Retire native DIIS numerical regions only after a compiler-owned replacement passes independent RHF/UHF, inactive/wrapped/retired/ragged history, scratch-capacity, convergence and complete-endpoint gates. Serial DIIS remains the Direct/KS schedule and an explicit DF control; cooperative DF retains a bounded warp fallback when partial scratch is unavailable.",
-  "status": "native_baseline"
+  "retirement_condition": "Preserve generic solver/BLAS/runtime policy. CPU DIIS Gram/extrapolation scientific loops are retired by the generated cutover; retire the corresponding CUDA numerical regions only after compiler-owned execution passes independent RHF/UHF, inactive/wrapped/retired/ragged history, scratch-capacity, convergence and complete-endpoint gates. Serial DIIS remains the Direct/KS schedule and an explicit DF control until that qualification; cooperative DF retains a bounded warp fallback when partial scratch is unavailable.",
+  "status": "partial_generated"
 }

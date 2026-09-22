@@ -23,6 +23,7 @@ struct CudaXcLayout {
   std::size_t work_jets{}, feature_terms{}, packed_elements{}, device_bytes{};
   /** 0=LDA, 1=PBE, 2=r2SCAN. */
   std::uint32_t functional{};
+  bool response{};
 };
 
 CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
@@ -33,7 +34,7 @@ CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
  * normalize basis data, initialize CUDA or allocate any numerical buffer. */
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
-                                  std::size_t tile_points = 256);
+                                  std::size_t tile_points = 256, bool response = false);
 
 struct CudaXcTransfers {
   std::uint64_t setup_h2d_bytes{}, output_d2h_bytes{}, synchronizations{}, evaluations{};
@@ -68,6 +69,12 @@ class CudaXcPlan {
   CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
              bool unrestricted, std::size_t tile_points, void* arena, std::size_t arena_bytes,
              cudaStream_t stream);
+  /** Private explicit-source constructor for a validated native snapshot.
+   * The caller proves packed basis/quadrature identity; setup copies them into
+   * the same bounded arena used by SCF. No grid is regenerated for response. */
+  CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_basis,
+             const std::vector<double>& points, const std::vector<double>& weights, void* arena,
+             std::size_t arena_bytes, cudaStream_t stream);
   ~CudaXcPlan();
   CudaXcPlan(const CudaXcPlan&) = delete;
   CudaXcPlan& operator=(const CudaXcPlan&) = delete;
@@ -75,6 +82,10 @@ class CudaXcPlan {
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
   void enqueue(const double* density, std::size_t elements, std::uint64_t generation);
+  /** Differentiate the fixed native density on GPU, including AO/feature and
+   * matrix assembly. Signed directions use the same input layout as density. */
+  void enqueue_response(const double* density, const double* direction, std::size_t elements,
+                        std::uint64_t generation);
   CudaXcView view(std::uint64_t generation) const;
   CudaXcScalars read_scalars(std::uint64_t generation);
   /** Explicit user/reference matrix export, never called by enqueue. */
@@ -82,6 +93,8 @@ class CudaXcPlan {
 
  private:
   void check_device() const;
+  void enqueue_impl(const double* density, const double* direction, std::size_t elements,
+                    std::uint64_t generation);
   CudaXcLayout layout_;
   CudaXcTransfers transfers_;
   int device_{};
@@ -89,7 +102,7 @@ class CudaXcPlan {
   cudaStream_t stream_{};
   vibeqc::runtime::AsyncGeneration generations_;
   double *basis_{}, *points_{}, *weights_{}, *ao_{}, *work_{}, *features_{}, *coefficients_{},
-      *point_totals_{}, *potential_{}, *totals_{};
+      *point_totals_{}, *potential_{}, *totals_{}, *delta_features_{};
   int* error_{};
 };
 
@@ -99,6 +112,7 @@ namespace cuda_xc_detail {
 void enqueue(const CudaXcLayout& layout, cudaStream_t stream, const double* basis,
              const double* points, const double* weights, const double* density, double* ao,
              double* work, double* features, double* coefficients, double* point_totals,
-             double* potential, double* totals, int* error);
+             double* potential, double* totals, int* error, const double* direction = nullptr,
+             double* delta_features = nullptr);
 }  // namespace cuda_xc_detail
 }  // namespace vibeqc::dft

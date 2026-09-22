@@ -1,5 +1,23 @@
 # #310 ordinary-device final eigensolve qualification
 
+> **Checkout retention (2026-09-21):** `raw-evidence.zip` was moved out of the normal checkout. Exact bytes remain in Git revision `d8f64a93fe0dfebd889fd0ba1fadbd5ad7d840e5` and are checksum-bound by [the checkout-trim manifest](../retention-2026-09-21/migration.json). Restore locally with:
+>
+> ```bash
+> python tools/restore_retained_evidence.py benchmarks/results/issue310-final-eigen/raw-evidence.zip \
+>   --manifest benchmarks/results/retention-2026-09-21/migration.json \
+>   --output .artifacts/issue310-final-eigen/raw-evidence.zip
+> ```
+> Restored archives belong under ignored `.artifacts/`; do not recommit them.
+
+For the standard raw-evidence bundle, verify or unpack it against the retained
+member manifest with:
+
+```bash
+python -m tools.unpack_evidence benchmarks/results/issue310-final-eigen \
+  --archive .artifacts/issue310-final-eigen/raw-evidence.zip \
+  --output .artifacts/issue310-final-eigen-unpacked
+```
+
 The fused CUDA DF finalizer replaces only its required CPU-reference Fock
 eigensolves (and RHF canonical export) with the existing ordinary FP64 Xsyevd
 provider. Physical Fock rebuilds, density projection and the complete analytic
@@ -68,6 +86,7 @@ hashed in the standard ZIP manifest, restored and compared byte for byte.
 
 ```bash
 python -m tools.unpack_evidence benchmarks/results/issue310-final-eigen \
+  --archive .artifacts/issue310-final-eigen/raw-evidence.zip \
   --output /tmp/issue310-final-evidence
 ```
 

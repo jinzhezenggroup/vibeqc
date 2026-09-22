@@ -74,12 +74,7 @@ class CudaSpinJKBackend:
         shells = (*source.shells, *(source.auxiliary_shells if fitted else ()))
         if any(shell.angular_momentum > 3 for shell in shells):
             raise NotImplementedError("CUDA spin response supports s/p/d/f shells only")
-        spec = FockBuildSpec.hf(
-            "unrestricted",
-            coulomb=approximation,
-            exchange=approximation,
-            derivative_order=0,
-        )
+        spec = self._build_spec(approximation)
         started = time.perf_counter()
         try:
             with ExitStack() as owners:
@@ -173,6 +168,15 @@ class CudaSpinJKBackend:
             raise ValueError("CUDA spin response source identity changed")
         self._plan._ensure_open()
 
+    def _build_spec(self, approximation: str) -> FockBuildSpec:
+        """HF owns both terms; a native KS subclass requests only Coulomb."""
+        return FockBuildSpec.hf(
+            "unrestricted",
+            coulomb=approximation,
+            exchange=approximation,
+            derivative_order=0,
+        )
+
     @property
     def diagnostics(self) -> typing.Any:
         """Detached execution provenance, with a bounded allocation scope."""
@@ -249,6 +253,30 @@ class CudaSpinJKBackend:
                 result.coulomb.nbytes + result.exchange.nbytes
             )
             return result.coulomb, result.exchange[0], result.exchange[1]
+
+    def resident_response(
+        self,
+        problem: typing.Any,
+        *,
+        vector_slots: int = 128,
+        device_budget_bytes: int = 128 << 20,
+    ) -> typing.Any:
+        """Create an exact unrestricted resident response owner.
+
+        The owner shares this backend's direct CUDA stream and plan. Density
+        fitted plans remain on the existing host-orchestrated path until a
+        separate resident DF ABI is qualified.
+        """
+        with self._lock:
+            self._ensure_open()
+            from .resident_uhf_cuda import CudaResidentUHFResponse
+
+            return CudaResidentUHFResponse(
+                self,
+                problem,
+                vector_slots=vector_slots,
+                device_budget_bytes=device_budget_bytes,
+            )
 
     def export_reference(
         self,

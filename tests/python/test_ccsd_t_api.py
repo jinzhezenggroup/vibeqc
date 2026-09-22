@@ -8,16 +8,19 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture
 from tools.vibeqc_cc import (
     PreparedRCCSDTBatch,
+    PreparedRCCSDTForceBatch,
     SolverOptions,
     rccsd_t_batch_energy,
+    rccsd_t_batch_forces,
     rccsd_t_energy,
+    rccsd_t_force,
     rccsd_t_method_capabilities,
 )
 from tools.vibeqc_cc import ccsd_t_api as api
@@ -63,14 +66,15 @@ def fixture_problem(name: typing.Any = "h2") -> typing.Any:
     return snapshot, FixtureProvider(snapshot, arrays["g"]), meta, arrays
 
 
-def test_capabilities_are_energy_only_and_homogeneous_batch() -> None:
+def test_capabilities_cover_internal_energy_and_force_batches() -> None:
     caps = rccsd_t_method_capabilities("rccsd(t)")
     assert caps.method == "rccsd(t)"
     assert caps.family == "coupled_cluster"
     assert caps.available is True
     assert caps.supports_batch is True
-    assert caps.supported_properties == frozenset({"energy"})
+    assert caps.supported_properties == frozenset({"energy", "forces"})
     assert caps.batch_shape_policy == "homogeneous"
+    assert caps.native_public is False
     assert rccsd_t_method_capabilities("ccsd(t)") == caps
     with pytest.raises(ValueError, match="unknown method"):
         rccsd_t_method_capabilities("rccsd")
@@ -144,7 +148,7 @@ def test_nonconverged_ccsd_never_publishes_a_triples_or_total_energy() -> None:
 
 def test_force_and_nonproduction_cuda_backend_are_rejected_before_execution() -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2")
-    with pytest.raises(NotImplementedError, match="energy only"):
+    with pytest.raises(NotImplementedError, match="rccsd_t_force"):
         rccsd_t_energy(snapshot, provider, compute_forces=True)
     with pytest.raises(ValueError, match="backend"):
         rccsd_t_energy(snapshot, provider, backend="cuda")
@@ -168,8 +172,84 @@ def test_endpoint_artifact_records_components_and_identity(
 
 def test_batch_force_request_is_rejected_before_item_execution() -> None:
     snapshot, provider, _meta, _arrays = fixture_problem("h2")
-    with pytest.raises(NotImplementedError, match="energy only"):
+    with pytest.raises(NotImplementedError, match="rccsd_t_force"):
         rccsd_t_batch_energy([(snapshot, provider)], compute_forces=True)
+
+
+def test_force_facade_delegates_to_complete_analytic_owner(
+    monkeypatch: typing.Any,
+) -> None:
+    source = SimpleNamespace(nbf=2, electron_count=2)
+    sentinel = SimpleNamespace(forces=np.zeros((1, 3)))
+    seen = {}
+
+    def fake(
+        current: typing.Any, *, options: typing.Any, vir_chunk_size: typing.Any
+    ) -> typing.Any:
+        seen.update(source=current, options=options, vir_chunk_size=vir_chunk_size)
+        return sentinel
+
+    monkeypatch.setattr(api, "_complete_ccsdt_gradient", fake)
+    assert rccsd_t_force(source, options="opts", vir_chunk_size=2) is sentinel
+    assert seen == {"source": source, "options": "opts", "vir_chunk_size": 2}
+
+
+def test_force_batch_isolates_failures_and_detaches_forces(
+    monkeypatch: typing.Any,
+) -> None:
+    sources = [
+        SimpleNamespace(nbf=2, electron_count=2, label="a"),
+        SimpleNamespace(nbf=2, electron_count=2, label="bad"),
+        SimpleNamespace(nbf=2, electron_count=2, label="c"),
+    ]
+
+    def fake(source: typing.Any, **_kwargs: typing.Any) -> typing.Any:
+        if source.label == "bad":
+            raise RuntimeError("injected")
+        return SimpleNamespace(forces=np.array([[1.0, 2.0, 3.0]]))
+
+    monkeypatch.setattr(api, "rccsd_t_force", fake)
+    result = rccsd_t_batch_forces(sources)
+    assert result.shape == (1, 1)
+    assert [item.index for item in result.items] == [0, 1, 2]
+    assert result.items[0].converged and result.items[2].converged
+    assert result.items[1].status == "error"
+    assert "injected" in result.items[1].reason
+    assert result.items[0].forces.flags.writeable is False
+    np.testing.assert_array_equal(result.items[0].forces, [[1.0, 2.0, 3.0]])
+
+
+def test_force_batch_rejects_ragged_shapes_and_handles_empty_input() -> None:
+    with pytest.raises(ValueError, match="homogeneous"):
+        PreparedRCCSDTForceBatch(
+            [
+                SimpleNamespace(nbf=2, electron_count=2),
+                SimpleNamespace(nbf=3, electron_count=2),
+            ]
+        )
+    empty = PreparedRCCSDTForceBatch([]).execute()
+    assert empty.shape is None and empty.items == ()
+
+
+@pytest.mark.parametrize(
+    "sources,kwargs,error,match",
+    [
+        ([], {"options": object()}, TypeError, "CCSDGradientOptions"),
+        ([], {"vir_chunk_size": 0}, ValueError, "vir_chunk_size"),
+        ([object()], {}, TypeError, "native-source dimensions"),
+        (
+            [SimpleNamespace(nbf=2, electron_count=3)],
+            {},
+            ValueError,
+            "closed-shell occupied/virtual",
+        ),
+    ],
+)
+def test_force_batch_preflight_rejects_invalid_global_or_source_state(
+    sources: typing.Any, kwargs: typing.Any, error: typing.Any, match: str
+) -> None:
+    with pytest.raises(error, match=match):
+        PreparedRCCSDTForceBatch(sources, **kwargs)
 
 
 def test_homogeneous_batch_isolates_one_invalid_provider_and_keeps_order() -> None:
@@ -258,7 +338,7 @@ def test_nonconvergence_does_not_execute_tiles(
 @pytest.mark.parametrize(
     "kwargs, error, match",
     [
-        ({"compute_forces": True}, NotImplementedError, "energy only"),
+        ({"compute_forces": True}, NotImplementedError, "rccsd_t_force"),
         ({"backend": "cuda"}, ValueError, "backend"),
         ({"backend": "graph"}, ValueError, "backend"),
         ({"backend": "cuda-resident"}, ValueError, "CudaCompilerAdapter"),
@@ -438,7 +518,7 @@ def test_homogeneous_batch_independent_state_and_repeatability() -> None:
         == repeat.items[0].result.provenance["result_identity"]
     )
     assert a is not repeat.items[0].result.state
-    with pytest.raises(NotImplementedError, match="energy only"):
+    with pytest.raises(NotImplementedError, match="rccsd_t_force"):
         prepared.execute(compute_forces=True)
 
 

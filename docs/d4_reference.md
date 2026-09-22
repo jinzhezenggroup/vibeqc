@@ -3,8 +3,9 @@
 `src/dft/dispersion/d4_reference.hpp` retains the bounded CPU/device fixed-charge
 D4 baseline migrated from xTBloom. `src/dft/dispersion/d4_eeq.hpp` adds the
 generic molecular EEQ2019 charge provider, its analytic coordinate response,
-and a complete CPU/CUDA D4 gradient qualification endpoint. Neither file is a
-public Calculator registration or a performance-promoted production scheduler.
+and a complete CPU/CUDA D4 gradient qualification endpoint. The handwritten
+complete composition in that header is qualification-only. Production is owned
+by `D4Plan`, the compiler-generated derivative lowering and the bounded runtime.
 
 ## Scientific contract
 
@@ -51,6 +52,41 @@ checked.
 The existing GFN2 fixed-charge CPU/CUDA oracle suite remains unchanged and
 continues to qualify the shared pair/ATM mathematics and actual device path.
 
+## Production ownership
+
+Production never calls `evaluate_complete_d4_eeq*`. The compiler module
+`vibeqc_compiler.method.d4_derivative` generates the only production
+composition of the EEQ response with fixed-charge D4 partial derivatives.
+EEQ2019 and fixed-charge D4 remain separately qualified custom scientific
+primitives; the generated VJP computes
+`(partial E/partial R)_q + (dq/dR)^T (partial E/partial q)` and publishes only
+after all stages succeed.
+
+`D4Plan` owns immutable model/profile identity, atomic numbers and total
+charges, bounded host/device resources, prepared coordinates, replay state and
+peer-local failure publication. CUDA production uses at most 32 ragged EEQ
+workers. Each worker reuses one worst-system EEQ workspace plus one `dq/dR`
+scratch. Fixed-charge pair/ATM work is delegated to the block-cooperative
+scheduler in `d4_cuda.cu`, whose workspace is linear in total atoms. Unchanged
+replays reuse resident coordinates; changed geometry explicitly uploads the
+packed coordinate buffer. Diagnostics expose exact workspace slots, H2D bytes,
+kernel launches and host/device capacity bounds.
+
+The public named endpoint `pbe-d4-rks` executes native PBE RKS plus
+D4(BJ-EEQ-ATM). Native energy remains exact-once owned by the prepared KS/D4
+composition. In the bounded qualified force domain, the stationary derivative
+projects that composite state onto its electronic PBE MethodIR, evaluates the
+existing PBE stationary force, and combines it with the existing D4 analytic
+gradient as `F_total = F_PBE - dE_D4/dR`. The auxiliary D4 force owner publishes
+the correction component/gradient but never adds its energy a second time.
+Unsupported PBE-D4/ECP force combinations remain fail-closed.
+`D4CorrectionBatch` also continues to expose standalone D4 energy, analytic
+gradient and EEQ charges.
+
+There is no runtime dependency on xTBloom or an external dftd4 executable.
+Standard EEQ uses `ga/gc=3/2`; r2SCAN-3c uses the separate `2/1` profile. GFN2
+remains qualification compatibility data, not a generic DFT-D4 default.
+
 ## Memory and execution boundary
 
 All molecular qualification paths are bounded to 256 atoms. The fixed-charge
@@ -60,36 +96,46 @@ EEQ provider uses a dense `(N+1)^2` constrained matrix and a bounded
 large-system schedule. Its asymptotic linear solves are cubic.
 
 The same bounded EEQ charge/response mathematics is qualified on CPU and CUDA.
-The CUDA test uploads immutable EEQ/D4 tables, evaluates both standard and
-r2SCAN-3c profiles on a real device, and covers ragged members plus peer-local
-failure. The one-worker-per-molecule route is a correctness baseline; a
-production GPU scheduler, generated derivative lowering and performance
-qualification remain open under #493. There is no PBC, Hessian, public SCF
-integration, or complete r2SCAN-3c method registration in this slice.
+Production CUDA runs multiple ragged EEQ systems concurrently through bounded
+workers, delegates fixed-charge work to the 256-lane block-cooperative
+scheduler, then applies the generated response VJP. Failed and inactive
+members publish zero outputs without poisoning successful peers. Production
+tests cover independent fixtures, multi-step finite differences, changed and
+unchanged replay, a 4100-member ragged fleet and Compute Sanitizer. PBC and
+Hessian execution remain unsupported.
 
 ## Reproduction
 
 Regenerate the retained GFN2 compatibility table:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4.py \
-  --source-git-dir /path/to/dftd4/.git \
-  --revision 6e1f59c3f39d919a2dbef0601d2576727c8b30e8 \
   --output-dir src/dft/dispersion
 ```
 
 Regenerate the EEQ tables from pinned dftd4, multicharge and mctc-lib sources:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync multicharge-eeq2019
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4_eeq.py \
-  --dftd4-git-dir /path/to/dftd4/.git \
-  --multicharge-git-dir /path/to/multicharge/.git \
-  --mctc-git-dir /path/to/mctc-lib/.git \
   --output-dir src/dft/dispersion
 ```
 
-CTest targets are `vibeqc_d4_reference_tests`, `vibeqc_d4_eeq_tests`, and on
-CUDA builds `vibeqc_d4_reference_cuda_tests` plus `vibeqc_d4_eeq_cuda_tests`.
+Both generators bind to the named products in `upstream/manifest.json`, verify
+the product's source-identity digest, and parse only SHA-256-verified files in
+`.cache/vibeqc-sources/`. The explicit `sync` commands are maintainer network
+operations; normal configure, build, tests, and runtime remain offline.
+
+Qualification CTest targets are `vibeqc_d4_reference_tests`,
+`vibeqc_d4_eeq_tests` and their CUDA variants, plus
+`vibeqc_d4_schedule_cuda_tests`. Production additionally runs
+`vibeqc_d4_production_tests`, `vibeqc_d4_ragged_tests` and their CUDA
+invocations. `benchmarks/d4_production_gate.py` records cold, warm, changed
+geometry and ragged endpoint timings together with resource diagnostics.
 Regenerate the independent EEQ
 fixtures with:
 

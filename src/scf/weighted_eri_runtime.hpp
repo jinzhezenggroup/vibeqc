@@ -94,6 +94,19 @@ inline void validate_primitive(const CudaWeightedEriPrimitive& record, std::size
 }
 
 #ifdef __CUDACC__
+template <class Output>
+__global__ void validate_results(const typename Output::Result* output, std::size_t tiles,
+                                 int* error) {
+  const std::size_t count = tiles * Output::count;
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
+       i += std::size_t(blockDim.x) * gridDim.x) {
+    const auto tile = i / Output::count;
+    const auto component = static_cast<unsigned>(i % Output::count);
+    auto value = output[tile];
+    if (!isfinite(Output::element(value, component))) atomicCAS(error, 0, 1);
+  }
+}
+
 template <class Program, class Output>
 __global__ void contract(const typename Program::Record* records, std::size_t count,
                          typename Output::Result* output, int* error) {
@@ -163,10 +176,14 @@ class Plan {
     std::lock_guard<std::mutex> lock(mutex_);
     (void)profile;
 #endif
-    if (count > capacity_ || tiles > tiles_ || (count && !records) || (tiles && !output) ||
+    if (count > capacity_ || tiles > tiles_ || (count && !records) ||
         (records && reinterpret_cast<std::uintptr_t>(records) % alignof(Record)) ||
         (output && reinterpret_cast<std::uintptr_t>(output) % alignof(Result)))
       throw std::invalid_argument("weighted ERI chunk dimensions or pointer alignment");
+#ifndef __CUDACC__
+    if (tiles && !output)
+      throw std::invalid_argument("CPU weighted ERI requires a host output buffer");
+#endif
     for (std::size_t i = 0; i < count; ++i) {
       validate_primitive(Program::base(records[i]), tiles);
       if (!Program::validate(records[i]))
@@ -197,13 +214,20 @@ class Plan {
         cuda_check(cudaGetLastError());
       }
     });
+    if (tiles) {
+      const auto values = tiles * Output::count;
+      validate_results<Output>
+          <<<static_cast<unsigned>(std::min<std::size_t>((values - 1) / 128 + 1, 65535)), 128, 0,
+             context_.stream>>>(device_results, tiles, context_.error);
+      cuda_check(cudaGetLastError());
+    }
     int error = 0;
     cuda_check(cudaMemcpyAsync(&error, context_.error, sizeof(error), cudaMemcpyDeviceToHost,
                                context_.stream));
     cuda_check(cudaStreamSynchronize(context_.stream));
     if (error) throw NumericalFailure("weighted ERI primitive produced a nonfinite result");
     context_.section(profile, context_.metrics.output_ms, [&] {
-      if (tiles)
+      if (tiles && output)
         cuda_check(cudaMemcpyAsync(candidate_.data(), device_results, bytes(tiles, sizeof(Result)),
                                    cudaMemcpyDeviceToHost, context_.stream));
     });
@@ -220,14 +244,21 @@ class Plan {
       accumulate<Output>(target, value);
     }
 #endif
-    for (std::size_t i = 0; i < tiles; ++i) {
-      for (unsigned j = 0; j < Output::count; ++j)
-        if (!std::isfinite(Output::element(candidate_[i], j)))
-          throw NumericalFailure("weighted integral output overflow");
+    if (output) {
+      for (std::size_t i = 0; i < tiles; ++i) {
+        for (unsigned j = 0; j < Output::count; ++j)
+          if (!std::isfinite(Output::element(candidate_[i], j)))
+            throw NumericalFailure("weighted integral output overflow");
+      }
+      if (tiles) std::copy_n(candidate_.data(), tiles, output);
     }
-    if (tiles) std::copy_n(candidate_.data(), tiles, output);
   }
 
+#ifdef __CUDACC__
+  const Result* device_results() const {
+    return reinterpret_cast<const Result*>(context_.arena + input_bytes_);
+  }
+#endif
   std::size_t host_bytes() const { return host_bytes_; }
   std::size_t device_bytes() const { return device_bytes_; }
 #ifdef __CUDACC__

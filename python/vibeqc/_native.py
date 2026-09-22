@@ -33,6 +33,7 @@ METHOD_FAMILY_HARTREE_FOCK = 1
 METHOD_FAMILY_DENSITY_FUNCTIONAL = 2
 METHOD_FAMILY_COUPLED_CLUSTER = 3
 METHOD_FAMILY_PERTURBATION = 4
+METHOD_FAMILY_SEMIEMPIRICAL = 5
 PROPERTY_ENERGY = 1 << 0
 PROPERTY_FORCES = 1 << 1
 BACKEND_CPU_REFERENCE = 0
@@ -44,9 +45,19 @@ DENSITY_FITTING_CUDA = 2
 DENSITY_FITTING_AUTO = 3
 PRECISION_FP64 = 0
 PRECISION_AUTO = 1
+XC_EXECUTION_DEVICE_FUSED = 0
+XC_EXECUTION_HOST_UNFUSED = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 D3_DAMPING_BJ = 1
+D3_DAMPING_ZERO = 2
+D4_PROFILE_STANDARD_EEQ = 1
+D4_PROFILE_R2SCAN3C_EEQ = 2
+NONLOCAL_VV10 = 1
+KS_EXCHANGE_FULL_RANGE = 1
+KS_EXCHANGE_SHORT_RANGE = 2
+KS_EXCHANGE_LONG_RANGE = 3
+NONLOCAL_RVV10 = 2
 BATCH_ENABLE_WARM_STARTS = 1 << 0
 BATCH_ENABLE_SHELL_CLASS_PROFILING = 1 << 1
 BATCH_ENABLE_INACTIVE_EIGENSOLVER_PROFILING = 1 << 2
@@ -179,13 +190,29 @@ class SystemDescriptor(ctypes.Structure):
     ]
 
 
+class KsSemilocalComponentDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("component_id", ctypes.c_char_p),
+        ("coefficient", ctypes.c_double),
+    ]
+
+
+class KsExchangeTermDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("operator_kind", ctypes.c_int32),
+        ("coefficient", ctypes.c_double),
+        ("omega", ctypes.c_double),
+        ("fock_coefficient", ctypes.c_double),
+    ]
+
+
 class KsOptionsDescriptor(ctypes.Structure):
-    """Borrowed model snapshot; native preparation copies every pointee."""
+    """Borrowed compiler execution plan; native preparation copies every pointee."""
 
     _fields_ = [
         ("struct_size", ctypes.c_uint32),
         ("abi_version", ctypes.c_uint32),
-        ("scf_domain_version", ctypes.c_uint32),
+        ("scf_domain", ctypes.c_char_p),
         ("grid_version", ctypes.c_uint32),
         ("radial_points", ctypes.c_uint32),
         ("angular_polar", ctypes.c_uint32),
@@ -195,6 +222,19 @@ class KsOptionsDescriptor(ctypes.Structure):
         ("tile_points", ctypes.c_uint64),
         ("element_radii", ctypes.POINTER(ctypes.c_double)),
         ("element_radius_count", ctypes.c_uint32),
+        ("xc_execution_schedule", ctypes.c_int32),
+        ("spin_channels", ctypes.c_uint32),
+        ("semilocal_components", ctypes.POINTER(KsSemilocalComponentDescriptor)),
+        ("semilocal_component_count", ctypes.c_uint32),
+        ("semilocal_range_omega", ctypes.c_double),
+        ("exchange_terms", ctypes.POINTER(KsExchangeTermDescriptor)),
+        ("exchange_term_count", ctypes.c_uint32),
+        ("has_nonlocal_correlation", ctypes.c_uint32),
+        ("nonlocal_variant", ctypes.c_int32),
+        ("nonlocal_b", ctypes.c_double),
+        ("nonlocal_c", ctypes.c_double),
+        ("nonlocal_coefficient", ctypes.c_double),
+        ("nonlocal_maximum_bytes", ctypes.c_uint64),
     ]
 
 
@@ -284,6 +324,10 @@ class CorrelationDiagnostic(ctypes.Structure):
         ("ccsd_amplitude_d2h_bytes", ctypes.c_uint64),
         ("ccsd_synchronizations", ctypes.c_uint64),
         ("ccsd_replay_equation_hash", ctypes.c_char * 65),
+        ("ccsd_t_triples_energy", ctypes.c_double),
+        ("ccsd_t_virtual_triples", ctypes.c_uint64),
+        ("ccsd_t_workspace_bytes", ctypes.c_uint64),
+        ("ccsd_t_equation_hash", ctypes.c_char * 65),
     ]
 
 
@@ -383,6 +427,14 @@ class PrecisionProvenance(ctypes.Structure):
         ("strict_refinement_applied", ctypes.c_int32),
         ("mixed_precision_reserved_error", ctypes.c_double),
         ("refinement_iterations", ctypes.c_int32),
+        ("mixed_stage_fock_builds", ctypes.c_uint64),
+        ("strict_stage_fock_builds", ctypes.c_uint64),
+        ("post_scf_fock_builds", ctypes.c_uint64),
+        ("execution_retries", ctypes.c_uint64),
+        ("mixed_admission_census", ctypes.c_uint64),
+        ("final_residual_audits", ctypes.c_uint64),
+        ("skipped_final_fock_builds", ctypes.c_uint64),
+        ("operator_work_counters_valid", ctypes.c_uint32),
     ]
 
 
@@ -419,6 +471,11 @@ class D3BjDescriptor(ctypes.Structure):
         ("pair_cutoff", ctypes.c_double),
         ("pair_switch_width", ctypes.c_double),
         ("maximum_bytes", ctypes.c_uint64),
+        ("rs6", ctypes.c_double),
+        ("rs8", ctypes.c_double),
+        ("alp", ctypes.c_double),
+        ("atm_cutoff", ctypes.c_double),
+        ("atm_switch_width", ctypes.c_double),
     ]
 
 
@@ -457,6 +514,149 @@ class D3RuntimeDiagnostic(ctypes.Structure):
         ("total_atoms", ctypes.c_uint64),
         ("system_count", ctypes.c_uint32),
         ("maximum_atoms", ctypes.c_uint32),
+    ]
+
+
+class D4SystemDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("atomic_numbers", ctypes.POINTER(ctypes.c_int32)),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("atom_count", ctypes.c_uint32),
+        ("total_charge", ctypes.c_double),
+    ]
+
+
+class D4BjEeqDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("profile", ctypes.c_int32),
+        ("s6", ctypes.c_double),
+        ("s8", ctypes.c_double),
+        ("s9", ctypes.c_double),
+        ("a1", ctypes.c_double),
+        ("a2", ctypes.c_double),
+        ("ga", ctypes.c_double),
+        ("gc", ctypes.c_double),
+        ("cn_cutoff", ctypes.c_double),
+        ("pair_cutoff", ctypes.c_double),
+        ("atm_cutoff", ctypes.c_double),
+        ("maximum_bytes", ctypes.c_uint64),
+    ]
+
+
+class D4BatchInputDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint32),
+    ]
+
+
+class D4BatchItemResultDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("status", ctypes.c_int32),
+        ("energy", ctypes.c_double),
+        ("two_body_energy", ctypes.c_double),
+        ("atm_energy", ctypes.c_double),
+        ("gradient", ctypes.POINTER(ctypes.c_double)),
+        ("gradient_count", ctypes.c_uint32),
+        ("charges", ctypes.POINTER(ctypes.c_double)),
+        ("charge_count", ctypes.c_uint32),
+        ("executed_backend", ctypes.c_int32),
+    ]
+
+
+class D4RuntimeDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("backend", ctypes.c_int32),
+        ("profile", ctypes.c_int32),
+        ("plan_host_bytes", ctypes.c_uint64),
+        ("execution_host_bytes", ctypes.c_uint64),
+        ("device_bytes", ctypes.c_uint64),
+        ("table_bytes", ctypes.c_uint64),
+        ("workspace_bytes", ctypes.c_uint64),
+        ("maximum_bytes", ctypes.c_uint64),
+        ("total_atoms", ctypes.c_uint64),
+        ("system_count", ctypes.c_uint32),
+        ("maximum_atoms", ctypes.c_uint32),
+        ("worker_blocks", ctypes.c_uint32),
+        ("workspace_slots", ctypes.c_uint32),
+        ("execution_count", ctypes.c_uint64),
+        ("unchanged_geometry_replays", ctypes.c_uint64),
+        ("changed_geometry_replays", ctypes.c_uint64),
+        ("coordinate_h2d_bytes", ctypes.c_uint64),
+        ("kernel_launches", ctypes.c_uint64),
+        ("atm_enabled", ctypes.c_int32),
+    ]
+
+
+class NonlocalDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("variant", ctypes.c_int32),
+        ("b", ctypes.c_double),
+        ("c", ctypes.c_double),
+        ("coefficient", ctypes.c_double),
+        ("point_count", ctypes.c_uint32),
+        ("tile_points", ctypes.c_uint32),
+        ("maximum_bytes", ctypes.c_uint64),
+    ]
+
+
+class NonlocalInputDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("coordinates", ctypes.POINTER(ctypes.c_double)),
+        ("coordinate_count", ctypes.c_uint32),
+        ("weights", ctypes.POINTER(ctypes.c_double)),
+        ("weight_count", ctypes.c_uint32),
+        ("density", ctypes.POINTER(ctypes.c_double)),
+        ("density_count", ctypes.c_uint32),
+        ("density_gradient", ctypes.POINTER(ctypes.c_double)),
+        ("density_gradient_count", ctypes.c_uint32),
+    ]
+
+
+class NonlocalResultDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("energy", ctypes.c_double),
+        ("vrho", ctypes.POINTER(ctypes.c_double)),
+        ("vrho_count", ctypes.c_uint32),
+        ("vsigma", ctypes.POINTER(ctypes.c_double)),
+        ("vsigma_count", ctypes.c_uint32),
+        ("point_derivative", ctypes.POINTER(ctypes.c_double)),
+        ("point_derivative_count", ctypes.c_uint32),
+        ("weight_derivative", ctypes.POINTER(ctypes.c_double)),
+        ("weight_derivative_count", ctypes.c_uint32),
+        ("executed_backend", ctypes.c_int32),
+    ]
+
+
+class NonlocalRuntimeDiagnostic(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("abi_version", ctypes.c_uint32),
+        ("backend", ctypes.c_int32),
+        ("workspace_bytes", ctypes.c_uint64),
+        ("host_workspace_bytes", ctypes.c_uint64),
+        ("device_workspace_bytes", ctypes.c_uint64),
+        ("maximum_bytes", ctypes.c_uint64),
+        ("pair_evaluations", ctypes.c_uint64),
+        ("tiles", ctypes.c_uint64),
+        ("point_count", ctypes.c_uint32),
+        ("tile_points", ctypes.c_uint32),
     ]
 
 
@@ -663,6 +863,8 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
 
     void_pp = ctypes.POINTER(ctypes.c_void_p)
     library.vibeqc_get_abi_version.restype = ctypes.c_uint32
+    library.vibeqc_get_source_identity.argtypes = []
+    library.vibeqc_get_source_identity.restype = ctypes.c_char_p
     library.vibeqc_status_message.argtypes = [ctypes.c_int]
     library.vibeqc_status_message.restype = ctypes.c_char_p
     library.vibeqc_method_available.argtypes = [
@@ -891,6 +1093,12 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         library.vibeqc_d3_table_sha256.restype = ctypes.c_char_p
         library.vibeqc_d3_radii_sha256.argtypes = []
         library.vibeqc_d3_radii_sha256.restype = ctypes.c_char_p
+        library.vibeqc_d3_provider_identity.argtypes = []
+        library.vibeqc_d3_provider_identity.restype = ctypes.c_char_p
+        library.vibeqc_d3_scheduler_identity.argtypes = []
+        library.vibeqc_d3_scheduler_identity.restype = ctypes.c_char_p
+        library.vibeqc_d3_batch_variant_identity.argtypes = [ctypes.c_void_p]
+        library.vibeqc_d3_batch_variant_identity.restype = ctypes.c_char_p
         d3_prepare.argtypes = [
             ctypes.c_void_p,
             ctypes.POINTER(D3SystemDescriptor),
@@ -914,6 +1122,76 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             ctypes.c_uint32,
         ]
         library.vibeqc_d3_batch_execute.restype = ctypes.c_int
+    gcp_evaluate = getattr(library, "vibeqc_r2scan3c_gcp_evaluate", None)
+    if gcp_evaluate is not None:
+        library.vibeqc_r2scan3c_gcp_provider_identity.argtypes = []
+        library.vibeqc_r2scan3c_gcp_provider_identity.restype = ctypes.c_char_p
+        gcp_evaluate.argtypes = [
+            ctypes.POINTER(ctypes.c_int32),
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_uint32,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_uint32,
+        ]
+        gcp_evaluate.restype = ctypes.c_int
+    d4_prepare = getattr(library, "vibeqc_d4_batch_prepare", None)
+    if d4_prepare is not None:
+        library.vibeqc_d4_table_sha256.argtypes = []
+        library.vibeqc_d4_table_sha256.restype = ctypes.c_char_p
+        library.vibeqc_d4_charge_parameter_sha256.argtypes = []
+        library.vibeqc_d4_charge_parameter_sha256.restype = ctypes.c_char_p
+        library.vibeqc_d4_derivative_identity.argtypes = []
+        library.vibeqc_d4_derivative_identity.restype = ctypes.c_char_p
+        library.vibeqc_d4_provider_identity.argtypes = []
+        library.vibeqc_d4_provider_identity.restype = ctypes.c_char_p
+        library.vibeqc_d4_scheduler_identity.argtypes = []
+        library.vibeqc_d4_scheduler_identity.restype = ctypes.c_char_p
+        d4_prepare.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D4SystemDescriptor),
+            ctypes.c_uint32,
+            ctypes.POINTER(D4BjEeqDescriptor),
+            void_pp,
+        ]
+        d4_prepare.restype = ctypes.c_int
+        library.vibeqc_d4_batch_destroy.argtypes = [ctypes.c_void_p]
+        library.vibeqc_d4_batch_destroy.restype = None
+        library.vibeqc_d4_batch_get_diagnostic.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D4RuntimeDiagnostic),
+        ]
+        library.vibeqc_d4_batch_get_diagnostic.restype = ctypes.c_int
+        library.vibeqc_d4_batch_execute.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(D4BatchInputDescriptor),
+            ctypes.c_uint32,
+            ctypes.POINTER(D4BatchItemResultDescriptor),
+            ctypes.c_uint32,
+        ]
+        library.vibeqc_d4_batch_execute.restype = ctypes.c_int
+    nonlocal_prepare = getattr(library, "vibeqc_nonlocal_plan_prepare", None)
+    if nonlocal_prepare is not None:
+        nonlocal_prepare.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalDescriptor),
+            void_pp,
+        ]
+        nonlocal_prepare.restype = ctypes.c_int
+        library.vibeqc_nonlocal_plan_destroy.argtypes = [ctypes.c_void_p]
+        library.vibeqc_nonlocal_plan_destroy.restype = None
+        library.vibeqc_nonlocal_plan_get_diagnostic.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalRuntimeDiagnostic),
+        ]
+        library.vibeqc_nonlocal_plan_get_diagnostic.restype = ctypes.c_int
+        library.vibeqc_nonlocal_plan_execute.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(NonlocalInputDescriptor),
+            ctypes.POINTER(NonlocalResultDescriptor),
+        ]
+        library.vibeqc_nonlocal_plan_execute.restype = ctypes.c_int
     if library.vibeqc_get_abi_version() != ABI_VERSION:
         raise RuntimeError("VIBEQC Python/native ABI version mismatch")
     return library

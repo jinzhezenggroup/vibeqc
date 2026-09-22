@@ -70,6 +70,26 @@ def _numerical_multiplier(
     return np.linalg.solve(jacobian.T, -gradient) / bound.sqrt_weights**2
 
 
+def test_native_cpu_lambda_does_not_fall_back_to_interpreter(
+    small_state: typing.Any,
+    tmp_path: typing.Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot, cc, _arrays = small_state
+    monkeypatch.setenv("VIBEQC_TENSOR_CACHE", str(tmp_path))
+
+    def forbidden(*_args: typing.Any, **_kwargs: typing.Any) -> typing.NoReturn:
+        raise AssertionError("native Lambda path called the NumPy TensorIR interpreter")
+
+    monkeypatch.setattr(consumer, "execute", forbidden)
+    bound = BoundCCSDLambda(snapshot, cc, backend="native-cpu")
+    result = bound.solve(reference_identity=snapshot.identity)
+    assert result.converged
+    assert result.provenance["tensor_backend"] == "native-cpu-tensorir"
+    assert bound.tensor_executor is not None
+    assert bound.tensor_executor.compiled_program_count >= 3
+
+
 def test_molecular_lambda_matches_numerical_transpose(
     molecular_state: typing.Any,
 ) -> None:
@@ -183,6 +203,7 @@ def test_bound_state_and_result_are_immutable_and_detached(
         "equation_hash",
         "independent_equation_hash",
         "integral_hash",
+        "solver_region_identity",
     ],
 )
 def test_rejects_changed_provenance(small_state: typing.Any, field: typing.Any) -> None:

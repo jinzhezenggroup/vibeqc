@@ -7,24 +7,35 @@ allocation and the existing accuracy/performance acceptance boundaries."""
 from __future__ import annotations
 
 import json
-import math
 import sys
 import tempfile
 import time
 import typing
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
-from ..cuda_adapter import CudaBenchmarkExecutor, CudaCompilerAdapter
-from ..cuda_schedule import (
-    ScheduleIR,
-    ScheduleKind,
+from vibeqc_compiler.common.cuda_adapter import (
+    CudaBenchmarkExecutor,
+    CudaCompilerAdapter,
 )
-from ..cuda_target import (
+from vibeqc_compiler.common.cuda_target import (
     CudaTargetInfo,
     cuda_target_info,
     normalize_cuda_architecture,
+)
+from vibeqc_compiler.common.gpu_profitability import (
+    ENDPOINT_NOISE_FRACTION,
+    GpuProfitability,
+)
+
+from ..cuda_schedule import (
+    AlgebraForm,
+    AlgebraFusion,
+    AlgebraOrdering,
+    AlgebraPlacement,
+    ScheduleIR,
+    ScheduleKind,
 )
 from ..ir import KernelConsumer
 from .emission import (
@@ -34,6 +45,7 @@ from .emission import (
     emit_schedule_oracle_translation_unit,
     emit_schedule_resource_translation_unit,
     emit_schedule_translation_unit,
+    schedule_execution_source_identity,
 )
 from .inputs import (
     _requested_schedule_kinds,
@@ -44,6 +56,7 @@ from .manifest import write_tuned_manifest
 from .policy import (
     ScheduleTrial,
     _production_fock_schedule_index,
+    deduplicate_execution_equivalent_trials,
     schedule_payload,
     supported_schedule_trials,
 )
@@ -52,6 +65,153 @@ from .resources import _resource_rejections, estimate_occupancy
 
 if typing.TYPE_CHECKING:
     import argparse
+
+
+def _candidate_profitability(
+    trial: ScheduleTrial,
+    compile_row: dict[str, typing.Any],
+    resources: typing.Any,
+    occupancy: dict[str, object],
+    runtime: dict[str, object] | None,
+) -> GpuProfitability:
+    """Normalize symbolic, PTXAS, artifact, and endpoint facts for one trial."""
+
+    model = trial.static_model
+
+    def maximum(name: str) -> int | None:
+        values = [
+            getattr(resource, name)
+            for resource in resources
+            if getattr(resource, name, None) is not None
+        ]
+        return max(values) if values else None
+
+    endpoint_ms = None if runtime is None else float(runtime["fused_ms"])
+    return GpuProfitability(
+        arithmetic_operation_count=getattr(model, "arithmetic_operation_count", None),
+        peak_live_values=getattr(model, "peak_live_values", None),
+        rematerialized_value_count=getattr(model, "rematerialized_value_count", None),
+        compiled_registers_per_thread=maximum("registers"),
+        spill_store_bytes=maximum("spill_store_bytes"),
+        spill_load_bytes=maximum("spill_load_bytes"),
+        local_bytes=maximum("local_bytes"),
+        shared_bytes=maximum("shared_bytes"),
+        compiled_occupancy_upper_bound=typing.cast(
+            "float | None", occupancy.get("minimum_estimated_occupancy")
+        ),
+        source_bytes=compile_row.get("source_bytes"),
+        object_bytes=compile_row.get("object_bytes"),
+        compile_seconds=compile_row.get("duration_seconds"),
+        endpoint_seconds=None if endpoint_ms is None else endpoint_ms / 1000.0,
+    )
+
+
+def _algebra_resource_baseline_key(trial: ScheduleTrial) -> str | None:
+    """Return the same execution shape with conservative scalar algebra knobs."""
+
+    if trial.schedule.kind != ScheduleKind.PACKED_TASKS:
+        return None
+    baseline_schedule = replace(
+        trial.schedule,
+        algebra_placement=AlgebraPlacement.MATERIALIZED_CSE,
+        algebra_ordering=AlgebraOrdering.TOPOLOGICAL,
+        algebra_fusion=AlgebraFusion.SEPARATE,
+        algebra_form=AlgebraForm.BINARY,
+    )
+    if baseline_schedule == trial.schedule:
+        return None
+    return ScheduleTrial(
+        spec=trial.spec,
+        schedule=baseline_schedule,
+        target=trial.target,
+        consumer=trial.consumer,
+        integral=trial.integral,
+    ).key
+
+
+def _schedule_geometry_key(trial: ScheduleTrial) -> tuple[object, ...]:
+    """Return execution geometry independently of scalar algebra variants."""
+
+    schedule = trial.schedule
+    return (
+        schedule.kind,
+        schedule.block_threads,
+        schedule.component_tile,
+        schedule.tasks_per_warp,
+        schedule.shared_coulomb,
+        schedule.pair_orientation,
+        schedule.pair_storage,
+        schedule.minimum_blocks_per_sm,
+        schedule.maximum_registers,
+    )
+
+
+def _diverse_bounded_trials(
+    candidates: typing.Sequence[ScheduleTrial], limit: int
+) -> tuple[ScheduleTrial, ...]:
+    """Bound quick tuning without making enumeration order the search policy.
+
+    Take one representative from distinct execution geometries, round-robin by
+    schedule kind, before spending the remaining budget on scalar algebra peers.
+    The caller still appends a required production baseline independently.
+    """
+
+    if limit < 1:
+        raise ValueError("candidate limit must be positive")
+    families_by_kind: dict[ScheduleKind, list[list[ScheduleTrial]]] = {}
+    family_by_key: dict[tuple[object, ...], list[ScheduleTrial]] = {}
+    for candidate in candidates:
+        key = _schedule_geometry_key(candidate)
+        family = family_by_key.get(key)
+        if family is None:
+            family = []
+            family_by_key[key] = family
+            families_by_kind.setdefault(candidate.schedule.kind, []).append(family)
+        family.append(candidate)
+
+    chosen: list[ScheduleTrial] = []
+    cursors = {kind: 0 for kind in families_by_kind}
+    while len(chosen) < limit:
+        progressed = False
+        for kind, families in families_by_kind.items():
+            index = cursors[kind]
+            if index >= len(families):
+                continue
+            chosen.append(families[index][0])
+            cursors[kind] = index + 1
+            progressed = True
+            if len(chosen) == limit:
+                return tuple(chosen)
+        if not progressed:
+            break
+
+    depth = 1
+    while len(chosen) < limit:
+        progressed = False
+        for families in families_by_kind.values():
+            for family in families:
+                if depth >= len(family):
+                    continue
+                chosen.append(family[depth])
+                progressed = True
+                if len(chosen) == limit:
+                    return tuple(chosen)
+        if not progressed:
+            break
+        depth += 1
+    return tuple(chosen)
+
+
+def _experimental_subgroup_blocked(
+    trial: ScheduleTrial, *, is_production_baseline: bool, allow_experimental: bool
+) -> bool:
+    """Require endpoint promotion only for new subgroup proposals."""
+
+    return (
+        trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and not is_production_baseline
+        and not allow_experimental
+    )
 
 
 def _run_autotune(
@@ -124,13 +284,32 @@ def _run_autotune(
         bounded = []
         for spec in specifications:
             candidates = [t for t in trials if t.spec.name == spec.name]
-            chosen = candidates[:limit]
+            chosen = list(_diverse_bounded_trials(candidates, limit))
             baseline = production_baselines.get(spec.name)
             for candidate in candidates:
                 if candidate.schedule == baseline and candidate not in chosen:
                     chosen.append(candidate)
             bounded.extend(chosen)
         trials = tuple(bounded)
+
+    bounded_trial_count = len(trials)
+    execution_deduplicated: tuple[dict[str, object], ...] = ()
+    if not getattr(arguments, "no_execution_dedup", False):
+        resource_baseline_keys = frozenset(
+            key
+            for trial in trials
+            if (key := _algebra_resource_baseline_key(trial)) is not None
+        )
+        protected_keys = resource_baseline_keys | frozenset(
+            trial.key
+            for trial in trials
+            if production_baselines.get(trial.spec.name) == trial.schedule
+        )
+        trials, execution_deduplicated = deduplicate_execution_equivalent_trials(
+            trials,
+            schedule_execution_source_identity,
+            protected_keys=protected_keys,
+        )
     if not trials:
         requested = ", ".join(spec.name for spec in specifications)
         selected = ", ".join(kind.value for kind in selected_schedule_kinds)
@@ -303,6 +482,11 @@ def _run_autotune(
             runtime_probe = None
 
         candidates = []
+        profitability_by_key: dict[str, GpuProfitability] = {}
+        compiled_trials_by_key = {
+            trial.key: (trial, compile_row)
+            for trial, compile_row in zip(trials, compile_rows, strict=True)
+        }
         passing_by_class: dict[
             str,
             list[tuple[ScheduleTrial, dict[str, object], dict[str, object]]],
@@ -344,9 +528,10 @@ def _run_autotune(
                 maximum_stack_bytes=arguments.max_stack_bytes,
                 maximum_shared_bytes=maximum_shared_bytes,
             )
-            if (
-                trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-                and not arguments.allow_experimental_subgroup_winner
+            if _experimental_subgroup_blocked(
+                trial,
+                is_production_baseline=is_production_baseline,
+                allow_experimental=arguments.allow_experimental_subgroup_winner,
             ):
                 reasons.append(
                     "subgroup schedules require explicit end-to-end "
@@ -418,6 +603,48 @@ def _run_autotune(
                         )
                 else:
                     speedup_vs_baseline = 1.0 if is_production_baseline else None
+            occupancy = estimate_occupancy(resources, trial, target)
+            profitability = _candidate_profitability(
+                trial, compile_row, resources, occupancy, runtime
+            )
+            profitability_by_key[trial.key] = profitability
+
+            resource_baseline_key = _algebra_resource_baseline_key(trial)
+            endpoint_regression_reasons: list[str] = []
+            resource_regression_reasons: list[str] = []
+            if resource_baseline_key is not None:
+                baseline_pair = compiled_trials_by_key.get(resource_baseline_key)
+                if baseline_pair is not None:
+                    baseline_trial, baseline_compile_row = baseline_pair
+                    baseline_resources = baseline_compile_row["resources"]
+                    baseline_occupancy = estimate_occupancy(
+                        baseline_resources, baseline_trial, target
+                    )
+                    baseline_profitability = _candidate_profitability(
+                        baseline_trial,
+                        baseline_compile_row,
+                        baseline_resources,
+                        baseline_occupancy,
+                        runtime_rows.get(resource_baseline_key),
+                    )
+                    endpoint_regression_reasons.extend(
+                        profitability.endpoint_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    resource_regression_reasons.extend(
+                        profitability.resource_regressions_against(
+                            baseline_profitability
+                        )
+                    )
+                    reasons.extend(
+                        "endpoint regression vs canonical algebra peer: " + reason
+                        for reason in endpoint_regression_reasons
+                    )
+                    reasons.extend(
+                        "resource regression vs canonical algebra peer: " + reason
+                        for reason in resource_regression_reasons
+                    )
             accepted = not reasons
             row = {
                 "shell_class": trial.spec.name,
@@ -432,7 +659,11 @@ def _run_autotune(
                 "source_bytes": compile_row.get("source_bytes"),
                 "object_bytes": compile_row.get("object_bytes"),
                 "resources": [asdict(item) for item in resources],
-                "occupancy": estimate_occupancy(resources, trial, target),
+                "occupancy": occupancy,
+                "profitability": profitability.to_payload(),
+                "resource_baseline_trial_key": resource_baseline_key,
+                "endpoint_regression_reasons": endpoint_regression_reasons,
+                "resource_regression_reasons": resource_regression_reasons,
                 "runtime": runtime,
                 "production_baseline": is_production_baseline,
                 "speedup_vs_production_baseline": speedup_vs_baseline,
@@ -462,41 +693,25 @@ def _run_autotune(
                 *,
                 fastest: float = fastest_ms,
             ) -> typing.Any:
-                trial, runtime, candidate = item
+                trial, runtime, _candidate = item
                 elapsed_ms = float(runtime["fused_ms"])
+                profitability = profitability_by_key[trial.key]
 
-                def metric_or_inf(name: str) -> float:
-                    value = candidate.get(name)
-                    if (
-                        isinstance(value, (int, float))
-                        and not isinstance(value, bool)
-                        and math.isfinite(float(value))
-                        and value >= 0
-                    ):
-                        return float(value)
-                    return math.inf
-
-                # Within one percent of the fastest endpoint, compile time and
-                # binary footprint decide the winner. Once a candidate falls
-                # outside that noise band, endpoint runtime is the primary
-                # key again; otherwise a much slower but tiny artifact could
-                # displace a scientifically faster schedule.
-                near_fastest = elapsed_ms <= fastest * 1.01
+                # Full endpoint time remains primary outside the one-percent
+                # noise band. Inside it, use the shared GPU resource key so
+                # rematerialization/fusion choices cannot win merely by making
+                # a smaller source artifact while retaining worse live state.
+                near_fastest = elapsed_ms <= fastest * (1.0 + ENDPOINT_NOISE_FRACTION)
                 if near_fastest:
                     return (
                         0,
-                        metric_or_inf("compile_seconds"),
-                        metric_or_inf("source_bytes"),
-                        metric_or_inf("object_bytes"),
-                        elapsed_ms,
+                        profitability.compiled_resource_priority(),
                         trial.schedule_id,
                     )
                 return (
                     1,
                     elapsed_ms,
-                    metric_or_inf("compile_seconds"),
-                    metric_or_inf("source_bytes"),
-                    metric_or_inf("object_bytes"),
+                    profitability.compiled_resource_priority(),
                     trial.schedule_id,
                 )
 
@@ -670,6 +885,9 @@ def _run_autotune(
                 "maximum_shared_bytes": arguments.max_shared_bytes,
                 "compile_timeout_seconds": arguments.compile_timeout,
                 "spills_allowed": False,
+                "resource_regression_endpoint_noise_fraction": (
+                    ENDPOINT_NOISE_FRACTION
+                ),
                 "experimental_subgroup_winners_allowed": (
                     arguments.allow_experimental_subgroup_winner
                 ),
@@ -677,6 +895,16 @@ def _run_autotune(
             },
             "search": {
                 "schedule_kinds": [kind.value for kind in selected_schedule_kinds],
+                "bounded_trial_count": bounded_trial_count,
+                "execution_dedup_enabled": not getattr(
+                    arguments, "no_execution_dedup", False
+                ),
+                "execution_deduplicated_count": len(execution_deduplicated),
+                "execution_deduplicated": list(execution_deduplicated),
+                "candidate_limit_per_class": limit,
+                "candidate_limit_strategy": (
+                    "geometry-round-robin" if limit is not None else None
+                ),
                 "trial_count": len(trials),
             },
             "requested_shell_classes": [spec.name for spec in specifications],

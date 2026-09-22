@@ -286,6 +286,81 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
   return p;
 }
 
+RccsdNativeState execute_rccsd_prepared(core::ContextState& context, const core::System& system,
+                                        const scf::ScfOptions& reference_options,
+                                        const cc::SolverOptions& solver_options,
+                                        std::size_t reference_capacity) {
+  const char* allocation_stage = "HF reference";
+  try {
+    const bool cuda = context.requested_backend == VIBEQC_BACKEND_CUDA;
+    auto hf = cuda ? scf::run_rhf_cuda(system, reference_options, context.device_id)
+                   : scf::run_rhf(system, reference_options);
+    if (!hf.converged || !hf.reference)
+      throw MethodError(VIBEQC_STATUS_NOT_CONVERGED,
+                        "HF did not converge; no RCCSD energy evaluated");
+    const auto reference = hf.reference;
+    hf.density.clear();
+    hf.density.shrink_to_fit();
+    allocation_stage = "MO provider/problem";
+    RccsdNativeState state;
+    const auto o = reference->nocc;
+    state.eps_o.assign(reference->orbital_energies.begin(),
+                       reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o));
+    state.eps_v.assign(reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o),
+                       reference->orbital_energies.end());
+    state.problem = build_problem(system, *reference, solver_options, cuda, context.device_id);
+    allocation_stage = "CC resident solve";
+    state.solved = cuda ? cc::solve_cuda(state.problem, solver_options, context.device_id)
+                        : cc::solve_cpu(state.problem, solver_options);
+    state.budget = solver_options.max_bytes;
+
+    auto& diagnostic = state.diagnostic;
+    diagnostic.struct_size = sizeof(diagnostic);
+    diagnostic.abi_version = VIBEQC_ABI_VERSION;
+    diagnostic.reference_energy = reference->energy;
+    diagnostic.reference_residual = reference->commutator_residual;
+    diagnostic.minimum_absolute_denominator = state.problem.minimum_absolute_denominator;
+    diagnostic.numeric_capacity_bytes =
+        std::max(reference_capacity, state.solved.diagnostic.numeric_capacity_bytes);
+    diagnostic.mo_host_staging = cuda ? 1 : 0;
+    diagnostic.correlation_owned_device_bytes = state.solved.diagnostic.owned_device_bytes;
+    diagnostic.correlation_provider_retained_bytes = state.problem.provider_host_bytes;
+    diagnostic.mo_transfer_bytes = 0;
+    diagnostic.tensor_kernel_ms = 0.0;
+    std::copy_n(cc::generated::iteration_equation_hash,
+                std::min<std::size_t>(64, std::strlen(cc::generated::iteration_equation_hash)),
+                diagnostic.equation_hash);
+    diagnostic.ccsd_iterations = state.solved.diagnostic.iterations;
+    diagnostic.ccsd_diis_restarts = state.solved.diagnostic.diis_restarts;
+    diagnostic.ccsd_correlation_energy = state.solved.correlation_energy;
+    diagnostic.ccsd_energy_change = state.solved.diagnostic.energy_change;
+    diagnostic.ccsd_singles_residual_max = state.solved.diagnostic.r1_max;
+    diagnostic.ccsd_doubles_residual_max = state.solved.diagnostic.r2_max;
+    diagnostic.ccsd_replay_singles_residual_max = state.solved.diagnostic.replay_r1_max;
+    diagnostic.ccsd_replay_doubles_residual_max = state.solved.diagnostic.replay_r2_max;
+    diagnostic.ccsd_setup_h2d_bytes = state.solved.diagnostic.setup_h2d_bytes;
+    diagnostic.ccsd_scalar_d2h_bytes = state.solved.diagnostic.scalar_d2h_bytes;
+    diagnostic.ccsd_amplitude_d2h_bytes = state.solved.diagnostic.amplitude_d2h_bytes;
+    diagnostic.ccsd_synchronizations = state.solved.diagnostic.synchronizations;
+    std::copy_n(cc::generated::replay_equation_hash,
+                std::min<std::size_t>(64, std::strlen(cc::generated::replay_equation_hash)),
+                diagnostic.ccsd_replay_equation_hash);
+
+    state.result.energy = state.solved.total_energy;
+    state.result.convergence = {
+        state.solved.diagnostic.iterations, state.solved.diagnostic.energy_change,
+        std::max(state.solved.diagnostic.r1_max, state.solved.diagnostic.r2_max),
+        state.solved.converged()};
+    state.result.executed_backend = cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
+    return state;
+  } catch (const std::length_error& error) {
+    throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, error.what());
+  } catch (const std::bad_alloc&) {
+    throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
+                      std::string("RCCSD ") + allocation_stage + " allocation failed");
+  }
+}
+
 class RccsdPrepared final : public PreparedCalculation {
  public:
   RccsdPrepared(Capabilities capabilities, core::ContextState& context, core::System system,
@@ -315,76 +390,12 @@ class RccsdPrepared final : public PreparedCalculation {
     if (compute_forces)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "RCCSD exposes energy only; analytic forces are not implemented");
-    const char* allocation_stage = "HF reference";
-    try {
-      const bool cuda = context_.requested_backend == VIBEQC_BACKEND_CUDA;
-      auto hf = cuda ? scf::run_rhf_cuda(system_, reference_options_, context_.device_id)
-                     : scf::run_rhf(system_, reference_options_);
-      if (!hf.converged || !hf.reference)
-        throw MethodError(VIBEQC_STATUS_NOT_CONVERGED,
-                          "HF did not converge; no RCCSD energy evaluated");
-      const auto reference = hf.reference;
-      hf.density.clear();
-      hf.density.shrink_to_fit();
-      allocation_stage = "MO provider/problem";
-      const auto problem =
-          build_problem(system_, *reference, solver_options_, cuda, context_.device_id);
-      allocation_stage = "CC resident solve";
-      auto solved = cuda ? cc::solve_cuda(problem, solver_options_, context_.device_id)
-                         : cc::solve_cpu(problem, solver_options_);
-
-      vibeqc_correlation_diagnostic diagnostic{};
-      diagnostic.struct_size = sizeof(diagnostic);
-      diagnostic.abi_version = VIBEQC_ABI_VERSION;
-      diagnostic.reference_energy = reference->energy;
-      diagnostic.reference_residual = reference->commutator_residual;
-      diagnostic.minimum_absolute_denominator = problem.minimum_absolute_denominator;
-      diagnostic.numeric_capacity_bytes =
-          std::max(reference_capacity_, solved.diagnostic.numeric_capacity_bytes);
-      diagnostic.mo_host_staging = cuda ? 1 : 0;
-      diagnostic.correlation_owned_device_bytes = solved.diagnostic.owned_device_bytes;
-      diagnostic.correlation_provider_retained_bytes = problem.provider_host_bytes;
-      // The generic MO-transfer field is reserved for provider telemetry.  The
-      // native RCCSD owner reports its solver traffic explicitly below instead
-      // of conflating setup/final-amplitude copies with AO->MO staging.
-      diagnostic.mo_transfer_bytes = 0;
-      diagnostic.tensor_kernel_ms = 0.0;
-      std::copy_n(cc::generated::iteration_equation_hash,
-                  std::min<std::size_t>(64, std::strlen(cc::generated::iteration_equation_hash)),
-                  diagnostic.equation_hash);
-      diagnostic.ccsd_iterations = solved.diagnostic.iterations;
-      diagnostic.ccsd_diis_restarts = solved.diagnostic.diis_restarts;
-      diagnostic.ccsd_correlation_energy = solved.correlation_energy;
-      diagnostic.ccsd_energy_change = solved.diagnostic.energy_change;
-      diagnostic.ccsd_singles_residual_max = solved.diagnostic.r1_max;
-      diagnostic.ccsd_doubles_residual_max = solved.diagnostic.r2_max;
-      diagnostic.ccsd_replay_singles_residual_max = solved.diagnostic.replay_r1_max;
-      diagnostic.ccsd_replay_doubles_residual_max = solved.diagnostic.replay_r2_max;
-      diagnostic.ccsd_setup_h2d_bytes = solved.diagnostic.setup_h2d_bytes;
-      diagnostic.ccsd_scalar_d2h_bytes = solved.diagnostic.scalar_d2h_bytes;
-      diagnostic.ccsd_amplitude_d2h_bytes = solved.diagnostic.amplitude_d2h_bytes;
-      diagnostic.ccsd_synchronizations = solved.diagnostic.synchronizations;
-      std::copy_n(cc::generated::replay_equation_hash,
-                  std::min<std::size_t>(64, std::strlen(cc::generated::replay_equation_hash)),
-                  diagnostic.ccsd_replay_equation_hash);
-      last_ = diagnostic;
-
-      if (solved.status == cc::SolveStatus::NumericalFailure)
-        throw MethodError(VIBEQC_STATUS_NUMERICAL_FAILURE, solved.reason);
-
-      Result result;
-      result.energy = solved.total_energy;
-      result.convergence = {solved.diagnostic.iterations, solved.diagnostic.energy_change,
-                            std::max(solved.diagnostic.r1_max, solved.diagnostic.r2_max),
-                            solved.converged()};
-      result.executed_backend = cuda ? VIBEQC_BACKEND_CUDA : VIBEQC_BACKEND_CPU_REFERENCE;
-      return result;
-    } catch (const std::length_error& error) {
-      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, error.what());
-    } catch (const std::bad_alloc&) {
-      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
-                        std::string("RCCSD ") + allocation_stage + " allocation failed");
-    }
+    auto state = execute_rccsd_prepared(context_, system_, reference_options_, solver_options_,
+                                        reference_capacity_);
+    last_ = state.diagnostic;
+    if (state.solved.status == cc::SolveStatus::NumericalFailure)
+      throw MethodError(VIBEQC_STATUS_NUMERICAL_FAILURE, state.solved.reason);
+    return state.result;
   }
 
  private:
@@ -498,6 +509,20 @@ class RccsdPreparedBatch final : public PreparedBatch {
 };
 
 }  // namespace
+
+RccsdNativeState run_rccsd_native_state(core::ContextState& context, const core::System& system,
+                                        const vibeqc_method_descriptor& descriptor) {
+  validate_descriptor(descriptor, context);
+  const auto budget = correlation_budget(descriptor);
+  auto solver_options = cc_options(descriptor, budget);
+  auto reference = reference_options(descriptor, budget);
+  const auto reference_capacity = posthf::rhf_reference_capacity(
+      system, reference.diis_history, context.requested_backend == VIBEQC_BACKEND_CPU_REFERENCE);
+  if (reference_capacity > budget)
+    throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY,
+                      "RCCSD bounded RHF reference exceeds correlation memory budget");
+  return execute_rccsd_prepared(context, system, reference, solver_options, reference_capacity);
+}
 
 vibeqc_status validate_rccsd_system(vibeqc_method, const core::System& system,
                                     std::string& detail) {

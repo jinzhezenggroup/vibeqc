@@ -6,7 +6,6 @@ remaining template preserves byte-identical generated CUDA and ABI layouts."""
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 from ..capabilities import CAPABILITY_MIXED_FOCK
@@ -26,6 +25,7 @@ from ..shell_spec import (
     ShellClassSpec,
     cartesian_components,
 )
+from ..specialize import specialize_fock_integral, specialize_integral_ir
 from .algebra import (
     _emit_triple_pair_matchings,
     _emit_weighted_component_gradient_cuda,
@@ -52,7 +52,30 @@ from .shared import _AXIS_INDEX
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    from ..cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+
+
+def _specialize_fock_plan(
+    plan: FusedShellPlan,
+    *,
+    schedule: ScheduleIR | None = None,
+    recurrence: str | None = None,
+) -> FusedShellPlan:
+    """Derive a value-only HF plan from a possibly derivative-bearing plan."""
+
+    integral = plan.kernel.integral
+    fock_integral = specialize_fock_integral(integral)
+    if recurrence is not None:
+        fock_integral = specialize_integral_ir(
+            fock_integral,
+            recurrence=recurrence,
+        )
+    return build_fused_shell_plan(
+        plan.spec,
+        schedule=plan.schedule if schedule is None else schedule,
+        target=plan.kernel.target,
+        integral=fock_integral,
+    )
 
 
 def emit_shell_class_fused_cuda(
@@ -103,6 +126,29 @@ def emit_shell_class_fused_cuda(
     if any(order > 3 for order in spec.angular):
         raise ValueError("current fused CUDA candidate supports s/p/d/f shells")
     maximum_order = spec.maximum_force_coulomb_order
+    value_maximum_order = plan.kernel.integral.value_coulomb_order
+    fock_coordinate_power_loop = (
+        f"""#pragma unroll
+    for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
+      geometry.coordinate_powers[axis][power] =
+          geometry.coordinate_powers[axis][power - 1U] *
+          geometry.difference[axis];
+    }}
+"""
+        if value_maximum_order
+        else ""
+    )
+    fock_negative_rho_loop = (
+        f"""#pragma unroll
+  for (unsigned power = 1; power <= {value_maximum_order}U; ++power) {{
+    geometry.negative_two_rho_powers[power] =
+        geometry.negative_two_rho_powers[power - 1U] *
+        (-2.0 * geometry.rho);
+  }}
+"""
+        if value_maximum_order
+        else ""
+    )
     force_integral = _packed_force_integral(spec, plan.kernel.integral)
     independent_centers = force_integral.independent_derivative_centers
     recovered_centers = force_integral.recovered_derivative_centers
@@ -884,6 +930,51 @@ __device__ __forceinline__ void generated_dppp_make_primitive_geometry(
       first_pair.weighted_coefficient * second_pair.weighted_coefficient;
 }}
 
+/** Build only geometry/state reachable from a value-only Fock consumer. */
+__device__ __forceinline__ void generated_dppp_make_fock_primitive_geometry(
+    const GeneratedDpppPrimitivePairData& first_pair,
+    const GeneratedDpppPrimitivePairData& second_pair,
+    bool first_pair_reversed,
+    bool second_pair_reversed,
+    const GeneratedDpppVec3& first,
+    const GeneratedDpppVec3& second,
+    const GeneratedDpppVec3& third,
+    const GeneratedDpppVec3& fourth,
+    GeneratedDpppPrimitiveGeometry& geometry) {{
+  const double p = first_pair.exponent_sum;
+  const double q = second_pair.exponent_sum;
+  geometry.rho = p * q / (p + q);
+  geometry.inverse_two_p = 0.5 / p;
+  geometry.inverse_two_q = 0.5 / q;
+  double argument_squared_distance = 0.0;
+#pragma unroll
+  for (unsigned axis = 0; axis < 3U; ++axis) {{
+    const double first_coordinate = generated_dppp_axis(first, axis);
+    const double second_coordinate = generated_dppp_axis(second, axis);
+    const double third_coordinate = generated_dppp_axis(third, axis);
+    const double fourth_coordinate = generated_dppp_axis(fourth, axis);
+    const double product_p =
+        generated_dppp_axis(first_pair.product_center, axis);
+    const double product_q =
+        generated_dppp_axis(second_pair.product_center, axis);
+    geometry.pair_shifts[0][axis] = product_p - first_coordinate;
+    geometry.pair_shifts[1][axis] = product_p - second_coordinate;
+    geometry.pair_shifts[2][axis] = product_q - third_coordinate;
+    geometry.pair_shifts[3][axis] = product_q - fourth_coordinate;
+    geometry.difference[axis] = product_p - product_q;
+    argument_squared_distance +=
+        geometry.difference[axis] * geometry.difference[axis];
+    geometry.coordinate_powers[axis][0] = 1.0;
+{fock_coordinate_power_loop}  }}
+  boys_values<{value_maximum_order}>(
+      geometry.rho * argument_squared_distance, geometry.boys);
+  geometry.negative_two_rho_powers[0] = 1.0;
+{fock_negative_rho_loop}  geometry.prefactor =
+      34.986836655249725 / (p * q * sqrt(p + q));
+  geometry.primitive_coefficient =
+      first_pair.weighted_coefficient * second_pair.weighted_coefficient;
+}}
+
 template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_force_task(
     const GeneratedDpppShellTask* tasks,
@@ -1117,7 +1208,8 @@ void generated_dppp_shell_class_force_uhf_persistent_kernel(
 """
     if (
         plan.schedule.kind == ScheduleKind.COMPONENT_LANES
-        and plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
+        and plan.kernel.integral.recurrence.startswith("rys")
+        and plan.kernel.integral.required_rys_roots in (3, 4, 5)
     ):
         force_marker = """template <bool Unrestricted>
 __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
@@ -1154,17 +1246,18 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence in ("rys2", "rys3"):
-            force_consumer = _emit_rys_thread_force_consumer_cuda(
-                spec,
-                plan,
-                minimum_blocks_per_sm,
-            )
-        elif plan.kernel.integral.recurrence in ("rys4", "rys5"):
-            raise ValueError(
-                "thread-task high-root Rys lowering is unsupported; use "
-                "cooperative component lanes"
-            )
+        if plan.kernel.integral.recurrence.startswith("rys"):
+            if plan.kernel.integral.required_rys_roots in (2, 3):
+                force_consumer = _emit_rys_thread_force_consumer_cuda(
+                    spec,
+                    plan,
+                    minimum_blocks_per_sm,
+                )
+            else:
+                raise ValueError(
+                    "thread-task high-root Rys lowering is unsupported; use "
+                    "cooperative component lanes"
+                )
         else:
             force_consumer = _emit_scalar_thread_force_consumer_cuda(
                 spec,
@@ -1178,7 +1271,9 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
         force_begin = source.find(force_marker)
         if force_begin < 0:
             raise RuntimeError("generated force task marker changed unexpectedly")
-        if plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5"):
+        if plan.kernel.integral.recurrence.startswith(
+            "rys"
+        ) and plan.kernel.integral.required_rys_roots in (3, 4, 5):
             force_consumer = _emit_rys_uniform_warp_force_consumer_cuda(
                 spec,
                 plan,
@@ -1192,90 +1287,55 @@ __device__ __forceinline__ void generated_dppp_shell_class_force_task("""
             )
         source = source[:force_begin] + force_consumer
     if KernelConsumer.FOCK in plan.kernel.integral.consumers:
-        fock_plan = plan
+        explicit_fock_schedule = fock_schedule is not None
         if fock_schedule is not None:
-            # Force and Fock need not share an execution geometry. In
-            # particular, high-component Rys4 force kernels can require a
-            # cooperative mapping while the accepted value path remains a
-            # compact tiled worker. Keep its subset/Wick recurrence explicit.
-            fock_plan = build_fused_shell_plan(
-                spec,
-                consumers=(KernelConsumer.FOCK,),
+            # Force and Fock need not share an execution geometry.  The
+            # specialization contract owns value recurrence policy.
+            fock_plan = _specialize_fock_plan(
+                plan,
                 schedule=fock_schedule,
-                recurrence="subset_wick",
-                target=plan.kernel.target,
             )
-        elif plan.schedule.kind == ScheduleKind.SUBGROUP_TASKS and (
-            plan.kernel.integral.recurrence in ("rys3", "rys4", "rys5")
+        elif plan.kernel.integral.recurrence.startswith(
+            "rys"
+        ) and plan.schedule.kind in (
+            ScheduleKind.THREAD_TASKS,
+            ScheduleKind.SUBGROUP_TASKS,
         ):
-            # Uniform warps are a force-only architecture experiment.  Keep
-            # the accepted value path on its original component-lane mapping
-            # so an endpoint result isolates the force architecture.
-            value_state_count = math.comb(
-                plan.kernel.integral.value_coulomb_order + 3, 3
-            )
-            fock_block_threads = (
-                (max(spec.component_count, value_state_count) + 31) // 32 * 32
-            )
-            fock_schedule = ScheduleIR(
-                kind=ScheduleKind.COMPONENT_LANES,
-                block_threads=fock_block_threads,
-                component_tile=spec.component_count,
-                tasks_per_warp=1,
-                shared_coulomb=True,
-                pair_orientation=plan.schedule.pair_orientation,
-                pair_storage=plan.schedule.pair_storage,
-                unroll_pair_terms=plan.schedule.unroll_pair_terms,
-                minimum_blocks_per_sm=(
-                    2 if plan.kernel.integral.recurrence in ("rys4", "rys5") else 0
-                ),
-                warp_size=plan.schedule.warp_size,
-            )
+            # Thread/subgroup fixed-root schedules are force mappings.  Ask
+            # the ordinary scheduler for the value-only companion instead of
+            # rebuilding a component-lane geometry with warp-size literals.
+            fock_integral = specialize_fock_integral(plan.kernel.integral)
             fock_plan = build_fused_shell_plan(
                 spec,
-                consumers=tuple(plan.kernel.integral.consumers),
-                schedule=fock_schedule,
-                recurrence=plan.kernel.integral.recurrence,
+                integral=fock_integral,
                 target=plan.kernel.target,
             )
-        elif (
-            plan.kernel.integral.recurrence in ("rys2", "rys3")
-            and plan.schedule.kind == ScheduleKind.THREAD_TASKS
-        ):
-            # Scalar Rys3 is a force-only architecture experiment.  Retain the
-            # accepted component-lane value recurrence so the real endpoint
-            # isolates force performance and does not silently retune Fock.
-            value_state_count = math.comb(
-                plan.kernel.integral.value_coulomb_order + 3, 3
+            fock_schedule = fock_plan.schedule
+        else:
+            fock_plan = _specialize_fock_plan(plan)
+
+        rys_support_integral = (
+            plan.kernel.integral
+            if (
+                not explicit_fock_schedule
+                and plan.kernel.integral.recurrence.startswith("rys")
+                and plan.kernel.integral.required_rys_roots in (3, 4)
+                and fock_plan.schedule.kind == ScheduleKind.COMPONENT_LANES
             )
-            fock_block_threads = (
-                (max(spec.component_count, value_state_count) + 31) // 32 * 32
-            )
-            fock_schedule = ScheduleIR(
-                kind=ScheduleKind.COMPONENT_LANES,
-                block_threads=fock_block_threads,
-                component_tile=spec.component_count,
-                tasks_per_warp=1,
-                shared_coulomb=True,
-                pair_orientation=plan.schedule.pair_orientation,
-                pair_storage=plan.schedule.pair_storage,
-                unroll_pair_terms=plan.schedule.unroll_pair_terms,
-                warp_size=plan.schedule.warp_size,
-            )
-            fock_plan = build_fused_shell_plan(
-                spec,
-                consumers=tuple(plan.kernel.integral.consumers),
-                schedule=fock_schedule,
-                recurrence=plan.kernel.integral.recurrence,
-                target=plan.kernel.target,
-            )
+            else None
+        )
         source += _emit_shell_class_fock_cuda(
             spec,
             fock_plan,
             honor_schedule_block_threads=fock_schedule is not None,
+            rys_support_integral=rys_support_integral,
         )
         if CAPABILITY_MIXED_FOCK in selected_capabilities:
-            source += _emit_shell_class_mixed_fock_cuda(spec, fock_plan)
+            source += _emit_shell_class_mixed_fock_cuda(
+                spec,
+                fock_plan,
+                rys_support_integral=rys_support_integral,
+            )
     pair_unroll = (
         "#pragma unroll" if plan.schedule.unroll_pair_terms else "#pragma unroll 1"
     )

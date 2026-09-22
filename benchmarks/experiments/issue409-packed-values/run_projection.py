@@ -22,7 +22,7 @@ _BENCHMARKS_DIR = next(
 sys.path.insert(0, str(_BENCHMARKS_DIR))
 import numpy as np
 from _retention import raw_output_path
-from vibeqc.resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,

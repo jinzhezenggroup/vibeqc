@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc.profiles import find_nvcc
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -24,8 +24,12 @@ from vibeqc_compiler.tensor import (
     vjp,
 )
 from vibeqc_compiler.tensor.cuda_emit import emit_cuda
-from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
-from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_execute import (
+    PreparedCuda,
+    compile_cuda,
+    tensor_static_data,
+)
+from vibeqc_compiler.tensor.cuda_plan import VALIDATION_BYTES, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.interpreter import execute
 
 TARGET = cuda_target_info("sm_120")
@@ -153,6 +157,7 @@ def test_ragged_reference_and_generated_adjoint_agree() -> None:
 def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
     plan = plan_cuda(_program(), TARGET, schedule=TensorSchedule())
     source = emit_cuda(plan)
+    external = emit_cuda(plan, embed_static_data=False)
     assert len(plan.index_tables) == 3
     assert plan.index_table_bytes == 3 * 256
     assert plan.accumulation_workspace_bytes == 0
@@ -161,11 +166,60 @@ def test_ragged_cuda_plan_emits_device_side_maps_and_reductions() -> None:
         "accumulation_workspace_bytes": 0,
         "included_in_arena_bytes": True,
     }
+    schedule = plan.batch_schedule
+    by_op = {step.op: step for step in schedule.ragged_steps}
+    scatter = by_op["scatter_add"]
+    assert scatter.lowering == "inverted-segments"
+    assert scatter.scan_work == 15
+    assert scatter.scheduled_work == 5
+    assert scatter.avoided_scan_work == 10
+    assert scatter.max_degree == 2
+    assert scatter.degree_histogram == ((1, 1), (2, 2))
+    assert schedule.scan_work == 25
+    assert schedule.scheduled_work == 15
+    assert schedule.avoided_scan_work == 10
     first_materialized = min(step.offset for step in plan.steps if step.offset >= 0)
     assert first_materialized >= plan.index_table_bytes
     assert "index_data_" in source
     assert "reinterpret_cast<const I*>" in source
-    assert "for (I r =" in source
+    assert "const I begin = index[" in source
+    assert "for (I q = begin; q < end; ++q)" in source
+    assert "for (I r =" in source  # segment_sum keeps its direct segment traversal
+    assert "{0LL, 2LL, 3LL, 5LL, 0LL, 1LL, 2LL, 3LL, 4LL}" in source
+    assert "if (reinterpret_cast<const I*>" not in source
+    assert "static const I" in source
+    assert "tensor_static_initialize" not in source
+    assert "static const I" not in external
+    assert "tensor_static_initialize" in external
+    assert "ctx->static_ready = false;" in external
+    assert "tensor static data is not initialized" in external
+    assert plan.static_data_bytes == len(tensor_static_data(plan)) == 144
+    input_bytes = sum(plan.steps[i].node.spec.size * 8 for i in plan.inputs)
+    output_bytes = sum(plan.steps[i].node.spec.size * 8 for _, i in plan.outputs)
+    assert plan.host_bytes == (
+        input_bytes + VALIDATION_BYTES + max(output_bytes, plan.static_data_bytes)
+    )
+
+
+def test_batch_schedule_counts_outer_ragged_work() -> None:
+    shell = _index("shell_outer", "shell", 3)
+    orbital = _index("orbital_outer", "orbital", 5)
+    component = _index("component_outer", "component", 2)
+    values = input_tensor("values", TensorSpec((orbital, component), role="input"))
+    program = Program({"out": scatter_add(values, 0, (0, 0, 1, 2, 2), shell)})
+    schedule = plan_cuda(program, TARGET).batch_schedule
+    scatter = schedule.ragged_steps[0]
+    assert scatter.scan_work == 30
+    assert scatter.scheduled_work == 10
+    assert scatter.avoided_scan_work == 20
+
+
+def test_batch_schedule_tracks_homogeneous_batch_domains() -> None:
+    batch = _index("systems", "batch", 4)
+    x = input_tensor("x", TensorSpec((batch,), role="input"))
+    schedule = plan_cuda(Program({"out": x}), TARGET).batch_schedule
+    assert schedule.batch_domains == (("systems", 4),)
+    assert schedule.ragged_steps == ()
 
 
 def test_changed_ragged_topology_changes_program_and_plan_identity() -> None:

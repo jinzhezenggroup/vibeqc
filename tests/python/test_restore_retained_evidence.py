@@ -344,3 +344,19 @@ def test_checked_in_snapshot_has_only_git_identity() -> None:
     assert len(removed) == audit["moved_files"] == 209
     assert sum(record["bytes"] for record in removed) == audit["moved_bytes"]
     assert audit["history_rewritten"] is False
+
+
+def test_2026_09_21_trim_manifest_tracks_only_removed_git_objects() -> None:
+    manifest = module.ROOT / "benchmarks/results/retention-2026-09-21/migration.json"
+    audit = json.loads(manifest.read_text())
+    assert audit["schema"] == "vibeqc.git-snapshot.v1"
+    records = module._records(manifest)
+    assert len(records) == audit["file_count"] == audit["moved_files"] == 15
+    assert (
+        sum(record["bytes"] for record in records)
+        == audit["total_bytes"]
+        == audit["moved_bytes"]
+        == 4_840_512
+    )
+    assert all(entry["checkout"] == "git-history" for entry in audit["files"])
+    assert all(not (module.ROOT / record["path"]).exists() for record in records)

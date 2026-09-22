@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
 
 import numpy as np
-from vibeqc_compiler.tensor import execute
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
@@ -38,7 +38,6 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .gradient_equations import (
     build_ao_eri_weight_block_program,
@@ -147,8 +146,8 @@ class CCSDGradientOptions:
             )
         if type(
             self.one_electron_schedule
-        ) is not int or self.one_electron_schedule not in (0, 1, 2):
-            raise ValueError("one_electron_schedule must be 0, 1 or 2")
+        ) is not int or self.one_electron_schedule not in (0, 1, 2, 3):
+            raise ValueError("one_electron_schedule must be 0, 1, 2 or 3")
         if self.eri_weight_mode not in ("dense", "shell"):
             raise ValueError("eri_weight_mode must be 'dense' or 'shell'")
         if self.derivative_backend == "cpu" and self.eri_weight_mode != "dense":
@@ -239,6 +238,19 @@ def _validate_source(source: typing.Any) -> None:
         )
 
 
+def _tensor_owner(response: typing.Any) -> BoundCCSDLambda:
+    """Resolve the one bound CC state that owns generated tensor execution."""
+    bound = getattr(response, "bound", None)
+    if bound is None:
+        fixed = getattr(response, "response", None)
+        bound = getattr(fixed, "bound", None)
+    if not isinstance(bound, BoundCCSDLambda):
+        raise ResponseCompatibilityError(
+            "CC response chain has no bound tensor-execution owner"
+        )
+    return bound
+
+
 def _derivative_bytes(source: typing.Any) -> typing.Any:
     return 3 * len(source.atoms) * (2 * source.nbf**2 + source.nbf**4 + 1) * 8
 
@@ -268,6 +280,246 @@ def _nuclear_gradient(source: typing.Any) -> typing.Any:
             result[i] -= contribution
             result[j] += contribution
     return _immutable(result)
+
+
+@dataclass(frozen=True, init=False, eq=False, repr=False)
+class BoundCCSDOrbitalResponse:
+    """Bind fixed-orbital CCSD weights to the qualified RHF response operator.
+
+    This owner deliberately stops before the Z solve and before every AO/nuclear
+    derivative program. It owns only the raw MO Hamiltonian replay, generated
+    fixed-orbital pullback, native RHF response operator, and independently
+    generated orbital matrix used to qualify that operator. It therefore cannot
+    publish a nuclear gradient and does not inherit complete-gradient memory
+    gates or derivative-backend settings.
+    """
+
+    def __init__(
+        self, response: typing.Any, provider: typing.Any, *, options: typing.Any = None
+    ) -> None:
+        started = time.perf_counter()
+        options = CCSDGradientOptions() if options is None else options
+        if not isinstance(options, CCSDGradientOptions):
+            raise TypeError("orbital-response options must be CCSDGradientOptions")
+        if not isinstance(response, BoundCCSDResponse) or not isinstance(
+            provider, ConventionalProvider
+        ):
+            raise TypeError(
+                "CC orbital response requires a bound CC response and conventional provider"
+            )
+        source = provider.source
+        _validate_source(source)
+        reference = response.bound.reference
+        if (
+            provider.backend != "cpu"
+            or provider.snapshot.identity != reference.identity
+            or reference.algorithm != "RHF"
+            or reference.hamiltonian_id != "conventional-unscreened"
+            or reference.screening_tolerance != 0
+            or reference.hf_backend != "native-cpu"
+            or reference.scf_residual > 1e-9
+            or reference.nmo != source.nbf
+        ):
+            raise ResponseCompatibilityError(
+                "CC orbital-response reference/provider/CPU Hamiltonian mismatch"
+            )
+        for name in ("geometry_hash", "basis_hash", "representation"):
+            if getattr(source, name) != getattr(reference, name):
+                raise ResponseCompatibilityError(
+                    f"CC orbital-response source/reference {name} mismatch"
+                )
+
+        put = lambda name, value: object.__setattr__(self, name, value)
+        for name, value in (
+            ("response", response),
+            ("provider", provider),
+            ("source", source),
+            ("reference", reference),
+            ("reference_identity", reference.identity),
+            ("source_identity", source.identity),
+            ("options", options),
+        ):
+            put(name, value)
+        self._assert_current()
+
+        n, o = reference.nmo, reference.nocc
+        programs = build_hamiltonian_programs(o, n - o)
+        put("programs", programs)
+        raw_g = provider.get(MOBlock((tuple(range(n)),) * 4)).to_host()
+        raw_h = reference.coefficients.T @ reference.hcore @ reference.coefficients
+        put(
+            "raw_inputs",
+            MappingProxyType(
+                {
+                    "h": _immutable(raw_h),
+                    "g": _immutable(raw_g),
+                    "rotation": _immutable(np.eye(n)),
+                }
+            ),
+        )
+
+        values = self._run(programs.primal, self.raw_inputs)
+        for name in PARAMETERS:
+            if not np.allclose(
+                values[name], response.bound.feeds[name], atol=1e-10, rtol=1e-12
+            ):
+                raise ResponseCompatibilityError(
+                    f"raw Hamiltonian differs from bound CC input {name}"
+                )
+        hf_energy = float(values["reference_electronic_energy"]) + _nuclear_energy(
+            source
+        )
+        if abs(hf_energy - reference.reference_energy) > 1e-8:
+            raise ResponseCompatibilityError(
+                "HF reference energy does not match raw h/g plus nuclear energy"
+            )
+
+        zero_seeds = {
+            "bar_" + name: _immutable(np.zeros_like(response.bound.feeds[name]))
+            for name in PARAMETERS
+        }
+        zero_seeds["bar_reference_electronic_energy"] = _immutable(np.array(0.0))
+        correlation_seeds = {
+            "bar_" + weight.parameter: weight.values
+            for weight in response.iter_weights(reference_identity=reference.identity)
+        }
+        correlation_seeds["bar_reference_electronic_energy"] = np.array(0.0)
+        correlation = self._pullback(correlation_seeds)
+        hf = self._pullback(
+            {**zero_seeds, "bar_reference_electronic_energy": np.array(1.0)}
+        )
+        same_space = max(
+            float(np.max(abs(correlation["stationarity"][:o, :o]))),
+            float(np.max(abs(correlation["stationarity"][o:, o:]))),
+        )
+        if same_space > options.stationarity_tolerance:
+            raise ImplicitSolveError(
+                "CC same-space orbital stationarity failed; no canonical-gap patch is applied"
+            )
+
+        backend = NativeJKBackend(
+            source,
+            axis_tile=max(source.shell_sizes),
+            budget_bytes=options.provider_budget_bytes,
+        )
+        problem = RHFResponseOperator.build_problem(
+            reference,
+            backend,
+            perturbation_labels=("ccsd-correlation-orbital-lagrangian",),
+        )
+        operator = RHFResponseOperator(problem, backend)
+        put("operator", operator)
+        put("operator_identity", operator.identity)
+
+        basis = np.eye(operator.dimension)
+        matrix = np.column_stack([self._generated_orbital_action(x) for x in basis])
+        if not np.allclose(matrix, matrix.T, atol=1e-10, rtol=1e-10):
+            raise ImplicitSolveError("generated RHF response matrix is not symmetric")
+        curvature = float(np.linalg.eigvalsh(0.5 * (matrix + matrix.T))[0])
+        if curvature <= options.minimum_orbital_curvature:
+            raise ImplicitSolveError(
+                "RHF orbital response is unstable or near-singular"
+            )
+        for direction in (
+            np.ones(operator.dimension),
+            np.arange(1, operator.dimension + 1, dtype=float),
+        ):
+            normalized = direction / np.linalg.norm(direction)
+            if not np.allclose(
+                operator.apply(normalized), matrix @ normalized, atol=1e-10, rtol=1e-9
+            ):
+                raise ImplicitSolveError(
+                    "native RHF response action differs from generated Fock JVP"
+                )
+
+        rhs = _immutable(np.asarray(correlation["orbital_rhs"]).reshape(-1))
+        for name, value in (
+            (
+                "component_weights",
+                MappingProxyType({"hf": hf, "correlation": correlation}),
+            ),
+            ("orbital_matrix", _immutable(matrix)),
+            ("orbital_rhs", rhs),
+            ("minimum_orbital_curvature", curvature),
+            ("same_space_stationarity", same_space),
+        ):
+            put(name, value)
+
+        response_options = {
+            "max_bytes": options.max_bytes,
+            "provider_budget_bytes": options.provider_budget_bytes,
+            "stationarity_tolerance": options.stationarity_tolerance,
+            "minimum_orbital_curvature": options.minimum_orbital_curvature,
+        }
+        put(
+            "weight_identity",
+            canonical_hash(
+                {
+                    "response": response.response_identity,
+                    "source": source.identity,
+                    "hamiltonian": programs.primal.logical_hash,
+                    "weights": programs.weights.logical_hash,
+                    "operator": operator.identity,
+                    "options": response_options,
+                    "scope": "fixed-orbital CCSD weights plus qualified RHF response operator",
+                }
+            ),
+        )
+        put(
+            "timings",
+            MappingProxyType(
+                {"prepare_orbital_response_seconds": time.perf_counter() - started}
+            ),
+        )
+        self._assert_current()
+
+    def _assert_current(self) -> None:
+        self.source._check_open()
+        if (
+            self.provider._closed
+            or self.provider.source is not self.source
+            or self.source.backend != "cpu-reference-native-shell-tiles"
+            or self.source.identity != self.source_identity
+            or self.provider.snapshot.identity != self.reference_identity
+        ):
+            raise ResponseCompatibilityError(
+                "CC orbital-response source/provider/reference is stale or closed"
+            )
+        self.response.bound._assert_current(self.reference_identity)
+        if (
+            hasattr(self, "operator_identity")
+            and self.operator.identity != self.operator_identity
+        ):
+            raise ResponseCompatibilityError(
+                "CC orbital-response operator identity changed"
+            )
+
+    def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
+        self._assert_current()
+        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        if set(outputs) != set(program.outputs):
+            raise ResponseCompatibilityError(
+                "CC orbital-response program returned an incomplete output set"
+            )
+        out = MappingProxyType(
+            {
+                name: _immutable(_array(outputs[name], node.spec.shape, name))
+                for name, node in program.outputs.items()
+            }
+        )
+        self._assert_current()
+        return out
+
+    def _pullback(self, seeds: typing.Any) -> typing.Any:
+        return self._run(self.programs.weights, {**self.raw_inputs, **seeds})
+
+    def _generated_orbital_action(self, vector: typing.Any) -> typing.Any:
+        generator = self.operator.problem.layout.generator_matrix(vector)
+        out = self._run(
+            self.programs.orbital_jvp.program,
+            {**self.raw_inputs, "d_rotation": generator},
+        )
+        return -out["d_fov"].reshape(-1)
 
 
 @dataclass(frozen=True, init=False, eq=False, repr=False)
@@ -456,9 +708,12 @@ class BoundCCSDGradient:
             np.ones(operator.dimension),
             np.arange(1, operator.dimension + 1, dtype=float),
         ):
-            direction /= np.linalg.norm(direction)
+            normalized_direction = direction / np.linalg.norm(direction)
             if not np.allclose(
-                operator.apply(direction), matrix @ direction, atol=1e-10, rtol=1e-9
+                operator.apply(normalized_direction),
+                matrix @ normalized_direction,
+                atol=1e-10,
+                rtol=1e-9,
             ):
                 raise ImplicitSolveError(
                     "native RHF response action differs from generated Fock JVP"
@@ -562,18 +817,14 @@ class BoundCCSDGradient:
 
     def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
-        result = execute(program, feeds, max_bytes=self.options.max_bytes)
-        if result.backend != "numpy-cpu-interpreter":
-            raise ResponseCompatibilityError(
-                "CC gradient tensor backend changed; no silent fallback"
-            )
-        if set(result.outputs) != set(program.outputs):
+        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        if set(outputs) != set(program.outputs):
             raise ResponseCompatibilityError(
                 "CC gradient program returned an incomplete output set"
             )
         out = MappingProxyType(
             {
-                name: _immutable(_array(result.outputs[name], node.spec.shape, name))
+                name: _immutable(_array(outputs[name], node.spec.shape, name))
                 for name, node in program.outputs.items()
             }
         )
@@ -707,7 +958,7 @@ class BoundCCSDGradient:
                 "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
                 "provider_budget_bytes": self.provider.budget_bytes,
                 "native_hf_backend": self.reference.hf_backend,
-                "tensor_backend": "numpy-cpu-interpreter",
+                "tensor_backend": _tensor_owner(self.response).tensor_backend,
                 "orbital_backend": "native-cpu-shell-tile-jk",
                 "orbital_solver": "shared-response-gmres",
                 "dense_orbital_curvature_check": True,

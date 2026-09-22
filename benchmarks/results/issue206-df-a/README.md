@@ -30,7 +30,7 @@ Reproduce the matrix from a clean worktree with the local Python/CUDA environmen
 
 ```bash
 ISSUE206_PYTHON=/path/to/python CUDA_HOME=/path/to/cuda \
-sbatch run_issue206_df.slurm
+sbatch benchmarks/run_issue206_df.slurm
 ```
 
 `ISSUE206_PYTHON` defaults to `python3`, `CUDA_HOME` defaults to the site

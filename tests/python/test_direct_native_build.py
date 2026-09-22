@@ -78,3 +78,7 @@ def test_direct_device_link_preserves_architecture_request(
     host = command("CMakeFiles/vibeqc.dir/src/scf/cuda_rhf.cpp.o")
     assert nvcc not in host
     assert "-rdc=true" not in host
+    if architectures.endswith("-virtual"):
+        assert "VIBEQC_CUDA_PROFILE_ARCHITECTURE" not in host
+    else:
+        assert "VIBEQC_CUDA_PROFILE_ARCHITECTURE=120" in host

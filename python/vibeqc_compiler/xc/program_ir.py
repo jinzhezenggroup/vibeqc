@@ -76,7 +76,13 @@ def fixed_density_tile_program(
         if contract.ingredients.family != "lda":
             buffers.append(_dense("feature_gradient", (2, tile_points, 3)))
             feature_writes.append("feature_gradient")
-        buffers.append(_dense("xc_rows", (len(contract.scalar_outputs), tile_points)))
+        # Native scalar XC writes the consumer-ready physical derivative ABI:
+        # row 0 is energy and rows 1: are the complete functional feature gradient.
+        # Inactive derivative rows are explicit zeros, so Vxc can borrow rows 1:
+        # without constructing a second dense gradient matrix.
+        buffers.append(
+            _dense("xc_rows", (1 + len(contract.functional.features), tile_points))
+        )
         calls.append(
             PlanCall(
                 "features",

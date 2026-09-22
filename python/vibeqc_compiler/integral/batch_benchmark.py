@@ -25,9 +25,9 @@ from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
 from vibeqc_compiler.common.cuda_resources import KernelResources as KernelResources
+from vibeqc_compiler.common.cuda_target import CudaTargetInfo, cuda_target_info
 
 from .benchmark import emit_shell_class_benchmark_cuda
-from .cuda_target import CudaTargetInfo, cuda_target_info
 from .ir import KernelConsumer
 from .production import load_production_fock_manifest, load_production_manifest
 from .shell_spec import (
@@ -856,7 +856,7 @@ def main() -> None:
         type=Path,
         default=Path("/group/software/cuda-12.9.1/bin/nvcc"),
     )
-    parser.add_argument("--architecture", default="sm_120")
+    parser.add_argument("--architecture", required=True)
     parser.add_argument("--local", action="store_true", default=None)
     parser.add_argument("--srun")
     parser.add_argument("--partition")

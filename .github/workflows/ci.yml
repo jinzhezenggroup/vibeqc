@@ -18,11 +18,13 @@ permissions:
 env:
   CCACHE_VERSION: "4.14"
 
-# Coalesce superseded PR and master-push runs separately. Scheduled/manual
-# qualification keeps its own run ID and is not cancelled by ordinary pushes.
+# Coalesce superseded PR and master-push runs separately. PR updates cancel
+# stale running work; master keeps the active run and replaces only the older
+# pending run with the newest push. Scheduled/manual qualification keeps its
+# own run ID.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cpu:
@@ -54,7 +56,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cpu_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -71,12 +74,18 @@ jobs:
           cmake -S . -B build -G Ninja
           -DVIBEQC_ENABLE_CUDA=OFF
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_COMPILER_CACHE=ccache
           -DCMAKE_CXX_FLAGS="${COVERAGE_COMPILE_FLAGS}"
           -DCMAKE_EXE_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
           -DCMAKE_SHARED_LINKER_FLAGS="${COVERAGE_LINK_FLAGS}"
       - name: Build
         run: cmake --build build --parallel
+      - name: Save ccache immediately after build
+        if: steps.cpu_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cpu_ccache.outputs.cache-primary-key }}
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Test
@@ -130,13 +139,22 @@ jobs:
           curl --fail --silent --show-error --location --output cuda-keyring.deb \
             https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
           sudo dpkg -i cuda-keyring.deb
-          sudo apt-get update
+          for attempt in 1 2 3; do
+            if sudo apt-get update; then
+              break
+            fi
+            if [[ "$attempt" == 3 ]]; then
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
       - name: Install CUDA 12.9 build dependencies
         run: |
           sudo apt-get install --yes \
             cuda-nvcc-12-9 \
             cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
+            cuda-cccl-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
             libcusparse-12-9 \
@@ -155,7 +173,8 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore CUDA ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cuda_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
@@ -168,12 +187,24 @@ jobs:
           cmake --preset cuda-release-sm120
           -DVIBEQC_BUILD_TESTS=ON
           -DVIBEQC_CUDA_FAST_COMPILE=ON
-          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-          -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache
+          -DVIBEQC_CUDA_COMPILE_JOBS=3
+          -DVIBEQC_COMPILER_CACHE=ccache
       - name: Compile production CUDA and runtime CTest
+        # This target links the full vibeqc shared library. Native GFN2 CUDA is
+        # therefore compiled, device-linked, and consumed through the public
+        # method adapter as part of this existing integration gate.
         run: >-
           cmake --build --preset cuda-release-sm120
-          --target vibeqc_cuda_runtime_tests --parallel 2
+          --target vibeqc_cuda_runtime_tests --parallel 3
+      # Persist the expensive native compile cache here so the next queued
+      # master run can reuse it without waiting for the cache action's
+      # end-of-job post step.
+      - name: Save CUDA ccache immediately after build
+        if: steps.cuda_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.cuda_ccache.outputs.cache-primary-key }}
       - name: Check Fock and proposal preflight without a GPU
         env:
           CUDA_VISIBLE_DEVICES: ""
@@ -213,6 +244,11 @@ jobs:
         run: >-
           python3 tools/validate_stationary_cuda_compile.py
           --nvcc "$CUDACXX" --cache build/stationary-cuda-compile
+      - name: Compile generated TensorIR static-data artifacts
+        run: >-
+          PYTHONPATH=python python3 tools/validate_tensor_cuda_compile.py
+          --nvcc "$CUDACXX" --architecture sm_120
+          --cache build/tensor-static-cuda-compile
       - name: Preserve generated XC resource reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -231,11 +267,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [core, posthf, compiler-heavy, ecp-forces]
+        shard: [core, runtime-heavy, posthf, compiler-heavy, ecp-forces]
     runs-on: ubuntu-24.04
     # Full nightly/manual qualification includes expensive Hessian and Au replay.
     # Keep routine PR/push feedback capped separately; do not truncate that tier.
-    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 20 }}
+    # The core shard can spend over 18 minutes in pytest alone; include native
+    # setup plus coverage/artifact cleanup without truncating scientific tests.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
     env:
       CCACHE_MAXSIZE: 1G
       # PySCF and NumPy can each fan out through BLAS/OpenMP. Keep those
@@ -267,20 +305,47 @@ jobs:
             /usr/local/bin/ccache
           ccache --version
       - name: Restore ccache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: python_ccache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
           key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
           restore-keys: |
             ccache-python-
+      - name: Prepare GFN2 CPU linear algebra runtime
+        run: |
+          uv venv --python 3.11 .venv-gfn2-build
+          uv pip install --python .venv-gfn2-build/bin/python scipy
+          xtb_linalg="$(
+            .venv-gfn2-build/bin/python - <<'PY_INNER'
+          from pathlib import Path
+          import scipy
+
+          site = Path(scipy.__file__).resolve().parent.parent
+          matches = sorted((site / "scipy.libs").glob("libscipy_openblas*.so"))
+          if len(matches) != 1:
+              raise SystemExit(f"expected one SciPy OpenBLAS runtime, found {matches}")
+          print(matches[0])
+          PY_INNER
+          )"
+          echo "XTBLOOM_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
+            -DXTBLOOM_CPU_LINALG_LIBRARY="$XTBLOOM_CPU_LINALG_LIBRARY" \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
+      # The five Python shards build the same native library. One shard saves
+      # the cache immediately so the next queued master run can reuse it.
+      - name: Save Python-build ccache immediately
+        if: matrix.shard == 'core' && steps.python_ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ steps.python_ccache.outputs.cache-primary-key }}
       - name: Install the Python package and test dependencies
         run: |
           uv venv --python 3.11
@@ -382,20 +447,47 @@ jobs:
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-0-Au]'
               --deselect
               'tests/python/test_ecp_heavy.py::test_heavy_resource_boundary_replay_complete_energy_difference[cpu-1-Au]'
+              # Keep one response-functional variant on routine CI; the
+              # alternate LDA reconverged response remains in nightly/manual.
+              --deselect
+              'tests/python/test_response_native_rks.py::test_complete_solve_and_reconverged_density_response[lda-rks]'
+              --deselect
+              'tests/python/test_response_native_uks.py::test_solve_reconverged_spin_densities_and_recycling[lda-uks]'
+              # Standard production-grid RKS/UKS endpoints remain routine.
+              # The tighter-profile duplicates are qualification coverage.
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[lda-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_converges_against_independent_dense_quadrature[pbe-rks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[lda-uks-tight]'
+              --deselect
+              'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
+              # Full reconverged SPD ECP finite differences each cost about
+              # nine minutes on hosted runners. Keep the lighter complete
+              # ECP force contracts on every PR and the exhaustive pair nightly.
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
           # 26-minute critical path by separating the known numerical/codegen
           # tails. New test files land in core automatically until they become
           # expensive enough to earn an explicit shard.
+          dist_mode=loadfile
           slow_paths=(
             tests/python/test_cc_complete_gradient.py
             tests/python/test_cc_triples_response.py
+            tests/python/test_ccsd_t_gradient_validation.py
+            tests/python/test_ccsd_t_complete_gradient.py
             tests/python/test_dft_complete_cpu.py
             tests/python/test_ecp_stationary_cpu.py
             tests/python/test_ecp_public_cpu.py
             tests/python/test_ecp_spd_cartesian_cpu.py
             tests/python/test_ecp_spd_spherical_cpu.py
+            tests/python/test_ecp_stuttgart_dft.py
             tests/python/test_ecp_f.py
             tests/python/test_ecp_f_projector.py
             tests/python/test_ecp_heavy.py
@@ -405,22 +497,76 @@ jobs:
             tests/python/test_hessian_directional.py
             tests/python/test_response_operator.py
             tests/python/test_codegen.py
+            tests/python/test_d3_geometry_ir.py
+            tests/python/test_d3_generated_ragged.py
             tests/python/test_high_angular.py
             tests/python/test_one_electron_derivatives.py
             tests/python/test_range_separation.py
             tests/python/test_second_derivatives_inputs.py
+            # Empirically expensive routine files live in their own shard so
+            # they cannot silently expand the broad core critical path.
+            tests/python/test_response_native_rks.py
+            tests/python/test_response_native_uks.py
+            tests/python/test_mp2_public.py
+            tests/python/test_ccsd_t_orbital_response.py
+            tests/python/test_hessian_block.py
+            tests/python/test_grid_policy_convergence.py
+            tests/python/test_cc_triples_response_cuda.py
+            tests/python/test_codegen_schedules.py
+            tests/python/test_dft_batch.py
+            tests/python/test_ecp_multicenter.py
+            tests/python/test_cc_triples_lambda_response.py
+            tests/python/test_cc_lambda_response.py
+            tests/python/test_implicit_response.py
+            tests/python/test_df_rys.py
+            tests/python/test_hessian_numerical.py
+            tests/python/test_one_electron_cpu_codegen.py
+            tests/python/test_cc_solver.py
+            tests/python/test_cc_lambda_solver.py
           )
           case "${{ matrix.shard }}" in
             core)
+              # Core remains the broad fast lane. Empirically expensive files
+              # are explicitly owned by runtime-heavy so routine test growth
+              # cannot silently consume the entire job budget.
+              dist_mode=worksteal
               test_targets=(tests/python)
               for path in "${slow_paths[@]}"; do
                 extra_args+=(--ignore="${path}")
               done
               ;;
+            runtime-heavy)
+              # Keep file-scoped/module-scoped expensive fixtures on one worker.
+              # worksteal can duplicate those setups across workers and inflate
+              # wall time even when the collected test count barely changes.
+              dist_mode=loadfile
+              test_targets=(
+                tests/python/test_response_native_rks.py
+                tests/python/test_response_native_uks.py
+                tests/python/test_mp2_public.py
+                tests/python/test_ccsd_t_orbital_response.py
+                tests/python/test_hessian_block.py
+                tests/python/test_grid_policy_convergence.py
+                tests/python/test_cc_triples_response_cuda.py
+                tests/python/test_codegen_schedules.py
+                tests/python/test_dft_batch.py
+                tests/python/test_ecp_multicenter.py
+                tests/python/test_cc_triples_lambda_response.py
+                tests/python/test_cc_lambda_response.py
+                tests/python/test_implicit_response.py
+                tests/python/test_df_rys.py
+                tests/python/test_hessian_numerical.py
+                tests/python/test_one_electron_cpu_codegen.py
+                tests/python/test_cc_solver.py
+                tests/python/test_cc_lambda_solver.py
+              )
+              ;;
             posthf)
               test_targets=(
                 tests/python/test_cc_complete_gradient.py
                 tests/python/test_cc_triples_response.py
+                tests/python/test_ccsd_t_gradient_validation.py
+                tests/python/test_ccsd_t_complete_gradient.py
                 tests/python/test_dft_complete_cpu.py
                 tests/python/test_ecp_stationary_cpu.py
                 tests/python/test_ecp_f.py
@@ -441,12 +587,14 @@ jobs:
                 tests/python/test_ecp_public_cpu.py
                 tests/python/test_ecp_spd_cartesian_cpu.py
                 tests/python/test_ecp_spd_spherical_cpu.py
+                tests/python/test_ecp_stuttgart_dft.py
               )
               ;;
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
                 tests/python/test_d3_geometry_ir.py
+                tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py
                 tests/python/test_one_electron_derivatives.py
                 tests/python/test_range_separation.py
@@ -459,7 +607,8 @@ jobs:
               ;;
           esac
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
-            -n 4 --dist=loadfile --durations=25 \
+            -n 4 --dist="$dist_mode" --durations=25 \
+            --junitxml=".artifacts/pytest-${{ matrix.shard }}.xml" \
             --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
@@ -525,7 +674,7 @@ jobs:
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+            -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build-benchmark --target vibeqc --parallel
       - name: Install benchmark dependencies
         run: |
@@ -561,6 +710,10 @@ jobs:
             file: coverage/coverage-python-core.xml
             flag: python
             name: code-coverage/python-core
+          - artifact: coverage-report-python-runtime-heavy
+            file: coverage/coverage-python-runtime-heavy.xml
+            flag: python
+            name: code-coverage/python-runtime-heavy
           - artifact: coverage-report-python-posthf
             file: coverage/coverage-python-posthf.xml
             flag: python

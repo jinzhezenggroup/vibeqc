@@ -5,13 +5,12 @@ must supply a verified :class:`CudaCompilerAdapter` and a writable cache
 directory.  Real-device validation requires CUDA; machines without CUDA
 raise an explicit error at preparation time.
 
-The host extracts exact-shape sub-blocks from the full-system tensors before
-each tile upload.  Label axes are prefix-bounded by the tile's ``a_end``,
-while the W1 virtual summation axes remain full ``nvir``.  One resident plan
-is compiled per tile range/shape; compilation is transparently cached to disk
-via ``compile_resident``.  Each resident is created per tile and closed before
-the next tile, so no full ``nocc³ × nvir³`` T3 or denominator tensor is ever
-allocated.
+The #783 path builds one fixed-capacity runtime-indexed TensorIR graph for the
+largest triangular virtual tile in the session. Full scientific inputs are
+uploaded once; each logical tile updates only int64 coordinate maps plus its
+active/degeneracy controls. One compiled resident owner therefore executes all
+tile ranges without rebuilding the scientific graph or materializing a full
+``nocc³ × nvir³`` T3/denominator tensor.
 
 The shared input guards from ``triples._validate`` and
 ``triples._check_denominators`` run once before any GPU work, matching the
@@ -28,8 +27,10 @@ from dataclasses import dataclass, field
 from .triples import _check_denominators, _validate
 from .triples_tiles import (
     TriplesTileEnumerator,
-    _tile_input_feeds,
-    build_tile_triples_program,
+    build_runtime_tile_triples_program,
+    runtime_tile_capacity,
+    runtime_tile_control_batches,
+    runtime_tile_static_feeds,
 )
 
 
@@ -79,12 +80,11 @@ class CudaTriplesResult:
 
 
 class CudaTriplesTiles:
-    """Compile per-tile plans and evaluate each through its own resident owner.
+    """Execute runtime-indexed tiles through one fixed-capacity resident owner.
 
-    One :class:`PreparedResident` is created per tile (with the exact
-    sub-block virtual dimension and triangular range), used for one
-    upload/run/download cycle, then closed.  Compilation is transparently
-    cached to disk so repeated tile shapes reuse the cached artifact.
+    One :class:`PreparedResident` is compiled/prepared per run and reused for
+    every logical tile. Scientific arrays stay resident while only bounded
+    coordinate/control vectors change between runs.
 
     The shared input/denominator guards from :mod:`triples` run once before
     any GPU work.  The CPU masked-oracle comparison is opt-in (``oracle=True``)
@@ -115,6 +115,48 @@ class CudaTriplesTiles:
         self._plan_cuda = plan_cuda
         self._compile_resident = compile_resident
         self._PreparedResident = PreparedResident
+
+    def plan_runtime_domain(self) -> typing.Any:
+        """Select the largest simple bounded lane capacity that fits the budget.
+
+        The scientific graph remains identical apart from the q-domain extent.
+        Capacity is reduced only after the planner proves the larger candidate
+        infeasible; unrelated planning errors propagate unchanged.
+        """
+
+        nocc = self.config.nocc
+        nvir = self.config.nvir
+        chunk = self.config.vir_chunk_size
+        capacity = runtime_tile_capacity(nocc, nvir, chunk)
+        attempts = []
+        while True:
+            program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
+            try:
+                plan = self._plan_cuda(
+                    program,
+                    self.compiler.target,
+                    max_bytes=self.config.max_bytes,
+                )
+            except ValueError as error:
+                if "infeasible tensor byte budget" not in str(error) or capacity == 1:
+                    raise
+                attempts.append(
+                    {
+                        "capacity": capacity,
+                        "status": "infeasible",
+                        "reason": str(error),
+                    }
+                )
+                capacity = max(1, capacity // 2)
+                continue
+            attempts.append(
+                {
+                    "capacity": capacity,
+                    "status": "selected",
+                    "peak_bytes": plan.peak_bytes,
+                }
+            )
+            return capacity, plan, tuple(attempts)
 
     def run_tiles(
         self,
@@ -165,12 +207,9 @@ class CudaTriplesTiles:
         _validate(nocc, nvir, ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v)
         _check_denominators(eps_o, eps_v, 1e-10)
 
-        # The tile program separates bounded label axes (a,b,c) from the
-        # full virtual summation axis f.  In the original tensors the W1
-        # f-axis is ovvv axis 2 and t2 axis 3; those stay full while label
-        # axes are prefix-bounded to a_end.  This makes every upload shape
-        # exactly match its TensorSpec without truncating the contraction.
-
+        # #783: one runtime-indexed graph is selected under the caller's
+        # byte budget. Logical a-tiles may be split into smaller runtime batches
+        # without changing that graph, artifact, or resident owner.
         enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=chunk)
         tiles = list(enumerator)
 
@@ -185,59 +224,57 @@ class CudaTriplesTiles:
         }
         per_tile = []
         per_tile_masked_cpu = [] if oracle else None
-        peak_bytes_per_tile = []
-        artifact_keys = []
-        runtime_device = None
         et = 0.0
-
         t0_total = time.perf_counter()
 
-        for tile in tiles:
-            # 1. Extract exact-shape feeds: label axes are bounded by a_end,
-            #    while the W1 f-summation axes remain full nvir.
+        t0 = time.perf_counter()
+        capacity, plan, capacity_attempts = self.plan_runtime_domain()
+        artifact = self._compile_resident(plan, self.compiler, self.cache)
+        timing["compile_s"] += time.perf_counter() - t0
+        runtime_batch_count = sum(
+            tile.runtime_domain.page_count(capacity) for tile in tiles
+        )
+        timing["runtime_batch_count"] = runtime_batch_count
+        peak_bytes_per_tile = [plan.peak_bytes] * len(tiles)
+        artifact_keys = [artifact.metadata.get("key", "")]
+
+        t0 = time.perf_counter()
+        static_feeds = runtime_tile_static_feeds(arrays)
+        timing["extract_s"] += time.perf_counter() - t0
+
+        with self._PreparedResident(
+            plan, artifact, device=self.config.device
+        ) as resident:
+            runtime_device = resident.device
             t0 = time.perf_counter()
-            sub_feeds = _tile_input_feeds(arrays, tile.a_end)
-            timing["extract_s"] += time.perf_counter() - t0
+            resident.upload(static_feeds)
+            timing["upload_s"] += time.perf_counter() - t0
 
-            # 2. Build the exact per-tile program, plan it, and compile
-            #    (compilation is transparently cached to disk).  Distinct
-            #    TensorIR spaces keep label extents at a_end and f at nvir.
-            t0 = time.perf_counter()
-            tile_prog = build_tile_triples_program(
-                nocc, nvir, vir_chunk=(tile.a_start, tile.a_end)
-            )
-            plan = self._plan_cuda(
-                tile_prog,
-                self.compiler.target,
-                max_bytes=self.config.max_bytes,
-            )
-            artifact = self._compile_resident(plan, self.compiler, self.cache)
-            timing["compile_s"] += time.perf_counter() - t0
-            peak_bytes_per_tile.append(plan.peak_bytes)
-            artifact_keys.append(artifact.metadata.get("key", ""))
+            for tile in tiles:
+                et_tile = 0.0
+                controls_iterator = iter(runtime_tile_control_batches(tile, capacity))
+                while True:
+                    t0 = time.perf_counter()
+                    try:
+                        controls = next(controls_iterator)
+                    except StopIteration:
+                        break
+                    timing["extract_s"] += time.perf_counter() - t0
 
-            # 3. Create a per-tile resident owner, upload exact-shape feeds,
-            #    run, download the scalar, then close it.
-            with self._PreparedResident(
-                plan, artifact, device=self.config.device
-            ) as resident:
-                t0 = time.perf_counter()
-                resident.upload(sub_feeds)
-                timing["upload_s"] += time.perf_counter() - t0
+                    t0 = time.perf_counter()
+                    resident.upload(controls)
+                    timing["upload_s"] += time.perf_counter() - t0
 
-                t0 = time.perf_counter()
-                leases, _metrics = resident.run(profile=profile)
-                timing["run_s"] += time.perf_counter() - t0
+                    t0 = time.perf_counter()
+                    leases, _metrics = resident.run(profile=profile)
+                    timing["run_s"] += time.perf_counter() - t0
 
-                t0 = time.perf_counter()
-                et_tile = float(resident.download(leases["triples_energy"])[()])
-                timing["download_s"] += time.perf_counter() - t0
-                if runtime_device is None:
-                    # Captured once from the first resident's device probe.
-                    runtime_device = resident.device
-
-            per_tile.append(et_tile)
-            et += et_tile
+                    t0 = time.perf_counter()
+                    et_batch = float(resident.download(leases["triples_energy"])[()])
+                    timing["download_s"] += time.perf_counter() - t0
+                    et_tile += et_batch
+                per_tile.append(et_tile)
+                et += et_tile
 
         timing["total_s"] = time.perf_counter() - t0_total
 
@@ -272,11 +309,16 @@ class CudaTriplesTiles:
             nvir=nvir,
             peak_device_bytes=max(peak_bytes_per_tile) if peak_bytes_per_tile else 0,
             peak_bytes_per_tile=peak_bytes_per_tile,
+            plan_identity=plan.identity,
             artifact_keys=artifact_keys,
             runtime_device=runtime_device,
             timing=timing,
             provenance={
-                "schema": "vibeqc.ccsd-t.cuda-tile/1",
+                "schema": "vibeqc.ccsd-t.cuda-runtime-domain/2",
+                "runtime_domain_capacity": capacity,
+                "runtime_batch_count": runtime_batch_count,
+                "capacity_selection": list(capacity_attempts),
+                "artifact_reuse": "one compiled plan and resident owner across all logical tiles/runtime batches",
                 "tile_shapes": [
                     {
                         "a_start": tile.a_start,
@@ -290,7 +332,7 @@ class CudaTriplesTiles:
         )
 
     def close(self) -> typing.Any:
-        pass  # no persistent resources; each tile creates and closes its own
+        pass  # run_tiles owns one bounded resident for the duration of each run
 
     def __enter__(self) -> typing.Any:
         return self

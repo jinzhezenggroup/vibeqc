@@ -296,6 +296,12 @@ extern "C" int vibeqc_second_run_v1(void* handle, const void* records,
                                          tiles, static_cast<SecondResult*>(output), profile);
   }, detail, size);
 }
+#ifdef __CUDACC__
+extern "C" const void* vibeqc_second_result_device_v1(void* handle) {
+  if (!handle) return nullptr;
+  return static_cast<NativePlan*>(handle)->device_results();
+}
+#endif
 extern "C" int vibeqc_second_storage_v1(void* handle, std::uint64_t* amounts,
     char* detail, std::size_t size) {
   return boundary([&] {

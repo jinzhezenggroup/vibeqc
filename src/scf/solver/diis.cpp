@@ -4,10 +4,10 @@
 #include <cmath>
 #include <utility>
 
+#include "generated_scf_array_native.hpp"
 #include "runtime/resource_usage.hpp"
 
 namespace vibeqc::scf::solver {
-using reference::dot;
 using reference::index;
 using reference::solve_linear;
 Diis::Diis(std::size_t capacity, bool normalize_metric)
@@ -44,10 +44,8 @@ Matrix Diis::update(const Matrix& fock, const Matrix& residual) {
     Matrix b(dim * dim, 0.0);
     std::vector<double> rhs(dim, 0.0);
     rhs[m] = -1.0;
+    generated::diis_gram(b.data(), dim, residuals_, m, residual.size());
     for (std::size_t i = 0; i < m; ++i) {
-      for (std::size_t j = 0; j < m; ++j) {
-        b[index(i, j, dim)] = dot(residuals_[i], residuals_[j]);
-      }
       b[index(i, m, dim)] = -1.0;
       b[index(m, i, dim)] = -1.0;
     }
@@ -68,12 +66,8 @@ Matrix Diis::update(const Matrix& fock, const Matrix& residual) {
       continue;
     }
 
-    Matrix extrapolated(fock.size(), 0.0);
-    for (std::size_t i = 0; i < m; ++i) {
-      for (std::size_t element = 0; element < fock.size(); ++element) {
-        extrapolated[element] += coefficients[i] * focks_[i][element];
-      }
-    }
+    Matrix extrapolated(fock.size());
+    generated::diis_extrapolate(extrapolated.data(), focks_, coefficients.data(), m, fock.size());
     return extrapolated;
   }
 }

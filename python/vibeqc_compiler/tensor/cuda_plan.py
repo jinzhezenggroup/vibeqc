@@ -1,8 +1,9 @@
 """Deterministic typed tensor storage and contraction plans, without CUDA calls.
 
 The byte budget is a combined numeric-buffer budget: device allocations plus
-prepared host input staging and one detached host output set. Caller-owned
-inputs/old results, Python/code objects, CUDA context/module/stack overhead,
+prepared host input staging and the larger of one detached host output set or
+immutable static-data upload staging. Caller-owned inputs/old results,
+Python/code objects, CUDA context/module/stack overhead,
 provider host metadata,
 and the CUDA allocator's page rounding are outside this scope. Retained
 cuBLAS device allocations have a separate checked allowance. The runtime
@@ -13,22 +14,36 @@ the plan's numeric-buffer peak.
 from __future__ import annotations
 
 import typing
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
+from functools import cached_property
 from math import prod
 
 from vibeqc_compiler.common.backend import TargetScheduleShape
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.storage import (
+    AliasKind,
+    BufferOp,
+    BufferValue,
+    MemoryEffect,
+    analyze_storage,
+)
 
+from .batch_schedule import (
+    BatchScheduleIR,
+    analyze_batch_schedule,
+    index_table_length,
+    index_table_values,
+)
 from .cuda_dtype import program_precision, scalar_type
 from .cuda_gemm import gemm_contract
 from .cuda_layout import LayoutDecision, conversion_bytes, select_layouts
 from .ir import TRANSCENDENTALS, Node
 from .layout import DenseLayout
-from .precision import PrecisionSchedule, describe_precision
+from .precision import PrecisionSchedule, ValuePrecision, describe_precision
 from .program import Program, _hash
 from .types import checked_size
 
-PLAN_SCHEMA = 4
+PLAN_SCHEMA = 5
 ALIGNMENT = 256
 INT_MAX = 2**31 - 1
 MIN_PROVIDER_BYTES = 96 * 1024**2
@@ -52,6 +67,18 @@ def aligned(size: int) -> int:
     )
 
 
+def _index_table_length(node: Node) -> int | None:
+    """Compatibility boundary; the shared batch scheduler owns table layout."""
+    return index_table_length(node)
+
+
+def _index_table_values(node: Node) -> tuple[int, ...] | None:
+    """Keep existing emitter/admission clients on the one shared table owner."""
+    if node.op not in ("gather", "indexed_gather", "scatter_add", "segment_sum"):
+        return None
+    return index_table_values(node)
+
+
 @dataclass(frozen=True)
 class TensorSchedule:
     """Small explicit search space over one stable stream, optionally replayed.
@@ -59,6 +86,9 @@ class TensorSchedule:
     Recompute duplicates shared intermediates between output roots. It does
     not duplicate work within a root or promise arbitrary out-of-core output
     support. Fusion retains the order and finite checks of each scalar node.
+    Streaming reductions keep a small materialized reduction frontier while
+    evaluating fully-consumed higher-rank producers on demand. It is an
+    opt-in memory schedule until real-device qualification proves a speed win.
     """
 
     tile_m: int = 128
@@ -68,6 +98,9 @@ class TensorSchedule:
     views: bool = False
     fuse: bool = False
     recompute: bool = False
+    stream_reductions: bool = field(default=False, kw_only=True)
+    reduction_provider: str = field(default="generated", kw_only=True)
+    inplace_donation: bool = field(default=False, kw_only=True)
     direct_gemm: bool = True
     layouts: bool = False
     elements_per_thread: int = 1
@@ -84,9 +117,19 @@ class TensorSchedule:
             value = getattr(self, name)
             if type(value) is not int or value not in (1, 2, 4, 8):
                 raise ValueError(f"{name} must be one of 1, 2, 4, 8")
-        for name in ("views", "fuse", "recompute", "direct_gemm", "layouts"):
+        for name in (
+            "views",
+            "fuse",
+            "recompute",
+            "stream_reductions",
+            "inplace_donation",
+            "direct_gemm",
+            "layouts",
+        ):
             if type(getattr(self, name)) is not bool:
                 raise TypeError(f"{name} must be boolean")
+        if self.reduction_provider not in ("generated", "cub"):
+            raise ValueError("reduction_provider must be 'generated' or 'cub'")
 
 
 @dataclass(frozen=True)
@@ -125,6 +168,7 @@ class Step:
     last_use: int
     gemm: str  # none, packed, direct-NN, direct-NT, direct-TN, direct-TT
     layout: DenseLayout | None
+    donated_from: int | None = None
 
 
 @dataclass(frozen=True)
@@ -149,13 +193,29 @@ class TensorPlan:
     estimated_traffic_bytes: int
     layout_decision: LayoutDecision
 
-    @property
+    @cached_property
     def precision(self) -> str:
         return program_precision(self.program)
 
-    @property
+    @cached_property
     def precision_schedule(self) -> PrecisionSchedule:
         return describe_precision(self.program)
+
+    @cached_property
+    def precision_by_node(self) -> dict[Node, ValuePrecision]:
+        """Resolve execution precision once for every live logical node."""
+        names = self.program.debug_names
+        values = {value.name: value for value in self.precision_schedule.values}
+        return {
+            node: values[names[node]]
+            for node in self.program.live_nodes
+            if names[node] in values
+        }
+
+    @property
+    def batch_schedule(self) -> BatchScheduleIR:
+        """Derive exact homogeneous/ragged scheduling facts for this plan."""
+        return analyze_batch_schedule(self.steps)
 
     @property
     def allocation_bytes(self) -> int:
@@ -174,17 +234,19 @@ class TensorPlan:
         total = 0
         for step_index, _ in self.index_tables:
             node = self.steps[step_index].node
-            if node.op in ("gather", "indexed_gather", "scatter_add"):
-                values = node.attrs["positions"]
-            elif node.op == "segment_sum":
-                values = node.attrs["offsets"]
-            else:  # pragma: no cover - planner constructs the table list
+            count = _index_table_length(node)
+            if count is None:  # pragma: no cover - planner constructs table owners
                 raise AssertionError(f"unexpected index-table owner: {node.op}")
             total = checked_size(
-                total + aligned(len(values) * 8),
+                total + aligned(count * 8),
                 "index table bytes",
             )
         return total
+
+    @property
+    def static_data_bytes(self) -> int:
+        """Compact host artifact bytes needed to initialize immutable device data."""
+        return sum(item[4] for item in static_data_slices(self))
 
     @property
     def accumulation_workspace_bytes(self) -> int:
@@ -274,6 +336,103 @@ class TensorPlan:
             }
         )
 
+    def storage_analysis(self) -> typing.Any:
+        """Adapt TensorIR storage facts to the shared whole-region analysis."""
+
+        storage_views = frozenset(("transpose", "reshape", "slice"))
+        alias_owner: dict[int, int] = {}
+        for index, step in enumerate(self.steps):
+            if (
+                not step.virtual
+                or step.node.op not in storage_views
+                or len(step.inputs) != 1
+            ):
+                continue
+            owner = step.inputs[0]
+            while self.steps[owner].virtual:
+                parent = self.steps[owner]
+                if parent.node.op not in storage_views or len(parent.inputs) != 1:
+                    owner = -1
+                    break
+                owner = parent.inputs[0]
+            if owner >= 0:
+                alias_owner[index] = owner
+
+        def boundary_reads(index: int) -> tuple[int, ...]:
+            if index in alias_owner or not self.steps[index].virtual:
+                return (index,)
+            result: list[int] = []
+            for child in self.steps[index].inputs:
+                for value in boundary_reads(child):
+                    if value not in result:
+                        result.append(value)
+            return tuple(result)
+
+        values = []
+        inputs = []
+        for index, step in enumerate(self.steps):
+            logical_bytes = checked_size(
+                step.node.spec.size * step.node.spec.itemsize,
+                "tensor storage-analysis bytes",
+            )
+            if not step.virtual:
+                values.append(
+                    BufferValue(
+                        index,
+                        aligned(logical_bytes),
+                        "device",
+                        step.layout,
+                        compiler_owned=True,
+                    )
+                )
+                if step.node.op in ("input", "constant"):
+                    inputs.append(index)
+            elif index in alias_owner:
+                values.append(
+                    BufferValue(
+                        index,
+                        logical_bytes,
+                        "device",
+                        alias=AliasKind.VIEW,
+                        alias_of=alias_owner[index],
+                        compiler_owned=False,
+                    )
+                )
+
+        operations = []
+        for index, step in enumerate(self.steps):
+            if index in alias_owner:
+                reads = boundary_reads(step.inputs[0])
+            elif step.virtual or step.node.op in ("input", "constant"):
+                continue
+            else:
+                ordered_reads: list[int] = []
+                for child in step.inputs:
+                    for value in boundary_reads(child):
+                        if value not in ordered_reads:
+                            ordered_reads.append(value)
+                reads = tuple(ordered_reads)
+            operations.append(
+                BufferOp(
+                    ("tensor_step", index),
+                    reads,
+                    (index,),
+                    MemoryEffect.EXPLICIT,
+                    donations=(
+                        ()
+                        if step.donated_from is None
+                        else ((step.donated_from, index),)
+                    ),
+                )
+            )
+
+        return analyze_storage(
+            tuple(values),
+            tuple(operations),
+            inputs=tuple(inputs),
+            outputs=tuple(index for _, index in self.outputs),
+        )
+
     def to_payload(self) -> dict:
         """Include layouts, aliases, lifetimes, shapes, schedule and reservations."""
         names = self.program.debug_names
@@ -285,7 +444,7 @@ class TensorPlan:
             "precision": self.precision,
             "precision_schedule": self.precision_schedule.to_payload(),
             "precision_schedule_identity": self.precision_schedule.identity,
-            "arithmetic": "explicit casts only; per-node dtype; RN; fp32 SGEMM pedantic; no TF32 or implicit casts",
+            "arithmetic": "explicit casts; per-value storage/compute/accumulation; RN; fp32 SGEMM pedantic; qualified FP64 reduction accumulation; no TF32 or implicit casts",
             "fp32_flush_to_zero": False,
             "target": self.target.to_payload(),
             "schedule": asdict(self.schedule),
@@ -321,10 +480,68 @@ class TensorPlan:
                     "strides": None if s.virtual else s.layout.element_strides,
                     "layout": None if s.virtual else s.layout.to_payload(),
                     "view_map": s.node.attrs if s.virtual else None,
+                    "donated_from": s.donated_from,
                 }
                 for s in self.steps
             ],
         }
+
+
+def estimated_cuda_launches(plan: TensorPlan) -> int:
+    """Count the emitted endpoint launch sequence without executing CUDA."""
+
+    launches = 1  # per-run arithmetic-error reset
+    for step in plan.steps:
+        if (
+            step.virtual
+            or step.node.op in ("input", "constant")
+            or not step.node.spec.size
+        ):
+            continue
+        if step.gemm == "none":
+            launches += 1
+            continue
+        contraction = gemm_contract(step.node)
+        if contraction is None:
+            raise ValueError("GEMM launch estimate requires a contraction node")
+        if not contraction.k:
+            launches += 1
+        elif step.gemm.startswith("direct-"):
+            launches += 2
+        else:
+            tiles = [
+                (size + tile - 1) // tile
+                for size, tile in zip(
+                    (contraction.m, contraction.n, contraction.k),
+                    (plan.schedule.tile_m, plan.schedule.tile_n, plan.schedule.tile_k),
+                    strict=True,
+                )
+            ]
+            launches += contraction.batch * prod(tiles[:2]) * (2 * tiles[2] + 1)
+    return launches
+
+
+def static_data_slices(
+    plan: TensorPlan,
+) -> tuple[tuple[int, str, int, int, int], ...]:
+    """Map compact artifact payload slices onto aligned device-arena locations."""
+    tables = dict(plan.index_tables)
+    payload_offset = 0
+    result = []
+    for step_index, step in enumerate(plan.steps):
+        node = step.node
+        if node.op == "constant" and node.spec.size:
+            size = node.spec.size * node.spec.itemsize
+            result.append((step_index, "constant", step.offset, payload_offset, size))
+            payload_offset += size
+        values = _index_table_values(node)
+        if values:
+            size = len(values) * 8
+            result.append(
+                (step_index, "index", tables[step_index], payload_offset, size)
+            )
+            payload_offset += size
+    return tuple(result)
 
 
 def _occurrences(program: typing.Any, recompute: typing.Any) -> typing.Any:
@@ -361,6 +578,106 @@ def _occurrences(program: typing.Any, recompute: typing.Any) -> typing.Any:
     return nodes, tuple(inputs), tuple(outputs)
 
 
+def _fully_consumes_operand(parent: Node, child: Node) -> bool:
+    """Prove that evaluating parent visits every element of child.
+
+    Streaming a producer through a reduction is legal only when materializing
+    the producer first cannot expose an arithmetic/bounds failure on an element
+    that the consumer would otherwise skip. TensorIR nodes are pure, but their
+    fail-closed diagnostics are observable semantics.
+    """
+
+    if parent.spec.size == 0 or child.spec.size == 0:
+        return parent.spec.size == child.spec.size == 0
+    if parent.op in ELEMENTWISE or parent.op in {
+        "cast",
+        "transpose",
+        "reshape",
+        "broadcast",
+        "reduce",
+        "scatter_add",
+    }:
+        return True
+    if parent.op == "einsum":
+        domains = {}
+        for operand, labels in zip(parent.inputs, parent.attrs["labels"], strict=True):
+            domains.update(zip(labels, operand.spec.shape, strict=True))
+            if operand is child:
+                child_labels = labels
+        if child not in parent.inputs:
+            return False
+        # Repeated labels select a diagonal rather than the full tensor. An
+        # empty sibling-only label also makes the contraction skip this child.
+        return len(child_labels) == len(set(child_labels)) and all(
+            extent for label, extent in domains.items() if label not in child_labels
+        )
+    # These operators can select only a subset of their source domain. Keep
+    # upstream diagnostics materialized until a stronger full-consumption proof
+    # exists for their concrete maps/ranges.
+    return False
+
+
+def _streaming_reduction_virtuals(
+    nodes: list[tuple[Node, tuple[int, ...]]],
+    users: list[set[int]],
+) -> frozenset[int]:
+    """Find full-consumption producer chains that can stream into reductions."""
+
+    candidates: set[int] = set()
+    region: set[int] = set()
+    roots: set[int] = set()
+    for root_index, (root, operands) in enumerate(nodes):
+        if root.op != "reduce" or len(operands) != 1:
+            continue
+        source = root.inputs[0]
+        reduced_domains = {
+            source.spec.indices[axis].domain for axis in root.attrs["axes"]
+        }
+        if not reduced_domains:
+            continue
+        roots.add(root_index)
+        pending = [(root_index, operands[0])]
+        seen_edges: set[tuple[int, int]] = set()
+        while pending:
+            parent_index, child_index = pending.pop()
+            edge = (parent_index, child_index)
+            if edge in seen_edges:
+                continue
+            seen_edges.add(edge)
+            parent = nodes[parent_index][0]
+            child, child_operands = nodes[child_index]
+            if child.op in ("input", "constant"):
+                continue
+            if not any(index.domain in reduced_domains for index in child.spec.indices):
+                continue
+            if not _fully_consumes_operand(parent, child):
+                continue
+            region.add(child_index)
+            # Keep the reduction frontier materialized. Values whose axes are
+            # entirely inside the reduced domain are small boundary tensors
+            # (for example one scalar per runtime lane). Their kernels retain
+            # parallelism while higher-rank producers stream through them.
+            if any(index.domain not in reduced_domains for index in child.spec.indices):
+                candidates.add(child_index)
+            pending.extend((child_index, grandchild) for grandchild in child_operands)
+
+    # A shared producer may stream only when every consumer stays inside a
+    # proven streaming region (or is one of its reduction roots).
+    changed = True
+    while changed:
+        changed = False
+        for child_index in tuple(candidates):
+            child = nodes[child_index][0]
+            if any(
+                (user not in region and user not in roots)
+                or not _fully_consumes_operand(nodes[user][0], child)
+                for user in users[child_index]
+            ):
+                candidates.remove(child_index)
+                changed = True
+    return frozenset(candidates)
+
+
 BASELINE_SCHEDULE = TensorSchedule()
 NO_RESERVATIONS = Reservations()
 
@@ -394,9 +711,33 @@ def plan_cuda(
     TargetScheduleShape(schedule.threads, target.warp_size).validate_for(
         target.target_info
     )
+    if schedule.reduction_provider == "cub" and not schedule.stream_reductions:
+        raise ValueError(
+            "CUB reduction provider requires stream_reductions for the pilot"
+        )
     nodes, inputs, outputs = _occurrences(program, schedule.recompute)
-    if schedule.layouts and any(n.spec.dtype != "float64" for n, _ in nodes):
+    mixed_accumulation_steps: frozenset[int] = frozenset()
+    if program.provenance.get("precision_execution") is not None:
+        program_names = program.debug_names
+        precision_values = {
+            value.name: value for value in describe_precision(program).values
+        }
+        mixed_accumulation_steps = frozenset(
+            i
+            for i, (node, _) in enumerate(nodes)
+            if node.spec.dtype != "int64"
+            and precision_values[program_names[node]].compute_dtype
+            != precision_values[program_names[node]].accumulation_dtype
+        )
+    if schedule.layouts and any(
+        n.spec.dtype in ("float32", "float64") and n.spec.dtype != "float64"
+        for n, _ in nodes
+    ):
         raise ValueError("producer layout optimization is qualified only for float64")
+    if schedule.inplace_donation and schedule.layouts:
+        raise ValueError(
+            "in-place donation is not yet qualified with producer layout optimization"
+        )
     if any(n.op in TRANSCENDENTALS for n, _ in nodes) and len(nodes) > INT_MAX // 2:
         raise ValueError("too many steps for transcendental domain diagnostics")
     for node, _ in nodes:
@@ -404,7 +745,7 @@ def plan_cuda(
             raise ValueError(
                 "CUDA transcendental primitives are qualified only for float64"
             )
-        scalar = scalar_type(node.spec.dtype)
+        scalar = None if node.spec.dtype == "int64" else scalar_type(node.spec.dtype)
         checked_size(node.spec.size * node.spec.itemsize, "tensor bytes")
         for stride in strides(node.spec.shape):
             checked_size(stride, "tensor stride")
@@ -425,12 +766,13 @@ def plan_cuda(
                 ),
                 "einsum reduction domain",
             )
-        for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
-            scalar.coefficient(pair)
-        if "coefficient" in node.attrs:
-            scalar.coefficient(node.attrs["coefficient"])
-        if "exponent" in node.attrs:
-            scalar.coefficient(node.attrs["exponent"])
+        if scalar is not None:
+            for pair in node.attrs.get("coefficients", node.attrs.get("values", ())):
+                scalar.coefficient(pair)
+            if "coefficient" in node.attrs:
+                scalar.coefficient(node.attrs["coefficient"])
+            if "exponent" in node.attrs:
+                scalar.coefficient(node.attrs["exponent"])
     pinned = {i for _, i in outputs} | {
         i for i, (n, _) in enumerate(nodes) if n.op in ("input", "constant")
     }
@@ -438,6 +780,11 @@ def plan_cuda(
     for i, (_, operands) in enumerate(nodes):
         for child in operands:
             users[child].add(i)
+    streaming_virtuals = (
+        _streaming_reduction_virtuals(nodes, users)
+        if schedule.stream_reductions
+        else frozenset()
+    )
     virtual, depths = [], []
     for i, (node, operands) in enumerate(nodes):
         # Only complete same-domain elementwise consumers can fuse arithmetic:
@@ -449,10 +796,9 @@ def plan_cuda(
             and nodes[next(iter(users[i]))][0].op in ELEMENTWISE
         )
         depth = 1 + max((depths[c] for c in operands), default=0)
-        is_virtual = (
-            i not in pinned
-            and depth <= 8
-            and ((schedule.views and node.op in VIEWS) or fuse)
+        is_virtual = i not in pinned and (
+            i in streaming_virtuals
+            or (depth <= 8 and ((schedule.views and node.op in VIEWS) or fuse))
         )
         virtual.append(is_virtual)
         depths.append(depth if is_virtual else 0)
@@ -469,15 +815,11 @@ def plan_cuda(
     offsets, active, free, capacity = {}, {}, [], 0
     tables = []
     for i, (node, _) in enumerate(nodes):
-        values = None
-        if node.op in ("gather", "indexed_gather", "scatter_add"):
-            values = node.attrs["positions"]
-        elif node.op == "segment_sum":
-            values = node.attrs["offsets"]
-        if values is not None:
+        count = _index_table_length(node)
+        if count is not None:
             tables.append((i, capacity))
             capacity = checked_size(
-                capacity + aligned(len(values) * 8),
+                capacity + aligned(count * 8),
                 "index table bytes",
             )
     steps, flops, traffic = [], 0, 0
@@ -494,23 +836,47 @@ def plan_cuda(
             else:
                 merged.append((offset, size))
         free = merged
+        donated_from = None
         if virtual[i]:
             offsets[i] = -1
         else:
             size = aligned(node.spec.size * node.spec.itemsize)
-            fitting = [
-                (length, start, j)
-                for j, (start, length) in enumerate(free)
-                if length >= size
-            ]
-            if fitting and size:
-                length, start, j = min(fitting)
-                free.pop(j)
-                if length > size:
-                    free.append((start + size, length - size))
+            if (
+                schedule.inplace_donation
+                and size
+                and node.op in ELEMENTWISE
+                and all(not virtual[child] for child in operands)
+            ):
+                for child in operands:
+                    child_node = nodes[child][0]
+                    if (
+                        child in active
+                        and child not in pinned
+                        and last[child] == i
+                        and child_node.spec.shape == node.spec.shape
+                        and child_node.spec.dtype == node.spec.dtype
+                        and active[child][1] == size
+                    ):
+                        donated_from = child
+                        break
+            if donated_from is not None:
+                start, donated_size = active.pop(donated_from)
+                if donated_size != size:  # pragma: no cover - guarded above
+                    raise AssertionError("in-place donation capacity mismatch")
             else:
-                start = capacity
-                capacity = checked_size(capacity + size, "tensor arena bytes")
+                fitting = [
+                    (length, start, j)
+                    for j, (start, length) in enumerate(free)
+                    if length >= size
+                ]
+                if fitting and size:
+                    length, start, j = min(fitting)
+                    free.pop(j)
+                    if length > size:
+                        free.append((start + size, length - size))
+                else:
+                    start = capacity
+                    capacity = checked_size(capacity + size, "tensor arena bytes")
             offsets[i] = start
             if size:
                 active[i] = (start, size)
@@ -520,7 +886,11 @@ def plan_cuda(
         g = gemm_contract(node)
         # Library admission depends on GEMM eligibility, not physical order.
         # The bounded layout pass assigns the final packed/direct kind below.
-        kind = "packed" if g is not None and not virtual[i] else "none"
+        kind = (
+            "packed"
+            if g is not None and not virtual[i] and i not in mixed_accumulation_steps
+            else "none"
+        )
         if g:
             flops += g.flops
         elif node.op == "einsum":
@@ -533,6 +903,7 @@ def plan_cuda(
             "constant",
             "gather",
             "indexed_gather",
+            "runtime_indexed_select",
         ):
             flops += sum(child.spec.size for child in node.inputs)
         steps.append(
@@ -546,12 +917,28 @@ def plan_cuda(
                 None
                 if virtual[i]
                 else DenseLayout(node.spec.shape, alignment=ALIGNMENT),
+                donated_from,
             )
         )
+    static_host_bytes = checked_size(
+        sum(
+            step.node.spec.size * step.node.spec.itemsize
+            for step in steps
+            if step.node.op == "constant"
+        )
+        + sum((_index_table_length(step.node) or 0) * 8 for step in steps),
+        "static host tensor bytes",
+    )
+    input_host_bytes = sum(
+        nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs
+    )
+    output_host_bytes = sum(
+        nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs
+    )
     host = checked_size(
-        sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for i in inputs)
-        + sum(nodes[i][0].spec.size * nodes[i][0].spec.itemsize for _, i in outputs)
-        + (VALIDATION_BYTES if inputs else 0),
+        input_host_bytes
+        + (VALIDATION_BYTES if inputs else 0)
+        + max(output_host_bytes, static_host_bytes),
         "host tensor bytes",
     )
     needs_blas = any(
@@ -576,7 +963,12 @@ def plan_cuda(
             schedule, **dict(zip(("tile_m", "tile_n", "tile_k"), tile, strict=True))
         )
         layouts, kinds, layout_decision = select_layouts(
-            nodes, virtual, pinned, selected, alignment=ALIGNMENT
+            nodes,
+            virtual,
+            pinned,
+            selected,
+            alignment=ALIGNMENT,
+            disabled_gemm=mixed_accumulation_steps,
         )
         steps = [
             replace(s, layout=layouts[i], gemm=kinds[i]) for i, s in enumerate(steps)

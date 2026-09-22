@@ -11,13 +11,13 @@ from vibeqc_compiler.common.cuda_adapter import (
 )
 
 
-def test_cuda_execution_profile_preserves_current_cluster_default() -> None:
+def test_cuda_execution_profile_uses_device_agnostic_gpu_default() -> None:
     profile = resolve_cuda_execution_profile(environment={})
     assert profile == CudaExecutionProfile(
         local=False,
         srun="srun",
         partition="main",
-        gres="gpu:5090:1",
+        gres="gpu:1",
         nodes=1,
         ntasks=1,
         slurm_time="00:10:00",
@@ -25,7 +25,7 @@ def test_cuda_execution_profile_preserves_current_cluster_default() -> None:
     assert profile.wrap(["python", "worker.py"]) == [
         "srun",
         "--partition=main",
-        "--gres=gpu:5090:1",
+        "--gres=gpu:1",
         "--nodes=1",
         "--ntasks=1",
         "--time=00:10:00",
@@ -41,6 +41,7 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> None
             "VIBEQC_BENCHMARK_GRES": "gpu:a100:2",
             "VIBEQC_BENCHMARK_NODES": "2",
             "VIBEQC_BENCHMARK_NTASKS": "4",
+            "VIBEQC_BENCHMARK_CPUS_PER_TASK": "8",
             "VIBEQC_BENCHMARK_TIME": "00:25:00",
             "VIBEQC_BENCHMARK_SRUN": "/opt/slurm/bin/srun",
         }
@@ -49,6 +50,9 @@ def test_cuda_execution_profile_environment_overrides_project_defaults() -> None
     assert profile.gres == "gpu:a100:2"
     assert profile.nodes == 2
     assert profile.ntasks == 4
+    assert profile.cpus_per_task == 8
+    with pytest.raises(ValueError, match="one node and one task"):
+        profile.wrap(["worker"])
     assert profile.slurm_time == "00:25:00"
     assert profile.srun == "/opt/slurm/bin/srun"
 
@@ -107,6 +111,7 @@ def test_executor_uses_caller_time_as_default_but_environment_can_override() -> 
     [
         ({"VIBEQC_BENCHMARK_LOCAL": "sometimes"}, "boolean"),
         ({"VIBEQC_BENCHMARK_NODES": "many"}, "integer"),
+        ({"VIBEQC_BENCHMARK_CPUS_PER_TASK": "many"}, "integer"),
     ],
 )
 def test_invalid_execution_environment_fails_closed(
@@ -181,3 +186,18 @@ def test_distributed_requests_cannot_duplicate_single_process_benchmarks(
     )
     with pytest.raises(ValueError, match="one node and one task"):
         executor.command(Path("worker"))
+
+
+def test_single_task_preserves_explicit_compiler_cpu_allocation() -> None:
+    profile = resolve_cuda_execution_profile(
+        environment={"VIBEQC_BENCHMARK_CPUS_PER_TASK": "8"}
+    )
+    command = profile.wrap(["worker"])
+    assert "--cpus-per-task=8" in command
+    assert "--nodes=1" in command and "--ntasks=1" in command
+
+
+@pytest.mark.parametrize("count", [True, 1.5, float("nan"), float("inf")])
+def test_scheduler_cpu_count_rejects_nonintegers(count: object) -> None:
+    with pytest.raises(ValueError, match="positive integer"):
+        CudaExecutionProfile(cpus_per_task=count)

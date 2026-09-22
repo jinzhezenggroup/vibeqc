@@ -1,0 +1,19 @@
+{
+  "owner": "nonlocal_correlation",
+  "current_default": "Versioned VV10/rVV10 MethodIR semantics with an independent fixed-grid CPU oracle, bounded native CPU/CUDA ordered-pair provider, self-consistent CPU RKS/UKS composition, and public bounded CPU analytic forces on the existing qualified stationary-force domain.",
+  "generated_capability": "MethodIR owns immutable VV10/rVV10 mathematical identity, parameters and derivative capability. The shared stationary plan consumes nonlocal AO-center, grid-point and partition-weight sources without duplicating semilocal/grid terms.",
+  "missing_capability": "Self-consistent CUDA KS consumption remains fail-closed. Complete public omegaB97M-V qualification is owned by the separate final-composition line and still depends on #167 range-separated exchange; #164 is closed. No method enum or manifest alone advertises this primitive as a complete public method.",
+  "retirement_condition": "Retain the direct CPU oracle and bounded native provider until a compiler-generated nonlocal device consumer reproduces the same energy, potential and complete geometric derivatives with independent numerical, resource and end-to-end performance gates.",
+  "evidence": [
+    "tests/python/test_vv10_reference.py",
+    "tests/python/test_vv10_method_execution.py",
+    "tests/python/test_vv10_native_runtime.py",
+    "tests/python/test_vv10_native_integration.py",
+    "tests/python/test_vv10_self_consistent.py",
+    ".agents/notes/implemented/numerics/2026-09-19-vv10-rvv10-methodir-reference.md",
+    ".agents/notes/implemented/numerics/2026-09-20-vv10-analytic-nuclear-gradient.md",
+    ".agents/notes/implemented/numerics/2026-09-21-vv10-native-cuda-provider.md",
+    ".agents/notes/implemented/numerics/2026-09-22-vv10-public-cpu-force.md"
+  ],
+  "status": "bounded_native_primitive_cpu_self_consistent_public_force"
+}

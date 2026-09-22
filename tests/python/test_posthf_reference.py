@@ -12,6 +12,7 @@ from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
 from tools.vibeqc_posthf.mp2 import restricted_mp2, spin_orbital_mp2
 from tools.vibeqc_posthf.oracle import dense_ao_to_mo
 from tools.vibeqc_posthf.providers import BlockResult
+from tools.vibeqc_posthf.reference import ReferenceSnapshot
 
 
 @pytest.mark.parametrize("name", ["h2", "water", "lih", "f_heh"])
@@ -112,6 +113,27 @@ def test_invalid_reference_arrays(field: typing.Any) -> None:
         replace(s, coefficients=s.coefficients.astype(complex))
     with pytest.raises(ValueError, match="linear"):
         replace(s, overlap=np.zeros_like(s.overlap))
+
+
+def test_snapshot_rejects_nonfinite_derived_validation_residuals() -> None:
+    with (
+        np.errstate(over="ignore", invalid="ignore"),
+        pytest.raises(ValueError, match="non-finite residual"),
+    ):
+        ReferenceSnapshot(
+            overlap=np.array([[3.0, -2.0], [-2.0, 3.0]]),
+            hcore=np.eye(2),
+            fock=np.eye(2),
+            coefficients=np.full((2, 2), 1e308),
+            orbital_energies=np.array([0.0, 1.0]),
+            occupations=np.array([2.0, 0.0]),
+            electron_count=2,
+            reference_energy=0.0,
+            scf_residual=0.0,
+            geometry_hash="overflow-reproduction",
+            basis_hash="overflow-reproduction",
+            generation_id="overflow-reproduction",
+        )
 
 
 def test_small_denominators_are_not_clamped() -> None:

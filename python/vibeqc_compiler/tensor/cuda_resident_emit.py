@@ -53,6 +53,8 @@ def _validation_body(plan: typing.Any) -> typing.Any:
     for slot, i in enumerate(plan.inputs):
         step = plan.steps[i]
         node = step.node
+        if node.spec.dtype == "int64":
+            continue
         ty = scalar_type(node.spec.dtype).ctype
         atol, rtol = symmetry_tolerance(node.spec.dtype)
         comparisons = []
@@ -84,7 +86,11 @@ __global__ void resident_validate_{slot}(unsigned char* p, int* error) {{
 
 
 def resident_source(
-    plan: typing.Any, *, prefix: typing.Any = "", extension: typing.Any = ""
+    plan: typing.Any,
+    *,
+    prefix: typing.Any = "",
+    extension: typing.Any = "",
+    embed_static_data: bool = True,
 ) -> typing.Any:
     """Append the resident ABI to the verified ordinary TU.
 
@@ -106,7 +112,7 @@ def resident_source(
             raise ValueError(
                 "resident inputs must be pinned for the full plan lifetime"
             )
-    base = emit_cuda(plan, symbol_prefix=prefix)
+    base = emit_cuda(plan, symbol_prefix=prefix, embed_static_data=embed_static_data)
     validations, _vc = _validation_body(plan)
 
     inputs = [plan.steps[i] for i in plan.inputs]
@@ -176,6 +182,8 @@ extern "C" int resident_run(void* pointer, int profile, Metrics* result, char* e
     }}
     try {{
         ctx.check_device();
+        if (!ctx.static_ready)
+            throw std::runtime_error("tensor static data is not initialized");
         Metrics metrics;
         metrics.owned_device_bytes = ctx.metrics.owned_device_bytes;
         metrics.provider_retained_bytes = ctx.metrics.provider_retained_bytes;

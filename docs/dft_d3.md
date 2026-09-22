@@ -1,19 +1,23 @@
-# D3(BJ) production correction runtime
+# D3 production correction runtime
 
 VibeQC represents additive geometry-only dispersion with
 `DispersionCorrectionPrimitive` and an immutable `D3Spec`. The native library
-now exposes a standalone production D3(BJ) correction owner for CPU and CUDA,
-including ragged batches and fixed-topology changed-geometry replay. This is an
-additive correction endpoint: it does not yet make `Calculator` automatically
-sum electronic DFT and D3 energies or forces, so issue #492 remains open.
+exposes one retained production D3 owner for CPU and CUDA, including ragged batches
+and fixed-topology changed-geometry replay. `Calculator` composes that owner
+automatically when its resolved `MethodIR` contains a qualified D3 correction:
+the electronic subgraph remains the native KS model, and the correction is added
+exactly once at the prepared execution boundary.
 
 ## Supported model and MethodIR composition
 
-The production model is nonperiodic, real FP64, two-body D3(BJ), with `s9=0`.
-`D3Spec` records explicit `s6/s8/a1/a2`, source-data SHA-256 identities,
-coordination and pair cutoffs, and the pair-switch width. ATM, zero damping,
-unsupported versions, invalid coefficients and mismatched table identities are
-rejected rather than silently approximated.
+The production surface is nonperiodic, real FP64, and explicitly variant-gated:
+two-body D3(BJ) (`s9=0`), separately qualified D3(BJ)+ATM, and separately
+qualified original zero-damping two-body D3. `D3Spec` records the damping
+variant, source-data SHA-256 identities, variant-specific coefficients, cutoffs,
+and switch widths. Zero damping plus ATM and unknown variants fail closed;
+parameter-catalog availability never implies executable capability. Invalid
+coefficients and mismatched table identities are likewise rejected rather than
+silently approximated.
 
 The audited method catalog includes `PBE-D3(BJ)` and `PBE0-D3(BJ)`. Their
 `MethodIR` graphs contain the normal semilocal/exact-exchange primitives followed
@@ -25,6 +29,66 @@ Energy is in Hartree; coordinates are in bohr. The correction returns
 **gradient = dE/dR**, including explicit pair-distance and coordination-number
 response. Forces therefore have the opposite sign. The GFN1 halogen correction,
 Hamiltonian, SCC state and D4 terms are not part of this endpoint.
+
+## Calculator composition
+
+The preferred composite entry point is a spin-explicit `MethodIR`. The method name
+does not select D3 execution after resolution:
+
+```python
+from vibeqc import Calculator, GridSpec, KsOptions
+from vibeqc_compiler.method import resolve_method
+
+method = resolve_method("PBE-D3(BJ)", spin="unpolarized")
+calc = Calculator(
+    method=method,
+    basis="sto-3g",
+    device="cpu",
+    ks_options=KsOptions(
+        grid=GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
+    ),
+)
+result = calc.singlepoint(atoms, properties=("energy",))
+print(result.energy, result.dispersion.energy)
+```
+
+A caller that already owns a native KS selector may equivalently provide the full
+graph through `KsOptions(composition=...)`, for example `method="pbe-rks"` plus
+the same PBE-D3(BJ) graph. `Calculator.method_ir` reports the full graph.
+`Calculator.ks_options.method_ir` reports the electronic graph that is actually
+lowered into the SCF owner. Direct native KS resolution still rejects correction
+nodes, so no lower-level path can accept a D3 node and silently omit it.
+
+At execution, the prepared electronic and D3 owners receive the same fixed atom
+ordering and accepted geometry updates. For every successful item, composition is
+
+```text
+E_total = E_KS + E_D3
+F_total = F_KS - dE_D3/dR
+```
+
+The subtraction is required because the D3 owner publishes a gradient, while the
+public electronic endpoint publishes forces. `Result.dispersion` and
+`BatchItemResult.dispersion` retain the correction component and backend evidence.
+`PreparedBatch.dispersion_diagnostic` exposes the retained D3 plan identity and
+resource inventory. A D3 per-item failure converts only that item to failure; a
+malformed coordinate update already rejected by the electronic owner is not
+reinterpreted by D3. This preserves the existing ragged per-item failure boundary.
+
+The first automatic execution family is PBE-based MethodIR on RKS/UKS, including
+PBE0 compositions for energy. Analytic total forces are exposed only when the
+underlying electronic method/basis/backend already advertises an analytic force
+endpoint; D3 composition never widens that electronic capability. In particular,
+PBE0-D3(BJ) does not acquire public forces merely because the D3 gradient exists.
+
+The D3 owner remains independently bounded by
+`dispersion_memory_budget_bytes` (256 MiB by default). Whole-calculation
+`ResourceBudget` / `estimate_resources()` does not yet aggregate the separate D3
+owner and therefore fails closed for a composite calculation rather than reporting
+an electronic-only budget as complete.
+
+The architecture rationale and sign/failure invariants are recorded in the
+[Calculator D3 composition decision](../.agents/notes/implemented/architecture/2026-09-21-d3-calculator-composition.md).
 
 ## Production API and ownership
 
@@ -50,17 +114,28 @@ The native owner copies all preparation inputs. CPU execution uses O(N) scratch
 and direct pair loops. CUDA keeps offsets, atomic numbers, compact tables,
 coordinates, masks, results and scratch resident behind one nonblocking stream;
 only changed coordinates/masks and requested results cross the device boundary
-per replay. The initial CUDA scheduling baseline uses one serial worker per
-molecule while independent molecules run as separate blocks. It is a bounded
-production ownership baseline, not a claim of pair-parallel performance.
+per replay. Scheduler identity `ragged-system-cooperative-pair-v1` uses one CUDA
+block per ragged system from 8 atoms upward, with atom-owned CN/direct-force/
+CN-response work and a deterministic system-local energy reduction; smaller
+systems retain the one-thread reference path to avoid launch overhead. ATM is
+accumulated after the qualified two-body stage, and every path preserves
+per-system failure isolation and exactly-once publication. A global unique-pair
+atomic prototype was measured on the same H100 endpoint but was not promoted
+because it did not materially improve the cooperative implementation.
 
 ## Data provenance and validation
 
-No xTBloom or simple-dftd3 runtime dependency is added. Method-level D3/D4/gCP
-coefficients have one editable source in
-`python/vibeqc_compiler/method/method_parameters.json`; codegen emits the
-Python MethodIR constants and native/CUDA `constexpr` accessors, so calculation
-paths do not parse configuration files at runtime. Build-time generation also
+No xTBloom, simple-dftd3 or dftd4 runtime dependency is added. The editable
+source contract is the pinned snapshots and source manifest under
+`tools/parameters/`, together with `method_parameter_overrides.json` for local
+choices. Run `python tools/sync_dispersion_parameters.py` to regenerate the
+committed intermediate `python/vibeqc_compiler/method/method_parameters.json`;
+do not edit that intermediate by hand. Then run
+`python tools/generate_method_parameters.py --python-output python/vibeqc_compiler/method/_generated_parameters.py`.
+CMake uses the same intermediate and typed generator for native/CUDA `constexpr`
+accessors, so calculation paths parse no configuration or upstream table.
+The [source-ownership decision](../.agents/notes/implemented/architecture/2026-09-20-pinned-dispersion-catalog-sources.md)
+records the input/update and regeneration contract. Build-time generation also
 verifies the pinned xTBloom-derived D3 table and covalent-radius SHA-256 values
 and emits only the compact production data needed by the native evaluator. The
 runtime rejects a MethodIR whose recorded data identity differs from those
@@ -114,15 +189,49 @@ preserve the public batch/replay contract. The exact conventions, provenance,
 underflow boundary, rejected alternatives and retirement condition are recorded in the
 [D3 GeometryIR/PairIR decision](../.agents/notes/implemented/numerics/2026-09-20-d3-geometry-pair-ir.md).
 
-## Remaining boundary
+## Generated ragged CUDA retirement candidate
 
-The public correction owner is deliberately separate from the electronic DFT
-SCF/Fock equation. Automatic `Calculator` composition of DFT + D3, the complete
-combined electronic-plus-dispersion force endpoint, pair-parallel CUDA lowering,
-ATM, and zero-damping variants remain separate work. Native DFT paths must not
-accept a correction node and then omit it silently.
+The compiler now also has a non-public ragged CUDA execution candidate for the
+same two-body D3(BJ) equation. `compile_d3_bj_batch` flattens a heterogeneous
+molecular batch into one GeometryIR, preserves explicit system atom offsets, and
+builds only within-system CN/energy pairs. Pair energies are reduced to a vector
+of per-system energies with TensorIR `scatter_add`; the complete Cartesian
+gradient is generated from that vector energy through one TensorIR VJP.
 
-See [data provenance](../external/xtbloom-d3/README.md), the
+`PreparedD3CudaBatch` lowers the combined energy + generated-gradient graph
+through the shared TensorIR CUDA planner/compiler/runtime. Replays that preserve
+the CN/pair/switch state reuse the prepared artifact. A replay that crosses a
+recorded topology or switch boundary prepares a replacement generated program
+before the old prepared owner is released, so a failed rebuild cannot corrupt the
+previous executable state.
+
+This is deliberately a **retirement candidate, not the public production owner**.
+The native `D3CorrectionBatch` remains authoritative until the generated route
+has independent real-device qualification for numerical parity, resource bounds,
+changed-topology replay, per-system failure isolation, energy-only execution and
+endpoint performance. In particular, the current candidate evaluates the generated
+gradient graph even when a caller only needs energy, and TensorIR's one-call batch
+failure boundary is not yet equivalent to the public native per-item status ABI.
+
+See the [generated ragged execution decision](../.agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md).
+
+## Closure boundary
+
+The public correction owner remains deliberately separate from the electronic DFT
+SCF/Fock equation, while `Calculator` owns their exact-once energy/force composition
+at the prepared execution boundary. The production D3 closure admits only the three
+separately qualified capabilities described above: two-body BJ, BJ+ATM and
+zero-damping two-body. Unsupported combinations continue to fail closed, and native
+DFT paths still reject a correction node unless the Calculator composition owner has
+explicitly split and retained it.
+
+The generated GeometryIR/PairIR CUDA route remains a non-public retirement candidate.
+Its existence does not expand the public D3 capability matrix and retiring the native
+owner requires its own future evidence for per-item failure isolation, energy-only
+execution, resource bounds, changed-topology replay and matched endpoint performance.
+
+See the [pinned source registry](source_registry.md), the audited
+[`manifests/xtbloom-d3.json`](../manifests/xtbloom-d3.json), the
 [baseline migration decision](../.agents/notes/implemented/architecture/2026-09-19-d3-xtbloom-baseline.md),
 and the
 [production runtime decision](../.agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md).
@@ -175,3 +284,19 @@ For retained performance evidence, pin the exact `nvalchemi-toolkit-ops` wheel,
 PyTorch/CUDA versions, GPU, VibeQC commit/library, cutoff, workload, and timing
 samples. Do not compare published H100 numbers directly with a local RTX 5090 run;
 run both implementations on the same allocated device.
+
+## Parameter catalog availability
+
+The generated parameter catalog retains all 157 pinned upstream D3(BJ) records,
+projected explicitly to the implemented two-body `s9=0` model. Parameter
+availability is separate from executable capability: `B97M-D3(BJ)` has negative
+`a1`, and `SSB-D3(BJ)` has negative `s8`. The current `D3Spec` sign constraints
+still reject these two records. Do not clip or take absolute values to bypass
+that boundary; extending signed damping requires separate numerical qualification.
+
+Quoted upstream TOML keys are decoded as names: for example,
+`SKALA-1.0-D3(BJ)` and `SKALA-1.1-D3(BJ)` contain no literal quote characters.
+The development-time synchronizer checks pinned source hashes; production uses
+generated constants without opening an upstream table or importing its package.
+The same pipeline preserves 118 D4 parameter records, without advertising new
+public DFT+D4 endpoints solely because those records are present.

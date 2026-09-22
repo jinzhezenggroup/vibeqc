@@ -41,6 +41,59 @@ def jet_indices(order: typing.Any) -> typing.Any:
     )
 
 
+def directional_ao_jets(
+    jets: typing.Any,
+    order: typing.Any,
+    *,
+    ao_atoms: typing.Any,
+    point_motion: typing.Any,
+    center_motion: typing.Any,
+) -> typing.Any:
+    """Apply nuclear/grid motion to ordinary AO spatial jets.
+
+    AO values depend on the relative coordinate r-R_A. For each retained jet
+    multi-index alpha, its directional derivative is therefore
+
+        sum_k d^(alpha+e_k) phi * (dr_k - dR_A,k).
+
+    The caller supplies jets through order+1. This keeps the AO geometric JVP
+    independent of any XC functional and reuses the existing normalized native
+    jet ordering; no coordinate-by-AO Jacobian is materialized.
+    """
+    checked_int(order, "AO directional jet order", low=0, high=2)
+    values = immutable(jets)
+    full_domain = jet_indices(order + 1)
+    base_domain = jet_indices(order)
+    if values.ndim != 3 or values.shape[0] < len(full_domain):
+        raise ValueError("AO directional response requires jets through order+1")
+    npoint, nao = values.shape[1:]
+    atoms = np.asarray(ao_atoms)
+    if atoms.shape != (nao,) or atoms.dtype.kind not in "iu" or np.any(atoms < 0):
+        raise ValueError("AO directional response requires one nonnegative atom per AO")
+    points = immutable(point_motion, shape=(npoint, 3))
+    centers_raw = np.asarray(center_motion)
+    if (
+        centers_raw.ndim != 2
+        or centers_raw.shape[1:] != (3,)
+        or np.iscomplexobj(centers_raw)
+        or not np.isfinite(centers_raw).all()
+        or (atoms.size and np.max(atoms) >= len(centers_raw))
+    ):
+        raise ValueError(
+            "AO directional response requires finite [atom,3] center motion"
+        )
+    centers = immutable(centers_raw)
+    relative = points[:, None, :] - centers[atoms][None, :, :]
+    lookup = {index: i for i, index in enumerate(full_domain)}
+    result = np.zeros((len(base_domain), npoint, nao))
+    for row, index in enumerate(base_domain):
+        for axis in range(3):
+            shifted = list(index)
+            shifted[axis] += 1
+            result[row] += values[lookup[tuple(shifted)]] * relative[:, :, axis]
+    return immutable(result)
+
+
 class NativeAO:
     """Copy normalized native shell state; input system handles may be released.
 

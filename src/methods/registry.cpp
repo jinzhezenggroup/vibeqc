@@ -9,6 +9,8 @@
 #include "methods/method.hpp"
 #include "methods/mp2_method.hpp"
 #include "methods/rccsd_method.hpp"
+#include "methods/rccsdt_method.hpp"
+#include "methods/xtb_method.hpp"
 #include "runtime/provider_registry.hpp"
 
 namespace vibeqc::methods {
@@ -51,10 +53,20 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
       prepare = detail::prepare_rccsd_calculation;
       batch = detail::prepare_rccsd_batch;
       break;
+    case generated::PublicProvider::Rccsdt:
+      validate = detail::validate_rccsdt_system;
+      prepare = detail::prepare_rccsdt_calculation;
+      batch = detail::prepare_rccsdt_batch;
+      break;
     case generated::PublicProvider::Dft:
       validate = detail::validate_dft_system;
       prepare = detail::prepare_dft_calculation;
       batch = detail::prepare_dft_batch;
+      break;
+    case generated::PublicProvider::Xtb:
+      validate = detail::validate_xtb_system;
+      prepare = detail::prepare_xtb_calculation;
+      batch = nullptr;
       break;
     case generated::PublicProvider::Reserved:
       break;
@@ -75,7 +87,7 @@ constexpr MethodDefinition register_method(const generated::MethodManifestEntry&
            runtime::ProviderFallback::None,
            runtime::ProviderRequirement::PreparedState,
            manifest.unavailable_reason,
-           "methods/public_methods.json"},
+           "manifests/public_methods.json"},
           validate,
           prepare,
           batch};

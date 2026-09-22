@@ -18,11 +18,11 @@ XTB_METHOD_IR_VERSION = "xtb-method-ir-v1"
 XTB_METHOD_CATALOG_VERSION = "xtb-method-catalog-v1"
 XTB_PARAMETER_SET_VERSION = "xtb-parameter-set-v1"
 
-_SUPPORTED_MODEL = "gfn2"
-_SCHEMA_EXTENSION_MODELS = ("gfn2", "gfn1")
+_SUPPORTED_MODELS = ("gfn2", "gfn1")
+_SCHEMA_EXTENSION_MODELS = _SUPPORTED_MODELS
 _REFERENCES = ("restricted", "unrestricted")
 _PRODUCT_ORDER = ("energy", "nuclear-gradient")
-_STATE_ORDER = ("charge", "dipole", "quadrupole", "magnetization")
+_STATE_ORDER = ("shell_charge", "charge", "dipole", "quadrupole", "magnetization")
 _PARAMETER_DOMAINS = ("basis", "orbital", "correction", "spin")
 _DERIVATIVE_CAPABILITIES = (
     "energy",
@@ -40,6 +40,7 @@ _PRIMITIVE_ORDER = (
     "spin_polarization",
     "hamiltonian",
     "repulsion",
+    "halogen_correction",
     "dispersion",
 )
 
@@ -60,6 +61,28 @@ _GFN2_CORRECTION_TABLES = (
 )
 _GFN2_SPIN_TABLES = ("spin-polarization",)
 _GFN2_SUPPORTED_ATOMIC_NUMBERS = tuple(range(1, 87))
+
+_GFN1_BASIS_TABLES = (
+    "atomic-basis-shell-layout",
+    "slater-exponents",
+)
+_GFN1_ORBITAL_TABLES = (
+    "atomic-levels",
+    "coordination-dependent-h0",
+    "hubbard-shell",
+    "third-order-atom",
+)
+_GFN1_CORRECTION_TABLES = (
+    "coordination-number",
+    "d3-reference-sha256-9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+    "halogen-correction",
+    "repulsion",
+)
+_GFN1_SPIN_TABLES = ("spin-polarization",)
+_GFN1_SUPPORTED_ATOMIC_NUMBERS = tuple(range(1, 87))
+_GFN1_PARAMETER_JSON_SHA256 = (
+    "0ecdc3f5f12990c5a7e0f0bd7e6fe931ecf72d7630e6a6a3cc396c51766a40a0"
+)
 
 
 class UnsupportedXtbMethod(ValueError):
@@ -325,13 +348,13 @@ class XtbMethodIR:
         _require_text(self.identifier, "XtbMethodIR identifier")
         if self.version != XTB_METHOD_IR_VERSION:
             raise UnsupportedXtbMethod("unsupported XtbMethodIR version")
-        if self.model_flavor != _SUPPORTED_MODEL:
+        if self.model_flavor not in _SUPPORTED_MODELS:
             raise UnsupportedXtbMethod(
-                "only audited GFN2-xTB graphs are representable in this compiler slice"
+                f"unsupported xTB model flavor {self.model_flavor!r}"
             )
         if not isinstance(self.parameter_set, XtbParameterSet):
             raise TypeError("XtbMethodIR requires an XtbParameterSet")
-        _validate_gfn2_parameter_set(self.parameter_set)
+        _validate_parameter_set(self.model_flavor, self.parameter_set)
         if self.reference not in _REFERENCES:
             raise UnsupportedXtbMethod(f"unsupported xTB reference {self.reference!r}")
         object.__setattr__(
@@ -345,13 +368,16 @@ class XtbMethodIR:
         ):
             raise UnsupportedXtbMethod("XtbMethodIR contains an unsupported primitive")
         kinds = tuple(primitive.kind for primitive in self.primitives)
-        if kinds != _PRIMITIVE_ORDER:
+        expected_primitives = _primitives_for_model(self.model_flavor)
+        expected_kinds = tuple(primitive.kind for primitive in expected_primitives)
+        model_name = self.model_flavor.upper()
+        if kinds != expected_kinds:
             raise UnsupportedXtbMethod(
-                "GFN2-xTB graph must contain the complete canonical primitive sequence"
+                f"{model_name}-xTB graph must contain the complete canonical primitive sequence"
             )
-        if self.primitives != _gfn2_primitives():
+        if self.primitives != expected_primitives:
             raise UnsupportedXtbMethod(
-                "GFN2-xTB graph must preserve audited primitive semantics"
+                f"{model_name}-xTB graph must preserve audited primitive semantics"
             )
         present = set(kinds)
         for primitive in self.primitives:
@@ -367,6 +393,18 @@ class XtbMethodIR:
             for primitive in self.primitives
             for state in primitive.state_requirements
         }
+        kinds = {primitive.kind for primitive in self.primitives}
+        integral_operators = []
+        if "overlap_integrals" in kinds:
+            integral_operators.append("overlap")
+        if "multipole_integrals" in kinds:
+            integral_operators.extend(("dipole", "quadrupole"))
+        correction_kinds = {
+            "coordination_number",
+            "repulsion",
+            "halogen_correction",
+            "dispersion",
+        }
         return {
             "parameter_set_identity": self.parameter_set.identity,
             "supported_atomic_numbers": self.parameter_set.supported_atomic_numbers,
@@ -376,14 +414,14 @@ class XtbMethodIR:
                 "correction": self.parameter_set.correction_tables,
                 "spin": self.parameter_set.spin_tables,
             },
-            "integral_operators": ("overlap", "dipole", "quadrupole"),
+            "integral_operators": tuple(integral_operators),
             "state_requirements": tuple(
                 name for name in _STATE_ORDER if name in states
             ),
-            "correction_primitives": (
-                "coordination_number",
-                "repulsion",
-                "dispersion",
+            "correction_primitives": tuple(
+                name
+                for name in _PRIMITIVE_ORDER
+                if name in kinds and name in correction_kinds
             ),
             "requested_products": self.requested_products,
         }
@@ -447,6 +485,18 @@ GFN2_PARAMETER_SET = XtbParameterSet(
     orbital_tables=_GFN2_ORBITAL_TABLES,
     correction_tables=_GFN2_CORRECTION_TABLES,
     spin_tables=_GFN2_SPIN_TABLES,
+)
+
+
+GFN1_PARAMETER_SET = XtbParameterSet(
+    identifier="gfn1-xtb",
+    revision=f"sha256:{_GFN1_PARAMETER_JSON_SHA256}",
+    source="upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json",
+    supported_atomic_numbers=_GFN1_SUPPORTED_ATOMIC_NUMBERS,
+    basis_tables=_GFN1_BASIS_TABLES,
+    orbital_tables=_GFN1_ORBITAL_TABLES,
+    correction_tables=_GFN1_CORRECTION_TABLES,
+    spin_tables=_GFN1_SPIN_TABLES,
 )
 
 
@@ -536,6 +586,84 @@ def _gfn2_primitives() -> tuple[XtbPrimitive, ...]:
     )
 
 
+def _gfn1_primitives() -> tuple[XtbPrimitive, ...]:
+    return (
+        XtbPrimitive(
+            "basis_parameters",
+            "gfn1-sto-mg-shell-basis",
+            parameter_domains=("basis", "orbital"),
+        ),
+        XtbPrimitive(
+            "coordination_number",
+            "gfn1-exp-covalent-cn",
+            parameter_domains=("correction", "orbital"),
+            derivative_capabilities=("nuclear-gradient",),
+        ),
+        XtbPrimitive(
+            "overlap_integrals",
+            "sto-mg-overlap",
+            requires=("basis_parameters",),
+            parameter_domains=("basis",),
+            derivative_capabilities=("integral-adjoint",),
+        ),
+        XtbPrimitive(
+            "h0",
+            "gfn1-extended-huckel-cn",
+            requires=(
+                "basis_parameters",
+                "coordination_number",
+                "overlap_integrals",
+            ),
+            parameter_domains=("orbital",),
+            derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
+        ),
+        XtbPrimitive(
+            "scc_electrostatics",
+            "gfn1-shell-es2-atom-es3",
+            requires=("basis_parameters", "overlap_integrals"),
+            state_requirements=("shell_charge", "charge"),
+            parameter_domains=("orbital",),
+            derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
+            self_consistent=True,
+        ),
+        XtbPrimitive(
+            "spin_polarization",
+            "gfn1-shell-spin-polarization",
+            requires=("basis_parameters",),
+            state_requirements=("magnetization",),
+            parameter_domains=("spin",),
+            derivative_capabilities=("energy", "hamiltonian"),
+            self_consistent=True,
+        ),
+        XtbPrimitive(
+            "hamiltonian",
+            "gfn1-fixed-state-hamiltonian",
+            requires=("h0", "scc_electrostatics", "spin_polarization"),
+            state_requirements=("shell_charge", "charge"),
+            derivative_capabilities=("energy", "hamiltonian", "integral-adjoint"),
+        ),
+        XtbPrimitive(
+            "repulsion",
+            "gfn1-repulsion",
+            parameter_domains=("correction",),
+            derivative_capabilities=("energy", "nuclear-gradient"),
+        ),
+        XtbPrimitive(
+            "halogen_correction",
+            "gfn1-halogen-correction",
+            parameter_domains=("correction",),
+            derivative_capabilities=("energy", "nuclear-gradient"),
+        ),
+        XtbPrimitive(
+            "dispersion",
+            "gfn1-d3-bj-two-body",
+            requires=("coordination_number",),
+            parameter_domains=("correction",),
+            derivative_capabilities=("energy", "nuclear-gradient"),
+        ),
+    )
+
+
 def _validate_gfn2_parameter_set(parameter_set: XtbParameterSet) -> None:
     if parameter_set.identifier != "gfn2-xtb":
         raise UnsupportedXtbMethod(
@@ -558,14 +686,71 @@ def _validate_gfn2_parameter_set(parameter_set: XtbParameterSet) -> None:
             )
 
 
+def _validate_gfn1_parameter_set(parameter_set: XtbParameterSet) -> None:
+    if parameter_set.identifier != "gfn1-xtb":
+        raise UnsupportedXtbMethod(
+            "GFN1-xTB requires an explicitly identified gfn1-xtb parameter set"
+        )
+    if parameter_set.revision != f"sha256:{_GFN1_PARAMETER_JSON_SHA256}":
+        raise UnsupportedXtbMethod(
+            "GFN1-xTB parameter revision must match the canonical normalized JSON"
+        )
+    if (
+        parameter_set.source
+        != "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+    ):
+        raise UnsupportedXtbMethod(
+            "GFN1-xTB parameter source must use the canonical repository snapshot"
+        )
+    if parameter_set.supported_atomic_numbers != _GFN1_SUPPORTED_ATOMIC_NUMBERS:
+        raise UnsupportedXtbMethod(
+            "GFN1-xTB parameter scope must explicitly cover atomic numbers 1..86"
+        )
+    required_tables = {
+        "basis_tables": _GFN1_BASIS_TABLES,
+        "orbital_tables": _GFN1_ORBITAL_TABLES,
+        "correction_tables": _GFN1_CORRECTION_TABLES,
+        "spin_tables": _GFN1_SPIN_TABLES,
+    }
+    for field, expected in required_tables.items():
+        if getattr(parameter_set, field) != expected:
+            raise UnsupportedXtbMethod(
+                f"GFN1-xTB {field.replace('_', ' ')} are not an audited manifest"
+            )
+
+
+def _validate_parameter_set(model_flavor: str, parameter_set: XtbParameterSet) -> None:
+    if model_flavor == "gfn2":
+        _validate_gfn2_parameter_set(parameter_set)
+        return
+    if model_flavor == "gfn1":
+        _validate_gfn1_parameter_set(parameter_set)
+        return
+    raise UnsupportedXtbMethod(f"unsupported xTB model flavor {model_flavor!r}")
+
+
+def _primitives_for_model(model_flavor: str) -> tuple[XtbPrimitive, ...]:
+    if model_flavor == "gfn2":
+        return _gfn2_primitives()
+    if model_flavor == "gfn1":
+        return _gfn1_primitives()
+    raise UnsupportedXtbMethod(f"unsupported xTB model flavor {model_flavor!r}")
+
+
 XTB_METHOD_CATALOG = MappingProxyType(
     {
+        "GFN1-xTB": XtbMethodSpec(
+            identifier="GFN1-xTB",
+            model_flavor="gfn1",
+            parameter_set=GFN1_PARAMETER_SET,
+            requested_products=("energy",),
+        ),
         "GFN2-xTB": XtbMethodSpec(
             identifier="GFN2-xTB",
             model_flavor="gfn2",
             parameter_set=GFN2_PARAMETER_SET,
             requested_products=("energy",),
-        )
+        ),
     }
 )
 
@@ -593,21 +778,17 @@ def resolve_xtb_method(
     if requested_products is not None:
         spec = replace(spec, requested_products=requested_products)
 
-    if spec.model_flavor == "gfn1":
-        raise UnsupportedXtbMethod(
-            "GFN1 is a schema extension point only; no audited GFN1 graph is supported"
-        )
-    if spec.model_flavor != _SUPPORTED_MODEL:
+    if spec.model_flavor not in _SUPPORTED_MODELS:
         raise UnsupportedXtbMethod(
             f"unsupported xTB model flavor {spec.model_flavor!r}"
         )
 
-    _validate_gfn2_parameter_set(spec.parameter_set)
+    _validate_parameter_set(spec.model_flavor, spec.parameter_set)
     return XtbMethodIR(
         identifier=spec.identifier,
         model_flavor=spec.model_flavor,
         parameter_set=spec.parameter_set,
         reference=spec.reference,
-        primitives=_gfn2_primitives(),
+        primitives=_primitives_for_model(spec.model_flavor),
         requested_products=spec.requested_products,
     )

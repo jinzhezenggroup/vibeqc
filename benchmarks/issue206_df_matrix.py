@@ -14,6 +14,7 @@ is safe on a login node and is useful for review before spending GPU time.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -71,6 +72,36 @@ def _matrix(selected: str | None) -> tuple[MatrixCase, ...]:
     return tuple(item for item in MATRIX if item.name == selected)
 
 
+def _native_library_metadata(library: Path) -> dict[str, Any]:
+    """Identify the requested binary without loading native code or CUDA.
+
+    Manifest-only planning is supported before compilation, so a missing file
+    remains explicit rather than inheriting another build's identity. Read in
+    bounded chunks: an sm_120 library can be much larger than the manifest.
+    This pre-run snapshot does not establish which binary an endpoint loads;
+    the comparator's own native-build metadata remains authoritative for that.
+    """
+    path = library.resolve()
+    metadata: dict[str, Any] = {
+        "path": str(path),
+        "status": "missing",
+        "sha256": None,
+        "size_bytes": None,
+    }
+    try:
+        stream = path.open("rb")
+    except FileNotFoundError:
+        return metadata
+    digest = hashlib.sha256()
+    size = 0
+    with stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+            size += len(chunk)
+    metadata.update(status="recorded", sha256=digest.hexdigest(), size_bytes=size)
+    return metadata
+
+
 def manifest_payload(
     *,
     cases: tuple[MatrixCase, ...],
@@ -91,6 +122,7 @@ def manifest_payload(
             "git_head": _git("rev-parse", "HEAD"),
             "git_dirty": bool(_git("status", "--porcelain")),
             "repository": str(ROOT),
+            "native_library": _native_library_metadata(library),
         },
         "execution": {
             "slurm_required_for_run": True,
@@ -218,6 +250,10 @@ def run_matrix(
             "--output",
             str(result_path),
         ]
+        # GPU4PySCF's matched DF reference must rebuild the full Fock from the
+        # full density.  Without this explicit protocol flag its incremental
+        # DF path rejects the issue-206 endpoint before producing a result.
+        command.append("--reference-full-fock")
         command.extend(["--maximum-energy-error", "1e-9"])
         if payload["execution"].get("properties") == ["energy"]:
             command.append("--energy-only")

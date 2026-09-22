@@ -114,11 +114,151 @@ owners. Tests require the complete prepared endpoint to run with the legacy
 `scalar_values` repacking entry point disabled and verify that the native scalar
 input shares storage with the DFT-owned feature buffer.
 
+## Logical SPMD lowering contract
+
+`vibeqc_compiler.common.spmd` adds a backend-neutral lowering plan around the
+immutable ProgramIR. The scientific ProgramIR remains schema v2 and does not
+contain physical GPU ordinals, product names, links or topology assumptions.
+A `DeviceMesh` names only logical axes. `BufferPlacement` describes whether a
+boundary buffer is replicated or deterministically sharded along one dense tensor
+axis, and `CollectiveSpec` makes all-reduce, reduce-scatter and all-gather
+synchronization explicit. Scatter/gather tensor axes are explicit, and their
+result placement is validated against the buffer contract. All-to-all is
+intentionally absent until a real consumer requires it.
+
+The same ProgramIR identity can therefore be lowered to a one-device mesh or a
+larger mesh. Size-one collectives canonicalize away, so the one-device lowering is
+the fallback rather than a separate scientific equation. Mesh shape, placement,
+collective order and logical shard coordinates participate in the SPMD plan and
+provenance identities. Replaying serialized SPMD metadata revalidates the bound
+ProgramIR identity and all placement/collective invariants.
+
+The v1 accounting contract charges one communication scratch allocation per
+logical rank and records collective source-plus-result traffic as the resource
+candidate's relative-cost work count. This is deliberately not a hardware
+latency/bandwidth prediction:
+collective-library internals and physical interconnect properties remain explicit
+scope exclusions until a target/backend supplies measured profitability evidence.
+Backends must declare support for every required collective before execution.
+
+A result publication boundary must call `require_complete_shards()`; missing,
+duplicate or unexpected logical ranks fail instead of publishing a partial
+scientific result. `reference_collective()` supplies pure CPU semantics for the
+three v1 collectives so backend implementations can be qualified independently.
+
+This contract does **not** yet make any existing XC/SCF path multi-GPU. The first
+real bounded consumer, runtime collective binding and measured 1/2/4+ GPU endpoint
+scaling remain follow-up work under #834. That qualification must reuse this
+logical contract rather than adding method- or GPU-name-specific scientific IR.
+
+Rationale:
+[ProgramIR SPMD contract decision](../.agents/notes/implemented/architecture/2026-09-21-programir-spmd-contract.md).
+
+## Structured bounded solver regions
+
+`vibeqc_compiler.common.solver_region.SolverRegion` adds a structured loop
+contract **above** serial ProgramIR without changing ProgramIR schema v2. The
+body remains ordinary SSA: immutable inputs are declared as invariants and every
+loop-carried value is an explicit `current -> next` pair. `max_steps` is a
+strict finite bound; the compiler does not invent an unbounded while loop.
+
+Convergence and failure predicates carry stable provider-owned identities rather
+than embedding SCF/CC policy in generic compiler code. Checkpoints state exactly
+which buffers may be observed at entry, per-iteration, success, failure or exit,
+and `host_visible` is explicit. Scalar completion is the default; a ragged
+consumer must provide an explicit per-item active-mask output.
+
+Derivative behavior is also explicit. `derivative_policy` is either
+`unsupported` or `custom`; a custom region must register identified first-order
+implicit/stationary JVP/VJP rules. An unregistered derivative request raises
+instead of tracing or retaining iteration history. Registering first order does
+not imply higher-order support.
+
+The region resource request reuses the body's boundary allocation once across
+all bounded steps; `max_steps` does not multiply reusable capacities. As with
+ProgramIR, provider-internal solver history, library scratch and caller-retained
+checkpoint payloads remain outside that boundary unless a future consumer exposes
+them as named owners.
+
+The first existing endpoint represented by this contract is conventional RCCSD
+in `tools.vibeqc_cc.solver.PreparedCCSD.solver_region`. Its numerical loop is
+unchanged: the region records the existing optimized TensorIR equation identity,
+DIIS/control state as explicit carried dependencies, the exact
+`max_iterations + 1` evaluation bound, the existing energy/residual plus fresh
+expanded-equation acceptance rule, nonfinite failure semantics and host-visible
+publication points. User-supplied initial amplitudes remain the ordinary solver
+initial state. The solver result records the region identity and bound.
+
+The RCCSD consumer remains descriptive: execution still uses the established
+Python loop, so it makes **no host-overhead or speedup claim**. Its CPU result
+also retains the exact serialized region. The Lambda boundary reconstructs and
+checks that region against the executed identity/bound before response work.
+Only after the existing checked transpose solve and independent stationarity
+gate succeed does the response bind an identified `implicit_vjp` rule to a
+derived `custom` region. Parameter-weight requests consult that registered rule
+and fail closed on a missing or stale identity; no CC iteration tape is retained.
+The specialized CC rule keeps the existing independently weighted T2 coordinate
+contract rather than pretending the redundant dense T2 representation is the
+generic `ImplicitSolveSpec` coordinate model.
+
+CUDA now also has
+a method-neutral `runtime::SolverRegionCudaExecutor` that bounds native body
+submission and delegates optional capture/replay to the existing shared
+`CudaGraphRegion` lifecycle. The opt-in direct-RKS two-iteration path from #370
+is its first execution consumer; KS still owns convergence, DIIS, occupations,
+failure handling, and publication.
+
+CUDA KS currently binds that executor with replay disabled, preserving the
+qualified ordinary-stream chunk behavior from #623. Captured/replayed KS
+execution still requires matched endpoint and ragged-failure qualification
+before promotion. See
+[the structured-region architecture note](../.agents/notes/implemented/architecture/2026-09-21-structured-solver-regions.md)
+and [the CUDA execution follow-up](../.agents/notes/implemented/architecture/2026-09-21-cuda-solver-region-executor.md).
+
+## Shared storage analysis
+
+The first #831 compiler slice adds `ProgramIR.storage_analysis()` on top of the
+backend-neutral `common.storage` contract. The same analysis is also adapted by
+TensorIR CUDA plans, so ownership groups, aliases, live ranges, interference,
+reusable slots and simultaneous-live bytes have one fail-closed representation.
+ProgramIR last-use resource intervals now consume these shared ranges.
+
+This remains analysis, not a second allocator. Unknown alias metadata blocks
+reuse for its memory space and opaque effects retain touched owners through the
+region boundary. TensorIR keeps its qualified arena offsets as the execution plan
+of record until a later #831 slice independently validates allocator migration.
+
+ProgramStoragePlan schema v2 also admits explicit same-call ownership transfer
+through `CallDonationBinding`. A donation maps one call read to one call write
+and is forwarded to the same backend-neutral storage analyzer used by TensorIR.
+The donor and recipient must resolve to compiler-owned physical owners with equal
+capacity in one memory space, the donor must die at that call, and an opaque call
+is rejected. Donation therefore removes only one proven interference edge; it is
+never inferred from liveness alone, does not donate borrowed inputs, and does not
+turn ProgramIR providers into implicit in-place operations. Schema-v1 replay
+remains supported for plans without donation metadata.
+
+The first production layout-propagation slice now goes one step beyond the #460
+feature-input prototype on polarized native CPU fixed-density potentials. Scalar
+XC writes a consumer-ready physical owner whose first row is energy and whose
+remaining rows are the complete feature gradient; inactive derivative rows are
+exact zero. The generated Vxc coefficient function borrows those rows and the
+DFT-owned density-gradient block directly, avoiding the previous gradient rebuild,
+immutable input copies, variable stack, and stack copy. The generic ABI remains
+the fallback for routes outside this qualification. `xc_rows` `DenseLayout` and
+the generated packed root-row metadata are both hashed, so a physical execution
+layout change invalidates the ProgramIR/native artifact identity deliberately.
+
+Rationale and measured endpoint evidence:
+[XC row-layout propagation](../.agents/notes/implemented/performance/2026-09-21-programir-xc-row-layout-propagation.md).
+
 ## Validation and reproduction
 
 ```bash
 PYTHONPATH=python:. python -m pytest -q \
-  tests/python/test_program_ir.py tests/python/test_program_ir_xc.py \
+  tests/python/test_program_ir.py tests/python/test_program_spmd.py \
+  tests/python/test_solver_region.py tests/python/test_cc_solver.py \
+  tests/python/test_program_ir_xc.py \
   tests/python/test_xc_contractions_native.py
 PYTHONPATH=python:. python tools/check_compiler_structure.py
 ```

@@ -18,14 +18,13 @@ from pathlib import Path
 from types import MappingProxyType
 
 import numpy as np
-from typing_extensions import Self
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceSession,
     plan_resources,
 )
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident
 from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
@@ -38,6 +37,9 @@ from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
+
+if typing.TYPE_CHECKING:
+    from typing_extensions import Self
 
 
 class PreparedCUDALambda:

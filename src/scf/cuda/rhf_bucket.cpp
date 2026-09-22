@@ -222,6 +222,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
     (*plan)->cublas_enabled = false;
     outputs = execute_hf_cuda_bucket_driver(**plan, candidate, options, device_id, unrestricted,
                                             shell_class_profiling, inactive_eigensolver_profiling);
+    for (auto& output : outputs) ++output.scf.precision.execution_retries;
     if (!(*plan)->initialized) {
       delete *plan;
       *plan = nullptr;
@@ -308,6 +309,16 @@ bool get_rhf_cuda_inactive_eigensolver_profile(const CudaRhfBucketPlan* plan,
     return false;
   }
   profile = *plan->last_inactive_eigensolver_profile;
+  return true;
+}
+
+bool get_rhf_cuda_final_state_audit(const CudaRhfBucketPlan* plan,
+                                    CudaDirectFinalStateAudit& audit) noexcept {
+  if (plan == nullptr || !plan->initialized ||
+      plan->last_direct_final_state.route == CudaDirectFinalStateRoute::none) {
+    return false;
+  }
+  audit = plan->last_direct_final_state;
   return true;
 }
 

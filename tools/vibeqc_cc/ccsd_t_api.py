@@ -1,4 +1,4 @@
-"""Composed energy-only RCCSD(T) facade for issue #150 slice C.
+"""Composed RCCSD(T) energy and analytic-force facade for #150 C / #155 C.
 
 The facade deliberately composes the already-qualified RCCSD and perturbative
 triples implementations instead of introducing another coupled-cluster equation
@@ -7,10 +7,11 @@ RCCSD state has converged and, for the resident CUDA backend, carries the exact
 ``resident_solved_state_identity`` produced by the independent expanded
 physical replay.
 
-This module is an internal post-HF product boundary.  It does not activate the
-reserved public C-ABI ``VIBEQC_METHOD_RCCSD_T`` entry: native method
-registration remains coupled to #149 C and must not be emulated by a Python
-special case in ``Calculator``.
+This module remains the internal post-HF energy/force composition boundary.
+The force binding reuses the qualified #746 analytic-gradient owner and does not
+add another CC/Lambda/Z stack. The public native registry separately owns the
+qualified CPU energy path; ``native_public=False`` below means this internal
+force facade is not itself the native/public force implementation.
 """
 
 from __future__ import annotations
@@ -23,8 +24,9 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.arrays import immutable
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 
 from tools.vibeqc_posthf.reference import ReferenceSnapshot
 
@@ -51,14 +53,17 @@ class RCCSDTCapabilities:
     family: str = "coupled_cluster"
     available: bool = True
     supports_batch: bool = True
-    supported_properties: frozenset = frozenset({"energy"})
+    supported_properties: frozenset = frozenset({"energy", "forces"})
     batch_shape_policy: str = "homogeneous"
+    native_public: bool = False
 
     def __post_init__(self) -> None:
         if self.method != "rccsd(t)" or self.family != "coupled_cluster":
             raise ValueError("RCCSD(T) capability identity mismatch")
-        if self.supported_properties != frozenset({"energy"}):
-            raise ValueError("RCCSD(T) is energy-only")
+        if self.supported_properties != frozenset({"energy", "forces"}):
+            raise ValueError("RCCSD(T) internal facade supports energy and forces")
+        if self.native_public:
+            raise ValueError("RCCSD(T) native/public capability is not promoted")
         if self.batch_shape_policy != "homogeneous":
             raise ValueError("RCCSD(T) prepared batches are homogeneous")
 
@@ -66,15 +71,35 @@ class RCCSDTCapabilities:
 def rccsd_t_method_capabilities(method: str = "rccsd(t)") -> RCCSDTCapabilities:
     """Report the executable internal RCCSD(T) facade capability.
 
-    ``ccsd(t)`` is accepted as a spelling alias because the Python Calculator
-    already uses that public method string for the reserved ABI identifier.
-    The canonical capability identity remains ``rccsd(t)``.
+    ``ccsd(t)`` is accepted as a spelling alias used by the public Calculator.
+    The canonical capability identity remains ``rccsd(t)``. This internal
+    record is distinct from the native registry's current energy-only boundary.
     """
 
     normalized = method.lower().replace(" ", "")
     if normalized not in {"rccsd(t)", "ccsd(t)"}:
         raise ValueError(f"unknown method {method!r}")
     return RCCSDTCapabilities()
+
+
+def _complete_ccsdt_gradient(
+    source: typing.Any, *, options: typing.Any = None, vir_chunk_size: int | None = 1
+) -> typing.Any:
+    """Lazy import keeps the energy-only path independent of gradient machinery."""
+    from .triples_complete_gradient import complete_ccsdt_gradient_validation
+
+    return complete_ccsdt_gradient_validation(
+        source, options=options, vir_chunk_size=vir_chunk_size
+    )
+
+
+def rccsd_t_force(
+    source: typing.Any, *, options: typing.Any = None, vir_chunk_size: int | None = 1
+) -> typing.Any:
+    """Run the validated conventional RCCSD(T) analytic-force endpoint."""
+    return _complete_ccsdt_gradient(
+        source, options=options, vir_chunk_size=vir_chunk_size
+    )
 
 
 def _array_sha256(array: typing.Any) -> str:
@@ -281,7 +306,7 @@ def _validate_execution(
     """Validate shared execution controls before any solver work, even if empty."""
     if compute_forces:
         raise NotImplementedError(
-            "RCCSD(T) exposes energy only; forces are not implemented"
+            "rccsd_t_energy is energy-only; use rccsd_t_force for analytic forces"
         )
     if backend not in ("cpu", "cuda-resident"):
         raise ValueError("RCCSD(T) backend must be 'cpu' or 'cuda-resident'")
@@ -553,7 +578,7 @@ class PreparedRCCSDTBatch:
         """Return input-ordered results; any item exception leaves others runnable."""
         if compute_forces:
             raise NotImplementedError(
-                "RCCSD(T) exposes energy only; forces are not implemented"
+                "rccsd_t_energy is energy-only; use rccsd_t_force for analytic forces"
             )
         items = []
         for index, (snapshot, provider) in enumerate(self.problems):
@@ -599,4 +624,125 @@ def rccsd_t_batch_energy(
 
     return PreparedRCCSDTBatch(
         problems, compute_forces=compute_forces, **settings
+    ).execute()
+
+
+@dataclass(frozen=True)
+class RCCSDTForceBatchItemResult:
+    """One isolated analytic-force batch item in input order."""
+
+    index: int
+    status: str
+    reason: str
+    converged: bool
+    forces: np.ndarray | None
+    result: typing.Any | None
+
+
+@dataclass(frozen=True)
+class BatchRCCSDTForceResult:
+    """Input-ordered homogeneous analytic-force batch result."""
+
+    items: tuple[RCCSDTForceBatchItemResult, ...]
+    shape: tuple[int, int] | None
+
+
+def _force_shape(source: typing.Any) -> tuple[int, int]:
+    nbf = getattr(source, "nbf", None)
+    electrons = getattr(source, "electron_count", None)
+    if type(nbf) is not int or type(electrons) is not int:
+        raise TypeError("RCCSD(T) force batch items require native-source dimensions")
+    if nbf < 2 or electrons <= 0 or electrons % 2 or electrons >= 2 * nbf:
+        raise ValueError(
+            "RCCSD(T) force batch requires closed-shell occupied/virtual spaces"
+        )
+    nocc = electrons // 2
+    return nocc, nbf - nocc
+
+
+class PreparedRCCSDTForceBatch:
+    """Prepared homogeneous force batch with per-item failure isolation.
+
+    Each execution constructs a fresh validated RHF/CC/(T)/Lambda/Z owner per
+    item. No amplitudes, response spaces, or device state are shared.
+    """
+
+    def __init__(
+        self,
+        sources: typing.Any,
+        *,
+        options: typing.Any = None,
+        vir_chunk_size: int | None = 1,
+    ) -> None:
+        if options is not None:
+            from .complete_gradient import CCSDGradientOptions
+
+            if not isinstance(options, CCSDGradientOptions):
+                raise TypeError("force batch options must be CCSDGradientOptions")
+        if vir_chunk_size is not None and (
+            type(vir_chunk_size) is not int or vir_chunk_size < 1
+        ):
+            raise ValueError("vir_chunk_size must be a positive integer or None")
+        self.sources = tuple(sources)
+        self.options = options
+        self.vir_chunk_size = vir_chunk_size
+        if not self.sources:
+            self.shape = None
+            return
+        shapes = tuple(_force_shape(source) for source in self.sources)
+        if any(shape != shapes[0] for shape in shapes[1:]):
+            raise ValueError(
+                "RCCSD(T) prepared force batches require homogeneous (nocc, nvir) shapes"
+            )
+        self.shape = shapes[0]
+
+    def execute(self) -> BatchRCCSDTForceResult:
+        items = []
+        for index, source in enumerate(self.sources):
+            try:
+                result = rccsd_t_force(
+                    source,
+                    options=self.options,
+                    vir_chunk_size=self.vir_chunk_size,
+                )
+                forces = immutable(result.forces)
+                if (
+                    forces.ndim != 2
+                    or forces.shape[0] == 0
+                    or forces.shape[1:] != (3,)
+                    or not np.isfinite(forces).all()
+                ):
+                    raise RuntimeError(
+                        "RCCSD(T) force endpoint returned invalid forces"
+                    )
+                items.append(
+                    RCCSDTForceBatchItemResult(
+                        index=index,
+                        status="converged",
+                        reason="complete RCCSD(T) analytic gradient converged",
+                        converged=True,
+                        forces=forces,
+                        result=result,
+                    )
+                )
+            except Exception as error:  # noqa: BLE001 - item isolation is the contract
+                items.append(
+                    RCCSDTForceBatchItemResult(
+                        index=index,
+                        status="error",
+                        reason=f"{type(error).__name__}: {error}",
+                        converged=False,
+                        forces=None,
+                        result=None,
+                    )
+                )
+        return BatchRCCSDTForceResult(tuple(items), self.shape)
+
+
+def rccsd_t_batch_forces(
+    sources: typing.Any, *, options: typing.Any = None, vir_chunk_size: int | None = 1
+) -> BatchRCCSDTForceResult:
+    """Prepare and execute a homogeneous internal RCCSD(T) analytic-force batch."""
+    return PreparedRCCSDTForceBatch(
+        sources, options=options, vir_chunk_size=vir_chunk_size
     ).execute()

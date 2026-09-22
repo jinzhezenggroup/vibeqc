@@ -3,6 +3,7 @@
 import copy
 import math
 import typing
+from pathlib import Path
 
 import pytest
 from vibeqc_compiler.integral.df_tuning.emission import emit_candidate
@@ -182,19 +183,56 @@ def test_manifests_require_complete_independent_qualification(
         load_value_manifest,
     )
 
-    for source, load, derivative in (
-        (MANIFEST, load_manifest, True),
-        (VALUE_MANIFEST, load_value_manifest, False),
+    for source, load in (
+        (MANIFEST, load_manifest),
+        (VALUE_MANIFEST, load_value_manifest),
     ):
         original = json.loads(source.read_text())
         payload = copy.deepcopy(original)
-        profile = payload["architectures"]["sm_120"] if derivative else payload
+        profile = payload["architectures"]["sm_120"]
         profile["qualified"] = True
         profile["provenance"] = {"candidate_report": "partial.json"}
         path = tmp_path / "partial.json"
         path.write_text(json.dumps(payload))
         with pytest.raises(ValueError, match="provenance|evidence"):
             load(path)
+
+
+def test_value_manifest_is_target_driven_and_unknown_targets_are_generic(
+    tmp_path: typing.Any,
+) -> None:
+    import json
+
+    from vibeqc_compiler.integral.df_tuning.value_manifest import (
+        load_value_manifest,
+        resolve_value_profile,
+    )
+    from vibeqc_compiler.integral.df_value_candidates import VALUE_CLASSES
+
+    kernels = {"".join(map(str, angular)): "generic" for angular in VALUE_CLASSES}
+    payload = {
+        "schema_version": 2,
+        "architectures": {
+            "sm_90": {
+                "qualified": False,
+                "raw_lanes": 1,
+                "kernels": kernels,
+                "provenance": {"candidate_report": "unit-test.json"},
+            }
+        },
+    }
+    path = tmp_path / "value-manifest.json"
+    path.write_text(json.dumps(payload))
+    loaded = load_value_manifest(path)
+
+    sm90 = resolve_value_profile(loaded, "90")
+    assert sm90["raw_lanes"] == 1
+    assert set(sm90["kernels"].values()) == {"generic"}
+
+    future = resolve_value_profile(loaded, "sm_130")
+    assert future["qualified"] is False
+    assert future["raw_lanes"] == 1
+    assert set(future["kernels"].values()) == {"generic"}
 
 
 def campaign_manifest() -> typing.Any:
@@ -353,3 +391,22 @@ def test_value_identity_and_profile_disagreements() -> None:
     baseline = "raw_cartesian:000:generic:lanes1"
     missing = [r for r in rows if r["candidate"] != baseline]
     assert not rank_values(groups, missing, compiled)["proposed_mapping"]
+
+
+@pytest.mark.parametrize("lanes", [True, 1.0, 4.0])
+def test_value_profile_rejects_noninteger_lane_counts(
+    tmp_path: Path, lanes: object
+) -> None:
+    import json
+
+    from vibeqc_compiler.integral.df_tuning.value_manifest import (
+        VALUE_MANIFEST,
+        load_value_manifest,
+    )
+
+    payload = json.loads(VALUE_MANIFEST.read_text())
+    payload["architectures"]["sm_120"]["raw_lanes"] = lanes
+    path = tmp_path / "profile.json"
+    path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="schedule"):
+        load_value_manifest(path)

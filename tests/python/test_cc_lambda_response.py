@@ -9,6 +9,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from test_cc_solver import fixture_problem
+from vibeqc_compiler.common.solver_region import RegionDerivative
 from vibeqc_compiler.tensor import PackedLayout, Program, execute
 
 from tools.cc_endpoint_fixtures import load, source_arguments
@@ -19,7 +20,6 @@ from tools.vibeqc_cc import (
     SolverOptions,
     solve,
 )
-from tools.vibeqc_cc import lambda_response as response_module
 from tools.vibeqc_cc import solver as solver_module
 from tools.vibeqc_cc.lambda_equations import (
     PARAMETERS,
@@ -54,6 +54,38 @@ def _direction(spec: typing.Any, seed: typing.Any = 152) -> typing.Any:
     layout = PackedLayout.from_spec(spec)  # tiny TEST-ONLY coordinate map
     direction = layout.unpack(np.random.default_rng(seed).normal(size=layout.size))
     return direction / np.linalg.norm(direction)
+
+
+def test_executed_solver_region_binds_real_implicit_vjp_plan() -> None:
+    snapshot, _, cc, bound, lam, response, _ = _state()
+    primal = bound.primal_solver_region
+    region = response.solver_region
+    assert primal is not None and region is not None
+    assert primal.identity == cc.provenance["solver_region_identity"]
+    assert primal.derivative_policy == "unsupported"
+    assert region.derivative_policy == "custom"
+    rule = region.derivative_rule("implicit_vjp")
+    assert rule.identity == response.derivative_plan_identity
+    assert region.identity != primal.identity
+    with pytest.raises(NotImplementedError, match="not registered"):
+        region.derivative_rule("stationary_vjp")
+    weight = response.weight("foo", reference_identity=snapshot.identity)
+    assert weight.provenance["solver_region_primal_identity"] == primal.identity
+    assert weight.provenance["solver_region_bound_identity"] == region.identity
+    assert (
+        weight.provenance["solver_region_derivative_identity"]
+        == response.derivative_plan_identity
+    )
+
+    stale = BoundCCSDResponse(bound, lam)
+    assert stale.solver_region is not None
+    stale_region = replace(
+        stale.solver_region,
+        derivatives=(RegionDerivative("implicit_vjp", "stale-plan"),),
+    )
+    object.__setattr__(stale, "solver_region", stale_region)
+    with pytest.raises(ResponseCompatibilityError, match="registration is stale"):
+        stale.weight("foo", reference_identity=snapshot.identity)
 
 
 def _resolved_correlation(
@@ -362,8 +394,8 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
     )
     small = BoundCCSDResponse(bound, lam, max_bytes=needed - 1)
     monkeypatch.setattr(
-        response_module,
-        "execute",
+        BoundCCSDLambda,
+        "_tensor_execute",
         lambda *a, **kw: pytest.fail("weight execution before admission"),
     )
     with pytest.raises(ImplicitSolveError, match="host budget exceeded"):
@@ -371,30 +403,30 @@ def test_block_budget_accounts_for_bound_state_and_rejects_before_execution(
 
 
 @pytest.mark.parametrize(
-    "mode", ("wrong_independent", "nonfinite", "dtype", "shape", "backend", "alias")
+    "mode", ("wrong_independent", "nonfinite", "dtype", "shape", "alias")
 )
 def test_generated_output_cannot_bypass_checks(
     monkeypatch: typing.Any, mode: typing.Any
 ) -> None:
     s, _, _, _, _, response, _ = _state()
     _, independent, _, _ = response._prepare("ovov")
-    original = response_module.execute
+    original = BoundCCSDLambda._tensor_execute
     shared_storage = None
 
-    def corrupt(program: typing.Any, *a: typing.Any, **kw: typing.Any) -> typing.Any:
+    def corrupt(
+        owner: BoundCCSDLambda, program: typing.Any, feeds: typing.Any
+    ) -> typing.Any:
         nonlocal shared_storage
-        result = original(program, *a, **kw)
-        if mode == "backend":
-            return replace(result, backend="unapproved-cuda-fallback")
-        value = result.outputs["bar_ovov"]
+        outputs = original(owner, program, feeds)
+        value = outputs["bar_ovov"]
         if mode == "alias":
             if shared_storage is None:
                 shared_storage = np.array(value)
             else:
                 shared_storage[:] += 1e-3
-            return replace(result, outputs={"bar_ovov": shared_storage})
+            return {"bar_ovov": shared_storage}
         if program.logical_hash != independent.program.logical_hash:
-            return result
+            return outputs
         if mode == "wrong_independent":
             value = value + 1e-3
         elif mode == "nonfinite":
@@ -403,9 +435,9 @@ def test_generated_output_cannot_bypass_checks(
             value = value.astype(np.float32)
         elif mode == "shape":
             value = value.reshape(-1)
-        return replace(result, outputs={"bar_ovov": value})
+        return {"bar_ovov": value}
 
-    monkeypatch.setattr(response_module, "execute", corrupt)
+    monkeypatch.setattr(BoundCCSDLambda, "_tensor_execute", corrupt)
     with pytest.raises((ResponseCompatibilityError, ImplicitSolveError, ValueError)):
         response.weight("ovov", reference_identity=s.identity)
 
@@ -417,14 +449,16 @@ def test_stale_during_weight_execution_cannot_publish(
     current = [s.identity]
     bound = BoundCCSDLambda(s, cc, current_reference=lambda: current[0])
     response = BoundCCSDResponse(bound, bound.solve(reference_identity=s.identity))
-    original = response_module.execute
+    original = BoundCCSDLambda._tensor_execute
 
-    def changed(*a: typing.Any, **kw: typing.Any) -> typing.Any:
-        result = original(*a, **kw)
+    def changed(
+        owner: BoundCCSDLambda, program: typing.Any, feeds: typing.Any
+    ) -> typing.Any:
+        outputs = original(owner, program, feeds)
         current[0] = "replaced-in-flight"
-        return result
+        return outputs
 
-    monkeypatch.setattr(response_module, "execute", changed)
+    monkeypatch.setattr(BoundCCSDLambda, "_tensor_execute", changed)
     with pytest.raises(ResponseCompatibilityError):
         response.weight("ovov", reference_identity=s.identity)
 

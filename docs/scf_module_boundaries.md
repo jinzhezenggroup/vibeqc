@@ -715,9 +715,10 @@ ownership/publication checks pass; 48 optional compiler probes are skipped.
 
 ## Retained direct kernels and C++ host control
 
-The remaining direct arithmetic now lives in 24 bounded `direct_native_*.cuh`
-headers: Cartesian/Hermite/Coulomb recurrences, sparse pair families, psss/psps/
-ppss/dsss gradients, order-specific gradients and contractions. Their largest
+The remaining direct arithmetic now lives in 21 bounded `direct_native_*.cuh`
+headers: Cartesian/Hermite/Coulomb recurrences, sparse pair families, the psss
+generated-math adapter, and order-specific gradients/contractions. PSPS/PPSS/DSSS
+weighted-force mathematics is compiler-owned. Their largest
 header is 438 lines. Eleven consumer helper headers separate contraction,
 density and symmetry handling from nine CUDA launch owners: cached tensors,
 Schwarz bounds, packed Fock, angular Fock, reference force, bounded dddd,

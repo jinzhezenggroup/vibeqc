@@ -16,12 +16,7 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
-from vibeqc_compiler.tensor import Program, execute, optimize
-
-from tools.vibeqc_cc import amplitude_layouts, build_program
-from tools.vibeqc_cc.inventory import TERMS
-from tools.vibeqc_cc.oracle import dense_feeds, homogeneous_groups, random_case
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     block_error,
     canonical_hash,
     file_hash,
@@ -29,6 +24,11 @@ from tools.vibeqc_validation.schema import (
     outcome,
     validate_evidence,
 )
+from vibeqc_compiler.tensor import Program, execute, optimize
+
+from tools.vibeqc_cc import amplitude_layouts, build_program
+from tools.vibeqc_cc.inventory import TERMS
+from tools.vibeqc_cc.oracle import dense_feeds, homogeneous_groups, random_case
 
 ROOT = Path(__file__).resolve().parents[1]
 

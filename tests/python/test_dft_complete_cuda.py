@@ -76,6 +76,19 @@ def _calculator(method: typing.Any) -> typing.Any:
     )
 
 
+def _production_calculator(method: typing.Any) -> typing.Any:
+    from vibeqc import Calculator, KsOptions
+
+    return Calculator(
+        method=method,
+        device="cuda",
+        ks_options=KsOptions(),
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+        max_iterations=200,
+    )
+
+
 def _diagnostic(
     state: typing.Any, basis: typing.Any, compiler: typing.Any, **kwargs: typing.Any
 ) -> typing.Any:
@@ -166,6 +179,16 @@ def test_complete_cuda_independent_analytic(
         np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
         assert result.work["launches"] > 0
+        assert result.work["tensor_executions"] == 0
+        assert (
+            result.work["stationary_final_reduction"]
+            == "native-seven-source-device-sum-v1"
+        )
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert result.work["xc_points"] == len(state.grid.points)
         assert (
             result.work["additional_device_peak_bound"]
@@ -181,6 +204,35 @@ def test_complete_cuda_independent_analytic(
                     > 1e-4
                 )
         assert result.execution.startswith("cuda-seven-source/")
+
+
+@pytest.mark.parametrize("method", ["lda-rks", "pbe-rks"])
+def test_production_grid_cuda_energy_and_force(
+    method: typing.Any, compiler: typing.Any
+) -> None:
+    """Production v2 default is qualified on the real-device water endpoint."""
+    from test_dft_complete_cpu import ATOMS, independent_gradient
+    from vibeqc._dft_gradient import StationaryKsState
+    from vibeqc_compiler.dft import NativeAO
+
+    calc = _production_calculator(method)
+    with calc.prepare_batch([ATOMS]) as batch, NativeAO(ATOMS) as basis:
+        energy = batch.execute(strict=True).items[0].energy
+        state = StationaryKsState.from_native(batch, basis)
+        assert state._source.grid_spec.version == 2
+        assert state._source.grid_provenance["policy_version"] == 2
+        result = _diagnostic(
+            state,
+            basis,
+            compiler,
+            tile_points=137,
+            primitive_tile=29,
+            integral_terms=17,
+        )
+        ref_energy, ref_gradient, _ = independent_gradient(basis, state, method)
+        assert energy == pytest.approx(ref_energy, abs=2e-9)
+        np.testing.assert_allclose(result.gradient, ref_gradient, atol=1e-7, rtol=0)
+        np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=2e-10, rtol=0)
 
 
 @pytest.mark.parametrize("method", ["lda-uks", "pbe-uks"])
@@ -217,6 +269,16 @@ def test_complete_cuda_open_shell_uks_independent_analytic(
         np.testing.assert_allclose(result.gradient, reference, atol=1e-7, rtol=0)
         np.testing.assert_allclose(result.gradient.sum(axis=0), 0, atol=3e-10, rtol=0)
         assert result.work["xc_points"] == len(state.grid.points)
+        assert result.work["tensor_executions"] == 0
+        assert (
+            result.work["stationary_final_reduction"]
+            == "native-seven-source-device-sum-v1"
+        )
+        assert result.work["stationary_weight_tensor_executions"] == 0
+        assert result.work["stationary_weight_roundtrip_bytes"] == 0
+        assert result.work["stationary_state_dw_upload_bytes"] == (
+            state.density.nbytes + state.weighted_density.nbytes
+        )
         assert (
             result.work["additional_device_peak_bound"]
             <= result.work["additional_device_budget"]
@@ -437,15 +499,26 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
     from vibeqc_compiler.integral.first_derivative_native import (
         emit_first_derivative_cuda,
     )
+    from vibeqc_compiler.method import resolve_method
     from vibeqc_compiler.method.stationary_cuda import compile_stationary_cuda
+    from vibeqc_compiler.method.stationary_gradient import (
+        SCF_POINT_MODEL,
+        StationaryGradientPlan,
+        StationaryMeanField,
+    )
 
     atoms = [("H", (0.0, 0.0, 0.0)), ("H", (1.0, 0.0, 0.0)), ("H", (2.0, 0.0, 0.0))]
     cache = Path(os.environ["VIBEQC_STATIONARY_CACHE"])
     with NativeAO(atoms, multiplicity=2) as basis:
         _, _, _, requests = _layout(basis)
+        plan = StationaryGradientPlan(
+            resolve_method("LDA_XC_PW", spin="unpolarized"),
+            StationaryMeanField(SCF_POINT_MODEL),
+        )
         artifact = compile_stationary_cuda(
             emit_first_derivative_cuda(requests),
             pbe=False,
+            plan=plan,
             iterations=3,
             compiler=compiler,
             cache=cache,
@@ -481,7 +554,9 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
         ):
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            density = np.eye(3)[None, :, :]
+            weighted_density = np.zeros_like(density)
+            sources.reset(1e-12, density, weighted_density)
             ao.set_density(np.eye(3))
             # Single exact-zero factor, saturated products, vacuum tail and an
             # empty tile. Points deliberately avoid center collisions.
@@ -513,29 +588,33 @@ def test_cuda_source_failure_zero_tail_and_recovery(compiler: typing.Any) -> Non
             with pytest.raises(RuntimeError, match="reset"):
                 sources._call("stationary_finish", sources.handle, _ptr(out), out.size)
             np.testing.assert_array_equal(out, 42.0)
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             with ao.xc_task(points, np.arange(3), "LDA_XC_PW") as task:
                 sources.geometry(task, owners, np.ones(3), np.ones(3), pbe=False)
             for k, v in sources.finish().items():
                 np.testing.assert_array_equal(v, zero[k])
-            # A late invalid primitive also poisons the transaction. No result
+            # A late invalid task charge also poisons the transaction. No result
             # is copied, and reset clears previous successful accumulation.
-            records = np.ones((2, 26))
-            records[-1, -1] = np.nan
-            maps = np.zeros((2, 12), dtype=np.int64)
+            tasks = np.full((2, 9), -1, dtype=np.int64)
+            kind = sources.kinds[
+                "kinetic", (sources.components[0], sources.components[0])
+            ]
+            tasks[:, :4] = kind, 0, 2, -1
+            tasks[:, 4:6] = 0
+            tasks[:, 8] = int(sources.aos[0, 2]) ** 2
+            charges = np.ones(2)
+            charges[-1] = np.nan
             with pytest.raises(RuntimeError, match="invalid stationary CUDA"):
                 sources._call(
-                    "stationary_records",
+                    "stationary_tasks",
                     sources.handle,
-                    0,
-                    0,
-                    _ptr(records),
-                    _ptr(maps),
+                    _ptr(tasks),
+                    _ptr(charges),
                     2,
                 )
             with pytest.raises(RuntimeError, match="reset"):
                 sources.finish()
-            sources.reset(1e-12)
+            sources.reset(1e-12, density, weighted_density)
             assert all(np.all(v == 0) for v in sources.finish().values())
             _evidence("source-failure-zero-tail-recovery", sources.metrics())
 
@@ -585,7 +664,14 @@ def test_cuda_late_owner_replay_and_geometry_replacement(
 
 @pytest.mark.parametrize(
     ("method", "charge", "multiplicity"),
-    [("lda-rks", 0, 1), ("pbe-rks", 0, 1), ("lda-uks", 1, 2), ("pbe-uks", 1, 2)],
+    [
+        ("lda-rks", 0, 1),
+        ("pbe-rks", 0, 1),
+        ("r2scan-rks", 0, 1),
+        ("lda-uks", 1, 2),
+        ("pbe-uks", 1, 2),
+        ("r2scan-uks", 1, 2),
+    ],
 )
 def test_public_cuda_calculator_forces_match_independent_gradient(
     method: typing.Any, charge: typing.Any, multiplicity: typing.Any
@@ -594,6 +680,7 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     from test_dft_complete_cpu import (
         ATOMS,
         independent_gradient,
+        independent_semilocal_total_gradient,
         independent_uks_gradient,
     )
     from vibeqc._dft_gradient import StationaryKsState
@@ -614,7 +701,11 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     ):
         energy = batch.execute(strict=True, properties=("energy",)).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
-        if method.endswith("uks"):
+        if method.startswith("r2scan-"):
+            ref_energy, gradient = independent_semilocal_total_gradient(
+                basis, state, method
+            )
+        elif method.endswith("uks"):
             ref_energy, gradient = independent_uks_gradient(basis, state, method)
         else:
             ref_energy, gradient, _ = independent_gradient(basis, state, method)
@@ -622,6 +713,238 @@ def test_public_cuda_calculator_forces_match_independent_gradient(
     assert public.energy == pytest.approx(ref_energy, abs=2e-9)
     assert energy == pytest.approx(ref_energy, abs=2e-9)
     np.testing.assert_allclose(public.forces, -gradient, atol=1e-7, rtol=0)
+
+
+def test_public_cuda_prepared_force_replay_retains_execution(
+    monkeypatch: typing.Any,
+) -> None:
+    """#663: warm and moved force replays reuse every generated CUDA owner."""
+    import vibeqc._stationary_cuda as stationary
+    from test_dft_complete_cpu import ATOMS
+
+    calc = _calculator("pbe-rks")
+    xyz = np.asarray([position for _, position in ATOMS], dtype=np.float64)
+    moved = xyz.copy()
+    moved[1, 0] += 2.0e-3
+    with calc.prepare_batch([ATOMS], warm_start=True) as batch:
+        first = batch.execute(strict=True, properties=("energy", "forces"))
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
+        identity = owner.identity
+        resident = (
+            id(owner.sources),
+            id(owner.grid),
+            tuple((name, id(value)) for name, value in sorted(owner.tensors.items())),
+        )
+        assert owner._executions == 1
+        assert not first.items[0].forces is None
+
+        def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+            raise AssertionError("warm force replay rebuilt generated CUDA execution")
+
+        with monkeypatch.context() as patch:
+            for name in (
+                "emit_first_derivative_cuda",
+                "compile_stationary_cuda",
+                "compile_grid",
+                "compile_cuda",
+                "_CudaSources",
+                "CudaGrid",
+                "PreparedCuda",
+            ):
+                patch.setattr(stationary, name, forbidden)
+
+            second = batch.execute(strict=True, properties=("energy", "forces"))
+            np.testing.assert_allclose(
+                second.items[0].forces, first.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner.identity == identity
+            assert resident == (
+                id(owner.sources),
+                id(owner.grid),
+                tuple(
+                    (name, id(value)) for name, value in sorted(owner.tensors.items())
+                ),
+            )
+
+            changed = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert not np.array_equal(changed.items[0].forces, first.items[0].forces)
+            assert owner._geometry_rebinds == 1
+            assert owner._executions == 3
+
+            finish = owner.sources.finish
+            calls = 0
+
+            def fail_once() -> typing.Any:
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    raise RuntimeError("injected prepared force failure")
+                return finish()
+
+            patch.setattr(owner.sources, "finish", fail_once)
+            failed = batch.execute(
+                coordinates=(moved,), properties=("energy", "forces")
+            )
+            assert not failed.items[0].succeeded
+            assert owner._failed
+            recovered = batch.execute(
+                coordinates=(moved,), strict=True, properties=("energy", "forces")
+            )
+            assert recovered.items[0].succeeded
+            np.testing.assert_allclose(
+                recovered.items[0].forces, changed.items[0].forces, atol=1e-9, rtol=0
+            )
+            assert owner._geometry_rebinds == 2
+            assert not owner._failed
+
+
+def test_public_cuda_grid_xc_schedules_preserve_complete_endpoint() -> None:
+    """DFT09: both executable XC schedules preserve the public E+F endpoint."""
+    from vibeqc import Calculator, KsOptions
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    results = []
+    for schedule in ("device_fused", "host_unfused"):
+        result = Calculator(
+            method="pbe-rks",
+            basis="sto-3g",
+            device="cuda",
+            ks_options=KsOptions(xc_schedule=schedule),
+            max_iterations=200,
+            energy_tolerance=1e-12,
+            density_tolerance=1e-10,
+        ).singlepoint(atoms, properties=("energy", "forces"))
+        assert result.executed_backend == "cuda"
+        assert result.converged
+        assert result.forces is not None
+        results.append(result)
+
+    fused, unfused = results
+    assert fused.iterations == unfused.iterations
+    assert fused.energy == pytest.approx(unfused.energy, abs=1e-9)
+    np.testing.assert_allclose(fused.forces, unfused.forces, atol=1e-7, rtol=0)
+    np.testing.assert_allclose(fused.forces.sum(axis=0), 0, atol=1e-7, rtol=0)
+    np.testing.assert_allclose(unfused.forces.sum(axis=0), 0, atol=1e-7, rtol=0)
+
+
+def test_profiled_xc_schedule_reaches_direct_and_resource_aware_batch_paths(
+    monkeypatch: typing.Any,
+) -> None:
+    """DFT09: one resolved profile schedule must survive every public KS path."""
+    from vibeqc import Calculator, KsOptions, ResourceBudget
+    from vibeqc.ks import ProfiledKsSelection, resolve_ks_options
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    resolved = resolve_ks_options(
+        "pbe-rks", KsOptions(xc_schedule="host_unfused", tile_points=31)
+    )
+    calculator = Calculator(
+        method="pbe-rks",
+        basis="sto-3g",
+        device="cuda",
+        resource_budget=ResourceBudget(),
+        max_iterations=200,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+
+    def selected(
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        assert len(systems) == 1
+        assert tuple(charges) == (0,)
+        assert tuple(multiplicities) == (1,)
+        exact = systems[0][1].position[0] == pytest.approx(0.0)
+        return ProfiledKsSelection(resolved, exact_profile_match=exact)
+
+    monkeypatch.setattr(calculator, "_effective_ks_selection", selected)
+
+    direct = calculator.singlepoint(atoms, properties=("energy",))
+    assert direct.converged and direct.executed_backend == "cuda"
+    assert direct.ks_diagnostic.tile_points == 31
+
+    with calculator.prepare_batch([atoms], warm_start=True) as batch:
+        first = batch.execute(strict=True, properties=("energy",)).items[0]
+        second = batch.execute(strict=True, properties=("energy",)).items[0]
+        assert first.converged and second.converged
+        assert first.executed_backend == second.executed_backend == "cuda"
+        assert first.ks_diagnostic.tile_points == 31
+        assert second.ks_diagnostic.tile_points == 31
+        moved = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+        moved[1, 0] += 2.0e-3
+        with pytest.raises(RuntimeError, match="not qualified for replay coordinates"):
+            batch.execute(
+                coordinates=(moved,),
+                strict=True,
+                properties=("energy",),
+            )
+
+
+@pytest.mark.parametrize(
+    ("invalid_index", "invalid_kind"),
+    ((0, "wrong-size"), (1, "wrong-size"), (0, "nan"), (1, "nan")),
+)
+def test_profiled_xc_schedule_revalidates_valid_neighbor_when_peer_is_invalid(
+    monkeypatch: typing.Any,
+    invalid_index: int,
+    invalid_kind: str,
+) -> None:
+    """DFT09: one invalid row cannot suppress profile requalification of a valid peer."""
+    from vibeqc import Calculator, KsOptions, ResourceBudget
+    from vibeqc.ks import ProfiledKsSelection, resolve_ks_options
+
+    atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7))]
+    resolved = resolve_ks_options(
+        "pbe-rks", KsOptions(xc_schedule="host_unfused", tile_points=31)
+    )
+    calculator = Calculator(
+        method="pbe-rks",
+        basis="sto-3g",
+        device="cuda",
+        resource_budget=ResourceBudget(),
+        max_iterations=200,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+
+    def selected(
+        systems: typing.Any,
+        *,
+        charges: typing.Any = None,
+        multiplicities: typing.Any = None,
+    ) -> typing.Any:
+        assert len(systems) == 2
+        assert tuple(charges) == (0, 0)
+        assert tuple(multiplicities) == (1, 1)
+        exact = all(system[1].position[0] == pytest.approx(0.0) for system in systems)
+        return ProfiledKsSelection(resolved, exact_profile_match=exact)
+
+    monkeypatch.setattr(calculator, "_effective_ks_selection", selected)
+
+    moved = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+    moved[1, 0] += 2.0e-3
+    if invalid_kind == "wrong-size":
+        invalid = np.asarray([0.0, 1.0], dtype=np.float64)
+    else:
+        invalid = np.asarray([atom[1] for atom in atoms], dtype=np.float64)
+        invalid[0, 0] = np.nan
+    coordinates: list[np.ndarray] = [moved.copy(), moved.copy()]
+    coordinates[invalid_index] = invalid
+
+    with (
+        calculator.prepare_batch([atoms, atoms], warm_start=True) as batch,
+        pytest.raises(RuntimeError, match="not qualified for replay coordinates"),
+    ):
+        batch.execute(
+            coordinates=coordinates,
+            properties=("energy",),
+        )
 
 
 def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
@@ -638,6 +961,9 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         )
         assert all(item.forces is not None for item in first.items)
         assert not np.array_equal(first.items[0].forces, first.items[1].forces)
+        owner = batch._stationary_cuda_execution
+        assert owner is not None
+        assert owner._executions == 2
 
         malformed = np.asarray([0.0, 1.0])
         isolated = batch.execute(
@@ -648,6 +974,8 @@ def test_public_cuda_batch_changed_geometry_and_failure_isolation() -> None:
         assert isolated.items[1].succeeded
         assert isolated.items[1].forces is not None
         assert np.isfinite(isolated.items[1].forces).all()
+        assert batch._stationary_cuda_execution is owner
+        assert owner._executions == 3
 
 
 def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> None:

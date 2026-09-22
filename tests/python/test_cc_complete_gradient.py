@@ -15,6 +15,7 @@ from vibeqc_compiler.tensor import Index, IndexSpace, Program, TensorSpec, execu
 from tools.cc_gradient_fixtures import CASES, inputs, load, source_arguments
 from tools.vibeqc_cc import BoundCCSDLambda, BoundCCSDResponse, solve
 from tools.vibeqc_cc import complete_gradient as module
+from tools.vibeqc_cc import lambda_solver as lambda_solver_module
 from tools.vibeqc_cc.complete_gradient import (
     BoundCCSDGradient,
     CCSDGradientOptions,
@@ -659,7 +660,7 @@ def test_source_cuda_weight_validation_precedes_native_call(
         {"device_id": True},
         {"derivative_stage_budget_bytes": 0},
         {"derivative_stage_budget_bytes": True},
-        {"one_electron_schedule": 3},
+        {"one_electron_schedule": 4},
         {"one_electron_schedule": False},
         {"eri_weight_mode": "packed"},
         {"eri_weight_mode": "shell"},
@@ -671,6 +672,11 @@ def test_source_cuda_weight_validation_precedes_native_call(
 def test_invalid_options(changes: typing.Any) -> None:
     with pytest.raises((ValueError, TypeError)):
         CCSDGradientOptions(**changes)
+
+
+def test_nucleus_cooperative_one_electron_schedule_is_valid() -> None:
+    options = CCSDGradientOptions(one_electron_schedule=3)
+    assert options.one_electron_schedule == 3
 
 
 def test_budget_rejects_before_hf_and_before_raw_integrals(
@@ -849,10 +855,10 @@ def test_native_derivative_outputs_are_validated(
 def test_changed_tensor_backend_and_live_provider_rejected(
     tiny_state: typing.Any, monkeypatch: typing.Any
 ) -> None:
-    original = module.execute
+    original = lambda_solver_module.execute
     with monkeypatch.context() as m:
         m.setattr(
-            module,
+            lambda_solver_module,
             "execute",
             lambda *a, **k: replace(original(*a, **k), backend="unexpected"),
         )

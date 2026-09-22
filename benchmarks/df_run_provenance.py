@@ -17,8 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from vibeqc import _native
 from vibeqc.autotune import source_identity
-
-from tools.vibeqc_validation.schema import file_hash
+from vibeqc_compiler.common.evidence import file_hash
 
 
 def summarize_profiles(directory: typing.Any) -> typing.Any:

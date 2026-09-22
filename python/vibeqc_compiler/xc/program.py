@@ -14,7 +14,13 @@ from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 
 from .expressions import energy_expression as semilocal_energy_expression
 from .rsh_expressions import energy_expression as rsh_energy_expression
-from .spec import SPECIAL_EXPRESSION_COMPONENTS, FunctionalSpec, UnsupportedXC
+from .spec import (
+    SPECIAL_EXPRESSION_COMPONENTS,
+    WB97MV_COMPONENTS,
+    FunctionalSpec,
+    UnsupportedXC,
+)
+from .wb97mv_maple import energy_expression as wb97mv_energy_expression
 
 
 def output_set(spec: typing.Any, order: typing.Any) -> typing.Any:
@@ -106,6 +112,14 @@ def validate_features(
             raise UnsupportedXC(
                 "P86 correlation derivatives require positive total-density sigma"
             )
+    if "MGGA_X_WB97M_V" in components:
+        omega = float(spec.range_omega)
+        for density in (ra, rb):
+            a = omega / (2 * (6 * np.pi**2 * density[active]) ** (1 / 3))
+            if np.any(a >= 1.35):
+                raise UnsupportedXC(
+                    "omegaB97M-V attenuation exceeds audited direct branch a < 1.35"
+                )
     if "GGA_X_ITYH" in components:
         beta_b88 = 0.0042
         gamma_b88 = 6.0
@@ -204,10 +218,14 @@ class XCProgram:
 
 
 def _energy_expression(spec: typing.Any) -> typing.Any:
-    if any(
-        name in SPECIAL_EXPRESSION_COMPONENTS and coefficient
-        for name, coefficient in spec.components
-    ):
+    active = {name for name, coefficient in spec.components if coefficient}
+    if active & set(WB97MV_COMPONENTS):
+        if not active <= set(WB97MV_COMPONENTS):
+            raise UnsupportedXC(
+                "omegaB97M-V semilocal components cannot be mixed with another XC family"
+            )
+        return wb97mv_energy_expression(spec)
+    if active & set(SPECIAL_EXPRESSION_COMPONENTS):
         return rsh_energy_expression(spec)
     return semilocal_energy_expression(spec)
 

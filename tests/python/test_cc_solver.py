@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.solver_region import SolverRegion
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture, source_arguments
 from tools.vibeqc_cc import PreparedCCSD, SolverOptions, solve
@@ -177,6 +178,41 @@ def test_false_shared_residual_cannot_bypass_expanded_acceptance(
     result = solve(s, p, options=SolverOptions(max_iterations=2))
     assert not result.converged
     assert result.history[-1]["independent_r2_max"] > 1e-9
+
+
+def test_prepared_ccsd_exposes_bounded_region_without_changing_policy() -> None:
+    s, p, _meta, _ = fixture_problem()
+    options = SolverOptions(
+        max_iterations=7,
+        energy_tolerance=1e-12,
+        residual_tolerance=1e-10,
+        damping=0.2,
+        diis_size=4,
+    )
+    prepared = PreparedCCSD(s, p, options)
+    region = prepared.solver_region
+    assert region.name == "rccsd-cpu"
+    assert region.max_steps == options.max_iterations + 1
+    assert region.body.calls[0].identity == prepared.program.logical_hash
+    assert {(carry.current, carry.next) for carry in region.carries} == {
+        ("state", "next_state"),
+        ("history", "next_history"),
+        ("control", "next_control"),
+    }
+    assert region.converged.buffer == "converged"
+    assert region.failed is not None and region.failed.buffer == "failed"
+    assert region.derivative_policy == "unsupported"
+    assert region.checkpoints[0].host_visible
+    with pytest.raises(NotImplementedError, match="not registered"):
+        region.derivative_rule("implicit_vjp")
+
+    result = solve(s, p, options=options)
+    assert result.provenance["solver_region_identity"] == region.identity
+    assert result.provenance["solver_region_max_steps"] == 8
+    replayed_region = SolverRegion.from_payload(
+        result.provenance["solver_region_payload"]
+    )
+    assert replayed_region.identity == region.identity
 
 
 def test_prepared_ccsd_rejects_ks_reference() -> None:

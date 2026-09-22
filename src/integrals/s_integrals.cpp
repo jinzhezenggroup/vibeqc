@@ -11,6 +11,8 @@
 
 #include "generated_one_electron_st_cpu.hpp"
 #include "integrals/ecp.hpp"
+#include "integrals/generated_df_cpu.hpp"
+#include "integrals/range_moments.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
 
@@ -31,8 +33,8 @@ std::size_t checked_sum(std::size_t a, std::size_t b) {
 
 // Dynamic forward derivatives remain the structurally independent host reference
 // for raw integral validation and for families not yet promoted to generated CPU
-// production code.  Production s/p/d/f overlap/kinetic instead consumes the same
-// compiler-owned mathematical DAG used by the CUDA one-electron lowering.
+// production code.  Production s/p/d/f overlap/kinetic/nuclear-attraction instead
+// consumes the same compiler-owned mathematical DAG used by the CUDA one-electron lowering.
 struct Jet {
   double value{};
   std::vector<double> derivative;
@@ -219,29 +221,28 @@ struct CoulombAuxiliary {
   }
 };
 
-CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
-                              const Vec3& center) {
+CoulombAuxiliary fill_coulomb_recurrence(unsigned maximum_angular, double exponent,
+                                         const Vec3& product, const Vec3& center,
+                                         const std::vector<Jet>& radial) {
+  if (radial.size() != static_cast<std::size_t>(maximum_angular) + 1)
+    throw std::invalid_argument("Coulomb radial moment count does not match angular order");
   CoulombAuxiliary auxiliary;
   auxiliary.dim = maximum_angular + 1;
   const std::size_t size =
       static_cast<std::size_t>(auxiliary.dim) * auxiliary.dim * auxiliary.dim * auxiliary.dim;
-  auxiliary.data.assign(size, Jet(0.0, product[0].derivative.size()));
+  auxiliary.data.assign(size, Jet(0.0, radial.front().derivative.size()));
 
   const Vec3 pc{product[0] - center[0], product[1] - center[1], product[2] - center[2]};
-  const std::vector<Jet> boys =
-      boys_values(maximum_angular, exponent * distance_squared(product, center));
   double factor = 1.0;
   for (unsigned n = 0; n <= maximum_angular; ++n) {
-    auxiliary.at(n, 0, 0, 0) = factor * boys[n];
+    auxiliary.at(n, 0, 0, 0) = factor * radial[n];
     factor *= -2.0 * exponent;
   }
 
   for (unsigned v = 1; v <= maximum_angular; ++v) {
     for (unsigned n = 0; n + v <= maximum_angular; ++n) {
       Jet value = pc[2] * auxiliary.at(n + 1, 0, 0, v - 1);
-      if (v > 1) {
-        value = value + static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
-      }
+      if (v > 1) value = value + static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
       auxiliary.at(n, 0, 0, v) = std::move(value);
     }
   }
@@ -249,9 +250,7 @@ CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const V
     for (unsigned u = 1; u + v <= maximum_angular; ++u) {
       for (unsigned n = 0; n + u + v <= maximum_angular; ++n) {
         Jet value = pc[1] * auxiliary.at(n + 1, 0, u - 1, v);
-        if (u > 1) {
-          value = value + static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
-        }
+        if (u > 1) value = value + static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
         auxiliary.at(n, 0, u, v) = std::move(value);
       }
     }
@@ -261,15 +260,39 @@ CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const V
       for (unsigned t = 1; t + u + v <= maximum_angular; ++t) {
         for (unsigned n = 0; n + t + u + v <= maximum_angular; ++n) {
           Jet value = pc[0] * auxiliary.at(n + 1, t - 1, u, v);
-          if (t > 1) {
-            value = value + static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
-          }
+          if (t > 1) value = value + static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
           auxiliary.at(n, t, u, v) = std::move(value);
         }
       }
     }
   }
   return auxiliary;
+}
+
+CoulombAuxiliary fill_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
+                              const Vec3& center) {
+  return fill_coulomb_recurrence(
+      maximum_angular, exponent, product, center,
+      boys_values(maximum_angular, exponent * distance_squared(product, center)));
+}
+
+CoulombAuxiliary fill_range_coulomb(unsigned maximum_angular, double exponent, const Vec3& product,
+                                    const Vec3& center, CoulombRange range, double omega) {
+  if (range == CoulombRange::Full)
+    throw std::invalid_argument("range ERI helper requires short- or long-range operator");
+  if (product[0].derivative.size() != 0 || center[0].derivative.size() != 0)
+    throw std::logic_error("value-only range ERI helper cannot publish nuclear derivatives");
+  if (maximum_angular > 13)
+    throw std::invalid_argument("range ERI angular order exceeds validated radial moments");
+
+  std::array<double, 14> moments{};
+  if (!range_moments(maximum_angular, exponent * distance_squared(product, center).value, exponent,
+                     range, omega, moments.data()))
+    throw std::invalid_argument("invalid range-separated ERI radial inputs");
+  std::vector<Jet> radial;
+  radial.reserve(static_cast<std::size_t>(maximum_angular) + 1);
+  for (unsigned n = 0; n <= maximum_angular; ++n) radial.emplace_back(moments[n], 0);
+  return fill_coulomb_recurrence(maximum_angular, exponent, product, center, radial);
 }
 
 // Retained as the structurally independent S/T oracle and the explicit g-shell
@@ -404,6 +427,47 @@ Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
   return result;
 }
 
+// Production s/p/d/f V reuses the compiler-owned one-electron DAG.  The
+// dynamic-Jet implementation above remains the independent oracle and the
+// explicit g-shell fallback.
+Jet production_nuclear_attraction_cartesian(double alpha, const Vec3& a,
+                                            const molecule::CartesianComponent& angular_a,
+                                            std::size_t atom_a, double beta, const Vec3& b,
+                                            const molecule::CartesianComponent& angular_b,
+                                            std::size_t atom_b, const std::vector<Vec3>& atoms,
+                                            const core::System& system) {
+  const unsigned first = generated_component(angular_a);
+  const unsigned second = generated_component(angular_b);
+  const std::size_t ncoord = a[0].derivative.size();
+  if (first >= 20 || second >= 20)
+    return primitive_nuclear_attraction_cartesian(alpha, a, angular_a, beta, b, angular_b, atoms,
+                                                  system);
+
+  const auto pair = generated_one_electron_cpu::make_pair(
+      alpha, beta, a[0].value, a[1].value, a[2].value, b[0].value, b[1].value, b[2].value);
+  Jet result(0.0, ncoord);
+  for (std::size_t atom = 0; atom < atoms.size(); ++atom) {
+    const Vec3& center = atoms[atom];
+    const double charge = static_cast<double>(system.atoms[atom].ionic_charge());
+    const double value = generated_one_electron_cpu::attraction(
+        pair, first, second, center[0].value, center[1].value, center[2].value);
+    // The generated unit-charge V and its derivatives already include -1/r.
+    result.value += charge * value;
+    if (ncoord == 0) continue;
+
+    const auto gradient = generated_one_electron_cpu::attraction_gradient(
+        pair, first, second, center[0].value, center[1].value, center[2].value);
+    for (std::size_t axis = 0; axis < 3; ++axis) {
+      const double da = charge * gradient.first[axis];
+      const double db = charge * gradient.second[axis];
+      result.derivative[3 * atom_a + axis] += da;
+      result.derivative[3 * atom_b + axis] += db;
+      result.derivative[3 * atom + axis] -= da + db;
+    }
+  }
+  return result;
+}
+
 Jet primitive_eri_cartesian(double alpha, const Vec3& a,
                             const molecule::CartesianComponent& angular_a, double beta,
                             const Vec3& b, const molecule::CartesianComponent& angular_b,
@@ -452,6 +516,58 @@ Jet primitive_eri_cartesian(double alpha, const Vec3& a,
   }
   const double prefactor = 2.0 * std::pow(std::numbers::pi, 2.5) / (p * q * std::sqrt(p + q));
   return prefactor * value;
+}
+
+double primitive_range_eri_cartesian(double alpha, const Vec3& a,
+                                     const molecule::CartesianComponent& angular_a, double beta,
+                                     const Vec3& b, const molecule::CartesianComponent& angular_b,
+                                     double gamma, const Vec3& c,
+                                     const molecule::CartesianComponent& angular_c, double delta,
+                                     const Vec3& d, const molecule::CartesianComponent& angular_d,
+                                     CoulombRange range, double omega) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double rho = p * q / (p + q);
+  const Vec3 product_p = product_center(alpha, a, beta, b);
+  const Vec3 product_q = product_center(gamma, c, delta, d);
+  std::array<HermiteCoefficients, 3> first_coefficients{
+      fill_hermite(angular_a[0], angular_b[0], product_p[0], a[0], b[0], alpha, beta),
+      fill_hermite(angular_a[1], angular_b[1], product_p[1], a[1], b[1], alpha, beta),
+      fill_hermite(angular_a[2], angular_b[2], product_p[2], a[2], b[2], alpha, beta)};
+  std::array<HermiteCoefficients, 3> second_coefficients{
+      fill_hermite(angular_c[0], angular_d[0], product_q[0], c[0], d[0], gamma, delta),
+      fill_hermite(angular_c[1], angular_d[1], product_q[1], c[1], d[1], gamma, delta),
+      fill_hermite(angular_c[2], angular_d[2], product_q[2], c[2], d[2], gamma, delta)};
+  const unsigned maximum = angular_a[0] + angular_a[1] + angular_a[2] + angular_b[0] +
+                           angular_b[1] + angular_b[2] + angular_c[0] + angular_c[1] +
+                           angular_c[2] + angular_d[0] + angular_d[1] + angular_d[2];
+  const CoulombAuxiliary auxiliary =
+      fill_range_coulomb(maximum, rho, product_p, product_q, range, omega);
+
+  Jet value(0.0, 0);
+  for (unsigned t = 0; t <= angular_a[0] + angular_b[0]; ++t) {
+    for (unsigned u = 0; u <= angular_a[1] + angular_b[1]; ++u) {
+      for (unsigned v = 0; v <= angular_a[2] + angular_b[2]; ++v) {
+        const Jet first = first_coefficients[0].at(angular_a[0], angular_b[0], t) *
+                          first_coefficients[1].at(angular_a[1], angular_b[1], u) *
+                          first_coefficients[2].at(angular_a[2], angular_b[2], v);
+        for (unsigned tau = 0; tau <= angular_c[0] + angular_d[0]; ++tau) {
+          for (unsigned nu = 0; nu <= angular_c[1] + angular_d[1]; ++nu) {
+            for (unsigned phi = 0; phi <= angular_c[2] + angular_d[2]; ++phi) {
+              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
+              value = value + sign * first *
+                                  second_coefficients[0].at(angular_c[0], angular_d[0], tau) *
+                                  second_coefficients[1].at(angular_c[1], angular_d[1], nu) *
+                                  second_coefficients[2].at(angular_c[2], angular_d[2], phi) *
+                                  auxiliary.at(0, t + tau, u + nu, v + phi);
+            }
+          }
+        }
+      }
+    }
+  }
+  const double prefactor = 2.0 * std::pow(std::numbers::pi, 2.5) / (p * q * std::sqrt(p + q));
+  return prefactor * value.value;
 }
 
 struct AoView {
@@ -617,6 +733,54 @@ std::vector<double> transform_three_center(
   return transformed;
 }
 
+std::vector<double> pullback_matrix_weights(std::span<const double> source,
+                                            std::size_t cartesian_count,
+                                            const std::vector<GlobalAoExpansion>& public_aos) {
+  std::vector<double> result(checked_product(cartesian_count, cartesian_count), 0.0);
+  const std::size_t public_count = public_aos.size();
+  for (std::size_t p = 0; p < public_count; ++p) {
+    for (std::size_t q = 0; q < public_count; ++q) {
+      const double weight = source[matrix_index(p, q, public_count)];
+      if (weight == 0.0) continue;
+      for (const GlobalExpansionTerm& i : public_aos[p]) {
+        for (const GlobalExpansionTerm& j : public_aos[q]) {
+          result[matrix_index(i.cartesian_ao, j.cartesian_ao, cartesian_count)] +=
+              weight * i.coefficient * j.coefficient;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+std::vector<double> pullback_three_center_weights(
+    std::span<const double> source, std::size_t cartesian_count,
+    std::size_t cartesian_auxiliary_count, const std::vector<GlobalAoExpansion>& public_aos,
+    const std::vector<GlobalAoExpansion>& public_auxiliary_aos) {
+  const std::size_t cartesian_matrix = checked_product(cartesian_count, cartesian_count);
+  std::vector<double> result(checked_product(cartesian_matrix, cartesian_auxiliary_count), 0.0);
+  const std::size_t public_count = public_aos.size();
+  const std::size_t public_auxiliary_count = public_auxiliary_aos.size();
+  for (std::size_t p = 0; p < public_count; ++p) {
+    for (std::size_t q = 0; q < public_count; ++q) {
+      for (std::size_t auxiliary = 0; auxiliary < public_auxiliary_count; ++auxiliary) {
+        const double weight =
+            source[three_center_index(p, q, auxiliary, public_count, public_auxiliary_count)];
+        if (weight == 0.0) continue;
+        for (const GlobalExpansionTerm& i : public_aos[p]) {
+          for (const GlobalExpansionTerm& j : public_aos[q]) {
+            for (const GlobalExpansionTerm& item : public_auxiliary_aos[auxiliary]) {
+              result[three_center_index(i.cartesian_ao, j.cartesian_ao, item.cartesian_ao,
+                                        cartesian_count, cartesian_auxiliary_count)] +=
+                  weight * i.coefficient * j.coefficient * item.coefficient;
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 void require_matching_density_fitting_geometry(const core::System& orbital_system,
                                                const core::System& auxiliary_system) {
   if (orbital_system.atoms.size() != auxiliary_system.atoms.size()) {
@@ -634,6 +798,134 @@ void require_matching_density_fitting_geometry(const core::System& orbital_syste
 
 }  // namespace
 
+std::vector<double> contract_weighted_density_fitting_derivative(
+    const core::System& orbital_system, const core::System& auxiliary_system,
+    std::span<const double> metric_weights, std::span<const double> three_center_weights) {
+  require_matching_density_fitting_geometry(orbital_system, auxiliary_system);
+  const std::size_t public_nbf = molecule::ao_count(orbital_system);
+  const std::size_t public_naux = molecule::ao_count(auxiliary_system);
+  const std::size_t public_matrix = checked_product(public_nbf, public_nbf);
+  const std::size_t metric_size = checked_product(public_naux, public_naux);
+  const std::size_t three_center_size = checked_product(public_matrix, public_naux);
+  if (metric_weights.size() != metric_size || three_center_weights.size() != three_center_size) {
+    throw std::invalid_argument("weighted DF derivative dimensions are inconsistent");
+  }
+  const auto finite = [](double value) { return std::isfinite(value); };
+  if (!std::all_of(metric_weights.begin(), metric_weights.end(), finite) ||
+      !std::all_of(three_center_weights.begin(), three_center_weights.end(), finite)) {
+    throw std::invalid_argument("weighted DF derivative requires finite weights");
+  }
+
+  const bool generated_supported =
+      std::all_of(orbital_system.shells.begin(), orbital_system.shells.end(),
+                  [](const core::Shell& shell) { return shell.angular_momentum <= 3; }) &&
+      std::all_of(auxiliary_system.shells.begin(), auxiliary_system.shells.end(),
+                  [](const core::Shell& shell) { return shell.angular_momentum <= 3; });
+  const std::size_t ncoord = checked_product(orbital_system.atoms.size(), std::size_t{3});
+  if (!generated_supported) {
+    const DensityFittingIntegralData full =
+        build_density_fitting_integrals(orbital_system, auxiliary_system, true);
+    std::vector<double> result(ncoord, 0.0);
+    for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
+      const double* dm = full.metric_derivative.data() + coordinate * metric_size;
+      const double* db = full.three_center_derivative.data() + coordinate * three_center_size;
+      double value = 0.0;
+      for (std::size_t item = 0; item < metric_size; ++item)
+        value += metric_weights[item] * dm[item];
+      for (std::size_t item = 0; item < three_center_size; ++item)
+        value += three_center_weights[item] * db[item];
+      result[coordinate] = value;
+    }
+    return result;
+  }
+
+  const std::vector<GlobalAoExpansion> public_aos = public_ao_expansions(orbital_system);
+  const std::vector<GlobalAoExpansion> public_auxiliary_aos =
+      public_ao_expansions(auxiliary_system);
+  const std::vector<AoView> orbital_aos = expand_cartesian_aos(orbital_system);
+  const std::vector<AoView> auxiliary_aos = expand_cartesian_aos(auxiliary_system);
+  const std::size_t cartesian_nbf = orbital_aos.size();
+  const std::size_t cartesian_naux = auxiliary_aos.size();
+  const std::vector<double> cartesian_metric_weights =
+      pullback_matrix_weights(metric_weights, cartesian_naux, public_auxiliary_aos);
+  const std::vector<double> cartesian_three_center_weights = pullback_three_center_weights(
+      three_center_weights, cartesian_nbf, cartesian_naux, public_aos, public_auxiliary_aos);
+
+  using GeneratedAngular = generated_df_cpu::Angular;
+  using GeneratedVec3 = generated_df_cpu::Vec3;
+  const auto center = [&](std::size_t atom) {
+    const auto& r = orbital_system.atoms[atom].position;
+    return GeneratedVec3{r[0], r[1], r[2]};
+  };
+  const auto angular = [](const molecule::CartesianComponent& a) {
+    return GeneratedAngular{a[0], a[1], a[2]};
+  };
+  std::vector<double> result(ncoord, 0.0);
+  const auto scatter = [&](std::size_t atom, double weight, GeneratedVec3 value) {
+    result[3 * atom] += weight * value.x;
+    result[3 * atom + 1] += weight * value.y;
+    result[3 * atom + 2] += weight * value.z;
+  };
+
+  for (std::size_t p = 0; p < cartesian_naux; ++p) {
+    const AoView& first = auxiliary_aos[p];
+    const auto first_center = center(first.shell->atom_index);
+    for (std::size_t q = 0; q < cartesian_naux; ++q) {
+      const double external = cartesian_metric_weights[matrix_index(p, q, cartesian_naux)];
+      if (external == 0.0) continue;
+      const AoView& second = auxiliary_aos[q];
+      const auto second_center = center(second.shell->atom_index);
+      const double component_factor =
+          first.component_normalization * second.component_normalization;
+      for (const auto& first_primitive : first.shell->primitives) {
+        for (const auto& second_primitive : second.shell->primitives) {
+          const double weight = external * component_factor * first_primitive.coefficient *
+                                second_primitive.coefficient;
+          const auto response = generated_df_cpu::metric_derivative(
+              first_primitive.exponent, first_center, angular(first.angular),
+              second_primitive.exponent, second_center, angular(second.angular));
+          scatter(first.shell->atom_index, weight, response.first);
+          scatter(second.shell->atom_index, weight, response.third);
+        }
+      }
+    }
+  }
+
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const AoView& first = orbital_aos[i];
+    const auto first_center = center(first.shell->atom_index);
+    for (std::size_t j = 0; j < cartesian_nbf; ++j) {
+      const AoView& second = orbital_aos[j];
+      const auto second_center = center(second.shell->atom_index);
+      for (std::size_t p = 0; p < cartesian_naux; ++p) {
+        const double external = cartesian_three_center_weights[three_center_index(
+            i, j, p, cartesian_nbf, cartesian_naux)];
+        if (external == 0.0) continue;
+        const AoView& auxiliary = auxiliary_aos[p];
+        const auto auxiliary_center = center(auxiliary.shell->atom_index);
+        const double component_factor = first.component_normalization *
+                                        second.component_normalization *
+                                        auxiliary.component_normalization;
+        for (const auto& first_primitive : first.shell->primitives) {
+          for (const auto& second_primitive : second.shell->primitives) {
+            for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
+              const double weight = external * component_factor * first_primitive.coefficient *
+                                    second_primitive.coefficient * auxiliary_primitive.coefficient;
+              const auto response = generated_df_cpu::three_center_derivative(
+                  first_primitive.exponent, first_center, angular(first.angular),
+                  second_primitive.exponent, second_center, angular(second.angular),
+                  auxiliary_primitive.exponent, auxiliary_center, angular(auxiliary.angular));
+              scatter(first.shell->atom_index, weight, response.first);
+              scatter(second.shell->atom_index, weight, response.second);
+              scatter(auxiliary.shell->atom_index, weight, response.third);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
 DensityFittingIntegralData build_density_fitting_integrals(const core::System& orbital_system,
                                                            const core::System& auxiliary_system,
                                                            bool include_derivatives) {
@@ -646,82 +938,247 @@ DensityFittingIntegralData build_density_fitting_integrals(const core::System& o
   const std::vector<AoView> orbital_aos = expand_cartesian_aos(orbital_system);
   const std::vector<AoView> auxiliary_aos = expand_cartesian_aos(auxiliary_system);
 
-  std::vector<Vec3> atom_coordinates;
-  atom_coordinates.reserve(orbital_system.atoms.size());
-  for (std::size_t atom = 0; atom < orbital_system.atoms.size(); ++atom) {
-    Vec3 position;
-    for (std::size_t axis = 0; axis < 3; ++axis) {
-      const double coordinate = orbital_system.atoms[atom].position[axis];
-      position[axis] = include_derivatives
-                           ? Jet::variable(coordinate, cartesian.ncoord, atom * 3 + axis)
-                           : Jet(coordinate, 0);
-    }
-    atom_coordinates.push_back(std::move(position));
-  }
+  const bool generated_supported =
+      std::all_of(orbital_aos.begin(), orbital_aos.end(),
+                  [](const AoView& ao) { return ao.shell->angular_momentum <= 3; }) &&
+      std::all_of(auxiliary_aos.begin(), auxiliary_aos.end(),
+                  [](const AoView& ao) { return ao.shell->angular_momentum <= 3; });
+  const bool generated_derivatives = include_derivatives && generated_supported;
+  const bool generated_values = !include_derivatives && generated_supported;
+  if (generated_derivatives) {
+    using GeneratedAngular = generated_df_cpu::Angular;
+    using GeneratedVec3 = generated_df_cpu::Vec3;
+    auto center = [&](std::size_t atom) {
+      const auto& r = orbital_system.atoms[atom].position;
+      return GeneratedVec3{r[0], r[1], r[2]};
+    };
+    auto angular = [](const molecule::CartesianComponent& a) {
+      return GeneratedAngular{a[0], a[1], a[2]};
+    };
+    auto scatter = [](std::vector<double>& derivative, std::size_t stride, std::size_t item,
+                      std::size_t atom, double weight, GeneratedVec3 value) {
+      derivative[(3 * atom) * stride + item] += weight * value.x;
+      derivative[(3 * atom + 1) * stride + item] += weight * value.y;
+      derivative[(3 * atom + 2) * stride + item] += weight * value.z;
+    };
 
-  const molecule::CartesianComponent zero_angular{0, 0, 0};
-  std::vector<Jet> metric(cartesian.naux * cartesian.naux, Jet(0.0, cartesian.ncoord));
-  for (std::size_t p = 0; p < cartesian.naux; ++p) {
-    const AoView& first_auxiliary = auxiliary_aos[p];
-    const Vec3& first_center = atom_coordinates[first_auxiliary.shell->atom_index];
-    for (std::size_t q = 0; q < cartesian.naux; ++q) {
-      const AoView& second_auxiliary = auxiliary_aos[q];
-      const Vec3& second_center = atom_coordinates[second_auxiliary.shell->atom_index];
-      Jet value(0.0, cartesian.ncoord);
-      const double component_factor =
-          first_auxiliary.component_normalization * second_auxiliary.component_normalization;
-      for (const core::Primitive& first_primitive : first_auxiliary.shell->primitives) {
-        for (const core::Primitive& second_primitive : second_auxiliary.shell->primitives) {
-          const double weight =
-              component_factor * first_primitive.coefficient * second_primitive.coefficient;
-          value = value + weight * primitive_eri_cartesian(
-                                       first_primitive.exponent, first_center,
-                                       first_auxiliary.angular, 0.0, first_center, zero_angular,
-                                       second_primitive.exponent, second_center,
-                                       second_auxiliary.angular, 0.0, second_center, zero_angular);
+    const std::size_t metric_size = cartesian.naux * cartesian.naux;
+    cartesian.metric.assign(metric_size, 0.0);
+    cartesian.metric_derivative.assign(cartesian.ncoord * metric_size, 0.0);
+    for (std::size_t p = 0; p < cartesian.naux; ++p) {
+      const AoView& first = auxiliary_aos[p];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t q = 0; q < cartesian.naux; ++q) {
+        const AoView& second = auxiliary_aos[q];
+        const auto second_center = center(second.shell->atom_index);
+        const std::size_t item = matrix_index(p, q, cartesian.naux);
+        const double component_factor =
+            first.component_normalization * second.component_normalization;
+        for (const auto& first_primitive : first.shell->primitives) {
+          for (const auto& second_primitive : second.shell->primitives) {
+            const double weight =
+                component_factor * first_primitive.coefficient * second_primitive.coefficient;
+            const auto response = generated_df_cpu::metric_derivative(
+                first_primitive.exponent, first_center, angular(first.angular),
+                second_primitive.exponent, second_center, angular(second.angular));
+            cartesian.metric[item] += weight * response.value;
+            scatter(cartesian.metric_derivative, metric_size, item, first.shell->atom_index, weight,
+                    response.first);
+            scatter(cartesian.metric_derivative, metric_size, item, second.shell->atom_index,
+                    weight, response.third);
+          }
         }
       }
-      metric[matrix_index(p, q, cartesian.naux)] = std::move(value);
     }
-  }
 
-  std::vector<Jet> three_center(cartesian.nbf * cartesian.nbf * cartesian.naux,
-                                Jet(0.0, cartesian.ncoord));
-  for (std::size_t i = 0; i < cartesian.nbf; ++i) {
-    const AoView& first_ao = orbital_aos[i];
-    const Vec3& first_center = atom_coordinates[first_ao.shell->atom_index];
-    for (std::size_t j = 0; j < cartesian.nbf; ++j) {
-      const AoView& second_ao = orbital_aos[j];
-      const Vec3& second_center = atom_coordinates[second_ao.shell->atom_index];
-      for (std::size_t p = 0; p < cartesian.naux; ++p) {
-        const AoView& auxiliary_ao = auxiliary_aos[p];
-        const Vec3& auxiliary_center = atom_coordinates[auxiliary_ao.shell->atom_index];
-        Jet value(0.0, cartesian.ncoord);
-        const double component_factor = first_ao.component_normalization *
-                                        second_ao.component_normalization *
-                                        auxiliary_ao.component_normalization;
-        for (const core::Primitive& first_primitive : first_ao.shell->primitives) {
-          for (const core::Primitive& second_primitive : second_ao.shell->primitives) {
-            for (const core::Primitive& auxiliary_primitive : auxiliary_ao.shell->primitives) {
-              const double weight = component_factor * first_primitive.coefficient *
-                                    second_primitive.coefficient * auxiliary_primitive.coefficient;
-              value =
-                  value + weight * primitive_eri_cartesian(
-                                       first_primitive.exponent, first_center, first_ao.angular,
-                                       second_primitive.exponent, second_center, second_ao.angular,
-                                       auxiliary_primitive.exponent, auxiliary_center,
-                                       auxiliary_ao.angular, 0.0, auxiliary_center, zero_angular);
+    const std::size_t tensor_size = cartesian.nbf * cartesian.nbf * cartesian.naux;
+    cartesian.three_center.assign(tensor_size, 0.0);
+    cartesian.three_center_derivative.assign(cartesian.ncoord * tensor_size, 0.0);
+    for (std::size_t i = 0; i < cartesian.nbf; ++i) {
+      const AoView& first = orbital_aos[i];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t j = 0; j < cartesian.nbf; ++j) {
+        const AoView& second = orbital_aos[j];
+        const auto second_center = center(second.shell->atom_index);
+        for (std::size_t p = 0; p < cartesian.naux; ++p) {
+          const AoView& auxiliary = auxiliary_aos[p];
+          const auto auxiliary_center = center(auxiliary.shell->atom_index);
+          const std::size_t item = three_center_index(i, j, p, cartesian.nbf, cartesian.naux);
+          const double component_factor = first.component_normalization *
+                                          second.component_normalization *
+                                          auxiliary.component_normalization;
+          for (const auto& first_primitive : first.shell->primitives) {
+            for (const auto& second_primitive : second.shell->primitives) {
+              for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
+                const double weight = component_factor * first_primitive.coefficient *
+                                      second_primitive.coefficient *
+                                      auxiliary_primitive.coefficient;
+                const auto response = generated_df_cpu::three_center_derivative(
+                    first_primitive.exponent, first_center, angular(first.angular),
+                    second_primitive.exponent, second_center, angular(second.angular),
+                    auxiliary_primitive.exponent, auxiliary_center, angular(auxiliary.angular));
+                cartesian.three_center[item] += weight * response.value;
+                scatter(cartesian.three_center_derivative, tensor_size, item,
+                        first.shell->atom_index, weight, response.first);
+                scatter(cartesian.three_center_derivative, tensor_size, item,
+                        second.shell->atom_index, weight, response.second);
+                scatter(cartesian.three_center_derivative, tensor_size, item,
+                        auxiliary.shell->atom_index, weight, response.third);
+              }
             }
           }
         }
-        three_center[three_center_index(i, j, p, cartesian.nbf, cartesian.naux)] = std::move(value);
       }
     }
-  }
+  } else if (generated_values) {
+    using GeneratedAngular = generated_df_cpu::Angular;
+    using GeneratedVec3 = generated_df_cpu::Vec3;
+    auto center = [&](std::size_t atom) {
+      const auto& r = orbital_system.atoms[atom].position;
+      return GeneratedVec3{r[0], r[1], r[2]};
+    };
+    auto angular = [](const molecule::CartesianComponent& a) {
+      return GeneratedAngular{a[0], a[1], a[2]};
+    };
 
-  unpack_jets(metric, cartesian.metric, cartesian.metric_derivative, cartesian.ncoord);
-  unpack_jets(three_center, cartesian.three_center, cartesian.three_center_derivative,
-              cartesian.ncoord);
+    const std::size_t metric_size = cartesian.naux * cartesian.naux;
+    cartesian.metric.assign(metric_size, 0.0);
+    for (std::size_t p = 0; p < cartesian.naux; ++p) {
+      const AoView& first = auxiliary_aos[p];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t q = 0; q < cartesian.naux; ++q) {
+        const AoView& second = auxiliary_aos[q];
+        const auto second_center = center(second.shell->atom_index);
+        const std::size_t item = matrix_index(p, q, cartesian.naux);
+        const double component_factor =
+            first.component_normalization * second.component_normalization;
+        for (const auto& first_primitive : first.shell->primitives) {
+          for (const auto& second_primitive : second.shell->primitives) {
+            const double weight =
+                component_factor * first_primitive.coefficient * second_primitive.coefficient;
+            cartesian.metric[item] +=
+                weight * generated_df_cpu::metric_value(
+                             first_primitive.exponent, first_center, angular(first.angular),
+                             second_primitive.exponent, second_center, angular(second.angular));
+          }
+        }
+      }
+    }
+
+    const std::size_t tensor_size = cartesian.nbf * cartesian.nbf * cartesian.naux;
+    cartesian.three_center.assign(tensor_size, 0.0);
+    for (std::size_t i = 0; i < cartesian.nbf; ++i) {
+      const AoView& first = orbital_aos[i];
+      const auto first_center = center(first.shell->atom_index);
+      for (std::size_t j = 0; j < cartesian.nbf; ++j) {
+        const AoView& second = orbital_aos[j];
+        const auto second_center = center(second.shell->atom_index);
+        for (std::size_t p = 0; p < cartesian.naux; ++p) {
+          const AoView& auxiliary = auxiliary_aos[p];
+          const auto auxiliary_center = center(auxiliary.shell->atom_index);
+          const std::size_t item = three_center_index(i, j, p, cartesian.nbf, cartesian.naux);
+          const double component_factor = first.component_normalization *
+                                          second.component_normalization *
+                                          auxiliary.component_normalization;
+          for (const auto& first_primitive : first.shell->primitives) {
+            for (const auto& second_primitive : second.shell->primitives) {
+              for (const auto& auxiliary_primitive : auxiliary.shell->primitives) {
+                const double weight = component_factor * first_primitive.coefficient *
+                                      second_primitive.coefficient *
+                                      auxiliary_primitive.coefficient;
+                cartesian.three_center[item] +=
+                    weight * generated_df_cpu::three_center_value(
+                                 first_primitive.exponent, first_center, angular(first.angular),
+                                 second_primitive.exponent, second_center, angular(second.angular),
+                                 auxiliary_primitive.exponent, auxiliary_center,
+                                 angular(auxiliary.angular));
+              }
+            }
+          }
+        }
+      }
+    }
+  } else {
+    std::vector<Vec3> atom_coordinates;
+    atom_coordinates.reserve(orbital_system.atoms.size());
+    for (std::size_t atom = 0; atom < orbital_system.atoms.size(); ++atom) {
+      Vec3 position;
+      for (std::size_t axis = 0; axis < 3; ++axis) {
+        const double coordinate = orbital_system.atoms[atom].position[axis];
+        position[axis] = include_derivatives
+                             ? Jet::variable(coordinate, cartesian.ncoord, atom * 3 + axis)
+                             : Jet(coordinate, 0);
+      }
+      atom_coordinates.push_back(std::move(position));
+    }
+
+    const molecule::CartesianComponent zero_angular{0, 0, 0};
+    std::vector<Jet> metric(cartesian.naux * cartesian.naux, Jet(0.0, cartesian.ncoord));
+    for (std::size_t p = 0; p < cartesian.naux; ++p) {
+      const AoView& first_auxiliary = auxiliary_aos[p];
+      const Vec3& first_center = atom_coordinates[first_auxiliary.shell->atom_index];
+      for (std::size_t q = 0; q < cartesian.naux; ++q) {
+        const AoView& second_auxiliary = auxiliary_aos[q];
+        const Vec3& second_center = atom_coordinates[second_auxiliary.shell->atom_index];
+        Jet value(0.0, cartesian.ncoord);
+        const double component_factor =
+            first_auxiliary.component_normalization * second_auxiliary.component_normalization;
+        for (const core::Primitive& first_primitive : first_auxiliary.shell->primitives) {
+          for (const core::Primitive& second_primitive : second_auxiliary.shell->primitives) {
+            const double weight =
+                component_factor * first_primitive.coefficient * second_primitive.coefficient;
+            value =
+                value + weight * primitive_eri_cartesian(first_primitive.exponent, first_center,
+                                                         first_auxiliary.angular, 0.0, first_center,
+                                                         zero_angular, second_primitive.exponent,
+                                                         second_center, second_auxiliary.angular,
+                                                         0.0, second_center, zero_angular);
+          }
+        }
+        metric[matrix_index(p, q, cartesian.naux)] = std::move(value);
+      }
+    }
+
+    std::vector<Jet> three_center(cartesian.nbf * cartesian.nbf * cartesian.naux,
+                                  Jet(0.0, cartesian.ncoord));
+    for (std::size_t i = 0; i < cartesian.nbf; ++i) {
+      const AoView& first_ao = orbital_aos[i];
+      const Vec3& first_center = atom_coordinates[first_ao.shell->atom_index];
+      for (std::size_t j = 0; j < cartesian.nbf; ++j) {
+        const AoView& second_ao = orbital_aos[j];
+        const Vec3& second_center = atom_coordinates[second_ao.shell->atom_index];
+        for (std::size_t p = 0; p < cartesian.naux; ++p) {
+          const AoView& auxiliary_ao = auxiliary_aos[p];
+          const Vec3& auxiliary_center = atom_coordinates[auxiliary_ao.shell->atom_index];
+          Jet value(0.0, cartesian.ncoord);
+          const double component_factor = first_ao.component_normalization *
+                                          second_ao.component_normalization *
+                                          auxiliary_ao.component_normalization;
+          for (const core::Primitive& first_primitive : first_ao.shell->primitives) {
+            for (const core::Primitive& second_primitive : second_ao.shell->primitives) {
+              for (const core::Primitive& auxiliary_primitive : auxiliary_ao.shell->primitives) {
+                const double weight = component_factor * first_primitive.coefficient *
+                                      second_primitive.coefficient *
+                                      auxiliary_primitive.coefficient;
+                value = value +
+                        weight * primitive_eri_cartesian(
+                                     first_primitive.exponent, first_center, first_ao.angular,
+                                     second_primitive.exponent, second_center, second_ao.angular,
+                                     auxiliary_primitive.exponent, auxiliary_center,
+                                     auxiliary_ao.angular, 0.0, auxiliary_center, zero_angular);
+              }
+            }
+          }
+          three_center[three_center_index(i, j, p, cartesian.nbf, cartesian.naux)] =
+              std::move(value);
+        }
+      }
+    }
+
+    unpack_jets(metric, cartesian.metric, cartesian.metric_derivative, cartesian.ncoord);
+    unpack_jets(three_center, cartesian.three_center, cartesian.three_center_derivative,
+                cartesian.ncoord);
+  }
 
   const std::vector<GlobalAoExpansion> target_orbital_aos = public_ao_expansions(orbital_system);
   const std::vector<GlobalAoExpansion> target_auxiliary_aos =
@@ -864,8 +1321,11 @@ void cross_overlap(const core::System& target, const core::System& source,
   }
 }
 
-EspIntegralData build_esp_integrals(const core::System& system,
-                                    std::span<const double> points_xyz) {
+namespace {
+
+EspProbeDerivativeData build_esp_integrals_impl(const core::System& system,
+                                                std::span<const double> points_xyz,
+                                                bool include_probe_derivatives) {
   if (points_xyz.size() % 3 != 0) {
     throw std::invalid_argument("ESP probe coordinates must be xyz triples");
   }
@@ -883,43 +1343,62 @@ EspIntegralData build_esp_integrals(const core::System& system,
   const std::size_t npoint = points_xyz.size() / 3;
   const std::size_t cartesian_matrix_size = checked_product(cartesian_nbf, cartesian_nbf);
   const std::size_t matrix_size = checked_product(nbf, nbf);
+  const std::size_t derivative_count = include_probe_derivatives ? 3 : 0;
 
   std::vector<Vec3> centers;
   centers.reserve(system.atoms.size());
   for (const auto& atom : system.atoms) {
-    centers.push_back(
-        {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+    centers.push_back({Jet(atom.position[0], derivative_count),
+                       Jet(atom.position[1], derivative_count),
+                       Jet(atom.position[2], derivative_count)});
   }
 
-  EspIntegralData result;
+  EspProbeDerivativeData result;
   result.nbf = nbf;
   result.npoint = npoint;
   result.values.resize(checked_product(npoint, matrix_size));
+  if (include_probe_derivatives)
+    result.probe_derivative.resize(checked_product(checked_product(3, npoint), matrix_size));
+
   std::vector<double> cartesian(cartesian_matrix_size);
+  std::vector<double> cartesian_derivative;
+  if (include_probe_derivatives) cartesian_derivative.resize(3 * cartesian_matrix_size);
 
   for (std::size_t point = 0; point < npoint; ++point) {
-    const Vec3 probe{Jet(points_xyz[3 * point], 0), Jet(points_xyz[3 * point + 1], 0),
-                     Jet(points_xyz[3 * point + 2], 0)};
+    Vec3 probe;
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      const double coordinate = points_xyz[3 * point + axis];
+      probe[axis] =
+          include_probe_derivatives ? Jet::variable(coordinate, 3, axis) : Jet(coordinate, 0);
+    }
+
     for (std::size_t i = 0; i < cartesian_nbf; ++i) {
       const auto& first = cartesian_aos[i];
       const auto& first_center = centers[first.shell->atom_index];
       for (std::size_t j = 0; j <= i; ++j) {
         const auto& second = cartesian_aos[j];
         const auto& second_center = centers[second.shell->atom_index];
-        double value = 0.0;
+        Jet value(0.0, derivative_count);
         const double angular_normalization =
             first.component_normalization * second.component_normalization;
         for (const auto& p : first.shell->primitives) {
           for (const auto& q : second.shell->primitives) {
-            value += angular_normalization * p.coefficient * q.coefficient *
-                     primitive_coulomb_potential_cartesian(p.exponent, first_center, first.angular,
-                                                           q.exponent, second_center,
-                                                           second.angular, probe)
-                         .value;
+            value = value + angular_normalization * p.coefficient * q.coefficient *
+                                primitive_coulomb_potential_cartesian(
+                                    p.exponent, first_center, first.angular, q.exponent,
+                                    second_center, second.angular, probe);
           }
         }
-        cartesian[matrix_index(i, j, cartesian_nbf)] = value;
-        cartesian[matrix_index(j, i, cartesian_nbf)] = value;
+        const auto ij = matrix_index(i, j, cartesian_nbf);
+        const auto ji = matrix_index(j, i, cartesian_nbf);
+        cartesian[ij] = cartesian[ji] = value.value;
+        if (include_probe_derivatives) {
+          for (unsigned axis = 0; axis < 3; ++axis) {
+            const auto offset = axis * cartesian_matrix_size;
+            cartesian_derivative[offset + ij] = value.derivative[axis];
+            cartesian_derivative[offset + ji] = value.derivative[axis];
+          }
+        }
       }
     }
 
@@ -930,7 +1409,95 @@ EspIntegralData build_esp_integrals(const core::System& system,
       source = transformed.data();
     }
     std::copy(source, source + matrix_size, result.values.begin() + point * matrix_size);
+
+    if (include_probe_derivatives) {
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        const double* derivative_source =
+            cartesian_derivative.data() + axis * cartesian_matrix_size;
+        std::vector<double> transformed_derivative;
+        if (nbf != cartesian_nbf) {
+          transformed_derivative = transform_matrix(derivative_source, cartesian_nbf, public_aos);
+          derivative_source = transformed_derivative.data();
+        }
+        std::copy(derivative_source, derivative_source + matrix_size,
+                  result.probe_derivative.begin() + (3 * point + axis) * matrix_size);
+      }
+    }
   }
+  return result;
+}
+
+}  // namespace
+
+EspIntegralData build_esp_integrals(const core::System& system,
+                                    std::span<const double> points_xyz) {
+  auto result = build_esp_integrals_impl(system, points_xyz, false);
+  return {result.nbf, result.npoint, std::move(result.values)};
+}
+
+EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
+    const core::System& system, std::span<const double> points_xyz) {
+  return build_esp_integrals_impl(system, points_xyz, true);
+}
+
+EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
+    const core::System& system, std::span<const double> point_xyz,
+    std::span<const double> matrix_weights) {
+  if (point_xyz.size() != 3 || !std::all_of(point_xyz.begin(), point_xyz.end(),
+                                            [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("contracted ESP derivative requires one finite xyz probe");
+
+  const auto cartesian_aos = expand_cartesian_aos(system);
+  const auto public_aos = public_ao_expansions(system);
+  const std::size_t cartesian_nbf = cartesian_aos.size();
+  const std::size_t nbf = public_aos.size();
+  if (cartesian_nbf == 0 || nbf == 0 || matrix_weights.size() != checked_product(nbf, nbf) ||
+      !std::all_of(matrix_weights.begin(), matrix_weights.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("contracted ESP derivative weights do not match the AO basis");
+
+  const auto cartesian_weights = pullback_matrix_weights(matrix_weights, cartesian_nbf, public_aos);
+  const std::size_t ncoord = checked_product(system.atoms.size(), std::size_t{3});
+  const std::size_t derivative_count = checked_sum(ncoord, std::size_t{3});
+  std::vector<Vec3> centers(system.atoms.size());
+  for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+    for (unsigned axis = 0; axis < 3; ++axis)
+      centers[atom][axis] =
+          Jet::variable(system.atoms[atom].position[axis], derivative_count, 3 * atom + axis);
+  Vec3 probe;
+  for (unsigned axis = 0; axis < 3; ++axis)
+    probe[axis] = Jet::variable(point_xyz[axis], derivative_count, ncoord + axis);
+
+  Jet contracted(0.0, derivative_count);
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const auto& first = cartesian_aos[i];
+    const auto& first_center = centers[first.shell->atom_index];
+    for (std::size_t j = 0; j < cartesian_nbf; ++j) {
+      const double external = cartesian_weights[matrix_index(i, j, cartesian_nbf)];
+      if (external == 0.0) continue;
+      const auto& second = cartesian_aos[j];
+      const auto& second_center = centers[second.shell->atom_index];
+      const double angular_normalization =
+          first.component_normalization * second.component_normalization;
+      for (const auto& p : first.shell->primitives)
+        for (const auto& q : second.shell->primitives)
+          contracted = contracted + external * angular_normalization * p.coefficient *
+                                        q.coefficient *
+                                        primitive_coulomb_potential_cartesian(
+                                            p.exponent, first_center, first.angular, q.exponent,
+                                            second_center, second.angular, probe);
+    }
+  }
+  if (!std::isfinite(contracted.value) ||
+      !std::all_of(contracted.derivative.begin(), contracted.derivative.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::runtime_error("contracted ESP geometry derivative is nonfinite");
+
+  EspContractedGeometryDerivative result;
+  result.nuclear_derivative.assign(contracted.derivative.begin(),
+                                   contracted.derivative.begin() + ncoord);
+  for (unsigned axis = 0; axis < 3; ++axis)
+    result.probe_derivative[axis] = contracted.derivative[ncoord + axis];
   return result;
 }
 
@@ -1042,9 +1609,11 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index, pj.exponent, b, ao_j.angular,
               ao_j.shell->atom_index);
           sij = sij + weight * st.overlap;
-          hij = hij + weight * (st.kinetic + primitive_nuclear_attraction_cartesian(
-                                                 pi.exponent, a, ao_i.angular, pj.exponent, b,
-                                                 ao_j.angular, atom_coordinates, system));
+          hij =
+              hij + weight * (st.kinetic + production_nuclear_attraction_cartesian(
+                                               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index,
+                                               pj.exponent, b, ao_j.angular, ao_j.shell->atom_index,
+                                               atom_coordinates, system));
         }
       }
       overlap[matrix_index(i, j, n)] = std::move(sij);
@@ -1160,6 +1729,67 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
     return spherical;
   }
   return out;
+}
+
+std::vector<double> build_range_eri(const core::System& system, CoulombRange range, double omega) {
+  if (range == CoulombRange::Full || !std::isfinite(omega) || omega < 0.0)
+    throw std::invalid_argument("range ERI requires a finite nonnegative short/long omega");
+
+  const std::size_t cartesian_nbf = molecule::cartesian_ao_count(system);
+  const std::size_t n2 = checked_product(cartesian_nbf, cartesian_nbf);
+  std::vector<double> eri(checked_product(n2, n2), 0.0);
+  const std::vector<AoView> aos = expand_cartesian_aos(system);
+  std::vector<Vec3> atom_coordinates;
+  atom_coordinates.reserve(system.atoms.size());
+  for (const auto& atom : system.atoms)
+    atom_coordinates.push_back(
+        {Jet(atom.position[0], 0), Jet(atom.position[1], 0), Jet(atom.position[2], 0)});
+
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const AoView& ao_i = aos[i];
+    const Vec3& a = atom_coordinates[ao_i.shell->atom_index];
+    for (std::size_t j = 0; j <= i; ++j) {
+      const AoView& ao_j = aos[j];
+      const Vec3& b = atom_coordinates[ao_j.shell->atom_index];
+      for (std::size_t k = 0; k < cartesian_nbf; ++k) {
+        const AoView& ao_k = aos[k];
+        const Vec3& c = atom_coordinates[ao_k.shell->atom_index];
+        for (std::size_t l = 0; l <= k; ++l) {
+          if (i * (i + 1) / 2 + j < k * (k + 1) / 2 + l) continue;
+          const AoView& ao_l = aos[l];
+          const Vec3& d = atom_coordinates[ao_l.shell->atom_index];
+          double value = 0.0;
+          const double component_factor =
+              ao_i.component_normalization * ao_j.component_normalization *
+              ao_k.component_normalization * ao_l.component_normalization;
+          for (const core::Primitive& pi : ao_i.shell->primitives)
+            for (const core::Primitive& pj : ao_j.shell->primitives)
+              for (const core::Primitive& pk : ao_k.shell->primitives)
+                for (const core::Primitive& pl : ao_l.shell->primitives) {
+                  const double weight = component_factor * pi.coefficient * pj.coefficient *
+                                        pk.coefficient * pl.coefficient;
+                  value += weight * primitive_range_eri_cartesian(
+                                        pi.exponent, a, ao_i.angular, pj.exponent, b, ao_j.angular,
+                                        pk.exponent, c, ao_k.angular, pl.exponent, d, ao_l.angular,
+                                        range, omega);
+                }
+          if (!std::isfinite(value))
+            throw std::runtime_error("nonfinite range-separated ERI value");
+          for (const auto& indices : std::array<std::array<std::size_t, 4>, 8>{{{i, j, k, l},
+                                                                                {j, i, k, l},
+                                                                                {i, j, l, k},
+                                                                                {j, i, l, k},
+                                                                                {k, l, i, j},
+                                                                                {l, k, i, j},
+                                                                                {k, l, j, i},
+                                                                                {l, k, j, i}}})
+            eri[eri_index(indices[0], indices[1], indices[2], indices[3], cartesian_nbf)] = value;
+        }
+      }
+    }
+  }
+  if (system.basis_representation != VIBEQC_BASIS_SPHERICAL) return eri;
+  return transform_eri(eri.data(), cartesian_nbf, spherical_expansions(system));
 }
 
 std::array<double, 12> contract_weighted_eri_shell_derivative(
@@ -1298,9 +1928,10 @@ std::vector<double> contract_weighted_one_electron_derivative(
                     contracted =
                         contracted +
                         hcore_weight * primitive_weight *
-                            (st.kinetic + primitive_nuclear_attraction_cartesian(
-                                              pi.exponent, center_i, ei.component, pj.exponent,
-                                              center_j, ej.component, atoms, system));
+                            (st.kinetic + production_nuclear_attraction_cartesian(
+                                              pi.exponent, center_i, ei.component,
+                                              shell_i.atom_index, pj.exponent, center_j,
+                                              ej.component, shell_j.atom_index, atoms, system));
                 }
             }
         }
@@ -1447,6 +2078,11 @@ const core::System& RawSource::orbital() const { return impl_->orbital; }
 const core::System& RawSource::auxiliary() const {
   if (!impl_->has_auxiliary) throw std::invalid_argument("auxiliary basis required");
   return impl_->auxiliary;
+}
+std::size_t RawSource::retained_numeric_bytes() const {
+  auto bytes = source_capacity(impl_->orbital);
+  if (impl_->has_auxiliary) bytes = checked_add(bytes, source_capacity(impl_->auxiliary));
+  return checked_add(bytes, checked_mul(sizeof(double), impl_->ecp_matrix.capacity()));
 }
 std::size_t RawSource::nbf() const { return impl_->public_aos.size(); }
 std::size_t RawSource::naux() const { return impl_->public_aux.size(); }

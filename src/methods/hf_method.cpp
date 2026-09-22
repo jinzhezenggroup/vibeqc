@@ -417,6 +417,10 @@ class HfPreparedBatch final : public PreparedBatch {
 
 vibeqc_status validate_hf_system(vibeqc_method method, const core::System& system,
                                  std::string& detail) {
+  if (system.shells.empty()) {
+    detail = "Hartree-Fock requires an explicit Gaussian orbital basis";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   if (method == VIBEQC_METHOD_RHF) {
     if (system.electron_count % 2 == 0 && system.multiplicity == 1) {
       return VIBEQC_STATUS_SUCCESS;

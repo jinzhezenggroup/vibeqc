@@ -1,5 +1,5 @@
 {
-  "benchmark_results_max_bytes": 134217728,
+  "benchmark_results_max_bytes": 100663296,
   "change_review_max_bytes": 2097152,
   "exceptions": {
     "benchmarks/results/accuracy-173/arithmetic/states.npz": {
@@ -21,11 +21,6 @@
       "owner": "df-derivatives-rtx5090",
       "reason": "Exact measured dirty-source reconstruction patch tied to the benchmark provenance; required to reproduce historical scientific code.",
       "sha256": "ac5300c5d51f89e3ca850e4b1f03fecb3c9fbb6c878aa925c0bd5d9021b6725f"
-    },
-    "benchmarks/results/issue206-device-diis-baseline/evidence.zip": {
-      "owner": "issue206-device-diis-baseline",
-      "reason": "Clean 96/192-AO energy/full-force batch-1/4 samples, actual external factor ranks, exact basis stack, unmatched branches and separately traced host-response bottleneck.",
-      "sha256": "dda7de93473601eeb67a080d46bf3ffd586c21739d6ba67031c75a7289ede8a4"
     },
     "benchmarks/results/issue206-direct-force-state/integration-e4f2f67/00-configure.log.gz": {
       "owner": "issue206-direct-force-state/integration-e4f2f67",
@@ -141,16 +136,6 @@
       "owner": "issue308-property-budgets",
       "reason": "Bounded native preparation outputs, exact accepted/initial-rejected native source reconstruction, input identity and reproduction commands; excludes binaries, routine logs and full transient matrices. Every member byte-restored.",
       "sha256": "08880e8b611d21dd4e111152cb084a34819684a6b0c1f93aa0bf809e8e4cbf37"
-    },
-    "benchmarks/results/issue308-stage-ledger/historical-followup.zip": {
-      "owner": "issue308-stage-ledger",
-      "reason": "Reviewed compact original 9531/9535/9536/9537 numerical measurements, reproduction source/input and first-24-pair scientific sample. Excludes logs, binaries and bulk exploratory rows; original identities and restoration audit are in historical-followup.json. Not performance promotion.",
-      "sha256": "e987a878948774de9a552b28bef1d45eb95084c34ea1b7a5f33037b1cc7ebe1e"
-    },
-    "benchmarks/results/issue308-stage-ledger/stage-evidence.zip": {
-      "owner": "issue308-stage-ledger",
-      "reason": "Exact accepted/rejected/timeout phase measurements, source/input identities and complete event journals from 9538/9539. The interrupted journal is the scientific evidence locating incomplete K work; no routine build/test logs or executable products.",
-      "sha256": "454914f981bb332f6c27da2915453dfd29be33f46d663321a71f291a5d1a218f"
     },
     "benchmarks/results/issue418-cooperative-rys/endpoints/auxiliary-holdouts-v2/auxiliary.xml.gz": {
       "owner": "issue418-cooperative-rys",
@@ -432,11 +417,6 @@
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ecp-consumers-171/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "628ddb41f9654f211a527c728ebf5f7f25f883e6ac5ecb5f4345e3909838839c"
     },
-    "benchmarks/results/ecp-grid-171/raw-evidence.zip": {
-      "owner": "ecp-grid-171",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ecp-grid-171/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "c40f492cf3e1fd3d76bb3964dda6d387082b790582eb242cb1a3fece2e621622"
-    },
     "benchmarks/results/ecp-projector-171/review-qualification/raw-evidence.zip": {
       "owner": "ecp-projector-171",
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/ecp-projector-171/review-qualification/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
@@ -452,16 +432,6 @@
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue206-df-a/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "e4cda40de612613950d441a33a70b4b7f88ddaa0ea88d08ada3356437ba5cc89"
     },
-    "benchmarks/results/issue206-final-state-192/endpoints.zip": {
-      "owner": "issue206-final-state-192",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue206-final-state-192/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "b80a5ab7fdd085cac3b9df00e2791c0f3163f975cad373481855ea22c6504ae8"
-    },
-    "benchmarks/results/issue206-final-state-96/endpoints.zip": {
-      "owner": "issue206-final-state-96",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue206-final-state-96/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "1abf59bff526de86a4de42747b93ebdd2d4bdb62da83e12486ae4c93529d1cbe"
-    },
     "benchmarks/results/issue282-283-integration/raw-evidence.zip": {
       "owner": "issue282-283-integration",
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue282-283-integration/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
@@ -471,16 +441,6 @@
       "owner": "issue282-energy-only",
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue282-energy-only/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "cb62da8baab48e670c47b740e34dfd7c221fc45c6aa383ff228fac8947680559"
-    },
-    "benchmarks/results/issue282-generated-resident/raw-evidence.zip": {
-      "owner": "issue282-generated-resident",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue282-generated-resident/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "d595839631abb696affd1a45739d91dcb2c90f5afd6d77edba336bf228f458f2"
-    },
-    "benchmarks/results/issue283-component-baseline/raw-evidence.zip": {
-      "owner": "issue283-component-baseline",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue283-component-baseline/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "af4be07c779eea5a51685fd94f5310af5839ad2f2c8e304b314c5632c0147629"
     },
     "benchmarks/results/issue283-host-response/raw-evidence.zip": {
       "owner": "issue283-host-response",
@@ -497,50 +457,15 @@
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue308-large-diagnostics/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "b9e4876e70aa15887ac7281da466798109611e7ef591584c24e46c48f5e621f0"
     },
-    "benchmarks/results/issue308-large-diagnostics/qualification.zip": {
-      "owner": "issue308-large-diagnostics",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue308-large-diagnostics/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "1e11cf0f3f88fc0d27591d23a46513af670e6ad5e60f5a952ffcebb56edc33a7"
-    },
-    "benchmarks/results/issue309-lazy-core/raw-evidence.zip": {
-      "owner": "issue309-lazy-core",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue309-lazy-core/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "a0510af08da6f8cf66d5e951b5b6ba1370c5c1123bf82e5a79416147f8d2668f"
-    },
-    "benchmarks/results/issue309-overlap-cache/raw-evidence.zip": {
-      "owner": "issue309-overlap-cache",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue309-overlap-cache/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "b814ac1788b12992a9c0d13aae6483eca3ee1b572d2deb5c4baaa140a595fb1d"
-    },
     "benchmarks/results/issue310-capture-recovery/evidence.zip": {
       "owner": "issue310-capture-recovery",
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue310-capture-recovery/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "d5b8967afbf3d46f6e91d73952afad9329c5c6676e1fb35b27fc9eadb1f88faf"
     },
-    "benchmarks/results/issue310-final-eigen/raw-evidence.zip": {
-      "owner": "issue310-final-eigen",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue310-final-eigen/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "c45c759e5b5aa3efd182090e1c6236110f07e2ffd53d4931faa7136ef3a605fe"
-    },
-    "benchmarks/results/issue310-setup-eigen/raw-evidence.zip": {
-      "owner": "issue310-setup-eigen",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue310-setup-eigen/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "4aa7e3f3f9dccdb6eb444fb0e37452eb27df03982079c2a375fc657ac89dec5d"
-    },
     "benchmarks/results/issue311-final-snapshot/qualification.zip": {
       "owner": "issue311-final-snapshot",
       "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue311-final-snapshot/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
       "sha256": "c8fbef356170fded3a48e919612f7bfbb4503de3f833cba314c4ff761e4ac6d8"
-    },
-    "benchmarks/results/issue311-rhf-energy/qualification.zip": {
-      "owner": "issue311-rhf-energy",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue311-rhf-energy/manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "f3cd99b9fa85018f6d3927deeabcce1ee7e4a61b6545c67565573d58153329f3"
-    },
-    "benchmarks/results/issue394-batch-rys/raw-evidence.zip": {
-      "owner": "issue394-batch-rys",
-      "reason": "Legacy accepted qualification archive retained byte-for-byte with benchmarks/results/issue394-batch-rys/raw-evidence.manifest.json and the family README for historical audit/recovery. New run bundles are transient and must use artifact storage plus compact publication.",
-      "sha256": "08b91d9290ea4c1d95fa1f80db84dd4d202ae970a4284e1300c634aa9c5621cc"
     },
     "benchmarks/results/ks-final-state-review-162/raw-evidence.zip": {
       "owner": "ks-final-state-review-162",

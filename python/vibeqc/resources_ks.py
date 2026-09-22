@@ -16,13 +16,7 @@ import os
 import typing
 from dataclasses import asdict, replace
 
-from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
-from .basis import BasisSet
-from .basis_capabilities import require_basis
-from .calculator import Atom, _snapshot_basis
-from .elements import electron_state
-from .ks import resolve_ks_options
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -32,9 +26,25 @@ from .resources import (
     checked_bytes,
     plan_resources,
 )
+
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
+from .basis import BasisSet
+from .basis_capabilities import require_basis
+from .calculator import Atom, _snapshot_basis
+from .elements import electron_state
+from .ks import resolve_ks_options
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
-_METHODS = ("lda-rks", "pbe-rks", "lda-uks", "pbe-uks")
+_METHODS = (
+    "lda-rks",
+    "pbe-rks",
+    "lda-uks",
+    "pbe-uks",
+    "pbe0-rks",
+    "pbe0-uks",
+    "b3lyp-rks",
+    "b3lyp-uks",
+)
 
 
 def _item_host_inventory(
@@ -76,9 +86,37 @@ def _item_host_inventory(
     quadrature = 16 * (model.grid.radial_points + model.grid.angular_polar) + 8 * a
     matrix_work = byte_product(8, spins, n2, 128 + 2 * (diis_history + 1))
     matrix_work += byte_product(16, diis_history + 1, diis_history + 1)
-    xc_tile = byte_product(
-        8, min(points, model.tile_points), n, 4 if pbe else 1
-    ) + byte_product(8, spins, n2)
+    host_unfused = backend == "cuda" and model.xc_schedule == "host_unfused"
+    xc_tile = (
+        byte_product(8, min(points, model.tile_points), n, 4 if pbe else 1)
+        + byte_product(8, spins, n2)
+        if backend == "cpu" or host_unfused
+        else 0
+    )
+    # Match CudaKsPlan's retained host staging exactly. Host-unfused owns one
+    # density and one Vxc matrix per spin; UKS additionally owns split alpha/
+    # beta matrices for the audited CPU integrator.
+    xc_schedule_staging = (
+        byte_product(8, n2, 2 * spins + (2 if spins == 2 else 0)) if host_unfused else 0
+    )
+    nonlocal_provider = 0
+    nonlocal_work = 0
+    if model.has_nonlocal_correlation:
+        # Vv10Plan retains omega/kappa/weighted-density and three local
+        # derivatives: six FP64 arrays. The AO bridge separately owns rho,
+        # grad-rho, vrho/vsigma, one first-derivative AO tile and V_nlc.
+        nonlocal_provider = byte_product(8, points, 6)
+        if nonlocal_provider > model.nonlocal_memory_budget_bytes:
+            raise ValueError(
+                "KS nonlocal provider workspace exceeds nonlocal_memory_budget_bytes"
+            )
+        matrix_factor = 3 if spins == 2 else 1
+        nonlocal_work = (
+            byte_product(8, points, 6)
+            + byte_product(8, min(points, model.tile_points), n, 4)
+            + byte_product(8, n2, matrix_factor)
+        )
+        retained += nonlocal_provider
     if backend == "cpu":
         # Value-only Jet objects retain no derivative arrays. Raw Cartesian
         # Jet integrals coexist with unpacked and spherical transform buffers.
@@ -105,9 +143,11 @@ def _item_host_inventory(
             "warm_and_matrices": warm_and_matrices,
             "history": history,
             "provider": provider,
+            "xc_schedule_staging": xc_schedule_staging,
+            "nonlocal_provider": nonlocal_provider,
             "retained": retained,
             "setup_workspace": setup,
-            "scf_workspace": matrix_work + xc_tile,
+            "scf_workspace": matrix_work + xc_tile + nonlocal_work,
         }.items()
     }
 
@@ -194,7 +234,7 @@ def ks_resource_request(
     """Resolve one complete energy-only KS request for the shared global planner."""
     if method not in _METHODS or backend not in ("cpu", "cuda"):
         raise NotImplementedError(
-            "KS planning supports native CPU/CUDA LDA/PBE RKS/UKS energies"
+            "KS planning supports native CPU LDA/PBE/PBE0 and CUDA LDA/PBE RKS/UKS energies"
         )
     precision = str(precision).lower()
     if precision not in ("fp64", "auto"):
@@ -202,6 +242,14 @@ def ks_resource_request(
     if precision == "auto" and backend != "cuda":
         raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
+    if backend == "cuda" and model.has_nonlocal_correlation:
+        raise NotImplementedError(
+            "self-consistent nonlocal correlation currently requires CPU"
+        )
+    if backend == "cuda" and model.has_nondefault_composition:
+        raise NotImplementedError(
+            "CUDA KS planning does not claim scaled/global-hybrid execution"
+        )
     systems = tuple(tuple(Atom.from_value(a) for a in atoms) for atoms in systems)
     if not systems or any(not atoms for atoms in systems):
         raise ValueError("KS resource planning requires nonempty systems")
@@ -339,6 +387,8 @@ def ks_resource_request(
         "warm_and_matrices",
         "history",
         "provider",
+        "xc_schedule_staging",
+        "nonlocal_provider",
     ):
         estimates.append(
             ResourceEstimate(
@@ -379,17 +429,13 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            if model != resolve_ks_options(method):
-                options_version = getattr(library, "vibeqc_ks_options_version", None)
-                if options_version is not None:
-                    options_version.argtypes, options_version.restype = (
-                        [],
-                        ctypes.c_uint32,
-                    )
-                if options_version is None or options_version() != 1:
-                    raise NotImplementedError(
-                        "native library does not support KS model options v1"
-                    )
+            options_version = getattr(library, "vibeqc_ks_options_version", None)
+            if options_version is not None:
+                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if options_version is None or options_version() != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
+                )
             version = getattr(library, "vibeqc_ks_resource_inventory_version_v1", None)
             if version is not None:
                 version.argtypes, version.restype = [], ctypes.c_int
@@ -414,6 +460,9 @@ def ks_resource_request(
                 )
                 for item in items
             ]
+            if model.xc_schedule == "host_unfused":
+                for item in device:
+                    item["xc"] = 0
             for key in ("state", "xc", "coulomb"):
                 estimates.append(
                     ResourceEstimate(

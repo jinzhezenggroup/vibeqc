@@ -35,8 +35,8 @@ for candidate in (ROOT, Path(os.environ.get("SCRATCH", "")) / "repo"):
 _compiler_sys.path.insert(0, str(ROOT / "python"))
 
 import numpy as np
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor.cuda_execute import tensor_source_identity
 
 from tools.vibeqc_cc.triples import triples_energy
@@ -44,7 +44,6 @@ from tools.vibeqc_cc.triples_cuda import (
     CudaTriplesTiles,
     TriplesTileConfig,
 )
-from tools.vibeqc_cc.triples_tiles import TriplesTileEnumerator
 
 ENDPOINTS_DIR = ROOT / "tests/reference_data/cc/endpoints"
 GROUND_TRUTH = {
@@ -215,31 +214,18 @@ def run(args: typing.Any) -> None:
 
                 try:
                     if args.compile_only:
-                        # Compile just one tile to verify the plan is feasible
-                        from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+                        # Use the same budget-driven runtime-domain selection as
+                        # production, but stop before device allocation/execution.
                         from vibeqc_compiler.tensor.cuda_resident import (
                             compile_resident,
                         )
 
-                        from tools.vibeqc_cc.triples_tiles import (
-                            build_tile_triples_program,
-                        )
-
-                        enum = TriplesTileEnumerator(
-                            nocc, nvir, vir_chunk_size=vir_chunk_size
-                        )
-                        first_tile = next(iter(enum))
-                        tile_prog = build_tile_triples_program(
-                            nocc,
-                            nvir,
-                            vir_chunk=(first_tile.a_start, first_tile.a_end),
-                        )
-                        plan = plan_cuda(
-                            tile_prog, compiler.target, max_bytes=max_bytes
-                        )
+                        tiles = CudaTriplesTiles(config, compiler, cache)
+                        capacity, plan, capacity_attempts = tiles.plan_runtime_domain()
                         artifact = compile_resident(plan, compiler, cache)
                         print(
-                            f"compiled peak={plan.peak_bytes // 1024}KiB "
+                            f"compiled capacity={capacity} "
+                            f"peak={plan.peak_bytes // 1024}KiB "
                             f"key={artifact.metadata['key'][:16]}",
                             flush=True,
                         )
@@ -248,6 +234,8 @@ def run(args: typing.Any) -> None:
                                 "vir_chunk_size": vir_chunk_size,
                                 "budget_mib": budget_mib,
                                 "compiled": True,
+                                "runtime_domain_capacity": capacity,
+                                "capacity_selection": list(capacity_attempts),
                                 "peak_bytes": plan.peak_bytes,
                                 "artifact_key": artifact.metadata["key"],
                                 "gpu_run": None,

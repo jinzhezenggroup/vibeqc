@@ -14,7 +14,8 @@ import re
 import typing
 from dataclasses import dataclass, field
 
-from .backend import TargetInfo
+from vibeqc_compiler.common.backend import TargetInfo
+
 from .runtime_backend import (
     ExecutionShape,
     RuntimeCapabilities,

@@ -2,8 +2,8 @@
 """Clone review/oracle repositories outside the product source tree.
 
 The script intentionally does not vendor or link cloned code. After cloning,
-record the resolved commit and license checksum in references/manifest.toml
-before adapting any implementation.
+record the resolved commit and license checksum in
+tools/reference_sources.toml before adapting any implementation.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    manifest_path = Path(__file__).resolve().parents[1] / "references" / "manifest.toml"
+    manifest_path = Path(__file__).with_name("reference_sources.toml")
     repositories = tomllib.loads(manifest_path.read_text())["repository"]
     selected = set(args.name)
     args.root.mkdir(parents=True, exist_ok=True)

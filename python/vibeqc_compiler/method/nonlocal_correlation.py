@@ -41,7 +41,7 @@ class NonlocalCorrelationPrimitive:
     @property
     def derivative_capabilities(self) -> typing.Any:
         # Energy and the self-consistent KS/Fock potential share one definition.
-        return ("energy", "ks-potential")
+        return ("energy", "ks-potential", "nuclear-gradient")
 
     @property
     def required_ingredients(self) -> typing.Any:

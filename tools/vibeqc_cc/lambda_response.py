@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import typing
 from collections.abc import Iterable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 import numpy as np
-from vibeqc_compiler.tensor import TensorSpec, execute
+from vibeqc_compiler.common.evidence import canonical_hash
+from vibeqc_compiler.common.solver_region import RegionDerivative, SolverRegion
 
 from tools.vibeqc_response.implicit import (
     ImplicitSolveError,
@@ -22,10 +23,12 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .lambda_equations import PARAMETERS, build_parameter_vjp
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, _feed_hash, _graph_bytes
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor import TensorSpec
 
 _WEIGHT_ATOL = 1e-12
 _WEIGHT_RTOL = 1e-10
@@ -103,6 +106,8 @@ class BoundCCSDResponse:
     lambda2: np.ndarray
     lambda_identity: str
     response_identity: str
+    derivative_plan_identity: str
+    solver_region: SolverRegion | None
     max_bytes: int
     logical_reserved_host_bytes: int
     shared_lambda_residual_norm: float
@@ -142,6 +147,7 @@ class BoundCCSDResponse:
                 or result.provenance.get("tensor_backend")
                 not in {
                     "numpy-cpu-interpreter",
+                    "native-cpu-tensorir",
                     "cuda-fp64-ordinary-stream",
                     "cuda-fp64-resident-actions",
                 }
@@ -210,12 +216,44 @@ class BoundCCSDResponse:
                 }
             ),
         )
+        put(
+            "derivative_plan_identity",
+            canonical_hash(
+                {
+                    "schema": "vibeqc.ccsd.implicit-vjp-region-rule-v1",
+                    "equations": bound.equation_identity,
+                    "shared_primal": bound.programs.primal.logical_hash,
+                    "independent_primal": bound.independent.primal.logical_hash,
+                    "solver_contract": dict(bound._solver_contract),
+                    "inner_product": (
+                        "dense Frobenius; sqrt-orbit-weighted independent solver coordinates"
+                    ),
+                    "scope": "amplitude-relaxed correlation-only fixed-orbital input blocks",
+                }
+            ),
+        )
+        solver_region = None
+        if bound.primal_solver_region is not None:
+            solver_region = replace(
+                bound.primal_solver_region,
+                derivatives=(
+                    RegionDerivative("implicit_vjp", self.derivative_plan_identity),
+                ),
+                derivative_policy="custom",
+            )
+        put("solver_region", solver_region)
 
     @property
     def parameters(self) -> tuple[str, ...]:
         return PARAMETERS
 
     def _prepare(self, parameter: typing.Any) -> typing.Any:
+        if self.solver_region is not None:
+            rule = self.solver_region.derivative_rule("implicit_vjp")
+            if rule.identity != self.derivative_plan_identity:
+                raise ResponseCompatibilityError(
+                    "CC solver-region derivative registration is stale"
+                )
         shared = build_parameter_vjp(self.bound.programs.primal, parameter)
         independent = build_parameter_vjp(self.bound.independent.primal, parameter)
         spec = next(
@@ -261,19 +299,13 @@ class BoundCCSDResponse:
             values = []
             for program in (shared.program, independent.program):
                 bound._assert_current(reference_identity)
-                out = execute(
-                    program, {**bound.feeds, **extra}, max_bytes=self.max_bytes
-                )
-                if out.backend != "numpy-cpu-interpreter":
-                    raise ResponseCompatibilityError(
-                        "CC response backend changed; no silent fallback"
-                    )
+                outputs = bound._tensor_execute(program, {**bound.feeds, **extra})
                 # Retain independent immutable evidence before executing the
                 # other graph; shared executor buffers must not alias this check.
                 values.append(
                     _immutable(
                         _tensor(
-                            out.outputs[f"bar_{parameter}"], spec, "CC parameter weight"
+                            outputs[f"bar_{parameter}"], spec, "CC parameter weight"
                         )
                     )
                 )
@@ -296,13 +328,31 @@ class BoundCCSDResponse:
                 {
                     "parameter_vjp": shared.program.logical_hash,
                     "independent_parameter_vjp": independent.program.logical_hash,
-                    "tensor_backend": "numpy-cpu-interpreter",
+                    "tensor_backend": bound.tensor_backend,
                     "inner_product": "dense Frobenius; declared input symmetry projector",
                     "scope": "amplitude-relaxed correlation-only fixed-orbital mathematical input weight",
                     "hf_reference_energy": "excluded",
                     "normal_ordering_pullback": "excluded",
                     "orbital_response": "excluded",
                     "physical_rdm": False,
+                    "solver_region_primal_identity": (
+                        None
+                        if bound.primal_solver_region is None
+                        else bound.primal_solver_region.identity
+                    ),
+                    "solver_region_bound_identity": (
+                        None
+                        if self.solver_region is None
+                        else self.solver_region.identity
+                    ),
+                    "solver_region_derivative_mode": (
+                        None if self.solver_region is None else "implicit_vjp"
+                    ),
+                    "solver_region_derivative_identity": (
+                        None
+                        if self.solver_region is None
+                        else self.derivative_plan_identity
+                    ),
                     "reference_binding": (
                         "live-reference-callback"
                         if bound._current_reference is not None

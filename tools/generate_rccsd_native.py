@@ -34,7 +34,26 @@ _tensor_package.__package__ = "vibeqc_compiler.tensor"
 sys.modules["vibeqc_compiler.tensor"] = _tensor_package
 vibeqc_compiler.tensor = _tensor_package
 
-from vibeqc_compiler.tensor.ir import add, divide, einsum, input_tensor
+from vibeqc_compiler.tensor.ad_program import (
+    JVPProgram,
+    VJPProgram,
+    linearize,
+    transpose_program,
+)
+from vibeqc_compiler.tensor.ir import (
+    add,
+    broadcast,
+    constant,
+    divide,
+    einsum,
+    gather,
+    input_tensor,
+    multiply,
+    reduce_sum,
+    runtime_indexed_select,
+    slice_tensor,
+    transpose,
+)
 from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.types import Index, IndexSpace, Symmetry, TensorSpec
 
@@ -54,29 +73,32 @@ for _name, _value in {
     "TensorSpec": TensorSpec,
     "Program": Program,
     "add": add,
+    "broadcast": broadcast,
+    "constant": constant,
     "divide": divide,
     "einsum": einsum,
+    "execute": lambda *args, **kwargs: (_ for _ in ()).throw(
+        RuntimeError("build-only RCCSD generator does not execute TensorIR")
+    ),
+    "gather": gather,
     "input_tensor": input_tensor,
+    "multiply": multiply,
+    "reduce_sum": reduce_sum,
+    "runtime_indexed_select": runtime_indexed_select,
+    "slice_tensor": slice_tensor,
+    "transpose": transpose,
     "PackedLayout": _BuildOnlyPackedLayout,
+    "JVPProgram": JVPProgram,
+    "VJPProgram": VJPProgram,
+    "linearize": linearize,
+    "transpose_program": transpose_program,
     "optimize": lambda program: program,
 }.items():
     setattr(_tensor_package, _name, _value)
 
-# The CC equation modules only need canonical_hash from the validation facade;
-# providing it here avoids importing NumPy-backed evidence comparison helpers.
-import hashlib
-import json
-
-_validation_schema = types.ModuleType("tools.vibeqc_validation.schema")
-
-
-def _canonical_hash(value: typing.Any) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    return hashlib.sha256(encoded.encode()).hexdigest()
-
-
-_validation_schema.canonical_hash = _canonical_hash
-sys.modules["tools.vibeqc_validation.schema"] = _validation_schema
+# CC equation modules import the real canonical evidence module. Its numerical
+# comparison routines load NumPy only when executed; no module replacement is
+# required for immutable AOT equation construction.
 
 _cc_path = Path(__file__).resolve().parent / "vibeqc_cc"
 _cc_package = types.ModuleType("tools.vibeqc_cc")
@@ -85,8 +107,29 @@ _cc_package.__package__ = "tools.vibeqc_cc"
 sys.modules.setdefault("tools.vibeqc_cc", _cc_package)
 
 from tools.vibeqc_cc.doubles import build_ccsd_program
+from tools.vibeqc_cc.gradient_equations import (
+    build_fock_weight_program,
+    build_hamiltonian_programs,
+)
+from tools.vibeqc_cc.lambda_equations import (
+    PARAMETERS,
+    build_lambda_programs,
+    build_parameter_vjp,
+)
+from tools.vibeqc_cc.triples_tiles import build_runtime_tile_triples_program
 
 REPRESENTATIVE = (2, 3)
+REPRESENTATIVE_ORBITALS = sum(REPRESENTATIVE)
+TRIPLES_RESPONSE_INPUTS = (
+    "ovvv",
+    "ovoo",
+    "ovov",
+    "fov",
+    "t1",
+    "t2",
+    "eps_o",
+    "eps_v",
+)
 
 
 def iteration_program(nocc: int, nvir: int) -> Program:
@@ -141,7 +184,19 @@ def _kind(index: Index) -> str:
 
 
 def _dim(index: Index) -> str:
-    return "o" if _kind(index) == "occupied" else "v"
+    if index.space.kind in ("occupied", "virtual"):
+        return "o" if _kind(index) == "occupied" else "v"
+    if index.space.kind == "batch":
+        return "q"
+    if index.space.kind == "orbital" and index.space.size == REPRESENTATIVE_ORBITALS:
+        bounds = (index.start, index.stop)
+        if bounds == (0, REPRESENTATIVE[0]):
+            return "o"
+        if bounds == (REPRESENTATIVE[0], REPRESENTATIVE_ORBITALS):
+            return "v"
+        if bounds == (0, REPRESENTATIVE_ORBITALS):
+            return "n"
+    raise ValueError(f"unsupported runtime-shape RCCSD index domain: {index}")
 
 
 def _size(spec: TensorSpec) -> str:
@@ -169,6 +224,17 @@ def _input_access(name: str, *, cuda: bool = False) -> str:
     return f"s.{name}" if cuda else f"inputs.{name}"
 
 
+def _label_dims(node: typing.Any) -> dict[typing.Any, str]:
+    result = {}
+    for operand, labels in zip(node.inputs, node.attrs["labels"]):
+        for index, label in zip(operand.spec.indices, labels):
+            dim = _dim(index)
+            previous = result.setdefault(label, dim)
+            if previous != dim:
+                raise ValueError("einsum label crosses incompatible runtime domains")
+    return result
+
+
 def _label_kinds(node: typing.Any) -> dict[typing.Any, str]:
     result = {}
     for operand, labels in zip(node.inputs, node.attrs["labels"]):
@@ -189,6 +255,47 @@ def _flat_index(labels: tuple[typing.Any, ...], spec: TensorSpec) -> str:
     return expression
 
 
+def _flat_coords(coords: list[str], spec: TensorSpec) -> str:
+    if not coords:
+        return "0"
+    expression = coords[0]
+    for coord, index in zip(coords[1:], spec.indices[1:]):
+        expression = f"({expression}*{_dim(index)}+{coord})"
+    return expression
+
+
+def _runtime_bound(value: int) -> str:
+    if value == 0:
+        return "0"
+    if value == REPRESENTATIVE[0]:
+        return "o"
+    if value == REPRESENTATIVE_ORBITALS:
+        return "n"
+    raise ValueError(f"unsupported runtime RCCSD slice boundary {value}")
+
+
+def _scaled_bilinear_cpp() -> str:
+    return r"""inline bool generated_scaled_bilinear(
+    double a,double b,double c,double d,double e,double f,double& out){
+  if(e==0.0||f==0.0) return false;
+  int ea,eb,ec,ed,ee,ef;
+  const double ma=std::frexp(a,&ea), mb=std::frexp(b,&eb);
+  const double mc=std::frexp(c,&ec), md=std::frexp(d,&ed);
+  const double me=std::frexp(e,&ee), mf=std::frexp(f,&ef);
+  double p=ma*mb,q=mc*md,pe=std::fma(ma,mb,-p),qe=std::fma(mc,md,-q);
+  const int ep=ea+eb,eq=ec+ed,exponent=p==0.0?eq:(q==0.0?ep:std::max(ep,eq));
+  constexpr int limit=110;
+  const int dp=ep-exponent,dq=eq-exponent;
+  if(dp < -limit){p=0.0;pe=0.0;} else {p=std::scalbn(p,dp);pe=std::scalbn(pe,dp);}
+  if(dq < -limit){q=0.0;qe=0.0;} else {q=std::scalbn(q,dq);qe=std::scalbn(qe,dq);}
+  const double difference=p-q,tail=difference-p;
+  const double residual=(p-(difference-tail))-(q+tail);
+  const double numerator=difference+((pe-qe)+residual);
+  out=std::scalbn(numerator/(me*mf),exponent-ee-ef);
+  return std::isfinite(out);
+}"""
+
+
 def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]:
     out = names[number]
     size = _size(node.spec)
@@ -204,6 +311,15 @@ def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]
             f"    {out}[i]=value;",
             "  }",
         ]
+    elif node.op == "multiply":
+        a, b = (names[x._emit_index] for x in node.inputs)
+        lines += [
+            f"  for(std::size_t i=0;i<{size};++i){{",
+            f"    const double value={a}[i]*{b}[i];",
+            '    if(!std::isfinite(value)) throw std::runtime_error("nonfinite RCCSD multiply");',
+            f"    {out}[i]=value;",
+            "  }",
+        ]
     elif node.op == "divide":
         a, b = (names[x._emit_index] for x in node.inputs)
         lines += [
@@ -214,22 +330,34 @@ def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]
             f"    {out}[i]=value;",
             "  }",
         ]
+    elif node.op == "scaled_bilinear":
+        args = [names[x._emit_index] for x in node.inputs]
+        lines += [
+            f"  for(std::size_t i=0;i<{size};++i){{",
+            "    double value=0.0;",
+            (
+                f"    if(!generated_scaled_bilinear({','.join(f'{arg}[i]' for arg in args)},value)) "
+                'throw std::runtime_error("nonfinite RCCSD scaled_bilinear");'
+            ),
+            f"    {out}[i]=value;",
+            "  }",
+        ]
     elif node.op == "einsum":
         labels = node.attrs["labels"]
         output = tuple(node.attrs["output"])
-        kinds = _label_kinds(node)
-        all_labels = sorted(kinds)
+        dims = _label_dims(node)
+        all_labels = sorted(dims)
         reduced = [label for label in all_labels if label not in output]
         lines.append(f"  for(std::size_t flat=0;flat<{size};++flat){{")
         if output:
             lines.append("    std::size_t rem=flat;")
         for label in reversed(output):
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines += [f"    const std::size_t l{label}=rem%{dim};", f"    rem/={dim};"]
         lines += ["    double sum=0.0;"]
         indent = "    "
         for label in reduced:
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines.append(
                 f"{indent}for(std::size_t l{label}=0;l{label}<{dim};++l{label}){{"
             )
@@ -249,6 +377,192 @@ def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]
             f"    {out}[flat]=value;",
             "  }",
         ]
+    elif node.op == "broadcast":
+        source = node.inputs[0]
+        axes = tuple(node.attrs["axes"])
+        lines += [
+            f"  for(std::size_t flat=0;flat<{size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        coords = [""] * len(node.spec.indices)
+        for axis in reversed(range(len(node.spec.indices))):
+            dim = _dim(node.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+            coords[axis] = f"c{axis}"
+        source_index = _flat_coords([coords[axis] for axis in axes], source.spec)
+        lines += [
+            f"    const double value={names[source._emit_index]}[{source_index}];",
+            f"    {out}[flat]=value;",
+            "  }",
+        ]
+    elif node.op == "reduce":
+        source = node.inputs[0]
+        reduced = set(node.attrs["axes"])
+        source_size = _size(source.spec)
+        lines.append(f"  std::fill_n({out},{size},0.0);")
+        lines += [
+            f"  for(std::size_t flat=0;flat<{source_size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        source_coords = [""] * len(source.spec.indices)
+        for axis in reversed(range(len(source.spec.indices))):
+            dim = _dim(source.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+            source_coords[axis] = f"c{axis}"
+        kept = [
+            coord for axis, coord in enumerate(source_coords) if axis not in reduced
+        ]
+        target_index = _flat_coords(kept, node.spec)
+        lines += [
+            f"    {out}[{target_index}]+={names[source._emit_index]}[flat];",
+            "  }",
+        ]
+    elif node.op == "runtime_indexed_select":
+        source = node.inputs[0]
+        maps = node.inputs[1:]
+        axes = tuple(node.attrs["axes"])
+        selected = dict(zip(axes, maps, strict=True))
+        lines += [
+            f"  for(std::size_t flat=0;flat<{size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        out_coords = [""] * len(node.spec.indices)
+        for axis in reversed(range(len(node.spec.indices))):
+            dim = _dim(node.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+            out_coords[axis] = f"c{axis}"
+        source_coords = []
+        remaining = iter(out_coords[1:])
+        for axis, index in enumerate(source.spec.indices):
+            if axis in selected:
+                map_name = names[selected[axis]._emit_index]
+                dim = _dim(index)
+                lines.append(f"    const auto m{axis}={map_name}[c0];")
+                lines.append(
+                    f'    if(m{axis}<0||static_cast<std::size_t>(m{axis})>={dim}) throw std::runtime_error("runtime triples index out of bounds");'
+                )
+                source_coords.append(f"static_cast<std::size_t>(m{axis})")
+            else:
+                source_coords.append(next(remaining))
+        source_index = _flat_coords(source_coords, source.spec)
+        lines += [
+            f"    {out}[flat]={names[source._emit_index]}[{source_index}];",
+            "  }",
+        ]
+    elif node.op == "runtime_indexed_scatter_add":
+        source = node.inputs[0]
+        maps = node.inputs[1:]
+        axes = tuple(node.attrs["axes"])
+        selected = dict(zip(axes, maps, strict=True))
+        source_size = _size(source.spec)
+        lines.append(f"  std::fill_n({out},{size},0.0);")
+        lines += [
+            f"  for(std::size_t flat=0;flat<{source_size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        source_coords = [""] * len(source.spec.indices)
+        for axis in reversed(range(len(source.spec.indices))):
+            dim = _dim(source.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+            source_coords[axis] = f"c{axis}"
+        target_coords = []
+        remaining = iter(source_coords[1:])
+        for axis, index in enumerate(node.spec.indices):
+            if axis in selected:
+                map_name = names[selected[axis]._emit_index]
+                dim = _dim(index)
+                lines.append(f"    const auto m{axis}={map_name}[c0];")
+                lines.append(
+                    f'    if(m{axis}<0||static_cast<std::size_t>(m{axis})>={dim}) throw std::runtime_error("runtime triples scatter index out of bounds");'
+                )
+                target_coords.append(f"static_cast<std::size_t>(m{axis})")
+            else:
+                target_coords.append(next(remaining))
+        target_index = _flat_coords(target_coords, node.spec)
+        lines += [
+            f"    {out}[{target_index}]+={names[source._emit_index]}[flat];",
+            "  }",
+        ]
+    elif node.op == "slice":
+        source = node.inputs[0]
+        ranges = tuple(node.attrs["ranges"])
+        rank = len(node.spec.indices)
+        lines += [
+            f"  for(std::size_t flat=0;flat<{size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        coords = [""] * rank
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [f"    const std::size_t c{axis}=rem%{dim};", f"    rem/={dim};"]
+            coords[axis] = f"(c{axis}+{_runtime_bound(ranges[axis][0])})"
+        source_index = _flat_coords(coords, source.spec)
+        lines += [
+            f"    const double value={names[source._emit_index]}[{source_index}];",
+            '    if(!std::isfinite(value)) throw std::runtime_error("nonfinite RCCSD slice");',
+            f"    {out}[flat]=value;",
+            "  }",
+        ]
+    elif node.op == "scatter_add":
+        source = node.inputs[0]
+        axis = node.attrs["axis"]
+        positions = tuple(node.attrs["positions"])
+        if not positions or positions != tuple(range(positions[0], positions[-1] + 1)):
+            raise ValueError("runtime RCCSD scatter requires contiguous positions")
+        offset = _runtime_bound(positions[0])
+        source_size = _size(source.spec)
+        lines.append(f"  std::fill_n({out},{size},0.0);")
+        lines += [
+            f"  for(std::size_t flat=0;flat<{source_size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        coords = [""] * len(source.spec.indices)
+        for source_axis in reversed(range(len(source.spec.indices))):
+            dim = _dim(source.spec.indices[source_axis])
+            lines += [
+                f"    const std::size_t c{source_axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+            coords[source_axis] = (
+                f"(c{source_axis}+{offset})"
+                if source_axis == axis
+                else f"c{source_axis}"
+            )
+        target_index = _flat_coords(coords, node.spec)
+        lines += [
+            f"    {out}[{target_index}]+={names[source._emit_index]}[flat];",
+            "  }",
+        ]
+    elif node.op == "transpose":
+        source = node.inputs[0]
+        rank = len(node.spec.indices)
+        axes = tuple(node.attrs["axes"])
+        if len(axes) != rank or sorted(axes) != list(range(rank)):
+            raise ValueError("invalid native RCCSD transpose permutation")
+        source_coords: list[str | None] = [None] * rank
+        lines += [
+            f"  for(std::size_t flat=0;flat<{size};++flat){{",
+            "    std::size_t rem=flat;",
+        ]
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [
+                f"    const std::size_t c{axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+        for out_axis, source_axis in enumerate(axes):
+            source_coords[source_axis] = f"c{out_axis}"
+        if any(coord is None for coord in source_coords):
+            raise ValueError("invalid native RCCSD transpose coordinate map")
+        index = typing.cast("list[str]", source_coords)[0] if source_coords else "0"
+        for coord, spec_index in zip(source_coords[1:], source.spec.indices[1:]):
+            index = f"({index}*{_dim(spec_index)}+{coord})"
+        lines += [
+            f"    const double value={names[source._emit_index]}[{index}];",
+            '    if(!std::isfinite(value)) throw std::runtime_error("nonfinite RCCSD transpose");',
+            f"    {out}[flat]=value;",
+            "  }",
+        ]
     else:
         raise ValueError(f"unsupported native RCCSD CPU op {node.op}")
     return lines
@@ -262,10 +576,23 @@ def _prepare_program(program: Program) -> dict[int, str]:
     return names
 
 
-def _cpu_function(program: Program, function_name: str, output_type: str) -> str:
+def _cpu_function(
+    program: Program,
+    function_name: str,
+    output_type: str,
+    *,
+    signature: str = "const Inputs& inputs",
+    input_overrides: dict[str, str] | None = None,
+    batch_dim: bool = False,
+) -> str:
     names = _prepare_program(program)
+    input_overrides = {} if input_overrides is None else dict(input_overrides)
+    dimensions = "std::size_t o,std::size_t v"
+    if batch_dim:
+        dimensions += ",std::size_t q"
     lines = [
-        f"inline {output_type} {function_name}(std::size_t o,std::size_t v,const Inputs& inputs,double* arena,std::size_t arena_elements){{",
+        f"inline {output_type} {function_name}({dimensions},{signature},double* arena,std::size_t arena_elements){{",
+        "  const std::size_t n=checked_add(o,v);",
         "  std::size_t cursor=0;",
         "  auto allocate=[&](std::size_t count)->double*{",
         "    const auto next=checked_add(cursor,count);",
@@ -275,64 +602,137 @@ def _cpu_function(program: Program, function_name: str, output_type: str) -> str
     ]
     for number, node in enumerate(program.live_nodes):
         if node.op == "input":
-            lines.append(
-                f"  const double* {names[number]}={_input_access(node.attrs['name'])};"
-            )
+            input_name = node.attrs["name"]
+            access = input_overrides.get(input_name)
+            if access is None:
+                access = _input_access(input_name)
+            ctype = "std::int64_t" if node.spec.dtype == "int64" else "double"
+            lines.append(f"  const {ctype}* {names[number]}={access};")
         else:
             lines += _cpu_node(node, number, names)
     outputs = {key: names[value._emit_index] for key, value in program.outputs.items()}
     if output_type == "IterationOutputs":
-        lines.append(
-            "  return {"
-            + ",".join(
-                [
-                    f"*{outputs['correlation_energy']}",
-                    outputs["singles_residual"],
-                    outputs["doubles_residual"],
-                    outputs["next_t1"],
-                    outputs["next_t2"],
-                ]
-            )
-            + "};"
-        )
+        returned = [
+            f"*{outputs['correlation_energy']}",
+            outputs["singles_residual"],
+            outputs["doubles_residual"],
+            outputs["next_t1"],
+            outputs["next_t2"],
+        ]
+    elif output_type == "ReplayOutputs":
+        returned = [
+            f"*{outputs['correlation_energy']}",
+            outputs["singles_residual"],
+            outputs["doubles_residual"],
+        ]
+    elif output_type == "LambdaOutputs":
+        returned = [outputs["bar_t1"], outputs["bar_t2"]]
+    elif output_type == "ParameterOutput":
+        if len(outputs) != 1:
+            raise ValueError("RCCSD parameter VJP must expose exactly one output")
+        returned = [next(iter(outputs.values()))]
+    elif output_type == "HamiltonianOutputs":
+        returned = [
+            outputs["hcore"],
+            outputs["eri"],
+            outputs["overlap"],
+            outputs["rotation_gradient"],
+            outputs["stationarity"],
+            outputs["orbital_rhs"],
+        ]
+    elif output_type == "OrbitalJvpOutput":
+        returned = [outputs["d_fov"]]
+    elif output_type == "TriplesResponseOutputs":
+        returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
     else:
-        lines.append(
-            "  return {"
-            + ",".join(
-                [
-                    f"*{outputs['correlation_energy']}",
-                    outputs["singles_residual"],
-                    outputs["doubles_residual"],
-                ]
-            )
-            + "};"
-        )
+        raise ValueError(f"unsupported RCCSD generated CPU output type {output_type}")
+    lines.append("  return {" + ",".join(returned) + "};")
     lines.append("}")
     return "\n".join(lines)
 
 
-def _required_function(program: Program, name: str) -> str:
+def _required_function(program: Program, name: str, *, batch_dim: bool = False) -> str:
     _prepare_program(program)
     pieces = [_size(node.spec) for node in program.live_nodes if node.op != "input"]
-    body = "0"
+    # Emit sequential checked additions rather than an expression whose parser
+    # nesting grows with the AD graph. Clang's default bracket limit is finite.
+    body = "std::size_t required=0;"
     for piece in pieces:
-        body = f"checked_add({body},{piece})"
-    return f"inline std::size_t {name}(std::size_t o,std::size_t v){{return {body};}}"
+        body += f"required=checked_add(required,{piece});"
+    dimensions = "std::size_t o,std::size_t v"
+    if batch_dim:
+        dimensions += ",std::size_t q"
+    return (
+        f"inline std::size_t {name}({dimensions}){{"
+        f"[[maybe_unused]] const std::size_t n=checked_add(o,v);{body}return required;}}"
+    )
 
 
 def cpu_header() -> str:
     iteration = iteration_program(*REPRESENTATIVE)
     replay = build_ccsd_program(*REPRESENTATIVE, form="expanded", diagnostics=False)
+    lambda_programs = build_lambda_programs(*REPRESENTATIVE, form="shared")
+    lambda_independent = build_lambda_programs(*REPRESENTATIVE, form="expanded")
+    lambda_rhs = lambda_programs.energy_vjp.program
+    lambda_transpose = lambda_programs.residual_vjp.program
+    independent_rhs = lambda_independent.energy_vjp.program
+    independent_transpose = lambda_independent.residual_vjp.program
+    parameter_vjps = {
+        parameter: build_parameter_vjp(lambda_programs.primal, parameter).program
+        for parameter in PARAMETERS
+    }
+    hamiltonian = build_hamiltonian_programs(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_weights = hamiltonian.weights
+    orbital_jvp = hamiltonian.orbital_jvp.program
+    fock_weights = build_fock_weight_program(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_input_names = tuple(
+        sorted(
+            n.attrs["name"] for n in hamiltonian_weights.live_nodes if n.op == "input"
+        )
+    )
+    orbital_jvp_input_names = tuple(
+        sorted(n.attrs["name"] for n in orbital_jvp.live_nodes if n.op == "input")
+    )
+    fock_weight_input_names = tuple(
+        sorted(n.attrs["name"] for n in fock_weights.live_nodes if n.op == "input")
+    )
+    triples_primal = build_runtime_tile_triples_program(*REPRESENTATIVE, capacity=6)
+    triples_response = transpose_program(
+        triples_primal,
+        ("triples_energy",),
+        inputs=TRIPLES_RESPONSE_INPUTS,
+        max_elements=100_000_000,
+    ).program
+    triples_input_nodes = {
+        n.attrs["name"]: n for n in triples_response.live_nodes if n.op == "input"
+    }
+    triples_input_names = tuple(sorted(triples_input_nodes))
+    response_seed_signature = (
+        "const Inputs& inputs,const double* bar_correlation_energy,"
+        "const double* bar_singles_residual,const double* bar_doubles_residual"
+    )
+    response_seed_overrides = {
+        "bar_correlation_energy": "bar_correlation_energy",
+        "bar_singles_residual": "bar_singles_residual",
+        "bar_doubles_residual": "bar_doubles_residual",
+    }
     return "\n".join(
         [
             "// Generated by tools/generate_rccsd_native.py from #148 TensorIR.",
             "#pragma once",
+            "#include <algorithm>",
             "#include <cmath>",
             "#include <cstddef>",
+            "#include <cstdint>",
             "#include <initializer_list>",
             "#include <limits>",
             "#include <stdexcept>",
             "namespace vibeqc::cc::generated {",
+            _scaled_bilinear_cpp(),
             'inline std::size_t checked_add(std::size_t a,std::size_t b){if(b>std::numeric_limits<std::size_t>::max()-a)throw std::length_error("RCCSD size overflow");return a+b;}',
             'inline std::size_t checked_product(std::initializer_list<std::size_t> values){std::size_t x=1;for(auto v:values){if(v&&x>std::numeric_limits<std::size_t>::max()/v)throw std::length_error("RCCSD size overflow");x*=v;}return x;}',
             "struct Inputs {",
@@ -340,13 +740,154 @@ def cpu_header() -> str:
             "};",
             "struct IterationOutputs { double energy{}; const double* r1{}; const double* r2{}; const double* next_t1{}; const double* next_t2{}; };",
             "struct ReplayOutputs { double energy{}; const double* r1{}; const double* r2{}; };",
+            "struct LambdaOutputs { const double* t1{}; const double* t2{}; };",
+            "struct ParameterOutput { const double* values{}; };",
+            "struct HamiltonianWeightInputs {",
+            *[f"  const double* {name}{{}};" for name in hamiltonian_input_names],
+            "};",
+            "struct OrbitalJvpInputs {",
+            *[f"  const double* {name}{{}};" for name in orbital_jvp_input_names],
+            "};",
+            "struct FockWeightInputs {",
+            *[f"  const double* {name}{{}};" for name in fock_weight_input_names],
+            "};",
+            "struct TriplesResponseInputs {",
+            *[
+                f"  const {'std::int64_t' if triples_input_nodes[name].spec.dtype == 'int64' else 'double'}* {name}{{}};"
+                for name in triples_input_names
+            ],
+            "};",
+            "struct HamiltonianOutputs { const double* hcore{}; const double* eri{}; const double* overlap{}; const double* rotation_gradient{}; const double* stationarity{}; const double* orbital_rhs{}; };",
+            "struct OrbitalJvpOutput { const double* d_fov{}; };",
+            "struct TriplesResponseOutputs {",
+            *[f"  const double* {name}{{}};" for name in TRIPLES_RESPONSE_INPUTS],
+            "};",
             f'inline constexpr const char* iteration_equation_hash="{iteration.provenance["physical_equation"]}";',
             f'inline constexpr const char* iteration_program_hash="{iteration.logical_hash}";',
             f'inline constexpr const char* replay_equation_hash="{replay.logical_hash}";',
+            f'inline constexpr const char* lambda_rhs_program_hash="{lambda_rhs.logical_hash}";',
+            f'inline constexpr const char* lambda_transpose_program_hash="{lambda_transpose.logical_hash}";',
+            f'inline constexpr const char* lambda_independent_rhs_program_hash="{independent_rhs.logical_hash}";',
+            f'inline constexpr const char* lambda_independent_transpose_program_hash="{independent_transpose.logical_hash}";',
+            *[
+                f'inline constexpr const char* parameter_{parameter}_program_hash="{program.logical_hash}";'
+                for parameter, program in parameter_vjps.items()
+            ],
+            f'inline constexpr const char* hamiltonian_weights_program_hash="{hamiltonian_weights.logical_hash}";',
+            f'inline constexpr const char* orbital_jvp_program_hash="{orbital_jvp.logical_hash}";',
+            f'inline constexpr const char* fock_weights_program_hash="{fock_weights.logical_hash}";',
+            f'inline constexpr const char* triples_response_program_hash="{triples_response.logical_hash}";',
             _required_function(iteration, "iteration_arena_elements"),
             _required_function(replay, "replay_arena_elements"),
+            _required_function(lambda_rhs, "lambda_rhs_arena_elements"),
+            _required_function(lambda_transpose, "lambda_transpose_arena_elements"),
+            _required_function(
+                independent_rhs, "lambda_independent_rhs_arena_elements"
+            ),
+            _required_function(
+                independent_transpose, "lambda_independent_transpose_arena_elements"
+            ),
+            *[
+                _required_function(program, f"parameter_{parameter}_arena_elements")
+                for parameter, program in parameter_vjps.items()
+            ],
+            _required_function(
+                hamiltonian_weights, "hamiltonian_weights_arena_elements"
+            ),
+            _required_function(orbital_jvp, "orbital_jvp_arena_elements"),
+            _required_function(fock_weights, "fock_weights_arena_elements"),
+            _required_function(
+                triples_response, "triples_response_arena_elements", batch_dim=True
+            ),
             _cpu_function(iteration, "run_iteration_cpu", "IterationOutputs"),
             _cpu_function(replay, "run_replay_cpu", "ReplayOutputs"),
+            _cpu_function(
+                lambda_rhs,
+                "run_lambda_rhs_cpu",
+                "LambdaOutputs",
+                signature="const Inputs& inputs,const double* bar_correlation_energy",
+                input_overrides={"bar_correlation_energy": "bar_correlation_energy"},
+            ),
+            _cpu_function(
+                lambda_transpose,
+                "run_lambda_transpose_cpu",
+                "LambdaOutputs",
+                signature=(
+                    "const Inputs& inputs,const double* bar_singles_residual,"
+                    "const double* bar_doubles_residual"
+                ),
+                input_overrides={
+                    "bar_singles_residual": "bar_singles_residual",
+                    "bar_doubles_residual": "bar_doubles_residual",
+                },
+            ),
+            _cpu_function(
+                independent_rhs,
+                "run_lambda_independent_rhs_cpu",
+                "LambdaOutputs",
+                signature="const Inputs& inputs,const double* bar_correlation_energy",
+                input_overrides={"bar_correlation_energy": "bar_correlation_energy"},
+            ),
+            _cpu_function(
+                independent_transpose,
+                "run_lambda_independent_transpose_cpu",
+                "LambdaOutputs",
+                signature=(
+                    "const Inputs& inputs,const double* bar_singles_residual,"
+                    "const double* bar_doubles_residual"
+                ),
+                input_overrides={
+                    "bar_singles_residual": "bar_singles_residual",
+                    "bar_doubles_residual": "bar_doubles_residual",
+                },
+            ),
+            *[
+                _cpu_function(
+                    program,
+                    f"run_parameter_{parameter}_cpu",
+                    "ParameterOutput",
+                    signature=response_seed_signature,
+                    input_overrides=response_seed_overrides,
+                )
+                for parameter, program in parameter_vjps.items()
+            ],
+            _cpu_function(
+                hamiltonian_weights,
+                "run_hamiltonian_weights_cpu",
+                "HamiltonianOutputs",
+                signature="const HamiltonianWeightInputs& inputs",
+                input_overrides={
+                    name: f"inputs.{name}" for name in hamiltonian_input_names
+                },
+            ),
+            _cpu_function(
+                orbital_jvp,
+                "run_orbital_jvp_cpu",
+                "OrbitalJvpOutput",
+                signature="const OrbitalJvpInputs& inputs",
+                input_overrides={
+                    name: f"inputs.{name}" for name in orbital_jvp_input_names
+                },
+            ),
+            _cpu_function(
+                fock_weights,
+                "run_fock_weights_cpu",
+                "HamiltonianOutputs",
+                signature="const FockWeightInputs& inputs",
+                input_overrides={
+                    name: f"inputs.{name}" for name in fock_weight_input_names
+                },
+            ),
+            _cpu_function(
+                triples_response,
+                "run_triples_response_cpu",
+                "TriplesResponseOutputs",
+                signature="const TriplesResponseInputs& inputs",
+                input_overrides={
+                    name: f"inputs.{name}" for name in triples_input_names
+                },
+                batch_dim=True,
+            ),
             "}",
             "",
         ]

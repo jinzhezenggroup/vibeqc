@@ -1,4 +1,4 @@
-"""Live native CPU RKS/UKS handoff into the shared CPKS operator and solver.
+"""Live native CPU/CUDA RKS/UKS handoff into the shared CPKS operator and solver.
 
 The batch and AO basis are borrowed; the integral source and native snapshot
 lease are owned. SCF replay, failed replay, or closure revokes this response.
@@ -8,22 +8,89 @@ No SCF rerun, recanonicalization, or relabeling of an HF reference occurs here.
 from __future__ import annotations
 
 import typing
+from time import perf_counter
 
 import numpy as np
 from vibeqc._dft_gradient import StationaryDerivativeContract, StationaryKsState
+from vibeqc.fock import FockBuildSpec, FockTerm
 from vibeqc.ks import resolve_ks_method
 from vibeqc.profiles import canonical_hash
-from vibeqc_compiler.dft.features import density_features
+from vibeqc_compiler.dft.features import density_features, spin_densities
 from vibeqc_compiler.xc.potential import assemble_coefficients
 
 from tools.vibeqc_posthf.reference import ReferenceSnapshot
 from tools.vibeqc_posthf.sources import NativeSource
 
-from .backends import NativeJKBackend
+from .backends import NativeJKBackend, _checked_density
 from .operators import CPKSResponseOperator, cpks_operator_identity
 from .problem import ResponseUnsupported
+from .spin_cuda import CudaSpinJKBackend
 from .uhf import UHFReferenceSnapshot, UKSResponseOperator, uks_operator_identity
 from .xc import FixedDensityXCDerivativeKernel
+
+
+class _NativeCudaJBackend(CudaSpinJKBackend):
+    """Exact native KS Coulomb using the same bounded CUDA provider owner.
+
+    Semilocal response requests no exchange. The unrestricted input adapter
+    supplies total density in the first channel, so J is independent of the
+    reference's RKS/UKS packing and no unused K contraction executes.
+    """
+
+    def _build_spec(self, approximation: str) -> FockBuildSpec:
+        if approximation != "exact":
+            raise ResponseUnsupported("native KS response requires exact Coulomb")
+        return FockBuildSpec(
+            spin="unrestricted",
+            derivative_order=0,
+            exchange=FockTerm(present=False, coefficient=0.0),
+        )
+
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
+        with self._lock:
+            self._ensure_open()
+            restricted = isinstance(reference, ReferenceSnapshot)
+            if not restricted and not isinstance(reference, UHFReferenceSnapshot):
+                raise TypeError("native CUDA J requires a KS response snapshot")
+            for name, expected in (
+                ("geometry_hash", self.source.geometry_hash),
+                ("basis_hash", self.source.basis_hash),
+                ("representation", self.source.representation),
+                ("hamiltonian_id", self.hamiltonian_id),
+                ("algorithm", "KS" if restricted else "UKS"),
+                ("nmo" if restricted else "nbf", self.nbf),
+            ):
+                if getattr(reference, name, None) != expected:
+                    raise ValueError(f"native CUDA J/reference {name} mismatch")
+            occupied = (
+                (reference.electron_count // 2,) * 2
+                if restricted
+                else (reference.nocc("alpha"), reference.nocc("beta"))
+            )
+            if occupied != (self.nalpha, self.nbeta):
+                raise ValueError("native CUDA J/reference spin occupations mismatch")
+        return self
+
+    def coulomb_exchange(self, density: typing.Any) -> typing.Any:
+        """J-only implementation of the shared semilocal operator seam."""
+        with self._lock:
+            self._ensure_open()
+            d = _checked_density(density, self.nbf)
+            started = perf_counter()
+            result = self._plan.evaluate(np.stack([d, np.zeros_like(d)]))
+            if (
+                result.diagnostics != self._native_diagnostics
+                or result.exchange is not None
+            ):
+                raise RuntimeError("native CUDA J execution identity changed")
+            j = result.coulomb
+            if j is None or j.shape != d.shape or not np.isfinite(j).all():
+                raise RuntimeError("native CUDA J returned invalid Coulomb")
+            self.statistics["actions"] += 1
+            self.statistics["seconds"] += perf_counter() - started
+            self.statistics["host_input_bytes"] += 2 * d.nbytes
+            self.statistics["host_jk_result_bytes"] += j.nbytes
+            return j, np.zeros_like(j)
 
 
 class _NativeKSXCKernel(FixedDensityXCDerivativeKernel):
@@ -88,8 +155,61 @@ class _NativeKSXCKernel(FixedDensityXCDerivativeKernel):
         return assemble_coefficients(jets, coefficients, weights)
 
 
+class _NativeCudaXCKernel(_NativeKSXCKernel):
+    """The same KS kernel contract with complete XC action execution on CUDA."""
+
+    def __init__(
+        self,
+        state: typing.Any,
+        spec: typing.Any,
+        basis: typing.Any,
+        *,
+        tile_points: int,
+        device_budget_bytes: int,
+    ) -> None:
+        super().__init__(state, spec, basis, tile_points=tile_points)
+        self._cuda = state._source.prepare_cuda_response(
+            tile_points=tile_points,
+            budget_bytes=device_budget_bytes,
+        )
+        self.identity = canonical_hash(
+            {"kernel": self.identity, "cuda_owner": self._cuda.identity}
+        )
+
+    def apply_spin(self, delta_density: typing.Any) -> typing.Any:
+        """Upload a direction; AO, features, point derivative and assembly stay on GPU."""
+        self.state._source.check_current()
+        if not self.basis._handle:
+            raise ValueError("native CPKS AO basis is closed")
+        direction = spin_densities(delta_density, self.basis.nao)
+        if self.spec.spin == "unpolarized":
+            if not np.array_equal(direction[0], direction[1]):
+                raise ResponseUnsupported(
+                    "unpolarized response requires equal spin directions"
+                )
+            direction = direction.sum(axis=0, keepdims=True)
+        started = perf_counter()
+        result = self._cuda.apply(direction)
+        self.statistics["actions"] += 1
+        self.statistics["tiles"] += (
+            len(self.grid.points) + self.tile_points - 1
+        ) // self.tile_points
+        self.statistics["seconds"] += perf_counter() - started
+        self.statistics["peak_bytes"] = self._cuda.diagnostics["device_bytes"]
+        return result
+
+    def close(self) -> None:
+        """Release the owned device plan, preserving the borrowed snapshot/basis."""
+        self._cuda.close()
+
+    def validate_reference(self, reference: typing.Any) -> typing.Any:
+        """Keep device-owner lifetime in the common zero-RHS validation path."""
+        self._cuda._ensure_open()
+        return super().validate_reference(reference)
+
+
 class _NativeKSLease:
-    """Shared live-state binding and owned/borrowed lifetime for CPU KS response."""
+    """Shared live-state binding and owned/borrowed lifetime for KS response."""
 
     _spin_blocks: int
     _response_identity: typing.ClassVar[typing.Any]
@@ -105,21 +225,30 @@ class _NativeKSLease:
         functional: typing.Any = None,
         tile_points: int = 256,
         axis_tile: int = 2,
+        device_budget_bytes: int = 128 << 20,
         perturbation_labels: tuple[str, ...] = (),
     ) -> typing.Self:
-        """Bind actual converged all-electron CPU KS orbitals without rerunning SCF."""
+        """Bind actual converged all-electron KS orbitals without rerunning SCF.
+
+        CUDA owns bounded XC and Coulomb plans under one response budget; the
+        borrowed SCF owner, host transforms and Krylov are separate resources.
+        """
         state = StationaryKsState.from_native(batch, basis, grid, index=index)
         source = None
+        backend = kernel = None
         try:
             spin_method = "rks" if cls._spin_blocks == 1 else "uks"
             if (
-                state._source.backend != "cpu"
-                or state.identity.method
+                state.identity.method
                 not in (f"lda-{spin_method}", f"pbe-{spin_method}")
                 or state._source.hamiltonian != "all-electron"
             ):
                 raise ResponseUnsupported(
-                    f"native CPKS requires all-electron CPU {spin_method.upper()} LDA/PBE"
+                    f"native CPKS requires all-electron {spin_method.upper()} LDA/PBE"
+                )
+            if state._source.coefficients != (1.0, 1.0, 0.0):
+                raise ResponseUnsupported(
+                    f"native CPKS requires unscaled LDA/PBE {spin_method.upper()}"
                 )
             _, expected = resolve_ks_method(state.identity.method)
             spec = expected if functional is None else functional
@@ -144,7 +273,7 @@ class _NativeKSLease:
                 "basis_hash": source.basis_hash,
                 "generation_id": canonical_hash(state.identity.to_payload()),
                 "representation": basis.representation,
-                "hf_backend": f"native-cpu-{spin_method}",
+                "hf_backend": f"native-{state._source.backend}-{spin_method}",
                 "functional_identity": spec.identity,
                 "grid_identity": state.grid.identity,
             }
@@ -175,8 +304,27 @@ class _NativeKSLease:
                         for index, spin in enumerate(("alpha", "beta"))
                     },
                 )
-            backend = NativeJKBackend(source, axis_tile=axis_tile)
-            kernel = _NativeKSXCKernel(state, spec, basis, tile_points=tile_points)
+            if state._source.backend == "cuda":
+                kernel = _NativeCudaXCKernel(
+                    state,
+                    spec,
+                    basis,
+                    tile_points=tile_points,
+                    device_budget_bytes=device_budget_bytes,
+                )
+                remaining = (
+                    device_budget_bytes - kernel._cuda.diagnostics["device_bytes"]
+                )
+                if remaining <= 0:
+                    raise MemoryError("native CPKS budget cannot hold Coulomb after XC")
+                backend = _NativeCudaJBackend(
+                    source,
+                    device_id=state._source.metadata[12],
+                    device_budget_bytes=remaining,
+                )
+            else:
+                backend = NativeJKBackend(source, axis_tile=axis_tile)
+                kernel = _NativeKSXCKernel(state, spec, basis, tile_points=tile_points)
             problem = cls.build_problem(
                 reference, backend, kernel, perturbation_labels=perturbation_labels
             )
@@ -189,6 +337,10 @@ class _NativeKSLease:
             result.validate_current()
             return result
         except Exception:
+            if kernel is not None and hasattr(kernel, "close"):
+                kernel.close()
+            if backend is not None and hasattr(backend, "close"):
+                backend.close()
             state._source.close()
             if source is not None:
                 source.close()
@@ -215,8 +367,33 @@ class _NativeKSLease:
         self.backend.validate_reference(self.problem.reference)
         self.xc_kernel.validate_reference(self.problem.reference)
 
+    @property
+    def diagnostics(self) -> dict:
+        """Execution boundaries and owned response storage, separate from SCF."""
+        self.validate_current()
+        cuda = self.state._source.backend == "cuda"
+        xc = self.xc_kernel._cuda.diagnostics if cuda else None
+        return {
+            "execution": "cuda" if cuda else "cpu",
+            "coulomb_execution": "cuda" if cuda else "cpu",
+            "xc_ao_features_points_assembly": "cuda" if cuda else "cpu",
+            "orbital_transforms": "host",
+            "krylov_execution": "host",
+            "owned_device_bytes": (
+                self.backend.device_resident_bytes + xc["device_bytes"]
+            )
+            if cuda
+            else 0,
+            "xc": xc,
+            "snapshot_export": dict(self.state._source.export_work),
+            "memory_scope": "retained response Coulomb/XC allocations only; excludes borrowed SCF, preparation temporaries, host arrays/Krylov, context and library-private memory",
+        }
+
     def close(self) -> None:
         """Revoke the owned response lease; leave the borrowed batch and AO open."""
+        for owner in (getattr(self, "xc_kernel", None), getattr(self, "backend", None)):
+            if owner is not None and hasattr(owner, "close"):
+                owner.close()
         if hasattr(self, "state"):
             self.state._source.close()
         if hasattr(self, "_source"):
@@ -234,7 +411,7 @@ class _NativeKSLease:
 
 
 class NativeRKSResponse(_NativeKSLease, CPKSResponseOperator):
-    """Owned CPU LDA/PBE RKS adapter for the shared ``solve``/``solve_many``.
+    """Owned CPU/CUDA LDA/PBE RKS adapter for shared ``solve``/``solve_many``.
 
     Construct with ``from_native`` after successful SCF. Keep the borrowed
     batch and NativeAO open; this object owns its snapshot lease and integrals.
@@ -244,6 +421,15 @@ class NativeRKSResponse(_NativeKSLease, CPKSResponseOperator):
 
     _spin_blocks = 1
     _response_identity = staticmethod(cpks_operator_identity)
+
+    def induced_fock(
+        self, delta_density: typing.Any, *, transpose: bool = False
+    ) -> typing.Any:
+        """Apply the live native KS density-response map with lease validation."""
+        self.validate_current()
+        result = super().induced_fock(delta_density, transpose=transpose)
+        self.validate_current()
+        return result
 
     def _base_action(
         self, vector: typing.Any, *, transpose: bool = False
@@ -255,7 +441,7 @@ class NativeRKSResponse(_NativeKSLease, CPKSResponseOperator):
 
 
 class NativeUKSResponse(_NativeKSLease, UKSResponseOperator):
-    """Live native CPU LDA/PBE UKS adapter with coupled alpha/beta response.
+    """Live native CPU/CUDA LDA/PBE UKS adapter with coupled alpha/beta response.
 
     Uses the same lease, point model, XC assembly, spin layout and Krylov
     implementation as the existing restricted/spin consumers. No spin average,
