@@ -63,7 +63,9 @@ def _validate_runtime_policy_sources() -> tuple[Path, Path, Path]:
     for path, snippets in required.items():
         text = path.read_text()
         if any(snippet not in text for snippet in snippets):
-            raise ValueError(f"Libxc WB97M-V runtime policy source changed: {path.name}")
+            raise ValueError(
+                f"Libxc WB97M-V runtime policy source changed: {path.name}"
+            )
     return functional, initialization, work
 
 

@@ -121,7 +121,6 @@ int main() {
       require(std::abs(pw91_point.feature_derivative[i] - pw91_oracle[i + 1]) < 2e-13,
               "PW91 generic-GGA derivative differs from pinned Libxc oracle");
 
-
     std::ifstream xc_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
     require(static_cast<bool>(xc_fixture), "missing independent XC SCF-domain fixture");
     std::string xc_line;
