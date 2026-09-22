@@ -44,6 +44,12 @@ _LAZY = {
     "StationaryNuclearBatchResponse": "perturbation",
     "solve_stationary_nuclear_perturbation": "perturbation",
     "solve_stationary_nuclear_perturbations": "perturbation",
+    "StationaryHVPContext": "stationary_executor",
+    "StationaryHVPContributor": "stationary_executor",
+    "StationaryPerturbationProvider": "stationary_executor",
+    "StationaryResponseDriver": "stationary_executor",
+    "StationarySecondOrderExecutor": "stationary_executor",
+    "StationarySecondOrderResult": "stationary_executor",
 }
 
 __all__ = [
@@ -52,8 +58,14 @@ __all__ = [
     "RHFHVPBlockResult",
     "RHFHVPResult",
     "RHFHessianResult",
+    "StationaryHVPContext",
+    "StationaryHVPContributor",
     "StationaryNuclearBatchResponse",
     "StationaryNuclearResponse",
+    "StationaryPerturbationProvider",
+    "StationaryResponseDriver",
+    "StationarySecondOrderExecutor",
+    "StationarySecondOrderResult",
     "analytic_hessian",
     "assemble_frozen_skeleton",
     "build_reference",

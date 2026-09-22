@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import typing
 from dataclasses import asdict, dataclass
+from types import MappingProxyType
 
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -31,16 +32,7 @@ from .stationary_gradient import (
 )
 from .typecheck import BackendCapability, verify_method_ir
 
-VERSION = "stationary-hvp-plan-v1"
-
-_STATIONARY_HVP_CAPABILITY = BackendCapability(
-    "stationary-hvp-plan",
-    ("float64",),
-    ("unpolarized", "polarized"),
-    (2,),
-    ("rho", "sigma"),
-    ("semilocal-xc",),
-)
+VERSION = "stationary-hvp-plan-v2"
 
 
 @dataclass(frozen=True)
@@ -50,6 +42,7 @@ class HVPSource:
     name: str
     primitive: str
     requirements: tuple[str, ...]
+    response_inputs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -88,17 +81,21 @@ class HVPIntegralBlock:
         )
 
 
-_HVP_SOURCES = (
+_ENVELOPE_HVP_PREFIX = (
     HVPSource(
         "one_electron",
         "one_electron",
         ("first-integral-direction", "second-integral-hvp"),
+        ("density_left",),
     ),
     HVPSource(
         "coulomb",
         "coulomb",
         ("density-response", "first-integral-direction", "second-integral-hvp"),
+        ("density_left", "density_right"),
     ),
+)
+_SEMILOCAL_HVP_SOURCES = (
     HVPSource(
         "xc_ao",
         "semilocal_xc",
@@ -114,19 +111,123 @@ _HVP_SOURCES = (
         "semilocal_xc",
         ("feature-hessian", "density-response", "partition-weight-direction"),
     ),
+)
+_ENVELOPE_HVP_SUFFIX = (
     HVPSource(
         "overlap_pulay",
         "overlap_constraint",
         ("metric-response", "first-integral-direction", "second-integral-hvp"),
+        ("weighted_density",),
     ),
-    HVPSource(
-        "nuclear",
-        "nuclear_repulsion",
-        ("nuclear-hvp",),
-    ),
+    HVPSource("nuclear", "nuclear_repulsion", ("nuclear-hvp",)),
 )
 
-_INTEGRAL_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
+
+def _primitive_ingredients(primitive: typing.Any) -> tuple[str, ...]:
+    functional = getattr(primitive, "functional", None)
+    if functional is not None:
+        return tuple(getattr(functional, "ingredients", ()))
+    return tuple(getattr(primitive, "required_ingredients", ()))
+
+
+@dataclass(frozen=True)
+class HVPPrimitiveRule:
+    """Second-order contract contributed by one exact MethodIR primitive type.
+
+    Registering a new rule is the only way a new primitive family can enter a
+    stationary HVP plan. The planner itself never dispatches on method names.
+    """
+
+    identifier: str
+    primitive_type: type
+    primitive_kind: str
+    required_capabilities: tuple[str, ...]
+    supported_ingredients: tuple[str, ...]
+    sources: tuple[HVPSource, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.identifier, str) or not self.identifier:
+            raise ValueError("stationary-HVP primitive rule requires an identity")
+        if not isinstance(self.primitive_type, type):
+            raise TypeError("stationary-HVP primitive rule requires an exact type")
+        if not isinstance(self.primitive_kind, str) or not self.primitive_kind:
+            raise ValueError("stationary-HVP primitive rule requires a primitive kind")
+        if len(set(self.required_capabilities)) != len(self.required_capabilities):
+            raise ValueError("stationary-HVP rule capabilities must be unique")
+        if len(set(self.supported_ingredients)) != len(self.supported_ingredients):
+            raise ValueError("stationary-HVP rule ingredients must be unique")
+        names = tuple(source.name for source in self.sources)
+        if len(set(names)) != len(names):
+            raise ValueError("stationary-HVP rule source names must be unique")
+
+    def validate(self, primitive: typing.Any) -> None:
+        if type(primitive) is not self.primitive_type:
+            raise TypeError("stationary-HVP primitive rule type mismatch")
+        capabilities = set(getattr(primitive, "derivative_capabilities", ()))
+        missing = tuple(
+            name for name in self.required_capabilities if name not in capabilities
+        )
+        if missing:
+            raise UnsupportedMethod(
+                f"{self.primitive_kind} stationary-HVP second-order rule lacks "
+                f"derivative capabilities {missing}"
+            )
+        active = _primitive_ingredients(primitive)
+        unsupported = tuple(
+            name for name in active if name not in self.supported_ingredients
+        )
+        if unsupported:
+            raise UnsupportedMethod(
+                f"{self.primitive_kind} stationary-HVP second-order rule lacks "
+                f"ingredients {unsupported}"
+            )
+
+    def to_payload(self) -> typing.Any:
+        return {
+            "identifier": self.identifier,
+            "primitive_kind": self.primitive_kind,
+            "required_capabilities": list(self.required_capabilities),
+            "supported_ingredients": list(self.supported_ingredients),
+            "sources": [asdict(source) for source in self.sources],
+        }
+
+
+_PRIMITIVE_HVP_RULES = MappingProxyType(
+    {
+        SemilocalXCPrimitive: HVPPrimitiveRule(
+            "semilocal-rho-sigma-v1",
+            SemilocalXCPrimitive,
+            "semilocal_xc",
+            ("energy-density", "feature-gradient", "feature-hessian"),
+            ("rho", "sigma"),
+            _SEMILOCAL_HVP_SOURCES,
+        )
+    }
+)
+
+
+def _primitive_hvp_rule(primitive: typing.Any) -> HVPPrimitiveRule:
+    rule = _PRIMITIVE_HVP_RULES.get(type(primitive))
+    if rule is None:
+        kind = getattr(primitive, "kind", type(primitive).__name__)
+        raise UnsupportedMethod(
+            f"{kind} primitive has no stationary-HVP second-order rule"
+        )
+    rule.validate(primitive)
+    return rule
+
+
+def _method_hvp_capability(method: MethodIR) -> BackendCapability:
+    """Type-check only the primitive families admitted by the rule registry."""
+    requirements = method.requirements
+    return BackendCapability(
+        "stationary-hvp-plan",
+        ("float64",),
+        ("unpolarized", "polarized"),
+        (2,),
+        tuple(requirements["ingredients"]),
+        tuple(requirements["operators"]),
+    )
 
 
 def _positive(value: typing.Any, name: str) -> int:
@@ -172,33 +273,43 @@ class StationaryHVPPlan:
                 "stationary HVP first slice requires an all-electron Hamiltonian"
             )
 
-        semilocal = tuple(
-            primitive
-            for primitive in self.method.primitives
-            if type(primitive) is SemilocalXCPrimitive
+        rules = tuple(
+            _primitive_hvp_rule(primitive) for primitive in self.method.primitives
         )
-        if len(semilocal) != 1 or len(self.method.primitives) != 1:
+        primitive_source_names = tuple(
+            source.name for rule in rules for source in rule.sources
+        )
+        source_names = (
+            *(source.name for source in _ENVELOPE_HVP_PREFIX),
+            *primitive_source_names,
+            *(source.name for source in _ENVELOPE_HVP_SUFFIX),
+        )
+        if len(set(source_names)) != len(source_names):
             raise UnsupportedMethod(
-                "required primitive has no stationary-HVP second-order rule"
+                "stationary-HVP source rules publish duplicate source names"
             )
         verify_method_ir(
             self.method,
-            capability=_STATIONARY_HVP_CAPABILITY,
+            capability=_method_hvp_capability(self.method),
             dtype=self.mean_field.dtype,
             derivative_order=2,
         )
-        required = {"energy-density", "feature-gradient", "feature-hessian"}
-        if not required <= set(semilocal[0].derivative_capabilities):
-            raise UnsupportedMethod(
-                "required semilocal XC second-order feature derivative is unavailable"
-            )
 
     @property
     def semilocal(self) -> typing.Any:
         return next(
-            primitive
-            for primitive in self.method.primitives
-            if type(primitive) is SemilocalXCPrimitive
+            (
+                primitive
+                for primitive in self.method.primitives
+                if type(primitive) is SemilocalXCPrimitive
+            ),
+            None,
+        )
+
+    @property
+    def primitive_rules(self) -> tuple[HVPPrimitiveRule, ...]:
+        return tuple(
+            _primitive_hvp_rule(primitive) for primitive in self.method.primitives
         )
 
     @property
@@ -207,7 +318,10 @@ class StationaryHVPPlan:
 
     @property
     def sources(self) -> typing.Any:
-        return _HVP_SOURCES
+        primitive_sources = tuple(
+            source for rule in self.primitive_rules for source in rule.sources
+        )
+        return (*_ENVELOPE_HVP_PREFIX, *primitive_sources, *_ENVELOPE_HVP_SUFFIX)
 
     @property
     def source_names(self) -> typing.Any:
@@ -246,7 +360,15 @@ class StationaryHVPPlan:
         CPKS solver. XC/grid/partition sources remain outside this method until
         their native geometric directional providers are qualified.
         """
-        if source not in _INTEGRAL_SOURCES or source not in self.source_names:
+        source_contract = next(
+            (item for item in self.sources if item.name == source),
+            None,
+        )
+        if (
+            source_contract is None
+            or "second-integral-hvp" not in source_contract.requirements
+            or not source_contract.response_inputs
+        ):
             raise ValueError("source is not a stationary-HVP integral primitive")
         _positive(terms, "terms")
         _positive(coordinates, "coordinates")
@@ -273,13 +395,7 @@ class StationaryHVPPlan:
             max_elements=max_elements,
             differentiate_densities=True,
         )
-        response_inputs = (
-            ("density_left",)
-            if source == "one_electron"
-            else ("density_left", "density_right")
-            if source == "coulomb"
-            else ("weighted_density",)
-        )
+        response_inputs = source_contract.response_inputs
 
         provenance = {
             "stationary_hvp_plan": self.identity,
@@ -328,6 +444,7 @@ class StationaryHVPPlan:
             "method": self.method.semantic_payload(),
             "mean_field": asdict(self.mean_field),
             "active_ingredients": list(self.active_ingredients),
+            "primitive_rules": [rule.to_payload() for rule in self.primitive_rules],
             "sources": [asdict(source) for source in self.sources],
             "response": self.response_contract,
             "convention": "energy HVP in Eh/bohr^2; force derivative is its negative",
