@@ -109,7 +109,7 @@ subject to checked native launch dimensions. It declares the current immutable
 GridSpec-v1 (48 radial, 16 polar, 32 azimuth by default), XC tile, functional/domain
 policy, basis/charge/spin, numerical controls, backend and CUDA binary identity.
 `ks_options=KsOptions(...)` uses the selected grid/radii/tile in both the
-estimator and native preparation; see [KS options](../user/ks_options.md).
+estimator and native preparation; see [KS options](../../user/ks_options.md).
 Geometry changes preserve the resource shape; model changes require a new plan.
 
 The host inventory includes 36 bytes per quadrature point, packed AO metadata,

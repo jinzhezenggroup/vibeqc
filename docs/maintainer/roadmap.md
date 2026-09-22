@@ -2,7 +2,7 @@
 
 VibeQC's long-term mission is to cover all quantum-chemistry methods through a
 coherent, accelerator-native interface. The method-family map is maintained in
-[methods.md](../user/methods.md). The milestones below describe the narrower path from
+[methods.md](../../user/methods.md). The milestones below describe the narrower path from
 the current RHF/UHF implementation toward that mission; they do not imply that
 planned DFT, post-HF, multireference, excited-state, periodic, embedding, or
 relativistic capabilities already exist.
@@ -376,7 +376,7 @@ and performance measurements pass.
   rank/conditioning and conservative host/device allocation accounting per CUDA
   DF plan slot. Streamed AO-pair tiles remain intentionally host-staged because
   pageable tile transfers are not safely capturable on all CUDA providers.
-  See [density fitting](../developer/density_fitting.md) for the exact supported boundary.
+  See [density fitting](../../developer/density_fitting.md) for the exact supported boundary.
 - Extend the implemented CUDA J/K active set with persistent device ERIs,
   streams, CUDA graphs where profitable, and batched small-matrix operations;
   retain identical failure and result ordering.
