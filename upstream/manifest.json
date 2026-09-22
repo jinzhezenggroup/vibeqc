@@ -30,7 +30,7 @@
   "products": {
     "d4-eeq-tables": {
       "generator": "tools/parameters/generate_d4_eeq.py",
-      "generator_sha256": "558b6aae3f1c2bdd86d067e036cbb58897286da71c78e5af77a2420e3540ab1a",
+      "generator_sha256": "d08fb74435f7a0b384829a4ae0c126338da152f171684d4a47071463672e24d7",
       "input_identity_sha256": "3e3dab8ad59213850374c605efd6398f6b7f62a2e7c0423f71d0f1e4de3ad960",
       "inputs": [
         "dftd4-reference",
@@ -45,7 +45,7 @@
     },
     "d4-gfn2-tables": {
       "generator": "tools/parameters/generate_d4.py",
-      "generator_sha256": "6f9ba11143a6729c14b769dc4b0bfac3f8b7189f0f15972bba1007cbda899eda",
+      "generator_sha256": "8d1abde0ea6657a3165791a6243d1e15403c9065f073aca03d163e6846132e30",
       "input_identity_sha256": "3d5796a964976d3566db65cc08cc993e63f6b7878716e4e3aaff1b90cda6b4ba",
       "inputs": [
         "dftd4-reference",
@@ -164,7 +164,7 @@
         "tools/parameters/r2scan3c_gcp.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
       },
       "generator": "tools/parameters/generate_gcp_r2scan3c.py",
-      "generator_sha256": "f93b86d36501aafc33ae424ba8a81d9c32e2d5802502e93039d9e6c559a208b9",
+      "generator_sha256": "2bf322dda5c41670ba5d037beeec4f8f16e8ff3c199888d85510a8dac89c3b72",
       "input_identity_sha256": "78ae1b369893bf081b986bf4a0187611ec823fd046eb8594c71ba4f14779914c",
       "inputs": [
         "simple-dftd3-gcp"
