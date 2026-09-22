@@ -218,6 +218,7 @@ def test_cc_cuda_solver_debt_cannot_move_to_an_unapproved_owner(
 @pytest.mark.parametrize(
     ("snippet", "debt_name"),
     [
+        ("void run_bounded_iterations() {}\n", "cc_host_bounded_iteration_owner"),
         ("struct Diis {};\n", "cc_cpu_diis_owner"),
         (
             (
@@ -295,9 +296,10 @@ def test_duplicate_guard_ignores_calls_strings_and_declarations_without_bodies(
         "struct Derived : Diis {};\n"
         "struct Diis;\n"
         "void run_diis();\n"
+        "void run_bounded_iterations();\n"
         "void predicate() { if (run_diis()) {} }\n"
         "void expression() { auto x = solve_linear() ? Result{} : Result{}; }\n"
-        "void caller() { run_diis(); }\n"
+        "void caller() { run_diis(); run_bounded_iterations(); }\n"
     )
     report = audit_electronic_structure_boundaries(tmp_path)
     assert report["errors"] == []
