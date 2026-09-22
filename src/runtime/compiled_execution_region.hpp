@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -58,7 +59,12 @@ class CompiledExecutionRegion {
     if (bound_ || warmed_ || failed_) ++metrics_.invalidations;
     binding_ = {};
     bound_ = warmed_ = failed_ = false;
-    reason_ = "compiled execution region invalidated";
+    try {
+      reason_ = "compiled execution region invalidated";
+    } catch (const std::bad_alloc&) {
+      // Diagnostics must not terminate no-throw invalidation under memory pressure.
+      reason_.clear();
+    }
   }
 
   void mark_success() {
