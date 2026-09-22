@@ -190,7 +190,18 @@ publication points. User-supplied initial amplitudes remain the ordinary solver
 initial state. The solver result records the region identity and bound.
 
 The RCCSD consumer remains descriptive: execution still uses the established
-Python loop, so it makes **no host-overhead or speedup claim**. CUDA now also has
+Python loop, so it makes **no host-overhead or speedup claim**. Its CPU result
+also retains the exact serialized region. The Lambda boundary reconstructs and
+checks that region against the executed identity/bound before response work.
+Only after the existing checked transpose solve and independent stationarity
+gate succeed does the response bind an identified `implicit_vjp` rule to a
+derived `custom` region. Parameter-weight requests consult that registered rule
+and fail closed on a missing or stale identity; no CC iteration tape is retained.
+The specialized CC rule keeps the existing independently weighted T2 coordinate
+contract rather than pretending the redundant dense T2 representation is the
+generic `ImplicitSolveSpec` coordinate model.
+
+CUDA now also has
 a method-neutral `runtime::SolverRegionCudaExecutor` that bounds native body
 submission and delegates optional capture/replay to the existing shared
 `CudaGraphRegion` lifecycle. The opt-in direct-RKS two-iteration path from #370
