@@ -9,6 +9,10 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
 from vibeqc_compiler.common.program import ProgramIR
+from vibeqc_compiler.common.program_storage import (
+    CallDonationBinding,
+    ProgramStoragePlan,
+)
 from vibeqc_compiler.common.resources import MAX_BYTES
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.features import density_feature_block, density_features
@@ -108,12 +112,30 @@ def test_packed_feature_program_records_real_cross_subsystem_layouts(
     )
     assert layouts["feature_scalar"].shape == (7, 7)
     assert layouts["xc_rows"].shape == (8, 7)
+    assert layouts["coefficients"].shape == ((2 if name == "LDA_XC_PW" else 8), 7)
     assert ("feature_gradient" in layouts) is gradient
     releases = p.release_after("vxc")
     assert releases[0] == "jets"
     assert "feature_scalar" in releases and "xc_rows" in releases
     assert ("feature_gradient" in releases) is gradient
     assert ProgramIR.from_payload(p.to_payload()) == p
+
+
+def test_pbe_program_storage_donates_scalar_owner_to_coefficients() -> None:
+    p = describe("PBE", "polarized", packed_features=True)
+    baseline = ProgramStoragePlan(p).storage_analysis()
+    donated = ProgramStoragePlan(
+        p,
+        donations=(CallDonationBinding("vxc", "xc_rows", "coefficients"),),
+    ).storage_analysis()
+    sizes = {buffer.name: buffer.bytes for buffer in p.buffers}
+
+    assert donated.donations == ((4, "xc_rows", "coefficients"),)
+    assert donated.slot_for("coefficients") == donated.slot_for("xc_rows")
+    assert (
+        baseline.peak_by_space["pageable"] - donated.peak_by_space["pageable"]
+        == sizes["xc_rows"]
+    )
 
 
 def test_packed_feature_program_rejects_unpolarized_and_non_boolean_selection() -> None:
@@ -254,7 +276,7 @@ def test_packed_scalar_rows_feed_coefficients_without_gradient_repack(
     scalar[3] = 0.005
     scalar[4] = 0.03
 
-    rows = program.scalar_values_packed(scalar)
+    rows = program.scalar_values_packed(scalar, donate_coefficients=True)
     assert program.metadata["packed_layouts"]["scalar"] == {
         "variables": ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb"),
         "outputs": 8,
@@ -276,9 +298,51 @@ def test_packed_scalar_rows_feed_coefficients_without_gradient_repack(
         "evaluate",
         lambda *_args, **_kwargs: pytest.fail("packed path used generic stacked ABI"),
     )
-    actual = program.coefficients.evaluate(gradient, v)
+    owner = rows.coefficient_output_owner
+    assert owner is not None
+    owner_pointer = owner.ctypes.data
+    actual = program.coefficients.evaluate(gradient, v, output_owner=owner)
+    assert actual.owner is owner
+    assert actual.owner.ctypes.data == owner_pointer
+    assert not actual.owner.flags.writeable
     for key in expected:
         np.testing.assert_array_equal(actual[key], expected[key])
+        assert np.shares_memory(actual[key], actual.owner)
+        assert not actual[key].flags.writeable
+
+
+def test_pbe_packed_donation_matches_independent_complete_tile(
+    native_factory: typing.Any,
+) -> None:
+    rng = np.random.default_rng(831)
+    npoint, nao = 13, 6
+    jets = rng.normal(size=(4, npoint, nao)) * 0.25
+    density = []
+    for _ in range(2):
+        factor = rng.normal(size=(nao, 3)) * 0.15
+        density.append(factor @ factor.T)
+    density = np.asarray(density)
+    weights = rng.uniform(0.01, 0.2, size=npoint)
+
+    reference = ContractionProgram(
+        functional("PBE", spin="polarized"), "potential"
+    ).evaluate(jets, density, weights)
+    program = native_factory("PBE")
+    block = density_feature_block(
+        jets, density, ingredients=("rho", "gradient", "sigma")
+    )
+    rows = program.scalar_values_packed(block.scalar, donate_coefficients=True)
+    owner = rows.coefficient_output_owner
+    assert owner is not None
+    owner_pointer = owner.ctypes.data
+
+    actual = program.potential_from_rows(jets, block.features(), weights, rows)
+
+    assert owner.ctypes.data == owner_pointer
+    assert not owner.flags.writeable
+    np.testing.assert_array_equal(actual["energy"], reference["energy"])
+    np.testing.assert_array_equal(actual["electrons"], reference["electrons"])
+    np.testing.assert_array_equal(actual["potential"], reference["potential"])
 
 
 def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(

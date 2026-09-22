@@ -93,6 +93,23 @@ global resource planner and local-profile hashing/atomic-JSON helpers are re-exp
 from their original `vibeqc` APIs; their implementations are not duplicated. Shared evidence
 and timing helpers do not import benchmark command modules.
 
+## ProgramIR storage overlays
+
+`common.program_storage` binds physical alias, effect and ownership-transfer
+facts to an immutable `ProgramIR` without moving allocation policy into the
+scientific graph. Donation is explicit and fail-closed: the donor must be a
+compiler-owned physical owner at its final use, the recipient must be produced
+by the same call with equal capacity in the same memory space, and opaque
+provider effects cannot participate.
+
+The packed polarized PBE CPU XC tile is the first native provider consumer of
+this ownership-transfer contract. Its `vxc` call donates the complete scalar-XC
+row owner to the equal-sized compact coefficient output. The generated native
+coefficient loop preloads every feature-gradient scalar before writing any
+coefficient row, so the declared overlap is alias-safe. Unsupported layouts,
+including current LDA/meta-GGA row-count mismatches, keep separate owners rather
+than silently forcing an in-place path.
+
 ## Workload specialization contract
 
 `common.specialization` is the pure, backend-neutral selection contract. It is
