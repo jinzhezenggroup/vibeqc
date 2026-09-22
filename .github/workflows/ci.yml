@@ -328,13 +328,13 @@ jobs:
           print(matches[0])
           PY_INNER
           )"
-          echo "XTBLOOM_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
+          echo "VIBEQC_XTB_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
-            -DXTBLOOM_CPU_LINALG_LIBRARY="$XTBLOOM_CPU_LINALG_LIBRARY" \
+            -DVIBEQC_XTB_CPU_LINALG_LIBRARY="$VIBEQC_XTB_CPU_LINALG_LIBRARY" \
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
