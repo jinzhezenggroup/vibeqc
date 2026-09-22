@@ -9,7 +9,7 @@ re-derive and could silently contradict.
 
 The factor worth being careful about is the ``½`` in ``E = ... + ½ Tr[P G(P)]``.
 It is already absorbed by the reindexing that puts the Coulomb and exchange
-terms over a common integral (see ``docs/hessian.md``), so the folded weight
+terms over a common integral (see ``docs/developer/hessian.md``), so the folded weight
 carries it and no further factor belongs in the contraction. Applying it twice
 would halve both contributions -- an error that is small enough to look like
 ordinary numerical disagreement rather than a mistake.

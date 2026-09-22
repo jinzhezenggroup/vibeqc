@@ -12,7 +12,7 @@ Release without AOT shells. Python/BLAS workers were limited to two.
 `measurements.json` retains both binary identities, measured source hashes,
 all timing samples, physical kernel resources, raw/reference errors and
 resource budgets. The unchanged CPU ECP implementation is an independent
-oracle/fallback. The [capability domain](../../../docs/ecp.md) is unchanged.
+oracle/fallback. The [capability domain](../../../docs/user/ecp.md) is unchanged.
 
 The compiler owns residual radial integrands (powers 0..4), spherical
 projection reductions, local/nonlocal bilinear derivatives and ECP-center

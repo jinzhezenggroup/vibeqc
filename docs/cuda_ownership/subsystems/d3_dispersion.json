@@ -5,8 +5,8 @@
   "missing_capability": "The generated GeometryIR/PairIR CUDA retirement candidate still needs public-equivalent per-system failure isolation, energy-only specialization, resource qualification and matched endpoint promotion before it can retire the retained native production owner. These retirement gates do not narrow the qualified native BJ, BJ+ATM or zero-damping public capability.",
   "retirement_condition": "Retain d3_bj.hpp as the public production runtime/oracle until the generated ragged candidate reproduces complete energy/CN-response gradients, changed-topology replay, bounded resources, per-system failure isolation, energy-only behavior and endpoint performance without changing MethodIR or public correction semantics.",
   "evidence": [
-    "docs/dft_d3.md",
-    "docs/geometry_pair_ir.md",
+    "docs/developer/dft_d3.md",
+    "docs/developer/geometry_pair_ir.md",
     "tests/data/d3_bj_reference.json",
     "tests/python/test_d3_geometry_ir.py",
     "tests/python/test_d3_generated_ragged.py",

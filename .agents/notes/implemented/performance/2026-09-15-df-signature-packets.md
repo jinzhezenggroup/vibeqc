@@ -173,7 +173,7 @@ measurements.
 - [#382](https://github.com/jinzhezenggroup/vibeqc/issues/382) and
   [#383](https://github.com/jinzhezenggroup/vibeqc/pull/383)
 - [#206](https://github.com/jinzhezenggroup/vibeqc/issues/206)
-- [Current execution contract](../../../../docs/df_shell_derivatives.md)
+- [Current execution contract](../../../../docs/developer/df_shell_derivatives.md)
 
 ## Admission superseded — 2026-09-19
 

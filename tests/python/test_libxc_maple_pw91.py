@@ -163,7 +163,7 @@ def _evaluate_fixture(
 
 
 def test_pw91_importer_semantics_and_source_provenance() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v11"
 
     exchange, _, _, _ = _imported_component("GGA_X_PW91", "polarized")
     correlation, _, _, _ = _imported_component("GGA_C_PW91", "polarized")

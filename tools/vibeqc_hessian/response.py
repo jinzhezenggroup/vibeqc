@@ -2,7 +2,7 @@
 
 The shared response solver owns the Jacobian action, but issue #179
 explicitly assigns nuclear RHS construction to Hessian callers. This module
-implements the symmetric metric-gauge convention fixed in ``docs/hessian.md``
+implements the symmetric metric-gauge convention fixed in ``docs/developer/hessian.md``
 and returns the occupied-major/virtual-minor layout consumed by the shared
 closed-shell RHF/CPKS response operators.
 """

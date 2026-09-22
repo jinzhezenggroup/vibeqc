@@ -93,4 +93,4 @@ The archived candidate is an experiment, not a dormant production default.
 
 - Issue #412; complete external comparisons remain in #206.
 - [Evidence and reconstruction](../../../benchmarks/results/issue412-split-gram/README.md).
-- [Current occupied CUDA contract](../../../docs/df_occupied_cuda.md).
+- [Current occupied CUDA contract](../../../docs/developer/df_occupied_cuda.md).

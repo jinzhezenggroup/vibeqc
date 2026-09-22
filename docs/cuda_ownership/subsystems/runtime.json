@@ -1,8 +1,8 @@
 {
   "current_default": "native shared allocation, stream, graph, ABI and library adapters",
   "evidence": [
-    "docs/compiler_architecture.md",
-    "docs/scf_module_boundaries.md"
+    "docs/developer/compiler_architecture.md",
+    "docs/developer/scf_module_boundaries.md"
   ],
   "generated_capability": "not applicable: generic runtime infrastructure",
   "missing_capability": "none; infrastructure remains native",

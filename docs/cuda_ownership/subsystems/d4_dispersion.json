@@ -5,7 +5,7 @@
   "missing_capability": "PBC and Hessian execution remain unsupported. Canonical r2SCAN-3c still needs its electronic/basis/gCP components under #172.",
   "retirement_condition": "Retain the scalar complete evaluator only as a numerical oracle. Production must continue through generated derivative composition and the bounded native scheduler without per-functional handwritten complete-D4 paths.",
   "evidence": [
-    "docs/d4_reference.md",
+    "docs/reference/d4_reference.md",
     "tests/data/d4/oracle_manifest.json",
     "tests/data/d4/eeq_oracle_manifest.json",
     "tests/native/test_d4_eeq.cpp",

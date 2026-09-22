@@ -81,4 +81,4 @@ algebra by contract; do not confuse it with default cold preparation.
 ## References
 
 - #1091 ordinary-stream eigensolver; #1101 setup cliff; #1102 XC contractions.
-- `docs/ks_diagnostics.md` and `docs/performance_engineering.md`.
+- `docs/developer/ks_diagnostics.md` and `docs/maintainer/performance_engineering.md`.
