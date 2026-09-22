@@ -97,9 +97,7 @@ def test_pure_eigensolver_df_and_inactive_decoders_preserve_native_meaning() -> 
     native_eigensolver.compute_capability_minor = 0
     native_eigensolver.cuda_error = 17
     native_eigensolver.graph_eligible = 1
-    (eigensolver,) = diagnostics.decode_eigensolver_diagnostics(
-        (native_eigensolver,)
-    )
+    (eigensolver,) = diagnostics.decode_eigensolver_diagnostics((native_eigensolver,))
     assert eigensolver.ordinary_family == "xsyev_batched"
     assert eigensolver.graph_family == "graph_native"
     assert eigensolver.selection_source == "exact_probe"
@@ -242,9 +240,7 @@ class _EmptyDiagnosticLibrary:
         capacity: int,
         output_count: typing.Any,
     ) -> int:
-        return self._empty_variable(
-            "inactive", handle, entries, capacity, output_count
-        )
+        return self._empty_variable("inactive", handle, entries, capacity, output_count)
 
 
 def test_all_readers_preserve_native_call_counts_for_empty_records() -> None:

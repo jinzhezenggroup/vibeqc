@@ -398,9 +398,7 @@ def decode_inactive_eigensolver_profile(
             active_physical_count=int(native.active_physical_count),
             active_solver_count=int(native.active_solver_count),
             solver_elapsed_nanoseconds=int(native.solver_elapsed_nanoseconds),
-            inactive_input_nonfinite_count=int(
-                native.inactive_input_nonfinite_count
-            ),
+            inactive_input_nonfinite_count=int(native.inactive_input_nonfinite_count),
             inactive_submission_nonfinite_count=int(
                 native.inactive_submission_nonfinite_count
             ),
@@ -433,9 +431,7 @@ def read_ppps_queue_profile(
     native = _native.PppsQueueProfile()
     _native.check(
         library,
-        library.vibeqc_batch_get_last_ppps_queue_profile(
-            handle, ctypes.byref(native)
-        ),
+        library.vibeqc_batch_get_last_ppps_queue_profile(handle, ctypes.byref(native)),
     )
     return decode_ppps_queue_profile(native)
 
