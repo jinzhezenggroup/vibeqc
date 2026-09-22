@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import typing
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tools.check_electronic_structure_boundaries import (
     ROOT,
@@ -11,6 +10,9 @@ from tools.check_electronic_structure_boundaries import (
     _cpp_tokens,
     _definition_locations,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _definition_sites(
@@ -47,9 +49,7 @@ def test_scf_cannot_redefine_shared_bounded_iteration_owner() -> None:
     )
 
 
-def test_scf_iteration_ownership_guard_ignores_nondefinitions(
-    tmp_path: typing.Any,
-) -> None:
+def test_scf_iteration_ownership_guard_ignores_nondefinitions(tmp_path: Path) -> None:
     scf = tmp_path / "src/scf"
     scf.mkdir(parents=True)
     (scf / "consumer.cpp").write_text(
@@ -70,7 +70,7 @@ def test_scf_iteration_ownership_guard_ignores_nondefinitions(
 
 
 def test_scf_iteration_ownership_guard_detects_method_local_fork(
-    tmp_path: typing.Any,
+    tmp_path: Path,
 ) -> None:
     scf = tmp_path / "src/scf"
     scf.mkdir(parents=True)
