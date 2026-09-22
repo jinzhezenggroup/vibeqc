@@ -334,54 +334,10 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
     else:
         rho = variables[0]
         ra = rb = rho / 2
-    n = ra + rb
-    if spec.spin == "polarized":
-        # Ratios avoid cancellation in 1 +/- z near complete spin polarization.
-        up, down = 2 * ra / n, 2 * rb / n
-        z = (ra - rb) / n
-    else:
-        # The declared unpolarized contract has ra=rb=n/2 identically. Keep
-        # those exact constants out of the generated graph so the rho->0+
-        # limit never evaluates a numerically meaningless rho/rho quotient.
-        up = down = graph.constant(1)
-        z = graph.constant(0)
-    rs = (3 / (4 * math.pi)) ** (1 / 3) * n.pow(-1 / 3)
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
-    fz = (up.pow(4 / 3) + down.pow(4 / 3) - 2) / (2 ** (4 / 3) - 2)
-
-    def pw(modified: typing.Any) -> typing.Any:
-        parameters = _PW_PARAMETERS[modified]
-        a = parameters["a"]
-        alpha = parameters["alpha"]
-        b1 = parameters["b1"]
-        b2 = parameters["b2"]
-        b3 = parameters["b3"]
-        b4 = parameters["b4"]
-        values = []
-        for i in range(3):
-            aux = (
-                F(b1[i]) * rs.pow(0.5)
-                + F(b2[i]) * rs
-                + F(b3[i]) * rs.pow(1.5)
-                + F(b4[i]) * rs.pow(2)
-            )
-            u = 1 / (2 * F(a[i]) * aux)
-            log_term = graph.stable_unary("log1p", u)
-            values.append(-2 * F(a[i]) * (1 + F(alpha[i]) * rs) * log_term)
-        fz20 = F("1.709920934161365617563962776245" if modified else "1.709921")
-
-        def combine(items: typing.Any) -> typing.Any:
-            g0, g1, gm = items
-            return g0 + z.pow(4) * fz * (g1 - g0 + gm / fz20) - fz * gm / fz20
-
-        value = combine(values)
-        return value
 
     def lda_exchange() -> typing.Any:
         return graph.sum(-cx * density.pow(4 / 3) for density in (ra, rb))
-
-    def lda_correlation(modified: typing.Any) -> typing.Any:
-        return n * pw(modified)
 
     builders = {
         "LDA_X": lda_exchange,
