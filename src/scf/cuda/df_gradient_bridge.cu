@@ -1216,9 +1216,10 @@ vibeqc_status execute_cuda_df_hf_gradient(
       const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
-      const std::string_view algebra =
-          algebra_control ? algebra_control
-                          : (borrowed || owned_occupied || promoted_default ? "blas" : "scalar");
+      // Response algebra is independent of storage/resource ownership. Production
+      // always uses the compiler-qualified BLAS contractions; scalar remains an
+      // explicit diagnostic/ablation route only.
+      const std::string_view algebra = algebra_control ? algebra_control : "blas";
       if (algebra != "scalar" && algebra != "blas")
         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
       if (borrowed && (algebra != "blas" || serial_dot || gradient_copies != 1))

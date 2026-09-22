@@ -11,7 +11,7 @@
 #include "dft/dispersion/d4_reference.hpp"
 #include "model/gfn2/d4.hpp"
 
-using namespace xtbloom::detail::gfn2;
+using namespace vibeqc::xtb::detail::gfn2;
 void require(bool value, const char* message) {
   if (!value) throw std::runtime_error(message);
 }
@@ -40,7 +40,7 @@ struct Fixture {
                                          4, workspace, cache, error) == 0,
             "cache");
   }
-  xtbloom_status_t run(double* output = nullptr) {
+  vibeqc_xtb_status_t run(double* output = nullptr) {
     return add_d4_two_body_gradient_cpu(plan, cache, xyz.data(), charges.data(),
                                         output ? output : gradient.data(), workspace, error);
   }
@@ -52,25 +52,25 @@ int main(int argc, char** argv) {
     Fixture f;
     if (test == "alias_positions") {
       const auto original = f.xyz;
-      require(f.run(f.xyz.data()) == XTBLOOM_STATUS_INVALID_ARGUMENT,
+      require(f.run(f.xyz.data()) == VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
               "position/output overlap admitted");
       require(f.xyz == original, "aliased positions modified");
     } else if (test == "alias_cache") {
       const auto original = f.cn;
-      require(f.run(f.cn.data()) == XTBLOOM_STATUS_INVALID_ARGUMENT,
+      require(f.run(f.cn.data()) == VIBEQC_XTB_STATUS_INVALID_ARGUMENT,
               "cache/output overlap admitted");
       require(f.cn == original, "aliased cache modified");
     } else if (test == "nonfinite_output") {
       f.gradient[0] = std::numeric_limits<double>::quiet_NaN();
       const auto original = f.gradient;
-      require(f.run() == XTBLOOM_STATUS_INVALID_ARGUMENT, "nonfinite output admitted");
+      require(f.run() == VIBEQC_XTB_STATUS_INVALID_ARGUMENT, "nonfinite output admitted");
       require(
           std::memcmp(f.gradient.data(), original.data(), original.size() * sizeof(double)) == 0,
           "failed output modified");
     } else if (test == "late_gradient_failure") {
       const auto original = f.gradient;
       f.xyz[9] = f.xyz[6];
-      require(f.run() != XTBLOOM_STATUS_SUCCESS, "coincident later system admitted");
+      require(f.run() != VIBEQC_XTB_STATUS_SUCCESS, "coincident later system admitted");
       require(f.gradient == original, "earlier gradient published before later failure");
     } else if (test == "late_energy_failure") {
       const auto original = f.energy;

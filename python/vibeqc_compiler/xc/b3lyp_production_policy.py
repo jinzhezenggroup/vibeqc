@@ -9,7 +9,8 @@ import math
 import typing
 from fractions import Fraction as F
 
-from vibeqc_compiler.integral.expr import Expr, Graph
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.integral.expr import Expr, Graph
 
 
 def _spin_channels(
@@ -45,12 +46,16 @@ def b88_exchange(
         y = sigma * density.pow(-8 / 3)
         x = y.pow(0.5)
         x_asinh_x = x * graph.transcendental_unary("asinh", x)
+        # x*asinh(x) is analytic in y=x^2. This branch keeps the
+        # sigma derivative finite at zero gradient before differentiation.
         series = y * (
             1 + y * (-F(1, 6) + y * (F(3, 40) + y * (-F(5, 112) + y * F(35, 1152))))
         )
         x_asinh_x = graph.select_le(y, F(1, 100000000), series, x_asinh_x)
         enhancement = 1 + beta_b88 / cx * y / (1 + gamma_b88 * beta_b88 * x_asinh_x)
         term = -cx * density.pow(4 / 3) * enhancement
+        # The lazy branch avoids evaluating inverse powers of a zero spin
+        # density; physical zero density carries zero same-spin gradient.
         term = graph.select_le(density, 0, 0, term)
         terms.append(term)
     return graph.sum(terms)

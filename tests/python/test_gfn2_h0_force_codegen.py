@@ -212,11 +212,11 @@ def test_h0_offsite_preserves_native_left_to_right_product_range() -> None:
 def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
     tmp_path: Path,
 ) -> None:
-    output = tmp_path / "generated_gfn2_h0_force.cuh"
+    output = tmp_path / "generated_gfn2_h0_native.hpp"
     subprocess.run(
         [
             sys.executable,
-            str(ROOT / "tools/generate_gfn2_h0_force_cuda.py"),
+            str(ROOT / "tools/generate_gfn2_h0_native.py"),
             "--output",
             str(output),
         ],
@@ -224,18 +224,17 @@ def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
         timeout=60,
     )
     generated = output.read_text()
-    assert "__device__ inline bool gfn2_h0_offsite_factor_tensor" in generated
-    assert "__device__ inline bool gfn2_h0_offsite_vjp_tensor" in generated
-    assert "__device__ inline bool gfn2_h0_ao_update_tensor" in generated
-    assert "__device__ inline bool gfn2_h0_distance_tensor" in generated
-    assert "__device__ inline bool gfn2_h0_distance_vjp_tensor" in generated
-    assert "__device__ inline bool gfn2_h0_pulay_seed_tensor" in generated
+    assert "#define VIBEQC_GFN2_H0_HD __host__ __device__" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_offsite_factor_tensor" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_offsite_vjp_tensor" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_ao_update_tensor" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_distance_tensor" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_distance_vjp_tensor" in generated
+    assert "VIBEQC_GFN2_H0_HD inline bool gfn2_h0_pulay_seed_tensor" in generated
     assert "bar_distance" in generated
 
-    consumer = (
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_h0_force.cu"
-    ).read_text()
-    assert '#include "generated_gfn2_h0_force.cuh"' in consumer
+    consumer = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_h0_force.cu").read_text()
+    assert '#include "generated_gfn2_h0_native.hpp"' in consumer
     assert "evaluate_gfn2_h0_offsite_factor" in consumer
     assert "evaluate_gfn2_h0_offsite_vjp" in consumer
     assert "accumulate_gfn2_h0_ao" in consumer
@@ -256,5 +255,20 @@ def test_generated_header_and_runtime_retire_handwritten_h0_force_math(
         assert retired not in consumer
 
     cmake = (ROOT / "cmake/VibeQCGeneratedSources.cmake").read_text()
-    assert "generate_gfn2_h0_force_cuda.py" in cmake
-    assert "vibeqc_gfn2_h0_force_cuda_codegen" in cmake
+    assert "generate_gfn2_h0_native.py" in cmake
+    assert "vibeqc_gfn2_h0_native_codegen" in cmake
+
+
+def test_cpu_h0_and_cuda_values_share_the_generated_primal_and_ad() -> None:
+    cpu = (ROOT / "src/xtb/native/src/model/gfn2/h0.cpp").read_text()
+    cuda = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_integrals.cu").read_text()
+    for source in (cpu, cuda):
+        assert '#include "generated_gfn2_h0_native.hpp"' in source
+        assert "evaluate_gfn2_h0_offsite_factor" in source
+        assert "evaluate_gfn2_h0_onsite_factor" in source
+        assert "const double reduced_distance" not in source
+    assert "evaluate_gfn2_h0_offsite_vjp" in cpu
+    assert "evaluate_gfn2_h0_onsite_vjp" in cpu
+    assert "evaluate_gfn2_h0_distance_vjp" in cpu
+    assert "spatial_scale_derivative" not in cpu
+    assert "polynomial_derivative" not in cpu

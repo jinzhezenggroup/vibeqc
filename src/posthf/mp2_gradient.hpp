@@ -7,8 +7,9 @@
 #include "response/native_gmres.hpp"
 
 namespace vibeqc::posthf {
-class NativeBlockProvider;
-}
+class MOBlockProvider;
+class DensityFittedBlockProvider;
+}  // namespace vibeqc::posthf
 namespace vibeqc::scf {
 struct PhysicalReference;
 }
@@ -41,6 +42,17 @@ struct LagrangianWeights {
   double stationarity_residual{};
 };
 
+struct DensityFittedLagrangianWeights {
+  std::size_t orbitals{};
+  std::size_t auxiliary{};
+  std::vector<double> overlap;
+  std::vector<double> one_electron;
+  std::vector<double> three_center;
+  std::vector<double> metric;
+  std::size_t workspace_bytes{};
+  std::size_t planned_peak_bytes{};
+};
+
 struct GradientResourcePlan {
   std::size_t provider_bytes{};
   std::size_t adjoint_bytes{};
@@ -60,7 +72,7 @@ OrbitalRhs canonical_orbital_rhs(std::span<const double> hcore_mo, std::span<con
                                  const EnergyAdjoint& adjoint, double same_space_threshold);
 OrbitalRhs canonical_orbital_rhs_streamed(const scf::PhysicalReference& reference,
                                           std::span<const double> hcore_mo,
-                                          const posthf::NativeBlockProvider& provider,
+                                          const posthf::MOBlockProvider& provider,
                                           const EnergyAdjoint& adjoint, double same_space_threshold,
                                           bool cuda = false, int device_id = 0);
 LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
@@ -70,11 +82,21 @@ LagrangianWeights canonical_lagrangian_weights(std::span<const double> hcore_mo,
                                                double same_space_threshold);
 LagrangianWeights canonical_lagrangian_weights_streamed(const scf::PhysicalReference& reference,
                                                         std::span<const double> hcore_mo,
-                                                        const posthf::NativeBlockProvider& provider,
+                                                        const posthf::MOBlockProvider& provider,
                                                         const EnergyAdjoint& adjoint,
                                                         std::span<const double> response,
                                                         double same_space_threshold,
                                                         bool cuda = false, int device_id = 0);
+/** Reverse relaxed MO-basis MP2 weights through the RI factorization.
+ *
+ * This is the C2 producer boundary: it returns AO one-/overlap weights and
+ * raw three-center/metric cotangents.  The metric pullback is delegated to the
+ * shared fixed-rank symmetric inverse-square-root rule (#466).
+ */
+DensityFittedLagrangianWeights density_fitted_lagrangian_weights(
+    const scf::PhysicalReference& reference, const posthf::DensityFittedBlockProvider& provider,
+    const LagrangianWeights& weights, std::size_t maximum_bytes);
+
 GradientResourcePlan conventional_gradient_plan(
     std::size_t orbitals, std::size_t occupied, std::size_t provider_bytes,
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,

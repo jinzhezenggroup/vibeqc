@@ -3,7 +3,7 @@ include_guard(GLOBAL)
 include(GNUInstallDirs)
 
 function(vibeqc_add_gfn2_runtime target)
-  set(_gfn2_root "${CMAKE_CURRENT_SOURCE_DIR}/src/xtb/gfn2_runtime")
+  set(_gfn2_root "${CMAKE_CURRENT_SOURCE_DIR}/src/xtb/native")
   target_sources(${target} PRIVATE
     ${_gfn2_root}/src/cpu_dispatch/features.cpp
     ${_gfn2_root}/src/model/common/integrals_kernels_baseline.cpp
@@ -16,7 +16,6 @@ function(vibeqc_add_gfn2_runtime target)
     ${_gfn2_root}/src/model/gfn2/es2.cpp
     ${_gfn2_root}/src/backends/common/gfn2_plan_schema.cpp
     ${_gfn2_root}/src/model/gfn2/aes2.cpp
-    ${_gfn2_root}/src/model/gfn2/alpb.cpp
     ${_gfn2_root}/src/model/gfn2/basis.cpp
     ${_gfn2_root}/src/model/gfn2/coordination.cpp
     ${_gfn2_root}/src/model/gfn2/d4.cpp
@@ -24,13 +23,8 @@ function(vibeqc_add_gfn2_runtime target)
     ${_gfn2_root}/src/model/gfn2/external_point_charges.cpp
     ${_gfn2_root}/src/model/gfn2/force.cpp
     ${_gfn2_root}/src/model/gfn2/h0.cpp
-    ${_gfn2_root}/src/model/gfn2/lattice.cpp
     ${_gfn2_root}/src/model/gfn2/mulliken.cpp
     ${_gfn2_root}/src/model/gfn2/mulliken_kernels.cpp
-    ${_gfn2_root}/src/model/gfn2/periodic_ewald.cpp
-    ${_gfn2_root}/src/model/gfn2/periodic_integrals.cpp
-    ${_gfn2_root}/src/model/gfn2/periodic_multipole.cpp
-    ${_gfn2_root}/src/model/gfn2/periodic_topology.cpp
     ${_gfn2_root}/src/model/gfn2/repulsion.cpp
     ${_gfn2_root}/src/model/gfn2/scc_driver.cpp
     ${_gfn2_root}/src/model/gfn2/scc_mixer.cpp
@@ -38,9 +32,9 @@ function(vibeqc_add_gfn2_runtime target)
     ${_gfn2_root}/src/model/gfn2/wavefunction.cpp
     ${_gfn2_root}/src/runtime/gfn2_cpu_execution.cpp)
 
-  # Native molecular GFN2 CUDA bootstrap. The CUDA owner is pinned separately
-  # from the later CPU snapshot so no GFN1 runtime is pulled into VibeQC.
-  # See CUDA_SOURCE_PROVENANCE.json for the exact source cohort and adaptations.
+  # Molecular CUDA execution consumes compiler-owned science and native
+  # allocation/SCC/solver owners. The provenance manifest retains the original
+  # CPU/CUDA snapshot identities and records the adapted source subset.
   if(VIBEQC_ENABLE_CUDA AND NOT VIBEQC_PYTHON_WHEEL AND
      NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
     set(_gfn2_cuda_sources
@@ -48,7 +42,6 @@ function(vibeqc_add_gfn2_runtime target)
       ${_gfn2_root}/src/runtime/cuda_descriptor_validation.cu
       ${_gfn2_root}/src/runtime/gfn2_cuda_topology_staging.cu
       ${_gfn2_root}/src/runtime/gfn2_cuda_execution.cu
-      ${_gfn2_root}/src/runtime/result_owner_cuda.cu
       ${_gfn2_root}/src/backends/cuda/gfn2_aes2.cu
       ${_gfn2_root}/src/backends/cuda/gfn2_classical_force.cu
       ${_gfn2_root}/src/backends/cuda/gfn2_d4.cu
@@ -135,12 +128,11 @@ function(vibeqc_add_gfn2_runtime target)
     target_include_directories(vibeqc_gfn2_cuda PRIVATE
       "${CMAKE_CURRENT_BINARY_DIR}/generated"
       ${_gfn2_root}
-      ${_gfn2_root}/include
       ${_gfn2_root}/src
       ${CMAKE_CURRENT_BINARY_DIR}/generated
       ${CMAKE_CURRENT_SOURCE_DIR}/include
       ${CMAKE_CURRENT_SOURCE_DIR}/src)
-    target_compile_definitions(vibeqc_gfn2_cuda PRIVATE XTBLOOM_HAS_CUDA=1)
+    target_compile_definitions(vibeqc_gfn2_cuda PRIVATE VIBEQC_XTB_HAS_CUDA=1)
     set_target_properties(vibeqc_gfn2_cuda PROPERTIES
       POSITION_INDEPENDENT_CODE ON
       CUDA_STANDARD 20
@@ -169,7 +161,6 @@ function(vibeqc_add_gfn2_runtime target)
 
   target_include_directories(${target} PRIVATE
     ${_gfn2_root}
-    ${_gfn2_root}/include
     ${_gfn2_root}/src)
   if(CMAKE_DL_LIBS)
     target_link_libraries(${target} PRIVATE ${CMAKE_DL_LIBS})
@@ -215,7 +206,7 @@ function(vibeqc_add_gfn2_runtime target)
     target_link_libraries(vibeqc_gfn2_openblas_shim PRIVATE "${_gfn2_openblas_library}")
     target_link_options(vibeqc_gfn2_openblas_shim PRIVATE "LINKER:--no-as-needed")
     set_target_properties(vibeqc_gfn2_openblas_shim PROPERTIES
-      OUTPUT_NAME xtbloom_openblas_lp64_shim
+      OUTPUT_NAME vibeqc_xtb_openblas_lp64_shim
       CXX_VISIBILITY_PRESET hidden
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
       BUILD_RPATH "${_gfn2_openblas_dir}"
@@ -223,11 +214,11 @@ function(vibeqc_add_gfn2_runtime target)
     install(TARGETS vibeqc_gfn2_openblas_shim
       LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
     target_compile_definitions(${target} PRIVATE
-      XTBLOOM_CONFIGURED_WHEEL_OPENBLAS=1
-      "XTBLOOM_CONFIGURED_WHEEL_OPENBLAS_CONFIG_PREFIX=\"${_gfn2_openblas_prefix}\"")
+      VIBEQC_XTB_CONFIGURED_WHEEL_OPENBLAS=1
+      "VIBEQC_XTB_CONFIGURED_WHEEL_OPENBLAS_CONFIG_PREFIX=\"${_gfn2_openblas_prefix}\"")
     add_dependencies(${target} vibeqc_gfn2_openblas_shim)
-  elseif(XTBLOOM_CPU_LINALG_LIBRARY)
+  elseif(VIBEQC_XTB_CPU_LINALG_LIBRARY)
     target_compile_definitions(${target} PRIVATE
-      "XTBLOOM_CONFIGURED_CPU_LINALG_RUNTIME=\"${XTBLOOM_CPU_LINALG_LIBRARY}\"")
+      "VIBEQC_XTB_CONFIGURED_CPU_LINALG_RUNTIME=\"${VIBEQC_XTB_CPU_LINALG_LIBRARY}\"")
   endif()
 endfunction()

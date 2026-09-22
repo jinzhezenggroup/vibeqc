@@ -23,7 +23,12 @@ python tools/parameters/generate_gfn1_geometry.py
 python tools/source_registry.py verify
 ```
 
-The generated `src/xtb/gfn2_runtime/data/parameters/gfn1.hpp` and
+The generated `src/xtb/native/data/parameters/gfn1.hpp` and
 `python/vibeqc_compiler/geometry/_gfn1_data.py` remain deterministic products
 of the pinned source bytes. GFN1 D3 tables remain owned separately and are not
 duplicated in this snapshot.
+
+The native header uses `vibeqc::xtb::parameters::gfn1`. Its generator verifies
+the original audited header digest after reversing only that namespace change;
+the live source registry records the native product's path and digest. The
+upstream snapshot, parameter bytes and scientific identity remain unchanged.
