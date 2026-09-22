@@ -15,6 +15,7 @@ from vibeqc_compiler.integral import (
     cuda_target_info,
     emit_shell_class_fused_cuda,
     integral_specialization_diagnostics,
+    specialize_fock_integral,
     specialize_integral_ir,
 )
 from vibeqc_compiler.integral.lowering.dispatch import _specialize_fock_plan
@@ -76,6 +77,29 @@ def test_rys_specialization_folds_root_count_from_derivative_to_value_order() ->
     assert specialized.derivative is None
     assert specialized.recurrence == f"rys{specialized.required_rys_roots}"
     assert specialized.required_rys_roots < force.required_rys_roots
+
+
+def test_fock_specialization_owns_force_recurrence_decoupling() -> None:
+    """Keep force recurrence choices out of profile and emitter dispatch."""
+
+    mixed = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FOCK, KernelConsumer.FORCE),
+        recurrence="rys2",
+    )
+
+    specialized = specialize_fock_integral(mixed)
+
+    assert specialized.consumers == frozenset((KernelConsumer.FOCK,))
+    assert specialized.derivative is None
+    assert specialized.recurrence == "subset_wick"
+
+    value_only = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FOCK,),
+        recurrence="subset_wick",
+    )
+    assert specialize_fock_integral(value_only) is value_only
 
 
 def test_specialization_rejects_unknown_empty_and_duplicate_output_demands() -> None:

@@ -14,12 +14,15 @@ from vibeqc_compiler.common.lowering_provider import (
     LoweringCandidate,
     LoweringRequest,
     ProviderDescriptor,
+    collect_lowering_candidates,
     lowering_diagnostics,
 )
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.specialization import TargetCapabilities
 
 from .cuda_gemm import gemm_contract
 from .cuda_plan import TensorPlan
+from .cuda_reduction import cooperative_reduction_provider, reduction_extent
 
 GENERATED_CUDA_PROVIDER = ProviderDescriptor(
     name="vibeqc.generated_cuda",
@@ -44,6 +47,83 @@ CUDA_RUNTIME_PROVIDER = ProviderDescriptor(
     required_features=("cuda-runtime",),
     provenance=(("version_source", "runtime-probe"),),
 )
+
+
+CUB_REDUCTION_PROVIDER = ProviderDescriptor(
+    name="nvidia.cccl.cub",
+    kind="library",
+    implementation="cub-block-reduce",
+    required_features=("cuda", "cub-block-reduce-header"),
+    provenance=(("version_source", "cuda-toolkit-cccl-header"),),
+)
+
+
+class GeneratedReductionProvider:
+    """Advertise the existing generated cooperative reduction."""
+
+    descriptor = GENERATED_CUDA_PROVIDER
+
+    def candidates(
+        self, request: LoweringRequest, target: TargetCapabilities
+    ) -> tuple[LoweringCandidate, ...]:
+        reason = _cooperative_reduction_rejection(request, target)
+        return (
+            LoweringCandidate(
+                request=request,
+                implementation="tensor-reduce-generated-cooperative",
+                providers=(self.descriptor,),
+                status="unsupported" if reason else "ready",
+                numerical_mode=f"{request.dtype}->{request.accumulation_dtype}",
+                reason=reason,
+            ),
+        )
+
+
+class CubReductionProvider:
+    """Advertise the opt-in CUB BlockReduce implementation."""
+
+    descriptor = CUB_REDUCTION_PROVIDER
+
+    def candidates(
+        self, request: LoweringRequest, target: TargetCapabilities
+    ) -> tuple[LoweringCandidate, ...]:
+        reason = _cooperative_reduction_rejection(request, target)
+        if (
+            reason is None
+            and dict(target.features).get("cub-block-reduce-header") is not True
+        ):
+            reason = "CUB requires explicit cub-block-reduce-header capability"
+        return (
+            LoweringCandidate(
+                request=request,
+                implementation="tensor-reduce-cub-block-reduce",
+                providers=(self.descriptor, GENERATED_CUDA_PROVIDER),
+                status="unsupported" if reason else "ready",
+                numerical_mode=f"{request.dtype}->{request.accumulation_dtype}",
+                reason=reason,
+            ),
+        )
+
+
+def _cooperative_reduction_rejection(
+    request: LoweringRequest, target: TargetCapabilities
+) -> str | None:
+    if request.operation != "reduce" or len(request.shape) != 2:
+        return "provider requires a flattened TensorIR reduction request"
+    if request.dtype not in (
+        "float32",
+        "float64",
+    ) or request.accumulation_dtype not in (
+        "float32",
+        "float64",
+    ):
+        return "provider supports float32/float64 reduction arithmetic only"
+    subgroup = target.target.subgroup_size
+    if subgroup != 32:
+        return "cooperative reduction pilot requires CUDA subgroup size 32"
+    if request.shape[1] < subgroup:
+        return "reduction extent is below the cooperative subgroup threshold"
+    return None
 
 
 def _site_hash(plan: TensorPlan, index: int) -> str:
@@ -93,7 +173,11 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
         else:
             is_gemm = False
             uses_cublas = False
-            shape = tuple(node.spec.shape)
+            shape = (
+                (node.spec.size, reduction_extent(node))
+                if node.op == "reduce"
+                else tuple(node.spec.shape)
+            )
         value_precision = plan.precision_by_node.get(node)
         request = LoweringRequest(
             consumer="tensor.cuda",
@@ -111,12 +195,19 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
                 ("site_hash", _site_hash(plan, index)),
             ),
         )
+        reduction_provider = cooperative_reduction_provider(plan, index)
         if uses_cublas:
             providers = (CUBLAS_PROVIDER, GENERATED_CUDA_PROVIDER)
             implementation = f"tensor-gemm-{step.gemm}"
         elif is_gemm:
             providers = (CUDA_RUNTIME_PROVIDER,)
             implementation = "tensor-gemm-zero-fill"
+        elif reduction_provider == "cub":
+            providers = (CUB_REDUCTION_PROVIDER, GENERATED_CUDA_PROVIDER)
+            implementation = "tensor-reduce-cub-block-reduce"
+        elif reduction_provider == "generated":
+            providers = (GENERATED_CUDA_PROVIDER,)
+            implementation = "tensor-reduce-generated-cooperative"
         else:
             providers = (GENERATED_CUDA_PROVIDER,)
             implementation = f"tensor-generated-{node.op}"
@@ -136,6 +227,57 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
             )
         )
     return tuple(candidates)
+
+
+def reduction_provider_candidates(
+    plan: TensorPlan,
+    index: int,
+    *,
+    target_capabilities: TargetCapabilities | None = None,
+) -> tuple[LoweringCandidate, ...]:
+    """Advertise reductions using explicit, plan-bound toolkit capability facts.
+
+    GPU architecture alone does not establish that CUB headers are installed.
+    Without caller-supplied header evidence the CUB offer is unsupported; the
+    generated offer remains available. This routine does not probe a toolkit.
+    """
+
+    if not isinstance(plan, TensorPlan):
+        raise TypeError("reduction provider candidates require a TensorPlan")
+    if cooperative_reduction_provider(plan, index) is None:
+        raise ValueError("step is not an eligible cooperative reduction")
+    step = plan.steps[index]
+    node = step.node
+    value_precision = plan.precision_by_node[node]
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype=node.spec.dtype,
+        accumulation_dtype=value_precision.accumulation_dtype,
+        shape=(node.spec.size, reduction_extent(node)),
+        semantics=(
+            ("program_hash", plan.program.logical_hash),
+            ("site_hash", _site_hash(plan, index)),
+        ),
+    )
+    target = TargetCapabilities(
+        plan.target.target_info,
+        features=tuple(
+            (feature, True) for feature in plan.target.required_cuda_features
+        ),
+    )
+    if target_capabilities is not None:
+        if not isinstance(target_capabilities, TargetCapabilities):
+            raise TypeError("reduction capabilities require TargetCapabilities")
+        if target_capabilities.target != plan.target.target_info:
+            raise ValueError("reduction capabilities do not match the planned target")
+        target = target_capabilities
+    return collect_lowering_candidates(
+        request,
+        target,
+        (GeneratedReductionProvider(), CubReductionProvider()),
+    )
 
 
 def tensor_lowering_diagnostics(plan: TensorPlan) -> dict[str, object]:

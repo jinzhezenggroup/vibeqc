@@ -145,6 +145,20 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --cpu-output "${VIBEQC_GFN2_AES2_CPU_HEADER}"
     COMMENT "Generating compiler-owned GFN2 AES2 CPU kernels")
 
+  set(VIBEQC_GFN2_ES2_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es2_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_es2_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_es2_native.py"
+    OUTPUTS "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_es2_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 ES2 scalar kernels")
+
   set(VIBEQC_GFN2_ES3_NATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es3_native.cuh")
   vibeqc_register_generated_sources(

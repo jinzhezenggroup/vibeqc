@@ -21,9 +21,14 @@ from vibeqc_compiler.tensor import (
     add,
     einsum,
     input_tensor,
+    reduce_sum,
 )
-from vibeqc_compiler.tensor.cuda_plan import plan_cuda
-from vibeqc_compiler.tensor.cuda_providers import tensor_lowering_diagnostics
+from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_providers import (
+    CubReductionProvider,
+    reduction_provider_candidates,
+    tensor_lowering_diagnostics,
+)
 from vibeqc_compiler.tensor.cuda_search import estimate_schedule
 
 TARGET = cuda_target_info("sm_80")
@@ -43,6 +48,13 @@ def _gemm_program(*, packed: bool = False, inner: int = 13) -> Program:
     b = input_tensor("b", TensorSpec((k, j), role="input"))
     equation = "ik,kj->ji" if packed else "ik,kj->ij"
     return Program({"result": einsum(equation, a, b)})
+
+
+def _reduction_program() -> Program:
+    i = Index("i", IndexSpace("rows", "batch", 17))
+    k = Index("k", IndexSpace("inner", "batch", 129))
+    x = input_tensor("x", TensorSpec((i, k), role="input"))
+    return Program({"result": reduce_sum(x, (1,))})
 
 
 def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
@@ -224,6 +236,60 @@ def test_empty_gemm_is_attributed_to_cuda_runtime_zero_fill() -> None:
     assert candidate["provider_bytes"] == 0
 
 
+def test_generated_and_cub_reduction_providers_share_one_request() -> None:
+    program = _reduction_program()
+    generated = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    index = next(
+        i for i, step in enumerate(generated.steps) if step.node.op == "reduce"
+    )
+    unknown = reduction_provider_candidates(generated, index)
+    assert [candidate.status for candidate in unknown] == ["ready", "unsupported"]
+    capabilities = TargetCapabilities(
+        TARGET.target_info, features=(("cub-block-reduce-header", True),)
+    )
+    candidates = reduction_provider_candidates(
+        generated, index, target_capabilities=capabilities
+    )
+    foreign = TargetCapabilities(
+        cuda_target_info("sm_120").target_info,
+        features=(("cub-block-reduce-header", True),),
+    )
+    with pytest.raises(ValueError, match="planned target"):
+        reduction_provider_candidates(generated, index, target_capabilities=foreign)
+
+    assert [candidate.status for candidate in candidates] == ["ready", "ready"]
+    assert candidates[0].request == candidates[1].request
+    assert candidates[0].implementation == "tensor-reduce-generated-cooperative"
+    assert candidates[1].implementation == "tensor-reduce-cub-block-reduce"
+    assert [provider.name for provider in candidates[1].providers] == [
+        "nvidia.cccl.cub",
+        "vibeqc.generated_cuda",
+    ]
+
+    cub = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    report = tensor_lowering_diagnostics(cub)
+    selected = next(
+        row
+        for row in report["candidates"]
+        if row["implementation"] == "tensor-reduce-cub-block-reduce"
+    )
+    assert [provider["name"] for provider in selected["providers"]] == [
+        "nvidia.cccl.cub",
+        "vibeqc.generated_cuda",
+    ]
+
+
 def test_schedule_contract_carries_resolved_lowering_identity() -> None:
     plan = plan_cuda(_gemm_program(), TARGET)
     lowering = tensor_lowering_diagnostics(plan)
@@ -234,3 +300,36 @@ def test_schedule_contract_carries_resolved_lowering_identity() -> None:
 
     assert provenance["lowering_identity"] == lowering["identity"]
     assert provenance["lowering_providers"] == "nvidia.cublas,vibeqc.generated_cuda"
+
+
+@pytest.mark.parametrize("evidence", [None, False, 0, 1, "true"])
+def test_cub_provider_requires_explicit_typed_header_evidence(evidence: object) -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(17, 129),
+    )
+    features = () if evidence is None else (("cub-block-reduce-header", evidence),)
+    target = TargetCapabilities(TARGET.target_info, features=features)
+    offered = CubReductionProvider().candidates(request, target)
+    assert len(offered) == 1
+    assert offered[0].status == "unsupported"
+    assert "cub-block-reduce-header" in offered[0].reason
+
+
+def test_cub_provider_accepts_explicit_header_evidence() -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(17, 129),
+    )
+    target = TargetCapabilities(
+        TARGET.target_info, features=(("cub-block-reduce-header", True),)
+    )
+    assert CubReductionProvider().candidates(request, target)[0].status == "ready"
