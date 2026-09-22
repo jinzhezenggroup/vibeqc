@@ -177,6 +177,46 @@ bool check_syrk(CpuLinalgProvider provider,
          zero_inner[3] == 0.0;
 }
 
+bool check_syr2k(CpuLinalgProvider provider,
+                 CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+                 int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  const std::array<double, 6> a{1, 2, 3, 4, 5, 6};
+  const std::array<double, 6> b{-1, 0.5, 2, 3, -2, 1};
+  for (char uplo : {'L', 'U'}) {
+    for (char trans : {'N', 'T'}) {
+      const auto& aa = trans == 'N' ? a : std::array<double, 6>{1, 4, 2, 5, 3, 6};
+      const auto& bb = trans == 'N' ? b : std::array<double, 6>{-1, 3, 0.5, -2, 2, 1};
+      std::array<double, 4> c{1, 2, 3, 4}, expected = c;
+      for (std::size_t i = 0; i < 2; ++i)
+        for (std::size_t j = 0; j < 2; ++j) {
+          const bool selected = uplo == 'U' ? j >= i : j <= i;
+          if (!selected) continue;
+          double sum = 0.0;
+          for (std::size_t p = 0; p < 3; ++p) {
+            const double ai = trans == 'T' ? aa[p * 2 + i] : aa[i * 3 + p];
+            const double aj = trans == 'T' ? aa[p * 2 + j] : aa[j * 3 + p];
+            const double bi = trans == 'T' ? bb[p * 2 + i] : bb[i * 3 + p];
+            const double bj = trans == 'T' ? bb[p * 2 + j] : bb[j * 3 + p];
+            sum += ai * bj + bi * aj;
+          }
+          expected[i * 2 + j] = 1.5 * sum - 2.0 * expected[i * 2 + j];
+        }
+      vibeqc::tensor::cpu_syr2k(uplo, trans, 2, 3, aa.data(), bb.data(), c.data(), 1.5, -2.0, plan);
+      for (std::size_t i = 0; i < c.size(); ++i) {
+        const std::size_t row = i / 2, column = i % 2;
+        const bool selected = uplo == 'U' ? column >= row : column <= row;
+        if (selected && (!std::isfinite(c[i]) || !close(c[i], expected[i]))) return false;
+        if (!selected && c[i] != expected[i]) return false;
+      }
+    }
+  }
+  std::array<double, 4> scaled{2.0, 9.0, -3.0, 4.0};
+  vibeqc::tensor::cpu_syr2k('L', 'N', 2, 1, &poison, &poison, scaled.data(), 0.0, 4.0, plan);
+  return scaled[0] == 8.0 && scaled[1] == 9.0 && scaled[2] == -12.0 && scaled[3] == 16.0;
+}
+
 bool check_trsm(CpuLinalgProvider provider,
                 CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                 int threads = 1) {
@@ -327,9 +367,9 @@ bool check_eigen(CpuLinalgProvider provider,
 int main() {
   if (!check_gemm(CpuLinalgProvider::scalar) || !check_gemv(CpuLinalgProvider::scalar) ||
       !check_ger(CpuLinalgProvider::scalar) || !check_symm(CpuLinalgProvider::scalar) ||
-      !check_syrk(CpuLinalgProvider::scalar) || !check_trsm(CpuLinalgProvider::scalar) ||
-      !check_trmm(CpuLinalgProvider::scalar) || !check_cholesky(CpuLinalgProvider::scalar) ||
-      !check_eigen(CpuLinalgProvider::scalar)) {
+      !check_syrk(CpuLinalgProvider::scalar) || !check_syr2k(CpuLinalgProvider::scalar) ||
+      !check_trsm(CpuLinalgProvider::scalar) || !check_trmm(CpuLinalgProvider::scalar) ||
+      !check_cholesky(CpuLinalgProvider::scalar) || !check_eigen(CpuLinalgProvider::scalar)) {
     std::cerr << "scalar CPU linear algebra failed\n";
     return 1;
   }
@@ -361,6 +401,7 @@ int main() {
                               !check_ger(CpuLinalgProvider::openblas, ownership) ||
                               !check_symm(CpuLinalgProvider::openblas, ownership) ||
                               !check_syrk(CpuLinalgProvider::openblas, ownership) ||
+                              !check_syr2k(CpuLinalgProvider::openblas, ownership) ||
                               !check_trsm(CpuLinalgProvider::openblas, ownership) ||
                               !check_trmm(CpuLinalgProvider::openblas, ownership))) {
       std::cerr << "OpenBLAS BLAS provider failed\n";

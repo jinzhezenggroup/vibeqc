@@ -51,6 +51,12 @@ bool syrk_transpose(char value) {
   throw std::invalid_argument("CPU SYRK transpose must be N or T");
 }
 
+bool syr2k_transpose(char value) {
+  if (value == 'N' || value == 'n') return false;
+  if (value == 'T' || value == 't') return true;
+  throw std::invalid_argument("CPU SYR2K transpose must be N or T");
+}
+
 bool symm_left_side(char value) {
   if (value == 'L' || value == 'l') return true;
   if (value == 'R' || value == 'r') return false;
@@ -67,6 +73,12 @@ bool upper_triangle(char value) {
   if (value == 'U' || value == 'u') return true;
   if (value == 'L' || value == 'l') return false;
   throw std::invalid_argument("CPU SYRK triangle must be U or L");
+}
+
+bool syr2k_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU SYR2K triangle must be U or L");
 }
 
 bool trsm_left_side(char value) {
@@ -202,6 +214,26 @@ void scalar_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const dou
         const double ai = trans ? a[p * n + i] : a[i * k + p];
         const double aj = trans ? a[p * n + j] : a[j * k + p];
         sum += ai * aj;
+      }
+      const std::size_t index = i * n + j;
+      c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
+    }
+  }
+}
+
+void scalar_syr2k(bool upper, bool trans, std::size_t n, std::size_t k, const double* a,
+                  const double* b, double* c, double alpha, double beta) {
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::size_t first_column = upper ? i : 0;
+    const std::size_t last_column = upper ? n : i + 1;
+    for (std::size_t j = first_column; j < last_column; ++j) {
+      double sum = 0.0;
+      for (std::size_t p = 0; p < k; ++p) {
+        const double ai = trans ? a[p * n + i] : a[i * k + p];
+        const double aj = trans ? a[p * n + j] : a[j * k + p];
+        const double bi = trans ? b[p * n + i] : b[i * k + p];
+        const double bj = trans ? b[p * n + j] : b[j * k + p];
+        sum += ai * bj + bi * aj;
       }
       const std::size_t index = i * n + j;
       c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
@@ -536,6 +568,25 @@ void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const d
 #else
   cblas_dsyrk(CblasRowMajor, triangle, transpose_a, static_cast<int>(n), static_cast<int>(k), alpha,
               a, static_cast<int>(trans ? n : k), beta, c, static_cast<int>(n));
+#endif
+}
+
+void openblas_syr2k(bool upper, bool trans, std::size_t n, std::size_t k, const double* a,
+                    const double* b, double* c, double alpha, double beta,
+                    const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (n > limit || k > limit) throw std::length_error("OpenBLAS SYR2K dimensions exceed int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto triangle = upper ? CblasUpper : CblasLower;
+  const auto transpose_ab = trans ? CblasTrans : CblasNoTrans;
+  const int leading_dimension = static_cast<int>(trans ? n : k);
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dsyr2k(CblasRowMajor, triangle, transpose_ab, static_cast<int>(n),
+                     static_cast<int>(k), alpha, a, leading_dimension, b, leading_dimension, beta,
+                     c, static_cast<int>(n));
+#else
+  cblas_dsyr2k(CblasRowMajor, triangle, transpose_ab, static_cast<int>(n), static_cast<int>(k),
+               alpha, a, leading_dimension, b, leading_dimension, beta, c, static_cast<int>(n));
 #endif
 }
 
@@ -876,6 +927,47 @@ void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double*
   }
 #endif
   scalar_syrk(upper, transposed, n, k, a, c, alpha, beta);
+}
+
+void cpu_syr2k(char uplo, char trans, std::size_t n, std::size_t k, const double* a,
+               const double* b, double* c, double alpha, double beta, const CpuLinalgPlan& plan) {
+  const bool upper = syr2k_upper_triangle(uplo);
+  const bool transposed = syr2k_transpose(trans);
+  validate_plan(plan);
+  if (!n) return;
+  checked_matrix_elements(n, n);
+  if (!c) throw std::invalid_argument("CPU SYR2K received null output storage");
+  if (!k || alpha == 0.0) {
+    for (std::size_t i = 0; i < n; ++i) {
+      const std::size_t first_column = upper ? i : 0;
+      const std::size_t last_column = upper ? n : i + 1;
+      for (std::size_t j = first_column; j < last_column; ++j) {
+        const std::size_t index = i * n + j;
+        if (beta == 0.0)
+          c[index] = 0.0;
+        else if (beta != 1.0)
+          c[index] *= beta;
+      }
+    }
+    return;
+  }
+  checked_matrix_elements(transposed ? k : n, transposed ? n : k);
+  if (!a || !b) throw std::invalid_argument("CPU SYR2K received null input storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(n, n, k) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_syr2k(upper, transposed, n, k, a, b, c, alpha, beta, plan);
+    return;
+  }
+#endif
+  scalar_syr2k(upper, transposed, n, k, a, b, c, alpha, beta);
 }
 
 void cpu_trsm(char side, char uplo, char trans, char diag, std::size_t m, std::size_t n,
