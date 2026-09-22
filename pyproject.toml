@@ -170,7 +170,6 @@ include = [
   "python/vibeqc_compiler/integral/blocks.py",
   "python/vibeqc_compiler/integral/capabilities.py",
   "python/vibeqc_compiler/integral/df_rys_shell.py",
-  "python/vibeqc_compiler/integral/df_shell_derivatives.py",
   "python/vibeqc_compiler/integral/expr.py",
   "python/vibeqc_compiler/integral/fused_schedule.py",
   "python/vibeqc_compiler/integral/ir.py",
