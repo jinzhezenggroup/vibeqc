@@ -33,17 +33,33 @@ def test_batch_precision_provenance_availability_abi_and_failed_replay() -> None
             assert item.precision["effective_bits"] == 64
             assert item.precision["refinement_iterations"] == 0
         assert getter(prepared._batch, 0, None) == _native.STATUS_SUCCESS
-        for size, abi in (
-            (ctypes.sizeof(record), _native.ABI_VERSION + 1),
-            (ctypes.sizeof(record) - 1, _native.ABI_VERSION),
-        ):
-            record.struct_size, record.abi_version = size, abi
-            original = bytes(record)
-            assert (
-                getter(prepared._batch, 0, ctypes.byref(record))
-                == _native.STATUS_ABI_MISMATCH
-            )
-            assert bytes(record) == original
+        record.struct_size, record.abi_version = (
+            ctypes.sizeof(record),
+            _native.ABI_VERSION + 1,
+        )
+        original = bytes(record)
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record))
+            == _native.STATUS_ABI_MISMATCH
+        )
+        assert bytes(record) == original
+
+        legacy_size = _native.PrecisionProvenance.mixed_stage_fock_builds.offset
+        record.struct_size, record.abi_version = legacy_size, _native.ABI_VERSION
+        record.mixed_stage_fock_builds = 4242
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record)) == _native.STATUS_SUCCESS
+        )
+        assert record.struct_size == legacy_size
+        assert record.mixed_stage_fock_builds == 4242
+
+        record.struct_size, record.abi_version = legacy_size - 1, _native.ABI_VERSION
+        original = bytes(record)
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record))
+            == _native.STATUS_ABI_MISMATCH
+        )
+        assert bytes(record) == original
 
         failed = prepared.execute([np.zeros((1, 3)), None])
         assert failed.items[0].precision is None
@@ -111,11 +127,22 @@ def test_cuda_public_batch_precision_is_per_item(
         result = prepared.execute(strict=True)
     cold, warm = result.items
     assert not cold.warm_start_used and warm.warm_start_used
+    assert cold.precision["operator_work_counters_valid"] is True
+    assert warm.precision["operator_work_counters_valid"] is True
     assert cold.precision["effective_bits"] == 64
     assert cold.precision["refinement_iterations"] == 0
+    assert cold.precision["mixed_stage_fock_builds"] == 0
+    assert cold.precision["mixed_admission_census"] == 0
+    assert cold.precision["strict_stage_fock_builds"] >= 1
     assert warm.precision["effective_bits"] == 32
     assert warm.precision["strict_refinement_applied"]
     assert warm.precision["refinement_iterations"] >= 1
+    assert warm.precision["mixed_stage_fock_builds"] >= 1
+    assert (
+        warm.precision["strict_stage_fock_builds"]
+        == warm.precision["refinement_iterations"]
+    )
+    assert warm.precision["mixed_admission_census"] > 0
     assert warm.precision["mixed_precision_fock_threshold"] > 0
     assert cold.energy == pytest.approx(warm.energy, abs=2e-8)
     assert np.allclose(cold.forces, warm.forces, atol=2e-7, rtol=0)

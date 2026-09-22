@@ -724,6 +724,24 @@ typedef struct vibeqc_precision_provenance {
    * includes these refinement iterations.
    */
   int32_t refinement_iterations;
+  /** Mixed-stage Fock/operator applications actually executed for this item. */
+  uint64_t mixed_stage_fock_builds;
+  /** Strict-FP64 SCF-stage Fock/operator applications actually executed. */
+  uint64_t strict_stage_fock_builds;
+  /** Additional strict physical-Fock builds after SCF convergence. */
+  uint64_t post_scf_fock_builds;
+  /** Whole-execution provider retries before the returned attempt. */
+  uint64_t execution_retries;
+  /** Certified mixed-capable work census used by per-item admission. */
+  uint64_t mixed_admission_census;
+  /** Exact final physical-residual audits executed for this item. */
+  uint64_t final_residual_audits;
+  /** Final-Fock operator applications skipped by retained-state reuse. */
+  uint64_t skipped_final_fock_builds;
+  /** Nonzero only when the operator-work counters above are fully instrumented.
+   * Numerical failures can leave partially executed stages uncounted; their
+   * counters are not certified by this flag. */
+  uint32_t operator_work_counters_valid;
 } vibeqc_precision_provenance;
 
 typedef struct vibeqc_correlation_diagnostic {
@@ -1124,9 +1142,10 @@ VIBEQC_API vibeqc_status vibeqc_calculation_get_ks_transport_diagnostic(
  * - After a normal execution return (converged or not) the resolved record is
  *   copied into \p out and SUCCESS is returned.
  *
- * The out-parameter must carry the current struct_size/abi_version. A NULL
- * \p out is a cheap availability probe that never writes. Adding this query
- * never changes existing descriptors.
+ * The out-parameter must carry the current abi_version. struct_size may be the
+ * legacy prefix ending at refinement_iterations or the current larger record;
+ * fields beyond the supplied size are never written. A NULL \p out is a cheap
+ * availability probe that never writes.
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
     const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
