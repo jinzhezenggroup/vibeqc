@@ -117,9 +117,7 @@ def main() -> None:
             raise RuntimeError("compiled TensorIR static-data size mismatch")
         _check_source(artifact.library.parent / filename)
 
-    generated_source = (
-        generated_reduction.library.parent / "program.cu"
-    ).read_text()
+    generated_source = (generated_reduction.library.parent / "program.cu").read_text()
     cub_source = (cub_reduction.library.parent / "program.cu").read_text()
     if "#include <cub/block/block_reduce.cuh>" in generated_source:
         raise RuntimeError("generated reduction unexpectedly depends on CUB")
