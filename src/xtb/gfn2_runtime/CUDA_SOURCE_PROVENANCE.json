@@ -1,6 +1,8 @@
 {
   "adaptations": {
     "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
+    "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
     "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
     "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
@@ -228,9 +230,9 @@
       "vendored_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6"
     },
     "src/backends/cuda/gfn2_hamiltonian.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b",
-      "vendored_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b"
+      "vendored_sha256": "89e8124105963898a294dd8f7abb1968d3ab73181a19498c787b9c7a7bced7d3"
     },
     "src/backends/cuda/gfn2_hamiltonian.cuh": {
       "adapted": false,
@@ -238,9 +240,9 @@
       "vendored_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198",
-      "vendored_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198"
+      "vendored_sha256": "7bab5af32caeaa1d596dd7ecb26d3f59017f711f289abbc40da2d93db06276cb"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cuh": {
       "adapted": false,
