@@ -1,5 +1,6 @@
 {
   "adaptations": {
+    "src/backends/cuda/gfn2_es3.cu": "Consume compiler-generated TensorIR/AD ES3 energy/potential and finite-range recovery; preserve runtime validation, topology, and publication ownership.",
     "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
     "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
@@ -173,9 +174,9 @@
       "vendored_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae"
     },
     "src/backends/cuda/gfn2_es3.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313",
-      "vendored_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313"
+      "vendored_sha256": "828a3bd57ef5f711ae0e422a1877bd435b0e1e0562359df7d6647129692eca09"
     },
     "src/backends/cuda/gfn2_es3.cuh": {
       "adapted": false,
