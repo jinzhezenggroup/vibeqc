@@ -14,7 +14,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from vibeqc_compiler.xc.boundary import (
     BOUNDARY_SEMANTICS,
     bulk_feature_names,
@@ -27,9 +26,7 @@ OUTPUT = ROOT / "tests/data/xc/libxc-boundary"
 _DOUBLE_POINTER = ctypes.POINTER(ctypes.c_double)
 
 
-def _groups(
-    family: str, spin: str, mapping: dict[str, float]
-) -> list[np.ndarray]:
+def _groups(family: str, spin: str, mapping: dict[str, float]) -> list[np.ndarray]:
     if spin == "polarized":
         values: list[list[float]] = [[mapping["rho_a"], mapping["rho_b"]]]
         if family != "lda":
