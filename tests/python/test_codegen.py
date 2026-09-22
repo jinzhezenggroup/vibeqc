@@ -251,7 +251,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
             "cuda/direct_native_high_order_coulomb.cuh",
-            "cuda/direct_native_order01_gradient.cuh",
             "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
             "cuda/direct_native_order3_gradient.cuh",
@@ -2380,18 +2379,13 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     types_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_native_gradient_types.cuh"
     ).read_text(encoding="utf-8")
-    gradient_source = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
-    ).read_text(encoding="utf-8")
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
     assert "SsssWeightedGradient" not in types_source
-    assert (
-        "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
-    )
     assert "contract_two_electron_force_ssss_task" in low_order_source
     assert "generated_weighted_eri::ssss_force" in low_order_source
+    assert "direct_native_order01_gradient.cuh" not in low_order_source
     assert "generated_math" not in low_order_source
     assert "geometry.product_scales[3]" not in low_order_source
     assert "geometry.decay[3][axis]" not in low_order_source
@@ -2409,6 +2403,27 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     assert "const std::uint64_t ssss_shell_class_mask" in driver
     assert "~ssss_shell_class_mask" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
+
+
+def test_order01_force_retires_handwritten_generic_fallback() -> None:
+    """Keep total-order-zero/one Direct-HF force mathematics compiler-owned."""
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
+    ).exists()
+
+    quartet = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
+    ).read_text(encoding="utf-8")
+    assert "direct_native_order01_gradient.cuh" not in quartet
+    assert "contracted_eri_cartesian_source_order01_gradient" not in quartet
+    assert "static_assert(AngularOrder >= 2U" in quartet
+
+    bounded = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(0)" not in bounded
+    assert "VIBEQC_BOUNDED_FORCE_CASE(1)" not in bounded
 
 
 def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:

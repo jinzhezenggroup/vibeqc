@@ -329,7 +329,6 @@ CUDA_MODULES["cuda_direct_numerics"] = (
     "direct_native_eri_order4",
     "direct_native_gradient_types",
     "direct_native_high_order_coulomb",
-    "direct_native_order01_gradient",
     "direct_native_order2_gradient",
     "direct_native_order2_shell",
     "direct_native_order3_gradient",
