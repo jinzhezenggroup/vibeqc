@@ -343,8 +343,14 @@ class BoundCCSDResponse:
                     "solver_region_bound_identity": (
                         None if self.solver_region is None else self.solver_region.identity
                     ),
-                    "solver_region_derivative_mode": "implicit_vjp",
-                    "solver_region_derivative_identity": self.derivative_plan_identity,
+                    "solver_region_derivative_mode": (
+                        None if self.solver_region is None else "implicit_vjp"
+                    ),
+                    "solver_region_derivative_identity": (
+                        None
+                        if self.solver_region is None
+                        else self.derivative_plan_identity
+                    ),
                     "reference_binding": (
                         "live-reference-callback"
                         if bound._current_reference is not None
