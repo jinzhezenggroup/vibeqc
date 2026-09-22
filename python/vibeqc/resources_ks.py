@@ -83,6 +83,13 @@ def _item_host_inventory(
     provider = byte_product(8, 2 * n2 + (n2 * n2 if backend == "cpu" else 0))
     # The provider retains S/H; do not count those again as a second owner.
     retained = metadata + grid + basis + warm_and_matrices + history + provider
+    # Ordinary KS reuses one serialized Xsyevd workspace across spins. Match
+    # the shared native admission bound; actual provider queries are checked
+    # before either allocation. Small native solves need no provider workspace.
+    solver_host = (
+        1024 * 1024 + byte_product(16, 8, n2) if backend == "cuda" and n > 16 else 0
+    )
+    retained += solver_host
     quadrature = 16 * (model.grid.radial_points + model.grid.angular_polar) + 8 * a
     if backend == "cuda":
         # Shared rule/center/radius upload coexists with the small rule vectors.
@@ -146,6 +153,7 @@ def _item_host_inventory(
             "warm_and_matrices": warm_and_matrices,
             "history": history,
             "provider": provider,
+            "solver_host": solver_host,
             "xc_schedule_staging": xc_schedule_staging,
             "nonlocal_provider": nonlocal_provider,
             "retained": retained,
@@ -408,6 +416,7 @@ def ks_resource_request(
         "warm_and_matrices",
         "history",
         "provider",
+        "solver_host",
         "xc_schedule_staging",
         "nonlocal_provider",
     ):

@@ -14,7 +14,12 @@ namespace vibeqc::scf::cuda_df {
 bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
                                      std::size_t rank) noexcept;
 
-/** Select explicit occupied exchange or the shared resident RHF work policy. */
+/** SCF value-only gate, additionally allowing profitable streamed projection.
+ * Does not authorize a resident final projection or force-response borrowing.
+ */
+bool qualified_value_rhf_exchange(const CudaDensityFittingJkPlan& plan, std::size_t rank) noexcept;
+
+/** Select explicit occupied exchange or the qualified RHF value work policy. */
 vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& enabled,
                                   std::string& detail, std::span<const std::int32_t> alpha = {},
                                   std::span<const std::int32_t> beta = {});
@@ -23,7 +28,7 @@ vibeqc_status allocate_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScf
                                    const std::vector<std::int32_t>& beta, std::string& detail);
 vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
                                 std::string& detail);
-/** Factor a singleton resident RHF seed using the existing solver/scratch.
+/** Factor a qualified singleton RHF seed using the existing solver/scratch.
  * Numerical or capacity rejection returns success with accepted=false. Runtime
  * errors propagate. The factor has occupation absorbed and no orbital identity.
  */

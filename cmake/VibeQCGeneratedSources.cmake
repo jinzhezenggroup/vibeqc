@@ -17,6 +17,18 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response_ir.py"
     ARGS --output "${VIBEQC_QUADRATURE_HEADER}"
     COMMENT "Generating bounded CUDA molecular quadrature")
+  set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_exchange_schedule_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_exchange_schedule.py"
+    OUTPUTS "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_exchange_schedule.py"
+    ARGS --output "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    COMMENT "Generating compiler-owned DF source-reuse schedule")
+
   # The native host policy is built even when CUDA execution is disabled.
   # Generate its CUDA-independent constants once for both build variants.
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
