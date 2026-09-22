@@ -31,6 +31,23 @@ Furness definitions, including eta=0.001, dp2=0.361 and the exact rSCAN switchin
 polynomials; SCAN, rSCAN and r²SCAN are not aliases. No runtime Libxc call or
 Python autograd appears in production expression execution.
 
+Polarized SCAN-family correlation forms the spin fractions directly as
+`2*rho_a/(rho_a+rho_b)` and `2*rho_b/(rho_a+rho_b)` before Graph differentiation.
+These are the same mathematical coordinates as `1+zeta` and `1-zeta`, but retain
+the minority density when the polarization rounds close to one. Work-density,
+sigma, tau, and zeta thresholds and raw-work derivative conventions stay fixed.
+The adapter records `direct-spin-fractions/v1` in its scientific provenance.
+
+The r²SCAN empty-spin E/vxc gate uses the original Libxc Maple-generated C
+formulas evaluated in 113-bit arithmetic, with `rtol=5e-12, atol=1e-12` for both
+generated backends. `tests/data/xc/r2scan-tail-reference.json` includes adjacent
+majority-density floats, finite minority densities, and the earlier Libxc FP64
+diagnostics. Regenerate it offline with
+`python tools/generate_r2scan_tail_reference.py --archive /path/to/libxc-7.0.0.tar.gz`;
+the script verifies the archive and records the formula hashes. CUDA tests also
+exchange spins. See the [conditioning decision](../../.agents/notes/implemented/numerics/2026-09-23-scan-stable-spin-fractions.md)
+for the independent-reference rationale and endpoint evidence.
+
 ## SCAN and SCAN0 composition and switching contract
 
 `MGGA_X_SCAN` and `MGGA_C_SCAN` use the pinned Libxc 7.0.0 SCAN expressions.

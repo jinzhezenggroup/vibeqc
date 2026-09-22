@@ -860,6 +860,34 @@ class Graph:
             visit(root.identifier)
         return tuple(violations[key] for key in sorted(violations))
 
+    def replace_subexpressions(
+        self, roots: Sequence[Expr], replacements: Mapping[Expr, Expr]
+    ) -> tuple[Expr, ...]:
+        """Replace exact DAG nodes without rewriting replacement subtrees.
+
+        Replacements belong to this graph and are inserted verbatim, without
+        recursively applying this map inside them. Callers own the mathematical
+        equivalence and domain proof; this operation itself makes no algebraic
+        or floating-point equivalence claim. Rebuilding preserves every node's
+        operation and payload, including piecewise branch semantics.
+        """
+        for source, target in replacements.items():
+            self._require_graph(source, target)
+        substitutions = {
+            source.identifier: target for source, target in replacements.items()
+        }
+        rebuilt: dict[int, Expr] = {}
+        for identifier in self.topological_order(roots):
+            if identifier in substitutions:
+                rebuilt[identifier] = substitutions[identifier]
+                continue
+            node = self.nodes[identifier]
+            arguments = tuple(rebuilt[child].identifier for child in node.arguments)
+            rebuilt[identifier] = self._intern(
+                Node(node.operation, arguments, node.payload)
+            )
+        return tuple(rebuilt[root.identifier] for root in roots)
+
     def apply_algebra_form(
         self,
         roots: Sequence[Expr],
