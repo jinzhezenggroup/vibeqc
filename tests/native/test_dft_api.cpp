@@ -774,13 +774,18 @@ int main() {
                                                &cuda_calculation) == VIBEQC_STATUS_SUCCESS,
                 "CPU/CUDA KS preparation failed");
         auto cpu_result = unconverged, cuda_result = unconverged;
-        require(vibeqc_calculation_execute(cpu_calculation, &cpu_result) == VIBEQC_STATUS_SUCCESS &&
-                    vibeqc_calculation_execute(cuda_calculation, &cuda_result) ==
-                        VIBEQC_STATUS_SUCCESS &&
+        const auto cpu_status = vibeqc_calculation_execute(cpu_calculation, &cpu_result);
+        const auto cuda_status = vibeqc_calculation_execute(cuda_calculation, &cuda_result);
+        const char* cuda_detail = vibeqc_context_get_last_detail(cuda_context);
+        require(cpu_status == VIBEQC_STATUS_SUCCESS && cuda_status == VIBEQC_STATUS_SUCCESS &&
                     cuda_result.executed_backend == VIBEQC_BACKEND_CUDA &&
                     cuda_result.density_rms < 1e-9 &&
                     std::abs(cuda_result.energy - cpu_result.energy) < 1e-10,
-                "public native CUDA KS energy/residual/backend differs from CPU");
+                ("public native CUDA KS energy/residual/backend differs from CPU: method=" +
+                 std::to_string(ks) + " CPU status=" + std::to_string(cpu_status) +
+                 " CUDA status=" + std::to_string(cuda_status) +
+                 " detail=" + (cuda_detail ? cuda_detail : ""))
+                    .c_str());
         const auto cold = cuda_result;
         require(
             vibeqc_calculation_execute(cuda_calculation, &cuda_result) == VIBEQC_STATUS_SUCCESS &&
@@ -791,31 +796,38 @@ int main() {
         auto auto_method = method;
         auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
         vibeqc_calculation* auto_calculation = nullptr;
-        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
-                                           &auto_calculation) == VIBEQC_STATUS_SUCCESS &&
-                    auto_calculation != nullptr,
-                "CUDA KS automatic-precision preparation failed");
-        auto auto_result = unconverged;
-        const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");
-        const std::string saved_chunk_value = saved_chunk ? saved_chunk : "";
-        require(setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
-                "cannot enable the CUDA KS chunk integration regression");
-        require(
-            vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
-                auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
-            "CUDA KS mixed-J target refinement changed the FP64 endpoint");
-        vibeqc_precision_provenance precision{sizeof(vibeqc_precision_provenance),
-                                              VIBEQC_ABI_VERSION};
-        require(vibeqc_calculation_get_precision_provenance(auto_calculation, &precision) ==
-                        VIBEQC_STATUS_SUCCESS &&
-                    precision.requested_mode == VIBEQC_PRECISION_AUTO &&
-                    precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
-                    precision.refinement_iterations >= 1U,
-                "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
-        require(saved_chunk ? setenv("VIBEQC_CUDA_KS_CHUNK", saved_chunk_value.c_str(), 1) == 0
-                            : unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
-                "cannot restore the CUDA KS chunk integration regression environment");
-        vibeqc_calculation_destroy(auto_calculation);
+        const auto auto_status =
+            vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method, &auto_calculation);
+        // LDA/PBE admit mixed-J acceleration. r2SCAN still requires FP64;
+        // its separate precision qualification must precede public promotion.
+        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS) {
+          require(auto_status == VIBEQC_STATUS_NOT_IMPLEMENTED && auto_calculation == nullptr,
+                  "r2SCAN automatic precision lost its explicit capability rejection");
+        } else {
+          require(auto_status == VIBEQC_STATUS_SUCCESS && auto_calculation != nullptr,
+                  "CUDA KS automatic-precision preparation failed");
+          auto auto_result = unconverged;
+          const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");
+          const std::string saved_chunk_value = saved_chunk ? saved_chunk : "";
+          require(setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
+                  "cannot enable the CUDA KS chunk integration regression");
+          require(
+              vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
+                  auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
+              "CUDA KS mixed-J target refinement changed the FP64 endpoint");
+          vibeqc_precision_provenance precision{sizeof(vibeqc_precision_provenance),
+                                                VIBEQC_ABI_VERSION};
+          require(vibeqc_calculation_get_precision_provenance(auto_calculation, &precision) ==
+                          VIBEQC_STATUS_SUCCESS &&
+                      precision.requested_mode == VIBEQC_PRECISION_AUTO &&
+                      precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
+                      precision.refinement_iterations >= 1U,
+                  "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
+          require(saved_chunk ? setenv("VIBEQC_CUDA_KS_CHUNK", saved_chunk_value.c_str(), 1) == 0
+                              : unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
+                  "cannot restore the CUDA KS chunk integration regression environment");
+          vibeqc_calculation_destroy(auto_calculation);
+        }
 
         if (ks == VIBEQC_METHOD_LDA_RKS) {
           // Cover both the owner and generated-XC error boundaries. Neither

@@ -383,18 +383,21 @@ void shell_local_weighted_eri_derivative() {
   }
 }
 
-void cuda_shell_derivative_stub_is_transactional() {
+void cuda_shell_derivative_budget_failure_is_transactional() {
   const auto system = h2();
   const std::array<std::size_t, 4> shells{0, 1, 0, 1};
   const std::array<double, 1> weights{0.37};
   std::array<double, 12> center{};
   center.fill(123.0);
   std::string detail;
+  // Reject before device execution: a nonzero one-byte budget cannot hold
+  // even the fixed staging state. A valid request can succeed on GPU hosts,
+  // so device availability must not determine this negative-path contract.
   const auto status = vibeqc::posthf::contract_weighted_eri_shell_derivative_cuda(
-      0, system, shells, weights, 1ULL << 20, center, detail);
+      0, system, shells, weights, 1, center, detail);
 #if VIBEQC_HAS_CUDA
-  require(status != VIBEQC_STATUS_SUCCESS,
-          "CUDA derivative test must not run without the explicit GPU gate");
+  require(status == VIBEQC_STATUS_OUT_OF_MEMORY,
+          "CUDA derivative accepted an insufficient staging budget");
 #else
   require(status == VIBEQC_STATUS_NOT_IMPLEMENTED, "CPU build lost CUDA stub status");
 #endif
@@ -554,7 +557,7 @@ int main() {
     conventional_energy_reuses_ao_scans();
     conventional_energy_batch_fallback_matches();
     shell_local_weighted_eri_derivative();
-    cuda_shell_derivative_stub_is_transactional();
+    cuda_shell_derivative_budget_failure_is_transactional();
     streamed_one_electron_derivative();
     conventional_derivative_from_mo_weights();
     complete_conventional_force_matches_resolved_energy();
