@@ -6,6 +6,8 @@ module as a narrow import-compatible facade while in-tree callers migrate.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING as TYPE_CHECKING  # noqa: PLC0414
+
 from . import production_bundle as _production_bundle
 from . import production_cost as _production_cost
 from . import production_emission as _production_emission
@@ -15,6 +17,26 @@ from . import production_selection as _production_selection
 
 # Compatibility re-exports preserve canonical object identity for downstream
 # callers that still import these names from ``integral.production``.
+CAPABILITY_LOCAL_PACKED_STREAMING_FOCK = (
+    _production_emission.CAPABILITY_LOCAL_PACKED_STREAMING_FOCK
+)
+CAPABILITY_MIXED_FOCK = _production_emission.CAPABILITY_MIXED_FOCK
+CAPABILITY_STREAMING_FOCK = _production_emission.CAPABILITY_STREAMING_FOCK
+FUSED_SHELL_SPEC_BY_NAME = _production_bundle.FUSED_SHELL_SPEC_BY_NAME
+GeneratedKernelArgument = _production_emission.GeneratedKernelArgument
+GeneratedKernelSignature = _production_emission.GeneratedKernelSignature
+KernelConsumer = _production_emission.KernelConsumer
+ScheduleIR = _production_emission.ScheduleIR
+ScheduleKind = _production_emission.ScheduleKind
+ShellClassSpec = _production_emission.ShellClassSpec
+build_fused_shell_plan = _production_emission.build_fused_shell_plan
+cuda_target_info = _production_emission.cuda_target_info
+emit_ppps_resident_bra_rys3_cuda = _production_emission.emit_ppps_resident_bra_rys3_cuda
+emit_shell_class_fused_cuda = _production_emission.emit_shell_class_fused_cuda
+normalize_cuda_architecture = _production_bundle.normalize_cuda_architecture
+re = _production_emission.re
+shell_pair_class = _production_emission.shell_pair_class
+
 _STABLE_AOT_SHARD_MAP_VERSION = _production_cost._STABLE_AOT_SHARD_MAP_VERSION
 _partition_production_selections = _production_cost._partition_production_selections
 production_compile_cost = _production_cost.production_compile_cost
