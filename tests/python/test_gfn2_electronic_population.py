@@ -34,7 +34,7 @@ def _two_h2_topology() -> Gfn2ElectronicTopology:
     )
 
 
-def test_population_matches_pinned_xtbloom_two_ao_fixture() -> None:
+def test_population_matches_pinned_vibeqc_xtb_two_ao_fixture() -> None:
     """Freeze tests/mulliken_test.cpp::test_two_ao_population_fixture."""
 
     compiled = build_gfn2_population_program(

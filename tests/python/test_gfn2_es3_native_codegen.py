@@ -120,8 +120,8 @@ int main() {
 
 def test_gfn2_es3_runtime_has_no_duplicate_handwritten_shell_formula() -> None:
     paths = (
-        ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/es3.cpp",
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_es3.cu",
+        ROOT / "src/xtb/native/src/model/gfn2/es3.cpp",
+        ROOT / "src/xtb/native/src/backends/cuda/gfn2_es3.cu",
     )
     for path in paths:
         source = path.read_text(encoding="utf-8")

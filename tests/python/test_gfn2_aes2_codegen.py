@@ -190,10 +190,8 @@ def test_aes2_native_codegen_needs_no_site_packages(tmp_path: Path) -> None:
 
 
 def test_aes2_runtime_contains_no_duplicate_scientific_formulas() -> None:
-    cpu = (ROOT / "src/xtb/gfn2_runtime/src/model/gfn2/aes2.cpp").read_text(
-        encoding="utf-8"
-    )
-    cuda = (ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_aes2.cu").read_text(
+    cpu = (ROOT / "src/xtb/native/src/model/gfn2/aes2.cpp").read_text(encoding="utf-8")
+    cuda = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_aes2.cu").read_text(
         encoding="utf-8"
     )
     for source in (cpu, cuda):

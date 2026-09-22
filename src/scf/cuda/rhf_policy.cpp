@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 #include "generated_one_electron_derivative_policy.cuh"
 
@@ -15,6 +16,41 @@ constexpr std::size_t kFixedTopologyArenaDeviceMemoryDivisor = 32;
 constexpr std::size_t kUnknownTargetBoundedStreamingArenaBytes = std::size_t{256} << 20;
 constexpr std::size_t kBoundedStreamingArenaDeviceMemoryDivisor = 16;
 constexpr unsigned kUnknownTargetPersistentQuartetWarpsPerSm = 4;
+constexpr std::uint64_t kSmallHfNativeMatrixThreads = 32;
+
+std::uint64_t saturating_multiply(std::uint64_t first, std::uint64_t second) noexcept {
+  if (first == 0 || second == 0) return 0;
+  const auto maximum = std::numeric_limits<std::uint64_t>::max();
+  return second > maximum / first ? maximum : first * second;
+}
+
+std::uint64_t saturating_add(std::uint64_t first, std::uint64_t second) noexcept {
+  const auto maximum = std::numeric_limits<std::uint64_t>::max();
+  return second > maximum - first ? maximum : first + second;
+}
+
+std::uint64_t ceiling_divide(std::uint64_t numerator, std::uint64_t denominator) noexcept {
+  if (denominator == 0 || numerator == 0) return 0;
+  return 1 + (numerator - 1) / denominator;
+}
+
+bool positive_finite(double value) noexcept { return value > 0.0 && std::isfinite(value); }
+
+bool complete_matrix_calibration(const SmallHfMatrixCalibration& calibration) noexcept {
+  return positive_finite(calibration.native_launch_nanoseconds) &&
+         positive_finite(calibration.native_fp64_flops_per_nanosecond) &&
+         positive_finite(calibration.native_bytes_per_nanosecond) &&
+         positive_finite(calibration.cublas_launch_nanoseconds) &&
+         positive_finite(calibration.cublas_fp64_flops_per_nanosecond) &&
+         positive_finite(calibration.cublas_bytes_per_nanosecond);
+}
+
+double roofline_nanoseconds(double launch_nanoseconds, std::uint64_t flops, std::uint64_t bytes,
+                            double flops_per_nanosecond, double bytes_per_nanosecond) noexcept {
+  const double arithmetic = static_cast<double>(flops) / flops_per_nanosecond;
+  const double traffic = static_cast<double>(bytes) / bytes_per_nanosecond;
+  return launch_nanoseconds + std::max(arithmetic, traffic);
+}
 
 constexpr double kDefaultMixedPrecisionFockThreshold = 1.0e-6;
 /**
@@ -72,6 +108,80 @@ std::optional<double> parsed_mixed_precision_override(double screening_tolerance
   return value;
 }
 }  // namespace
+
+SmallHfAnalyticEstimate estimate_small_hf_workload(const runtime::CudaTargetInfo& target,
+                                                   const SmallHfWorkload& workload) noexcept {
+  SmallHfAnalyticEstimate estimate;
+  const std::uint64_t n = static_cast<std::uint64_t>(workload.nbf);
+  if (n == 0) return estimate;
+
+  const std::uint64_t n2 = saturating_multiply(n, n);
+  const std::uint64_t n3 = saturating_multiply(n2, n);
+  const std::uint64_t n4 = saturating_multiply(n2, n2);
+  const std::uint64_t matrices = static_cast<std::uint64_t>(workload.matrix_count);
+  const std::uint64_t systems = static_cast<std::uint64_t>(workload.system_count);
+  const std::uint64_t fock_states = static_cast<std::uint64_t>(workload.fock_state_count);
+
+  // The native product assigns one output element to one 32-thread block lane.
+  // Every output performs n FP64 multiply-adds and, without explicit tiling,
+  // semantically requests two doubles per inner-loop iteration plus one store.
+  const std::uint64_t matrix_outputs = saturating_multiply(matrices, n2);
+  estimate.matrix_flops = saturating_multiply(saturating_multiply(2U, matrices), n3);
+  const std::uint64_t native_bytes_per_output = saturating_add(saturating_multiply(16U, n), 8U);
+  estimate.native_matrix_semantic_bytes =
+      saturating_multiply(matrix_outputs, native_bytes_per_output);
+  // A tiled GEMM must at least consume A and B and produce C once. Provider
+  // internals may move more bytes; the calibrated effective rates absorb that.
+  estimate.cublas_matrix_semantic_bytes =
+      saturating_multiply(saturating_multiply(24U, matrices), n2);
+  estimate.native_matrix_blocks = ceiling_divide(matrix_outputs, kSmallHfNativeMatrixThreads);
+
+  if (estimate.native_matrix_blocks != 0 && target.multiprocessor_count != 0 &&
+      target.maximum_blocks_per_sm != 0 && target.maximum_threads_per_sm != 0) {
+    const std::uint64_t thread_blocks = target.maximum_threads_per_sm / kSmallHfNativeMatrixThreads;
+    const std::uint64_t blocks_per_sm =
+        std::min<std::uint64_t>(target.maximum_blocks_per_sm, thread_blocks);
+    const std::uint64_t resident_blocks =
+        saturating_multiply(target.multiprocessor_count, blocks_per_sm);
+    estimate.native_matrix_waves = ceiling_divide(estimate.native_matrix_blocks, resident_blocks);
+  }
+
+  estimate.eri_elements = saturating_multiply(systems, n4);
+  estimate.eri_bytes = saturating_multiply(8U, estimate.eri_elements);
+  estimate.cached_fock_ao_quartets = saturating_multiply(fock_states, n4);
+  return estimate;
+}
+
+SmallHfProfitabilityPolicy resolve_small_hf_profitability(
+    const runtime::CudaTargetInfo& target, const SmallHfWorkload& workload,
+    SmallHfProfitabilityProfile profile) noexcept {
+  SmallHfProfitabilityPolicy policy;
+  policy.estimate = estimate_small_hf_workload(target, workload);
+  if (workload.nbf == 0) return policy;
+
+  // Persistent-ERI selection is intentionally still compatibility-only in this
+  // slice. Its derived n^4 storage/work facts are exposed above, but the direct
+  // route also needs screened shell-quartet work and expected SCF reuse before
+  // a profitability comparison is meaningful.
+  policy.persistent_eri = workload.nbf <= profile.fallback_persistent_eri_ao_limit;
+
+  if (!complete_matrix_calibration(profile.matrix)) {
+    policy.use_cublas = workload.nbf >= profile.fallback_cublas_matrix_product_ao_threshold;
+    return policy;
+  }
+
+  policy.native_matrix_nanoseconds = roofline_nanoseconds(
+      profile.matrix.native_launch_nanoseconds, policy.estimate.matrix_flops,
+      policy.estimate.native_matrix_semantic_bytes, profile.matrix.native_fp64_flops_per_nanosecond,
+      profile.matrix.native_bytes_per_nanosecond);
+  policy.cublas_matrix_nanoseconds = roofline_nanoseconds(
+      profile.matrix.cublas_launch_nanoseconds, policy.estimate.matrix_flops,
+      policy.estimate.cublas_matrix_semantic_bytes, profile.matrix.cublas_fp64_flops_per_nanosecond,
+      profile.matrix.cublas_bytes_per_nanosecond);
+  policy.use_cublas = policy.cublas_matrix_nanoseconds < policy.native_matrix_nanoseconds;
+  policy.cublas_from_calibration = true;
+  return policy;
+}
 
 DirectJkSchedulePolicy resolve_direct_jk_schedule_policy(const runtime::CudaTargetInfo& target,
                                                          DirectJkTuningProfile profile) noexcept {
@@ -287,8 +397,17 @@ bool aot_shell_class_selection_override_requested() noexcept {
   return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
 }
 
+DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept {
+  const bool requested = selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+  return {
+      .requested = requested,
+      .produces_numerical_endpoint = !requested,
+      .endpoint_status = requested ? VIBEQC_STATUS_NOT_IMPLEMENTED : VIBEQC_STATUS_SUCCESS,
+  };
+}
+
 bool direct_tile_validation_requested() noexcept {
-  return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+  return resolve_direct_tile_validation_policy().requested;
 }
 
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept {

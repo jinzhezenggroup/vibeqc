@@ -13,7 +13,7 @@ MANIFEST = (
     ROOT
     / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
 )
-HEADER = ROOT / "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
+HEADER = ROOT / "src/xtb/native/data/parameters/gfn1.hpp"
 
 
 def _sha256(path: Path) -> str:
@@ -24,7 +24,16 @@ def test_gfn1_snapshots_match_audited_manifest() -> None:
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert _sha256(RAW) == manifest["outputs"]["gfn1.toml"]["sha256"]
     assert _sha256(SOURCE) == manifest["outputs"]["gfn1.json"]["sha256"]
-    assert _sha256(HEADER) == manifest["outputs"]["gfn1.hpp"]["sha256"]
+    # The sole native adaptation is the namespace; the upstream digest remains
+    # an independent byte-for-byte gate on all scientific parameters/schema.
+    upstream_header = HEADER.read_bytes().replace(
+        b"namespace vibeqc::xtb::parameters::gfn1",
+        b"namespace xtbloom::parameters::gfn1",
+    )
+    assert (
+        hashlib.sha256(upstream_header).hexdigest()
+        == manifest["outputs"]["gfn1.hpp"]["sha256"]
+    )
     assert manifest["source"]["revision"] == "fa8a4416e8fe093d0075bc10ac875494c2a449a9"
     assert manifest["mctc"]["revision"] == "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
 

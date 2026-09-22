@@ -110,3 +110,13 @@ under the existing shared owner rather than another KS-specific lifecycle.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Review integration clarification
+
+The integrated stationary CUDA owner retains `PreparedExecutionLease` as the
+source of its public `identity`, replay admission and failure/recovery state.
+`compiled_execution_identity` is additional portable owner metadata, derived
+from the resolved target and basis topology; it does not replace or authorize
+that lease. The earlier description of replacing the retained execution identity
+predates this integration. TensorIR publishes the new identity in execution
+metrics while preserving its historical public identity.
