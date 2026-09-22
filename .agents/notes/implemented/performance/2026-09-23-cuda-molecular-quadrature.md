@@ -1,6 +1,6 @@
 # Decision: compiler-generated CUDA molecular quadrature
 
-Status: implemented; complete endpoint qualification in progress
+Status: implemented; native and small endpoint qualification complete
 Date: 2026-09-23
 
 ## Problem
@@ -90,3 +90,43 @@ byte-identical (SHA-256 `7ea4e4803d62918553f556b4c96db8014947ac3debccc27b0c9b6b4
 39 host IR/response/native-contraction tests pass. The endpoint harness now arms
 its existing independent-process watchdog around `native/prepare` as well as
 SCF solves, retaining a preparation-stage journal on timeout.
+
+## Composed endpoint qualification and remaining blockers
+
+The combined integration (not an exact PR head) has native binary SHA-256
+`5b2d2189af086f4a001795e1e7c2b946e9d5329f3af6e887218adb107ebd7475` and retained
+source-overlay archive SHA-256
+`6975ceaa04c9df83552ec8dae6915fb9ae55d9c60a0fb2c2d3be46f0580f86a5`.
+Slurm 11346 passes the allocated native quadrature suite plus 9 Python
+RKS/UKS ordinary-solver/resource cases (cold/warm/geometry/final-state, exact
+budget, failed preparation and release).
+
+Slurm 11347, same water24 / 192-AO direct PBE benchmark: preparation takes
+2.431443798 s, cold execute 27.261958854 s (16 iterations), warm samples
+3.435724267 / 3.455501552 s. Maximum energy error over all four recorded
+native/reference pairs is 1.728039933e-11 Eh. The earlier integration baseline
+has preparation 27.836176385 s and cold execute 27.248856407 s. Thus the
+observed prepare-plus-cold total changes from 55.0850 s to 29.6934 s, while SCF
+execution time is essentially unchanged. This comparison is composed evidence;
+other repair overlays are present, and it is not a standalone-head ablation.
+
+Slurm 11348, water48: preparation completes in 26.609609028 s, then the cold SCF
+solve hits the 120 s watchdog and is stopped. The progress wrapper's 26.906 s
+includes watchdog/event overhead; use the inner timer for preparation. No
+converged 48-atom endpoint or 96-atom full endpoint is claimed. Full README
+benchmark publication remains paused.
+
+The remaining setup cost is independently identified by the existing reference
+observer (Slurm 11349): overlap orthogonalization 14.0008 s and core guess
+11.6858 s within 26.5435 s preparation. Track their default CPU Jacobi calls in
+#1101. A bounded two-step Nsight diagnostic (Slurm 11350) attributes 48% of
+captured GPU kernel time to dense XC density/potential scalar contractions;
+track compiler Tensor/BLAS lowering in #1102. These distinct costs must not be
+misattributed to quadrature or relaxed by changing convergence/grid thresholds.
+
+Slurm 11365 qualifies exact code head 91b22a87: allocated native quadrature
+scalar/analytic/resource/derivative suite passes, together with 36 Python
+energy-diagnostic/resource checks (one expected skip). The diagnostics select
+energy explicitly; implicit default forces exercise a separate consumer and
+are not claimed here. This head does not contain the composed setup or XC fixes.
+All PR CI jobs pass, including NVIDIA compilation and CuMetal GPU tests.
