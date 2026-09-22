@@ -127,3 +127,12 @@ SHA-256 `fa87e65296eb7c93c0e98b0ab47196ca22dcbda46568ee08ce01d52ed0a538b4`.
 This qualification adds correctness/resource coverage, not a new large-system
 SCF timing claim. Earlier composed preparation measurements retain their stated
 scope and are not evidence of this final head's complete SCF performance.
+
+
+After #1056 and #1100 merged, master e9fa40b1 was integrated and the complete
+same native and Python GPU suite passed again under Slurm 11412 (51 Python
+cases and the same single intentionally inapplicable CPU transport skip).
+Final reviewed source identity:
+`27f1f561a49e1159f1d21cb6a358fcf2ddbedd80ff220edd82708683b4937e06`;
+library SHA-256:
+`7fdbba92495405f3142e726c1911d22c1fa211524b985fe937f99ea40c735647`.
