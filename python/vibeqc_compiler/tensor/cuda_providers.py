@@ -77,22 +77,21 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
         if step.virtual or node.op in ("input", "constant") or not node.spec.size:
             continue
         contract = gemm_contract(node)
-        uses_cublas = (
-            step.gemm != "none" and contract is not None and contract.k > 0
-        )
-        shape = (
-            (contract.batch, contract.m, contract.n, contract.k)
-            if uses_cublas
-            else tuple(node.spec.shape)
-        )
+        if step.gemm != "none" and contract is not None and contract.k > 0:
+            uses_cublas = True
+            shape = (contract.batch, contract.m, contract.n, contract.k)
+        else:
+            uses_cublas = False
+            shape = tuple(node.spec.shape)
+        value_precision = plan.precision_by_node.get(node)
         request = LoweringRequest(
             consumer="tensor.cuda",
             operation="gemm" if uses_cublas else node.op,
             backend="cuda",
             dtype=node.spec.dtype,
             accumulation_dtype=(
-                plan.precision_by_node.get(node).accumulation_dtype
-                if plan.precision_by_node.get(node) is not None
+                value_precision.accumulation_dtype
+                if value_precision is not None
                 else node.spec.dtype
             ),
             shape=shape,
