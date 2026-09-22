@@ -1050,7 +1050,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   plan.resident_warm_positions.clear();
   plan.resident_warm_density.clear();
   plan.resident_previous_energy.clear();
-  const bool use_cublas = plan.cublas_enabled && nbf >= kCublasMatrixProductAoThreshold;
+  const cuda_policy::SmallHfWorkload small_hf_workload{nbf, spin_batch_size, batch_size,
+                                                       spin_batch_size};
+  const cuda_policy::SmallHfProfitabilityPolicy small_hf_profitability =
+      cuda_policy::resolve_small_hf_profitability(direct_target, small_hf_workload);
+  const bool use_cublas = plan.cublas_enabled && small_hf_profitability.use_cublas;
   std::size_t reference_base_bytes = 0;
   const std::size_t reference_provider_allowance =
       (use_cublas ? 96ULL << 20 : 0) + (use_cusolver ? 96ULL << 20 : 0);
