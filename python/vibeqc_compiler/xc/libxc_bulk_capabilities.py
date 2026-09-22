@@ -165,10 +165,10 @@ def claimable_components(
         for capability in available_capabilities()
         if capability.family in requested
         and (
-            supported is None
-            or frozenset(capability.required_ingredients) <= supported
+            supported is None or frozenset(capability.required_ingredients) <= supported
         )
     )
+
 
 def claimable_functionals(level: str = CLAIM_LEVEL) -> tuple[str, ...]:
     """Return names satisfying a machine-readable qualification level.
