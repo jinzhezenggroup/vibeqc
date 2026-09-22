@@ -179,6 +179,9 @@ void direct_providers(bool through_f_response) {
       vibeqc::core::System first;
       first.atoms = {{1, {0.0, 0.1, -0.7}}, {1, {0.2, -0.1, 0.7}}};
       first.shells = {{0, 0, {{0.8, 0.7}, {0.2, 0.3}}}, {1, angular, {{0.6, 1.0}}}};
+      // Mixed p/d quartets exercise generated classes that s+d alone cannot
+      // reach. Retain unequal contraction lengths and test both AO conventions.
+      if (angular == 2) first.shells.push_back({0, 1, {{1.1, 0.6}, {0.3, 0.4}}});
       first.electron_count = 2;
       first.basis_representation = representation;
       auto second = first;
@@ -213,7 +216,12 @@ void direct_providers(bool through_f_response) {
       // A value-only owner may use generated pure J; exact generic capacity
       // must still be a usable fallback. Both consume nonsymmetric densities
       // and independently formed full ERIs, including spherical d projection.
-      const auto pure_j_capacity = cuda_direct_coulomb_device_bytes(2, n, 4, 4, 6);
+      const auto shell_count = first.shells.size() + second.shells.size();
+      std::size_t primitive_count = 0;
+      for (const auto* system : {&first, &second})
+        for (const auto& shell : system->shells) primitive_count += shell.primitives.size();
+      const auto pure_j_capacity =
+          cuda_direct_coulomb_device_bytes(2, n, 4, shell_count, primitive_count);
       CudaDirectJkPlan* pure_j_raw{};
       CudaDirectJkDiagnostic pure_j_diagnostic;
       require(create_cuda_direct_jk_plan(0, {first, second}, 0, 0.0, pure_j_capacity, &pure_j_raw,
@@ -228,7 +236,8 @@ void direct_providers(bool through_f_response) {
               "generated pure J admission/class fallback mismatch");
       CudaDirectJkPlan* fallback_raw{};
       CudaDirectJkDiagnostic fallback_diagnostic;
-      const auto fallback_capacity = cuda_direct_jk_device_bytes(2, n, 4, 4, 6, 0);
+      const auto fallback_capacity =
+          cuda_direct_jk_device_bytes(2, n, 4, shell_count, primitive_count, 0);
       require(
           create_cuda_direct_jk_plan(0, {first, second}, 0, 0.0, fallback_capacity, &fallback_raw,
                                      fallback_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
