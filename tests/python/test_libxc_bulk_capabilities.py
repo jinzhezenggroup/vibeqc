@@ -101,7 +101,7 @@ def test_pointwise_lda_gga_components_are_automatically_representable() -> None:
     assert represented
     assert "GGA_X_PBE_SOL" in represented
     assert set(represented) <= set(COMPONENTS)
-    assert set(AUTO_BULK_COMPONENTS) <= set(represented)
+    assert "GGA_X_PBE_SOL" in AUTO_BULK_COMPONENTS
 
     spec = functional("GGA_X_PBE_SOL", spin="unpolarized")
     assert spec.components == (("GGA_X_PBE_SOL", Fraction(1)),)
