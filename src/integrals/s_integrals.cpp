@@ -430,11 +430,12 @@ Jet primitive_nuclear_attraction_cartesian(double alpha, const Vec3& a,
 // Production s/p/d/f V reuses the compiler-owned one-electron DAG.  The
 // dynamic-Jet implementation above remains the independent oracle and the
 // explicit g-shell fallback.
-Jet production_nuclear_attraction_cartesian(
-    double alpha, const Vec3& a, const molecule::CartesianComponent& angular_a,
-    std::size_t atom_a, double beta, const Vec3& b,
-    const molecule::CartesianComponent& angular_b, std::size_t atom_b,
-    const std::vector<Vec3>& atoms, const core::System& system) {
+Jet production_nuclear_attraction_cartesian(double alpha, const Vec3& a,
+                                            const molecule::CartesianComponent& angular_a,
+                                            std::size_t atom_a, double beta, const Vec3& b,
+                                            const molecule::CartesianComponent& angular_b,
+                                            std::size_t atom_b, const std::vector<Vec3>& atoms,
+                                            const core::System& system) {
   const unsigned first = generated_component(angular_a);
   const unsigned second = generated_component(angular_b);
   const std::size_t ncoord = a[0].derivative.size();
@@ -465,7 +466,6 @@ Jet production_nuclear_attraction_cartesian(
   }
   return result;
 }
-
 
 Jet primitive_eri_cartesian(double alpha, const Vec3& a,
                             const molecule::CartesianComponent& angular_a, double beta,
@@ -1547,11 +1547,11 @@ IntegralData build_integrals(const core::System& system, bool include_derivative
               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index, pj.exponent, b, ao_j.angular,
               ao_j.shell->atom_index);
           sij = sij + weight * st.overlap;
-          hij = hij + weight * (st.kinetic + production_nuclear_attraction_cartesian(
-                                                 pi.exponent, a, ao_i.angular,
-                                                 ao_i.shell->atom_index, pj.exponent, b,
-                                                 ao_j.angular, ao_j.shell->atom_index,
-                                                 atom_coordinates, system));
+          hij =
+              hij + weight * (st.kinetic + production_nuclear_attraction_cartesian(
+                                               pi.exponent, a, ao_i.angular, ao_i.shell->atom_index,
+                                               pj.exponent, b, ao_j.angular, ao_j.shell->atom_index,
+                                               atom_coordinates, system));
         }
       }
       overlap[matrix_index(i, j, n)] = std::move(sij);

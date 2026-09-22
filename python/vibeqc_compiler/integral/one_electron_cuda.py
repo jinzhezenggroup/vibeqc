@@ -286,6 +286,7 @@ def _emit_support_cuda(maximum_boys_order: int = 6) -> typing.Any:
         )
     )
 
+
 def _emit_component_index(maximum_angular_momentum: int = 3) -> typing.Any:
     """Map normalized basis expansion powers to the common public AO order."""
     maximum = _validate_maximum_angular_momentum(maximum_angular_momentum)
