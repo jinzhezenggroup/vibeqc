@@ -1,6 +1,6 @@
 # Decision: retain adjacent streamed DF projections in compiler traversal
 
-Status: implemented; standalone GPU qualification pending
+Status: implemented; full 96-atom energy-plus-force endpoint remains open
 Date: 2026-09-23
 
 ## Problem
@@ -69,6 +69,10 @@ uses only existing bounded storage.
   cases, including the added two-block fixture and exact cache/source counters.
   The first attempt lacked the saved library's SONAME symlink; correcting that
   local snapshot layout required no production change.
+- Slurm 11422: the expanded native occupied-DF/response suite compiled from
+  this branch and linked against composed v12 passes. Slurm 11423 runs that
+  executable under compute-sanitizer memcheck and reports zero errors. Both
+  cover ragged projection slots and changed-coefficient captured replay.
 - Slurm 11417: clean 24-atom / 192-AO / 928-auxiliary GPU energy endpoints with
   a 256 MiB value allowance, comparing saved v11 and v12. Cold execution falls
   from 21.515763 to 19.541194 seconds; two warm samples change from
@@ -111,3 +115,20 @@ source archive SHA256:
 Artifacts include `hf96-streamed-steps-v12*`, `hfdf24-projection-v{11,12}*`
 and `integration-source-v12.{json,patch,tar.gz}` in the preserved integration.
 These are composed measurements, not a standalone current-master library.
+
+## Standalone branch qualification
+
+The Release sm_120 build based on master `e9fa40b1` completes. Slurm 11435
+passes the expanded native occupied-DF/response suite and all 22 selected
+Python checks (39.08 seconds): independent fixed-density J/K, source/cache
+census, selector, cold/warm/changed-geometry energy and force endpoints, and
+host scheduling/admission policies. This uses the standalone branch library,
+not the composed v12 owner. Tested source is `b96e95eb`; its complete CI passes.
+The subsequent commit only adds this evidence and the sanitizer record.
+
+Standalone library SHA256:
+`7baea1cee603b00fd48ab70081e75b5361a937665c83baec90bbd5962cb939d8`.
+Local artifacts under `.artifacts/df-projection-reuse/` include `build.log`,
+`gpu-gates.{sh,log}`, the `pytest/` references/traces, and
+`standalone-library.sha256`. The final repair is ready for review; the bounded
+96-atom timeout above still leaves #1078 open.
