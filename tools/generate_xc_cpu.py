@@ -51,9 +51,6 @@ from vibeqc_compiler.xc.spec import (
     WB97MV_COMPONENTS,
     functional,
 )
-from vibeqc_compiler.xc.wb97mv_expressions import (
-    energy_expression as wb97mv_reference_energy_expression,
-)
 from vibeqc_compiler.xc.wb97mv_maple import (
     DENSITY_THRESHOLD as WB97MV_DENSITY_THRESHOLD,
 )
@@ -83,10 +80,10 @@ def build_roots(
     wb97mv = bool(active.intersection(WB97MV_COMPONENTS))
     special = bool(active.intersection(SPECIAL_EXPRESSION_COMPONENTS))
     if wb97mv:
-        if production:
-            graph, energy, variables = wb97mv_maple_energy_expression(spec)
-        else:
-            graph, energy, variables = wb97mv_reference_energy_expression(spec)
+        # This host generator owns the canonical production composition only.
+        # Independent/interior qualification belongs to XCProgram, not a second
+        # handwritten scientific source in the production generation path.
+        graph, energy, variables = wb97mv_maple_energy_expression(spec)
     elif special:
         graph, energy, variables = rsh_energy_expression(spec, production=production)
     else:
