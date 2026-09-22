@@ -122,6 +122,18 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_d3_ragged_tests tests/native/test_d3_ragged.cpp)
   add_dependencies(vibeqc_d3_ragged_tests vibeqc)
   target_include_directories(vibeqc_d3_ragged_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  vibeqc_native_test(vibeqc_d3_public_variant_tests tests/native/test_d3_public_variants.cpp)
+  add_dependencies(vibeqc_d3_public_variant_tests vibeqc vibeqc_d3_codegen)
+  target_include_directories(vibeqc_d3_public_variant_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_d3_cooperative_cuda_tests tests/native/test_d3_cooperative_cuda.cpp)
+    add_dependencies(vibeqc_d3_cooperative_cuda_tests vibeqc vibeqc_d3_codegen)
+    target_include_directories(vibeqc_d3_cooperative_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    target_link_libraries(vibeqc_d3_cooperative_cuda_tests PRIVATE CUDA::cudart)
+    add_executable(vibeqc_d3_cuda_endpoint_benchmark tools/benchmark_d3_cuda_endpoint.cpp)
+    target_link_libraries(vibeqc_d3_cuda_endpoint_benchmark PRIVATE vibeqc CUDA::cudart)
+    add_dependencies(vibeqc_d3_cuda_endpoint_benchmark vibeqc vibeqc_d3_codegen)
+  endif()
   vibeqc_native_test(vibeqc_d4_production_tests tests/native/test_d4_production.cpp)
   vibeqc_native_test(vibeqc_d4_ragged_tests tests/native/test_d4_ragged.cpp)
   foreach(_vibeqc_d4_production_test IN ITEMS vibeqc_d4_production_tests vibeqc_d4_ragged_tests)
@@ -162,6 +174,24 @@ macro(vibeqc_add_native_tests)
     add_dependencies(vibeqc_d3_zero_cuda_tests vibeqc_d3_codegen)
     target_include_directories(vibeqc_d3_zero_cuda_tests PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
     set_target_properties(vibeqc_d3_zero_cuda_tests PROPERTIES CUDA_STANDARD 20)
+
+    vibeqc_native_test(vibeqc_d3_cuda_replay_failure_tests
+                       tests/native/test_d3_cuda_replay_failure.cu
+                       NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
+    target_sources(vibeqc_d3_cuda_replay_failure_tests PRIVATE src/dft/dispersion/d3_cuda.cu)
+    add_dependencies(vibeqc_d3_cuda_replay_failure_tests vibeqc_d3_codegen)
+    target_include_directories(vibeqc_d3_cuda_replay_failure_tests PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    set_target_properties(vibeqc_d3_cuda_replay_failure_tests PROPERTIES CUDA_STANDARD 20)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      target_compile_definitions(vibeqc_d3_cuda_replay_failure_tests
+                                 PRIVATE VIBEQC_D3_REPLAY_TEST_INTERPOSE=1)
+      target_link_options(vibeqc_d3_cuda_replay_failure_tests PRIVATE
+        "LINKER:--wrap=cudaMemcpyAsync"
+        "LINKER:--wrap=cudaMemsetAsync"
+        "LINKER:--wrap=cudaGetLastError"
+        "LINKER:--wrap=cudaStreamSynchronize")
+    endif()
 
     target_link_libraries(vibeqc_d4_production_tests PRIVATE CUDA::cudart)
     target_link_libraries(vibeqc_d4_ragged_tests PRIVATE CUDA::cudart)

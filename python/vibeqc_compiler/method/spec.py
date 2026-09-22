@@ -24,7 +24,10 @@ from .dispersion import (
     D4Spec,
     DispersionCorrectionPrimitive,
     pbe0_d3_bj_spec,
+    pbe0_d3_zero_spec,
+    pbe_d3_bj_atm_spec,
     pbe_d3_bj_spec,
+    pbe_d3_zero_spec,
     pbe_d4_eeq_spec,
     r2scan3c_d4_eeq,
 )
@@ -468,7 +471,12 @@ class MethodIR:
                 operators.append("nonlocal-correlation")
             elif isinstance(primitive, DispersionCorrectionPrimitive):
                 if isinstance(primitive.specification, D3Spec):
-                    operators.append("geometry-d3-bj")
+                    if primitive.specification.damping == "zero":
+                        operators.append("geometry-d3-zero")
+                    elif primitive.specification.s9:
+                        operators.append("geometry-d3-bj-atm")
+                    else:
+                        operators.append("geometry-d3-bj")
                 else:
                     operators.append("geometry-d4-bj-eeq")
             else:
@@ -729,6 +737,16 @@ METHOD_CATALOG = MappingProxyType(
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
             dispersion=pbe_d3_bj_spec(),
         ),
+        "PBE-D3(BJ)-ATM": MethodSpec(
+            "PBE-D3(BJ)-ATM",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            dispersion=pbe_d3_bj_atm_spec(),
+        ),
+        "PBE-D3(0)": MethodSpec(
+            "PBE-D3(0)",
+            (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
+            dispersion=pbe_d3_zero_spec(),
+        ),
         "PBE-D4(BJ-EEQ-ATM)": MethodSpec(
             "PBE-D4(BJ-EEQ-ATM)",
             (("GGA_X_PBE", Fraction(1)), ("GGA_C_PBE", Fraction(1))),
@@ -739,6 +757,12 @@ METHOD_CATALOG = MappingProxyType(
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
             dispersion=pbe0_d3_bj_spec(),
+        ),
+        "PBE0-D3(0)": MethodSpec(
+            "PBE0-D3(0)",
+            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
+            exact_exchange=Fraction(1, 4),
+            dispersion=pbe0_d3_zero_spec(),
         ),
         "WB97M-V": MethodSpec(
             "WB97M-V",

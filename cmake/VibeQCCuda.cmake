@@ -36,6 +36,7 @@ macro(vibeqc_configure_cuda_backend target)
   add_library(vibeqc_direct_angular_force OBJECT
     src/scf/cuda/direct_angular_force.cu
     "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    "${VIBEQC_DIRECT_RESIDENT_PSSS_SCHEDULE_HEADER}"
     "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
     "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}")
   target_include_directories(vibeqc_direct_angular_force PRIVATE

@@ -1,7 +1,13 @@
 """Shared ScheduleIR contract adapters and cross-consumer diagnostics."""
 
 from vibeqc_compiler.common.cuda_target import cuda_target_info
-from vibeqc_compiler.common.schedule import ScheduleContract, schedule_diagnostics
+from vibeqc_compiler.common.schedule import (
+    ScheduleContract,
+    ScheduleResourceLimits,
+    ScheduleResources,
+    schedule_diagnostics,
+    schedule_resource_rejections,
+)
 from vibeqc_compiler.dft.xc_schedule import (
     DEVICE_FUSED,
     GridXcCandidateLimits,
@@ -122,3 +128,52 @@ def test_shared_contract_roundtrip_preserves_owner_schedule_identity() -> None:
         assert replay == contract
         assert replay.identity == contract.identity
         assert replay.schedule_hash == contract.schedule_hash
+
+
+def test_shared_resource_admission_is_fail_closed_and_consumer_neutral() -> None:
+    resources = ScheduleResources(
+        device_bytes=4096,
+        host_bytes=2048,
+        workspace_bytes=1024,
+        peak_live_values=512,
+        registers_per_thread=48,
+        shared_bytes=256,
+        resident_workgroups=2,
+        source_bytes=8192,
+    )
+    assert (
+        schedule_resource_rejections(
+            resources,
+            ScheduleResourceLimits(
+                maximum_device_bytes=4096,
+                maximum_host_bytes=2048,
+                maximum_workspace_bytes=1024,
+                maximum_peak_live_values=512,
+                maximum_registers_per_thread=48,
+                maximum_shared_bytes=256,
+                minimum_resident_workgroups=2,
+                maximum_source_bytes=8192,
+            ),
+        )
+        == ()
+    )
+
+    failures = schedule_resource_rejections(
+        resources,
+        ScheduleResourceLimits(
+            maximum_device_bytes=4095,
+            maximum_peak_live_values=511,
+            minimum_resident_workgroups=3,
+        ),
+    )
+    assert failures == (
+        "device bytes 4096 exceeds limit 4095",
+        "peak live values 512 exceeds limit 511",
+        "resident workgroups 2 below minimum 3",
+    )
+
+    unknown = ScheduleResources(device_bytes=1)
+    assert schedule_resource_rejections(
+        unknown,
+        ScheduleResourceLimits(maximum_source_bytes=1),
+    ) == ("source bytes unavailable for required limit 1",)

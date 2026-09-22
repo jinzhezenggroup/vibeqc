@@ -365,6 +365,9 @@ class PreparedBatch:
             raise ValueError("a batch requires at least one system")
         self._last_statuses = None
         self._dispersion_batch: typing.Any = None
+        self._intrinsic_dispersion_energy = (
+            calculator._method == _native.METHOD_PBE_D4_RKS
+        )
         # The KS ResourcePlan reserves one serialized generated-force staging cap.
         # Keep one retained execution per PreparedBatch and reprepare on topology drift.
         self._stationary_cuda_execution: typing.Any = None
@@ -797,14 +800,14 @@ class PreparedBatch:
 
         calculator = self._calculator
         ecp_force = qualified_basis(calculator._basis)
-        direct_hybrid = (
+        direct_all_electron = (
             calculator._method_name
-            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks")
+            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
             and not ecp_force
         )
-        if calculator._device_name != "cpu" or not (ecp_force or direct_hybrid):
+        if calculator._device_name != "cpu" or not (ecp_force or direct_all_electron):
             raise NotImplementedError(
-                "public CPU forces require a qualified ECP or named direct-hybrid owner"
+                "public CPU forces require a qualified ECP or named all-electron owner"
             )
         if len(atoms) > 8:
             raise ValueError("CPU public force dense-export domain exceeded")
@@ -1072,7 +1075,35 @@ class PreparedBatch:
             check_resource_status(self._library, status, self.resource_diagnostics)
 
         correction_results = None
-        if self._dispersion_batch is not None:
+        if (
+            self._dispersion_batch is None
+            and self._intrinsic_dispersion_energy
+            and compute_forces
+        ):
+            from .dispersion import D4CorrectionBatch
+
+            options = self._calculator._ks_options
+            if options is None:
+                raise RuntimeError(
+                    "PBE-D4 force composition requires resolved KS options"
+                )
+            self._dispersion_batch = D4CorrectionBatch(
+                options.method_ir,
+                [
+                    (
+                        self._atomic_numbers[index],
+                        [atom.position for atom in atoms],
+                        self._charges[index],
+                    )
+                    for index, atoms in enumerate(self._systems)
+                ],
+                device=self._calculator._device_name,
+                device_id=self._calculator._device_id,
+                maximum_bytes=self._calculator._dispersion_memory_budget_bytes,
+            )
+        if self._dispersion_batch is not None and (
+            compute_forces or not self._intrinsic_dispersion_energy
+        ):
             correction_geometries = None
             if coordinates is not None:
                 correction_geometries = []
@@ -1184,11 +1215,13 @@ class PreparedBatch:
                 if dispersion_failure_message is not None
                 else self._library.vibeqc_status_message(output.status).decode("utf-8")
             )
-            total_energy = (
-                output.energy + dispersion.energy
-                if succeeded and dispersion is not None
-                else output.energy
-            )
+            total_energy = output.energy
+            if (
+                succeeded
+                and dispersion is not None
+                and not self._intrinsic_dispersion_energy
+            ):
+                total_energy += dispersion.energy
             correlation = None
             if self._calculator._method in (
                 _native.METHOD_MP2,
