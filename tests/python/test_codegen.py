@@ -2598,7 +2598,11 @@ def test_bounded_streaming_uses_monotonic_system_density_tail() -> None:
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -2612,7 +2616,11 @@ def test_bounded_streaming_profiles_executed_precision_per_shell_class() -> None
     """Count actual retained quartets without changing normal kernel work."""
 
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     source = _direct_cuda_source()
     assert "record_fock_precision" in generator
