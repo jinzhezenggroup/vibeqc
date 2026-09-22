@@ -21,9 +21,13 @@ from vibeqc_compiler.tensor import (
     add,
     einsum,
     input_tensor,
+    reduce_sum,
 )
-from vibeqc_compiler.tensor.cuda_plan import plan_cuda
-from vibeqc_compiler.tensor.cuda_providers import tensor_lowering_diagnostics
+from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_providers import (
+    reduction_provider_candidates,
+    tensor_lowering_diagnostics,
+)
 from vibeqc_compiler.tensor.cuda_search import estimate_schedule
 
 TARGET = cuda_target_info("sm_80")
@@ -43,6 +47,13 @@ def _gemm_program(*, packed: bool = False, inner: int = 13) -> Program:
     b = input_tensor("b", TensorSpec((k, j), role="input"))
     equation = "ik,kj->ji" if packed else "ik,kj->ij"
     return Program({"result": einsum(equation, a, b)})
+
+
+def _reduction_program() -> Program:
+    i = Index("i", IndexSpace("rows", "batch", 17))
+    k = Index("k", IndexSpace("inner", "batch", 129))
+    x = input_tensor("x", TensorSpec((i, k), role="input"))
+    return Program({"result": reduce_sum(x, (1,))})
 
 
 def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
@@ -222,6 +233,47 @@ def test_empty_gemm_is_attributed_to_cuda_runtime_zero_fill() -> None:
     ]
     assert candidate["workspace_bytes"] == 0
     assert candidate["provider_bytes"] == 0
+
+
+def test_generated_and_cub_reduction_providers_share_one_request() -> None:
+    program = _reduction_program()
+    generated = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    index = next(
+        i for i, step in enumerate(generated.steps) if step.node.op == "reduce"
+    )
+    candidates = reduction_provider_candidates(generated, index)
+
+    assert [candidate.status for candidate in candidates] == ["ready", "ready"]
+    assert candidates[0].request == candidates[1].request
+    assert candidates[0].implementation == "tensor-reduce-generated-cooperative"
+    assert candidates[1].implementation == "tensor-reduce-cub-block-reduce"
+    assert [provider.name for provider in candidates[1].providers] == [
+        "nvidia.cccl.cub",
+        "vibeqc.generated_cuda",
+    ]
+
+    cub = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    report = tensor_lowering_diagnostics(cub)
+    selected = next(
+        row
+        for row in report["candidates"]
+        if row["implementation"] == "tensor-reduce-cub-block-reduce"
+    )
+    assert [provider["name"] for provider in selected["providers"]] == [
+        "nvidia.cccl.cub",
+        "vibeqc.generated_cuda",
+    ]
 
 
 def test_schedule_contract_carries_resolved_lowering_identity() -> None:
