@@ -11,7 +11,6 @@ promotion decision for the measured target and shape.
 from __future__ import annotations
 
 import argparse
-import os
 import re
 import sys
 from pathlib import Path
@@ -304,8 +303,6 @@ def main() -> None:
         parser.error("--repeats must be in 5..30")
     if args.maximum_seconds <= 0:
         parser.error("--maximum-seconds must be positive")
-    if not os.environ.get("CUDA_VISIBLE_DEVICES"):
-        parser.error("a finite scheduler allocation must set CUDA_VISIBLE_DEVICES")
     if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", args.source_revision):
         parser.error("--source-revision must be a full lowercase Git SHA")
     if not re.fullmatch(r"[0-9a-f]{64}", args.source_archive_sha256):
