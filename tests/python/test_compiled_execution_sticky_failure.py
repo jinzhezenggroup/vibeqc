@@ -24,7 +24,7 @@ def test_success_cannot_clear_sticky_failure(tmp_path: Path, warmed: bool) -> No
         '  CompiledExecutionBinding binding{"qualified"};\n'
         "  region.bind(binding);\n"
         + ("  region.mark_success();\n" if warmed else "")
-        + r'''
+        + r"""
   const auto executions = region.metrics().executions;
   region.mark_failure("injected");
   assert(!region.bind(binding));
@@ -46,11 +46,19 @@ def test_success_cannot_clear_sticky_failure(tmp_path: Path, warmed: bool) -> No
   region.mark_success();
   assert(!region.failed() && region.metrics().invalidations == 1);
 }
-'''
+"""
     )
     binary = tmp_path / "sticky"
     subprocess.run(
-        [compiler, "-std=c++20", "-I", str(ROOT / "src"), str(source), "-o", str(binary)],
+        [
+            compiler,
+            "-std=c++20",
+            "-I",
+            str(ROOT / "src"),
+            str(source),
+            "-o",
+            str(binary),
+        ],
         check=True,
         capture_output=True,
         text=True,
