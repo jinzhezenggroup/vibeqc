@@ -110,8 +110,7 @@ def build_gfn2_es2_energy_update_program() -> Program:
     accumulator = _input("accumulator")
     updated = add(
         accumulator,
-        multiply(row_charge, potential),
-        coefficients=(1, "1/2"),
+        multiply(add(row_charge, coefficients=("1/2",)), potential),
     )
     return Program(
         {"updated": updated},
@@ -128,8 +127,9 @@ def build_gfn2_es2_cached_gradient_weight_program() -> Program:
     kernel = _input("kernel")
     first_charge = _input("first_charge")
     second_charge = _input("second_charge")
-    weight = multiply(first_charge, second_charge)
-    weight = multiply(weight, kernel)
+    # Preserve the runtime's scaling order before multiplying large charges.
+    weight = multiply(first_charge, kernel)
+    weight = multiply(weight, second_charge)
     weight = multiply(weight, kernel)
     weight = multiply(weight, kernel)
     return Program(
