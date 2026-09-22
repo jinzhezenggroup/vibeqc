@@ -21,11 +21,11 @@ namespace vibeqc::scf::cuda_execution {
 constexpr double kMixedPrecisionFloat32UnitRoundoff = 5.9604644775390625e-08;
 static_assert(kMixedPrecisionFloat32UnitRoundoff ==
               cuda_policy::kMixedPrecisionFloat32UnitRoundoff);
-// Workload thresholds still shared with bucket/topology admission. They are
-// intentionally left for the next profile-identity slice; this change first
-// removes device-resource constants whose legality can be resolved now.
+// Persistent ERI still participates in topology/layout construction before
+// runtime profitability is available. Keep only this compatibility boundary
+// here until the topology cache consumes the derived small-HF policy. Matrix
+// product routing is already owned by cuda_policy::resolve_small_hf_profitability.
 constexpr std::size_t kPersistentEriAoLimit = 16;
-constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Schwarz diagonal ERIs use the largest device call frame in the direct path.
 // One thread per block prevents a full warp of those frames from exhausting
 // the SM local-memory stack pool while preserving the dense AO-pair grid.
