@@ -166,7 +166,9 @@ def _diagnostic(
     }
     if prepared is not None:
         if compiler is not None:
-            raise ValueError("prepared AOT timeline must not enable runtime compilation")
+            raise ValueError(
+                "prepared AOT timeline must not enable runtime compilation"
+            )
         if target is None or library is None:
             raise ValueError("prepared AOT timeline requires target and native library")
         kwargs.update(
@@ -276,11 +278,11 @@ def benchmark_case(
     # A cold measurement owns a fresh child, never deletes caller cache/evidence.
     cache = Path(tempfile.mkdtemp(prefix="cold-", dir=cache))
     if (target is None) != (library is None):
-        raise ValueError("prepared AOT timeline requires both target and native library")
+        raise ValueError(
+            "prepared AOT timeline requires both target and native library"
+        )
     prepared_context: typing.ContextManager[PreparedStationaryCudaExecution | None] = (
-        PreparedStationaryCudaExecution()
-        if target is not None
-        else nullcontext(None)
+        PreparedStationaryCudaExecution() if target is not None else nullcontext(None)
     )
 
     with (
@@ -290,7 +292,10 @@ def benchmark_case(
         NativeAO(atoms, charge=charge, multiplicity=multiplicity) as basis,
         prepared_context as prepared,
     ):
-        def diagnostic(state: typing.Any, current_basis: typing.Any) -> tuple[typing.Any, float]:
+
+        def diagnostic(
+            state: typing.Any, current_basis: typing.Any
+        ) -> tuple[typing.Any, float]:
             if prepared is None:
                 return _diagnostic(state, current_basis, compiler, cache)
             return _diagnostic(
