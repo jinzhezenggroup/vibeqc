@@ -1,6 +1,6 @@
 # Decision: cooperative CUDA density-feature reduction
 
-Status: proposed, qualification in progress
+Status: implemented; full 96-atom SCF remains unqualified
 Date: 2026-09-23
 
 ## Problem
@@ -17,7 +17,7 @@ quadruples tile storage and changes the resource plan. The default two-step
 execution is 25.085391 s; the larger-tile probe is 19.915654 s. Both are Nsight
 diagnostics, not converged benchmarks. See #1102 and the matrix schedule note.
 
-## Candidate
+## Decision
 
 The compiler emits scalar and cooperative instances of the same feature
 consumer. For nAO >= 32, each warp owns one spin/point; lanes traverse adjacent
@@ -80,3 +80,27 @@ Source archive SHA-256:
 Artifacts are `integration-source-v11.*`, `ks96-two-steps-v11*`, and
 `pbe24-*-features-v11.*` in the retained integration workspace. Exact standalone
 branch native qualification is separate from that composed endpoint evidence.
+
+## Broader complete endpoint qualification
+
+Slurm 11419 runs complete matched-grid PBE48 direct/DF energy endpoints with
+an unchanged 120-second guard per endpoint. Both pass all four numerical pairs.
+Direct: preparation 0.967611386 s, cold 77.368161802 s (22 iterations), warm
+7.030856312/7.041812285 s (two iterations), maximum error 8.89031e-11 Eh.
+DF: preparation 3.173285206 s, cold 49.135108257 s (21 iterations), warm
+7.022172632/7.031696032 s (three iterations), maximum error 3.88809e-11 Eh.
+
+The direct v10 comparison had 21 cold and three warm iterations, so its earlier
+83.5460/11.9246/11.9700-second timings do not establish a matched-work speedup.
+DF retains the same 21/three iteration branches as v10 (58.9862 cold and
+8.4282/8.4315 warm seconds). Both reference warm branches differ from native;
+no iteration-matched cross-engine claim is made. Precision, grid and SCF
+acceptance settings are unchanged.
+
+These measurements explicitly load the saved v11 library, not the later HF-DF
+projection-reuse overlay. They share the source/binary hashes above. Artifacts
+are `pbe48-{direct,df}-features-v11.{json,log,progress.jsonl}` as applicable and
+`pbe48-features-v11.log` in the retained integration directory. Native branch
+validation and these composed complete 24/48 endpoints support review of the
+feature schedule. Full 96 convergence and the complete #1102 acceptance remain
+open; the bounded 96 diagnostic must not be promoted into README results.
