@@ -26,7 +26,8 @@ production_bundle
   -> production_emission
   -> production_registry / production_profile / production_cost / shell_spec
 production_emission
-  -> codegen/lowering + production_selection/profile/cost
+  -> CUDA emission/lowering + production_registry / production_selection
+  -> production_profile / production_cost / shell_spec
 ```
 
 Leaf policy owners do not import the compatibility facade. `production_emission` owns deterministic CUDA source text and has no filesystem writes; `production_bundle` owns directories, stable shard layout, file replacement, and registry artifact publication. Registry serialization, profile parsing, selection policy, and compile-cost partitioning remain in their previously split owners.
@@ -48,7 +49,8 @@ compatibility facade contains no source-generation or filesystem implementation.
 ## Invariants
 
 - Emission remains a pure source-text operation with no filesystem writes.
-- Bundle writing owns directories, stable shard slots, and artifact publication.
+- Bundle writing owns directories, application of the stable shard layout, and
+  artifact publication; `production_cost` owns slot assignment and partition policy.
 - The compatibility facade forwards canonical objects rather than wrapping or
   duplicating implementations.
 - Generated source, registry text, profile hashes, and stable AOT shard assignment

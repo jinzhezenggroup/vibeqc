@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import importlib.util
 from graphlib import TopologicalSorter
 from pathlib import Path
 
@@ -24,20 +25,60 @@ PRODUCTION_MODULES = {
     "production_registry",
     "production_selection",
 }
+INTEGRAL_PACKAGE = "vibeqc_compiler.integral"
+EMISSION_IMPORTS = {
+    "__future__",
+    "capabilities",
+    "collections.abc",
+    "cuda_emitter",
+    "cuda_lowering",
+    "cuda_schedule",
+    "fused_schedule",
+    "ir",
+    "production_cost",
+    "production_profile",
+    "production_registry",
+    "production_selection",
+    "re",
+    "shell_spec",
+    "signature",
+    "typing",
+    "vibeqc_compiler.common.cuda_target",
+}
 
 
-def _imports(module: str) -> set[str]:
-    tree = ast.parse((INTEGRAL / f"{module}.py").read_text(encoding="utf-8"))
+def _imports_from_source(source: str) -> set[str]:
+    tree = ast.parse(source)
     imports: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
-            if node.module:
-                imports.add(node.module)
+            if node.level:
+                target = importlib.util.resolve_name(
+                    "." * node.level + (node.module or ""), INTEGRAL_PACKAGE
+                )
             else:
-                imports.update(alias.name for alias in node.names)
+                target = node.module or ""
+            if target == INTEGRAL_PACKAGE:
+                imports.update(alias.name.split(".", 1)[0] for alias in node.names)
+            elif target.startswith(f"{INTEGRAL_PACKAGE}."):
+                imports.add(
+                    target.removeprefix(f"{INTEGRAL_PACKAGE}.").split(".", 1)[0]
+                )
+            elif target:
+                imports.add(target)
         elif isinstance(node, ast.Import):
-            imports.update(alias.name for alias in node.names)
+            for alias in node.names:
+                if alias.name.startswith(f"{INTEGRAL_PACKAGE}."):
+                    imports.add(
+                        alias.name.removeprefix(f"{INTEGRAL_PACKAGE}.").split(".", 1)[0]
+                    )
+                else:
+                    imports.add(alias.name)
     return imports
+
+
+def _imports(module: str) -> set[str]:
+    return _imports_from_source((INTEGRAL / f"{module}.py").read_text(encoding="utf-8"))
 
 
 def _calls(module: str) -> set[str]:
@@ -55,18 +96,7 @@ def _calls(module: str) -> set[str]:
 
 def _production_imports(module: str) -> set[str]:
     """Return direct imports within the production ownership graph."""
-    tree = ast.parse((INTEGRAL / f"{module}.py").read_text(encoding="utf-8"))
-    imports: set[str] = set()
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.ImportFrom) or node.level != 1:
-            continue
-        candidates = (
-            (node.module,) if node.module else tuple(alias.name for alias in node.names)
-        )
-        imports.update(
-            candidate for candidate in candidates if candidate in PRODUCTION_MODULES
-        )
-    return imports
+    return _imports(module) & PRODUCTION_MODULES
 
 
 def test_compatibility_facade_preserves_callable_identity() -> None:
@@ -111,6 +141,25 @@ def test_production_ownership_graph_is_cycle_free() -> None:
     TopologicalSorter(graph).prepare()
 
 
+def test_import_normalization_covers_equivalent_package_spellings() -> None:
+    imports = _imports_from_source(
+        """
+from . import production_bundle
+from .production_registry import emit_registry_source
+from vibeqc_compiler.integral import production
+from vibeqc_compiler.integral.production_selection import KernelSelection
+import vibeqc_compiler.integral.production_cost
+"""
+    )
+    assert imports == {
+        "production",
+        "production_bundle",
+        "production_cost",
+        "production_registry",
+        "production_selection",
+    }
+
+
 def test_bundle_owner_does_not_import_cuda_emitters() -> None:
     imports = _imports("production_bundle")
     assert not any(
@@ -123,7 +172,7 @@ def test_emission_owner_does_not_import_bundle_or_filesystem_orchestration() -> 
     imports = _imports("production_emission")
     assert not any("production_bundle" in name for name in imports)
     assert not any("benchmark" in name or "cli" in name for name in imports)
-    assert not imports & {"os", "pathlib", "shutil", "tempfile"}
+    assert imports <= EMISSION_IMPORTS
     assert not _calls("production_emission") & {
         "makedirs",
         "mkdir",
@@ -139,8 +188,16 @@ def test_facade_is_narrow_and_contains_no_generation_implementation() -> None:
     source = (INTEGRAL / "production.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     assert len(source.splitlines()) < 110
+    assert all(
+        isinstance(node, (ast.Assign, ast.Expr, ast.Import, ast.ImportFrom))
+        for node in tree.body
+    )
     assert not any(
-        isinstance(node, (ast.FunctionDef, ast.ClassDef)) for node in tree.body
+        isinstance(
+            node,
+            (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef, ast.Lambda),
+        )
+        for node in ast.walk(tree)
     )
     assignments = [node for node in tree.body if isinstance(node, ast.Assign)]
     assert assignments

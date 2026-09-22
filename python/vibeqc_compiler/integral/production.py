@@ -6,6 +6,8 @@ module as a narrow import-compatible facade while in-tree callers migrate.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING as TYPE_CHECKING  # noqa: PLC0414
+
 from . import production_bundle as _production_bundle
 from . import production_cost as _production_cost
 from . import production_emission as _production_emission
@@ -27,7 +29,6 @@ KernelConsumer = _production_emission.KernelConsumer
 ScheduleIR = _production_emission.ScheduleIR
 ScheduleKind = _production_emission.ScheduleKind
 ShellClassSpec = _production_emission.ShellClassSpec
-TYPE_CHECKING = _production_emission.TYPE_CHECKING
 build_fused_shell_plan = _production_emission.build_fused_shell_plan
 cuda_target_info = _production_emission.cuda_target_info
 emit_ppps_resident_bra_rys3_cuda = _production_emission.emit_ppps_resident_bra_rys3_cuda
