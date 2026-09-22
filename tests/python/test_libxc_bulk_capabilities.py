@@ -3,11 +3,19 @@
 from __future__ import annotations
 
 import json
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
-from vibeqc_compiler.xc import libxc_bulk, libxc_bulk_capabilities
+from vibeqc_compiler.xc import (
+    UnsupportedXC,
+    build_program,
+    functional,
+    libxc_bulk,
+    libxc_bulk_capabilities,
+)
 from vibeqc_compiler.xc.libxc_maple import MapleImportError
+from vibeqc_compiler.xc.spec import AUTO_BULK_COMPONENTS, COMPONENTS
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = ROOT / "tests/data/xc/libxc-bulk"
@@ -83,3 +91,37 @@ def test_bulk_capability_lookup_is_case_insensitive_and_fail_closed() -> None:
     for level in ("compiled-cuda", "gpu-runtime", "molecular-scf", "public-method"):
         with pytest.raises(ValueError):
             libxc_bulk_capabilities.claimable_functionals(level)
+
+
+def test_pointwise_lda_gga_components_are_automatically_representable() -> None:
+    represented = libxc_bulk_capabilities.claimable_components(
+        families=("lda", "gga")
+    )
+    assert represented
+    assert "GGA_X_PBE_SOL" in represented
+    assert set(represented) <= set(COMPONENTS)
+    assert set(AUTO_BULK_COMPONENTS) <= set(represented)
+
+    spec = functional("GGA_X_PBE_SOL", spin="unpolarized")
+    assert spec.components == (("GGA_X_PBE_SOL", Fraction(1)),)
+    payload = spec.to_payload()
+    assert payload["qualification"] == "pointwise-validated"
+    assert payload["production_admitted"] is False
+    assert payload["expression_provenance"]["kind"] == "libxc-bulk-pointwise"
+
+    with pytest.raises(UnsupportedXC, match="not production-domain admitted"):
+        build_program(spec)
+
+
+def test_automatic_component_registry_keeps_unrepresented_mgga_fail_closed() -> None:
+    mgga = libxc_bulk_capabilities.claimable_components(families=("mgga",))
+    assert "MGGA_X_R2SCAN01" in mgga
+    assert "MGGA_X_R2SCAN01" not in AUTO_BULK_COMPONENTS
+    with pytest.raises(UnsupportedXC, match="unknown functional"):
+        functional("MGGA_X_R2SCAN01")
+
+
+def test_automatic_component_family_filter_is_fail_closed() -> None:
+    for families in ((), ("hybrid",), ("lda", "hybrid")):
+        with pytest.raises(ValueError, match="lda/gga/mgga"):
+            libxc_bulk_capabilities.claimable_components(families=families)
