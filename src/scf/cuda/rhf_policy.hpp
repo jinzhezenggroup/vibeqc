@@ -18,6 +18,67 @@ namespace vibeqc::scf::cuda_policy {
  * they are profile inputs rather than CUDA semantics. Autotuning/profile
  * selection can provide another compatible record without changing kernels.
  */
+/**
+ * Analytical small-HF work model.
+ *
+ * Device calibration supplies only primitive launch/rate constants. Work
+ * volume itself is derived exactly from the workload, so changing the GPU does
+ * not require re-benchmarking every AO size or molecule.
+ */
+struct SmallHfMatrixCalibration {
+  double native_launch_nanoseconds{};
+  double native_fp64_flops_per_nanosecond{};
+  double native_bytes_per_nanosecond{};
+  double cublas_launch_nanoseconds{};
+  double cublas_fp64_flops_per_nanosecond{};
+  double cublas_bytes_per_nanosecond{};
+};
+
+struct SmallHfProfitabilityProfile {
+  // Compatibility evidence used only when no complete device calibration is
+  // available. These values are not CUDA semantics.
+  std::size_t fallback_persistent_eri_ao_limit{16};
+  std::size_t fallback_cublas_matrix_product_ao_threshold{17};
+  SmallHfMatrixCalibration matrix{};
+};
+
+struct SmallHfWorkload {
+  std::size_t nbf{};
+  /** Number of square matrices submitted to the most demanding product call. */
+  std::size_t matrix_count{};
+  /** Physical systems whose complete AO ERI tensors would be cached. */
+  std::size_t system_count{};
+  /** RHF/UHF Fock states contracting the cached AO ERI tensor. */
+  std::size_t fock_state_count{};
+};
+
+struct SmallHfAnalyticEstimate {
+  std::uint64_t matrix_flops{};
+  std::uint64_t native_matrix_semantic_bytes{};
+  std::uint64_t cublas_matrix_semantic_bytes{};
+  std::uint64_t native_matrix_blocks{};
+  std::uint64_t native_matrix_waves{};
+  std::uint64_t eri_elements{};
+  std::uint64_t eri_bytes{};
+  std::uint64_t cached_fock_ao_quartets{};
+};
+
+struct SmallHfProfitabilityPolicy {
+  SmallHfAnalyticEstimate estimate{};
+  bool use_cublas{};
+  bool persistent_eri{};
+  bool cublas_from_calibration{};
+  double native_matrix_nanoseconds{};
+  double cublas_matrix_nanoseconds{};
+};
+
+SmallHfAnalyticEstimate estimate_small_hf_workload(const runtime::CudaTargetInfo& target,
+                                                   const SmallHfWorkload& workload) noexcept;
+
+SmallHfProfitabilityPolicy resolve_small_hf_profitability(
+    const runtime::CudaTargetInfo& target, const SmallHfWorkload& workload,
+    SmallHfProfitabilityProfile profile = SmallHfProfitabilityProfile{}) noexcept;
+
 struct DirectJkFixedTopologyTaskProfile {
   std::size_t maximum_arena_bytes{std::size_t{1} << 30};
 };
@@ -171,6 +232,20 @@ bool bounded_direct_fock_only_diagnostic_requested() noexcept;
 bool bounded_fock_class_timing_requested() noexcept;
 /** True when force AOT classes are explicitly narrowed for a diagnostic replay. */
 bool aot_shell_class_selection_override_requested() noexcept;
+/**
+ * Direct-tile validation is a structural diagnostic, never a numerical endpoint.
+ *
+ * When requested, CUDA execution may build and validate the compacted descriptor
+ * queue, but it must stop before reporting SCF energy/force results.  The explicit
+ * non-success endpoint status prevents diagnostic output from being mistaken for
+ * scientific correctness evidence.
+ */
+struct DirectTileValidationPolicy {
+  bool requested{};
+  bool produces_numerical_endpoint{true};
+  vibeqc_status endpoint_status{VIBEQC_STATUS_SUCCESS};
+};
+DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept;
 bool direct_tile_validation_requested() noexcept;
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept;
 bool force_density_product_screening_requested() noexcept;

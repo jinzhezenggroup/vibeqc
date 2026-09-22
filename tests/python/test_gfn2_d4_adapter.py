@@ -18,7 +18,7 @@ def adapter(tmp_path_factory: pytest.TempPathFactory) -> Path:
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
     output = tmp_path_factory.mktemp("gfn2-d4-adapter") / "probe"
-    runtime = ROOT / "src/xtb/gfn2_runtime"
+    runtime = ROOT / "src/xtb/native"
     subprocess.run(
         [
             sys.executable,

@@ -54,6 +54,8 @@ def test_retired_xc_handwritten_builders_stay_deleted() -> None:
         "r2scan_correlation",
         "pw91_exchange",
         "pw91_correlation",
+        "pw",
+        "lda_correlation",
     }
     assert function_names.isdisjoint(retired)
 
@@ -82,13 +84,30 @@ def test_xc_retirement_gate_detects_new_expression_module(tmp_path: Path) -> Non
 
 
 def test_xc_retirement_final_gate_detects_remaining_consumer(tmp_path: Path) -> None:
-    source = tmp_path / "python/vibeqc_compiler/xc/program.py"
+    source = tmp_path / "python/vibeqc_compiler/xc/expression_dispatch.py"
     source.parent.mkdir(parents=True)
     source.write_text("from .expressions import energy_expression\n")
     failures = errors(tmp_path, require_no_consumers=True)
     assert failures == [
         (
-            "python/vibeqc_compiler/xc/program.py:1: legacy XC consumer remains "
+            "python/vibeqc_compiler/xc/expression_dispatch.py:1: legacy XC consumer remains "
             "vibeqc_compiler.xc.expressions"
         )
     ]
+
+
+def test_retired_direct_program_import_is_not_reauthorized(tmp_path: Path) -> None:
+    """Moving the retained bridge must not allow the former consumer back in."""
+    source = tmp_path / "python/vibeqc_compiler/xc/program.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("from .expressions import energy_expression\n")
+    newly_forbidden = (
+        "python/vibeqc_compiler/xc/program.py:1: new legacy XC consumer "
+        "vibeqc_compiler.xc.expressions (import-from)"
+    )
+    remaining = (
+        "python/vibeqc_compiler/xc/program.py:1: legacy XC consumer remains "
+        "vibeqc_compiler.xc.expressions"
+    )
+    assert errors(tmp_path) == [newly_forbidden]
+    assert errors(tmp_path, require_no_consumers=True) == [newly_forbidden, remaining]
