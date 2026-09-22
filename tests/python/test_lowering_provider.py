@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.lowering_provider import (
     LoweringCandidate,
