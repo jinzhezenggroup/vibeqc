@@ -9,7 +9,7 @@ nuclear perturbation, one response solve and exactly one contributor per source.
 from __future__ import annotations
 
 import typing
-from collections.abc import Set
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -131,7 +131,7 @@ class StationarySecondOrderExecutor:
         )
         try:
             inventory = plan.source_names
-            if isinstance(inventory, (str, bytes, Set)):
+            if isinstance(inventory, (str, bytes, AbstractSet)):
                 raise TypeError("source_names must declare an ordered inventory")
             source_names = tuple(inventory)
         except (AttributeError, TypeError) as error:
