@@ -12,6 +12,7 @@ from pathlib import Path
 
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import file_hash
+from vibeqc_compiler.integral.expr import Graph
 
 from . import libxc_maple
 from .libxc_maple import IMPORTER_SEMANTICS, MapleModule, import_maple_file
@@ -66,13 +67,11 @@ def _coordinates(
     rs = graph.approximate_constant(
         (3.0 / (4.0 * math.pi)) ** (1.0 / 3.0)
     ) * density.pow(-1.0 / 3.0)
-    total_sigma = sigma_aa + 2 * sigma_ab + sigma_bb
-    xt = total_sigma.pow(0.5) * density.pow(-4.0 / 3.0)
     xs_a = sigma_aa.pow(0.5) * rho_a.pow(-4.0 / 3.0)
     xs_b = sigma_bb.pow(0.5) * rho_b.pow(-4.0 / 3.0)
     ts_a = tau_a * rho_a.pow(-5.0 / 3.0)
     ts_b = tau_b * rho_b.pow(-5.0 / 3.0)
-    return density, zeta, rs, xt, xs_a, xs_b, ts_a, ts_b
+    return density, zeta, rs, xs_a, xs_b, ts_a, ts_b
 
 
 def energy_expression(spec: typing.Any) -> typing.Any:
@@ -85,7 +84,7 @@ def energy_expression(spec: typing.Any) -> typing.Any:
 
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
-    density, zeta, rs, xt, xs_a, xs_b, ts_a, ts_b = _coordinates(
+    density, zeta, rs, xs_a, xs_b, ts_a, ts_b = _coordinates(
         graph, spec, variables
     )
     module = _wb97mv_module(spec.range_omega)
