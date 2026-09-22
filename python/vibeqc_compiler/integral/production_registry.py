@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .capabilities import CAPABILITY_MIXED_FOCK, CAPABILITY_STREAMING_FOCK
+from .cuda_schedule import ScheduleKind
 from .cuda_target import cuda_target_info
 from .fused_schedule import build_fused_shell_plan
 from .ir import KernelConsumer
@@ -42,6 +43,20 @@ def _stable_selection_order(
             key=lambda item: (shell_class_index(item.spec), item.spec.name),
         )
     )
+
+
+def _fock_tasks_per_claim(selection: KernelSelection) -> int:
+    """Expose packed queue width without changing other schedules' grid policy.
+
+    Packed value workers claim a warp of independent shell tasks at once.
+    Their host capacity bound counts tasks, not CTAs. A conservative width of
+    one preserves existing launch policy for component and subgroup consumers,
+    including implicit Rys Fock schedules that differ from the force schedule.
+    """
+    schedule = selection.fock_schedule or selection.schedule
+    if schedule.kind == ScheduleKind.PACKED_TASKS:
+        return schedule.tasks_per_block
+    return 1
 
 
 def emit_registry_header(
@@ -85,7 +100,7 @@ def emit_registry_header(
         row = (
             f'    {{"{spec.name}", {shell_class_index(spec)}U, '
             f"{angular_order}U, {block_threads}U, 1U, "
-            f"{spec.component_count}U}},"
+            f"{spec.component_count}U, {_fock_tasks_per_claim(selection)}U}},"
         )
         fock_rows.append(row)
         if selection.has_capability(CAPABILITY_MIXED_FOCK):
@@ -108,6 +123,8 @@ struct ShellKernelMetadata {{
   unsigned block_threads;
   unsigned consumer_mask;
   unsigned component_tile;
+  // Packed Fock claim width; other consumers retain the conservative grid.
+  unsigned fock_tasks_per_claim{{1}};
 }};
 
 inline constexpr ShellKernelMetadata kShellKernels[] = {{
@@ -700,7 +717,8 @@ def emit_multi_registry_source(
                 fock_names.append(
                     f'    {{"{selection.spec.name}", {shell_class}U, '
                     f"{sum(selection.spec.angular)}U, {plan.block_threads}U, "
-                    f"{consumer_mask}U, {plan.schedule.component_tile}U}},"
+                    f"{consumer_mask}U, {plan.schedule.component_tile}U, "
+                    f"{_fock_tasks_per_claim(selection)}U}},"
                 )
                 fock_mask |= 1 << shell_class
             if selection.resident_force_recurrence is not None:

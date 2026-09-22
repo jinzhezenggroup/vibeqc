@@ -12,6 +12,13 @@ This inventory follows the actual dispatch in `src/scf/cuda_rhf.cu`, the
 architecture registry, and the force queue implementations. Mathematical
 source emission alone does not select a production route.
 
+Fixed generated Fock dispatch bounds packed worker grids by the compiler's
+task-claim width: one warp consumes 32 independent shell tasks. Other schedule
+families retain their existing conservative grid bound. This metadata follows
+the value schedule when force and Fock schedules differ; it does not change the
+task domain or screening. See the
+[packed-grid rationale](../.agents/notes/implemented/performance/2026-09-23-packed-fock-claim-grids.md).
+
 | Consumer/class | Existing execution | Selection and this change |
 | --- | --- | --- |
 | HF, at most 16 public AOs | Persistent ERI values and their native force path | AO cutoff; does not exercise the direct psss migration |
