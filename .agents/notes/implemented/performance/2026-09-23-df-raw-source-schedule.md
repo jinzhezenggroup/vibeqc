@@ -133,3 +133,22 @@ Relevant local files under `.artifacts/gpu-blocker-fixes/` are
 `hfdf24-streamed-{auto,dense}-v7.json`, `streamed-v7-gates.log`,
 `streamed-force-v7-gates.log` and their corresponding pytest directories.
 The complete 96-atom energy-plus-force endpoint is still unqualified.
+
+## Independent current-master review qualification
+
+The review integration with the landed streamed-exchange and execution-lifecycle
+changes passed all 48 independent libcint/NumPy mapping/representation/tile cases,
+four native DF suites (including 48 weighted finite-difference gates), and 44
+allocated Python selector, exact-work, resource/fallback and complete
+cold/warm/changed-geometry energy/force cases. The original numerical gates
+were retained. This review adds no standalone speedup or 96-atom completion
+claim; the historical 24-atom composition evidence above remains separately
+scoped.
+
+The independently built library had source identity
+`46626e2e0a2ed211bba04f3add762cd7aa36e98827f8b41140992aba5937ba80`
+and SHA256
+`9b1be6ef325d9e75c6704a94d762b208b2536b51df42cedbe49e7d5f094a02b9`.
+Qualification ran through a finite Slurm allocation on RTX 5090. The numerical
+validator consumes `vibeqc_df_value_probe`; `vibeqc_df_source_probe` is a
+separate performance executable with a different input format.
