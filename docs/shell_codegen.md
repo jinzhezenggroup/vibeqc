@@ -537,7 +537,19 @@ is rejected for:
 - Fock-value or force disagreement with the independent recompute oracle;
 - failure to meet the configured timing threshold.
 
-Passing variants are ranked by measured kernel time. The winner can be written
+After the existing per-class candidate bound is applied, the tuner hashes the
+exact unsuffixed generated CUDA only for packed candidates that differ solely
+in algebra ordering. If two such schedules emit byte-identical CUDA, the
+ordering choice is an exact no-op for that compiler revision and target, so only
+one representative is sent to NVCC. Production baselines and canonical algebra
+resource baselines are protected even when an equivalent peer exists. This is
+exact source deduplication, not a profitability model: it cannot remove a
+candidate merely because estimated FLOPs, liveness, or source size look worse.
+Use `--no-execution-dedup` for exhaustive schedule-ID studies. The report
+preserves skipped trial keys, their retained representative, and the
+generated-source SHA-256 under `search.execution_deduplicated`.
+
+Passing compiled variants are ranked by measured kernel time. The winner can be written
 to a schema-v2, architecture-specific production manifest:
 
 ```bash

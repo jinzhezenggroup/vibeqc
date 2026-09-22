@@ -73,6 +73,10 @@ from vibeqc_compiler.integral.production import (
     _schedule_from_payload,
     load_production_kernel_selections,
 )
+from vibeqc_compiler.integral.tuning.emission import schedule_execution_source_identity
+from vibeqc_compiler.integral.tuning.policy import (
+    deduplicate_execution_equivalent_trials,
+)
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -973,6 +977,84 @@ def test_autotune_deduplicates_batch_schedule_family_filters() -> None:
         ScheduleKind.SUBGROUP_TASKS,
     )
     assert _requested_schedule_kinds(SimpleNamespace()) == ()
+
+
+def test_execution_source_dedup_removes_only_byte_identical_cuda() -> None:
+    trials = supported_schedule_trials(PSSS_SPEC, target=TEST_CUDA_TARGET)[:16]
+    identities = tuple(schedule_execution_source_identity(trial) for trial in trials)
+
+    topological = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+        and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
+    )
+    pressure = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+        and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
+    )
+    identity_by_key = dict(
+        zip((trial.key for trial in trials), identities, strict=True)
+    )
+    assert identity_by_key[topological.key] == identity_by_key[pressure.key]
+
+    changed_topological = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.CANONICAL_NARY
+    )
+    changed_pressure = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.CANONICAL_NARY
+    )
+    assert (
+        identity_by_key[changed_topological.key]
+        != identity_by_key[changed_pressure.key]
+    )
+
+    kept, deduplicated = deduplicate_execution_equivalent_trials(
+        trials,
+        schedule_execution_source_identity,
+        protected_keys=frozenset((topological.key,)),
+    )
+    kept_keys = {trial.key for trial in kept}
+    assert topological.key in kept_keys
+    assert pressure.key not in kept_keys
+    assert deduplicated
+    row = next(record for record in deduplicated if record["trial_key"] == pressure.key)
+    assert row["equivalent_to"] == topological.key
+    assert row["execution_source_sha256"] == identity_by_key[topological.key]
+    assert row["reason"] == (
+        "algebra-ordering peer emits byte-identical unsuffixed CUDA"
+    )
+    assert len(kept) + len(deduplicated) == len(trials)
+
+    quick_calls: list[str] = []
+
+    def quick_identity(trial: typing.Any) -> str:
+        quick_calls.append(trial.key)
+        return schedule_execution_source_identity(trial)
+
+    quick = trials[:4]
+    quick_kept, quick_deduplicated = deduplicate_execution_equivalent_trials(
+        quick, quick_identity
+    )
+    assert quick_kept == quick
+    assert quick_deduplicated == ()
+    assert quick_calls == []
 
 
 @pytest.mark.parametrize("name", ("dddp", "dddd"))

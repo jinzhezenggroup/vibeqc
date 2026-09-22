@@ -5473,6 +5473,10 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
     assert report["search"] == {
         "schedule_kinds": [trial.schedule.kind.value],
+        "bounded_trial_count": 1,
+        "execution_dedup_enabled": True,
+        "execution_deduplicated_count": 0,
+        "execution_deduplicated": [],
         "trial_count": 1,
     }
     assert report["manifest"]["write_skipped"] is True
