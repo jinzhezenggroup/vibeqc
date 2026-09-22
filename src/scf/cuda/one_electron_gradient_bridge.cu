@@ -121,9 +121,13 @@ struct Arena {
   const T* upload(std::span<const T> source) {
     if (source.empty()) return nullptr;
     auto* destination = static_cast<T*>(allocate(source.size_bytes()));
-    check(cudaMemcpy(destination, source.data(), source.size_bytes(), cudaMemcpyHostToDevice));
+    // Pageable H2D cudaMemcpy may return after host staging, before its
+    // default-stream DMA completes. A nonblocking consumer stream does not
+    // inherit that dependency. Keep uploads and their consumers on the arena
+    // stream; the caller/Host buffers outlive its success or failure drain.
+    check(cudaMemcpyAsync(destination, source.data(), source.size_bytes(), cudaMemcpyHostToDevice,
+                          stream));
     stats.host_to_device_bytes += source.size_bytes();
-    ++stats.synchronous_uploads;
     return destination;
   }
   template <class T>

@@ -77,6 +77,7 @@ def test_arbitrary_nonsymmetric_weights_raw_fused_and_bounded_schedules(
         assert resources["device_bytes"] <= 128 << 10
         assert resources["host_numeric_bytes"] <= 128 << 10
         assert resources["stream_synchronizations"] == 1
+        assert resources["synchronous_uploads"] == 0
         outputs.append(actual)
     serial, _ = execute_gradient(
         calculator, atoms, weights, schedule=2, maximum_bytes=128 << 10, charge=1
@@ -296,3 +297,47 @@ def test_screened_target_energy_force_domain(
                 )
             finite_force = -(displaced[0] - displaced[1]) / (2 * step)
             assert actual.forces[1, 2] == pytest.approx(finite_force, abs=3e-7, rel=0)
+
+
+def test_large_pageable_weights_are_ordered_before_nonblocking_gradient() -> None:
+    """A large last-uploaded V matrix cannot race its gradient consumer."""
+    assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
+    atoms = [("He", (1.7 * i, 0.2 * (i % 3), -0.1 * (i % 2))) for i in range(8)]
+    basis = [
+        Shell(atom, 0, (Primitive(0.5 + 0.03 * shell, 1.0),))
+        for atom in range(len(atoms))
+        for shell in range(48)
+    ]
+    inputs = {
+        "atomic_numbers": [2] * len(atoms),
+        "coordinates": [list(r) for _, r in atoms],
+        "basis_representation": "spherical",
+        "charge": 0,
+        "multiplicity": 1,
+        "shells": [
+            {
+                "atom_index": shell.atom_index,
+                "angular_momentum": 0,
+                "primitives": [[p.exponent, p.coefficient] for p in shell.primitives],
+            }
+            for shell in basis
+        ],
+    }
+    values, derivative = reference_matrices(inputs)
+    weights = np.zeros_like(values)
+    weights[2] = np.random.default_rng(141).normal(size=values.shape[1:]) * 1e-3
+    expected = np.einsum("axoij,oij->ax", derivative, weights)
+    calculator = Calculator(
+        device="cuda", basis=basis, basis_representation="spherical"
+    )
+    # 384 AOs make the final pageable upload larger than one MiB. Independent
+    # libcint derivatives, rather than the first CUDA result, are the oracle.
+    assert weights[2].nbytes > 1 << 20
+    for _ in range(12):
+        actual, resources = execute_gradient(
+            calculator, atoms, weights, maximum_bytes=8 << 20
+        )
+        np.testing.assert_allclose(actual, expected, atol=2e-10, rtol=2e-11)
+        assert resources["synchronous_uploads"] == 0
+        assert resources["stream_synchronizations"] == 1
+        assert resources["device_to_host_bytes"] == len(atoms) * 3 * 8

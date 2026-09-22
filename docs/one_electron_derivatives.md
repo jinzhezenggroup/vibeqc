@@ -104,8 +104,11 @@ Caller-owned weights/system data, existing HF plans, allocator bookkeeping and
 opaque driver/library allocations are outside this bound. The optional
 `vibeqc_one_electron_gradient_resources` descriptor reports numeric capacities,
 H2D/D2H bytes, synchronous upload calls and explicit stream synchronization
-calls. These counters do not claim to expose synchronization internal to CUDA
-allocation or driver APIs.
+calls. Uploads, zeroing, the gradient kernel and the output copy are ordered
+on the same nonblocking stream. Pageable host staging is not treated as a
+cross-stream completion fence; `synchronous_uploads` is therefore zero for
+this bridge. These counters do not claim to expose synchronization internal
+to CUDA allocation or driver APIs.
 
 Prepared Direct HF uses its existing device density, energy-weighted density,
 geometry and force buffer. Its derivative selector is read on each force
