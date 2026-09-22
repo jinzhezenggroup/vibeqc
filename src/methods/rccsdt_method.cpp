@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "cc/triples_cuda.hpp"
 #include "generated_rccsdt_cpu.hpp"
 #include "methods/rccsd_method.hpp"
 #include "molecule/basis.hpp"
@@ -118,27 +119,57 @@ class RccsdtPrepared final : public PreparedCalculation {
         throw std::length_error(
             "RCCSD(T) retained CC state exhausts the correlation memory budget");
 
-      const auto triples = cc::triples::generated::evaluate(
-          state.problem.nocc, state.problem.nvir, state.problem.ovvv.data(),
-          state.problem.ovoo.data(), state.problem.ovov.data(), state.problem.fov.data(),
-          state.solved.t1.data(), state.solved.t2.data(), state.eps_o.data(), state.eps_v.data(),
-          descriptor_.ccsd_denominator_threshold ? descriptor_.ccsd_denominator_threshold : 1e-10,
-          state.budget - retained);
+      const double denominator_threshold =
+          descriptor_.ccsd_denominator_threshold ? descriptor_.ccsd_denominator_threshold : 1e-10;
+      double triples_energy = 0.0;
+      double triples_minimum_denominator = std::numeric_limits<double>::infinity();
+      std::size_t triples_virtual_count = 0;
+      std::size_t triples_workspace_bytes = 0;
+
+      if (context_->requested_backend == VIBEQC_BACKEND_CUDA) {
+#if VIBEQC_HAS_CUDA
+        const auto triples = cc::triples::evaluate_cuda(
+            state.problem.nocc, state.problem.nvir, state.problem.ovvv.data(),
+            state.problem.ovoo.data(), state.problem.ovov.data(), state.problem.fov.data(),
+            state.solved.t1.data(), state.solved.t2.data(), state.eps_o.data(), state.eps_v.data(),
+            denominator_threshold, state.budget - retained, context_->device_id);
+        triples_energy = triples.energy;
+        triples_minimum_denominator = triples.minimum_absolute_denominator;
+        triples_virtual_count = triples.virtual_triples;
+        triples_workspace_bytes = triples.workspace_bytes;
+#else
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "native RCCSD(T) CUDA owner is not compiled in this library");
+#endif
+      } else {
+        const auto triples = cc::triples::generated::evaluate(
+            state.problem.nocc, state.problem.nvir, state.problem.ovvv.data(),
+            state.problem.ovoo.data(), state.problem.ovov.data(), state.problem.fov.data(),
+            state.solved.t1.data(), state.solved.t2.data(), state.eps_o.data(), state.eps_v.data(),
+            denominator_threshold, state.budget - retained);
+        triples_energy = triples.energy;
+        triples_minimum_denominator = triples.minimum_absolute_denominator;
+        triples_virtual_count = triples.virtual_triples;
+        triples_workspace_bytes = triples.workspace_bytes;
+      }
 
       auto diagnostic = state.diagnostic;
       diagnostic.minimum_absolute_denominator =
-          std::min(diagnostic.minimum_absolute_denominator, triples.minimum_absolute_denominator);
+          std::min(diagnostic.minimum_absolute_denominator, triples_minimum_denominator);
       diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
-          diagnostic.numeric_capacity_bytes, checked_add(retained, triples.workspace_bytes));
-      diagnostic.ccsd_t_triples_energy = triples.energy;
-      diagnostic.ccsd_t_virtual_triples = triples.virtual_triples;
-      diagnostic.ccsd_t_workspace_bytes = triples.workspace_bytes;
+          diagnostic.numeric_capacity_bytes, checked_add(retained, triples_workspace_bytes));
+      if (context_->requested_backend == VIBEQC_BACKEND_CUDA)
+        diagnostic.correlation_owned_device_bytes = std::max<std::uint64_t>(
+            diagnostic.correlation_owned_device_bytes, triples_workspace_bytes);
+      diagnostic.ccsd_t_triples_energy = triples_energy;
+      diagnostic.ccsd_t_virtual_triples = triples_virtual_count;
+      diagnostic.ccsd_t_workspace_bytes = triples_workspace_bytes;
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
       last_ = diagnostic;
 
-      state.result.energy = state.solved.total_energy + triples.energy;
+      state.result.energy = state.solved.total_energy + triples_energy;
       return state.result;
     } catch (const std::length_error& error) {
       throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, error.what());
@@ -269,9 +300,15 @@ vibeqc_status validate_rccsdt_system(vibeqc_method method, const core::System& s
 std::unique_ptr<PreparedCalculation> prepare_rccsdt_calculation(
     const Capabilities& capabilities, core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
-  if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
+  if (context.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE &&
+      context.requested_backend != VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "native RCCSD(T) CUDA owner is not promoted yet; use the CPU backend");
+                      "RCCSD(T) requires an explicit CPU or CUDA backend");
+#if !VIBEQC_HAS_CUDA
+  if (context.requested_backend == VIBEQC_BACKEND_CUDA)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "native RCCSD(T) CUDA owner is not compiled in this library");
+#endif
   return std::make_unique<RccsdtPrepared>(capabilities, context, system, descriptor);
 }
 
