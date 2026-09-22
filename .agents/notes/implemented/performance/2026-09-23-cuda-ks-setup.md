@@ -1,6 +1,6 @@
 # Decision: resident compiler-generated CUDA KS initial state
 
-Status: implemented; standalone branch qualification in progress
+Status: implemented; standalone branch and composed preparation qualified
 Date: 2026-09-23
 
 ## Problem
@@ -82,3 +82,20 @@ algebra by contract; do not confuse it with default cold preparation.
 
 - #1091 ordinary-stream eigensolver; #1101 setup cliff; #1102 XC contractions.
 - `docs/developer/ks_diagnostics.md` and `docs/maintainer/performance_engineering.md`.
+
+## Exact stacked-head qualification
+
+Slurm 11392: code head 41411811 (updated #1091 base, current r2SCAN and
+residual admission) passes the allocated analytic native suite and 30 Python
+cases (two expected skips, 131.52 s). These include PBE/r2SCAN RKS/UKS,
+one- and two-slot iteration submission where admitted, independent energies,
+final-state export, replay/geometry, direct/DF and resource/failure gates.
+All PR CI checks pass, including NVIDIA compilation and CuMetal GPU execution.
+Exact-head library SHA-256: `b0e888563582b3fafd27b0cad20e4a82c3d4c7d78c9b77e6d17f5fe4bc40cd90`.
+
+The composed v9 water24 complete PBE endpoints (Slurm 11363/11366) retain
+16 cold iterations and all four independent energy-pair gates. Direct:
+preparation 0.3842 s, cold 27.1023 s, warm 3.4276 / 3.4408 s, maximum error
+1.23e-11 Eh. DF: preparation 0.5959 s, cold 17.6167 s, warm 2.2150 / 2.2563 s,
+maximum error 4.40e-11 Eh. These include the separate GPU-grid/source repairs;
+no standalone large endpoint or complete 96-atom SCF claim follows.
