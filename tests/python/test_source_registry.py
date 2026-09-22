@@ -96,6 +96,49 @@ def test_gcp_canonical_input_matches_registered_upstream_provenance() -> None:
     assert hashes["src/dftd3/data/vdwrad.f90"] == upstream["vdwrad_sha256"]
 
 
+def test_dispersion_generators_consume_common_registry_source_identity() -> None:
+    contracts = {
+        "tools/parameters/generate_d4.py": (
+            "DFTD4_REPOSITORY",
+            "DFTD4_LICENSE",
+            "MCTC_REVISION",
+            "MCTC_TREE",
+            "SOURCE_PATHS",
+            "--source-git-dir",
+            '"--revision"',
+        ),
+        "tools/parameters/generate_d4_eeq.py": (
+            "DFTD4_REVISION",
+            "MULTICHARGE_REVISION",
+            "MCTC_REVISION",
+            "MULTICHARGE_SOURCE",
+            "--dftd4-git-dir",
+            "--multicharge-git-dir",
+            "--mctc-git-dir",
+        ),
+        "tools/parameters/generate_gcp_r2scan3c.py": (
+            "41d5a07b98ce15e97bec7a1815869725f6c7b0c2",
+        ),
+    }
+    for relative, forbidden in contracts.items():
+        text = (source_registry.ROOT / relative).read_text(encoding="utf-8")
+        assert "load_product_sources(" in text, relative
+        assert not any(token in text for token in forbidden), relative
+
+
+def test_gcp_generator_regenerates_checked_in_header_byte_for_byte() -> None:
+    from tools.parameters import generate_gcp_r2scan3c
+
+    sources = source_registry.load_product_sources(
+        "r2scan3c-gcp",
+        generator="tools/parameters/generate_gcp_r2scan3c.py",
+        expected_inputs=("simple-dftd3-gcp",),
+    )
+    data = json.loads(generate_gcp_r2scan3c.SOURCE.read_text(encoding="utf-8"))
+    regenerated = generate_gcp_r2scan3c.render(data, sources["simple-dftd3-gcp"])
+    assert regenerated == generate_gcp_r2scan3c.OUTPUT.read_text(encoding="utf-8")
+
+
 def test_registry_derived_manifests_are_byte_stable() -> None:
     registry = source_registry._load()
     for relative, spec in registry["derived_manifests"].items():
@@ -278,4 +321,174 @@ def test_update_requires_explicit_revision_and_invalidates_products(
     with pytest.raises(
         source_registry.SourceRegistryError, match="source inputs are stale"
     ):
+        source_registry.verify(registry_path)
+
+
+@pytest.mark.parametrize("mutation", ("missing", "revision", "hash"))
+def test_product_source_binding_fails_closed_on_registry_drift(
+    tmp_path: Path, mutation: str
+) -> None:
+    payload = b"registered scientific source\n"
+    source = {
+        "kind": "remote-file-set",
+        "repository": "https://github.com/example/source",
+        "revision": "rev-123",
+        "license": "MIT",
+        "files": {
+            "data.txt": {
+                "upstream_path": "data.txt",
+                "url": "https://raw.githubusercontent.com/example/source/rev-123/data.txt",
+                "sha256": _digest(payload),
+            }
+        },
+    }
+    product = {
+        "inputs": ["sample"],
+        "input_identity_sha256": source_registry._product_input_identity(
+            {"sample": source}, ["sample"]
+        ),
+        "generator": "tools/generator.py",
+        "generator_sha256": "0" * 64,
+        "outputs": {},
+    }
+    registry = {
+        "schema": "vibeqc.scientific-source-registry",
+        "schema_version": 1,
+        "sources": {"sample": source},
+        "products": {"derived": product},
+        "derived_manifests": {},
+    }
+    if mutation == "missing":
+        del registry["sources"]["sample"]
+    elif mutation == "revision":
+        registry["sources"]["sample"]["revision"] = "rev-456"
+    else:
+        registry["sources"]["sample"]["files"]["data.txt"]["sha256"] = "f" * 64
+    registry_path = tmp_path / "manifest.json"
+    registry_path.write_text(json.dumps(registry))
+
+    with pytest.raises(source_registry.SourceRegistryError):
+        source_registry.load_product_sources(
+            "derived",
+            generator="tools/generator.py",
+            expected_inputs=("sample",),
+            registry_path=registry_path,
+        )
+
+
+def test_product_source_reader_requires_registered_cached_bytes(tmp_path: Path) -> None:
+    payload = b"registered scientific source\n"
+    source = {
+        "kind": "remote-file-set",
+        "repository": "https://github.com/example/source",
+        "revision": "rev-123",
+        "license": "MIT",
+        "collections": {"generator": ["data.txt"]},
+        "files": {
+            "data.txt": {
+                "upstream_path": "data.txt",
+                "url": "https://raw.githubusercontent.com/example/source/rev-123/data.txt",
+                "sha256": _digest(payload),
+            }
+        },
+    }
+    registry = {
+        "schema": "vibeqc.scientific-source-registry",
+        "schema_version": 1,
+        "sources": {"sample": source},
+        "products": {
+            "derived": {
+                "inputs": ["sample"],
+                "input_identity_sha256": source_registry._product_input_identity(
+                    {"sample": source}, ["sample"]
+                ),
+                "generator": "tools/generator.py",
+                "generator_sha256": "0" * 64,
+                "outputs": {},
+            }
+        },
+        "derived_manifests": {},
+    }
+    registry_path = tmp_path / "manifest.json"
+    registry_path.write_text(json.dumps(registry))
+    cache = tmp_path / "cache"
+    cached = cache / "sample/data.txt"
+    cached.parent.mkdir(parents=True)
+    cached.write_bytes(payload)
+
+    sources = source_registry.load_product_sources(
+        "derived",
+        generator="tools/generator.py",
+        expected_inputs=("sample",),
+        registry_path=registry_path,
+    )
+    assert source_registry.read_source_texts(
+        "sample", sources["sample"], cache_root=cache, collection="generator"
+    ) == {"data.txt": payload.decode()}
+
+    cached.write_bytes(b"unregistered replacement\n")
+    with pytest.raises(source_registry.SourceRegistryError, match="digest mismatch"):
+        source_registry.read_source_texts(
+            "sample", sources["sample"], cache_root=cache, collection="generator"
+        )
+
+
+def test_verify_rejects_stale_generator_and_product_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_bytes = b"source\n"
+    generator_bytes = b"generator\n"
+    output_bytes = b"output\n"
+    source_path = tmp_path / "upstream/sample/data.txt"
+    generator_path = tmp_path / "tools/generator.py"
+    output_path = tmp_path / "generated/output.txt"
+    for path, data in (
+        (source_path, source_bytes),
+        (generator_path, generator_bytes),
+        (output_path, output_bytes),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    source = {
+        "kind": "snapshot",
+        "repository": "https://github.com/example/source",
+        "revision": "rev-123",
+        "license": "MIT",
+        "local_root": "upstream/sample",
+        "files": {
+            "data.txt": {
+                "upstream_path": "data.txt",
+                "url": "https://raw.githubusercontent.com/example/source/rev-123/data.txt",
+                "sha256": _digest(source_bytes),
+            }
+        },
+    }
+    registry = {
+        "schema": "vibeqc.scientific-source-registry",
+        "schema_version": 1,
+        "sources": {"sample": source},
+        "products": {
+            "derived": {
+                "inputs": ["sample"],
+                "input_identity_sha256": source_registry._product_input_identity(
+                    {"sample": source}, ["sample"]
+                ),
+                "generator": "tools/generator.py",
+                "generator_sha256": _digest(generator_bytes),
+                "outputs": {"generated/output.txt": _digest(output_bytes)},
+            }
+        },
+        "derived_manifests": {},
+    }
+    registry_path = tmp_path / "manifest.json"
+    registry_path.write_text(json.dumps(registry))
+    monkeypatch.setattr(source_registry, "ROOT", tmp_path)
+    assert source_registry.verify(registry_path)["product_files"] == 1
+
+    generator_path.write_bytes(b"stale generator\n")
+    with pytest.raises(source_registry.SourceRegistryError, match="generator digest"):
+        source_registry.verify(registry_path)
+    generator_path.write_bytes(generator_bytes)
+    output_path.write_bytes(b"stale product\n")
+    with pytest.raises(source_registry.SourceRegistryError, match="product digest"):
         source_registry.verify(registry_path)

@@ -36,6 +36,25 @@ python tools/source_registry.py sync dftd4-reference
 python tools/source_registry.py sync gpu4pyscf-rys
 ```
 
+The D4/EEQ domain generators consume those registered cache entries directly;
+they do not accept an independent revision or Git checkout:
+
+```bash
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync mctc-lib-eeq
+python tools/source_registry.py sync multicharge-eeq2019
+python tools/parameters/generate_d4.py --output-dir src/dft/dispersion
+python tools/parameters/generate_d4_eeq.py --output-dir src/dft/dispersion
+python tools/parameters/generate_gcp_r2scan3c.py
+```
+
+Each generator binds to one named product and its exact ordered source IDs.
+Missing entries or changed revision/file identities fail before generation, and
+cached remote bytes are rehashed before parsing. The gCP generator consumes its
+checked-in canonical input while validating that input's upstream identity
+against `simple-dftd3-gcp`; it does not need remote bytes for ordinary
+regeneration.
+
 Move an existing allowlisted source closure to one explicitly selected commit or release tag:
 
 ```bash
@@ -46,6 +65,9 @@ python tools/source_registry.py update gpu4pyscf-rys --revision <commit-sha>
 Checked-in sources are restored or updated at their registered `upstream/...` `local_root`. Future remote-only source sets are written below `.cache/vibeqc-sources/<source-id>/`. `sync` refuses bytes whose digest differs from the registry. `update` reconstructs URLs from the registered repository and upstream paths, rejects obvious floating refs such as `main`, `master`, and `HEAD`, and records new raw and normalized digests. Neither command is used by a normal build.
 
 Each generated product also records an input-source identity. Changing an upstream revision or file digest therefore makes `verify` fail until the affected product is deliberately regenerated and its reviewed identity/output hashes are refreshed.
+
+The domain-consumer boundary and byte-stability rationale are recorded in
+[the dispersion generator registry decision](../.agents/notes/implemented/architecture/2026-09-22-dispersion-generators-source-registry.md).
 
 ## Libxc ownership
 

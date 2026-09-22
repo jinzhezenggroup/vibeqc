@@ -176,7 +176,21 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
             _check_digest(
                 item["upstream_sha256"], label=f"{source_id}.{name}.upstream_sha256"
             )
+        if "git_blob" in item and not re.fullmatch(r"[0-9a-f]{40}", item["git_blob"]):
+            raise SourceRegistryError(
+                f"{source_id!r} file {name!r} has invalid Git blob identity"
+            )
+        if "size" in item and (not isinstance(item["size"], int) or item["size"] < 0):
+            raise SourceRegistryError(
+                f"{source_id!r} file {name!r} has invalid byte size"
+            )
         _normalize(b"", item.get("normalization"))
+
+    git_tree = source.get("git_tree")
+    if git_tree is not None and (
+        not isinstance(git_tree, str) or not re.fullmatch(r"[0-9a-f]{40}", git_tree)
+    ):
+        raise SourceRegistryError(f"source {source_id!r} has invalid Git tree identity")
 
     admission = source.get("admission")
     if admission is not None:
@@ -198,6 +212,89 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
         )
         if _sha256(importer) != expected:
             raise SourceRegistryError(f"source importer digest mismatch: {importer}")
+
+
+def load_product_sources(
+    product_id: str,
+    *,
+    generator: str,
+    expected_inputs: tuple[str, ...],
+    registry_path: Path = REGISTRY,
+) -> dict[str, dict[str, Any]]:
+    """Bind a domain generator to its exact registered scientific inputs."""
+    registry = _load(registry_path)
+    product = registry["products"].get(product_id)
+    if not isinstance(product, dict):
+        raise SourceRegistryError(f"unknown generated product {product_id!r}")
+    registered_generator = _relative_path(
+        product.get("generator"), label=f"{product_id}.generator"
+    ).as_posix()
+    requested_generator = _relative_path(
+        generator, label=f"{product_id}.expected_generator"
+    ).as_posix()
+    if registered_generator != requested_generator:
+        raise SourceRegistryError(
+            f"product {product_id!r} is bound to generator {registered_generator!r}"
+        )
+    inputs = product.get("inputs")
+    if inputs != list(expected_inputs):
+        raise SourceRegistryError(
+            f"product {product_id!r} source inputs do not match its generator contract"
+        )
+    sources = registry["sources"]
+    if any(source_id not in sources for source_id in inputs):
+        raise SourceRegistryError(f"product {product_id!r} has unknown source inputs")
+    bound = {source_id: sources[source_id] for source_id in inputs}
+    for source_id, source in bound.items():
+        _validate_source_metadata(source_id, source)
+    expected_identity = _check_digest(
+        product.get("input_identity_sha256"),
+        label=f"{product_id}.input_identity_sha256",
+    )
+    if _product_input_identity(sources, inputs) != expected_identity:
+        raise SourceRegistryError(f"product source inputs are stale: {product_id}")
+    return bound
+
+
+def read_source_texts(
+    source_id: str,
+    source: dict[str, Any],
+    *,
+    cache_root: Path = DEFAULT_CACHE,
+    collection: str | None = None,
+) -> dict[str, str]:
+    """Read registered UTF-8 source bytes only after exact digest validation."""
+    _validate_source_metadata(source_id, source)
+    if collection is None:
+        names = list(source["files"])
+    else:
+        names = source.get("collections", {}).get(collection)
+        if not isinstance(names, list) or not names or len(names) != len(set(names)):
+            raise SourceRegistryError(
+                f"invalid source collection {source_id}:{collection}"
+            )
+        missing = set(names) - set(source["files"])
+        if missing:
+            raise SourceRegistryError(
+                f"source collection {source_id}:{collection} has unknown files {sorted(missing)}"
+            )
+    texts: dict[str, str] = {}
+    for name in names:
+        item = source["files"][name]
+        path = _source_file_destination(source_id, source, name, cache_root)
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"registered source is unavailable locally: {path}; "
+                f"run source_registry.py sync {source_id} explicitly"
+            )
+        data = path.read_bytes()
+        expected = _check_digest(item["sha256"], label=f"{source_id}.{name}.sha256")
+        if _sha256_bytes(data) != expected:
+            raise SourceRegistryError(f"registered source digest mismatch: {path}")
+        if "size" in item and len(data) != item["size"]:
+            raise SourceRegistryError(f"registered source size mismatch: {path}")
+        texts[name] = data.decode("utf-8")
+    return texts
 
 
 def _render_libxc_collection(
