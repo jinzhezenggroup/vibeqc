@@ -72,7 +72,7 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
         required_features=("fp64", "cublaslt"),
     )
     rejected = LoweringCandidate(
-        request_hash=first.identity,
+        request=first,
         implementation="cublaslt-matmul",
         providers=(provider,),
         status="unsupported",
@@ -85,7 +85,7 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
 
     with pytest.raises(ValueError, match="rejection reason"):
         LoweringCandidate(
-            request_hash=first.identity,
+            request=first,
             implementation="invalid",
             providers=(provider,),
             status="unsupported",
