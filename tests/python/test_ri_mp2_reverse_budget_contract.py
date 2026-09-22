@@ -95,9 +95,7 @@ def test_reverse_peak_covers_live_metric_pullback(
     # Independent live-buffer inventory at symmetric_matrix_function_vjp:
     # input H/S/ERI weights; result H/S/A; bar_B/bar_A; bar_X; eigenvectors;
     # four VJP matrices (including returned M); eigenvalues and uint8 rank mask.
-    live_bytes = (
-        4096 + 8 * (4 * n**2 + n**4 + 3 * n**2 * na + 6 * na**2) + 9 * na
-    )
+    live_bytes = 4096 + 8 * (4 * n**2 + n**4 + 3 * n**2 * na + 6 * na**2) + 9 * na
     assert planned >= live_bytes
     assert run(planned).returncode == 0
     assert run(planned - 1).returncode == 2
