@@ -52,13 +52,13 @@ def _coordinates(
     variables: tuple[typing.Any, ...],
 ) -> tuple[typing.Any, ...]:
     if spec.spin == "polarized":
-        rho_a, rho_b, sigma_aa, sigma_ab, sigma_bb, tau_a, tau_b = variables
+        rho_a, rho_b, sigma_aa, _sigma_ab, sigma_bb, tau_a, tau_b = variables
         density = rho_a + rho_b
         zeta = (rho_a - rho_b) / density
     elif spec.spin == "unpolarized":
         density, sigma, tau = variables
         rho_a = rho_b = density / 2
-        sigma_aa = sigma_ab = sigma_bb = sigma / 4
+        sigma_aa = sigma_bb = sigma / 4
         tau_a = tau_b = tau / 2
         zeta = graph.constant(0)
     else:
