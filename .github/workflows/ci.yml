@@ -369,6 +369,12 @@ jobs:
             extra_args+=(
               --deselect
               'tests/python/test_mp2_gradient.py::test_dense_complete_gradient_matches_fully_resolved_finite_differences[water]'
+              # The complete 55-class capability report performs bounded source
+              # emission for every recurrence/schedule combination and costs
+              # several minutes by itself. Focused capability/emitter tests stay
+              # routine; retain the exhaustive catalog sweep nightly/manual.
+              --deselect
+              'tests/python/test_codegen.py::test_codegen_capability_report_covers_catalog_and_manifest'
               --deselect
               'tests/python/test_ecp_f.py::test_f_prepared_replay_with_planned_budget[cpu]'
               --deselect
@@ -631,7 +637,9 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    if: github.event_name != 'schedule'
+    # Correctness gates already run on every PR. Keep CodSpeed on master/manual
+    # qualification so performance telemetry does not consume PR runner slots.
+    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
