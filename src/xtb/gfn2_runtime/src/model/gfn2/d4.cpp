@@ -514,10 +514,6 @@ xtbloom_status_t evaluate_shared_molecular_d4_component(
         error = "shared molecular D4 gradient accumulation overflowed";
         return XTBLOOM_STATUS_INTERNAL_ERROR;
       }
-      shared_workspace = workspace.pair_scratch;
-      shared_workspace_elements = static_cast<std::size_t>(workspace.pair_elements);
-      candidate_gradient = workspace.gradient_scratch + 3 * begin;
-      candidate_dq = workspace.coordination_adjoints + begin;
     }
   }
   if (energies != nullptr)
