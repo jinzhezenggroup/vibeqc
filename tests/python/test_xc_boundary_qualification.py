@@ -17,7 +17,10 @@ from vibeqc_compiler.xc.boundary import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-R2SCAN_REFERENCE = ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
+R2SCAN_REFERENCE = ROOT / "tests/data/xc/r2scan-tail-reference.json"
+R2SCAN_BINARY64_DIAGNOSTIC = (
+    ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
+)
 
 
 @pytest.mark.parametrize("family", ("lda", "gga", "mgga"))
@@ -119,14 +122,15 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     tmp_path: Path,
 ) -> None:
     reference = json.loads(R2SCAN_REFERENCE.read_text(encoding="utf-8"))
-    assert reference["schema"] == "vibeqc.xc-boundary-reference/v1"
+    assert reference["schema"] == "vibeqc.r2scan-tail-reference/v1"
     assert reference["boundary_semantics"] == BOUNDARY_SEMANTICS
-    assert reference["oracle"]["libxc"] == "7.0.0"
     assert reference["functional"] == "R2SCAN"
     assert reference["spin"] == "polarized"
+    assert reference["oracle"]["source"].startswith("Libxc 7.0.0 original Maple")
+    assert "113 significand bits" in reference["oracle"]["arithmetic"]
 
-    features = np.asarray([p["features"] for p in reference["points"]])
-    expected = np.asarray([p["expected"] for p in reference["points"]])
+    features = np.asarray([p["inputs"] for p in reference["points"]])
+    expected = np.asarray([p["reference"] for p in reference["points"]])
     # A spin permutation is an independent symmetry of the physical contract.
     features = np.concatenate((features, features[:, [1, 0, 4, 3, 2, 6, 5]]))
     expected = np.concatenate((expected, expected[:, [0, 2, 1, 5, 4, 3, 7, 6]]))
@@ -135,7 +139,10 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
         actual.shape == expected.shape
         and np.isfinite(actual).all()
         and np.allclose(
-            actual, expected, rtol=reference["rtol"], atol=reference["atol"]
+            actual,
+            expected,
+            rtol=reference["oracle"]["tolerance"]["rtol"],
+            atol=reference["oracle"]["tolerance"]["atol"],
         )
     )
 
@@ -155,7 +162,7 @@ def test_retained_r2scan_oracle_matches_independent_libxc() -> None:
 
     library = libxc._itrf
     _configure(library)
-    reference = json.loads(R2SCAN_REFERENCE.read_text())
+    reference = json.loads(R2SCAN_BINARY64_DIAGNOSTIC.read_text())
     names = bulk_feature_names("mgga", "polarized")
     for point in reference["points"]:
         values = point["features"]
