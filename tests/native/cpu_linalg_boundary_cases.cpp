@@ -79,6 +79,31 @@ int main(int argc, char** argv) {
     }
     return 1;
   }
+  if (mode == "syr_alpha_zero") {
+    cpu_syr('L', 2, &nan, nullptr, 0.0, plan);
+    return 0;
+  }
+  if (mode == "syr_extent") {
+    try {
+      cpu_syr('L', std::numeric_limits<std::size_t>::max() / 2 + 1, nullptr, nullptr, 0.0, plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
+  if (mode == "syr2_alpha_zero") {
+    cpu_syr2('U', 2, &nan, &nan, nullptr, 0.0, plan);
+    return 0;
+  }
+  if (mode == "syr2_extent") {
+    try {
+      cpu_syr2('U', std::numeric_limits<std::size_t>::max() / 2 + 1, nullptr, nullptr, nullptr, 0.0,
+               plan);
+    } catch (const std::length_error&) {
+      return 0;
+    }
+    return 1;
+  }
   if (mode == "syrk_alpha_zero") {
     double matrix[4]{nan, 9.0, nan, nan};
     cpu_syrk('L', 'N', 2, 1, &nan, matrix, 0.0, 0.0, plan);

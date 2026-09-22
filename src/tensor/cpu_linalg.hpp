@@ -67,6 +67,19 @@ void cpu_ger(std::size_t m, std::size_t n, const double* x, const double* y, dou
 void cpu_symm(char side, char uplo, std::size_t m, std::size_t n, const double* a, const double* b,
               double* c, double alpha = 1.0, double beta = 0.0, const CpuLinalgPlan& plan = {});
 
+/** Symmetric rank-1 update of the selected triangle: A := alpha * x * x^T + A.
+ * Only the triangle selected by `uplo` is read from or written to in A.
+ */
+void cpu_syr(char uplo, std::size_t n, const double* x, double* a, double alpha = 1.0,
+             const CpuLinalgPlan& plan = {});
+
+/** Symmetric rank-2 update of the selected triangle.
+ * A := alpha * x * y^T + alpha * y * x^T + A.
+ * Only the triangle selected by `uplo` is read from or written to in A.
+ */
+void cpu_syr2(char uplo, std::size_t n, const double* x, const double* y, double* a,
+              double alpha = 1.0, const CpuLinalgPlan& plan = {});
+
 /** Symmetric rank-k update of the selected triangle.
  * `trans == 'N'` consumes an n-by-k row-major A; `trans == 'T'` consumes k-by-n.
  * Only the triangle selected by `uplo` is read from or written to in C.
