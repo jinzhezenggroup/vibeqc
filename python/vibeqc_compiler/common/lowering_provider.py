@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from .provenance import canonical_hash
+from .specialization import TargetCapabilities
 
 LOWERING_REQUEST_SCHEMA = "vibeqc.compiler.lowering-request.v1"
 LOWERING_PROVIDER_SCHEMA = "vibeqc.compiler.lowering-provider.v1"
@@ -211,6 +212,65 @@ class LoweringCandidate:
             "reason": self.reason,
             "provenance": dict(self.provenance),
         }
+
+
+class LoweringProvider(typing.Protocol):
+    """Side-effect-free candidate producer; selection and promotion live elsewhere."""
+
+    descriptor: ProviderDescriptor
+
+    def candidates(
+        self, request: LoweringRequest, target: TargetCapabilities
+    ) -> tuple[LoweringCandidate, ...]:
+        """Return ready and/or explicit unsupported candidates for one request."""
+
+
+def collect_lowering_candidates(
+    request: LoweringRequest,
+    target: TargetCapabilities,
+    providers: typing.Iterable[LoweringProvider],
+) -> tuple[LoweringCandidate, ...]:
+    """Collect provider offers without ranking, probing, compiling, or fallback."""
+
+    if not isinstance(request, LoweringRequest):
+        raise TypeError("provider collection requires a LoweringRequest")
+    if not isinstance(target, TargetCapabilities):
+        raise TypeError("provider collection requires TargetCapabilities")
+    if request.backend != target.target.backend:
+        raise ValueError(
+            f"lowering backend {request.backend!r} does not match target "
+            f"{target.target.backend!r}"
+        )
+
+    collected: list[LoweringCandidate] = []
+    identities: set[str] = set()
+    for provider in providers:
+        descriptor = provider.descriptor
+        if not isinstance(descriptor, ProviderDescriptor):
+            raise TypeError("lowering provider descriptor has the wrong type")
+        offered = tuple(provider.candidates(request, target))
+        if not offered:
+            raise ValueError(
+                f"provider {descriptor.name!r} must return explicit unsupported evidence"
+            )
+        for candidate in offered:
+            if not isinstance(candidate, LoweringCandidate):
+                raise TypeError("lowering provider returned a non-candidate")
+            if candidate.request != request:
+                raise ValueError(
+                    f"provider {descriptor.name!r} returned a candidate for another request"
+                )
+            if descriptor.identity not in {
+                dependency.identity for dependency in candidate.providers
+            }:
+                raise ValueError(
+                    f"candidate from {descriptor.name!r} does not name its provider"
+                )
+            if candidate.identity in identities:
+                raise ValueError("duplicate lowering candidate identity")
+            identities.add(candidate.identity)
+            collected.append(candidate)
+    return tuple(collected)
 
 
 def lowering_diagnostics(
