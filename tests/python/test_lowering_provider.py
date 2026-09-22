@@ -8,9 +8,11 @@ from vibeqc_compiler.common.lowering_provider import (
     LoweringCandidate,
     LoweringRequest,
     ProviderDescriptor,
+    collect_lowering_candidates,
     lowering_diagnostics,
 )
 from vibeqc_compiler.common.schedule import ScheduleContract
+from vibeqc_compiler.common.specialization import TargetCapabilities
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -90,6 +92,66 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
             status="unsupported",
             numerical_mode="float64->float64",
         )
+
+
+class _RejectingProvider:
+    def __init__(self, descriptor: ProviderDescriptor) -> None:
+        self.descriptor = descriptor
+
+    def candidates(
+        self, request: LoweringRequest, target: TargetCapabilities
+    ) -> tuple[LoweringCandidate, ...]:
+        del target
+        return (
+            LoweringCandidate(
+                request=request,
+                implementation="rejected",
+                providers=(self.descriptor,),
+                status="unsupported",
+                numerical_mode=f"{request.dtype}->{request.accumulation_dtype}",
+                reason="required target capability is unavailable",
+            ),
+        )
+
+
+class _SilentProvider:
+    def __init__(self, descriptor: ProviderDescriptor) -> None:
+        self.descriptor = descriptor
+
+    def candidates(
+        self, request: LoweringRequest, target: TargetCapabilities
+    ) -> tuple[LoweringCandidate, ...]:
+        del request, target
+        return ()
+
+
+def test_provider_collection_requires_explicit_negative_evidence() -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="gemm",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(7, 11, 13),
+    )
+    descriptor = ProviderDescriptor(
+        name="nvidia.cublaslt",
+        kind="library",
+        implementation="matmul",
+        required_features=("cublaslt",),
+    )
+    target = TargetCapabilities(
+        TARGET.target_info,
+        features=(("cublaslt", False),),
+    )
+    candidate = collect_lowering_candidates(
+        request, target, (_RejectingProvider(descriptor),)
+    )[0]
+    assert candidate.status == "unsupported"
+    assert candidate.reason == "required target capability is unavailable"
+
+    with pytest.raises(ValueError, match="explicit unsupported evidence"):
+        collect_lowering_candidates(request, target, (_SilentProvider(descriptor),))
 
 
 def test_tensor_generated_cuda_provider_is_explicit() -> None:
