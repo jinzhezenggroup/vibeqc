@@ -27,10 +27,12 @@ from vibeqc._stationary_cuda import (
     PreparedStationaryCudaExecution,
     complete_rks_cuda_gradient_diagnostic,
 )
-from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.provenance import atomic_json
 from vibeqc_compiler.dft import NativeAO
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 
 SYSTEMS = {
     "h2": [
