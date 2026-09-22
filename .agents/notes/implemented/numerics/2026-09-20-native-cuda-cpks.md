@@ -92,5 +92,5 @@ memory or point tests as a complete performance result.
 ## References
 
 - Issue #179; native CPU RKS/UKS #649/#659; spin CUDA #661.
-- [Current response contract](../../../../docs/response.md).
+- [Current response contract](../../../../docs/developer/response.md).
 - [CPU spin rationale](2026-09-20-native-uks-cpks.md).

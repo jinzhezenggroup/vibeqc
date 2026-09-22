@@ -97,5 +97,5 @@ or if a larger diagnostic set causes unacceptable register/code growth.
 ## References
 
 - [Issue #395](https://github.com/jinzhezenggroup/vibeqc/issues/395)
-- [Current shell derivative contract](../../../../docs/df_shell_derivatives.md)
-- [Performance requirements](../../../../docs/performance_engineering.md)
+- [Current shell derivative contract](../../../../docs/developer/df_shell_derivatives.md)
+- [Performance requirements](../../../../docs/maintainer/performance_engineering.md)

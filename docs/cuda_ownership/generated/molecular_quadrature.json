@@ -1,0 +1,6 @@
+{
+  "name": "molecular_quadrature",
+  "outputs": ["generated/generated_quadrature.cuh"],
+  "owner": "python/vibeqc_compiler/xc/quadrature_cuda.py",
+  "scope": "CUDA atom/radial/polar/azimuth point construction, reused distances, Becke graph lowering, reference-oriented log normalization, bounded tile layout and exact allocation inventory. Native code owns allocation, execution and retained host exports."
+}

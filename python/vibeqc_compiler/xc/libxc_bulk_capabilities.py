@@ -89,6 +89,7 @@ class BulkFunctionalCapability:
     libxc_id: int
     entry: str
     owner: str
+    flags: str
     identity: str
     qualified_stages: tuple[str, ...]
     stage_evidence: tuple[StageEvidence, ...] = ()
@@ -120,6 +121,18 @@ class BulkFunctionalCapability:
         """Public admission is explicit evidence, never inferred from SCF alone."""
         return "public-method" in self.qualified_stages
 
+    @property
+    def required_ingredients(self) -> tuple[str, ...]:
+        """Return physical feature families required by the Libxc registration."""
+        ingredients = ["rho"]
+        if self.family in ("gga", "mgga"):
+            ingredients.append("sigma")
+        if "XC_FLAGS_NEEDS_LAPLACIAN" in self.flags:
+            ingredients.append("laplacian")
+        if "XC_FLAGS_NEEDS_TAU" in self.flags:
+            ingredients.append("tau")
+        return tuple(ingredients)
+
     def to_payload(self) -> dict[str, Any]:
         """Return a detached, JSON-serializable capability record."""
         return {
@@ -130,6 +143,8 @@ class BulkFunctionalCapability:
             "libxc_id": self.libxc_id,
             "entry": self.entry,
             "owner": self.owner,
+            "flags": self.flags,
+            "required_ingredients": list(self.required_ingredients),
             "domain": self.domain,
             "claim_level": self.claim_level,
             "qualified_stages": list(self.qualified_stages),
@@ -282,6 +297,7 @@ def _functional_capability(
         libxc_id=record["id"],
         entry=record["entry"],
         owner=record["owner"],
+        flags=record["flags"],
         identity=identity,
         qualified_stages=_qualified_stages(stage_evidence),
         stage_evidence=stage_evidence,
@@ -346,4 +362,40 @@ def claimable_functionals(
         capability.name
         for capability in available_capabilities(evidence_by_functional)
         if level in capability.qualified_stages
+    )
+
+
+def claimable_components(
+    *,
+    families: tuple[str, ...] = ("lda", "gga"),
+    supported_ingredients: tuple[str, ...] | None = None,
+) -> tuple[str, ...]:
+    """Return pointwise-qualified IDs within an optionally supported feature set.
+
+    The ingredient filter is representation admission only. It does not promote
+    production-domain evaluation, molecular SCF, forces, or public methods.
+    """
+    allowed_families = frozenset(("lda", "gga", "mgga"))
+    requested = frozenset(families)
+    if not requested or not requested <= allowed_families:
+        raise ValueError(
+            "bulk component families must be a nonempty lda/gga/mgga subset"
+        )
+    supported = (
+        None if supported_ingredients is None else frozenset(supported_ingredients)
+    )
+    allowed_ingredients = frozenset(("rho", "sigma", "laplacian", "tau"))
+    if supported is not None and (
+        not supported or not supported <= allowed_ingredients
+    ):
+        raise ValueError(
+            "supported ingredients must be a nonempty rho/sigma/laplacian/tau subset"
+        )
+    return tuple(
+        capability.name
+        for capability in available_capabilities()
+        if capability.family in requested
+        and (
+            supported is None or frozenset(capability.required_ingredients) <= supported
+        )
     )

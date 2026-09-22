@@ -35,4 +35,4 @@ Historical evidence and reproduction commands remain tied to their measured
 source revisions; removal does not relabel earlier benchmark artifacts.
 
 References: #394, #404; [historical SSS qualification](../performance/2026-09-16-000-rys-qualification.md),
-[current tuning](../../../../docs/df_tuning.md).
+[current tuning](../../../../docs/developer/df_tuning.md).

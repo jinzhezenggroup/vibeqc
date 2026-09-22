@@ -79,5 +79,5 @@ binding and their acceptance together.
 ## References
 
 - [Issue #179](https://github.com/jinzhezenggroup/vibeqc/issues/179)
-- [Response contract](../../../../docs/response.md)
-- [SCF point domain](../../../../docs/xc_scf_domain.md)
+- [Response contract](../../../../docs/developer/response.md)
+- [SCF point domain](../../../../docs/developer/xc_scf_domain.md)

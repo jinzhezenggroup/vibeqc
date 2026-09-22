@@ -15,14 +15,19 @@
 #include "dft/cuda_ks_kernels.hpp"
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
+#include "runtime/compiled_execution_region.hpp"
+#include "runtime/host_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "runtime/solver_region_cuda.cuh"
 #include "scf/cuda/eigensolver.hpp"
+#include "scf/cuda/mean_field_setup.hpp"
 #include "scf/cuda/scf_constants.hpp"
 #include "scf/cuda/scf_density_kernels.hpp"
 #include "scf/cuda/scf_diis_kernels.hpp"
 #include "scf/cuda/scf_matrix_kernels.hpp"
-#include "scf/cuda_direct_jk_device.hpp"
+#include "scf/cuda_density_fitting_device.hpp"
+#include "scf/cuda_fock_execution.hpp"
+#include "scf/eigensolver_workspace.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/proposal_control.hpp"
@@ -67,7 +72,7 @@ std::size_t sum(std::size_t a, std::size_t b) {
 struct KsStateStorage {
   double *hcore{}, *overlap{}, *x{}, *j{}, *density{}, *proposal{}, *warm{}, *fock{}, *residual{},
       *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{}, *gram{}, *weights{},
-      *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{};
+      *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{}, *cold_seed{};
   std::int32_t* occupied{};
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
@@ -91,6 +96,9 @@ struct KsStateStorage {
     for (auto** pointer : {&hcore, &overlap, &x, &j}) reserve(*pointer, matrix);
     for (auto** pointer : {&density, &proposal, &warm, &fock, &residual, &tmp1, &tmp2, &effective})
       reserve(*pointer, elements);
+    // The generated cold guess stays resident across cold retries. It cannot
+    // alias proposal/warm storage, which changes during every SCF trajectory.
+    reserve(cold_seed, elements);
     reserve(fock_history, product(history, elements));
     reserve(residual_history, product(history, elements));
     reserve(gram, product(history + 1, history + 1));
@@ -131,7 +139,8 @@ std::size_t cuda_ks_state_bytes(std::size_t n, unsigned spins, unsigned history)
       (spins != 1 && spins != 2) || history > 64)
     throw std::invalid_argument("invalid CUDA KS resource shape");
   KsStateStorage layout;
-  return layout.partition(n, spins, std::max(1U, history), nullptr);
+  return sum(layout.partition(n, spins, std::max(1U, history), nullptr),
+             n <= kSmallEigensolverLimit ? 0 : scf::ordinary_eigensolver_workspace_allowance(n));
 }
 
 struct CudaKsPlan::Impl : KsStateStorage {
@@ -139,14 +148,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
   const AoBasis& basis;
   const MolecularGrid& grid;
   scf::ScfOptions options;
-  scf::CudaDirectJkPlan* direct{};
+  scf::PreparedCudaFockBinding fock_binding{};
+  scf::CudaDensityFittingJkPlan* fitted{};
   cudaStream_t stream{};
   int device{};
   std::size_t n{}, matrix{}, elements{};
   unsigned spins{}, history{};
   std::array<std::size_t, 2> occupations{};
-  std::vector<double> orthogonalizer, cold_density, host_xc_density, host_xc_alpha, host_xc_beta,
-      host_xc_potential;
+  std::vector<double> host_xc_density, host_xc_alpha, host_xc_beta, host_xc_potential;
   // Async H2D copies retain these controls through the existing stream drain.
   std::array<double, 3> host_xc_totals{};
   int host_xc_error{};
@@ -159,6 +168,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   CudaKsTransfers movement;
   void *arena{}, *xc_arena{};
   std::unique_ptr<CudaXcPlan> xc;
+  std::unique_ptr<OrdinaryStreamEigensolver> eigensolver;
   scf::ScfResult output;
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
   bool warm_updates{true}, device_chunk_mode{};
@@ -172,6 +182,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
   unsigned pending_iterations{};
   std::array<std::uint64_t, kCudaKsChunkCapacity> pending_generations{};
   runtime::SolverRegionCudaExecutor solver_region_executor;
+  runtime::CompiledExecutionRegion device_chunk_region;
+
+  runtime::CompiledExecutionBinding device_chunk_binding() const {
+    return {"cuda-ks-device-chunk-v1:" + std::to_string(n) + ":" + std::to_string(spins) + ":" +
+                std::to_string(functional) + ":" + std::to_string(history) + ":" +
+                std::to_string(xc_layout.tile_points),
+            // The prepared facade owns provider lifetime and replay identity;
+            // device chunks are admitted only for its direct-Fock binding.
+            device, stream, arena, fock_binding.source_identity};
+  }
 
   void current_device() const {
     // Prepared owners select their bound device on every entry, as the common
@@ -182,6 +202,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   std::vector<double> seed(const std::vector<double>* input) const {
     using namespace scf::reference;
+    if (!input) throw std::logic_error("CUDA cold guesses must use resident setup state");
     const auto& ints = provider.one_electron();
     if (options.strict_initial_density && input) {
       const std::vector<unsigned> counts =
@@ -191,14 +212,85 @@ struct CudaKsPlan::Impl : KsStateStorage {
       scf::solver::validate_seed(ints.overlap, *input, n, counts, spins == 2 ? 1.0 : 2.0);
       return *input;
     }
-    std::optional<EigenResult> a, b;
     if (spins == 2) {
-      const auto pair = scf::initial_guess::prepare_initial_uhf_density(
-          ints, orthogonalizer, occupations[0], occupations[1], input, a, b);
+      const auto pair = scf::initial_guess::normalized_warm_uhf_density(ints, occupations[0],
+                                                                        occupations[1], *input);
       return concatenate(pair.first, pair.second);
     }
-    return scf::initial_guess::prepare_initial_density(provider.system(), ints, orthogonalizer,
-                                                       occupations[0], input, a);
+    return scf::initial_guess::normalized_warm_density(provider.system(), ints, *input);
+  }
+
+  /** Construct X and the historical core guess with the ordinary GPU solver.
+   * All working matrices borrow the existing arena before iteration begins;
+   * only the immutable cold density adds retained storage. Host warm-input
+   * normalization remains an explicit input-boundary operation, never a
+   * reference eigen fallback. */
+  void prepare_initial_state() {
+    runtime::host_trace::Region trace("cuda_ks_initial_state", n);
+    const auto matrix_blocks = (matrix + 127) / 128;
+    if (matrix_blocks > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+      throw std::invalid_argument("CUDA KS setup matrix launch exceeds the device grid domain");
+    const auto blocks = static_cast<unsigned>(matrix_blocks);
+    const auto multiply = [&](const double* a, bool transpose, const double* b, double* c) {
+      launch_matrix_product_kernel(blocks, 128, 0, stream, 1, n, a, transpose, b, final_enabled, c,
+                                   1.0);
+      check(cudaGetLastError());
+    };
+    const auto solve = [&] {
+      check(eigensolver->launch(1, tmp2, effective, eigenvalues, solver_info, final_enabled),
+            "CUDA KS setup eigensolver launch failed");
+    };
+    const auto read_status = [&](bool metric) {
+      // Stack-backed downloads are drained before any error escapes this scope.
+      std::array<int, 2> status{};
+      try {
+        check(
+            cudaMemcpyAsync(&status[0], solver_info, sizeof(int), cudaMemcpyDeviceToHost, stream));
+        if (metric)
+          check(cudaMemcpyAsync(&status[1], jk_error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+        check(cudaStreamSynchronize(stream));
+      } catch (...) {
+        (void)cudaStreamSynchronize(stream);
+        throw;
+      }
+      movement.scalar_d2h_bytes += sizeof(int) * (metric ? 2 : 1);
+      ++movement.synchronizations;
+      if (status[0]) throw std::runtime_error("CUDA KS setup eigensolver did not converge");
+      if (status[1])
+        throw std::runtime_error("overlap matrix is singular or failed its metric identity check");
+    };
+    check(
+        cudaMemcpyAsync(tmp2, overlap, matrix * sizeof(double), cudaMemcpyDeviceToDevice, stream));
+    solve();
+    check(cudaMemsetAsync(jk_error, 0, sizeof(int), stream));
+    form_overlap_weights(stream, n, eigenvalues, jk_error);
+    check(cudaGetLastError());
+    form_weighted_projector(stream, n, 1, tmp2, eigenvalues, x);
+    check(cudaGetLastError());
+    multiply(overlap, false, x, tmp1);
+    multiply(x, true, tmp1, residual);
+    check_overlap_metric(stream, n, residual, jk_error);
+    check(cudaGetLastError());
+    read_status(true);  // Reject singular S before attempting a core solve.
+
+    multiply(hcore, false, x, tmp1);
+    multiply(x, true, tmp1, tmp2);
+    solve();
+    multiply(x, false, tmp2, tmp1);
+    if (spins == 2) {
+      check(cudaMemcpyAsync(tmp1 + matrix, tmp1, matrix * sizeof(double), cudaMemcpyDeviceToDevice,
+                            stream));
+      // Reuse the common UHF frontier rotation, including beta=0/equal-spin
+      // branches; the scientific seed policy is identical to HF and CPU KS.
+      launch_mix_open_shell_guess_kernel(static_cast<unsigned>((n + 127) / 128), 128, 0, stream, 1,
+                                         n, occupied, final_enabled, tmp1);
+      check(cudaGetLastError());
+    }
+    form_occupation_weights(stream, n, spins, occupations[0], occupations[1], eigenvalues);
+    check(cudaGetLastError());
+    form_weighted_projector(stream, n, spins, tmp1, eigenvalues, cold_seed);
+    check(cudaGetLastError());
+    read_status(false);
   }
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
@@ -212,19 +304,23 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
+    fock_binding = scf::prepared_cuda_fock_binding(provider);
+    fitted = provider.cuda_fitted_source();
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
         strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
         strategy.spec.coulomb.coefficient != 1.0 ||
-        strategy.spec.coulomb.approximation != scf::FockApproximation::Exact ||
-        strategy.spec.exchange.present || !(direct = provider.cuda_direct_source()))
+        (strategy.spec.coulomb.approximation != scf::FockApproximation::Exact &&
+         strategy.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
+        strategy.spec.exchange.present || (!fock_binding && !fitted) || (fock_binding && fitted))
       throw std::invalid_argument(
-          "CUDA KS requires the prepared conventional Coulomb-only strategy");
+          "CUDA KS requires a prepared exact or fitted Coulomb-only strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
         (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
          *options.precision_mode != VIBEQC_PRECISION_AUTO))
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
+    if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
     if (mixed_j && functional > 1U)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
@@ -256,11 +352,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
         !std::all_of(integrals.hcore.begin(), integrals.hcore.end(), finite))
       throw std::runtime_error("nonfinite CUDA KS one-electron or nuclear energy");
     history = std::max(1U, options.diis_history);
-    device = scf::cuda_direct_jk_device(direct);
-    stream = scf::cuda_direct_jk_stream(direct);
+    device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
+    stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
-    orthogonalizer = scf::reference::symmetric_orthogonalizer(provider.one_electron().overlap, n);
-    cold_density = seed(nullptr);
     xc_layout = cuda_xc_layout(basis, grid, functional, spins == 2, tile);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
@@ -280,8 +374,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
                 : options.max_iterations;
     output.dft_diagnostic.history.reserve(diagnostic_iterations);
     resource.retained_host_numeric_bytes =
-        (orthogonalizer.capacity() + cold_density.capacity() + host_xc_density.capacity() +
-         host_xc_alpha.capacity() + host_xc_beta.capacity() + host_xc_potential.capacity()) *
+        (host_xc_density.capacity() + host_xc_alpha.capacity() + host_xc_beta.capacity() +
+         host_xc_potential.capacity()) *
             sizeof(double) +
         output.dft_diagnostic.history.capacity() * sizeof(ScfIteration) + sizeof(host_xc_totals) +
         sizeof(host_xc_error) + sizeof(host_spin_counts) + sizeof(host_selected) +
@@ -298,7 +392,6 @@ struct CudaKsPlan::Impl : KsStateStorage {
       };
       upload(hcore, provider.one_electron().hcore.data(), matrix * sizeof(double));
       upload(overlap, provider.one_electron().overlap.data(), matrix * sizeof(double));
-      upload(x, orthogonalizer.data(), matrix * sizeof(double));
       host_spin_counts = {static_cast<std::int32_t>(occupations[0]),
                           static_cast<std::int32_t>(occupations[1])};
       host_selected = {static_cast<std::uint8_t>(occupations[0] > 0),
@@ -312,6 +405,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
         xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
                                           resource.xc_device_bytes, stream);
       }
+      // This owner uses ordinary stream execution. Reuse the common provider
+      // instead of forcing the graph-safe maximum-pivot fallback at every size.
+      eigensolver = std::make_unique<OrdinaryStreamEigensolver>(stream, n, tmp2, eigenvalues);
+      resource.state_device_bytes = sum(resource.state_device_bytes, eigensolver->device_bytes());
+      resource.retained_host_numeric_bytes =
+          sum(resource.retained_host_numeric_bytes, eigensolver->host_bytes());
+      prepare_initial_state();
     } catch (...) {
       cleanup();
       throw;
@@ -324,6 +424,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     cudaSetDevice(device);
     if (stream) cudaStreamSynchronize(stream);
     xc.reset();
+    eigensolver.reset();
     if (xc_arena) runtime::resource_cuda_free(xc_arena);
     if (arena) runtime::resource_cuda_free(arena);
     xc_arena = arena = nullptr;
@@ -380,8 +481,17 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
+        !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
         configured_chunk_width() == kCudaKsChunkCapacity;
+    if (device_chunk_mode) {
+      const auto binding = device_chunk_binding();
+      if (!device_chunk_region.matches(binding))
+        device_chunk_region.bind(binding);
+      else if (device_chunk_region.failed())
+        device_chunk_region.recover();
+    } else if (device_chunk_region.bound()) {
+      device_chunk_region.invalidate();
+    }
     try {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
@@ -392,18 +502,22 @@ struct CudaKsPlan::Impl : KsStateStorage {
       if (use_warm) {
         check(cudaMemcpyAsync(density, warm, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
-      } else {
-        const auto& initial = input ? prepared : cold_density;
-        check(cudaMemcpyAsync(density, initial.data(), elements * sizeof(double),
+      } else if (input) {
+        check(cudaMemcpyAsync(density, prepared.data(), elements * sizeof(double),
                               cudaMemcpyHostToDevice, stream));
         // Explicit initial-guess staging, never an iteration matrix transfer.
         check(cudaStreamSynchronize(stream));
         movement.density_h2d_bytes += elements * sizeof(double);
         ++movement.synchronizations;
+      } else {
+        check(cudaMemcpyAsync(density, cold_seed, elements * sizeof(double),
+                              cudaMemcpyDeviceToDevice, stream));
       }
     } catch (...) {
       cudaStreamSynchronize(stream);
       is_failed = true;
+      if (device_chunk_mode && device_chunk_region.bound())
+        device_chunk_region.mark_failure("CUDA KS device region preparation failed");
       throw;
     }
     previous_energy = std::numeric_limits<double>::infinity();
@@ -424,7 +538,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   runtime::SolverRegionCudaBinding solver_region_binding() const {
-    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, direct},
+    return {{"cuda-ks-rks-solver-region-v1", device, stream, arena, fock_binding.source_identity},
             kCudaKsChunkCapacity,
             runtime::SolverRegionCompletionMode::Scalar,
             false};
@@ -450,8 +564,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (generation == std::numeric_limits<std::uint64_t>::max())
       throw std::overflow_error("CUDA KS density generation exhausted");
     std::string detail;
-    check(scf::enqueue_cuda_direct_jk_device(direct, provider.strategy().spec, density, nullptr,
-                                             matrix, j, nullptr, nullptr, jk_error, detail),
+    check(scf::enqueue_prepared_cuda_fock(provider, density, nullptr, matrix, j, nullptr, nullptr,
+                                          jk_error, false, detail),
           detail);
     xc->enqueue(density, elements, ++generation);
     pending_generations[slot] = generation;
@@ -479,12 +593,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     check(cudaGetLastError());
     multiply(effective, true, false, x, false, enabled, tmp1);
     multiply(x, false, true, tmp1, true, enabled, tmp2);
-    EigensolverResources solver{};
-    solver.stream_ = stream;
-    const auto family = n <= kSmallEigensolverLimit ? scf::CudaEigensolverFamily::small_native
-                                                    : scf::CudaEigensolverFamily::graph_native;
-    check(launch_solver(solver, family, n, spins, tmp2, effective, eigenvalues, 0, solver_info,
-                        spin_enabled),
+    check(eigensolver->launch(spins, tmp2, effective, eigenvalues, solver_info, spin_enabled),
           "CUDA KS eigensolver launch failed");
     multiply(x, false, false, tmp2, true, enabled, tmp1);
     launch_build_density_kernel(blocks, 128, 0, stream, 1, n, occupied, tmp1, enabled, proposal);
@@ -519,6 +628,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk submission failed");
       throw;
     }
   }
@@ -541,6 +651,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk completion failed");
       throw;
     }
     movement.scalar_d2h_bytes += submitted * sizeof(physical[0]) + sizeof(device_control);
@@ -553,6 +664,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       is_pending = is_active = false;
       is_failed = true;
       pending_iterations = 0;
+      device_chunk_region.mark_failure("CUDA KS device chunk returned an invalid iteration count");
       throw std::runtime_error("CUDA KS device chunk returned an invalid iteration count");
     }
     const unsigned completed = device_control.iterations - output.iterations;
@@ -585,6 +697,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       final_state_ready = true;
       final_generation = pending_generations[completed - 1U];
     }
+    if (is_failed)
+      device_chunk_region.mark_failure("CUDA KS device control reported failure");
+    else
+      device_chunk_region.mark_success();
     return is_active;
   }
 
@@ -660,14 +776,20 @@ struct CudaKsPlan::Impl : KsStateStorage {
     try {
       std::string detail;
       pending_mixed_j = mixed_j && !strict_refinement;
-      const auto jk_status = pending_mixed_j ? scf::enqueue_cuda_direct_jk_device_mixed_j(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail)
-                                             : scf::enqueue_cuda_direct_jk_device(
-                                                   direct, provider.strategy().spec, density,
-                                                   spins == 2 ? density + matrix : nullptr, matrix,
-                                                   j, nullptr, nullptr, jk_error, detail);
+      // DF retains its qualified resident adapter until the prepared execution
+      // seam supports fitted providers. Both routes use their owner's stream;
+      // the exact route never exposes its concrete Direct-J/K handle here.
+      if (fitted) check(cudaMemsetAsync(jk_error, 0, sizeof(*jk_error), stream));
+      const auto jk_status =
+          fitted ? (spins == 2 ? scf::execute_cuda_density_fitting_uhf_jk_device(
+                                     fitted, density, density + matrix, j, nullptr, nullptr, detail,
+                                     {true, false}, scf::FockMatrixLayout::RowMajor)
+                               : scf::execute_cuda_density_fitting_rhf_jk_device(
+                                     fitted, density, j, nullptr, detail, {true, false},
+                                     scf::FockMatrixLayout::RowMajor))
+                 : scf::enqueue_prepared_cuda_fock(
+                       provider, density, spins == 2 ? density + matrix : nullptr, matrix, j,
+                       nullptr, nullptr, jk_error, pending_mixed_j, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
       const auto potential = stage_xc(++generation);
@@ -692,9 +814,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                             residual);
       check(cudaGetLastError());
       if (final_closure) {
-        // The public derivative state is validated against the unshifted
-        // physical F[D], not the preceding DIIS/stabilized proposal. During
-        // bounded final closure, diagonalize exactly that physical operator.
+        // Discard DIIS history and rebuild the closure proposal from F[D].
+        // A stationary UKS occupation cycle still needs its virtual-space
+        // shift, as on CPU. Export separately validates the unshifted F[D].
         check(cudaMemcpyAsync(effective, fock, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
       } else {
@@ -715,14 +837,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       }
       multiply(effective, true, false, x, false, tmp1);
       multiply(x, false, true, tmp1, true, tmp2);
-      EigensolverResources solver{};
-      solver.stream_ = stream;
-      // Both families are existing native solvers and work on ordinary
-      // streams. The larger family has no fixed AO bound or opaque workspace.
-      const auto family = n <= kSmallEigensolverLimit ? scf::CudaEigensolverFamily::small_native
-                                                      : scf::CudaEigensolverFamily::graph_native;
-      check(launch_solver(solver, family, n, spins, tmp2, effective, eigenvalues, 0, solver_info,
-                          spin_enabled),
+      check(eigensolver->launch(spins, tmp2, effective, eigenvalues, solver_info, spin_enabled),
             "CUDA KS eigensolver launch failed");
       multiply(x, false, false, tmp2, true, tmp1);
       if (spins == 1)
@@ -822,7 +937,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     const bool converged = output.iterations > 1 &&
                            output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
-                           physical.residual < std::min(1e-9, options.density_tolerance);
+                           physical.residual < std::min(1e-9, options.density_tolerance) &&
+                           physical.maximum_residual < std::min(1e-9, options.density_tolerance);
+    // Keep the existing RMS diagnostic, but do not publish an energy-only state
+    // that the shared final-state validator will reject on the AO maximum norm.
     const bool strict_final_closure = spins == 2 || !provider.system().ecp_terms.empty();
     const bool mixed_stage = mixed_j && !strict_refinement;
     const bool enter_strict_refinement =
@@ -839,13 +957,13 @@ struct CudaKsPlan::Impl : KsStateStorage {
       check(cudaMemsetAsync(history_count, 0, sizeof(*history_count), stream));
       check(cudaMemsetAsync(history_head, 0, sizeof(*history_head), stream));
     } else if (strict_final_closure && converged && !final_closure) {
-      // A DIIS proposal can satisfy the ordinary SCF density-change gate while
-      // the canonical density of the unshifted physical Fock is microscopically
-      // outside the derivative-state tolerance. UKS already requires this closure;
-      // ECP RKS needs the same physical fixed point for strict derivative snapshots.
+      // A DIIS proposal can satisfy the SCF gate before a fresh F[D] proposal
+      // does. Preserve any established UKS occupation stabilization through
+      // this bounded correction, just as CPU UKS does; clearing it restarts
+      // the stationary occupation cycle. Physical energy/residual gates and
+      // the separate unshifted final-state export validator stay unchanged.
       final_closure = true;
       final_corrections = 0;
-      stabilize_occupations = false;
       output.converged = false;
       is_active = true;
     } else if (final_closure) {
@@ -926,12 +1044,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
       };
       multiply(fock, true, false, x, false, tmp1);
       multiply(x, false, true, tmp1, true, tmp2);
-      EigensolverResources solver{};
-      solver.stream_ = stream;
-      const auto family = n <= kSmallEigensolverLimit ? scf::CudaEigensolverFamily::small_native
-                                                      : scf::CudaEigensolverFamily::graph_native;
-      check(launch_solver(solver, family, n, spins, tmp2, effective, final_eigenvalues, 0,
-                          final_solver_info, final_spin_enabled),
+      check(eigensolver->launch(spins, tmp2, effective, final_eigenvalues, final_solver_info,
+                                final_spin_enabled),
             "CUDA KS final-state eigensolver launch failed");
       multiply(x, false, false, tmp2, true, final_coefficients);
     }
@@ -1109,6 +1223,12 @@ vibeqc_status CudaKsPlan::read_final_state(const CudaKsFinalStateToken& expected
 const CudaKsResources& CudaKsPlan::resources() const noexcept { return impl_->resource; }
 CudaKsTransfers CudaKsPlan::transfers() const noexcept {
   auto out = impl_->movement;
+  const auto& region = impl_->device_chunk_region.metrics();
+  out.execution_region_bindings = region.bindings;
+  out.execution_region_invalidations = region.invalidations;
+  out.execution_region_executions = region.executions;
+  out.execution_region_failures = region.failures;
+  out.execution_region_recoveries = region.recoveries;
   if (impl_->xc) {
     const auto& xc = impl_->xc->transfers();
     out.setup_h2d_bytes += xc.setup_h2d_bytes;

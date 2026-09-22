@@ -8,7 +8,7 @@
     "basis-projection-rtx5090": {
       "owner": "basis-projection-rtx5090",
       "reason": "Reviewed retained large evidence for Cross-basis HF initialization. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
-      "review_document": "docs/basis_projection.md"
+      "review_document": "docs/user/basis_projection.md"
     },
     "cg01": {
       "owner": "cg01",
@@ -33,7 +33,7 @@
     "df-derivatives-rtx5090": {
       "owner": "df-derivatives-rtx5090",
       "reason": "Reviewed retained large evidence for Generated density-fitting response. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
-      "review_document": "docs/df_derivatives.md"
+      "review_document": "docs/developer/df_derivatives.md"
     },
     "ecp-consumers-171": {
       "owner": "ecp-consumers-171",
@@ -228,12 +228,12 @@
     "one-electron-derivatives-rtx5090": {
       "owner": "one-electron-derivatives-rtx5090",
       "reason": "Reviewed retained large evidence for Generated one-electron derivatives. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
-      "review_document": "docs/one_electron_derivatives.md"
+      "review_document": "docs/developer/one_electron_derivatives.md"
     },
     "one-electron-values-rtx5090": {
       "owner": "one-electron-values-rtx5090",
       "reason": "Reviewed retained large evidence for Generated one-electron CUDA values. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
-      "review_document": "docs/one_electron_codegen.md"
+      "review_document": "docs/developer/one_electron_codegen.md"
     },
     "posthf-147": {
       "owner": "posthf-147",
