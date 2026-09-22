@@ -19,6 +19,7 @@ def _function_names(path: Path) -> set[str]:
 
 def test_production_policy_is_separate_from_legacy_formula_dispatch() -> None:
     legacy = ROOT / "python/vibeqc_compiler/xc/expressions.py"
+    canonical = ROOT / "python/vibeqc_compiler/xc/semilocal_family.py"
     policy = ROOT / "python/vibeqc_compiler/xc/production_policy.py"
     policy_names = _function_names(policy)
     assert {
@@ -28,9 +29,9 @@ def test_production_policy_is_separate_from_legacy_formula_dispatch() -> None:
         "pbe_exchange_direct_expression",
         "pbe_exchange_reciprocal_expression",
     } <= policy_names
-    legacy_text = legacy.read_text()
-    assert "_PW_PARAMETERS" not in legacy_text
-    assert {"pw", "lda_correlation"}.isdisjoint(_function_names(legacy))
+    assert not legacy.exists()
+    assert "_PW_PARAMETERS" not in canonical.read_text()
+    assert {"pw", "lda_correlation"}.isdisjoint(_function_names(canonical))
 
 
 def test_runtime_and_cpu_generator_use_only_the_lightweight_dispatch() -> None:
@@ -40,16 +41,15 @@ def test_runtime_and_cpu_generator_use_only_the_lightweight_dispatch() -> None:
         "tools/generate_xc_cpu.py",
     }
     assert all(consumer.path not in forbidden for consumer in consumers)
+    assert all(
+        consumer.module != "vibeqc_compiler.xc.expressions" for consumer in consumers
+    )
     bridge = {
         (consumer.path, consumer.module)
         for consumer in consumers
         if consumer.path == "python/vibeqc_compiler/xc/expression_dispatch.py"
     }
     assert bridge == {
-        (
-            "python/vibeqc_compiler/xc/expression_dispatch.py",
-            "vibeqc_compiler.xc.expressions",
-        ),
         (
             "python/vibeqc_compiler/xc/expression_dispatch.py",
             "vibeqc_compiler.xc.rsh_expressions",

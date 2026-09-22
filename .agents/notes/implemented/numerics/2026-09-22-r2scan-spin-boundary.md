@@ -68,3 +68,19 @@ CuMetal's pinned nvcc-compatible driver delegates compilation to Clang and
 rejects NVIDIA's `--fmad=false` spelling. Select `-ffp-contract=off` for that
 provider and retain `--fmad=false` for NVIDIA. Both request the same policy;
 Apple execution remains covered by its provider CI, not by the NVIDIA run.
+
+## Importer identity and offline inventory
+
+The density-threshold selection in shared Maple exchange lowering changes its
+semantics even though the existing interior functional values remain the same.
+Record this as `libxc-maple-graph/v11`, regenerate the bulk graph inventory and
+coverage snapshot, and refresh both source-admission and product hashes. The
+catalog retains all 221 imported and 323 blocked registrations; only graph-node
+counts and the importer version change. Leaving v10 and its old digests would
+make offline source verification and catalog reproduction fail.
+
+All 527 selected source-registry, bulk independent Libxc E/vxc/fxc, importer and
+CPU boundary cases pass (one allocated-GPU-only skip, already covered by the
+separate Slurm qualification). Complete generated CPU and r2SCAN CUDA sources
+remain identical to the qualified boundary implementation except provenance
+hashes. No new bulk production-domain admission follows from this update.
