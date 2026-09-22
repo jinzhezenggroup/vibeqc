@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import numpy as np
 import pytest
 import vibeqc_compiler.tensor.cpu as tensor_cpu
 from vibeqc.extensions import tensor
@@ -94,6 +96,30 @@ def test_explicit_cpu_jit_wraps_native_artifact_without_leaking_owner(
     report["resources"]["required_bytes"] = 0
     assert compiled.artifact["metadata"]["key"] == "verified-artifact"
     assert compiled.resources["required_bytes"] == 128
+
+
+def test_explicit_cpu_jit_compiles_and_executes_real_program(tmp_path: Path) -> None:
+    compiler = shutil.which("c++") or shutil.which("g++") or shutil.which("clang++")
+    if compiler is None:
+        pytest.skip("no C++ compiler available for explicit JIT integration test")
+
+    program = _program()
+    compiled = tensor.compile(
+        program,
+        compiler=compiler,
+        cache=tmp_path,
+        max_bytes=4096,
+        max_work=4096,
+        max_nodes=32,
+    )
+    feed = np.array([1.25, -2.5], dtype=np.float64)
+    result = compiled.execute({"x": feed})
+
+    np.testing.assert_array_equal(result["value"], feed)
+    artifact = compiled.artifact
+    assert Path(artifact["library"]).is_file()
+    assert artifact["metadata"]["key"]
+    assert artifact["metadata"]["binary_sha256"]
 
 
 def test_tensor_jit_rejects_unsupported_requests_before_toolchain_activation(
