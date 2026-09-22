@@ -101,6 +101,20 @@ void verify_prepared_resources() {
                 "RCCSD numeric capacity was relabelled as scratch workspace");
       }
     }
+    if (method == VIBEQC_METHOD_RCCSD_T) {
+      const auto force = owner->execute(true);
+      require(force.convergence.converged && force.forces.size() == 3 * system.atoms.size(),
+              "prepared RCCSD(T) force endpoint failed");
+      const auto diagnostic = owner->correlation_diagnostic();
+      const auto snapshot = owner->execution_resources();
+      require(diagnostic && snapshot.numeric_observations == 4 &&
+                  snapshot.host_numeric_peak_bytes == diagnostic->numeric_capacity_bytes &&
+                  snapshot.host_numeric_peak_bytes >= diagnostic->planned_endpoint_peak_bytes,
+              "prepared force capacity was omitted from execution observations");
+      require(snapshot.workspace_observations == 4 &&
+                  snapshot.host_workspace_peak_bytes >= diagnostic->response_workspace_bytes,
+              "prepared orbital response workspace was omitted from execution observations");
+    }
   }
 }
 }  // namespace
