@@ -121,6 +121,19 @@ struct ScfOptions {
   dft::XcDensityRoute xc_density_route{dft::XcDensityRoute::DensityMatrix};
   /** Bounded AO/XC tile schedule; does not alter the grid or functional. */
   std::size_t xc_tile_points{256};
+  /** #237 experimental CPU PBE-RKS anchor/update path. Default-off and not
+   * exposed by the public descriptor until complete-solve benefit is proven. */
+  bool experimental_incremental_xc{};
+  /** Maximum exact anchor-relative updates before a transactional full rebuild. */
+  std::size_t incremental_xc_max_updates{4};
+  /** Rebuild when RMS(D-D0) exceeds this run-local anchor drift bound. */
+  double incremental_xc_max_density_rms{5.0e-2};
+  /** Below this nonzero anchor-relative RMS, prefer a full build rather than
+   * subtracting nearly identical matrices. Zero disables the noise trigger. */
+  double incremental_xc_noise_density_rms{1.0e-14};
+  /** Consecutive non-improving physical-residual observations before forcing
+   * a full accepted-state rebuild. Zero disables the stagnation trigger. */
+  std::size_t incremental_xc_stagnation_iterations{4};
   enum class XcExecutionSchedule : std::uint32_t { DeviceFused = 0, HostUnfused = 1 };
   /** Placement-only semilocal XC schedule; scientific identity is unchanged. */
   XcExecutionSchedule xc_execution_schedule{XcExecutionSchedule::DeviceFused};

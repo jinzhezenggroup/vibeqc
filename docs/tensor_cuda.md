@@ -11,7 +11,7 @@ supplied equations and do not implement a complete CCSD/MP2 method.
 | CPU planning | Checked shapes, layouts, lifetimes, reservations and bounded GEMM tiles |
 | Source and compilation | Whole-program CUDA generation through the existing finite NVCC adapter |
 | Baseline execution | Unfused strict FP64, cuBLAS GEMM/strided-batched GEMM and generated primitive kernels |
-| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels, root recomputation and opt-in typed precision variants |
+| Candidate execution | Producer/consumer layouts, view elimination, ordered elementwise fusion, smaller panels, root recomputation, opt-in typed precision variants and opt-in CUB cooperative reductions |
 | Selection | Explicit bounded tuning, CPU/baseline parity, resource and complete-endpoint gates |
 | Graph capture | Opt-in fixed-region replay with ordinary fallback |
 | Complete molecular CC solver | Outside this executor |
@@ -148,6 +148,16 @@ reduction, explicit broadcast, and the ragged `indexed_gather`, `scatter_add`
 and `segment_sum` primitives. Packing scatter still assigns unique GEMM
 destinations; TensorIR `scatter_add` instead has explicit repeated-destination
 accumulation semantics.
+
+Eligible streamed reductions may explicitly request
+`TensorSchedule(reduction_provider="cub")`. The shared lowering-provider
+diagnostic advertises both generated cooperative CUDA and CUB BlockReduce for
+the same request, but CUB admission requires typed-true CCCL header capability
+evidence. Generated CUDA remains the production default. The retained H200 FP64
+comparison passed numerical and execution gates but did not show a significant
+complete-endpoint improvement, so lower CUB register use did not trigger a
+promotion. See the [reviewed evidence](../benchmarks/results/issue971-cub-block-reduce-h200/publication.json)
+and [qualification decision](../.agents/notes/implemented/performance/2026-09-22-cub-block-reduce-qualification.md).
 
 `plan.batch_schedule` exposes a backend-neutral `BatchScheduleIR` with batch
 domains, degree histograms, and baseline-versus-scheduled ragged work. Static
@@ -475,6 +485,11 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
 srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:15:00 \
   env PYTHONPATH=.:python python tools/tensor_cuda_examples.py --mode tune \
   --nvcc /path/to/nvcc --architecture sm_120 --output /tmp/tensor-endpoints
+
+PYTHONPATH=python python benchmarks/tensor_cub_qualification.py \
+  --nvcc /path/to/nvcc --architecture sm_90 --allocation-id <finite-job-id> \
+  --source-revision <full-commit-sha> --source-archive <verified-archive> \
+  --source-archive-sha256 <sha256> --output .artifacts/benchmarks/cub-h200
 ```
 
 The runner exports equations, seeds, shape/scale identities, shared CG01
