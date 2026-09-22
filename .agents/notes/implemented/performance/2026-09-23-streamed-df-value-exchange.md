@@ -1,6 +1,6 @@
 # Decision: qualify streamed DF occupied projection separately from response reuse
 
-Status: proposed; implementation under qualification
+Status: implemented; complete 96-atom benchmark qualification remains open in #1078
 Date: 2026-09-23
 
 ## Problem
@@ -46,7 +46,9 @@ For the original capacity `768*768*580` doubles per buffer and rank 160:
 - The prior explicit occupied path chose 576 rows and regenerated 1344 rows.
 - The compiler balances two blocks of 384 rows and regenerates 1152 rows:
   3,284,140,032 values, equivalent to 1.5 full raw tensors.
-- J remains two passes; total predicted J+K source work is 3.5 tensors.
+- J remains two passes; an eligible SCF J+K build therefore predicts 3.5 tensors.
+  The final physical K adapter still uses its existing dense fallback. Do not
+  multiply this per-build prediction by iterations and call it endpoint work.
 
 These are schedule counts, not endpoint acceleration claims. Automatic factor
 reservation can slightly change actual capacity. All four projection/raw buffers
@@ -58,9 +60,49 @@ remain within the existing value allowance; no response budget is borrowed.
   legal row width on small nondivisible shapes, triangular and full K.
 - The exact 96-atom shape selects the counts above without GPU allocation.
 - Compiler dependency audit passes (321 modules).
-- Allocated numerical, seed fallback, cold/warm/changed-geometry endpoint and
-  resource qualification are pending at initial submission. Full 96-atom
-  energy-plus-force completion is not established.
+- Allocated GPU tests: 44 Python cases passed (43 in Slurm 11327, the corrected
+  force/geometry test in a separate finite allocation), plus the native eight
+  density-seed fixtures and final-state identity gates. The new source schedule
+  is checked against independent libcint/PySCF J/K, including balanced/ragged
+  panels and full/triangular traversal. Resource queries cover the practical
+  768/3712 shape at four budgets and preserve resident/dense fallback behavior.
+- At 12 atoms with forced streaming, cold/warm/changed-geometry energy-only and
+  energy-plus-force solves pass absolute independent PySCF gates. Maximum
+  observed energy and force differences are 4.67e-12 Eh and 1.12e-11 Eh/Bohr.
+  Traces confirm exact rank-20 seed acceptance. Existing streamed response can
+  consume separately validated canonical C with its **own** charged projection;
+  it does not borrow the private value projection. An initial test incorrectly
+  rejected this valid response route; the corrected test checks the actual
+  final-projection lease and owned projection capacity, then passes all phases.
+- Clean GPU execution comparison at 24 atoms / 192 AOs / 928 cc-pVDZ-JKFIT
+  auxiliaries / 256 MiB value allowance: both controls stream with Q=79 and the
+  same cold (15) and warm (2) iteration branches. Automatic cold execution is
+  21.4769 s versus dense 51.2942 s; two warm samples are 4.6283/4.6317 s versus
+  8.6153/8.6123 s. The comparator's independent GPU4PySCF energy gates cover all
+  warm pairs: maxima 1.137e-12 and 4.547e-13 Eh. It does not serialize native
+  cold energies, so these are not all-cold numerical claims. Neither timing is
+  iteration-matched against the reference's one-iteration warm branch.
+- Separate traced replay, Slurm 11337, confirms rank-40 seed acceptance and
+  68,419,584 source values per occupied K (384 generated AO rows, three blocks,
+  two full tensors), versus 410,517,504 values in the retained dense final K
+  (12 tensors). Each J produces 547,356,672 raw bytes (two tensors). The trace
+  distinguishes ordinary-stream operations from graph-capture descriptions;
+  capture counters are not a count of replayed GPU work. Tracing is disabled in
+  the clean timings above.
+- Full 96-atom energy-plus-force completion remains unestablished. This repair
+  reduces a source-work cause but does not close the original 900-second issue.
+
+The real-GPU evidence is from the preserved combined integration based on
+`60592ea9`, including #1086/#1089/#1091/#1096 and this change. It is not an exact
+standalone PR-head measurement. Library SHA256:
+`076cb5502e86983bb23d12bdf191542deb36b59be860fdddb631e18635e0baec`.
+Local reconstructable source archive `integration-source-v7.tar.gz` SHA256:
+`f90f56441201e4b4a22a2004ce92ec2a215ca39d8db4a40f68fca020f7873459`.
+Artifacts under `.artifacts/gpu-blocker-fixes/` include `streamed-v7-gates.log`,
+`streamed-force-v7-gates.log`, the corresponding pytest directories,
+`hfdf24-streamed-{auto,dense}-v7.json` and progress journals, and
+`hfdf24-work-v7.{jsonl,log}`. The archive precedes the final test-only correction;
+the committed regression contains that correction.
 
 ## Rejected alternatives
 

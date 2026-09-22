@@ -98,7 +98,11 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
                 # symmetric-C force-response lease, even after warm SCF.
                 response = [r for r in records if r["operation"] == "force_response"]
                 assert response
-                assert all(
-                    not r["counters"].get("response_occupied_projection_products", 0)
-                    for r in response
-                )
+                for record in response:
+                    counts = record["counters"]
+                    assert not counts.get("response_final_projection_reused", 0)
+                    if counts.get("response_occupied_projection_products", 0):
+                        # Existing streamed response may use independently
+                        # validated canonical C, with its own charged U. That
+                        # is different from borrowing private value projections.
+                        assert counts["response_owned_occupied_projection_bytes"] > 0
