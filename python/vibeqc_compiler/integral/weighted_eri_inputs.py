@@ -259,6 +259,9 @@ def weighted_eri_response(
         raise ValueError(
             "native weighted response requires an external quartet request"
         )
+    center_bindings = request.center_bindings
+    if center_bindings is None:
+        raise ValueError("native weighted response requires resolved center bindings")
     values = np.asarray(native_result, dtype=float)
     if values.shape != (13,) or not np.isfinite(values).all():
         raise ValueError(
@@ -269,7 +272,7 @@ def weighted_eri_response(
     if request.consumer.output == "atomic_force":
         selected = np.zeros((len(request.atom_indices), 3))
         for center in centers:
-            atom = request.center_bindings[center].atom_index
+            atom = center_bindings[center].atom_index
             selected[request.atom_indices.index(atom)] += gradient[center]
     else:
         selected = gradient[list(centers)]

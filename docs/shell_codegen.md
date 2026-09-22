@@ -625,9 +625,10 @@ autotune reads that schedule directly from the manifest instead of maintaining
 a second shell-name allowlist.
 
 CMake selects profiles with `VIBEQC_AOT_PROFILE` or `VIBEQC_AOT_PROFILES`.
-`auto` resolves exact measured profile, explicitly compatible profile, empty
-`portable_cuda`, then generic fallback. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all
-generated shell objects.
+`auto` resolves only an exact measured or explicitly compatible profile and is
+fail-closed when neither exists. Generic CUDA remains available through the
+explicit `portable`/`portable_cuda` profile; it is never selected by an `auto`
+miss. `VIBEQC_ENABLE_AOT_SHELLS=OFF` omits all generated shell objects.
 
 Optional production code shapes are declared per manifest row through the
 `capabilities` list. The current names are `streaming_fock`, `mixed_fock`, and
@@ -761,8 +762,8 @@ force-only lowering.
 
 `production_shell_classes.json` carries explicit tuned and portable profiles.
 The current `sm_120` profile is measured; `portable_cuda` is intentionally
-empty so unsupported targets retain generic correctness. The `sm_120` force
-profile contains:
+empty for targets whose build explicitly opts into generic correctness. The
+`sm_120` force profile contains:
 
 ```text
 ssss dppp dpdp dddp dpss dsds ddss ddpp ddds dpds ddps fpps

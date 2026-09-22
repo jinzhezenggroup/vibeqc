@@ -787,8 +787,11 @@ def _vjp_node(
         rule = _VJP_RULES[node.op]
     except KeyError as exc:
         raise ValueError(f"no VJP rule for tensor primitive: {node.op}") from exc
-    if active is not None and node.op in ("divide", "scaled_bilinear"):
-        return rule(node, values, bar, active)
+    if active is not None:
+        if node.op == "divide":
+            return _vjp_divide(node, values, bar, active)
+        if node.op == "scaled_bilinear":
+            return _vjp_scaled_bilinear(node, values, bar, active)
     return rule(node, values, bar)
 
 

@@ -68,6 +68,9 @@ macro(vibeqc_register_host_generated_sources target)
     OUTPUTS "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
     ARGS --cpu-st-output "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}")
 
   set(VIBEQC_DF_VALUE_CPU_HEADER
@@ -155,6 +158,25 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
     ARGS --output "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
     COMMENT "Generating compiler-owned GFN2 ES2 scalar kernels")
+
+  set(VIBEQC_GFN2_ES3_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es3_native.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_es3_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_es3_native.py"
+    OUTPUTS "${VIBEQC_GFN2_ES3_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_es3_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_ES3_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 ES3 shell energy/potential")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_es3_codegen)
+    target_include_directories(
+      vibeqc_gfn2_cuda PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  endif()
 
   set(VIBEQC_GFN2_ELECTRONIC_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.hpp")

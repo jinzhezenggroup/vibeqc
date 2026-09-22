@@ -12,9 +12,11 @@ from vibeqc_compiler.dft.xc_schedule import (
     HOST_UNFUSED,
     GridXcCandidateLimits,
     GridXcCandidateShape,
+    GridXcScheduleCandidate,
     GridXcScientificIdentity,
     assess_grid_xc_schedule,
     grid_xc_schedule,
+    rank_grid_xc_candidates,
     rank_grid_xc_schedules,
 )
 
@@ -231,6 +233,65 @@ def test_grid_xc_candidate_ordering_uses_shared_schedule_profitability() -> None
             observable="potential",
             functional="PBE",
         )
+
+
+def test_grid_xc_candidate_local_shapes_rank_distinct_point_tiles() -> None:
+    limits = GridXcCandidateLimits(
+        device_bytes=32 << 20,
+        live_values=2_000_000,
+        source_bytes=300_000,
+    )
+
+    def candidate(tile: int, workspace: int) -> GridXcScheduleCandidate:
+        return GridXcScheduleCandidate(
+            DEVICE_FUSED.resolved(tile),
+            GridXcCandidateShape(
+                npoint=4096,
+                tile_points=tile,
+                nao=96,
+                max_active_ao=48,
+                spins=2,
+                jet_components=4,
+                device_workspace_bytes=workspace,
+                generated_source_bytes=180_000,
+            ),
+        )
+
+    small = candidate(128, 4 << 20)
+    large = candidate(256, 8 << 20)
+    rejected = candidate(512, 40 << 20)
+    ranked = rank_grid_xc_candidates(
+        (small, rejected, large),
+        limits,
+        device_xc_available=True,
+        observable="potential",
+        functional="PBE",
+    )
+
+    assert [item.schedule_contract.topology.tiles for item in ranked] == [
+        (256,),
+        (128,),
+    ]
+    large_traffic = ranked[0].schedule_contract.profitability.semantic_traffic_bytes
+    small_traffic = ranked[1].schedule_contract.profitability.semantic_traffic_bytes
+    assert large_traffic is not None and small_traffic is not None
+    assert large_traffic < small_traffic
+    large_launches = ranked[0].schedule_contract.profitability.launch_count
+    small_launches = ranked[1].schedule_contract.profitability.launch_count
+    assert large_launches is not None and small_launches is not None
+    assert large_launches < small_launches
+    assert ranked[0].live_values > ranked[1].live_values
+
+    rejected_assessment = assess_grid_xc_schedule(
+        rejected.schedule,
+        rejected.shape,
+        limits,
+        device_xc_available=True,
+        observable="potential",
+        functional="PBE",
+    )
+    assert not rejected_assessment.legal
+    assert "device bytes 41943040 exceeds limit 33554432" in rejected_assessment.reasons
 
 
 def endpoint_sample(

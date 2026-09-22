@@ -554,12 +554,15 @@ def _vjp_graph(
         ]
     if node.op == "divide":
         numerator, denominator = node.inputs
-        zero = _zero_like(bar) if active[1] else None
+        denominator_bar = None
+        if active[1]:
+            zero = _zero_like(bar)
+            denominator_bar = scaled_bilinear(
+                zero, zero, bar, numerator, denominator, denominator
+            )
         return [
             divide(bar, denominator) if active[0] else None,
-            scaled_bilinear(zero, zero, bar, numerator, denominator, denominator)
-            if active[1]
-            else None,
+            denominator_bar,
         ]
     if node.op == "scaled_bilinear":
         return [
