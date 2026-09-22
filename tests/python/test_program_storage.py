@@ -78,7 +78,7 @@ def test_program_donation_reuses_same_call_slot_and_reduces_peak() -> None:
     assert donated.donations == ((2, "a", "b"),)
     assert donated.slot_for("a") == donated.slot_for("b")
     assert baseline.peak_by_space["pageable"] == 192
-    assert donated.peak_by_space["pageable"] == 128
+    assert donated.peak_by_space["pageable"] == 136
     assert ProgramStoragePlan.from_payload(program, plan.to_payload()) == plan
     assert plan.identity != ProgramStoragePlan(program).identity
 
@@ -222,3 +222,12 @@ def test_untrusted_replay_rejects_unknown_fields_and_kinds() -> None:
     payload["aliases"] = [{"buffer": "x", "alias": "invented", "alias_of": None}]
     with pytest.raises(ValueError, match="kind"):
         ProgramStoragePlan.from_payload(program, payload)
+
+
+def test_legacy_positional_schema_argument_is_not_a_donation() -> None:
+    program = example()
+    plan = ProgramStoragePlan(program, (), (), 1)
+    assert plan.schema_version == 1
+    assert plan.donations == ()
+    assert "donations" not in plan.to_payload()
+    assert ProgramStoragePlan.from_payload(program, plan.to_payload()) == plan

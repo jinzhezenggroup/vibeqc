@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from .program import ProgramIR
 from .provenance import canonical_hash
@@ -86,7 +86,7 @@ class ProgramStoragePlan:
     program: ProgramIR
     aliases: tuple[BufferAliasBinding, ...] = ()
     effects: tuple[CallEffectBinding, ...] = ()
-    donations: tuple[CallDonationBinding, ...] = ()
+    donations: tuple[CallDonationBinding, ...] = field(default=(), kw_only=True)
     schema_version: int = 2
 
     def __post_init__(self) -> None:
@@ -196,7 +196,7 @@ class ProgramStoragePlan:
     def from_payload(
         cls, program: ProgramIR, payload: typing.Any
     ) -> ProgramStoragePlan:
-        if not isinstance(payload, dict):
+        if not isinstance(payload, dict) or "schema_version" not in payload:
             raise ValueError("invalid ProgramStoragePlan fields")
         schema = payload.get("schema_version")
         expected = {"schema_version", "program_identity", "aliases", "effects"}
@@ -245,8 +245,8 @@ class ProgramStoragePlan:
             program,
             tuple(aliases),
             tuple(effects),
-            tuple(donations),
-            schema,
+            schema_version=schema,
+            donations=tuple(donations),
         )
 
     def storage_analysis(self) -> StorageAnalysis:
