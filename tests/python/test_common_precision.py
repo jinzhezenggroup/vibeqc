@@ -158,3 +158,53 @@ def test_generated_fock_mixed_schedule_records_fp32_eri_fp64_accumulation() -> N
     assert regions["fock_accumulation"].accumulation_dtype == "float64"
     assert mixed.strict_audit_dtype == "float64"
     assert not mixed.is_strict_fp64
+
+
+@pytest.mark.parametrize("candidate_local", (False, True))
+@pytest.mark.parametrize("mixed", (False, True))
+def test_grid_ranking_preserves_explicit_precision_after_candidate_refactor(
+    candidate_local: bool, mixed: bool
+) -> None:
+    from vibeqc_compiler.dft.xc_schedule import (
+        GridXcScheduleCandidate,
+        rank_grid_xc_candidates,
+        rank_grid_xc_schedules,
+    )
+
+    shape = GridXcCandidateShape(
+        npoint=256,
+        tile_points=128,
+        nao=8,
+        max_active_ao=8,
+        spins=2,
+        jet_components=4,
+        device_workspace_bytes=4096,
+        generated_source_bytes=4096,
+    )
+    limits = GridXcCandidateLimits(
+        device_bytes=1 << 20,
+        live_values=1_000_000,
+        source_bytes=1 << 20,
+    )
+    precision = uniform_precision_schedule(
+        "explicit-grid-review",
+        compute_dtype="float32" if mixed else "float64",
+        qualification="review-regression",
+    )
+    kwargs = {
+        "device_xc_available": True,
+        "observable": "potential",
+        "functional": "PBE",
+        "precision_schedule": precision,
+    }
+    if candidate_local:
+        ranked = rank_grid_xc_candidates(
+            (GridXcScheduleCandidate(DEVICE_FUSED, shape),), limits, **kwargs
+        )
+    else:
+        ranked = rank_grid_xc_schedules((DEVICE_FUSED,), shape, limits, **kwargs)
+    if mixed:
+        assert ranked == ()
+    else:
+        assert len(ranked) == 1
+        assert ranked[0].schedule_contract.precision_schedule_hash == precision.identity

@@ -141,6 +141,22 @@ the mixed result with the finite difference of the existing analytic first
 response on rebuilt molecular grids. This supplies the grid/partition geometric
 primitive required by #180; it does not by itself publish a molecular DFT HVP.
 
+### Semilocal XC Hessian bilinear (#180)
+
+For LDA/GGA, `ContractionProgram(..., "geometry").mixed_geometry_directional`
+combines the AO geometric JVPs with the existing generated XC feature gradient
+and feature Hessian. The left direction is geometric; the right direction may
+also carry the CPKS density response. For a discrete energy
+`E = sum_g w_g e(z_g)`, it evaluates the mixed chain rule from first/mixed
+measure motion, left/right/mixed feature motion and `d2e/dz2`. No third XC
+feature derivative is required.
+
+The routine returns the four separately auditable contributions from mixed
+measure motion, the two measure-feature cross terms and the feature-mixed term.
+It owns neither the CPKS solve nor molecular-grid motion policy: those remain
+method-level #180 responsibilities. Meta-GGA is fail-closed here because its
+density response has not been qualified.
+
 ## AO derivative conventions
 
 `NativeAO` owns normalized shell state after the original system handle is

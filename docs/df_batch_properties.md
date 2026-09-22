@@ -47,3 +47,19 @@ independent numerical audit rather than treating exit status as that audit.
 The existing batch numerical-selection rule remains visible: matched repeat
 pairs when present, otherwise the final unmatched pair, alongside the maximum
 over every recorded pair.
+
+Omit `--run` for a short, hardware-free manifest preflight:
+
+```bash
+python3 benchmarks/issue206_df_matrix.py \
+  --library build/cuda-release-sm120/libvibeqc.so \
+  --output-dir .artifacts/issue206-preflight
+```
+
+The existing manifest's `source.native_library` records the requested file's
+resolved path, SHA-256 and byte count using bounded reads. A not-yet-built file
+has `status="missing"` and null hash/size; all matrix cells remain pending.
+This is pre-run provenance, not a GPU or numerical qualification. The endpoint
+comparator's native-build record still identifies the library actually loaded;
+the preflight hash alone does not prove source/build agreement or that the file
+remained unchanged during later execution.

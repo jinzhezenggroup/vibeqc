@@ -124,6 +124,91 @@ def _algebra_resource_baseline_key(trial: ScheduleTrial) -> str | None:
     ).key
 
 
+def _schedule_geometry_key(trial: ScheduleTrial) -> tuple[object, ...]:
+    """Return execution geometry independently of scalar algebra variants."""
+
+    schedule = trial.schedule
+    return (
+        schedule.kind,
+        schedule.block_threads,
+        schedule.component_tile,
+        schedule.tasks_per_warp,
+        schedule.shared_coulomb,
+        schedule.pair_orientation,
+        schedule.pair_storage,
+        schedule.minimum_blocks_per_sm,
+        schedule.maximum_registers,
+    )
+
+
+def _diverse_bounded_trials(
+    candidates: typing.Sequence[ScheduleTrial], limit: int
+) -> tuple[ScheduleTrial, ...]:
+    """Bound quick tuning without making enumeration order the search policy.
+
+    Take one representative from distinct execution geometries, round-robin by
+    schedule kind, before spending the remaining budget on scalar algebra peers.
+    The caller still appends a required production baseline independently.
+    """
+
+    if limit < 1:
+        raise ValueError("candidate limit must be positive")
+    families_by_kind: dict[ScheduleKind, list[list[ScheduleTrial]]] = {}
+    family_by_key: dict[tuple[object, ...], list[ScheduleTrial]] = {}
+    for candidate in candidates:
+        key = _schedule_geometry_key(candidate)
+        family = family_by_key.get(key)
+        if family is None:
+            family = []
+            family_by_key[key] = family
+            families_by_kind.setdefault(candidate.schedule.kind, []).append(family)
+        family.append(candidate)
+
+    chosen: list[ScheduleTrial] = []
+    cursors = {kind: 0 for kind in families_by_kind}
+    while len(chosen) < limit:
+        progressed = False
+        for kind, families in families_by_kind.items():
+            index = cursors[kind]
+            if index >= len(families):
+                continue
+            chosen.append(families[index][0])
+            cursors[kind] = index + 1
+            progressed = True
+            if len(chosen) == limit:
+                return tuple(chosen)
+        if not progressed:
+            break
+
+    depth = 1
+    while len(chosen) < limit:
+        progressed = False
+        for families in families_by_kind.values():
+            for family in families:
+                if depth >= len(family):
+                    continue
+                chosen.append(family[depth])
+                progressed = True
+                if len(chosen) == limit:
+                    return tuple(chosen)
+        if not progressed:
+            break
+        depth += 1
+    return tuple(chosen)
+
+
+def _experimental_subgroup_blocked(
+    trial: ScheduleTrial, *, is_production_baseline: bool, allow_experimental: bool
+) -> bool:
+    """Require endpoint promotion only for new subgroup proposals."""
+
+    return (
+        trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and not is_production_baseline
+        and not allow_experimental
+    )
+
+
 def _run_autotune(
     arguments: argparse.Namespace, *, runtime_target: CudaTargetInfo | None = None
 ) -> dict[str, object]:
@@ -194,7 +279,7 @@ def _run_autotune(
         bounded = []
         for spec in specifications:
             candidates = [t for t in trials if t.spec.name == spec.name]
-            chosen = candidates[:limit]
+            chosen = list(_diverse_bounded_trials(candidates, limit))
             baseline = production_baselines.get(spec.name)
             for candidate in candidates:
                 if candidate.schedule == baseline and candidate not in chosen:
@@ -419,9 +504,10 @@ def _run_autotune(
                 maximum_stack_bytes=arguments.max_stack_bytes,
                 maximum_shared_bytes=maximum_shared_bytes,
             )
-            if (
-                trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
-                and not arguments.allow_experimental_subgroup_winner
+            if _experimental_subgroup_blocked(
+                trial,
+                is_production_baseline=is_production_baseline,
+                allow_experimental=arguments.allow_experimental_subgroup_winner,
             ):
                 reasons.append(
                     "subgroup schedules require explicit end-to-end "
@@ -785,6 +871,10 @@ def _run_autotune(
             },
             "search": {
                 "schedule_kinds": [kind.value for kind in selected_schedule_kinds],
+                "candidate_limit_per_class": limit,
+                "candidate_limit_strategy": (
+                    "geometry-round-robin" if limit is not None else None
+                ),
                 "trial_count": len(trials),
             },
             "requested_shell_classes": [spec.name for spec in specifications],
