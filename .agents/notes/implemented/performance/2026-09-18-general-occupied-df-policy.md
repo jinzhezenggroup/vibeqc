@@ -113,4 +113,4 @@ those profiles exist. Preserve explicit overrides for that comparison.
 - PR #443 and issues #439 / #206.
 - [Occupied response derivation](2026-09-15-occupied-df-response.md).
 - [Final projection lifetime](2026-09-16-df-tuning-and-projection.md).
-- [Current occupied contracts](../../../../docs/df_occupied_cuda.md).
+- [Current occupied contracts](../../../../docs/developer/df_occupied_cuda.md).

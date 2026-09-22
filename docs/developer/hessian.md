@@ -101,7 +101,7 @@ Hessian. Keeping that boundary explicit is the point of this section.
 
 **#178 — second integral derivatives**
 (`python/vibeqc_compiler/integral/second_derivatives.py`,
-`docs/second_integral_derivatives.md`)
+`docs/developer/second_integral_derivatives.md`)
 
 Supplies S/T/V and four-center Coulomb second derivative **integral primitives**
 with a fixed external weight, in `raw_hessian`, `weighted_hessian` and
@@ -118,12 +118,12 @@ The caller therefore owns, and must fold itself:
 - basis-representation conversion for spherical inputs.
 
 **#179 — shared orbital response**
-(`tools/vibeqc_response/`, `docs/response.md`)
+(`tools/vibeqc_response/`, `docs/developer/response.md`)
 
 Supplies the matrix-free CPHF operator (`RHFResponseOperator`), a true-residual
 Krylov solver with multi-RHS strategies, and two independent oracles
 (`explicit_rhf_response_matrix`, `finite_rotation_jvp`). It constructs **no
-right-hand side**: `docs/response.md` assigns nuclear-perturbation RHS
+right-hand side**: `docs/developer/response.md` assigns nuclear-perturbation RHS
 construction to the caller. This work reuses that operator and does not add a
 second response solver.
 
@@ -200,7 +200,7 @@ rather than only asserted here.
 Terms 2–4 are the "skeleton": they use the *second* derivatives of the
 integrals with the density frozen, and they are exactly the shape the #178
 provider emits. Terms 5–7 are the "relaxation": they exist because the
-coefficients depend on the geometry, and they are what `docs/response.md` hands
+coefficients depend on the geometry, and they are what `docs/developer/response.md` hands
 to its callers.
 
 **Component separation is a deliverable, not a debugging aid.** Terms 1–4 and

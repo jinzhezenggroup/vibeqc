@@ -2,7 +2,7 @@
 
 VibeQC's long-term mission is to cover all quantum-chemistry methods through a
 coherent, accelerator-native interface. The method-family map is maintained in
-[methods.md](../../user/methods.md). The milestones below describe the narrower path from
+[methods.md](../user/methods.md). The milestones below describe the narrower path from
 the current RHF/UHF implementation toward that mission; they do not imply that
 planned DFT, post-HF, multireference, excited-state, periodic, embedding, or
 relativistic capabilities already exist.
@@ -223,7 +223,7 @@ and performance measurements pass.
   810.7 ms of GPU4PySCF IP1 kernels, so the next recurrence work must cover the
   broader hot-class set rather than treating `dppp` as the former 2.23-second
   monolithic gap. The endpoint and kernel-summary artifacts are linked from
-  `docs/shell_codegen.md`.
+  `docs/developer/shell_codegen.md`.
   The same cooperative fixed-root lowering now covers runtime-indexed Rys3
   force recurrences. Real 384-AO profiling accepts `dpps` and `dsps`, reducing
   their kernels from 148.233/139.192 to 124.349/129.825 ms. An isolatedly
@@ -376,7 +376,7 @@ and performance measurements pass.
   rank/conditioning and conservative host/device allocation accounting per CUDA
   DF plan slot. Streamed AO-pair tiles remain intentionally host-staged because
   pageable tile transfers are not safely capturable on all CUDA providers.
-  See [density fitting](../../developer/density_fitting.md) for the exact supported boundary.
+  See [density fitting](../developer/density_fitting.md) for the exact supported boundary.
 - Extend the implemented CUDA J/K active set with persistent device ERIs,
   streams, CUDA graphs where profitable, and batched small-matrix operations;
   retain identical failure and result ordering.

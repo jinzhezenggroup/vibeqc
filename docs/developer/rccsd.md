@@ -21,7 +21,7 @@ every Fock block, including off-diagonal oo, vv and ov elements: arbitrary-F
 equation tests intentionally do not pretend to be converged RHF snapshots.
 
 Indices i,j,k,l are occupied spatial orbitals; a,b,c,d are virtual spatial
-orbitals. MO columns are occupied then virtual, as in `docs/posthf.md`.
+orbitals. MO columns are occupied then virtual, as in `docs/developer/posthf.md`.
 `g[p,q,r,s]=(pq|rs)` is a chemists' ERI. Real ERIs have both within-pair
 exchanges and pair-interchange symmetry. `F[p,q]` is the full symmetric RHF
 Fock, `h[p,q]+sum_i(2(pq|ii)-(pi|iq))`, not orbital energy denominators.

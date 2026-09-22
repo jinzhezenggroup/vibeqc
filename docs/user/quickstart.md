@@ -2,6 +2,8 @@
 
 The Python API uses Bohr for coordinates, Hartree for energies, and Hartree/Bohr for forces.
 
+The example selects CUDA. For a CPU-only installation, set `device="cpu"`.
+
 ```python
 from vibeqc import Calculator
 

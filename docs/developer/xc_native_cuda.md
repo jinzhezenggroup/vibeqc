@@ -7,7 +7,7 @@ flag. `dft/cuda_ks.hpp` composes it into native ordinary-stream SCF; the
 registered method adapter exposes CPU/CUDA single-system and native prepared
 ragged energy execution. The public #203 method resource plan accounts for
 preparation and execution with one persistent ledger; see
-[resource planning](../../maintainer/resource_planning.md).
+[resource planning](../maintainer/resource_planning.md).
 
 ## Ownership and data movement
 

@@ -120,7 +120,7 @@ operator and derivative order where applicable.
 Public HF energy-plus-force endpoints preflight both values and first nuclear
 derivatives. `eligible` states that a generic mathematical route exists. Native
 shape/resource constraints, device availability, SCF convergence and the
-[bounded f-shell batch limitations](../../maintainer/f_shell_validation.md) still apply. The
+[bounded f-shell batch limitations](../maintainer/f_shell_validation.md) still apply. The
 report explicitly separates this from element-model validation and AOT
 promotion. It does not advertise DFT, relativity or broad transition-metal
 production support.

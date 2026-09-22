@@ -35,7 +35,7 @@ endpoints, native prepared/force integration and #168 selection remain open.
 
 [verification.json](verification.json) retains the test/sanitizer results and
 negative allocation-probe result. Routine logs and compiled products remain
-untracked in `.artifacts/`. See [the source contract](../../../docs/density_sources.md)
+untracked in `.artifacts/`. See [the source contract](../../../docs/developer/density_sources.md)
 for public API, memory exclusions and reproduction instructions. The publishing
 revision only adds evidence, documentation and the explicit empty `archives`
 field required by the existing storage publisher; measured arithmetic is unchanged.
