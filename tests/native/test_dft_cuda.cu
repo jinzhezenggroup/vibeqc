@@ -57,15 +57,15 @@ struct Fixture {
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
-          std::size_t tile)
-      : layout(cuda_xc_layout(basis, grid, functional, uks, tile)) {
+          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64)
+      : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision)) {
     try {
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
       plan = std::make_unique<CudaXcPlan>(basis, grid, functional, uks, tile, arena,
-                                          layout.device_bytes, stream);
+                                          layout.device_bytes, stream, ao_precision);
     } catch (...) {
       cleanup();
       throw;
@@ -252,6 +252,53 @@ int main() {
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     graph_capture(basis, grid);
+    {
+      for (std::uint32_t functional : {0U, 1U}) {
+        Fixture strict(basis, grid, functional, false, 9, CudaXcAoPrecision::Fp64);
+        Fixture mixed(basis, grid, functional, false, 9, CudaXcAoPrecision::Fp32ComputeFp64Storage);
+        require(strict.layout.device_bytes == mixed.layout.device_bytes,
+                "FP32 AO compute candidate changed FP64 XC workspace");
+        const auto d = density(basis.nao, 1);
+        strict.submit(d);
+        mixed.submit(d);
+        const auto strict_scalars = strict.scalars();
+        const auto mixed_scalars = mixed.scalars();
+        require(strict_scalars.error == 0 && mixed_scalars.error == 0,
+                "mixed AO candidate failed device XC evaluation");
+        const auto energy_error = std::abs(mixed_scalars.energy - strict_scalars.energy);
+        const auto electron_error =
+            std::abs((mixed_scalars.electrons[0] + mixed_scalars.electrons[1]) -
+                     (strict_scalars.electrons[0] + strict_scalars.electrons[1]));
+        require(energy_error < 5e-8,
+                "FP32-compute AO semilocal energy exceeded the qualification gate");
+        require(electron_error < 1e-7,
+                "FP32-compute AO electron count exceeded the qualification gate");
+        const auto strict_v = strict.potential();
+        const auto mixed_v = mixed.potential();
+        double max_v_error = 0.0;
+        for (std::size_t i = 0; i < strict_v.size(); ++i)
+          max_v_error = std::max(max_v_error, std::abs(mixed_v[i] - strict_v[i]));
+        require(max_v_error < 1e-7,
+                "FP32-compute AO semilocal potential exceeded the qualification gate");
+        strict.canary();
+        mixed.canary();
+      }
+      bool r2scan_rejected = false;
+      try {
+        (void)cuda_xc_layout(basis, grid, 2U, false, 9, CudaXcAoPrecision::Fp32ComputeFp64Storage);
+      } catch (const std::invalid_argument&) {
+        r2scan_rejected = true;
+      }
+      require(r2scan_rejected, "unqualified r2SCAN FP32-compute AO candidate was accepted");
+      bool response_rejected = false;
+      try {
+        (void)cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(), 1U,
+                                   false, 9, true, CudaXcAoPrecision::Fp32ComputeFp64Storage);
+      } catch (const std::invalid_argument&) {
+        response_rejected = true;
+      }
+      require(response_rejected, "unqualified response FP32-compute AO candidate was accepted");
+    }
     for (std::uint32_t functional : {0U, 1U, 2U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {

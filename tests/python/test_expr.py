@@ -6,6 +6,7 @@ import math
 import typing
 from fractions import Fraction
 
+import pytest
 from vibeqc_compiler.integral import (
     PSSS_SPEC,
     AlgebraForm,
@@ -433,6 +434,25 @@ def test_canonical_forms_ignore_binary_parenthesization() -> None:
             right_associative,
             form,
         )
+
+
+def test_scalar_c_emitter_supports_explicit_fp32_literals_and_temporaries() -> None:
+    graph = Graph()
+    x = graph.variable("x")
+    root = (x + Fraction(1, 3)) * Fraction(2, 5)
+
+    emitter = CudaEmitter(graph, {"x": "x"}, scalar_type="float")
+    emitter.emit((root,))
+
+    assert emitter.lines
+    assert all("const float " in line for line in emitter.lines)
+    assert any("0.33333333333333331f" in line for line in emitter.lines)
+    assert any("0.40000000000000002f" in line for line in emitter.lines)
+    assert (
+        format_constant(Fraction(1, 3), scalar_type="float") == "0.33333333333333331f"
+    )
+    with pytest.raises(ValueError, match="scalar type"):
+        CudaEmitter(graph, {}, scalar_type="half")
 
 
 def test_exact_rational_coefficients_fold_before_cuda_lowering() -> None:
