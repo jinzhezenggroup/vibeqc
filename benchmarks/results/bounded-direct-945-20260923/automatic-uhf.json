@@ -1,0 +1,1725 @@
+{
+  "completed": false,
+  "slurm_job": "11267",
+  "case": "water-tetramer-def2-tzvp-spherical",
+  "batch": 2,
+  "method": "uhf",
+  "library_sha256": "a6e2810c5110d2790f221b61b288e5c157067c641d65e6fe32101f83daed25c5",
+  "admission": {
+    "shells": 76,
+    "cartesian_aos": 192,
+    "tiles_per_system": 4528320,
+    "fixed_descriptor_bytes_per_system": 869437440,
+    "fixed_budget_bytes": 1073741824,
+    "task_bytes": 192
+  },
+  "stage": "automatic_repeat_0_done",
+  "oracle": {
+    "energy": -303.804802810307,
+    "forces": [
+      [
+        0.01883877270037182,
+        0.0042540054007158545,
+        0.007923768240012397
+      ],
+      [
+        -0.016249629894544038,
+        0.005923108878192362,
+        -0.00517202594901011
+      ],
+      [
+        0.0014099925112800449,
+        -0.0064786647928114505,
+        -0.005707501737338916
+      ],
+      [
+        -0.004254005523561588,
+        0.018838772439368157,
+        -0.00792376818115792
+      ],
+      [
+        -0.0059231090420496235,
+        -0.016249629192443882,
+        0.005172026164065251
+      ],
+      [
+        0.00647866478175696,
+        0.0014099924211676829,
+        0.0057075015239189675
+      ],
+      [
+        -0.0188387727790138,
+        -0.004254005695343288,
+        0.007923768183397017
+      ],
+      [
+        0.01624962986556211,
+        -0.0059231089651141655,
+        -0.005172026061074975
+      ],
+      [
+        -0.0014099924746460157,
+        0.006478664830707581,
+        -0.005707501606035503
+      ],
+      [
+        0.004254005735013333,
+        -0.018838772743393406,
+        -0.007923768252966923
+      ],
+      [
+        0.005923108902652352,
+        0.01624962986416767,
+        0.005172026013706102
+      ],
+      [
+        -0.0064786647828405375,
+        -0.0014099924451906887,
+        0.005707501662542747
+      ]
+    ],
+    "seconds": 94.01322739804164
+  },
+  "source_identity": "846429c25ae1c00c02ad8599e87f6f1c461b7fa541b44f3faffbcb314204e03e",
+  "fixed_work": [
+    {
+      "shell_class": 0,
+      "shell_angular": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 324909,
+      "tiles": 324909,
+      "ao_quartets": 324909,
+      "primitive_quartets": 2582754
+    },
+    {
+      "shell_class": 1,
+      "shell_angular": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 576460,
+      "tiles": 576460,
+      "ao_quartets": 1729380,
+      "primitive_quartets": 11684913
+    },
+    {
+      "shell_class": 2,
+      "shell_angular": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 255198,
+      "tiles": 255198,
+      "ao_quartets": 2294748,
+      "primitive_quartets": 13051194
+    },
+    {
+      "shell_class": 3,
+      "shell_angular": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 144282,
+      "tiles": 144282,
+      "ao_quartets": 1247814,
+      "primitive_quartets": 8293395
+    },
+    {
+      "shell_class": 4,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 128456,
+      "tiles": 128456,
+      "ao_quartets": 3332610,
+      "primitive_quartets": 19132560
+    },
+    {
+      "shell_class": 5,
+      "shell_angular": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 16518,
+      "tiles": 16518,
+      "ao_quartets": 1228371,
+      "primitive_quartets": 7089486
+    },
+    {
+      "shell_class": 6,
+      "shell_angular": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 202699,
+      "tiles": 202699,
+      "ao_quartets": 1216194,
+      "primitive_quartets": 5303172
+    },
+    {
+      "shell_class": 7,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 179856,
+      "tiles": 179856,
+      "ao_quartets": 3237408,
+      "primitive_quartets": 12002814
+    },
+    {
+      "shell_class": 8,
+      "shell_angular": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 44885,
+      "tiles": 44885,
+      "ao_quartets": 2322126,
+      "primitive_quartets": 8455806
+    },
+    {
+      "shell_class": 9,
+      "shell_angular": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 30869,
+      "tiles": 30869,
+      "ao_quartets": 1107939,
+      "primitive_quartets": 2629131
+    },
+    {
+      "shell_class": 10,
+      "shell_angular": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 93435,
+      "tiles": 93435,
+      "ao_quartets": 1681830,
+      "primitive_quartets": 6985206
+    },
+    {
+      "shell_class": 11,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 82231,
+      "tiles": 82231,
+      "ao_quartets": 4440474,
+      "primitive_quartets": 15521004
+    },
+    {
+      "shell_class": 12,
+      "shell_angular": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 20846,
+      "tiles": 20846,
+      "ao_quartets": 3232818,
+      "primitive_quartets": 11466630
+    },
+    {
+      "shell_class": 13,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 28177,
+      "tiles": 28177,
+      "ao_quartets": 3043116,
+      "primitive_quartets": 6733044
+    },
+    {
+      "shell_class": 14,
+      "shell_angular": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 6470,
+      "tiles": 12838,
+      "ao_quartets": 2080674,
+      "primitive_quartets": 4275666
+    },
+    {
+      "shell_class": 15,
+      "shell_angular": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 19124,
+      "tiles": 19124,
+      "ao_quartets": 588819,
+      "primitive_quartets": 1634955
+    },
+    {
+      "shell_class": 16,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 16916,
+      "tiles": 16916,
+      "ao_quartets": 1566558,
+      "primitive_quartets": 3691989
+    },
+    {
+      "shell_class": 17,
+      "shell_angular": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 4202,
+      "tiles": 6591,
+      "ao_quartets": 1116333,
+      "primitive_quartets": 2583864
+    },
+    {
+      "shell_class": 18,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 5835,
+      "tiles": 5835,
+      "ao_quartets": 1066140,
+      "primitive_quartets": 1649952
+    },
+    {
+      "shell_class": 19,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 2637,
+      "tiles": 6983,
+      "ao_quartets": 1458216,
+      "primitive_quartets": 2040768
+    },
+    {
+      "shell_class": 20,
+      "shell_angular": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 279,
+      "tiles": 1066,
+      "ao_quartets": 246324,
+      "primitive_quartets": 246324
+    },
+    {
+      "shell_class": 21,
+      "shell_angular": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "shell_quartets": 91790,
+      "tiles": 91790,
+      "ao_quartets": 917900,
+      "primitive_quartets": 3710070
+    },
+    {
+      "shell_class": 22,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "shell_quartets": 81227,
+      "tiles": 81227,
+      "ao_quartets": 2436810,
+      "primitive_quartets": 8232840
+    },
+    {
+      "shell_class": 23,
+      "shell_angular": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "shell_quartets": 20284,
+      "tiles": 20284,
+      "ao_quartets": 1747350,
+      "primitive_quartets": 5775750
+    },
+    {
+      "shell_class": 24,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "shell_quartets": 27389,
+      "tiles": 27389,
+      "ao_quartets": 1643340,
+      "primitive_quartets": 3584160
+    },
+    {
+      "shell_class": 25,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "shell_quartets": 12624,
+      "tiles": 12624,
+      "ao_quartets": 2272320,
+      "primitive_quartets": 4686840
+    },
+    {
+      "shell_class": 26,
+      "shell_angular": [
+        3,
+        0,
+        2,
+        2
+      ],
+      "shell_quartets": 2563,
+      "tiles": 4166,
+      "ao_quartets": 778680,
+      "primitive_quartets": 1115280
+    },
+    {
+      "shell_class": 27,
+      "shell_angular": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "shell_quartets": 6277,
+      "tiles": 6277,
+      "ao_quartets": 622705,
+      "primitive_quartets": 1283645
+    },
+    {
+      "shell_class": 28,
+      "shell_angular": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "shell_quartets": 44678,
+      "tiles": 44678,
+      "ao_quartets": 1340340,
+      "primitive_quartets": 5566710
+    },
+    {
+      "shell_class": 29,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "shell_quartets": 39988,
+      "tiles": 39988,
+      "ao_quartets": 3598920,
+      "primitive_quartets": 12670380
+    },
+    {
+      "shell_class": 30,
+      "shell_angular": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "shell_quartets": 10200,
+      "tiles": 19036,
+      "ao_quartets": 2631240,
+      "primitive_quartets": 9223020
+    },
+    {
+      "shell_class": 31,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "shell_quartets": 12918,
+      "tiles": 12918,
+      "ao_quartets": 2325240,
+      "primitive_quartets": 5187420
+    },
+    {
+      "shell_class": 32,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "shell_quartets": 6045,
+      "tiles": 18135,
+      "ao_quartets": 3264300,
+      "primitive_quartets": 6857460
+    },
+    {
+      "shell_class": 33,
+      "shell_angular": [
+        3,
+        1,
+        2,
+        2
+      ],
+      "shell_quartets": 1212,
+      "tiles": 5118,
+      "ao_quartets": 1097010,
+      "primitive_quartets": 1641330
+    },
+    {
+      "shell_class": 34,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "shell_quartets": 5694,
+      "tiles": 11388,
+      "ao_quartets": 1708200,
+      "primitive_quartets": 3522900
+    },
+    {
+      "shell_class": 35,
+      "shell_angular": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "shell_quartets": 1365,
+      "tiles": 5372,
+      "ao_quartets": 1209360,
+      "primitive_quartets": 2741160
+    },
+    {
+      "shell_class": 36,
+      "shell_angular": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "shell_quartets": 13076,
+      "tiles": 13076,
+      "ao_quartets": 784560,
+      "primitive_quartets": 2289960
+    },
+    {
+      "shell_class": 37,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "shell_quartets": 11312,
+      "tiles": 11312,
+      "ao_quartets": 2036160,
+      "primitive_quartets": 4920120
+    },
+    {
+      "shell_class": 38,
+      "shell_angular": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "shell_quartets": 2898,
+      "tiles": 8237,
+      "ao_quartets": 1482660,
+      "primitive_quartets": 3615120
+    },
+    {
+      "shell_class": 39,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "shell_quartets": 3627,
+      "tiles": 7254,
+      "ao_quartets": 1305720,
+      "primitive_quartets": 1947240
+    },
+    {
+      "shell_class": 40,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "shell_quartets": 1663,
+      "tiles": 8315,
+      "ao_quartets": 1796040,
+      "primitive_quartets": 2622240
+    },
+    {
+      "shell_class": 41,
+      "shell_angular": [
+        3,
+        2,
+        2,
+        2
+      ],
+      "shell_quartets": 336,
+      "tiles": 2512,
+      "ao_quartets": 610560,
+      "primitive_quartets": 610560
+    },
+    {
+      "shell_class": 42,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "shell_quartets": 1624,
+      "tiles": 4872,
+      "ao_quartets": 974400,
+      "primitive_quartets": 1435200
+    },
+    {
+      "shell_class": 43,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "shell_quartets": 773,
+      "tiles": 6184,
+      "ao_quartets": 1391400,
+      "primitive_quartets": 2023200
+    },
+    {
+      "shell_class": 44,
+      "shell_angular": [
+        3,
+        2,
+        3,
+        2
+      ],
+      "shell_quartets": 112,
+      "tiles": 1568,
+      "ao_quartets": 374880,
+      "primitive_quartets": 374880
+    },
+    {
+      "shell_class": 45,
+      "shell_angular": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "shell_quartets": 4772,
+      "tiles": 4772,
+      "ao_quartets": 330185,
+      "primitive_quartets": 910190
+    },
+    {
+      "shell_class": 46,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "shell_quartets": 4257,
+      "tiles": 5670,
+      "ao_quartets": 893160,
+      "primitive_quartets": 2130720
+    },
+    {
+      "shell_class": 47,
+      "shell_angular": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "shell_quartets": 1103,
+      "tiles": 2948,
+      "ao_quartets": 675240,
+      "primitive_quartets": 1620420
+    },
+    {
+      "shell_class": 48,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "shell_quartets": 1378,
+      "tiles": 3110,
+      "ao_quartets": 550320,
+      "primitive_quartets": 815280
+    },
+    {
+      "shell_class": 49,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "shell_quartets": 642,
+      "tiles": 3280,
+      "ao_quartets": 779760,
+      "primitive_quartets": 1142640
+    },
+    {
+      "shell_class": 50,
+      "shell_angular": [
+        3,
+        3,
+        2,
+        2
+      ],
+      "shell_quartets": 150,
+      "tiles": 1246,
+      "ao_quartets": 300120,
+      "primitive_quartets": 300120
+    },
+    {
+      "shell_class": 51,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "shell_quartets": 596,
+      "tiles": 1908,
+      "ao_quartets": 381800,
+      "primitive_quartets": 551400
+    },
+    {
+      "shell_class": 52,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "shell_quartets": 284,
+      "tiles": 2303,
+      "ao_quartets": 553650,
+      "primitive_quartets": 935250
+    },
+    {
+      "shell_class": 53,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        2
+      ],
+      "shell_quartets": 67,
+      "tiles": 904,
+      "ao_quartets": 229200,
+      "primitive_quartets": 229200
+    },
+    {
+      "shell_class": 54,
+      "shell_angular": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "shell_quartets": 10,
+      "tiles": 100,
+      "ao_quartets": 24310,
+      "primitive_quartets": 24310
+    }
+  ],
+  "fixed": {
+    "energy": -303.87862865124276,
+    "forces": [
+      [
+        0.02517120048384579,
+        0.006197692921887998,
+        0.01762717291823236
+      ],
+      [
+        -0.034621428285654794,
+        0.002248264464216051,
+        -0.00046420782994433245
+      ],
+      [
+        0.004205505282497199,
+        -0.006951016527729625,
+        -0.015654935324544716
+      ],
+      [
+        0.020276314895856237,
+        0.014235806017828407,
+        -0.016606572121373554
+      ],
+      [
+        -0.0037355550076653495,
+        -0.015312585773394914,
+        0.0016324895313595009
+      ],
+      [
+        0.005643366209551645,
+        0.0038097059949206116,
+        0.014199341997385588
+      ],
+      [
+        0.015924041728254866,
+        -0.009758097053195684,
+        -0.0022415280264330866
+      ],
+      [
+        -0.05712441871346487,
+        -0.004555455880749472,
+        -0.008820946138266872
+      ],
+      [
+        0.014339379578693565,
+        -0.009382801483142248,
+        0.013937033158663051
+      ],
+      [
+        0.016132112690960248,
+        -0.03895223310116377,
+        -0.011016811714224006
+      ],
+      [
+        -0.00016080503524111916,
+        0.062246512427637644,
+        -0.005202638021446932
+      ],
+      [
+        -0.006049713827560077,
+        -0.0038257920069293214,
+        0.012611601570540937
+      ]
+    ],
+    "seconds": 69.06051650224254,
+    "iterations": 59
+  },
+  "preparation_seconds": 0.004532528109848499,
+  "automatic": [
+    {
+      "seconds": 142.61264403583482,
+      "energies": [
+        -303.87862865124265,
+        -303.8786286512424
+      ],
+      "iterations": [
+        47,
+        47
+      ],
+      "forces": [
+        [
+          [
+            0.025171200484540697,
+            0.0061976929220800515,
+            0.017627172918335172
+          ],
+          [
+            -0.03462142828628092,
+            0.002248264464160278,
+            -0.0004642078299152328
+          ],
+          [
+            0.004205505282520035,
+            -0.006951016527725022,
+            -0.015654935324622952
+          ],
+          [
+            0.020276314895492715,
+            0.014235806017463179,
+            -0.016606572121988513
+          ],
+          [
+            -0.003735555007521326,
+            -0.015312585773640886,
+            0.0016324895313120944
+          ],
+          [
+            0.005643366209316756,
+            0.003809705994965514,
+            0.014199341997440313
+          ],
+          [
+            0.01592404173106875,
+            -0.009758097067580986,
+            -0.0022415280371420056
+          ],
+          [
+            -0.057124418714772224,
+            -0.0045554558691439685,
+            -0.008820946129557696
+          ],
+          [
+            0.014339379577685229,
+            -0.009382801479326231,
+            0.013937033161211426
+          ],
+          [
+            0.01613211269083882,
+            -0.03895223310110493,
+            -0.011016811713643626
+          ],
+          [
+            -0.00016080503526926792,
+            0.06224651242722208,
+            -0.005202638021613062
+          ],
+          [
+            -0.006049713827207641,
+            -0.0038257920070181527,
+            0.012611601570055562
+          ]
+        ],
+        [
+          [
+            0.02517120048452951,
+            0.006197692922095143,
+            0.017627172918366955
+          ],
+          [
+            -0.034621428286258214,
+            0.0022482644641544816,
+            -0.0004642078299243775
+          ],
+          [
+            0.004205505282504567,
+            -0.006951016527721854,
+            -0.015654935324588535
+          ],
+          [
+            0.02027631489550858,
+            0.014235806017522017,
+            -0.01660657212194592
+          ],
+          [
+            -0.0037355550075273388,
+            -0.015312585773617542,
+            0.0016324895313114928
+          ],
+          [
+            0.005643366209323354,
+            0.0038097059949576077,
+            0.014199341997450873
+          ],
+          [
+            0.015924041731042837,
+            -0.009758097067599183,
+            -0.0022415280371244277
+          ],
+          [
+            -0.0571244187148106,
+            -0.004555455869146036,
+            -0.008820946129555451
+          ],
+          [
+            0.014339379577684677,
+            -0.009382801479341212,
+            0.013937033161229241
+          ],
+          [
+            0.016132112690832253,
+            -0.03895223310107278,
+            -0.011016811713577818
+          ],
+          [
+            -0.0001608050352654628,
+            0.06224651242718255,
+            -0.00520263802161798
+          ],
+          [
+            -0.0060497138272031055,
+            -0.003825792007022377,
+            0.012611601570080743
+          ]
+        ]
+      ],
+      "work": [
+        {
+          "shell_class": 0,
+          "shell_angular": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "shell_quartets": 649818,
+          "tiles": 649818,
+          "ao_quartets": 649818,
+          "primitive_quartets": 5165508
+        },
+        {
+          "shell_class": 1,
+          "shell_angular": [
+            1,
+            0,
+            0,
+            0
+          ],
+          "shell_quartets": 1152920,
+          "tiles": 1152920,
+          "ao_quartets": 3458760,
+          "primitive_quartets": 23369826
+        },
+        {
+          "shell_class": 2,
+          "shell_angular": [
+            1,
+            0,
+            1,
+            0
+          ],
+          "shell_quartets": 510396,
+          "tiles": 510396,
+          "ao_quartets": 4589496,
+          "primitive_quartets": 26102388
+        },
+        {
+          "shell_class": 3,
+          "shell_angular": [
+            1,
+            1,
+            0,
+            0
+          ],
+          "shell_quartets": 288564,
+          "tiles": 288564,
+          "ao_quartets": 2495628,
+          "primitive_quartets": 16586790
+        },
+        {
+          "shell_class": 4,
+          "shell_angular": [
+            1,
+            1,
+            1,
+            0
+          ],
+          "shell_quartets": 256912,
+          "tiles": 256912,
+          "ao_quartets": 6665220,
+          "primitive_quartets": 38265120
+        },
+        {
+          "shell_class": 5,
+          "shell_angular": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "shell_quartets": 33036,
+          "tiles": 33036,
+          "ao_quartets": 2456742,
+          "primitive_quartets": 14178972
+        },
+        {
+          "shell_class": 6,
+          "shell_angular": [
+            2,
+            0,
+            0,
+            0
+          ],
+          "shell_quartets": 405398,
+          "tiles": 405398,
+          "ao_quartets": 2432388,
+          "primitive_quartets": 10606344
+        },
+        {
+          "shell_class": 7,
+          "shell_angular": [
+            2,
+            0,
+            1,
+            0
+          ],
+          "shell_quartets": 359712,
+          "tiles": 359712,
+          "ao_quartets": 6474816,
+          "primitive_quartets": 24005628
+        },
+        {
+          "shell_class": 8,
+          "shell_angular": [
+            2,
+            0,
+            1,
+            1
+          ],
+          "shell_quartets": 89770,
+          "tiles": 89770,
+          "ao_quartets": 4644252,
+          "primitive_quartets": 16911612
+        },
+        {
+          "shell_class": 9,
+          "shell_angular": [
+            2,
+            0,
+            2,
+            0
+          ],
+          "shell_quartets": 61738,
+          "tiles": 61738,
+          "ao_quartets": 2215878,
+          "primitive_quartets": 5258262
+        },
+        {
+          "shell_class": 10,
+          "shell_angular": [
+            2,
+            1,
+            0,
+            0
+          ],
+          "shell_quartets": 186870,
+          "tiles": 186870,
+          "ao_quartets": 3363660,
+          "primitive_quartets": 13970412
+        },
+        {
+          "shell_class": 11,
+          "shell_angular": [
+            2,
+            1,
+            1,
+            0
+          ],
+          "shell_quartets": 164462,
+          "tiles": 164462,
+          "ao_quartets": 8880948,
+          "primitive_quartets": 31042008
+        },
+        {
+          "shell_class": 12,
+          "shell_angular": [
+            2,
+            1,
+            1,
+            1
+          ],
+          "shell_quartets": 41692,
+          "tiles": 41692,
+          "ao_quartets": 6465636,
+          "primitive_quartets": 22933260
+        },
+        {
+          "shell_class": 13,
+          "shell_angular": [
+            2,
+            1,
+            2,
+            0
+          ],
+          "shell_quartets": 56354,
+          "tiles": 56354,
+          "ao_quartets": 6086232,
+          "primitive_quartets": 13466088
+        },
+        {
+          "shell_class": 14,
+          "shell_angular": [
+            2,
+            1,
+            2,
+            1
+          ],
+          "shell_quartets": 12940,
+          "tiles": 25676,
+          "ao_quartets": 4161348,
+          "primitive_quartets": 8551332
+        },
+        {
+          "shell_class": 15,
+          "shell_angular": [
+            2,
+            2,
+            0,
+            0
+          ],
+          "shell_quartets": 38248,
+          "tiles": 38248,
+          "ao_quartets": 1177638,
+          "primitive_quartets": 3269910
+        },
+        {
+          "shell_class": 16,
+          "shell_angular": [
+            2,
+            2,
+            1,
+            0
+          ],
+          "shell_quartets": 33832,
+          "tiles": 33832,
+          "ao_quartets": 3133116,
+          "primitive_quartets": 7383978
+        },
+        {
+          "shell_class": 17,
+          "shell_angular": [
+            2,
+            2,
+            1,
+            1
+          ],
+          "shell_quartets": 8404,
+          "tiles": 13182,
+          "ao_quartets": 2232666,
+          "primitive_quartets": 5167728
+        },
+        {
+          "shell_class": 18,
+          "shell_angular": [
+            2,
+            2,
+            2,
+            0
+          ],
+          "shell_quartets": 11670,
+          "tiles": 11670,
+          "ao_quartets": 2132280,
+          "primitive_quartets": 3299904
+        },
+        {
+          "shell_class": 19,
+          "shell_angular": [
+            2,
+            2,
+            2,
+            1
+          ],
+          "shell_quartets": 5274,
+          "tiles": 13966,
+          "ao_quartets": 2916432,
+          "primitive_quartets": 4081536
+        },
+        {
+          "shell_class": 20,
+          "shell_angular": [
+            2,
+            2,
+            2,
+            2
+          ],
+          "shell_quartets": 558,
+          "tiles": 2132,
+          "ao_quartets": 492648,
+          "primitive_quartets": 492648
+        },
+        {
+          "shell_class": 21,
+          "shell_angular": [
+            3,
+            0,
+            0,
+            0
+          ],
+          "shell_quartets": 183580,
+          "tiles": 183580,
+          "ao_quartets": 1835800,
+          "primitive_quartets": 7420140
+        },
+        {
+          "shell_class": 22,
+          "shell_angular": [
+            3,
+            0,
+            1,
+            0
+          ],
+          "shell_quartets": 162454,
+          "tiles": 162454,
+          "ao_quartets": 4873620,
+          "primitive_quartets": 16465680
+        },
+        {
+          "shell_class": 23,
+          "shell_angular": [
+            3,
+            0,
+            1,
+            1
+          ],
+          "shell_quartets": 40568,
+          "tiles": 40568,
+          "ao_quartets": 3494700,
+          "primitive_quartets": 11551500
+        },
+        {
+          "shell_class": 24,
+          "shell_angular": [
+            3,
+            0,
+            2,
+            0
+          ],
+          "shell_quartets": 54778,
+          "tiles": 54778,
+          "ao_quartets": 3286680,
+          "primitive_quartets": 7168320
+        },
+        {
+          "shell_class": 25,
+          "shell_angular": [
+            3,
+            0,
+            2,
+            1
+          ],
+          "shell_quartets": 25248,
+          "tiles": 25248,
+          "ao_quartets": 4544640,
+          "primitive_quartets": 9373680
+        },
+        {
+          "shell_class": 26,
+          "shell_angular": [
+            3,
+            0,
+            2,
+            2
+          ],
+          "shell_quartets": 5126,
+          "tiles": 8332,
+          "ao_quartets": 1557360,
+          "primitive_quartets": 2230560
+        },
+        {
+          "shell_class": 27,
+          "shell_angular": [
+            3,
+            0,
+            3,
+            0
+          ],
+          "shell_quartets": 12554,
+          "tiles": 12554,
+          "ao_quartets": 1245410,
+          "primitive_quartets": 2567290
+        },
+        {
+          "shell_class": 28,
+          "shell_angular": [
+            3,
+            1,
+            0,
+            0
+          ],
+          "shell_quartets": 89356,
+          "tiles": 89356,
+          "ao_quartets": 2680680,
+          "primitive_quartets": 11133420
+        },
+        {
+          "shell_class": 29,
+          "shell_angular": [
+            3,
+            1,
+            1,
+            0
+          ],
+          "shell_quartets": 79976,
+          "tiles": 79976,
+          "ao_quartets": 7197840,
+          "primitive_quartets": 25340760
+        },
+        {
+          "shell_class": 30,
+          "shell_angular": [
+            3,
+            1,
+            1,
+            1
+          ],
+          "shell_quartets": 20400,
+          "tiles": 38072,
+          "ao_quartets": 5262480,
+          "primitive_quartets": 18446040
+        },
+        {
+          "shell_class": 31,
+          "shell_angular": [
+            3,
+            1,
+            2,
+            0
+          ],
+          "shell_quartets": 25836,
+          "tiles": 25836,
+          "ao_quartets": 4650480,
+          "primitive_quartets": 10374840
+        },
+        {
+          "shell_class": 32,
+          "shell_angular": [
+            3,
+            1,
+            2,
+            1
+          ],
+          "shell_quartets": 12090,
+          "tiles": 36270,
+          "ao_quartets": 6528600,
+          "primitive_quartets": 13714920
+        },
+        {
+          "shell_class": 33,
+          "shell_angular": [
+            3,
+            1,
+            2,
+            2
+          ],
+          "shell_quartets": 2424,
+          "tiles": 10236,
+          "ao_quartets": 2194020,
+          "primitive_quartets": 3282660
+        },
+        {
+          "shell_class": 34,
+          "shell_angular": [
+            3,
+            1,
+            3,
+            0
+          ],
+          "shell_quartets": 11388,
+          "tiles": 22776,
+          "ao_quartets": 3416400,
+          "primitive_quartets": 7045800
+        },
+        {
+          "shell_class": 35,
+          "shell_angular": [
+            3,
+            1,
+            3,
+            1
+          ],
+          "shell_quartets": 2730,
+          "tiles": 10744,
+          "ao_quartets": 2418720,
+          "primitive_quartets": 5482320
+        },
+        {
+          "shell_class": 36,
+          "shell_angular": [
+            3,
+            2,
+            0,
+            0
+          ],
+          "shell_quartets": 26152,
+          "tiles": 26152,
+          "ao_quartets": 1569120,
+          "primitive_quartets": 4579920
+        },
+        {
+          "shell_class": 37,
+          "shell_angular": [
+            3,
+            2,
+            1,
+            0
+          ],
+          "shell_quartets": 22624,
+          "tiles": 22624,
+          "ao_quartets": 4072320,
+          "primitive_quartets": 9840240
+        },
+        {
+          "shell_class": 38,
+          "shell_angular": [
+            3,
+            2,
+            1,
+            1
+          ],
+          "shell_quartets": 5796,
+          "tiles": 16474,
+          "ao_quartets": 2965320,
+          "primitive_quartets": 7230240
+        },
+        {
+          "shell_class": 39,
+          "shell_angular": [
+            3,
+            2,
+            2,
+            0
+          ],
+          "shell_quartets": 7254,
+          "tiles": 14508,
+          "ao_quartets": 2611440,
+          "primitive_quartets": 3894480
+        },
+        {
+          "shell_class": 40,
+          "shell_angular": [
+            3,
+            2,
+            2,
+            1
+          ],
+          "shell_quartets": 3326,
+          "tiles": 16630,
+          "ao_quartets": 3592080,
+          "primitive_quartets": 5244480
+        },
+        {
+          "shell_class": 41,
+          "shell_angular": [
+            3,
+            2,
+            2,
+            2
+          ],
+          "shell_quartets": 672,
+          "tiles": 5024,
+          "ao_quartets": 1221120,
+          "primitive_quartets": 1221120
+        },
+        {
+          "shell_class": 42,
+          "shell_angular": [
+            3,
+            2,
+            3,
+            0
+          ],
+          "shell_quartets": 3248,
+          "tiles": 9744,
+          "ao_quartets": 1948800,
+          "primitive_quartets": 2870400
+        },
+        {
+          "shell_class": 43,
+          "shell_angular": [
+            3,
+            2,
+            3,
+            1
+          ],
+          "shell_quartets": 1546,
+          "tiles": 12368,
+          "ao_quartets": 2782800,
+          "primitive_quartets": 4046400
+        },
+        {
+          "shell_class": 44,
+          "shell_angular": [
+            3,
+            2,
+            3,
+            2
+          ],
+          "shell_quartets": 224,
+          "tiles": 3136,
+          "ao_quartets": 749760,
+          "primitive_quartets": 749760
+        },
+        {
+          "shell_class": 45,
+          "shell_angular": [
+            3,
+            3,
+            0,
+            0
+          ],
+          "shell_quartets": 9544,
+          "tiles": 9544,
+          "ao_quartets": 660370,
+          "primitive_quartets": 1820380
+        },
+        {
+          "shell_class": 46,
+          "shell_angular": [
+            3,
+            3,
+            1,
+            0
+          ],
+          "shell_quartets": 8514,
+          "tiles": 11340,
+          "ao_quartets": 1786320,
+          "primitive_quartets": 4261440
+        },
+        {
+          "shell_class": 47,
+          "shell_angular": [
+            3,
+            3,
+            1,
+            1
+          ],
+          "shell_quartets": 2206,
+          "tiles": 5896,
+          "ao_quartets": 1350480,
+          "primitive_quartets": 3240840
+        },
+        {
+          "shell_class": 48,
+          "shell_angular": [
+            3,
+            3,
+            2,
+            0
+          ],
+          "shell_quartets": 2756,
+          "tiles": 6220,
+          "ao_quartets": 1100640,
+          "primitive_quartets": 1630560
+        },
+        {
+          "shell_class": 49,
+          "shell_angular": [
+            3,
+            3,
+            2,
+            1
+          ],
+          "shell_quartets": 1284,
+          "tiles": 6560,
+          "ao_quartets": 1559520,
+          "primitive_quartets": 2285280
+        },
+        {
+          "shell_class": 50,
+          "shell_angular": [
+            3,
+            3,
+            2,
+            2
+          ],
+          "shell_quartets": 300,
+          "tiles": 2492,
+          "ao_quartets": 600240,
+          "primitive_quartets": 600240
+        },
+        {
+          "shell_class": 51,
+          "shell_angular": [
+            3,
+            3,
+            3,
+            0
+          ],
+          "shell_quartets": 1192,
+          "tiles": 3816,
+          "ao_quartets": 763600,
+          "primitive_quartets": 1102800
+        },
+        {
+          "shell_class": 52,
+          "shell_angular": [
+            3,
+            3,
+            3,
+            1
+          ],
+          "shell_quartets": 568,
+          "tiles": 4606,
+          "ao_quartets": 1107300,
+          "primitive_quartets": 1870500
+        },
+        {
+          "shell_class": 53,
+          "shell_angular": [
+            3,
+            3,
+            3,
+            2
+          ],
+          "shell_quartets": 134,
+          "tiles": 1808,
+          "ao_quartets": 458400,
+          "primitive_quartets": 458400
+        },
+        {
+          "shell_class": 54,
+          "shell_angular": [
+            3,
+            3,
+            3,
+            3
+          ],
+          "shell_quartets": 20,
+          "tiles": 200,
+          "ao_quartets": 48620,
+          "primitive_quartets": 48620
+        }
+      ]
+    }
+  ]
+}
