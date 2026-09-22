@@ -157,7 +157,7 @@ class ProviderDescriptor:
 class LoweringCandidate:
     """One legal or rejected lowering, retaining explicit negative evidence."""
 
-    request_hash: str
+    request: LoweringRequest
     implementation: str
     providers: tuple[ProviderDescriptor, ...]
     status: Literal["ready", "unsupported"]
@@ -168,7 +168,8 @@ class LoweringCandidate:
     provenance: tuple[tuple[str, Scalar], ...] = ()
 
     def __post_init__(self) -> None:
-        _digest(self.request_hash, "lowering request hash")
+        if not isinstance(self.request, LoweringRequest):
+            raise TypeError("lowering candidate requires a LoweringRequest")
         _name(self.implementation, "lowering implementation")
         _name(self.numerical_mode, "lowering numerical mode")
         providers = tuple(self.providers)
@@ -193,12 +194,17 @@ class LoweringCandidate:
         )
 
     @property
+    def request_hash(self) -> str:
+        return self.request.identity
+
+    @property
     def identity(self) -> str:
         return canonical_hash(self.to_payload())
 
     def to_payload(self) -> dict[str, typing.Any]:
         return {
             "schema": LOWERING_CANDIDATE_SCHEMA,
+            "request": self.request.to_payload(),
             "request_hash": self.request_hash,
             "implementation": self.implementation,
             "providers": [provider.to_payload() for provider in self.providers],
@@ -231,6 +237,12 @@ def lowering_diagnostics(
         "schema": LOWERING_DIAGNOSTICS_SCHEMA,
         "identity": canonical_hash(payloads),
         "providers": providers,
-        "requests": sorted({candidate.request_hash for candidate in materialized}),
+        "requests": [
+            candidate.request.to_payload()
+            for candidate in sorted(
+                {candidate.request.identity: candidate for candidate in materialized}.values(),
+                key=lambda candidate: candidate.request.identity,
+            )
+        ],
         "candidates": payloads,
     }
