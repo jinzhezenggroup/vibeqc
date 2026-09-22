@@ -2081,6 +2081,11 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES")' in selection
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
+    assert 'std::strcmp(selection, "reference") == 0' in selection
+    assert 'std::strcmp(selection, "native") == 0' in selection
+    assert 'std::strcmp(selection, "tensor") == 0' in selection
+    assert "silently changing scientific owner" in selection
+    assert selection.count("return true;") >= 2
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
     assert (
         "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"

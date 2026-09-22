@@ -411,6 +411,14 @@ class PrecisionProvenance(ctypes.Structure):
         ("strict_refinement_applied", ctypes.c_int32),
         ("mixed_precision_reserved_error", ctypes.c_double),
         ("refinement_iterations", ctypes.c_int32),
+        ("mixed_stage_fock_builds", ctypes.c_uint64),
+        ("strict_stage_fock_builds", ctypes.c_uint64),
+        ("post_scf_fock_builds", ctypes.c_uint64),
+        ("execution_retries", ctypes.c_uint64),
+        ("mixed_admission_census", ctypes.c_uint64),
+        ("final_residual_audits", ctypes.c_uint64),
+        ("skipped_final_fock_builds", ctypes.c_uint64),
+        ("operator_work_counters_valid", ctypes.c_uint32),
     ]
 
 

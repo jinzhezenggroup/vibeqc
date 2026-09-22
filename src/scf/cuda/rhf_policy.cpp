@@ -337,8 +337,16 @@ unsigned one_electron_value_mapping_requested() noexcept {
 
 bool generated_one_electron_derivatives_requested() noexcept {
   const char* selection = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES");
-  return selection == nullptr || std::strcmp(selection, "1") == 0 ||
-         std::strcmp(selection, "generated") == 0 || std::strcmp(selection, "auto") == 0;
+  if (selection == nullptr || std::strcmp(selection, "1") == 0 ||
+      std::strcmp(selection, "generated") == 0 || std::strcmp(selection, "auto") == 0)
+    return true;
+  // The retained native cooperative implementation is an explicit oracle/control,
+  // never an automatic production fallback. Typos/unknown values stay on the
+  // compiler-owned generated path rather than silently changing scientific owner.
+  if (std::strcmp(selection, "0") == 0 || std::strcmp(selection, "reference") == 0 ||
+      std::strcmp(selection, "native") == 0 || std::strcmp(selection, "tensor") == 0)
+    return false;
+  return true;
 }
 
 unsigned one_electron_derivative_mapping_requested() noexcept {

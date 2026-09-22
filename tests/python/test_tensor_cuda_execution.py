@@ -246,6 +246,29 @@ def check(
         return result
 
 
+def test_inplace_donation_executes_alias_safe_elementwise_chain(
+    compiler: typing.Any, cache: typing.Any
+) -> None:
+    index = Index("i", IndexSpace("donation_axis", "batch", 4097))
+    x = input_tensor("x", TensorSpec((index,), role="input"))
+    transient = add(x, x, coefficients=(3, -1))
+    result = multiply(transient, x)
+    program = Program({"result": result})
+    baseline = plan_cuda(program, compiler.target)
+    schedule = TensorSchedule(inplace_donation=True, elements_per_thread=4)
+    donated = plan_cuda(program, compiler.target, schedule=schedule)
+
+    assert donated.arena_bytes < baseline.arena_bytes
+    assert any(step.donated_from is not None for step in donated.steps)
+    check(
+        program,
+        {"x": np.linspace(-1.25, 2.0, x.spec.size)},
+        compiler,
+        cache,
+        schedule=schedule,
+    )
+
+
 @pytest.mark.parametrize("case", ["diagonal", "named_inputs", "inactive_operand"])
 def test_generated_vjp_review_regressions_on_cuda(
     case: typing.Any, compiler: typing.Any, cache: typing.Any

@@ -17,8 +17,8 @@ This slice separates target resource legality from Direct-J/K scientific constan
 | generated-task arena = 1 GiB | device-memory policy + profile ceiling | moved to target policy; min(profile ceiling, totalGlobalMem/32) |
 | CUDA stack target = 64 KiB | conservative correctness/resource fallback | moved to explicit profile policy |
 | persistent quartet workers = 8 / SM | occupancy schedule choice | moved to profile ceiling plus runtime SM legality |
-| resident PSSS threads = 128 | compile-time kernel schedule/launch-bounds contract | remains; needs generated schedule ownership |
-| resident PSSS max bra primitive pairs = 64 | scratch/layout admission | remains; separate schedule/profile migration |
+| resident PSSS threads = 128 | compile-time kernel schedule/launch-bounds contract | compiler-owned generated schedule; target/profile variation remains |
+| resident PSSS max bra primitive pairs = 64 | scratch/layout admission | compiler-owned generated profile; target/workload selection remains |
 
 ## Shared target facts
 
