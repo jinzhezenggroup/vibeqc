@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "dft/dispersion/d4_reference.hpp"
 #include "model/gfn2/d4.hpp"
 
 using namespace xtbloom::detail::gfn2;
@@ -78,6 +79,34 @@ int main(int argc, char** argv) {
                                   f.workspace, f.error) != 0,
               "coincident later system admitted");
       require(f.energy == original, "earlier energy published before later failure");
+    } else if (test == "hotloop_shared_parity") {
+      std::vector<double> cached_energy(2, 0.0);
+      std::vector<double> cached_dq(4, 0.0);
+      require(evaluate_d4_two_body_cpu(f.plan, f.cache, f.charges.data(), cached_energy.data(),
+                                       cached_dq.data(), f.workspace, f.error) == 0,
+              "cached two-body evaluation failed");
+      namespace shared = vibeqc::dft::dispersion;
+      auto parameters = shared::gfn2_d4_parameters();
+      parameters.s9 = 0.0;
+      for (int system = 0; system < 2; ++system) {
+        constexpr int count = 2;
+        const int begin = 2 * system;
+        std::vector<double> scratch(shared::d4_unbounded_workspace_elements(count));
+        std::vector<double> gradient(3 * count, 0.0);
+        std::vector<double> dq(count, 0.0);
+        double energy[2] = {};
+        require(
+            shared::evaluate_d4_fixed_charge_unbounded_cpu(
+                count, f.numbers.data() + begin, f.xyz.data() + 3 * begin, f.charges.data() + begin,
+                parameters, shared::gfn2_d4_host_tables(), scratch.data(), scratch.size(), energy,
+                gradient.data(), dq.data()) == shared::D4Status::success,
+            "shared two-body evaluation failed");
+        require(std::abs(cached_energy[system] - energy[0]) < 1.0e-13,
+                "cached/shared two-body energy mismatch");
+        for (int atom = 0; atom < count; ++atom)
+          require(std::abs(cached_dq[begin + atom] - dq[atom]) < 1.0e-13,
+                  "cached/shared dE/dq mismatch");
+      }
     } else if (test == "success") {
       const auto original = f.gradient;
       require(f.run() == 0, "valid gradient failed");
