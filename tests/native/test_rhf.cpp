@@ -396,9 +396,10 @@ int main() {
                     VIBEQC_STATUS_SUCCESS &&
                 capabilities.family == VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER &&
                 capabilities.available == 1 &&
-                capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
+                capabilities.supported_properties ==
+                    (VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES) &&
                 capabilities.supports_batch == 1,
-            "RCCSD(T) native energy capability is incorrect");
+            "RCCSD(T) native energy/force capability is incorrect");
 
     const Evaluation center = h2(1.4, true);
     require(std::abs(center.energy - (-1.11671432506255)) < 2.0e-9,

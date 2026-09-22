@@ -303,6 +303,7 @@ RccsdNativeState execute_rccsd_prepared(core::ContextState& context, const core:
     hf.density.shrink_to_fit();
     allocation_stage = "MO provider/problem";
     RccsdNativeState state;
+    state.reference = reference;
     const auto o = reference->nocc;
     state.eps_o.assign(reference->orbital_energies.begin(),
                        reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o));

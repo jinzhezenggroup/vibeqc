@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -46,5 +47,10 @@ struct LambdaResult {
 void validate_lambda_options(const LambdaOptions& options);
 LambdaResult solve_lambda_cpu(const Problem& problem, const SolverResult& cc_result,
                               const LambdaOptions& options = {});
+LambdaResult solve_lambda_cpu_with_energy_source(const Problem& problem,
+                                                 const SolverResult& cc_result,
+                                                 std::span<const double> t1_source,
+                                                 std::span<const double> t2_source,
+                                                 const LambdaOptions& options = {});
 
 }  // namespace vibeqc::cc

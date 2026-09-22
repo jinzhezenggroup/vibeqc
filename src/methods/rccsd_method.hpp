@@ -1,9 +1,13 @@
 #pragma once
+#include <memory>
+
 #include "cc/solver.hpp"
 #include "methods/method.hpp"
+#include "scf/types.hpp"
 
 namespace vibeqc::methods::detail {
 struct RccsdNativeState {
+  std::shared_ptr<const scf::PhysicalReference> reference;
   cc::Problem problem;
   cc::SolverResult solved;
   std::vector<double> eps_o, eps_v;

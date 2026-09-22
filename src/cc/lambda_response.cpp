@@ -132,8 +132,10 @@ void validate_lambda_options(const LambdaOptions& options) {
   (void)response::prepare_gmres(1, options.gmres);
 }
 
-LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
-                              const LambdaOptions& options) {
+static LambdaResult solve_lambda_cpu_impl(const Problem& p, const SolverResult& cc,
+                                          std::span<const double> t1_source,
+                                          std::span<const double> t2_source,
+                                          const LambdaOptions& options) {
   validate_problem(p);
   validate_lambda_options(options);
   if (!cc.converged()) throw std::invalid_argument("RCCSD Lambda requires a converged CC result");
@@ -184,6 +186,25 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   std::vector<double> rhs(layout.dimension());
   layout.pack_weighted({rhs_outputs.t1, layout.n1}, {rhs_outputs.t2, layout.n2}, rhs);
 
+  std::vector<double> packed_source;
+  if (!t1_source.empty() || !t2_source.empty()) {
+    if (t1_source.size() != layout.n1 || t2_source.size() != layout.n2)
+      throw std::invalid_argument("RCCSD Lambda energy-source shape mismatch");
+    std::vector<double> source_one(t1_source.begin(), t1_source.end());
+    std::vector<double> source_two(t2_source.begin(), t2_source.end());
+    for (std::size_t k = 0; k < layout.representatives.size(); ++k) {
+      const auto first = layout.representatives[k];
+      const auto second = layout.partners[k];
+      const double projected =
+          first == second ? source_two[first] : 0.5 * (source_two[first] + source_two[second]);
+      source_two[first] = projected;
+      source_two[second] = projected;
+    }
+    packed_source.resize(layout.dimension());
+    layout.pack_weighted(source_one, source_two, packed_source);
+    for (std::size_t index = 0; index < rhs.size(); ++index) rhs[index] -= packed_source[index];
+  }
+
   std::vector<double> dense_one(layout.n1), dense_two(layout.n2);
   auto apply = [&](std::span<const double> input, std::span<double> output) {
     layout.unpack_weighted(input, dense_one, dense_two);
@@ -207,6 +228,9 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   std::vector<double> independent_rhs(layout.dimension());
   layout.pack_weighted({independent_rhs_output.t1, layout.n1},
                        {independent_rhs_output.t2, layout.n2}, independent_rhs);
+  if (!packed_source.empty())
+    for (std::size_t index = 0; index < independent_rhs.size(); ++index)
+      independent_rhs[index] -= packed_source[index];
   for (std::size_t index = 0; index < independent.size(); ++index)
     independent[index] -= independent_rhs[index];
 
@@ -233,6 +257,19 @@ LambdaResult solve_lambda_cpu(const Problem& p, const SolverResult& cc,
   result.diagnostic.shared_program_hash = generated::lambda_transpose_program_hash;
   result.diagnostic.independent_program_hash = generated::lambda_independent_transpose_program_hash;
   return result;
+}
+
+LambdaResult solve_lambda_cpu(const Problem& problem, const SolverResult& cc_result,
+                              const LambdaOptions& options) {
+  return solve_lambda_cpu_impl(problem, cc_result, {}, {}, options);
+}
+
+LambdaResult solve_lambda_cpu_with_energy_source(const Problem& problem,
+                                                 const SolverResult& cc_result,
+                                                 std::span<const double> t1_source,
+                                                 std::span<const double> t2_source,
+                                                 const LambdaOptions& options) {
+  return solve_lambda_cpu_impl(problem, cc_result, t1_source, t2_source, options);
 }
 
 }  // namespace vibeqc::cc
