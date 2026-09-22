@@ -273,6 +273,27 @@ class GridXcCandidateShape:
 
 
 @dataclass(frozen=True)
+class GridXcScheduleCandidate:
+    """One executable DFT schedule paired with its own measured/planned shape.
+
+    Candidate-local shapes are required when schedules change point tiling:
+    workspace, source size, live pressure and launch count must not be borrowed
+    from a different tile shape merely to make candidates comparable.
+    """
+
+    schedule: GridXcExecutionSchedule
+    shape: GridXcCandidateShape
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.schedule, GridXcExecutionSchedule):
+            raise TypeError("grid/XC schedule candidate requires a typed schedule")
+        if not isinstance(self.shape, GridXcCandidateShape):
+            raise TypeError("grid/XC schedule candidate requires a candidate shape")
+        resolved = self.schedule.resolved(self.shape.tile_points)
+        object.__setattr__(self, "schedule", resolved)
+
+
+@dataclass(frozen=True)
 class GridXcCandidateLimits:
     """Hard deterministic bounds supplied by the target/resource owner."""
 
@@ -322,7 +343,7 @@ class GridXcCandidateAssessment:
 def _storage_pressure(
     schedule: GridXcExecutionSchedule,
     shape: GridXcCandidateShape,
-) -> tuple[int, dict[str, int]]:
+) -> tuple[int, dict[str, int], int, int]:
     """Lower DFT stage lifetimes into the shared #831 storage analysis.
 
     The graph describes only compiler-visible per-tile intermediates.  It is a
@@ -417,7 +438,30 @@ def _storage_pressure(
     # Cross-space peaks are conservative comparison pressure, matching the former
     # DFT-local model without pretending they are a simultaneous process high-water.
     live_values = sum(peaks.values()) // scalar_bytes
-    return live_values, peaks
+    by_key = {value.key: value for value in values}
+    semantic_tile_traffic = sum(
+        by_key[key].bytes
+        for operation in operations
+        for key in (*operation.reads, *operation.writes)
+    )
+    tile_count = (shape.npoint + shape.tile_points - 1) // shape.tile_points
+    # All compiler-visible tile traffic except the symmetric output matrix is
+    # point-linear. Account the final partial tile exactly instead of charging a
+    # full tile, otherwise tile-size search is biased when npoint is ragged.
+    fixed_tile_traffic = vxc_bytes
+    point_traffic = semantic_tile_traffic - fixed_tile_traffic
+    if point_traffic % points:
+        raise AssertionError("grid/XC semantic traffic is not point-linear")
+    semantic_traffic = (
+        point_traffic // points * shape.npoint + fixed_tile_traffic * tile_count
+    )
+    # These are compiler-visible GPU launches for the current CUDA collocation
+    # contract, not opaque runtime/library internals.  Host-unfused stops after
+    # collocation/features; device-fused additionally evaluates/scatters XC.
+    launches_per_tile = (
+        (6 + shape.spins) if schedule.name == "device_fused" else (3 + shape.spins)
+    )
+    return live_values, peaks, semantic_traffic, launches_per_tile * tile_count
 
 
 def assess_grid_xc_schedule(
@@ -452,7 +496,9 @@ def assess_grid_xc_schedule(
             reasons.append("device-fused schedule only supports potential output")
         if functional not in ("LDA_XC_PW", "PBE"):
             reasons.append("device-fused schedule only supports canonical LDA/PBE")
-    live, storage_peaks = _storage_pressure(resolved, shape)
+    live, storage_peaks, semantic_traffic, launch_count = _storage_pressure(
+        resolved, shape
+    )
     resources = ScheduleResources(
         device_bytes=shape.device_workspace_bytes,
         host_bytes=storage_peaks.get("host"),
@@ -495,7 +541,9 @@ def assess_grid_xc_schedule(
         ),
         resources=resources,
         profitability=GpuProfitability(
+            semantic_traffic_bytes=semantic_traffic,
             peak_live_values=live,
+            launch_count=launch_count,
             source_bytes=shape.generated_source_bytes,
         ),
         provenance=(
@@ -516,6 +564,58 @@ def assess_grid_xc_schedule(
     )
 
 
+def rank_grid_xc_candidates(
+    candidates: typing.Iterable[GridXcScheduleCandidate],
+    limits: GridXcCandidateLimits,
+    *,
+    device_xc_available: bool,
+    observable: str,
+    functional: str,
+    scientific: GridXcScientificIdentity | None = None,
+    maximum: int | None = None,
+) -> tuple[GridXcCandidateAssessment, ...]:
+    """Rank DFT schedules with candidate-local shapes through shared ScheduleIR.
+
+    Point tiling changes workspace, liveness, traffic and launch count.  Requiring
+    one shape per candidate prevents the tuner from reusing resource evidence
+    from a different tile merely because both schedules share the same science.
+    This remains compile-investigation ordering, not endpoint promotion.
+    """
+
+    materialized = tuple(candidates)
+    if not materialized:
+        raise ValueError("grid/XC candidate ranking requires at least one candidate")
+    if any(
+        not isinstance(candidate, GridXcScheduleCandidate) for candidate in materialized
+    ):
+        raise TypeError(
+            "grid/XC candidate ranking requires GridXcScheduleCandidate records"
+        )
+    schedule_hashes = tuple(candidate.schedule.identity for candidate in materialized)
+    if len(schedule_hashes) != len(set(schedule_hashes)):
+        raise ValueError("grid/XC candidate ranking requires unique candidates")
+    assessments = tuple(
+        assess_grid_xc_schedule(
+            candidate.schedule,
+            candidate.shape,
+            limits,
+            device_xc_available=device_xc_available,
+            observable=observable,
+            functional=functional,
+            scientific=scientific,
+        )
+        for candidate in materialized
+    )
+    by_contract = {
+        assessment.schedule_contract.identity: assessment for assessment in assessments
+    }
+    ranked = rank_schedule_contracts(
+        (assessment.schedule_contract for assessment in assessments),
+        maximum=maximum,
+    )
+    return tuple(by_contract[contract.identity] for contract in ranked)
+
+
 def rank_grid_xc_schedules(
     schedules: typing.Iterable[GridXcExecutionSchedule | str],
     shape: GridXcCandidateShape,
@@ -527,41 +627,20 @@ def rank_grid_xc_schedules(
     scientific: GridXcScientificIdentity | None = None,
     maximum: int | None = None,
 ) -> tuple[GridXcCandidateAssessment, ...]:
-    """Admit DFT-legal candidates, then delegate static ordering to ScheduleIR.
-
-    This is bounded compile-investigation ordering only.  It never installs a
-    profile or promotes a schedule; #459/#136 and complete endpoint evidence keep
-    ownership of that decision.
-    """
+    """Backward-compatible same-shape wrapper around candidate-local ranking."""
 
     normalized = tuple(grid_xc_schedule(schedule) for schedule in schedules)
     if not normalized:
         raise ValueError("grid/XC schedule ranking requires at least one candidate")
-    resolved_hashes = tuple(
-        schedule.resolved(shape.tile_points).identity for schedule in normalized
-    )
-    if len(resolved_hashes) != len(set(resolved_hashes)):
-        raise ValueError("grid/XC schedule ranking requires unique candidates")
-    assessments = tuple(
-        assess_grid_xc_schedule(
-            schedule,
-            shape,
-            limits,
-            device_xc_available=device_xc_available,
-            observable=observable,
-            functional=functional,
-            scientific=scientific,
-        )
-        for schedule in normalized
-    )
-    by_contract = {
-        assessment.schedule_contract.identity: assessment for assessment in assessments
-    }
-    ranked = rank_schedule_contracts(
-        (assessment.schedule_contract for assessment in assessments),
+    return rank_grid_xc_candidates(
+        tuple(GridXcScheduleCandidate(schedule, shape) for schedule in normalized),
+        limits,
+        device_xc_available=device_xc_available,
+        observable=observable,
+        functional=functional,
+        scientific=scientific,
         maximum=maximum,
     )
-    return tuple(by_contract[contract.identity] for contract in ranked)
 
 
 def schedule_profile_key(
