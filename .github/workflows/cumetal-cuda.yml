@@ -249,7 +249,10 @@ jobs:
 
   cumetal-benchmark:
     name: CuMetal performance (CodSpeed / Apple GPU)
-    if: github.event_name != 'schedule'
+    # The required CuMetal runtime correctness job still runs on every PR.
+    # Keep performance telemetry on master/manual qualification to avoid
+    # competing with that required Apple-GPU check for PR runner capacity.
+    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: macos-15
     timeout-minutes: 15
     env:
