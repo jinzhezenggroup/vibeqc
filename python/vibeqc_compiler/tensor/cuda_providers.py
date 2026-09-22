@@ -107,7 +107,7 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
         )
         candidates.append(
             LoweringCandidate(
-                request_hash=request.identity,
+                request=request,
                 implementation=(
                     f"tensor-gemm-{step.gemm}"
                     if uses_cublas
