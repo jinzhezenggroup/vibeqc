@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "integrals/density_fitting_metric.hpp"
 #include "integrals/s_integrals.hpp"
 #include "scf/df_preparation_budget.hpp"
 #include "scf/df_value_storage.hpp"
@@ -16,14 +17,7 @@ namespace vibeqc::scf {
 /** Diagnostic A/B control: retain coordinate-resolved CPU DF derivative tensors. */
 [[nodiscard]] bool cpu_materialized_df_derivatives_requested() noexcept;
 
-/** Conditioning diagnostics and symmetric inverse square root of (P|Q). */
-struct DensityFittingMetricFactor {
-  std::size_t dimension{};
-  std::size_t effective_rank{};
-  double absolute_threshold{};
-  double condition_number{};
-  std::vector<double> inverse_square_root;
-};
+using DensityFittingMetricFactor = integrals::DensityFittingMetricFactor;
 
 /**
  * Remove linearly dependent metric eigenvectors and form J^(-1/2).
@@ -289,8 +283,10 @@ class DensityFittingBudgetError : public std::invalid_argument {
  * callers must pass stores_full_three_center to the source plan adapter. Explicit
  * host-tensor plans additionally need their raw upload during setup.
  * automatic_rhf_rank authorizes optional SCF factor reservation for a known
- * RHF occupation. Zero keeps dense accounting. If optional factors force
- * streaming, auto retries the dense budget; explicit occupied never does.
+ * RHF occupation. Zero keeps dense accounting. Streamed generated plans may
+ * reserve factors when source-first projection reduces raw work; factors never
+ * force an otherwise resident dense plan to stream. Explicit occupied retains
+ * its conservative reservation independently of automatic profitability.
  */
 [[nodiscard]] DensityFittingTilePlan plan_density_fitting_tiles(
     std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t occupied,

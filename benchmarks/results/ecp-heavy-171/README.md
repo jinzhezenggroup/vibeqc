@@ -85,7 +85,7 @@ Budgeted displaced-geometry and restoration assertions also pass in the tests.
 
 ## Reproduction and provenance
 
-Build Release CPU/CUDA libraries as described in [the ECP contract](../../../docs/ecp.md).
+Build Release CPU/CUDA libraries as described in [the ECP contract](../../../docs/user/ecp.md).
 The measured GPU is an RTX 4090 with CUDA 12.9, architecture 89, and AOT shells
 disabled; Compute Sanitizer is 12.8. Use the pinned reference-test extra,
 `PYTHONPATH=python`, the exact `VIBEQC_LIBRARY`, and one OpenMP/OpenBLAS/MKL

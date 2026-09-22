@@ -11,7 +11,7 @@ repo-wide unless a nested `AGENTS.md` adds more specific constraints.
   unless that consumer is explicitly part of the production contract.
 - Performance claims must include complete endpoint timing and semantic work
   counts; memory-bounded is not necessarily work-bounded. See
-  `docs/performance_engineering.md`.
+  `docs/maintainer/performance_engineering.md`.
 - Numerical, precision, derivative, and response changes require an independent
   oracle/reference and explicit acceptance gates appropriate to the method.
 - Keep explicit bounded fallbacks when a faster path depends on optional resident

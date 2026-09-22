@@ -1,0 +1,6 @@
+{
+  "name": "mean_field_setup",
+  "outputs": ["generated/generated_mean_field_setup.cuh"],
+  "owner": "python/vibeqc_compiler/method/mean_field_setup_cuda.py",
+  "scope": "Dynamic CUDA lowering of the shared SCF weighted-projector TensorIR for symmetric overlap reconstruction and initial occupied densities; reuse the matrix-function compiler's inverse-square-root value and preserve the absolute overlap cutoff and metric identity gate."
+}

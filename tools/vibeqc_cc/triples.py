@@ -10,7 +10,7 @@ recorded in :data:`tools.vibeqc_cc.source_manifest` and ``NOTICE``.
 Mathematical contract (faithful transcription, nothing re-derived)
 ------------------------------------------------------------------
 
-Inputs are all-MO, real, Hartree, occupied then virtual (``docs/posthf.md``):
+Inputs are all-MO, real, Hartree, occupied then virtual (``docs/developer/posthf.md``):
 
     ovvv = (i, a, b, c)          eris.get_ovvv()             (i occupied; a,b,c virtual)
     ovoo = (i, a, j, m)          eris.ovoo

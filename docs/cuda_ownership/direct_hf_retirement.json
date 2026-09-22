@@ -12,8 +12,8 @@
       "schedule_requirements": "Preserve bounded topology traversal, symmetry, screening admission and output scatter without introducing a whole-quartet tensor. Production-qualified classes must fail closed rather than silently falling back to duplicate handwritten equations.",
       "resource_profile": "The fallback remains O(N_shell^2) in stored topology and bounded in task state. Retirement requires generated classes to preserve those memory bounds as well as endpoint performance.",
       "evidence": [
-        "docs/shell_codegen.md",
-        "docs/weighted_eri.md",
+        "docs/developer/shell_codegen.md",
+        "docs/developer/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
       "required_compiler_capabilities": [
@@ -35,8 +35,8 @@
       "schedule_requirements": "Preserve direct pair-class enumeration, page-local screening, shared primitive work, bounded state, and single-counted force/Fock scatter while replacing only duplicate scientific algebra.",
       "resource_profile": "Retained routes exist because queue materialization or generated class schedules can regress endpoint/resource behavior; promotion requires register/stack/shared-memory and complete-endpoint evidence.",
       "evidence": [
-        "docs/shell_codegen.md",
-        "docs/weighted_eri.md",
+        "docs/developer/shell_codegen.md",
+        "docs/developer/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
       "required_compiler_capabilities": [
@@ -58,8 +58,8 @@
       "schedule_requirements": "Share primitive/Boys work across Fock outputs, preserve symmetry/scatter semantics, and choose materialization/rematerialization from measured register and occupancy evidence rather than Direct-only shape tests.",
       "resource_profile": "Register/shared-memory pressure and repeated primitive work are the primary retirement constraints; endpoint selection must consume generic target/resource evidence.",
       "evidence": [
-        "docs/shell_codegen.md",
-        "docs/cuda_ownership.md",
+        "docs/developer/shell_codegen.md",
+        "docs/maintainer/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
       "required_compiler_capabilities": [
@@ -90,7 +90,7 @@
       "schedule_requirements": "Preserve center recovery, arbitrary external weights, shared quartet work, and native fixed/resident/paged schedule semantics while moving optimization choices to generic compiler schedules.",
       "resource_profile": "Promotion must compare complete force endpoint time plus registers/stack/shared memory and actual primitive/derivative work; generated source existence alone is insufficient.",
       "evidence": [
-        "docs/weighted_eri.md",
+        "docs/developer/weighted_eri.md",
         "benchmarks/results/weighted-eri-144/README.md",
         "benchmarks/results/issue356-psss-retirement/README.md"
       ],
@@ -116,8 +116,8 @@
       "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
       "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
       "evidence": [
-        "docs/second_integral_derivatives.md",
-        "docs/cuda_ownership.md",
+        "docs/developer/second_integral_derivatives.md",
+        "docs/maintainer/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json",
         "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py",
         "python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
@@ -138,8 +138,8 @@
       "schedule_requirements": "Keep recurrence mathematics separate from queue/runtime plumbing, preserve shell symmetry and pair reuse, and avoid deleting shared helpers while any qualified fallback still depends on them.",
       "resource_profile": "Compact pair geometry and bounded local intermediates are part of the existing performance envelope; a generated replacement must not multiply recurrence work or unbound local storage.",
       "evidence": [
-        "docs/shell_codegen.md",
-        "docs/cuda_ownership.md"
+        "docs/developer/shell_codegen.md",
+        "docs/maintainer/cuda_ownership.md"
       ],
       "required_compiler_capabilities": [
         "#351 shared recurrence/spec ownership",
@@ -168,8 +168,8 @@
       "schedule_requirements": "Preserve physical screening/error semantics independently from generic queue compaction and scheduling; coordinate changes with the numerical error-policy owners.",
       "resource_profile": "Screening must remain work- and memory-bounded and expose active-domain/work counts; looser policy cannot be used to manufacture a performance win.",
       "evidence": [
-        "docs/cuda_ownership.md",
-        "docs/accuracy.md"
+        "docs/maintainer/cuda_ownership.md",
+        "docs/user/accuracy.md"
       ],
       "required_compiler_capabilities": [
         "#173/#174/#175 numerical screening and error-policy contracts"
@@ -193,8 +193,8 @@
       "schedule_requirements": "Keep this route explicit and bounded; never treat agreement between this consumer and another lowering of the same mathematics as independent validation.",
       "resource_profile": "Retain only while its bounded execution/resource behavior provides a qualified control or measured production advantage.",
       "evidence": [
-        "docs/cuda_ownership.md",
-        "docs/weighted_eri.md"
+        "docs/maintainer/cuda_ownership.md",
+        "docs/developer/weighted_eri.md"
       ],
       "required_compiler_capabilities": [
         "#832 profitability/resource planning",

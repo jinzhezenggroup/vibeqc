@@ -82,4 +82,4 @@ Current objects total 154.31 MiB and extracted cubins 141.14 MiB. Recorded per-c
 | [fffd](fffd.json) | 69.96 | 3.51 | 168 | 956 / 956 | 4.23e-16 | Unselected; endpoint A/B not run |
 | [ffff](ffff.json) | 329.69 | 12.20 | 168 | 2776 / 2588 | 1.12e-15 | Unselected; endpoint A/B not run |
 
-Validation: **617 Python tests passed, 75 skipped; 9/9 native CPU suites passed; pre-commit passed.** All GPU numerical tests, endpoint runs, profiling, and sanitizer execution used finite Slurm allocations on `main` with `gpu:5090:1`, preserving assigned device visibility. Normal CUDA PR CI compiles only the five representative smoke classes. See the [runner protocol](../../../docs/f_shell_validation.md) for reproduction commands.
+Validation: **617 Python tests passed, 75 skipped; 9/9 native CPU suites passed; pre-commit passed.** All GPU numerical tests, endpoint runs, profiling, and sanitizer execution used finite Slurm allocations on `main` with `gpu:5090:1`, preserving assigned device visibility. Normal CUDA PR CI compiles only the five representative smoke classes. See the [runner protocol](../../../docs/maintainer/f_shell_validation.md) for reproduction commands.

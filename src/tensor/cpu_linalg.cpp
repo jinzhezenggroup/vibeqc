@@ -69,6 +69,18 @@ bool symm_upper_triangle(char value) {
   throw std::invalid_argument("CPU SYMM triangle must be U or L");
 }
 
+bool syr_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU SYR triangle must be U or L");
+}
+
+bool syr2_upper_triangle(char value) {
+  if (value == 'U' || value == 'u') return true;
+  if (value == 'L' || value == 'l') return false;
+  throw std::invalid_argument("CPU SYR2 triangle must be U or L");
+}
+
 bool upper_triangle(char value) {
   if (value == 'U' || value == 'u') return true;
   if (value == 'L' || value == 'l') return false;
@@ -200,6 +212,28 @@ void scalar_symm(bool left, bool upper, std::size_t m, std::size_t n, const doub
       const std::size_t index = i * n + j;
       c[index] = beta == 0.0 ? alpha * sum : alpha * sum + beta * c[index];
     }
+  }
+}
+
+void scalar_syr(bool upper, std::size_t n, const double* x, double* a, double alpha) {
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::size_t first_column = upper ? i : 0;
+    const std::size_t last_column = upper ? n : i + 1;
+    for (std::size_t j = first_column; j < last_column; ++j) a[i * n + j] += alpha * x[i] * x[j];
+  }
+}
+
+void scalar_syr2(bool upper, std::size_t n, const double* x, const double* y, double* a,
+                 double alpha) {
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::size_t first_column = upper ? i : 0;
+    const std::size_t last_column = upper ? n : i + 1;
+    // Scale first, as in DSYR2: unscaled products can overflow or underflow
+    // even when the requested rank update is representable in binary64.
+    const double scaled_x = alpha * x[i];
+    const double scaled_y = alpha * y[i];
+    for (std::size_t j = first_column; j < last_column; ++j)
+      a[i * n + j] = a[i * n + j] + scaled_x * y[j] + scaled_y * x[j];
   }
 }
 
@@ -555,6 +589,35 @@ void openblas_symm(bool left, bool upper, std::size_t m, std::size_t n, const do
 #endif
 }
 
+void openblas_syr(bool upper, std::size_t n, const double* x, double* a, double alpha,
+                  const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (n > limit) throw std::length_error("OpenBLAS SYR dimension exceeds int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto triangle = upper ? CblasUpper : CblasLower;
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dsyr(CblasRowMajor, triangle, static_cast<int>(n), alpha, x, 1, a,
+                   static_cast<int>(n));
+#else
+  cblas_dsyr(CblasRowMajor, triangle, static_cast<int>(n), alpha, x, 1, a, static_cast<int>(n));
+#endif
+}
+
+void openblas_syr2(bool upper, std::size_t n, const double* x, const double* y, double* a,
+                   double alpha, const CpuLinalgPlan& plan) {
+  const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
+  if (n > limit) throw std::length_error("OpenBLAS SYR2 dimension exceeds int range");
+  OpenBlasThreadGuard guard(plan);
+  const auto triangle = upper ? CblasUpper : CblasLower;
+#if VIBEQC_OPENBLAS_SCIPY_PREFIX
+  scipy_cblas_dsyr2(CblasRowMajor, triangle, static_cast<int>(n), alpha, x, 1, y, 1, a,
+                    static_cast<int>(n));
+#else
+  cblas_dsyr2(CblasRowMajor, triangle, static_cast<int>(n), alpha, x, 1, y, 1, a,
+              static_cast<int>(n));
+#endif
+}
+
 void openblas_syrk(bool upper, bool trans, std::size_t n, std::size_t k, const double* a, double* c,
                    double alpha, double beta, const CpuLinalgPlan& plan) {
   const auto limit = static_cast<std::size_t>(std::numeric_limits<int>::max());
@@ -886,6 +949,56 @@ void cpu_symm(char side, char uplo, std::size_t m, std::size_t n, const double* 
   }
 #endif
   scalar_symm(left, upper, m, n, a, b, c, alpha, beta);
+}
+
+void cpu_syr(char uplo, std::size_t n, const double* x, double* a, double alpha,
+             const CpuLinalgPlan& plan) {
+  const bool upper = syr_upper_triangle(uplo);
+  validate_plan(plan);
+  if (!n) return;
+  checked_matrix_elements(n, n);
+  if (alpha == 0.0) return;
+  if (!x || !a) throw std::invalid_argument("CPU SYR received null storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(n, n, 1) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_syr(upper, n, x, a, alpha, plan);
+    return;
+  }
+#endif
+  scalar_syr(upper, n, x, a, alpha);
+}
+
+void cpu_syr2(char uplo, std::size_t n, const double* x, const double* y, double* a, double alpha,
+              const CpuLinalgPlan& plan) {
+  const bool upper = syr2_upper_triangle(uplo);
+  validate_plan(plan);
+  if (!n) return;
+  checked_matrix_elements(n, n);
+  if (alpha == 0.0) return;
+  if (!x || !y || !a) throw std::invalid_argument("CPU SYR2 received null storage");
+
+  CpuLinalgProvider provider = plan.provider;
+  if (provider == CpuLinalgProvider::automatic) {
+    provider =
+        fits_openblas(n, n, 1) ? resolve_cpu_linalg_provider(plan) : CpuLinalgProvider::scalar;
+  } else {
+    provider = resolve_cpu_linalg_provider(plan);
+  }
+#if VIBEQC_HAS_OPENBLAS
+  if (provider == CpuLinalgProvider::openblas) {
+    openblas_syr2(upper, n, x, y, a, alpha, plan);
+    return;
+  }
+#endif
+  scalar_syr2(upper, n, x, y, a, alpha);
 }
 
 void cpu_syrk(char uplo, char trans, std::size_t n, std::size_t k, const double* a, double* c,
