@@ -10,15 +10,11 @@ from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.pw_maple import pw_correlation, pw_maple_provenance
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
-POLARIZED = (
-    "rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b"
-)
+POLARIZED = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b")
 UNPOLARIZED = ("rho", "sigma", "tau")
 
 
-def _roots(
-    graph: Graph, energy: Expr, variables: tuple[Expr, ...]
-) -> tuple[Expr, ...]:
+def _roots(graph: Graph, energy: Expr, variables: tuple[Expr, ...]) -> tuple[Expr, ...]:
     first = tuple(graph.differentiate(energy, variable) for variable in variables)
     second = tuple(
         graph.differentiate(first[i], variables[j])
