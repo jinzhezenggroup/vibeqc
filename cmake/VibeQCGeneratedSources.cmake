@@ -68,6 +68,9 @@ macro(vibeqc_register_host_generated_sources target)
     OUTPUTS "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_kernels.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivatives_cuda.py"
     ARGS --cpu-st-output "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}")
 
   set(VIBEQC_DF_VALUE_CPU_HEADER
