@@ -130,3 +130,12 @@ bounded 96-atom work and complete endpoints. The extracted resource census is
 `ks96-two-steps-v11-launch-resources.json` beside the original SQLite capture;
 remaining work is tracked in #1102. No point-evaluator production change is
 included in this feature-reduction PR.
+
+A same-tree compile-only PBE physical-consumer ablation with NVCC 12.9 / O3 /
+sm_120 / `--fmad=false` reduces point-kernel resources from 255 registers,
+2128-byte stack, 256/288-byte static spill stores/loads to 148 registers,
+96-byte stack and zero spills. These are PTXAS reports for isolated objects,
+not GPU execution or evidence that a particular generic runtime branch issues
+all reported spill accesses. Sources and logs are retained under
+`.artifacts/xc-point-registers/`. Focused follow-up: #1113. No runnable production
+library is made from the fixed-PBE ablation.
