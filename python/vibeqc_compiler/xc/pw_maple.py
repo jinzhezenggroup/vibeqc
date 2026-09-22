@@ -33,7 +33,7 @@ def _pw_module(modified: bool) -> MapleModule:
         _libxc_root(),
         "lda_c_pw.mpl",
         defines=defines,
-        support_files=("lda_c_pw.c", "util.mpl"),
+        support_files=("util.mpl",),
     )
 
 
