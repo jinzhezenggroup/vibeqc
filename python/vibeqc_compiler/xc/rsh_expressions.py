@@ -13,10 +13,10 @@ from fractions import Fraction as F
 from vibeqc_compiler.integral.expr import Expr, Graph
 
 from . import ityh_maple
-from .b88_vwn_maple import b88_exchange as maple_b88_exchange
-from .b88_vwn_maple import vwn_correlation as maple_vwn_correlation
 from .b3lyp_production_policy import b88_exchange as production_b88_exchange
 from .b3lyp_production_policy import lyp_correlation as production_lyp_correlation
+from .b88_vwn_maple import b88_exchange as maple_b88_exchange
+from .b88_vwn_maple import vwn_correlation as maple_vwn_correlation
 from .p86_pz_maple import p86_correlation, pz_correlation
 from .pw91_maple import pw91_correlation as imported_pw91_correlation
 from .pw91_maple import pw91_exchange as imported_pw91_exchange
@@ -55,9 +55,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
         ),
         "GGA_X_ITYH": lambda: ityh_maple.ityh_exchange(graph, spec, variables),
         "GGA_X_PW91": lambda: imported_pw91_exchange(graph, spec, variables),
-        "LDA_C_PW": lambda: pw_correlation(
-            graph, spec, variables, modified=False
-        ),
+        "LDA_C_PW": lambda: pw_correlation(graph, spec, variables, modified=False),
         "GGA_C_PW91": lambda: imported_pw91_correlation(graph, spec, variables),
         "LDA_C_PZ": lambda: pz_correlation(graph, spec, variables),
         "GGA_C_P86": lambda: p86_correlation(graph, spec, variables),

@@ -49,9 +49,7 @@ def b88_exchange(
             1 + y * (-F(1, 6) + y * (F(3, 40) + y * (-F(5, 112) + y * F(35, 1152))))
         )
         x_asinh_x = graph.select_le(y, F(1, 100000000), series, x_asinh_x)
-        enhancement = 1 + beta_b88 / cx * y / (
-            1 + gamma_b88 * beta_b88 * x_asinh_x
-        )
+        enhancement = 1 + beta_b88 / cx * y / (1 + gamma_b88 * beta_b88 * x_asinh_x)
         term = -cx * density.pow(4 / 3) * enhancement
         term = graph.select_le(density, 0, 0, term)
         terms.append(term)
@@ -62,9 +60,7 @@ def lyp_correlation(
     graph: Graph, spec: typing.Any, variables: tuple[typing.Any, ...]
 ) -> Expr:
     """Return the B3LYP LYP production continuation at spin-density endpoints."""
-    ra, rb, saa, sab, sbb, n, up, down, z = _spin_channels(
-        graph, spec, variables
-    )
+    ra, rb, saa, sab, sbb, n, up, down, z = _spin_channels(graph, spec, variables)
     a_lyp = F("0.04918")
     b_lyp = F("0.132")
     c_lyp = F("0.2533")
@@ -94,12 +90,8 @@ def lyp_correlation(
     xs0_up11 = saa * 2 ** (11 / 3) * ra * n.pow(-11 / 3)
     xs1_down11 = sbb * 2 ** (11 / 3) * rb * n.pow(-11 / 3)
 
-    t4 = aux4 * one_minus_z2 * (F(5, 2) - delta / 18) * (
-        xs0_up8 + xs1_down8
-    )
-    t5 = aux5 * one_minus_z2 * (delta - 11) * (
-        xs0_up11 + xs1_down11
-    )
+    t4 = aux4 * one_minus_z2 * (F(5, 2) - delta / 18) * (xs0_up8 + xs1_down8)
+    t5 = aux5 * one_minus_z2 * (delta - 11) * (xs0_up11 + xs1_down11)
     t6 = -aux6 * (
         F(2, 3) * (xs0_up8 + xs1_down8)
         - up.pow(2) * xs1_down8 / 4
