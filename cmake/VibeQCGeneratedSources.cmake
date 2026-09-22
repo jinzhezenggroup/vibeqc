@@ -105,6 +105,8 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
     OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
   set(VIBEQC_SCF_ARRAY_CPU_HEADER
@@ -503,6 +505,8 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
     OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
 
   set(VIBEQC_GRID_SOURCE
