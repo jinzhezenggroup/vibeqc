@@ -60,4 +60,4 @@ tau-dependent stationary-gradient/CPKS and backend numerical gates are complete.
 ## References
 
 GitHub #164, #161, #396; Libxc 7.0.0 r²SCAN sources in
-`external/libxc-7.0.0/`.
+`manifests/libxc/7.0.0/`.

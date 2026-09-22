@@ -150,7 +150,12 @@ def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed(
     None
 ):
     root = Path(__file__).resolve().parents[2]
-    source = json.loads((root / "external/xtbloom-d3/covalent_radii.json").read_text())
+    model = json.loads(
+        (
+            root / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+        ).read_text()
+    )
+    source = [item["covalent_radius_bohr"] for item in model["elements"]]
     policy = GridPolicy()
     spec = policy.resolve("lda-rks")
     assert GRID_POLICY_RADII_SOURCE.endswith(

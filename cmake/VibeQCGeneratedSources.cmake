@@ -54,9 +54,9 @@ macro(vibeqc_register_host_generated_sources target)
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_d3/generate_native_data.py"
     OUTPUTS "${VIBEQC_D3_DATA_HEADER}"
     DEPENDS
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/gfn1_d3.json"
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/covalent_radii.json"
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/manifest.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/manifests/xtbloom-d3.json"
     ARGS --output "${VIBEQC_D3_DATA_HEADER}"
     COMMENT "Generating pinned compact D3(BJ) tables")
   set(VIBEQC_ONE_ELECTRON_ST_CPU_HEADER
