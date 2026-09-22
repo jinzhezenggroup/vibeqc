@@ -341,7 +341,9 @@ class BoundCCSDResponse:
                         else bound.primal_solver_region.identity
                     ),
                     "solver_region_bound_identity": (
-                        None if self.solver_region is None else self.solver_region.identity
+                        None
+                        if self.solver_region is None
+                        else self.solver_region.identity
                     ),
                     "solver_region_derivative_mode": (
                         None if self.solver_region is None else "implicit_vjp"

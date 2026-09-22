@@ -191,7 +191,8 @@ class BoundCCSDLambda:
                     "CC solver-region provenance is invalid"
                 ) from error
             if (
-                primal_solver_region.identity != provenance.get("solver_region_identity")
+                primal_solver_region.identity
+                != provenance.get("solver_region_identity")
                 or primal_solver_region.max_steps
                 != provenance.get("solver_region_max_steps")
                 or primal_solver_region.name != "rccsd-cpu"
