@@ -78,7 +78,7 @@ def assemble_coefficients(
             or array.dtype != np.float64
             or array.flags.writeable
             or (shape is not None and array.shape != shape)
-            or not np.shares_memory(array, owner)
+            or (array.size != 0 and not np.shares_memory(array, owner))
             or not np.isfinite(array).all()
         ):
             raise ValueError("invalid borrowed XC coefficient layout")

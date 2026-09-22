@@ -387,7 +387,7 @@ class _PackedCoefficientFunction:
                 or output.shape != (self.outputs, npoint)
                 or not output.flags.c_contiguous
                 or not output.flags.writeable
-                or not np.shares_memory(output, v)
+                or (npoint != 0 and not np.shares_memory(output, v))
                 or v.ctypes.data != output.ctypes.data + output.strides[0]
                 or (density is not None and np.shares_memory(output, density))
             ):
