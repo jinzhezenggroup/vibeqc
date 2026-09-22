@@ -124,6 +124,20 @@
         "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
       }
     },
+    "libxc-method-metadata": {
+      "canonical_inputs": {
+        "tools/libxc_method_metadata.py": "6e82e79f3391e289eb1995a30b04ddd6977fa48d6cc900aa8121ee2d3902f99d"
+      },
+      "generator": "tools/generate_libxc_methods.py",
+      "generator_sha256": "f840a7d074399a587ec1a3f0d473346520117b4398ec8d72bb6b1c730bacc4bd",
+      "input_identity_sha256": "e593f34010e3f13105191d7b202e3fad2d17fbc17e1685253361ae3944072376",
+      "inputs": [
+        "libxc-7.0.0"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/method/_generated_libxc_methods.py": "d492ce6f33868a573c841d042f039c2f3366926b018a5f8aa360e8b713f93336"
+      }
+    },
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",

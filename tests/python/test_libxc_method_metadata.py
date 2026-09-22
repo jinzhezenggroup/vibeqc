@@ -1,0 +1,101 @@
+"""Pinned Libxc hybrid metadata lowers to MethodIR data without C execution."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from vibeqc_compiler.method import METHOD_CATALOG
+from vibeqc_compiler.method._generated_libxc_methods import (
+    BLOCKED_LIBXC_METHODS,
+    LIBXC_METHODS,
+)
+
+from tools.libxc_method_metadata import extract_method_registrations
+
+ROOT = Path(__file__).resolve().parents[2]
+LIBXC = ROOT / "upstream" / "libxc" / "7.0.0"
+
+
+def _row(filename: str, registration: str) -> dict:
+    rows = extract_method_registrations((LIBXC / filename).read_text(), filename)
+    return next(row for row in rows if row["registration"] == registration)
+
+
+def test_b3lyp_composition_and_exchange_are_source_derived_exactly() -> None:
+    row = _row("hyb_gga_xc_b3lyp.c", "HYB_GGA_XC_B3LYP")
+    assert row["status"] == "generated"
+    assert row["components"] == [
+        ["LDA_X", "2/25"],
+        ["GGA_X_B88", "18/25"],
+        ["LDA_C_VWN_RPA", "19/100"],
+        ["GGA_C_LYP", "81/100"],
+    ]
+    assert row["exact_exchange"] == "1/5"
+
+
+def test_cam_b3lyp_uses_libxc_cam_convention_for_sr_lr_exchange() -> None:
+    row = _row("hyb_gga_xc_cam_b3lyp.c", "HYB_GGA_XC_CAM_B3LYP")
+    assert row["status"] == "generated"
+    assert row["short_range_exchange"] == "19/100"
+    assert row["long_range_exchange"] == "13/20"
+    assert row["range_omega"] == "33/100"
+    assert row["components"][:2] == [
+        ["GGA_X_B88", "7/20"],
+        ["GGA_X_ITYH", "23/50"],
+    ]
+
+
+def test_wb97mv_direct_semilocal_and_vv10_metadata_are_source_derived() -> None:
+    row = _row("hyb_mgga_xc_wb97mv.c", "HYB_MGGA_XC_WB97M_V")
+    assert row["status"] == "generated"
+    assert row["direct_semilocal_stem"] == "WB97M_V"
+    assert row["short_range_exchange"] == "3/20"
+    assert row["long_range_exchange"] == "1"
+    assert row["range_omega"] == "3/10"
+    assert (row["nonlocal_variant"], row["nlc_b"], row["nlc_c"]) == (
+        "vv10",
+        "6",
+        "1/100",
+    )
+
+
+def test_generated_inventory_drives_existing_method_catalog_entries() -> None:
+    for name in (
+        "B3P86",
+        "B3LYP",
+        "B3LYP5",
+        "B3PW91",
+        "B5050LYP",
+        "CAM-B3LYP",
+        "CAMH-B3LYP",
+        "WB97M-V",
+    ):
+        assert name in LIBXC_METHODS
+        assert name in METHOD_CATALOG
+    assert METHOD_CATALOG["B3LYP"].exact_exchange.numerator == 1
+    assert METHOD_CATALOG["B3LYP"].exact_exchange.denominator == 5
+    assert METHOD_CATALOG["WB97M-V"].nonlocal_correlation is not None
+
+
+def test_representable_generated_methods_need_no_named_catalog_edit() -> None:
+    # These names were not hand-authored MethodSpec entries. Their components are
+    # already representable, so pinned Libxc metadata is sufficient for MethodIR.
+    for name in ("REVB3LYP", "KMLYP", "QTP17", "RCAM-B3LYP", "TUNED-CAM-B3LYP"):
+        assert name in LIBXC_METHODS
+        assert name in METHOD_CATALOG
+
+
+def test_complex_dynamic_mix_owners_remain_explicitly_blocked() -> None:
+    assert set(BLOCKED_LIBXC_METHODS) == {
+        "HYB_GGA_XC_APF",
+        "HYB_GGA_XC_WC04",
+        "HYB_GGA_XC_WP04",
+    }
+    assert all("parameter array" in reason for reason in BLOCKED_LIBXC_METHODS.values())
+
+
+def test_generated_libxc_method_module_is_fresh() -> None:
+    from tools.generate_libxc_methods import OUTPUT, build_catalog, render
+
+    generated, blocked = build_catalog()
+    assert OUTPUT.read_text(encoding="utf-8") == render(generated, blocked)
