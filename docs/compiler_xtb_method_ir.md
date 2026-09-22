@@ -73,6 +73,13 @@ different constants:
 9. the GFN1 halogen correction as its own geometry primitive;
 10. non-self-consistent two-body D3(BJ).
 
+The halogen primitive is now concretely composable with the compiler-owned
+TripletIR lowering. Its method-bound program identity includes the resolved
+GFN1 MethodIR identity, the exact primitive semantics, the pinned halogen
+parameter identity, the triplet topology and the TensorIR equation. This does
+not change the method-wide capability boundary below: the remaining GFN1
+electronic/runtime graph is still unavailable as a public endpoint.
+
 The canonical parameter-set revision is the SHA-256 identity of
 `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json`. The correction requirements additionally bind
 the existing canonical GFN1 D3 reference-table digest rather than duplicating

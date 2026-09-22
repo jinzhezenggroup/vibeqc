@@ -109,21 +109,26 @@ Hessian execution remain unsupported.
 Regenerate the retained GFN2 compatibility table:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4.py \
-  --source-git-dir /path/to/dftd4/.git \
-  --revision 6e1f59c3f39d919a2dbef0601d2576727c8b30e8 \
   --output-dir src/dft/dispersion
 ```
 
 Regenerate the EEQ tables from pinned dftd4, multicharge and mctc-lib sources:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync multicharge-eeq2019
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4_eeq.py \
-  --dftd4-git-dir /path/to/dftd4/.git \
-  --multicharge-git-dir /path/to/multicharge/.git \
-  --mctc-git-dir /path/to/mctc-lib/.git \
   --output-dir src/dft/dispersion
 ```
+
+Both generators bind to the named products in `upstream/manifest.json`, verify
+the product's source-identity digest, and parse only SHA-256-verified files in
+`.cache/vibeqc-sources/`. The explicit `sync` commands are maintainer network
+operations; normal configure, build, tests, and runtime remain offline.
 
 Qualification CTest targets are `vibeqc_d4_reference_tests`,
 `vibeqc_d4_eeq_tests` and their CUDA variants, plus

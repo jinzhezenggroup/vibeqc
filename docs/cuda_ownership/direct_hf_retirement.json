@@ -84,9 +84,9 @@
     {
       "id": "native-low-order-force",
       "status": "performance-exception",
-      "capability": "Retained generic order-two Direct force fallback mathematics after order-0/1 and total-order-three force paths moved to compiler-owned Weighted IntegralIR; qualified exact order-two shell classes remain generated as well.",
-      "current_selector": "SSSS/PSSS order-0/1 and total-order-three generated workers bypass the generic native quartet derivative path. PSPS/PPSS/DSSS exact order-two schedulers consume generated force math, while the still-retained generic order-two fallback keeps its native adapter until separately retired.",
-      "generated_alternative": "Weighted IntegralIR first derivatives and force-only roots are the common mathematical source for generated order-0/1, qualified exact order-two, and total-order-three paths; the remaining generic order-two fallback is a schedule/consumer retirement item, not missing derivative algebra.",
+      "capability": "Order-0/1, generic order-two, and total-order-three Direct force mathematics consume compiler-owned Weighted IntegralIR; retained low-order files own runtime contraction and scheduling.",
+      "current_selector": "Order-0/1 and total-order-three generated shell workers bypass the generic quartet path. Both exact order-two schedulers and the generic AO-quartet fallback call the same generated PSPS/PPSS/DSSS force roots.",
+      "generated_alternative": "Weighted IntegralIR first derivatives and force-only roots provide the shared mathematical source through total order three; remaining optimization concerns schedule and consumer profitability, not duplicate native derivative formulas.",
       "schedule_requirements": "Preserve center recovery, arbitrary external weights, shared quartet work, and native fixed/resident/paged schedule semantics while moving optimization choices to generic compiler schedules.",
       "resource_profile": "Promotion must compare complete force endpoint time plus registers/stack/shared memory and actual primitive/derivative work; generated source existence alone is insufficient.",
       "evidence": [
@@ -104,8 +104,7 @@
         "src/scf/cuda/direct_force_low_order.cuh",
         "src/scf/cuda/direct_force_order2.cuh",
         "src/scf/cuda/direct_force_order3.cuh",
-        "src/scf/cuda/direct_force_quartet.cuh",
-        "src/scf/cuda/direct_native_order2_gradient.cuh"
+        "src/scf/cuda/direct_force_quartet.cuh"
       ]
     },
     {
