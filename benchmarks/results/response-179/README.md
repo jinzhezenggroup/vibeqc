@@ -3,7 +3,7 @@
 This directory records partial shared RHF/semilocal-CPKS response-solver
 infrastructure evidence for `#179`; it is not full #179 acceptance.  The
 records are historical snapshots; their then-missing UHF/native KS boundaries
-are superseded by the current [response documentation](../../../docs/response.md).  The shared production path
+are superseded by the current [response documentation](../../../docs/developer/response.md).  The shared production path
 recorded here is the CPU native shell-tile matrix-free RHF J/K operator.  The
 CUDA record is generated only inside a Slurm GPU allocation; the optional CUDA
 MO-block explicit control is not substituted for the matrix-free result.

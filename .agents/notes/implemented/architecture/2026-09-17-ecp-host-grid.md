@@ -78,5 +78,5 @@ The orbital-domain boundary is subsequently extended through f by the
 and independent oracle rationale above remain applicable.
 
 - Issue #171; PRs #371 and #400.
-- [Current ECP contract](../../../../docs/ecp.md).
+- [Current ECP contract](../../../../docs/user/ecp.md).
 - [Prior AO/weight decision](2026-09-16-ecp-ao-weight-consumers.md).

@@ -78,7 +78,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:10:00 \
   --batch 1 --repeats 5 --memory-budget-bytes 1073741824 --energy-only --output /tmp/df284.json
 ```
 
-Preserve Slurm-assigned device visibility and avoid concurrent local compilation during measurements. See [equations and lifecycle](../../../docs/df_occupied_cuda.md).
+Preserve Slurm-assigned device visibility and avoid concurrent local compilation during measurements. See [equations and lifecycle](../../../docs/developer/df_occupied_cuda.md).
 
 ## Archive storage correction
 

@@ -63,5 +63,5 @@ the historical AO/weight migration rationale and its original measurements.
 ## References
 
 - Issue #171; PR #371.
-- [Current ECP contract](../../../../docs/ecp.md).
+- [Current ECP contract](../../../../docs/user/ecp.md).
 - `tests/native/test_ecp_projector.cpp`, `tests/python/test_ecp.py`.

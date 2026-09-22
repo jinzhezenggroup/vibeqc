@@ -160,7 +160,7 @@ def catalog(
                     "records": [
                         {
                             "commit": "c0683c5b0a66b6330d16117ab8a4dd812956843b",
-                            "document": "docs/shell_codegen.md",
+                            "document": "docs/developer/shell_codegen.md",
                             "basis": "water/def2-TZVP",
                             "isolated_speedup": 2.27,
                             "endpoint_speedups": {

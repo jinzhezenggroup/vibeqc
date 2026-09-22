@@ -73,6 +73,6 @@ channel pruning only when endpoint measurements justify the extra schedule.
 ## References
 
 - Issue #171 and PR #432.
-- [Current ECP contract](../../../../docs/ecp.md).
+- [Current ECP contract](../../../../docs/user/ecp.md).
 - [Orbital-f decision](2026-09-17-ecp-orbital-f.md): its orbital boundary remains;
   this decision separately supersedes its f-projector exclusion.
