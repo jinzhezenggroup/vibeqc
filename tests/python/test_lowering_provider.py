@@ -66,6 +66,27 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
     )
     assert first.identity == second.identity
 
+    boolean_semantic = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="gemm",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(7, 11, 13),
+        semantics=(("flag", True),),
+    )
+    integer_semantic = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="gemm",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(7, 11, 13),
+        semantics=(("flag", 1),),
+    )
+    assert boolean_semantic != integer_semantic
+    assert boolean_semantic.identity != integer_semantic.identity
+
     provider = ProviderDescriptor(
         name="nvidia.cublaslt",
         kind="library",
