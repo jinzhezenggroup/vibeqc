@@ -104,3 +104,29 @@ are `pbe48-{direct,df}-features-v11.{json,log,progress.jsonl}` as applicable and
 validation and these composed complete 24/48 endpoints support review of the
 feature schedule. Full 96 convergence and the complete #1102 acceptance remain
 open; the bounded 96 diagnostic must not be promoted into README results.
+
+## Remaining point-evaluator cost
+
+Offline inspection of the same retained v11 Nsight SQLite capture separates
+another limitation from feature reduction. `evaluate_points` totals
+2.211708581 seconds across 20,736 launches. Every launch has two blocks of
+128 threads and the generic kernel reports 255 registers per thread. In
+contrast, cooperative `density_features` has 64 blocks, 56 registers per thread
+and totals 0.166425316 seconds. Tiled density and potential still cost
+4.243188474 and 5.740623415 seconds respectively.
+
+The native binding launches a single generated point evaluator with runtime
+functional and response selection. The next source-level candidate is compiler
+specialization for the admitted functional and physical/response consumer,
+followed by a measured point launch schedule. This could remove irrelevant
+functional/response graph state before attempting larger tiles. The profile
+establishes register count and a small grid, not the cause of every register or
+an achieved specialization speedup. Do not infer spilling from aggregate local
+memory fields, and do not loosen precision or boundary gates.
+
+Any follow-up must compare generated mathematics, all admitted spins/families
+and signed responses against independent references, then repeat the same
+bounded 96-atom work and complete endpoints. The extracted resource census is
+`ks96-two-steps-v11-launch-resources.json` beside the original SQLite capture;
+remaining work is tracked in #1102. No point-evaluator production change is
+included in this feature-reduction PR.
