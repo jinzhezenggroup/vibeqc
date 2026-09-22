@@ -30,10 +30,16 @@
       "symbol": "WB97M_V",
       "abi_id": 3,
       "family": "density_functional",
-      "provider": "reserved",
-      "properties": [],
-      "supports_batch": false,
-      "unavailable_reason": "method has no executable provider registration"
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "aliases": [
+        "wb97m-v-rks"
+      ],
+      "compiler_method": "WB97M-V",
+      "spin": "unpolarized"
     },
     {
       "name": "rccsd(t)",
@@ -229,6 +235,19 @@
       "supports_batch": true,
       "compiler_method": "PBE-D4(BJ-EEQ-ATM)",
       "spin": "unpolarized"
+    },
+    {
+      "name": "wb97m-v-uks",
+      "symbol": "WB97M_V_UKS",
+      "abi_id": 19,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "WB97M-V",
+      "spin": "polarized"
     }
   ]
 }

@@ -32,6 +32,9 @@ _METHODS = (
     "pbe0-uks",
     "b3lyp-rks",
     "b3lyp-uks",
+    "wb97m-v",
+    "wb97m-v-rks",
+    "wb97m-v-uks",
 )
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8
@@ -60,7 +63,7 @@ class StationaryKsIdentity:
     def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError(
-                "stationary derivatives support LDA/PBE/r2SCAN/global-hybrid RKS/UKS only"
+                "stationary derivatives require a qualified native RKS/UKS method"
             )
         for name in (
             "model_identity",

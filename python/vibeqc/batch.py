@@ -566,7 +566,16 @@ class PreparedBatch:
         ecp_force = qualified_basis(calculator._basis)
         direct_all_electron = (
             calculator._method_name
-            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            in (
+                "pbe0-rks",
+                "pbe0-uks",
+                "b3lyp-rks",
+                "b3lyp-uks",
+                "pbe-d4-rks",
+                "wb97m-v",
+                "wb97m-v-rks",
+                "wb97m-v-uks",
+            )
             and not ecp_force
         )
         if calculator._device_name != "cpu" or not (ecp_force or direct_all_electron):
@@ -593,6 +602,10 @@ class PreparedBatch:
                 * grid.angular_polar
                 * grid.angular_azimuth,
                 ecp_terms=len(terms),
+                range_exchange_sources=sum(
+                    term.operator in ("short-range", "long-range")
+                    for term in calculator._ks_options.execution_plan.exchange
+                ),
                 nonlocal_correlation=(
                     getattr(
                         getattr(calculator._ks_options, "execution_plan", None),

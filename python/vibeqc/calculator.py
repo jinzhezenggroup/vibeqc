@@ -707,19 +707,7 @@ class Calculator:
         ):
             raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
-        if self._method_name in (
-            "lda-rks",
-            "pbe-rks",
-            "lda-uks",
-            "pbe-uks",
-            "pbe0-rks",
-            "pbe0-uks",
-            "r2scan-rks",
-            "r2scan-uks",
-            "b3lyp-rks",
-            "b3lyp-uks",
-            "pbe-d4-rks",
-        ):
+        if self._method in _method_manifest.NATIVE_DFT_METHOD_IDS:
             from .ks import KsOptions, resolve_ks_options
 
             if supplied_method_ir is None and isinstance(ks_options, KsOptions):
@@ -934,7 +922,16 @@ class Calculator:
         named_cpu_all_electron_force = (
             self._device_name == "cpu"
             and self._method_name
-            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            in (
+                "pbe0-rks",
+                "pbe0-uks",
+                "b3lyp-rks",
+                "b3lyp-uks",
+                "pbe-d4-rks",
+                "wb97m-v",
+                "wb97m-v-rks",
+                "wb97m-v-uks",
+            )
             and not basis_has_ecp
             and self._ks_options is not None
             and (
@@ -945,6 +942,16 @@ class Calculator:
                 )
             )
         )
+        if self._method_name.startswith("wb97m-v"):
+            named_cpu_all_electron_force = named_cpu_all_electron_force and (
+                self._basis == "sto-3g"
+                if isinstance(self._basis, str)
+                else all(
+                    shell.angular_momentum <= 1
+                    for element in self._basis.elements
+                    for shell in element.shells
+                )
+            )
         semilocal_force = (
             self._ks_options is not None
             and self._ks_options.coefficients == (1.0, 1.0, 0.0)
