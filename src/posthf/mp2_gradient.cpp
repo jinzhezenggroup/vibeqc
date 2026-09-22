@@ -425,7 +425,11 @@ DensityFittedLagrangianWeights density_fitted_lagrangian_weights(
   auto result_elements = posthf::checked_add(posthf::checked_mul(2, n2), three);
   result_elements = posthf::checked_add(result_elements, a2);
   auto scratch_elements = posthf::checked_mul(2, three);
-  scratch_elements = posthf::checked_add(scratch_elements, posthf::checked_mul(4, a2));
+  // bar_X and eigenvectors coexist with the VJP's symmetric/temp/transformed
+  // matrices (its returned metric is charged above). Reserve one additional
+  // matrix for eigensolver staging, plus eigenvalues and retained-rank flags.
+  scratch_elements = posthf::checked_add(scratch_elements, posthf::checked_mul(6, a2));
+  scratch_elements = posthf::checked_add(scratch_elements, posthf::checked_mul(2, na));
   scratch_elements = posthf::checked_add(scratch_elements, n2);
   auto weight_elements = posthf::checked_add(posthf::checked_mul(2, n2), n4);
   auto required = provider.provider_bytes();
