@@ -160,7 +160,7 @@ __device__ __forceinline__ void contract_two_electron_force_quartet_subtile(
       double derivative_x = 0.0;
       double derivative_y = 0.0;
       double derivative_z = 0.0;
-    if constexpr (AngularOrder == 2U || (AngularOrder >= 4U && AngularOrder <= 6U)) {
+      if constexpr (AngularOrder == 2U || (AngularOrder >= 4U && AngularOrder <= 6U)) {
         derivative_x = explicit_unique_gradient[center][0];
         derivative_y = explicit_unique_gradient[center][1];
         derivative_z = explicit_unique_gradient[center][2];
