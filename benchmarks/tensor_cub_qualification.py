@@ -136,13 +136,23 @@ def _verified_source_snapshot(
 def _nvidia_smi_metadata(device: int, probed: dict[str, Any]) -> dict[str, Any]:
     """Record and cross-check the scheduler-visible NVIDIA device."""
 
+    if type(device) is not int or device < 0:
+        raise ValueError("CUDA device ordinal must be a nonnegative integer")
+    executed_uuid = str(probed.get("uuid", "")).lower()
+    if not re.fullmatch(r"[0-9a-f]{32}", executed_uuid):
+        raise ValueError("executed CUDA device UUID is invalid")
+    # CUDA_VISIBLE_DEVICES can remap logical ordinals; select the actual UUID.
+    smi_id = (
+        f"GPU-{executed_uuid[:8]}-{executed_uuid[8:12]}-"
+        f"{executed_uuid[12:16]}-{executed_uuid[16:20]}-{executed_uuid[20:]}"
+    )
     executable = shutil.which("nvidia-smi")
     if executable is None:
         raise ValueError("nvidia-smi is unavailable")
     result = subprocess.run(
         (
             executable,
-            f"--id={device}",
+            f"--id={smi_id}",
             "--query-gpu=name,uuid,driver_version,memory.total",
             "--format=csv,noheader,nounits",
         ),
@@ -159,7 +169,7 @@ def _nvidia_smi_metadata(device: int, probed: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("nvidia-smi metadata is incomplete")
     name, uuid, driver, memory_mib = fields
     normalized = uuid.removeprefix("GPU-").replace("-", "").lower()
-    if normalized != str(probed.get("uuid", "")).lower():
+    if normalized != executed_uuid:
         raise ValueError("nvidia-smi UUID differs from the executed CUDA device")
     try:
         memory = int(memory_mib)

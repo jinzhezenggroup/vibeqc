@@ -194,3 +194,24 @@ def test_validation_wrapper_is_a_publishable_nonpromotion_record() -> None:
     assert record["stages"]["production"]["status"] == "not-run"
     assert record["performance"]["status"] == "not-run"
     assert record["settings"]["source_snapshot"]["archive_sha256"] == "d" * 64
+
+
+@pytest.mark.parametrize("device", [0, 1])
+def test_nvidia_smi_selects_executed_uuid_not_physical_ordinal(
+    monkeypatch: pytest.MonkeyPatch, device: int
+) -> None:
+    """CUDA-visible ordinals need not equal nvidia-smi's physical indices."""
+    from types import SimpleNamespace
+
+    expected = "GPU-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")
+
+    def run(command: tuple[str, ...], **kwargs: object) -> SimpleNamespace:
+        assert f"--id={expected}" in command
+        return SimpleNamespace(stdout=f"NVIDIA H200, {expected}, 570.1, 143771\n")
+
+    monkeypatch.setattr("subprocess.run", run)
+    metadata = _nvidia_smi_metadata(
+        device, {"uuid": "aaaaaaaabbbbccccddddeeeeeeeeeeee"}
+    )
+    assert metadata["uuid"] == expected
