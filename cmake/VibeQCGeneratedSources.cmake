@@ -4,6 +4,19 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_QUADRATURE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_quadrature.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_quadrature_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_quadrature_cuda.py"
+    OUTPUTS "${VIBEQC_QUADRATURE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/quadrature_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response_ir.py"
+    ARGS --output "${VIBEQC_QUADRATURE_HEADER}"
+    COMMENT "Generating bounded CUDA molecular quadrature")
   set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
   vibeqc_register_generated_sources(
