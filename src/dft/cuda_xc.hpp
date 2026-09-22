@@ -58,6 +58,13 @@ struct CudaXcScalars {
   int error{};
 };
 
+/** Density-times-AO arithmetic. Mixed evaluates products in explicit RN FP32
+ * while keeping storage, long accumulation, point XC, Vxc and scalar reductions FP64. */
+enum class CudaXcDensityPrecision : std::uint32_t {
+  Fp64 = 0,
+  Fp32ComputeFp64Accumulate = 1,
+};
+
 /** Immutable geometry/basis/grid/functional owner with borrowed device arena
  * and stream. Both must outlive this object; destruction drains the stream.
  * Input density remains caller-owned and must survive the enqueued work.
@@ -81,7 +88,9 @@ class CudaXcPlan {
 
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
-  void enqueue(const double* density, std::size_t elements, std::uint64_t generation);
+  void enqueue(
+      const double* density, std::size_t elements, std::uint64_t generation,
+      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64);
   /** Differentiate the fixed native density on GPU, including AO/feature and
    * matrix assembly. Signed directions use the same input layout as density. */
   void enqueue_response(const double* density, const double* direction, std::size_t elements,
@@ -94,7 +103,7 @@ class CudaXcPlan {
  private:
   void check_device() const;
   void enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                    std::uint64_t generation);
+                    std::uint64_t generation, CudaXcDensityPrecision precision);
   CudaXcLayout layout_;
   CudaXcTransfers transfers_;
   int device_{};
@@ -112,7 +121,7 @@ namespace cuda_xc_detail {
 void enqueue(const CudaXcLayout& layout, cudaStream_t stream, const double* basis,
              const double* points, const double* weights, const double* density, double* ao,
              double* work, double* features, double* coefficients, double* point_totals,
-             double* potential, double* totals, int* error, const double* direction = nullptr,
-             double* delta_features = nullptr);
+             double* potential, double* totals, int* error, CudaXcDensityPrecision precision,
+             const double* direction = nullptr, double* delta_features = nullptr);
 }  // namespace cuda_xc_detail
 }  // namespace vibeqc::dft

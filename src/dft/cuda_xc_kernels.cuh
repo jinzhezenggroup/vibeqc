@@ -26,7 +26,8 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
 void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, const double* points,
              const double* weights, const double* density, double* ao, double* work,
              double* features, double* coefficients, double* point_totals, double* potential,
-             double* totals, int* error, const double* direction, double* delta_features) {
+             double* totals, int* error, CudaXcDensityPrecision precision,
+             const double* direction, double* delta_features) {
   const I matrices = l.spins * l.nao * l.nao;
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
   cuda_check(cudaMemsetAsync(totals, 0, 3 * sizeof(double), stream));
@@ -43,8 +44,12 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
     ao_kernel<<<blocks(l.jets * count * l.nao, 128), 128, 0, stream>>>(
         basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error, nullptr);
     cuda_check(cudaGetLastError());
-    density_product<<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
-        density, ao, l.nao, count, l.spins, l.work_jets, work, error);
+    if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate)
+      density_product<true><<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
+          density, ao, l.nao, count, l.spins, l.work_jets, work, error);
+    else
+      density_product<false><<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
+          density, ao, l.nao, count, l.spins, l.work_jets, work, error);
     cuda_check(cudaGetLastError());
     density_features<<<blocks(l.spins * count, 128), 128, 0, stream>>>(
         ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms, l.functional,
@@ -53,8 +58,12 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
     if (direction) {
       // AO panels are shared; work is scratch and can be reused after the
       // reference features are retained. No host AO/feature staging occurs.
-      density_product<<<blocks(l.spins * count * l.nao, 128), 128, 0, stream>>>(
-          direction, ao, l.nao, count, l.spins, l.work_jets, work, error);
+      if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate)
+        density_product<true><<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
+            direction, ao, l.nao, count, l.spins, l.work_jets, work, error);
+      else
+        density_product<false><<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
+            direction, ao, l.nao, count, l.spins, l.work_jets, work, error);
       cuda_check(cudaGetLastError());
       density_features<<<blocks(l.spins * count, 128), 128, 0, stream>>>(
           ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms, l.functional,

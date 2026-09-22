@@ -79,14 +79,15 @@ struct Fixture {
     if (stream) cudaStreamDestroy(stream);
   }
   ~Fixture() { cleanup(); }
-  void submit(const std::vector<double>& d) {
+  void submit(const std::vector<double>& d,
+              CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     check(cudaMemcpyAsync(density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice,
                           stream));
     // Reference input transfer is an explicit test stage. Complete it before
     // a temporary host density can die; the measured native enqueue follows.
     check(cudaStreamSynchronize(stream));
     const auto before = plan->transfers();
-    plan->enqueue(density, d.size(), ++generation);
+    plan->enqueue(density, d.size(), ++generation, precision);
     const auto after = plan->transfers();
     require(after.output_d2h_bytes == before.output_d2h_bytes &&
                 after.setup_h2d_bytes == before.setup_h2d_bytes &&
@@ -151,6 +152,27 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
 
 __global__ void halve_density(double* d, std::size_t n) {
   for (std::size_t i = threadIdx.x; i < n; i += blockDim.x) d[i] *= 0.5;
+}
+
+void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
+                               std::uint32_t functional, bool uks) {
+  Fixture strict(basis, grid, functional, uks, 13), mixed(basis, grid, functional, uks, 13);
+  const auto d = density(basis.nao, uks ? 2 : 1);
+  strict.submit(d);
+  mixed.submit(d, CudaXcDensityPrecision::Fp32ComputeFp64Accumulate);
+  const auto reference = strict.scalars(), candidate = mixed.scalars();
+  require(reference.error == 0 && candidate.error == 0, "mixed-density XC rejected finite input");
+  const auto tol = [](double x) { return 2e-6 + 2e-6 * std::abs(x); };
+  close(candidate.energy, reference.energy, "mixed-density XC energy", tol(reference.energy));
+  for (unsigned s = 0; s < 2; ++s)
+    close(candidate.electrons[s], reference.electrons[s], "mixed-density XC electrons",
+          tol(reference.electrons[s]));
+  const auto expected = strict.potential(), actual = mixed.potential();
+  require(expected.size() == actual.size(), "mixed-density XC potential shape changed");
+  for (std::size_t i = 0; i < expected.size(); ++i)
+    close(actual[i], expected[i], "mixed-density XC potential", tol(expected[i]));
+  strict.canary();
+  mixed.canary();
 }
 
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
@@ -266,6 +288,7 @@ int main() {
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
+      for (bool uks : {false, true}) mixed_density_contraction(basis, grid, functional, uks);
       variational_and_state(basis, grid, functional);
       const MolecularGrid tail_grid(molecule);
       Fixture tail(basis, tail_grid, functional, true, 257);
