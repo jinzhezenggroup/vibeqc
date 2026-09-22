@@ -349,6 +349,21 @@ macro(vibeqc_register_cuda_generated_sources target)
     OUTPUTS "${VIBEQC_WEIGHTED_ERI_HEADER}"
     ARGS --output "${VIBEQC_WEIGHTED_ERI_HEADER}")
 
+  set(VIBEQC_DIRECT_RESIDENT_PSSS_SCHEDULE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_resident_psss_schedule.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_direct_resident_psss_schedule_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_direct_resident_schedule.py"
+    OUTPUTS "${VIBEQC_DIRECT_RESIDENT_PSSS_SCHEDULE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/direct_resident_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/cuda_schedule.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/shell_spec.py"
+    ARGS --output "${VIBEQC_DIRECT_RESIDENT_PSSS_SCHEDULE_HEADER}"
+    COMMENT "Generating compiler-owned Direct-HF resident-PSSS schedule")
+
   set(VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_high_order_pair_gradient.cuh")
   vibeqc_register_generated_sources(
