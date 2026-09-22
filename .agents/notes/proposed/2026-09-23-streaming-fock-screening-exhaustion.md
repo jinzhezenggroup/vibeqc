@@ -1,6 +1,6 @@
 # Candidate: keep local screening distinct from global stream exhaustion
 
-Status: proposed (emitted-scheduler regression passed; GPU qualification pending)
+Status: proposed (emitted-scheduler and integrated GPU endpoint gates passed)
 Date: 2026-09-23
 
 ## Root cause
@@ -54,3 +54,20 @@ Track #1095. Qualify both generated HF and pure-J consumers; keep #1077 and
 PR #1086 open until complete endpoints satisfy the existing gates. Correct
 enumeration can cost more than the defective path because the latter omits
 work. Performance comparisons must include the retained quartet census.
+
+## Allocated endpoint qualification
+
+Slurm 11293 on RTX 5090 passed the independent native direct-J/K test and
+complete PBE24 comparison at unchanged screening 1e-12. Maximum all-sample
+energy error fell to 1.444e-11 Hartree. Native cold execution was 27.249 seconds,
+warm 3.397/3.438 seconds; reference cold 5.635 seconds and warm 0.745/0.751.
+The native and reference warm iteration branches differ, so this is numerical
+qualification and complete scoped timing, not iteration-matched acceleration.
+Direct-HF12 cold/priming/warm energy-plus-force comparison also passed: maximum
+warm-pair errors 3.184e-12 Hartree and 1.589e-11 Hartree/Bohr.
+
+These runs use the integration of #1073/#1076/#1086/#1089/#1091 plus this fix
+on its retained older base, not the exact source of this standalone PR.
+The exact PR source passed the emitted-worker and artifact/dependency checks.
+Evidence files: `stream-fix-v6.log`, `pbe24-stream-fix-v6.json`, and
+`hf12-stream-fix-v6.json` in the ignored integration artifact directory.
