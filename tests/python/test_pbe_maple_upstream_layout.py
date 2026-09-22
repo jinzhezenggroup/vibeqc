@@ -17,7 +17,7 @@ def test_canonical_upstream_directory_preserves_imported_identity(
     root = adapter._libxc_root()
     canonical = tmp_path / "upstream/libxc/7.0.0"
     shutil.copytree(root, canonical)
-    legacy = tmp_path / "external/libxc-7.0.0"
+    legacy = tmp_path / "manifests/libxc/7.0.0"
     legacy.mkdir(parents=True)
     monkeypatch.setattr(
         adapter,

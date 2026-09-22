@@ -389,6 +389,7 @@ class StationaryGradientPlan:
         terms: typing.Any,
         coordinates: typing.Any = 3,
         max_elements: typing.Any = 65536,
+        differentiate_densities: bool = False,
     ) -> typing.Any:
         """Generate dL/dI and its contraction with a bounded derivative tile.
 
@@ -399,8 +400,10 @@ class StationaryGradientPlan:
         In the J block each t denotes an ordered quartet: left/right densities
         are the corresponding (ab)/(cd) entries. In the h/S blocks t denotes an
         ordered pair. Providers remain responsible for correct center mapping.
-        Only I is differentiated. D/W must come from a validated stationary
-        owner when a later native endpoint binds the plan.
+        Only I is differentiated by this first-order block. Setting
+        ``differentiate_densities`` preserves D/W as differentiable inputs for
+        a later weight JVP; it never differentiates an SCF iteration. D/W must
+        come from a validated stationary owner at native endpoint binding.
         """
         range_primitive = None
         if source in tuple(s.name for s in self.range_exchange_sources):
@@ -418,6 +421,8 @@ class StationaryGradientPlan:
         _positive(terms, "terms")
         _positive(coordinates, "coordinates")
         _positive(max_elements, "max_elements")
+        if type(differentiate_densities) is not bool:
+            raise TypeError("differentiate_densities must be bool")
         # Gate before generating any shape-sized AD constants or executing data.
         if terms * (coordinates + 2 * self.spin_blocks + 4) > max_elements:
             raise ValueError("integral-gradient block exceeds the element budget")
@@ -426,12 +431,14 @@ class StationaryGradientPlan:
         q = Index("q", IndexSpace("coordinate_block", "batch", coordinates))
         integrals = _input("integrals", (t,), differentiable=True)
         left_name = "weighted_density" if source == "overlap_pulay" else "density_left"
-        left_input = _input(left_name, (s, t))
+        # Opt-in typing preserves existing first-gradient artifact identities
+        # while allowing HVP consumers to differentiate this same weight DAG.
+        left_input = _input(left_name, (s, t), differentiable=differentiate_densities)
         if source == "exact_exchange":
             energy = einsum(
                 "st,st,t->",
                 left_input,
-                _input("density_right", (s, t)),
+                _input("density_right", (s, t), differentiable=differentiate_densities),
                 integrals,
                 coefficient=self.exchange.fock_coefficient(self.method.spin) / 2,
             )
@@ -441,7 +448,9 @@ class StationaryGradientPlan:
             # occupation two; UKS keeps alpha/beta separate and has no cross-spin
             # exchange. These are the same coefficients as fixed-density Fock:
             # Ex_RKS=-a/4 DD(ik|jl), Ex_UKS=-a/2 sum_s D_sD_s(ik|jl).
-            right = _input("density_right", (s, t))
+            right = _input(
+                "density_right", (s, t), differentiable=differentiate_densities
+            )
             factor = -range_primitive.coefficient * (
                 Fraction(1, 2) if self.spin_blocks == 2 else Fraction(1, 4)
             )
@@ -451,7 +460,12 @@ class StationaryGradientPlan:
         else:
             left = reduce_sum(left_input, (0,))
             if source == "coulomb":
-                right = reduce_sum(_input("density_right", (s, t)), (0,))
+                right = reduce_sum(
+                    _input(
+                        "density_right", (s, t), differentiable=differentiate_densities
+                    ),
+                    (0,),
+                )
                 energy = einsum(
                     "t,t,t->", left, right, integrals, coefficient=Fraction(1, 2)
                 )

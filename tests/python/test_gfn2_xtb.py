@@ -166,3 +166,49 @@ def test_explicit_cuda_qualification_does_not_skip_missing_backend(
     monkeypatch.setattr(sys.modules[__name__], "Calculator", Unavailable)
     with pytest.raises(NotImplementedError, match="without CUDA support"):
         _cuda_gfn2_singlepoint_or_skip([("H", (0.0, 0.0, 0.0))])
+
+
+def test_gfn2_cuda_asymmetric_three_atom_coordination_force() -> None:
+    """Exercise several CN contributions and its AD pullback off symmetry."""
+    atoms = [
+        ("H", (-0.300, 0.745, 0.110)),
+        ("H", (-0.471, -0.815, -0.080)),
+        ("H", (0.941, 0.055, 0.000)),
+    ]
+    result = _cuda_gfn2_singlepoint_or_skip(atoms, charge=1)
+    assert result.converged and result.executed_backend == "cuda"
+    reference = Calculator(
+        method="gfn2-xtb",
+        device="cpu",
+        max_iterations=300,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    ).singlepoint(atoms, charge=1)
+    assert reference.converged
+    assert result.energy == pytest.approx(reference.energy, abs=5.0e-7)
+    np.testing.assert_allclose(result.forces, reference.forces, atol=5.0e-7, rtol=0)
+    direction = np.array(
+        ((0.61, -0.23, 0.17), (-0.37, 0.41, -0.29), (0.19, -0.53, 0.31))
+    )
+    direction /= np.linalg.norm(direction)
+    calc = Calculator(
+        method="gfn2-xtb",
+        device="cuda",
+        max_iterations=300,
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+    for step in (1e-4, 5e-5):
+        energies = []
+        for sign in (1, -1):
+            moved = [
+                (symbol, tuple(np.asarray(xyz) + sign * step * delta))
+                for (symbol, xyz), delta in zip(atoms, direction, strict=True)
+            ]
+            sample = calc.singlepoint(moved, charge=1, properties=("energy",))
+            assert sample.converged and sample.executed_backend == "cuda"
+            energies.append(sample.energy)
+        finite_difference = -(energies[0] - energies[1]) / (2 * step)
+        assert finite_difference == pytest.approx(
+            float(np.sum(result.forces * direction)), abs=2e-7
+        )

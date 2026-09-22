@@ -57,6 +57,7 @@ _EXPORTS = {
     "ImplicitSolveSpec": ".implicit",
     "ImplicitVJPPlan": ".implicit",
     "HVPSource": ".stationary_hvp",
+    "HVPIntegralBlock": ".stationary_hvp",
     "IntegralGradientBlock": ".stationary_gradient",
     "KS_EXECUTION_PLAN_VERSION": ".ks_execution",
     "KsExchangeContribution": ".ks_execution",

@@ -21,7 +21,7 @@ energy term or infers composition from a name.
 The mathematical source is Libxc **7.0.0**, under **MPL-2.0**. Exact upstream
 Maple expressions, parameter-setting C sources, utility definitions and the
 license snapshot are under `upstream/libxc/7.0.0/`. The generated
-SHA-256 URL compatibility manifests remain under `external/libxc-7.0.0/`.
+SHA-256 URL compatibility manifests remain under `manifests/libxc/7.0.0/`.
 `expressions.py` is an MPL-2.0 translation, with that notice retained. The
 formatter excludes these upstream files to preserve their audited bytes.
 PBE correlation uses *modified* PW92 constants; ordinary `LDA_C_PW` retains the

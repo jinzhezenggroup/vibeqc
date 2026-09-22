@@ -197,14 +197,19 @@ def _sha256(path: typing.Any) -> str:
 def _d3_tables() -> _D3Tables:
     import json
 
-    table_path = asset_path("external/xtbloom-d3/gfn1_d3.json")
-    radii_path = asset_path("external/xtbloom-d3/covalent_radii.json")
+    root = "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    table_path = asset_path(f"{root}/gfn1_d3.json")
+    model_path = asset_path(f"{root}/gfn1.json")
     if _sha256(table_path) != D3_TABLE_SHA256:
         raise ValueError("pinned D3 table digest does not match compiler identity")
-    if _sha256(radii_path) != D3_RADII_SHA256:
-        raise ValueError("pinned D3 radii digest does not match compiler identity")
     raw = json.loads(table_path.read_text())
-    radii = json.loads(radii_path.read_text())
+    model = json.loads(model_path.read_text())
+    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
+        raise ValueError("pinned xTBloom GFN1 element order changed")
+    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
+    radii_bytes = (json.dumps(radii, indent=2) + "\n").encode()
+    if hashlib.sha256(radii_bytes).hexdigest() != D3_RADII_SHA256:
+        raise ValueError("derived D3 radii digest does not match compiler identity")
     if (
         len(raw["elements"]) != 86
         or len(raw["pair_records"]) != 3741
