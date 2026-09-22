@@ -990,5 +990,7 @@ def test_cuda_ks_resource_plan_accounts_for_public_force_staging() -> None:
         for candidate in request.candidates
         for estimate in candidate.estimates
     }
-    assert "serialized generated KS force device staging cap" in names
-    assert "serialized generated KS force host staging cap" in names
+    assert "serialized KS transient device phase peak" in names
+    assert "serialized KS transient host phase peak" in names
+    assert "serialized generated KS force device staging cap" not in names
+    assert "serialized generated KS force host staging cap" not in names

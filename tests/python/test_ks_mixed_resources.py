@@ -43,6 +43,34 @@ def test_cuda_auto_history_and_resource_identity_include_refinement(
         assert inventory[0]["history"] == 256 * expected
 
 
+def test_cuda_serialized_transients_charge_phase_peak_not_sum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from vibeqc.resources import ResourceBudget, plan_resources
+
+    library = _inventory_library(monkeypatch)
+    mib = 1 << 20
+    monkeypatch.setattr(
+        resources_ks,
+        "_cuda_item_inventory",
+        lambda *args, **kwargs: {
+            "state": 8 * mib,
+            "xc": 8 * mib,
+            "coulomb": 8 * mib,
+            "setup": 320 * mib,
+        },
+    )
+    request = resources_ks.ks_resource_request([H2], backend="cuda", library=library)
+    plan = plan_resources(
+        [request], ResourceBudget(device_bytes=(24 + 512) * mib)
+    ).require_feasible()
+    assert plan.peak_bytes["device"] == (24 + 512) * mib
+    names = {estimate.name for estimate in plan.estimates}
+    assert "serialized KS transient device phase peak" in names
+    assert "KS one-electron setup excess over retired owner" not in names
+    assert "serialized generated KS force device staging cap" not in names
+
+
 def test_calculator_forwards_mixed_policy_to_ks_capacity_planner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

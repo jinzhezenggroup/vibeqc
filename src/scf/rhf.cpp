@@ -235,6 +235,28 @@ void trace_df_resolved_budget(const DfResolvedBudget& budget) {
   trace.finish("observed");
 }
 
+/** Prefer the complete dense owner only for automatic single-item RHF when
+ * the resolved phase envelope proves that owner's full value/SCF peak fits.
+ * The value/response split is not an admission wall: force response runs after
+ * the value setup/SCF workspace has retired, while retained owners remain. */
+std::optional<DensityFittingTilePlan> automatic_dense_resident_df_owner(
+    const DfResolvedBudget& budget, std::size_t batch, std::size_t nbf, std::size_t naux,
+    std::size_t occupied, bool unrestricted, unsigned diis_history) {
+  if (unrestricted || batch != 1U || occupied == 0U || budget.requested_bytes != 0U ||
+      budget.total_bytes == 0U || requested_df_pair_storage() != DfPairStorage::Dense)
+    return std::nullopt;
+  const auto diis_bytes = density_fitting_scf_diis_device_bytes(batch, nbf, diis_history);
+  if (diis_bytes == std::numeric_limits<std::size_t>::max()) return std::nullopt;
+  try {
+    const auto plan = plan_density_fitting_tiles(batch, nbf, naux, occupied, budget.total_bytes,
+                                                 diis_bytes, false, occupied);
+    if (plan.stores_full_three_center) return plan;
+    return std::nullopt;
+  } catch (const DensityFittingBudgetError&) {
+    return std::nullopt;
+  }
+}
+
 /** Bind a per-geometry fused response only when AO derivative tensors were omitted. */
 void bind_generated_one_electron(DensityFittingScfData& data, const core::System& system,
                                  int device_id) {
@@ -312,7 +334,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
 [[maybe_unused]] DensityFittingScfData prepare_density_fitting_data(
     const core::System& system, const core::System& auxiliary_system, double relative_threshold,
     int cuda_device_id = -1, std::size_t output_budget_bytes = 0U, bool include_derivatives = true,
-    unsigned diis_history = 0U) {
+    unsigned diis_history = 0U, bool unrestricted = false) {
   // A non-negative device selects the CUDA Cartesian evaluator for the raw
   // metric/three-center tensors.  The default keeps CPU-reference callers
   // entirely on the existing oracle path.
@@ -348,12 +370,18 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     }
     data.one_electron = integrals::transform_integrals(cartesian_one_electron, system);
 
-    // A resolved CUDA value allowance uses the source-backed plan, which
-    // regenerates all DF values and derivatives from compact device metadata.
-    // Do not build complete raw metric/three-center tensors just to discard
-    // them before plan creation; retaining only dimensions and one-electron
-    // response data keeps setup peak bounded by the resolved resource envelope.
-    if (data.resolved_budget.value_bytes != 0U ||
+    const auto resident_occupied = !unrestricted && system.electron_count > 0 &&
+                                           system.electron_count % 2 == 0 &&
+                                           system.multiplicity == 1
+                                       ? static_cast<std::size_t>(system.electron_count / 2)
+                                       : 0U;
+    const auto resident_values = automatic_dense_resident_df_owner(
+        data.resolved_budget, 1U, molecule::ao_count(system), molecule::ao_count(auxiliary_system),
+        resident_occupied, unrestricted, diis_history);
+    // Bounded or explicit owners regenerate DF values from compact device
+    // metadata. Automatic single-item RHF keeps complete host values only when
+    // the same resolved allowance proves the resident owner fits.
+    if ((!resident_values && data.resolved_budget.value_bytes != 0U) ||
         requested_df_pair_storage() == DfPairStorage::SymmetricLower) {
       integrals::DensityFittingIntegralData metadata;
       metadata.nbf = molecule::ao_count(system);
@@ -1259,17 +1287,18 @@ DensityFittingTilePlan plan_cuda_density_fitting_tiles(
  * actual value allowance cannot silently borrow its response owner. */
 void reserve_cuda_df_diis(CudaDensityFittingJkPlan* plan, std::size_t nbf,
                           const ScfOptions& options, const DfResolvedBudget& resolved,
-                          std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics) {
+                          std::vector<CudaDensityFittingMetricDiagnostic>& diagnostics,
+                          std::size_t value_phase_budget = 0U) {
   const auto bytes = density_fitting_scf_diis_device_bytes(
       cuda_density_fitting_jk_plan_batch_size(plan), nbf, options.diis_history);
-  const auto budget = resolved.value_bytes;
+  const auto budget = value_phase_budget ? value_phase_budget : resolved.value_bytes;
   for (auto& diagnostic : diagnostics) {
     if (bytes > std::numeric_limits<std::size_t>::max() - diagnostic.peak_device_bytes ||
         bytes > std::numeric_limits<std::size_t>::max() - diagnostic.device_resident_bytes)
       throw std::bad_alloc();
     diagnostic.peak_device_bytes += bytes;
     diagnostic.device_resident_bytes += bytes;
-    diagnostic.resolved_value_budget_bytes = resolved.value_bytes;
+    diagnostic.resolved_value_budget_bytes = budget;
     diagnostic.resolved_response_budget_bytes = resolved.response_bytes;
     diagnostic.resolved_headroom_bytes = resolved.reserved_headroom_bytes;
     diagnostic.observed_free_device_bytes = resolved.observed_free_bytes;
@@ -1298,7 +1327,11 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
     std::vector<CudaDensityFittingMetricDiagnostic>* output_diagnostics = nullptr,
     const core::System* orbital_system = nullptr, const core::System* auxiliary_system = nullptr) {
   std::size_t automatic_rhf_rank = unrestricted ? 0 : occupied;
-  const auto planning_budget = data.resolved_budget.value_bytes;
+  const auto resident_values =
+      automatic_dense_resident_df_owner(data.resolved_budget, 1U, data.raw.nbf, data.raw.naux,
+                                        occupied, unrestricted, options.diis_history);
+  if (resident_values) automatic_rhf_rank = resident_values->automatic_rhf_rank;
+  const auto planning_budget = resident_values ? 0U : data.resolved_budget.value_bytes;
 
   CudaDensityFittingJkPlan* raw_plan = nullptr;
   std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
@@ -1377,11 +1410,13 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
   // Keep the raw plan owned while copying optional diagnostics; an allocation
   // failure in that copy must still release all CUDA resources.
   CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
-  reserve_cuda_df_diis(owned_plan.get(), data.raw.nbf, options, data.resolved_budget, diagnostics);
+  reserve_cuda_df_diis(
+      owned_plan.get(), data.raw.nbf, options, data.resolved_budget, diagnostics,
+      resident_values ? data.resolved_budget.total_bytes : data.resolved_budget.value_bytes);
   if (data.df_gradient_orbital && data.df_gradient_auxiliary)
     bind_cuda_density_fitting_response_source(owned_plan.get(), *data.df_gradient_orbital,
                                               *data.df_gradient_auxiliary, data.raw.three_center);
-  set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
+  set_cuda_density_fitting_scf_value_budget(owned_plan.get(), data.resolved_budget.value_bytes);
   if (output_diagnostics != nullptr) {
     *output_diagnostics = diagnostics;
   }
@@ -1411,12 +1446,15 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
     throw std::invalid_argument("CUDA density-fitting batch cannot be empty");
   }
   const auto& resolved = data.front().resolved_budget;
-  const auto planning_budget = resolved.value_bytes;
   if (std::any_of(data.begin(), data.end(),
                   [&](const auto& item) { return item.resolved_budget != resolved; }))
     throw std::invalid_argument("CUDA density-fitting batch has mixed resource-policy identity");
   const std::size_t nbf = data.front().raw.nbf;
   const std::size_t naux = data.front().raw.naux;
+  const auto resident_values = automatic_dense_resident_df_owner(
+      resolved, data.size(), nbf, naux, occupied, unrestricted, options.diis_history);
+  if (resident_values) automatic_rhf_rank = resident_values->automatic_rhf_rank;
+  const auto planning_budget = resident_values ? 0U : resolved.value_bytes;
   std::vector<double> metrics;
   std::vector<double> three_center;
   std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
@@ -1465,8 +1503,9 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
       throw std::runtime_error(detail.empty() ? "CUDA DF source plan creation failed" : detail);
     }
     CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
-    reserve_cuda_df_diis(owned_plan.get(), nbf, options, resolved, diagnostics);
-    set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
+    reserve_cuda_df_diis(owned_plan.get(), nbf, options, resolved, diagnostics,
+                         resident_values ? resolved.total_bytes : resolved.value_bytes);
+    set_cuda_density_fitting_scf_value_budget(owned_plan.get(), resolved.value_bytes);
     if (output_diagnostics != nullptr) *output_diagnostics = diagnostics;
     return owned_plan;
   }
@@ -1514,12 +1553,13 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   // Keep the raw plan owned while copying optional diagnostics; an allocation
   // failure in that copy must still release all CUDA resources.
   CudaDensityFittingPlanPtr owned_plan(raw_plan, &destroy_cuda_density_fitting_jk_plan);
-  reserve_cuda_df_diis(owned_plan.get(), nbf, options, resolved, diagnostics);
+  reserve_cuda_df_diis(owned_plan.get(), nbf, options, resolved, diagnostics,
+                       resident_values ? resolved.total_bytes : resolved.value_bytes);
   if (data.size() == 1 && data[0].df_gradient_orbital && data[0].df_gradient_auxiliary)
     bind_cuda_density_fitting_response_source(owned_plan.get(), *data[0].df_gradient_orbital,
                                               *data[0].df_gradient_auxiliary,
                                               data[0].raw.three_center);
-  set_cuda_density_fitting_scf_value_budget(owned_plan.get(), planning_budget);
+  set_cuda_density_fitting_scf_value_budget(owned_plan.get(), resolved.value_bytes);
   if (output_diagnostics != nullptr) {
     *output_diagnostics = diagnostics;
   }
@@ -1546,7 +1586,8 @@ core::System density_fitting_auxiliary_for_geometry(
 std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_batch(
     const std::vector<core::System>& systems, const std::optional<core::System>& auxiliary_template,
     double relative_threshold, std::size_t output_budget_bytes, int device_id,
-    std::vector<vibeqc_status>& statuses, bool include_derivatives, unsigned diis_history = 0U) {
+    std::vector<vibeqc_status>& statuses, bool include_derivatives, unsigned diis_history = 0U,
+    bool unrestricted = false) {
   const auto pair_storage = requested_df_pair_storage();
   const std::size_t count = systems.size();
   statuses.assign(count, VIBEQC_STATUS_INTERNAL_ERROR);
@@ -1567,8 +1608,22 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     return prepared;
   }
   trace_df_resolved_budget(resolved);
-  const bool source_values =
-      resolved.value_bytes != 0U || pair_storage == DfPairStorage::SymmetricLower;
+  std::size_t resident_occupied = 0U;
+  if (!unrestricted) {
+    for (const auto& system : systems) {
+      if (system.electron_count <= 0 || system.electron_count % 2 != 0 ||
+          system.multiplicity != 1) {
+        resident_occupied = 0U;
+        break;
+      }
+      resident_occupied =
+          std::max(resident_occupied, static_cast<std::size_t>(system.electron_count / 2));
+    }
+  }
+  const auto resident_values = automatic_dense_resident_df_owner(
+      resolved, count, workload.nbf, workload.naux, resident_occupied, unrestricted, diis_history);
+  const bool source_values = !resident_values && (resolved.value_bytes != 0U ||
+                                                  pair_storage == DfPairStorage::SymmetricLower);
   std::vector<DfPreparationStorage> storage(count);
   std::size_t retained_host_bytes = 0;
   if (resolved.total_bytes != 0U) {
@@ -1974,7 +2029,8 @@ ScfResult run_uhf_density_fitting_cuda_impl(const core::System& system,
 
   DensityFittingScfData data = prepare_density_fitting_data(
       system, auxiliary_system, options.density_fitting_relative_threshold, device_id,
-      options.density_fitting_memory_budget_bytes, options.compute_forces, options.diis_history);
+      options.density_fitting_memory_budget_bytes, options.compute_forces, options.diis_history,
+      true);
   const std::size_t n = data.one_electron.nbf;
   const auto [alpha_occupied, beta_occupied] = spin_occupations(system);
   if (alpha_occupied > n || beta_occupied > n) {
@@ -2661,7 +2717,7 @@ std::vector<RhfBucketItem> run_uhf_density_fitting_cuda_bucket_impl(
     batched_prepared = prepare_cuda_density_fitting_batch(
         systems, auxiliary_template, options.density_fitting_relative_threshold,
         options.density_fitting_memory_budget_bytes, device_id, preparation_status,
-        options.compute_forces, options.diis_history);
+        options.compute_forces, options.diis_history, true);
   }
   std::size_t nbf = 0;
   std::size_t naux = 0;
