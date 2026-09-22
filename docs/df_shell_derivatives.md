@@ -223,12 +223,15 @@ against Libcint. GPU checks include transitions back to generic execution,
 independent complete RHF/UHF Cartesian/spherical forces, existing auxiliary and
 metric/subspace response cases, bounded budgets, and memory sanitization.
 
-Two additional controls isolate the measured response bottlenecks:
+Two additional controls isolate the measured response bottlenecks. Response
+algebra is intentionally independent of resident/source-backed/streamed storage:
+production defaults to the compiler-qualified BLAS contractions, while scalar
+execution is retained only as an explicit diagnostic/ablation route.
 
-| Control | Default outside the qualified regime | Alternative |
+| Control | Production default | Explicit alternative |
 | --- | --- | --- |
-| `VIBEQC_DF_RESPONSE_ALGEBRA` | `scalar` | `blas`: parallel charge GEMV and density GEMM |
-| `VIBEQC_DF_RAW_STAGING` | `pageable` | `pinned-panels`: two bounded host panels |
+| `VIBEQC_DF_RESPONSE_ALGEBRA` | `blas`: parallel charge GEMV and density GEMM | `scalar`: diagnostic/ablation only |
+| `VIBEQC_DF_RAW_STAGING` | workload-selected (`pageable` outside promoted staging) | `pinned-panels`: two bounded host panels |
 
 All four selectors override their respective defaults independently. To request
 the complete original comparison route, set `VIBEQC_DF_WEIGHTED_EXECUTION=generic`,

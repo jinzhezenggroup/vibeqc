@@ -120,7 +120,7 @@ def _evaluate(
 
 
 def test_maple_line_continuation_is_narrow_and_versioned() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v11"
     graph = Graph()
     x = graph.variable("x")
     module = import_maple_source("f := x -> x + \\\n      1:")

@@ -1,0 +1,41 @@
+--- tests/native/test_density_fitting.cpp
++++ diagnose_df_counters.cpp
+@@ -22,6 +22,10 @@
+ #include "scf/mean_field.hpp"
+ 
+ namespace {
++void diagnostic_require(bool condition, const char* message) {
++  if (!condition) std::cerr << "DIAGNOSTIC_ONLY_COUNTER_MISMATCH " << message << "\n";
++}
++
+ 
+ void require(bool condition, const char* message) {
+   if (!condition) throw std::runtime_error(message);
+@@ -1871,11 +1875,17 @@
+             }
+             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
+                     "generated DF-HF replay downloaded more than its final gradient");
++            std::cerr << "DF_COUNTER plan=" << (response_plan == resident_plan.get() ? "host" : response_plan == source_plan.get() ? "source" : response_plan == generated_resident.get() ? "generated" : "packed")
++                      << " uhf=" << unrestricted << " budget=" << budget
++                      << " width=" << resources.auxiliary_weight_tile << " slices=" << resources.value_slices
++                      << " raw_h2d=" << resources.tensor_host_to_device_bytes
++                      << " recomputed=" << resources.recomputed_value_bytes
++                      << " response_bytes=" << resources.device_response_bytes << "\n";
+             if (response_plan == resident_plan.get()) {
+               const auto width = resources.auxiliary_weight_tile;
+               const auto panels = (integrals.naux + width - 1) / width;
+               const auto expected_slices = (panels + 1) * integrals.naux - width;
+-              require(resources.device_response && resources.value_slices == expected_slices &&
++              diagnostic_require(resources.device_response && resources.value_slices == expected_slices &&
+                           resources.tensor_host_to_device_bytes ==
+                               expected_slices * integrals.nbf * integrals.nbf * sizeof(double) &&
+                           resources.tensor_device_to_host_bytes == 0 &&
+@@ -1906,7 +1916,7 @@
+               // Charges populate the first raw panel; exchange reuses each
+               // panel's own auxiliary slices. A full panel reads A only once.
+               const auto expected_slices = (panels + 1) * integrals.naux - width;
+-              require(resources.value_slices == expected_slices &&
++              diagnostic_require(resources.value_slices == expected_slices &&
+                           resources.recomputed_value_bytes ==
+                               (packed ? 0
+                                       : expected_slices * integrals.nbf * integrals.nbf *

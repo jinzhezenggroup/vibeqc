@@ -105,7 +105,9 @@ def test_native_failure_publication_and_preflight() -> None:
         with pytest.raises(ValueError, match=r"shape|finiteness"):
             plan.evaluate(np.full((2, 2), np.nan))
         before = plan.evaluate(d)
-        with pytest.raises(ValueError, match=r"short|range"):
+        # CUDA reports capability rejection at the common provider boundary;
+        # CPU's retained diagnostic names the unsupported range operator.
+        with pytest.raises(ValueError, match=r"short|range|provider domain"):
             FockPlan(
                 basis,
                 replace(

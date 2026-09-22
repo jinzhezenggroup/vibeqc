@@ -112,3 +112,21 @@ density contraction. Qualify r2SCAN separately.
 - #375
 - #528
 - #981
+
+## Independent review qualification
+
+The emitted FP32 AO kernel now has an allocated CUDA regression against all six
+hash-checked independent libcint grid fixtures: H2, water, Cartesian and spherical
+f shells, diffuse and tight primitives. All 20 spatial derivative components
+through order three are checked independently at a maximum-error gate of
+`5e-6` times that component's reference maximum. This componentwise norm avoids
+ill-conditioned pointwise ratios at cancellation zeros and prevents large third
+derivatives from hiding lower-order errors. The gate qualifies AO arithmetic,
+not mixed SCF, response or force endpoints.
+
+The six tests passed on RTX 5090 with CUDA 12.9 and `--fmad=false`, matching the
+integrated native grid translation unit's contraction policy. The fixture bases
+were normalized using the preserved, already qualified strict native library;
+the AO kernel itself was freshly emitted and compiled from this branch. The
+existing translation regression and the integrated expression/compiler suites
+also passed (43 host cases).

@@ -46,6 +46,9 @@ def test_fourteen_ao_all_electron_public_reference_and_tail(
     assert hf.converged and mol.nao_nr() == 14
     independent = mp.MP2(hf)
     independent.kernel()
+    # This fixture qualifies the energy provider's >12-AO tile tail. Request
+    # energy explicitly now that conventional MP2 also supports public forces;
+    # analytic-gradient qualification has its own independent reference tests.
     result = Calculator(
         method="mp2",
         basis=shells,
@@ -53,7 +56,7 @@ def test_fourteen_ao_all_electron_public_reference_and_tail(
         max_iterations=200,
         energy_tolerance=1e-12,
         density_tolerance=1e-12,
-    ).singlepoint(atoms)
+    ).singlepoint(atoms, properties=("energy",))
     assert result.forces is None
     assert abs(result.energy - independent.e_tot) <= 1e-9
     np.testing.assert_allclose(

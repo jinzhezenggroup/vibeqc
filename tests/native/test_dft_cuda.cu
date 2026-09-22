@@ -253,36 +253,38 @@ int main() {
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     graph_capture(basis, grid);
     {
-      for (std::uint32_t functional : {0U, 1U}) {
-        Fixture strict(basis, grid, functional, false, 9, CudaXcAoPrecision::Fp64);
-        Fixture mixed(basis, grid, functional, false, 9, CudaXcAoPrecision::Fp32ComputeFp64Storage);
-        require(strict.layout.device_bytes == mixed.layout.device_bytes,
-                "FP32 AO compute candidate changed FP64 XC workspace");
-        const auto d = density(basis.nao, 1);
-        strict.submit(d);
-        mixed.submit(d);
-        const auto strict_scalars = strict.scalars();
-        const auto mixed_scalars = mixed.scalars();
-        require(strict_scalars.error == 0 && mixed_scalars.error == 0,
-                "mixed AO candidate failed device XC evaluation");
-        const auto energy_error = std::abs(mixed_scalars.energy - strict_scalars.energy);
-        const auto electron_error =
-            std::abs((mixed_scalars.electrons[0] + mixed_scalars.electrons[1]) -
-                     (strict_scalars.electrons[0] + strict_scalars.electrons[1]));
-        require(energy_error < 5e-8,
-                "FP32-compute AO semilocal energy exceeded the qualification gate");
-        require(electron_error < 1e-7,
-                "FP32-compute AO electron count exceeded the qualification gate");
-        const auto strict_v = strict.potential();
-        const auto mixed_v = mixed.potential();
-        double max_v_error = 0.0;
-        for (std::size_t i = 0; i < strict_v.size(); ++i)
-          max_v_error = std::max(max_v_error, std::abs(mixed_v[i] - strict_v[i]));
-        require(max_v_error < 1e-7,
-                "FP32-compute AO semilocal potential exceeded the qualification gate");
-        strict.canary();
-        mixed.canary();
-      }
+      for (bool unrestricted : {false, true})
+        for (std::uint32_t functional : {0U, 1U}) {
+          Fixture strict(basis, grid, functional, unrestricted, 9, CudaXcAoPrecision::Fp64);
+          Fixture mixed(basis, grid, functional, unrestricted, 9,
+                        CudaXcAoPrecision::Fp32ComputeFp64Storage);
+          require(strict.layout.device_bytes == mixed.layout.device_bytes,
+                  "FP32 AO compute candidate changed FP64 XC workspace");
+          const auto d = density(basis.nao, unrestricted ? 2 : 1);
+          strict.submit(d);
+          mixed.submit(d);
+          const auto strict_scalars = strict.scalars();
+          const auto mixed_scalars = mixed.scalars();
+          require(strict_scalars.error == 0 && mixed_scalars.error == 0,
+                  "mixed AO candidate failed device XC evaluation");
+          const auto energy_error = std::abs(mixed_scalars.energy - strict_scalars.energy);
+          const auto electron_error =
+              std::abs((mixed_scalars.electrons[0] + mixed_scalars.electrons[1]) -
+                       (strict_scalars.electrons[0] + strict_scalars.electrons[1]));
+          require(energy_error < 5e-8,
+                  "FP32-compute AO semilocal energy exceeded the qualification gate");
+          require(electron_error < 1e-7,
+                  "FP32-compute AO electron count exceeded the qualification gate");
+          const auto strict_v = strict.potential();
+          const auto mixed_v = mixed.potential();
+          double max_v_error = 0.0;
+          for (std::size_t i = 0; i < strict_v.size(); ++i)
+            max_v_error = std::max(max_v_error, std::abs(mixed_v[i] - strict_v[i]));
+          require(max_v_error < 1e-7,
+                  "FP32-compute AO semilocal potential exceeded the qualification gate");
+          strict.canary();
+          mixed.canary();
+        }
       bool r2scan_rejected = false;
       try {
         (void)cuda_xc_layout(basis, grid, 2U, false, 9, CudaXcAoPrecision::Fp32ComputeFp64Storage);
