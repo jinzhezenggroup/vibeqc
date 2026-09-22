@@ -88,7 +88,11 @@ def build_df_derivative_kernel(
     )
     difference = tuple(product[axis] - centers[-1][axis] for axis in range(3))
     argument = rho * sum(d * d for d in difference)
-    replacements = {"inverse_two_p": 0.5 / p, "inverse_two_q": 0.5 / q, "rho": rho}
+    replacements: dict[str, Expr] = {
+        "inverse_two_p": 0.5 / p,
+        "inverse_two_q": 0.5 / q,
+        "rho": rho,
+    }
     replacements.update({f"difference_{axis}": d for axis, d in zip(AXES, difference)})
     if count == 3:
         replacements.update(
