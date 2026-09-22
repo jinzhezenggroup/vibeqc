@@ -20,7 +20,7 @@ benchmarks/results/issue399-density-seed/ownership.json linguist-generated=true
 
 # These files are hashed byte-for-byte as third-party/reference provenance.
 upstream/** text eol=lf
-external/libxc-7.0.0/* text eol=lf
+manifests/libxc/7.0.0/* text eol=lf
 tools/generate_xc_references.py text eol=lf
 tools/generate_xc_integration_references.py text eol=lf
 tools/generate_validation_references.py text eol=lf
@@ -30,13 +30,18 @@ benchmarks/results/retention-checkout/snapshot.manifest.json linguist-generated=
 
 # Scientific source-of-truth lives in upstream/manifest.json; these are derived
 # compatibility views or deterministic numerical products.
-external/libxc-7.0.0/manifest.json linguist-generated=true
-external/libxc-7.0.0/*-manifest.json linguist-generated=true
+manifests/libxc/7.0.0/manifest.json linguist-generated=true
+manifests/libxc/7.0.0/*-manifest.json linguist-generated=true
 tools/parameters/dispersion_parameter_sources.json linguist-generated=true
 src/dft/dispersion/*_data.hpp linguist-generated=true
 python/vibeqc_compiler/integral/rys*_data.py linguist-generated=true
 src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp linguist-generated=true
 python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
 src/xtb/gfn2_runtime/data/parameters/gfn1.hpp linguist-generated=true
-sources/xtb/gfn1/* -whitespace linguist-vendored=true
-python/vibeqc_compiler/geometry/_gfn1_data.py linguist-generated=true
+upstream/xtbloom/** -whitespace linguist-vendored=true
+python/vibeqc_compiler/geometry/_gfn1_data.py text eol=lf linguist-generated=true
+
+# Full-tree Libxc mathematical inputs; preserve upstream bytes, not runtime code.
+upstream/libxc-fulltree/7.0.0/** text eol=lf -whitespace linguist-vendored=true
+python/vibeqc_compiler/xc/libxc_bulk_catalog.json linguist-generated=true
+tests/data/xc/libxc-bulk/*.json linguist-generated=true

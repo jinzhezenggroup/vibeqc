@@ -1,8 +1,8 @@
 {
   "owner": "d3_dispersion",
-  "current_default": "Production nonperiodic two-body D3(BJ) correction owner with shared CPU/CUDA arithmetic, compact pinned tables, bounded persistent plans and ragged changed-geometry replay.",
+  "current_default": "Production nonperiodic D3 owner for BJ two-body, separately qualified BJ+ATM and zero-damping two-body variants, with Calculator exactly-once composition, compact pinned tables, bounded persistent plans, changed-geometry replay and a real-device-promoted cooperative ragged CUDA scheduler.",
   "generated_capability": "GeometryIR/PairIR/TensorIR owns the two-body D3(BJ) equation and generated coordinate VJP. A non-public heterogeneous ragged CUDA retirement candidate now lowers per-system energies plus the complete generated gradient through the shared TensorIR planner/compiler/runtime, with explicit topology/switch rebuild state.",
-  "missing_capability": "Generated CUDA still needs independent real-device numerical/resource/performance qualification, public-equivalent per-system failure isolation, and energy-only specialization before native production arithmetic can retire. Automatic Calculator-level electronic DFT + D3 composition, pair-parallel performance promotion, ATM and zero-damping variants also remain open under #492.",
+  "missing_capability": "The generated GeometryIR/PairIR CUDA retirement candidate still needs public-equivalent per-system failure isolation, energy-only specialization, resource qualification and matched endpoint promotion before it can retire the retained native production owner. These retirement gates do not narrow the qualified native BJ, BJ+ATM or zero-damping public capability.",
   "retirement_condition": "Retain d3_bj.hpp as the public production runtime/oracle until the generated ragged candidate reproduces complete energy/CN-response gradients, changed-topology replay, bounded resources, per-system failure isolation, energy-only behavior and endpoint performance without changing MethodIR or public correction semantics.",
   "evidence": [
     "docs/dft_d3.md",
@@ -11,6 +11,7 @@
     "tests/python/test_d3_geometry_ir.py",
     "tests/python/test_d3_generated_ragged.py",
     ".agents/notes/implemented/numerics/2026-09-20-d3-generated-ragged-cuda.md",
+    ".agents/notes/implemented/performance/2026-09-21-d3-dft13-production-closure.md",
     ".agents/notes/implemented/architecture/2026-09-19-d3-production-runtime.md"
   ],
   "status": "partial"

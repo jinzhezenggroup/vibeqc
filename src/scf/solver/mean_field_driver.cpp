@@ -1,5 +1,6 @@
 #include "scf/solver/mean_field_driver.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -42,6 +43,111 @@ void sample_scf_buffers(const PreparedFockPlan& plan, const Diis& diis,
       plan.cpu_observation_capacity(),
       runtime::add_capacity(diis.numeric_capacity(), runtime::vector_capacities(vectors...))));
 }
+
+bool incremental_direct_jk_eligible(const ResolvedFockBuild& strategy) {
+  const auto exact = [](const FockTermSpec& term) {
+    return !term.present || term.approximation == FockApproximation::Exact;
+  };
+  return (strategy.spec.coulomb.present || strategy.spec.exchange.present) &&
+         exact(strategy.spec.coulomb) && exact(strategy.spec.exchange);
+}
+
+void add_jk_in_place(DirectJkMatrices& target, const DirectJkMatrices& base) {
+  if (target.nbf != base.nbf) throw std::logic_error("incremental J/K AO dimension mismatch");
+  const auto add = [](std::vector<double>& values, const std::vector<double>& anchor) {
+    if (values.size() != anchor.size())
+      throw std::logic_error("incremental J/K selected-output mismatch");
+    for (std::size_t i = 0; i < values.size(); ++i) values[i] += anchor[i];
+  };
+  add(target.coulomb, base.coulomb);
+  add(target.exchange_alpha, base.exchange_alpha);
+  add(target.exchange_beta, base.exchange_beta);
+}
+
+/** Exact accepted-iterate incremental J/K baseline for #990.
+ *
+ * Only the main SCF trajectory mutates the anchor. Proposal/audit builds and
+ * final physical-state rebuilds use PreparedFockPlan directly, so a rejected
+ * trial can never become the next anchor. This slice intentionally performs no
+ * density-weighted quartet skipping yet: it establishes exact delta-D parity,
+ * bounded periodic full refresh, and trustworthy work counters first.
+ */
+class ExactIncrementalDirectJk {
+ public:
+  ExactIncrementalDirectJk(const PreparedFockPlan& plan, const ScfOptions& options,
+                           IncrementalDirectJkDiagnostic& diagnostic)
+      : plan_(plan),
+        diagnostic_(diagnostic),
+        rebuild_interval_(options.incremental_direct_jk_rebuild_interval) {
+    diagnostic_.requested = options.incremental_direct_jk;
+    diagnostic_.active =
+        options.incremental_direct_jk && incremental_direct_jk_eligible(plan.strategy());
+  }
+
+  DirectJkMatrices build(const Matrix& density, const Matrix& beta = {}) {
+    if (!diagnostic_.active) return plan_.build(density, beta);
+    const runtime::CpuRetainedCapacity anchor_capacity(numeric_capacity());
+    if (!anchored_ || (rebuild_interval_ != 0 && delta_updates_since_full_ >= rebuild_interval_)) {
+      const bool refresh = anchored_;
+      auto current = plan_.build(density, beta);
+      anchor_density_ = density;
+      anchor_beta_ = beta;
+      anchor_jk_ = current;
+      anchored_ = true;
+      delta_updates_since_full_ = 0;
+      ++diagnostic_.anchor_full_builds;
+      if (refresh) ++diagnostic_.periodic_rebuilds;
+      return current;
+    }
+    if (density.size() != anchor_density_.size() || beta.size() != anchor_beta_.size())
+      throw std::logic_error("incremental J/K density shape changed within one SCF solve");
+    Matrix delta(density.size());
+    Matrix delta_beta(beta.size());
+    const runtime::CpuRetainedCapacity delta_capacity(
+        runtime::vector_capacities(delta, delta_beta));
+    for (std::size_t i = 0; i < density.size(); ++i) {
+      delta[i] = density[i] - anchor_density_[i];
+      diagnostic_.max_abs_delta_density =
+          std::max(diagnostic_.max_abs_delta_density, std::abs(delta[i]));
+    }
+    for (std::size_t i = 0; i < beta.size(); ++i) {
+      delta_beta[i] = beta[i] - anchor_beta_[i];
+      diagnostic_.max_abs_delta_density =
+          std::max(diagnostic_.max_abs_delta_density, std::abs(delta_beta[i]));
+    }
+    auto current = plan_.build(delta, delta_beta);
+    add_jk_in_place(current, anchor_jk_);
+    anchor_density_ = density;
+    anchor_beta_ = beta;
+    anchor_jk_ = current;
+    ++delta_updates_since_full_;
+    ++diagnostic_.delta_builds;
+    ++diagnostic_.anchor_updates;
+    return current;
+  }
+
+  std::size_t numeric_capacity() const noexcept {
+    return runtime::vector_capacities(anchor_density_, anchor_beta_, anchor_jk_.coulomb,
+                                      anchor_jk_.exchange_alpha, anchor_jk_.exchange_beta);
+  }
+
+  void note_bypass_full_build() noexcept {
+    if (diagnostic_.active) ++diagnostic_.bypass_full_builds;
+  }
+  void note_post_scf_full_builds(std::uint64_t count) noexcept {
+    if (diagnostic_.active) diagnostic_.post_scf_full_builds += count;
+  }
+
+ private:
+  const PreparedFockPlan& plan_;
+  IncrementalDirectJkDiagnostic& diagnostic_;
+  unsigned rebuild_interval_{};
+  bool anchored_{};
+  unsigned delta_updates_since_full_{};
+  Matrix anchor_density_;
+  Matrix anchor_beta_;
+  DirectJkMatrices anchor_jk_;
+};
 
 std::pair<Matrix, Matrix> build_uhf_focks(const PreparedFockPlan& plan, const Matrix& hcore,
                                           const Matrix& alpha_density, const Matrix& beta_density) {
@@ -146,6 +252,7 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
 
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
+  ExactIncrementalDirectJk incremental_jk(plan, options, result.incremental_direct_jk);
   const bool require_residual = options.hooks && options.hooks->propose;
 
   struct RhfEvaluation {
@@ -164,7 +271,9 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
         ++result.fock_builds;
-        Matrix fock = build_fock(plan, ints.hcore, current_density);
+        Matrix fock =
+            assemble_fock(plan.strategy(), ints.hcore, incremental_jk.build(current_density)).alpha;
+        const runtime::CpuRetainedCapacity anchor_capacity(incremental_jk.numeric_capacity());
         const double energy =
             electronic_energy(current_density, ints.hcore, fock) + ints.nuclear_repulsion;
         Matrix residual = commutator_residual(fock, current_density, ints.overlap, n);
@@ -190,6 +299,9 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
               evaluation.fock, evaluation.residual, std::move(next_density),
               {static_cast<unsigned>(system.electron_count)}, 2.0, result, diis, proposal_failures,
               progress.converged, [&](const Matrix& trial) {
+                const runtime::CpuRetainedCapacity anchor_capacity(
+                    incremental_jk.numeric_capacity());
+                incremental_jk.note_bypass_full_build();
                 const Matrix trial_fock = build_fock(plan, ints.hcore, trial);
                 return std::make_pair(
                     electronic_energy(trial, ints.hcore, trial_fock) + ints.nuclear_repulsion,
@@ -213,6 +325,8 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
     return result;
   }
   result.fock_builds += 2;  // Physical rebuilds performed by finalization.
+  incremental_jk.note_post_scf_full_builds(2);
+  const runtime::CpuRetainedCapacity anchor_capacity(incremental_jk.numeric_capacity());
 
   // Rebuild and diagonalize the un-extrapolated converged Fock matrix. The
   // resulting orbitals define the energy-weighted density in the Pulay term.
@@ -249,6 +363,7 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
 
   ScfResult result;
   result.initial_density_used = initial_density != nullptr;
+  ExactIncrementalDirectJk incremental_jk(plan, options, result.incremental_direct_jk);
   const bool require_residual = options.hooks && options.hooks->propose;
 
   struct UhfState {
@@ -271,7 +386,11 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
   auto outcome = run_self_consistent(
       UhfState{std::move(alpha_density), std::move(beta_density)}, policy,
       [&](const UhfState& state, unsigned) {
-        auto [alpha_fock, beta_fock] = build_uhf_focks(plan, ints.hcore, state.alpha, state.beta);
+        auto fock = assemble_fock(plan.strategy(), ints.hcore,
+                                  incremental_jk.build(state.alpha, state.beta));
+        const runtime::CpuRetainedCapacity anchor_capacity(incremental_jk.numeric_capacity());
+        auto alpha_fock = std::move(fock.alpha);
+        auto beta_fock = std::move(fock.beta);
         ++result.fock_builds;
         const double energy =
             uhf_electronic_energy(state.alpha, state.beta, ints.hcore, alpha_fock, beta_fock) +
@@ -319,6 +438,8 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
             {static_cast<unsigned>(alpha_occupied), static_cast<unsigned>(beta_occupied)}, 1.0,
             result, diis, proposal_failures, progress.converged, [&](const Matrix& trial) {
               const auto [a, b] = split_spin_matrices(trial, n * n);
+              const runtime::CpuRetainedCapacity anchor_capacity(incremental_jk.numeric_capacity());
+              incremental_jk.note_bypass_full_build();
               const auto [fa, fb] = build_uhf_focks(plan, ints.hcore, a, b);
               return std::make_pair(
                   uhf_electronic_energy(a, b, ints.hcore, fa, fb) + ints.nuclear_repulsion,
@@ -344,6 +465,8 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
     return result;
   }
   result.fock_builds += 2;  // Physical rebuilds performed by finalization.
+  incremental_jk.note_post_scf_full_builds(2);
+  const runtime::CpuRetainedCapacity anchor_capacity(incremental_jk.numeric_capacity());
 
   // As in RHF, rebuild from the un-extrapolated converged spin Fock matrices
   // before forming orbital-weighted Pulay densities and analytic forces.

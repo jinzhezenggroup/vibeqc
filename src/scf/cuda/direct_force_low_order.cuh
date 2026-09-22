@@ -13,7 +13,6 @@
 #include "scf/cuda/direct_force_density.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_native_gradient_types.cuh"
-#include "scf/cuda/direct_native_order01_gradient.cuh"
 #include "scf/cuda/direct_native_psss.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/matrix_index.cuh"

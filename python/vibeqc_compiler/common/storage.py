@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import typing
 from collections.abc import Hashable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from .layout import DenseLayout
@@ -83,6 +83,7 @@ class BufferOp:
     reads: tuple[Hashable, ...]
     writes: tuple[Hashable, ...]
     effect: MemoryEffect = MemoryEffect.OPAQUE
+    donations: tuple[tuple[Hashable, Hashable], ...] = field(default=(), kw_only=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.key, Hashable):
@@ -93,6 +94,31 @@ class BufferOp:
             raise ValueError("buffer operation contains duplicate writes")
         if not isinstance(self.effect, MemoryEffect):
             raise TypeError("buffer operation effect must be MemoryEffect")
+        if not isinstance(self.donations, (tuple, list)):
+            raise TypeError("buffer operation donations must be a sequence")
+        donations = []
+        for item in self.donations:
+            if (
+                not isinstance(item, (tuple, list))
+                or len(item) != 2
+                or not all(isinstance(value, Hashable) for value in item)
+            ):
+                raise TypeError("buffer donation must be a pair of hashable keys")
+            donor, recipient = item
+            if donor == recipient:
+                raise ValueError("buffer donation requires distinct values")
+            if donor not in self.reads or recipient not in self.writes:
+                raise ValueError(
+                    "buffer donation must map an operation read to a write"
+                )
+            donations.append((donor, recipient))
+        if len({item[0] for item in donations}) != len(donations):
+            raise ValueError("buffer operation contains duplicate donation donors")
+        if len({item[1] for item in donations}) != len(donations):
+            raise ValueError("buffer operation contains duplicate donation recipients")
+        if donations and self.effect is not MemoryEffect.EXPLICIT:
+            raise ValueError("buffer donation requires explicit memory effects")
+        object.__setattr__(self, "donations", tuple(donations))
 
 
 @dataclass(frozen=True)
@@ -131,6 +157,7 @@ class StorageAnalysis:
     interference: tuple[tuple[Hashable, Hashable], ...]
     peak_live_bytes: tuple[tuple[str, int], ...]
     blocked_spaces: tuple[str, ...]
+    donations: tuple[tuple[int, Hashable, Hashable], ...]
 
     def slot_for(self, owner: Hashable) -> int | None:
         return dict(self.assignments).get(owner)
@@ -207,6 +234,7 @@ def analyze_storage(
     first = {key: 0 for key in inputs}
     last = {key: end for key in inputs}
     opaque_roots: set[Hashable] = set()
+    donation_events: list[tuple[int, Hashable, Hashable]] = []
     for phase, op in enumerate(operations, 1):
         missing = tuple(key for key in op.reads if key not in available)
         if missing:
@@ -225,6 +253,21 @@ def analyze_storage(
             first[key] = last[key] = phase
         if op.effect is MemoryEffect.OPAQUE:
             opaque_roots.update(root(key) for key in (*op.reads, *op.writes))
+        for donor, recipient in op.donations:
+            donor_root, recipient_root = root(donor), root(recipient)
+            if donor_root != donor or recipient_root != recipient:
+                raise ValueError("buffer donation requires physical storage owners")
+            donor_value, recipient_value = by_key[donor], by_key[recipient]
+            if (
+                donor_value.space != recipient_value.space
+                or donor_value.bytes != recipient_value.bytes
+            ):
+                raise ValueError(
+                    "buffer donation requires equal-capacity owners in one memory space"
+                )
+            if not donor_value.compiler_owned or not recipient_value.compiler_owned:
+                raise ValueError("buffer donation requires compiler-owned storage")
+            donation_events.append((phase, donor_root, recipient_root))
         available.update(op.writes)
 
     if available != set(by_key):
@@ -277,16 +320,44 @@ def analyze_storage(
             )
         )
     ranges.sort(key=lambda item: order[item.owner])
+    by_owner = {item.owner: item for item in ranges}
+    seen_donors: set[Hashable] = set()
+    seen_recipients: set[Hashable] = set()
+    for phase, donor, recipient in donation_events:
+        left, right = by_owner[donor], by_owner[recipient]
+        if donor in seen_donors or recipient in seen_recipients:
+            raise ValueError("buffer donation ownership transfer must be one-to-one")
+        if not left.reusable or not right.reusable:
+            raise ValueError("buffer donation requires reusable compiler-owned ranges")
+        if left.last_phase != phase or right.first_phase != phase:
+            raise ValueError(
+                "buffer donation requires donor final use and recipient production "
+                "at the same operation"
+            )
+        seen_donors.add(donor)
+        seen_recipients.add(recipient)
 
+    donation_pairs = {
+        frozenset((donor, recipient)) for _, donor, recipient in donation_events
+    }
     interference = []
     for i, left in enumerate(ranges):
         for right in ranges[i + 1 :]:
-            if left.space == right.space and _overlap(left, right):
+            if (
+                left.space == right.space
+                and _overlap(left, right)
+                and frozenset((left.owner, right.owner)) not in donation_pairs
+            ):
                 interference.append((left.owner, right.owner))
+    donated_recipients = {
+        (phase, recipient): donor for phase, donor, recipient in donation_events
+    }
     peaks: dict[str, int] = {}
     for phase in range(end + 1):
         spaces: dict[str, int] = {}
         for item in ranges:
+            if (phase, item.owner) in donated_recipients:
+                continue
             if item.first_phase <= phase <= item.last_phase:
                 spaces[item.space] = spaces.get(item.space, 0) + item.bytes
         for space, count in spaces.items():
@@ -298,6 +369,9 @@ def analyze_storage(
         (item for item in ranges if item.compiler_owned),
         key=lambda item: (item.first_phase, order[item.owner]),
     )
+    donation_from = {
+        (phase, recipient): donor for phase, donor, recipient in donation_events
+    }
     for item in allocation_order:
         # Views share a physical base and may impose stricter alignment,
         # including through a chain of aliases.
@@ -306,19 +380,39 @@ def analyze_storage(
             for member in item.members
         )
         candidates = []
+        donated_index = None
         if item.reusable:
+            expected_donor = donation_from.get((item.first_phase, item.owner))
             for index, slot in enumerate(slot_state):
+                if (
+                    expected_donor is not None
+                    and slot["space"] == item.space
+                    and slot["last"] == item.first_phase
+                    and slot["last_owner"] == expected_donor
+                    # Earlier best-fit reuse can leave the donor in a larger slot.
+                    and slot["bytes"] >= item.bytes
+                ):
+                    donated_index = index
+                    break
                 if (
                     slot["space"] == item.space
                     and slot["last"] < item.first_phase
                     and slot["bytes"] >= item.bytes
                 ):
                     candidates.append((slot["bytes"], index))
-        if candidates:
+        if donated_index is not None:
+            index = donated_index
+            slot = slot_state[index]
+            slot["alignment"] = max(slot["alignment"], alignment)
+            slot["last"] = item.last_phase
+            slot["last_owner"] = item.owner
+            slot["owners"].append(item.owner)
+        elif candidates:
             _, index = min(candidates)
             slot = slot_state[index]
             slot["alignment"] = max(slot["alignment"], alignment)
             slot["last"] = item.last_phase
+            slot["last_owner"] = item.owner
             slot["owners"].append(item.owner)
         else:
             index = len(slot_state)
@@ -328,6 +422,7 @@ def analyze_storage(
                     "bytes": item.bytes,
                     "alignment": alignment,
                     "last": item.last_phase if item.reusable else end,
+                    "last_owner": item.owner,
                     "owners": [item.owner],
                 }
             )
@@ -350,4 +445,5 @@ def analyze_storage(
         tuple(interference),
         tuple(sorted(peaks.items())),
         tuple(sorted(blocked_spaces)),
+        tuple(donation_events),
     )

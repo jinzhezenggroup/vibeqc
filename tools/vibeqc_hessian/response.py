@@ -1,10 +1,10 @@
-"""Nuclear perturbation RHS construction for the RHF Hessian response.
+"""Closed-shell stationary nuclear-perturbation RHS construction.
 
 The shared response solver owns the Jacobian action, but issue #179
-explicitly assigns nuclear RHS construction to Hessian callers.  This module
+explicitly assigns nuclear RHS construction to Hessian callers. This module
 implements the symmetric metric-gauge convention fixed in ``docs/hessian.md``
-and returns the occupied-major/virtual-minor layout consumed by
-``RHFResponseOperator``.
+and returns the occupied-major/virtual-minor layout consumed by the shared
+closed-shell RHF/CPKS response operators.
 """
 
 from __future__ import annotations
@@ -13,7 +13,11 @@ import typing
 
 import numpy as np
 
-__all__ = ["build_rhf_nuclear_rhs", "metric_density_response_mo"]
+__all__ = [
+    "build_rhf_nuclear_rhs",
+    "build_stationary_nuclear_rhs",
+    "metric_density_response_mo",
+]
 
 
 def _finite_matrix(values: typing.Any, *, name: str, nmo: int) -> np.ndarray:
@@ -60,7 +64,7 @@ def metric_density_response_mo(
     return -0.5 * (overlap * occupations[None, :] + occupations[:, None] * overlap)
 
 
-def build_rhf_nuclear_rhs(
+def build_stationary_nuclear_rhs(
     frozen_fock_derivative_mo: typing.Any,
     overlap_derivative_mo: typing.Any,
     metric_fock_response_mo: typing.Any,
@@ -68,12 +72,13 @@ def build_rhf_nuclear_rhs(
     *,
     nocc: int,
 ) -> np.ndarray:
-    """Build one nuclear RHS in occupied-major/virtual-minor ``b[i, a]`` order.
+    """Build one closed-shell nuclear RHS in occupied-major/virtual-minor order.
 
-    The inputs are MO matrices for ``C^T[h^R + G^R(P)]C``, ``S_R`` and
-    ``C^T G(P_metric^R) C``.  The metric contribution is required explicitly
-    so a caller cannot silently omit it.  The returned RHS follows
-    ``A x = -b``; pass ``-b.reshape(-1)`` to the shared RHF response solver.
+    The inputs are MO matrices for the frozen Fock derivative, overlap
+    derivative, and the Fock response to the known metric-density connection.
+    The metric contribution is required explicitly so a caller cannot silently
+    omit it. The returned RHS follows ``A x = -b``; method-specific Fock
+    response has already been supplied by the response operator.
     """
 
     energies = _orbital_energies(orbital_energies, nmo=len(orbital_energies))
@@ -96,3 +101,21 @@ def build_rhf_nuclear_rhs(
     eps_i = energies[occupied, None]
     eps_a = energies[None, virtual]
     return ai - 0.5 * (eps_i + eps_a) * overlap_ia
+
+
+def build_rhf_nuclear_rhs(
+    frozen_fock_derivative_mo: typing.Any,
+    overlap_derivative_mo: typing.Any,
+    metric_fock_response_mo: typing.Any,
+    orbital_energies: typing.Any,
+    *,
+    nocc: int,
+) -> np.ndarray:
+    """Backward-compatible RHF name for the common closed-shell RHS algebra."""
+    return build_stationary_nuclear_rhs(
+        frozen_fock_derivative_mo,
+        overlap_derivative_mo,
+        metric_fock_response_mo,
+        orbital_energies,
+        nocc=nocc,
+    )

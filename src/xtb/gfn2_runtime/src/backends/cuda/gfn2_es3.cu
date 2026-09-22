@@ -6,6 +6,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_es3.cuh"
+#include "generated_gfn2_es3_native.cuh"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -15,78 +16,6 @@ constexpr int kThreadsPerBlock = 256;
 __device__ void record_error(std::uint32_t* device_error, Gfn2ES3DeviceError error) {
   atomicCAS(device_error, static_cast<std::uint32_t>(Gfn2ES3DeviceError::kSuccess),
             static_cast<std::uint32_t>(error));
-}
-
-/*
- * CUDA 12.9 resolves the C++ isnormal overload as a host-only constexpr
- * function in device code. Keep this tiny device-native predicate local so
- * the fallback decision is identical without relying on relaxed constexpr.
- * Callers handle zero before reaching this helper.
- */
-__device__ bool is_normal_double(double value) {
-  constexpr double kMinNormalDouble = 2.2250738585072014e-308;
-  return isfinite(value) && fabs(value) >= kMinNormalDouble;
-}
-
-/*
- * Keep the ordinary operation order identical to the CPU path. Retry through
- * a mantissa/exponent decomposition when an intermediate overflowed,
- * underflowed, or lost range even though the final binary64 result may still
- * be representable. This is the device equivalent of the CPU path's
- * wider-intermediate fallback and also handles finite caller-supplied Gamma3
- * values outside the generated GFN2 range.
- */
-__device__ bool shell_potential(double gamma3, double charge, double* result) {
-  if (charge == 0.0 || gamma3 == 0.0) {
-    *result = 0.0;
-    return true;
-  }
-  const double square = charge * charge;
-  double value = square * gamma3;
-  if (is_normal_double(square) && is_normal_double(gamma3) && is_normal_double(value)) {
-    *result = value;
-    return true;
-  }
-  int charge_exponent = 0;
-  int gamma_exponent = 0;
-  const double charge_mantissa = frexp(charge, &charge_exponent);
-  const double gamma_mantissa = frexp(gamma3, &gamma_exponent);
-  const double mantissa = charge_mantissa * charge_mantissa * gamma_mantissa;
-  value = scalbn(mantissa, 2 * charge_exponent + gamma_exponent);
-  if (!isfinite(value)) {
-    return false;
-  }
-  *result = value;
-  return true;
-}
-
-/* Match the CPU expression first, then recover representable q^3 cases. */
-__device__ bool shell_energy(double gamma3, double charge, double* result) {
-  if (charge == 0.0 || gamma3 == 0.0) {
-    *result = 0.0;
-    return true;
-  }
-  const double square = charge * charge;
-  const double cube = square * charge;
-  const double scaled = cube * gamma3;
-  double value = scaled / 3.0;
-  if (is_normal_double(square) && is_normal_double(cube) && is_normal_double(gamma3) &&
-      is_normal_double(scaled) && is_normal_double(value)) {
-    *result = value;
-    return true;
-  }
-  int charge_exponent = 0;
-  int gamma_exponent = 0;
-  const double charge_mantissa = frexp(charge, &charge_exponent);
-  const double gamma_mantissa = frexp(gamma3, &gamma_exponent);
-  const double mantissa =
-      charge_mantissa * charge_mantissa * charge_mantissa * gamma_mantissa / 3.0;
-  value = scalbn(mantissa, 3 * charge_exponent + gamma_exponent);
-  if (!isfinite(value)) {
-    return false;
-  }
-  *result = value;
-  return true;
 }
 
 struct ShellRange {
@@ -149,7 +78,8 @@ __global__ void es3_potential_kernel(Gfn2ES3DeviceBatch batch, const double* she
   /* Preflight all outputs before publishing any result for this system. */
   for (std::int64_t shell = range.begin + threadIdx.x; shell < range.end; shell += blockDim.x) {
     double potential = 0.0;
-    if (!shell_potential(batch.shell_gamma3[shell], shell_charges[shell], &potential)) {
+    if (!vibeqc::xtb::generated::evaluate_gfn2_es3_potential(batch.shell_gamma3[shell],
+                                                             shell_charges[shell], &potential)) {
       record_error(device_error, Gfn2ES3DeviceError::kNonfinitePotentialArithmetic);
       atomicExch(&valid, 0);
     }
@@ -161,7 +91,8 @@ __global__ void es3_potential_kernel(Gfn2ES3DeviceBatch batch, const double* she
 
   for (std::int64_t shell = range.begin + threadIdx.x; shell < range.end; shell += blockDim.x) {
     double potential = 0.0;
-    (void)shell_potential(batch.shell_gamma3[shell], shell_charges[shell], &potential);
+    (void)vibeqc::xtb::generated::evaluate_gfn2_es3_potential(batch.shell_gamma3[shell],
+                                                              shell_charges[shell], &potential);
     shell_potentials[shell] = potential;
   }
 }
@@ -194,7 +125,8 @@ __global__ void es3_energy_kernel(Gfn2ES3DeviceBatch batch, const double* shell_
     }
     for (std::int64_t shell = range.begin; shell < range.end; ++shell) {
       double contribution = 0.0;
-      if (!shell_energy(batch.shell_gamma3[shell], shell_charges[shell], &contribution)) {
+      if (!vibeqc::xtb::generated::evaluate_gfn2_es3_energy(batch.shell_gamma3[shell],
+                                                            shell_charges[shell], &contribution)) {
         record_error(device_error, Gfn2ES3DeviceError::kNonfiniteEnergyArithmetic);
         return;
       }
@@ -296,7 +228,7 @@ __global__ void es3_scc_potential_kernel(Gfn2ES3DeviceBatch batch,
     } else if (!isfinite(charge)) {
       record_es3_scc_system_error(system_errors, system, Gfn2ES3DeviceError::kNonfiniteShellCharge);
       atomicExch(&valid, 0);
-    } else if (!shell_potential(gamma3, charge, &value)) {
+    } else if (!vibeqc::xtb::generated::evaluate_gfn2_es3_potential(gamma3, charge, &value)) {
       record_es3_scc_system_error(system_errors, system,
                                   Gfn2ES3DeviceError::kNonfinitePotentialArithmetic);
       atomicExch(&valid, 0);
@@ -308,7 +240,8 @@ __global__ void es3_scc_potential_kernel(Gfn2ES3DeviceBatch batch,
   }
   for (std::int64_t shell = begin + threadIdx.x; shell < end; shell += blockDim.x) {
     double value = 0.0;
-    (void)shell_potential(batch.shell_gamma3[shell], shell_charges[shell], &value);
+    (void)vibeqc::xtb::generated::evaluate_gfn2_es3_potential(batch.shell_gamma3[shell],
+                                                              shell_charges[shell], &value);
     shell_potentials[shell] = value;
   }
 }
@@ -337,7 +270,7 @@ __global__ void es3_scc_energy_kernel(Gfn2ES3DeviceBatch batch,
       record_es3_scc_system_error(system_errors, system, Gfn2ES3DeviceError::kNonfiniteShellCharge);
       return;
     }
-    if (!shell_energy(gamma3, charge, &contribution)) {
+    if (!vibeqc::xtb::generated::evaluate_gfn2_es3_energy(gamma3, charge, &contribution)) {
       record_es3_scc_system_error(system_errors, system,
                                   Gfn2ES3DeviceError::kNonfiniteEnergyArithmetic);
       return;

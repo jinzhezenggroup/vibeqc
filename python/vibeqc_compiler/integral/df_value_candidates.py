@@ -48,6 +48,8 @@ def build_value_rys_ir(components: typing.Any) -> typing.Any:
             if node.operation == "constant":
                 cloned[identifier] = graph.clone_constant(node)
             elif node.operation == "variable":
+                if not isinstance(node.payload, str):
+                    raise TypeError("variable node payload must be a string")
                 cloned[identifier] = variables[node.payload]
             else:
                 cloned[identifier] = graph._intern(

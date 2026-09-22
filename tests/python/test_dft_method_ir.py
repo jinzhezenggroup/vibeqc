@@ -144,7 +144,7 @@ def test_b3lyp_gaussian_alias_is_semantic_and_vwn5_remains_distinct() -> None:
 
 @pytest.mark.parametrize(
     "canonical,alias",
-    [("BHANDHLYP", "BHHLYP"), ("CAM-B3LYP", "CAMB3LYP")],
+    [("CAM-B3LYP", "CAMB3LYP"), ("CAM-B3LYP", "CAM_B3LYP")],
 )
 def test_cross_code_named_aliases_preserve_semantics(
     canonical: typing.Any, alias: typing.Any

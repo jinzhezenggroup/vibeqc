@@ -15,12 +15,12 @@ from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_response.implicit import ImplicitSolveError, _checked_bytes
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .complete_gradient import (
     BoundCCSDGradient,

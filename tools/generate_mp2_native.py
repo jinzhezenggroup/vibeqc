@@ -10,10 +10,10 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 
 from vibeqc_compiler.method.mp2_schedule import native_header as mp2_schedule_header
+from vibeqc_compiler.tensor.cpu_emit import emit_cpu
 
 from tools.vibeqc_mp2.equations import cpu_capacity, energy_program
 from tools.vibeqc_posthf.plan_spec import native_header as block_capacity_header
-from tools.vibeqc_tensor.cpu_emit import emit_cpu
 
 
 def cpu_header() -> typing.Any:
@@ -98,9 +98,9 @@ def _numeric_architectures(value: typing.Any) -> typing.Any:
 
 
 def cuda_sources(directory: typing.Any, architectures: typing.Any) -> None:
-    from tools.vibeqc_codegen.cuda_target import cuda_target_info
-    from tools.vibeqc_tensor.cuda_emit import emit_cuda
-    from tools.vibeqc_tensor.cuda_plan import plan_cuda
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_emit import emit_cuda
+    from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
     archs = _numeric_architectures(architectures)
     directory.mkdir(parents=True, exist_ok=True)

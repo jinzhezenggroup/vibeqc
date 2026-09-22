@@ -31,8 +31,11 @@ def build_df_derivative_ir(
     centers = len(value.operator.centers)
     layout = TensorLayout(("center", "xyz"), (centers, 3))
     if weighted:
+        value_consumer = value.contractions[0]
+        if not isinstance(value_consumer, RawBlock):
+            raise TypeError("DF value lowering requires a raw value consumer")
         weights = WeightDescriptor(
-            "bar_M" if centers == 2 else "bar_A", value.contractions[0].layout
+            "bar_M" if centers == 2 else "bar_A", value_consumer.layout
         )
         consumer = WeightedDerivative(weights, layout, layout.storage_bytes)
     else:
@@ -78,6 +81,8 @@ def build_df_derivative_kernel(
         tuple(g.variable(f"center_{i}_{axis}") for axis in AXES) for i in range(count)
     )
     p, q = sum(exponent[:-1]), exponent[-1]
+    if not isinstance(p, Expr):
+        raise TypeError("DF derivative lowering requires at least two centers")
     rho = p * q / (p + q)
     product = tuple(
         sum(exponent[i] * centers[i][axis] for i in range(count - 1)) / p
@@ -85,7 +90,11 @@ def build_df_derivative_kernel(
     )
     difference = tuple(product[axis] - centers[-1][axis] for axis in range(3))
     argument = rho * sum(d * d for d in difference)
-    replacements = {"inverse_two_p": 0.5 / p, "inverse_two_q": 0.5 / q, "rho": rho}
+    replacements: dict[str, Expr] = {
+        "inverse_two_p": 0.5 / p,
+        "inverse_two_q": 0.5 / q,
+        "rho": rho,
+    }
     replacements.update({f"difference_{axis}": d for axis, d in zip(AXES, difference)})
     if count == 3:
         replacements.update(
@@ -99,7 +108,7 @@ def build_df_derivative_kernel(
     # High-angular-momentum values contain deep addition chains. Preserve the
     # recursive clone's dependency order with an explicit stack so Python 3.11
     # and coverage tracing do not exhaust the interpreter recursion limit.
-    cloned = {}
+    cloned: dict[int, Expr] = {}
     pending = [(kernel.value.identifier, False)]
     while pending:
         identifier, ready = pending.pop()
@@ -111,6 +120,8 @@ def build_df_derivative_kernel(
             pending.extend((child, False) for child in reversed(node.arguments))
             continue
         if node.operation == "variable":
+            if not isinstance(node.payload, str):
+                raise TypeError("variable node payload must be a string")
             cloned[identifier] = replacements.get(
                 node.payload, g.variable(node.payload)
             )

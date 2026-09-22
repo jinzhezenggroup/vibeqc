@@ -16,7 +16,7 @@ scheduling changes.
 Add a header-only, non-periodic `evaluate_d3_bj_atm` primitive and keep the
 production D3 runtime unchanged. Reuse the existing D3 coordination-number and
 C6 interpolation contract. Expose the already-audited packed `vdw_radii` from
-`external/xtbloom-d3/gfn1_d3.json` through generated `PairData` rather than
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json` through generated `PairData` rather than
 introducing a second radius table.
 
 For rational/BJ D3, preserve the simple-dftd3 ATM convention: `rs9 = 4/3` and
@@ -70,6 +70,6 @@ and separately validated.
 
 - #492
 - `tools/parameters/dispersion_parameter_sources.json`
-- `external/xtbloom-d3/upstream_d3_manifest.json`
+- `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3_manifest.json`
 - simple-dftd3 rational damping / ATM implementation at the pinned source
   revision

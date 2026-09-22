@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <span>
 
+#include "response/linear_problem.hpp"
 #include "runtime/tracked_allocator.hpp"
 
 namespace vibeqc::response {
@@ -61,8 +61,6 @@ struct GmresResult {
     return status == GmresStatus::initial_residual || status == GmresStatus::converged;
   }
 };
-
-using LinearOperator = std::function<void(std::span<const double> input, std::span<double> output)>;
 
 double stable_norm(std::span<const double> values);
 GmresPlan prepare_gmres(std::size_t dimension, const GmresOptions& options);

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc.profiles import file_hash
-from vibeqc_compiler.integral.native_runtime import compile_runtime
+from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.tensor.cuda_execute import _PREPARATION_LOCK, _Metrics
 
 from .reference import immutable

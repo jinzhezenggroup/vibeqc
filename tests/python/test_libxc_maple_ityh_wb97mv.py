@@ -210,10 +210,10 @@ def test_imports_pin_complete_source_and_parameter_identity() -> None:
     ityh, _, _, _ = _imported_ityh("unpolarized")
     wb97mv, _, _, _ = _imported_wb97mv("unpolarized")
     rsh_manifest = json.loads(
-        (ROOT / "external/libxc-7.0.0/rsh-manifest.json").read_text()
+        (ROOT / "manifests/libxc/7.0.0/rsh-manifest.json").read_text()
     )
     wb_manifest = json.loads(
-        (ROOT / "external/libxc-7.0.0/wb97mv-manifest.json").read_text()
+        (ROOT / "manifests/libxc/7.0.0/wb97mv-manifest.json").read_text()
     )
 
     ityh_hashes = dict(ityh.source_hashes)

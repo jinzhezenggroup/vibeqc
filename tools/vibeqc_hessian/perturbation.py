@@ -1,7 +1,8 @@
-"""Complete RHF nuclear perturbations through the shared response solver.
+"""Closed-shell stationary nuclear perturbations through the shared solver.
 
-Single-coordinate and bounded multi-RHS Hessian consumers share the exact
-metric, occupied-response and energy-weighted-density conventions here.
+RHF and semilocal RKS/CPKS consumers share the metric, occupied-response and
+energy-weighted-density conventions here. Method-specific density-to-Fock
+physics belongs to the response operator, not to the Hessian consumer.
 """
 
 import typing
@@ -13,17 +14,16 @@ from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_response import (
     GMRESOptions,
     MultiRHSResult,
-    RHFResponseOperator,
     SolveResult,
     solve,
     solve_many,
 )
 
-from .response import build_rhf_nuclear_rhs, metric_density_response_mo
+from .response import build_stationary_nuclear_rhs, metric_density_response_mo
 
 
 @dataclass(frozen=True, eq=False)
-class RHFNuclearResponse:
+class StationaryNuclearResponse:
     """Detached response of occupied orbitals and densities to one perturbation."""
 
     rhs: np.ndarray
@@ -35,10 +35,10 @@ class RHFNuclearResponse:
 
 
 @dataclass(frozen=True, eq=False)
-class RHFNuclearBatchResponse:
+class StationaryNuclearBatchResponse:
     """Responses to a bounded set of perturbations from one shared multi-RHS solve."""
 
-    responses: tuple[RHFNuclearResponse, ...]
+    responses: tuple[StationaryNuclearResponse, ...]
     solve_result: MultiRHSResult
 
     @property
@@ -70,28 +70,35 @@ def _matrix(value: typing.Any, n: typing.Any, name: typing.Any) -> typing.Any:
 
 
 def _validate_operator(operator: typing.Any) -> typing.Any:
-    if not isinstance(operator, RHFResponseOperator):
-        raise TypeError("expected the shared RHFResponseOperator")
-    ref = operator.problem.reference
+    problem = getattr(operator, "problem", None)
+    induced_fock = getattr(operator, "induced_fock", None)
+    if (
+        problem is None
+        or problem.method not in ("rhf", "cpks")
+        or not callable(induced_fock)
+    ):
+        raise TypeError(
+            "expected a closed-shell RHF/CPKS response operator with induced_fock"
+        )
+    ref = problem.reference
     nmo, nocc = ref.nmo, ref.nocc
-    layout = operator.problem.layout
+    layout = problem.layout
     if layout.occupied != tuple(range(nocc)) or layout.virtual != tuple(
         range(nocc, nmo)
     ):
-        raise ValueError("nuclear response requires the complete canonical RHF space")
+        raise ValueError(
+            "nuclear response requires the complete canonical closed-shell space"
+        )
+    validate_current = getattr(operator, "validate_current", None)
+    if callable(validate_current):
+        validate_current()
     validate = getattr(operator.backend, "validate_reference", None)
-    if validate is None:
-        raise ValueError("nuclear response requires a reference-bound backend")
-    validate(ref)
+    if callable(validate):
+        validate(ref)
     return ref, layout
 
 
-def _induced_fock(operator: typing.Any, density: typing.Any) -> typing.Any:
-    coulomb, exchange = operator.backend.coulomb_exchange(density)
-    return coulomb - 0.5 * exchange
-
-
-def _prepare_rhf_nuclear_perturbation(
+def _prepare_stationary_nuclear_perturbation(
     operator: typing.Any, frozen_fock: typing.Any, overlap: typing.Any
 ) -> typing.Any:
     """Build one nuclear RHS without running Krylov or publishing a response."""
@@ -104,20 +111,22 @@ def _prepare_rhf_nuclear_perturbation(
     frozen_mo = C.T @ frozen @ C
     overlap_mo = C.T @ s1 @ C
     metric_dm_mo = metric_density_response_mo(overlap_mo, nocc=nocc)
-    metric_fock_mo = C.T @ _induced_fock(operator, C @ metric_dm_mo @ C.T) @ C
-    rhs = build_rhf_nuclear_rhs(frozen_mo, overlap_mo, metric_fock_mo, eps, nocc=nocc)
+    metric_fock_mo = C.T @ operator.induced_fock(C @ metric_dm_mo @ C.T) @ C
+    rhs = build_stationary_nuclear_rhs(
+        frozen_mo, overlap_mo, metric_fock_mo, eps, nocc=nocc
+    )
     values = (rhs, frozen_mo, overlap_mo)
     if not all(np.isfinite(value).all() for value in values):
         raise FloatingPointError("nonfinite nuclear perturbation preparation")
     return _PreparedNuclearPerturbation(*(immutable(value) for value in values))
 
 
-def _reconstruct_rhf_nuclear_response(
+def _reconstruct_stationary_nuclear_response(
     operator: typing.Any, prepared: typing.Any, result: typing.Any
 ) -> typing.Any:
     """Reconstruct occupied and density responses from one solved rotation vector."""
     if not isinstance(prepared, _PreparedNuclearPerturbation):
-        raise TypeError("expected a prepared RHF nuclear perturbation")
+        raise TypeError("expected a prepared stationary nuclear perturbation")
     if not isinstance(result, SolveResult):
         raise TypeError("expected a SolveResult")
     result.require_converged()
@@ -132,7 +141,7 @@ def _reconstruct_rhf_nuclear_response(
     c1 = C @ mo1
     density = 2.0 * (c1 @ mocc.T + mocc @ c1.T)
     hs = prepared.frozen_mo[:, :nocc] - prepared.overlap_mo[:, :nocc] * e_i[None, :]
-    hs += C.T @ _induced_fock(operator, density) @ mocc
+    hs += C.T @ operator.induced_fock(density) @ mocc
     e1 = hs[:nocc, :] + mo1[:nocc, :] * (e_i[:, None] - e_i[None, :])
     left = (c1 * e_i[None, :]) @ mocc.T
     energy_density = 2.0 * (left + left.T + mocc @ e1 @ mocc.T)
@@ -145,10 +154,10 @@ def _reconstruct_rhf_nuclear_response(
     )
     if not all(np.isfinite(value).all() for value in values):
         raise FloatingPointError("nonfinite nuclear response; no result published")
-    return RHFNuclearResponse(*(immutable(value) for value in values), result)
+    return StationaryNuclearResponse(*(immutable(value) for value in values), result)
 
 
-def solve_rhf_nuclear_perturbation(
+def solve_stationary_nuclear_perturbation(
     operator: typing.Any,
     frozen_fock: typing.Any,
     overlap: typing.Any,
@@ -163,13 +172,15 @@ def solve_rhf_nuclear_perturbation(
         resident_reconstruction_consumer
     ):
         raise TypeError("resident_reconstruction_consumer must be callable")
-    prepared = _prepare_rhf_nuclear_perturbation(operator, frozen_fock, overlap)
+    prepared = _prepare_stationary_nuclear_perturbation(operator, frozen_fock, overlap)
     _, layout = _validate_operator(operator)
 
     def consume_resident_solution(engine: typing.Any, solution: typing.Any) -> None:
         reconstruct = getattr(engine, "reconstruct_nuclear_response", None)
         if reconstruct is None:
-            raise ValueError("resident reconstruction requires a resident RHF engine")
+            raise ValueError(
+                "resident reconstruction requires a compatible resident response engine"
+            )
         resident_reconstruction_consumer(
             reconstruct(solution, prepared.frozen_mo, prepared.overlap_mo)
         )
@@ -186,10 +197,10 @@ def solve_rhf_nuclear_perturbation(
             else None
         ),
     )
-    return _reconstruct_rhf_nuclear_response(operator, prepared, result)
+    return _reconstruct_stationary_nuclear_response(operator, prepared, result)
 
 
-def solve_rhf_nuclear_perturbations(
+def solve_stationary_nuclear_perturbations(
     operator: typing.Any,
     frozen_focks: typing.Any,
     overlaps: typing.Any,
@@ -198,7 +209,7 @@ def solve_rhf_nuclear_perturbations(
     options: typing.Any = None,
     resident_reconstruction_consumers: typing.Any = None,
 ) -> typing.Any:
-    """Solve a bounded set of RHF nuclear perturbations with one multi-RHS call.
+    """Solve closed-shell stationary perturbations with one multi-RHS call.
 
     Inputs have shape (nrhs, nmo, nmo). RHS construction retains the exact
     single-perturbation metric convention; only the nonredundant Krylov solve is
@@ -224,7 +235,7 @@ def solve_rhf_nuclear_perturbations(
             "(nrhs, nmo, nmo) with nrhs >= 1"
         )
     prepared = tuple(
-        _prepare_rhf_nuclear_perturbation(operator, frozen, overlap)
+        _prepare_stationary_nuclear_perturbation(operator, frozen, overlap)
         for frozen, overlap in zip(frozen_values, overlap_values, strict=True)
     )
     consumers = (
@@ -249,7 +260,7 @@ def solve_rhf_nuclear_perturbations(
             reconstruct = getattr(engine, "reconstruct_nuclear_response", None)
             if reconstruct is None:
                 raise ValueError(
-                    "resident reconstruction requires a resident RHF engine"
+                    "resident reconstruction requires a compatible resident response engine"
                 )
             consumer(reconstruct(solution, item.frozen_mo, item.overlap_mo))
 
@@ -269,7 +280,58 @@ def solve_rhf_nuclear_perturbations(
         ),
     )
     responses = tuple(
-        _reconstruct_rhf_nuclear_response(operator, item, result)
+        _reconstruct_stationary_nuclear_response(operator, item, result)
         for item, result in zip(prepared, multi.results, strict=True)
     )
-    return RHFNuclearBatchResponse(responses, multi)
+    return StationaryNuclearBatchResponse(responses, multi)
+
+
+# Compatibility aliases keep existing RHF consumers and annotations stable.
+RHFNuclearResponse = StationaryNuclearResponse
+RHFNuclearBatchResponse = StationaryNuclearBatchResponse
+
+
+def _require_rhf_operator(operator: typing.Any) -> None:
+    problem = getattr(operator, "problem", None)
+    if problem is None or problem.method != "rhf":
+        raise TypeError("RHF nuclear response requires an RHFResponseOperator")
+
+
+def solve_rhf_nuclear_perturbation(
+    operator: typing.Any,
+    frozen_fock: typing.Any,
+    overlap: typing.Any,
+    *,
+    options: typing.Any = None,
+    resident_reconstruction_consumer: typing.Any = None,
+) -> typing.Any:
+    """Backward-compatible RHF wrapper over the stationary response consumer."""
+    _require_rhf_operator(operator)
+    return solve_stationary_nuclear_perturbation(
+        operator,
+        frozen_fock,
+        overlap,
+        options=options,
+        resident_reconstruction_consumer=resident_reconstruction_consumer,
+    )
+
+
+def solve_rhf_nuclear_perturbations(
+    operator: typing.Any,
+    frozen_focks: typing.Any,
+    overlaps: typing.Any,
+    *,
+    strategy: typing.Any = "recycled",
+    options: typing.Any = None,
+    resident_reconstruction_consumers: typing.Any = None,
+) -> typing.Any:
+    """Backward-compatible RHF multi-RHS wrapper over the stationary consumer."""
+    _require_rhf_operator(operator)
+    return solve_stationary_nuclear_perturbations(
+        operator,
+        frozen_focks,
+        overlaps,
+        strategy=strategy,
+        options=options,
+        resident_reconstruction_consumers=resident_reconstruction_consumers,
+    )

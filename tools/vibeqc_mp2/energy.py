@@ -15,12 +15,12 @@ from dataclasses import dataclass
 from itertools import product
 
 import numpy as np
+from vibeqc_compiler.tensor import execute
+from vibeqc_compiler.tensor.types import checked_size
 
 from tools.vibeqc_posthf.conventions import MOBlock
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.reference import ReferenceSnapshot
-from tools.vibeqc_tensor import execute
-from tools.vibeqc_tensor.types import checked_size
 
 from .equations import cpu_capacity, energy_program
 
@@ -162,7 +162,7 @@ class PreparedMP2Energy:
             # this scratch even when the interpreter can consume their views.
             feeds = 32 * math.prod(shape) + 8 * sum(shape) + 64
             if energy_backend == "cuda":
-                from tools.vibeqc_tensor.cuda_plan import plan_cuda
+                from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
                 remaining = budget_bytes - provider_peak - feeds
                 if remaining <= 0:
@@ -268,7 +268,7 @@ class PreparedMP2Energy:
                     program = self._programs[shape]
                     hashes.add(program.logical_hash)
                     if self._energy_backend == "cuda":
-                        from tools.vibeqc_tensor.cuda_execute import (
+                        from vibeqc_compiler.tensor.cuda_execute import (
                             PreparedCuda,
                             compile_cuda,
                         )

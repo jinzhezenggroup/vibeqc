@@ -1,7 +1,7 @@
 """Locate compiler inputs consistently in a checkout and an installed wheel.
 
-Native templates and audited expression provenance remain owned by src/ and
-external/. Packaging copies those inputs into wheel assets; there is no second
+Native templates and audited expression provenance remain owned by src/, upstream/, and
+manifests/. Packaging copies those inputs into wheel assets; there is no second
 editable source tree. Reference fixtures and reproduction scripts intentionally
 require a checkout and are not installation-time dependencies.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 from .provenance import file_hash
 
 PACKAGE = Path(__file__).resolve().parents[1]
-LAYOUT_VERSION = 2
+LAYOUT_VERSION = 3
 
 
 def source_root() -> Path:

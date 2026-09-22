@@ -9,9 +9,54 @@ Missing evidence is kept explicit and ranks behind comparable measured evidence.
 from __future__ import annotations
 
 import math
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 ENDPOINT_NOISE_FRACTION = 0.01
+PATHOLOGICAL_REDUCTION_MIN_WARPS = 4
+
+
+def scalar_reduction_promotion_rejection(
+    *,
+    output_elements: int,
+    reduction_elements: int,
+    parallel_width: int,
+    alternative: str | None,
+) -> str | None:
+    """Reject promotion of a serial reduction when a legal parallel lowering exists.
+
+    This is a performance-promotion diagnostic, not scientific legality. Small
+    reductions stay eligible because launch/library overhead can dominate them.
+    A plan is called pathological only when fewer than one hardware subgroup of
+    independent outputs each serializes at least four subgroup-widths of work.
+    The caller must supply a concrete legal alternative; otherwise the generic
+    scalar implementation remains an admissible fallback.
+    """
+
+    for value, name in (
+        (output_elements, "output_elements"),
+        (reduction_elements, "reduction_elements"),
+        (parallel_width, "parallel_width"),
+    ):
+        if type(value) is not int or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+    if parallel_width == 0:
+        raise ValueError("parallel_width must be positive")
+    if alternative is not None and (
+        type(alternative) is not str or not alternative.strip()
+    ):
+        raise ValueError("alternative must be a nonempty string or None")
+    if (
+        alternative is None
+        or output_elements == 0
+        or reduction_elements == 0
+        or output_elements >= parallel_width
+        or reduction_elements < PATHOLOGICAL_REDUCTION_MIN_WARPS * parallel_width
+    ):
+        return None
+    return (
+        f"scalar reduction exposes {output_elements} independent output element(s) "
+        f"for reduction extent {reduction_elements}; legal {alternative} lowering exists"
+    )
 
 
 def _optional_count(value: int | None, name: str) -> None:
@@ -45,6 +90,10 @@ class GpuProfitability:
     estimated_occupancy_upper_bound: float | None = None
     launch_count: int | None = None
     source_bytes: int | None = None
+    precision_cast_read_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_write_bytes: int | None = field(default=None, kw_only=True)
+    precision_cast_simultaneous_bytes: int | None = field(default=None, kw_only=True)
+    precision_widened_accumulation_terms: int | None = field(default=None, kw_only=True)
     compiled_registers_per_thread: int | None = None
     spill_store_bytes: int | None = None
     spill_load_bytes: int | None = None
@@ -64,6 +113,10 @@ class GpuProfitability:
             "estimated_registers_per_thread",
             "launch_count",
             "source_bytes",
+            "precision_cast_read_bytes",
+            "precision_cast_write_bytes",
+            "precision_cast_simultaneous_bytes",
+            "precision_widened_accumulation_terms",
             "compiled_registers_per_thread",
             "spill_store_bytes",
             "spill_load_bytes",
@@ -99,18 +152,33 @@ class GpuProfitability:
             return None
         return self.spill_store_bytes + self.spill_load_bytes
 
+    @property
+    def precision_cast_bytes(self) -> int | None:
+        """Total explicit cast traffic when both transfer directions are known."""
+
+        if (
+            self.precision_cast_read_bytes is None
+            or self.precision_cast_write_bytes is None
+        ):
+            return None
+        return self.precision_cast_read_bytes + self.precision_cast_write_bytes
+
     def static_compile_priority(self, generation_index: int) -> tuple[object, ...]:
         """Order legal candidates before compilation without claiming a winner.
 
-        Traffic comes first because it captures endpoint data movement. Register
-        pressure and occupancy then guard against fusion/CSE choices that retain
-        too much live state. Launches, scalar liveness/work, and source size are
-        deterministic tie-breakers. The original generation order is final.
+        Traffic comes first because it captures endpoint data movement. Explicit
+        precision conversions and widened reductions then distinguish otherwise
+        similar candidates before register pressure and occupancy. Launches,
+        scalar liveness/work, and source size remain deterministic tie-breakers.
+        The original generation order is final.
         """
 
         _optional_count(generation_index, "generation_index")
         return (
             self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.precision_cast_bytes),
+            self._minimize(self.precision_cast_simultaneous_bytes),
+            self._minimize(self.precision_widened_accumulation_terms),
             self._minimize(self.estimated_registers_per_thread),
             self._maximize(self.estimated_occupancy_upper_bound),
             self._minimize(self.launch_count),
@@ -136,6 +204,9 @@ class GpuProfitability:
             self._minimize(self.shared_bytes),
             self._minimize(self.launch_count),
             self._minimize(self.semantic_traffic_bytes),
+            self._minimize(self.precision_cast_bytes),
+            self._minimize(self.precision_cast_simultaneous_bytes),
+            self._minimize(self.precision_widened_accumulation_terms),
             self._minimize(self.peak_live_values),
             self._minimize(self.arithmetic_operation_count),
             self._minimize(self.compile_seconds),
@@ -249,6 +320,10 @@ class GpuProfitability:
                     "estimated_occupancy_upper_bound",
                     "launch_count",
                     "source_bytes",
+                    "precision_cast_read_bytes",
+                    "precision_cast_write_bytes",
+                    "precision_cast_simultaneous_bytes",
+                    "precision_widened_accumulation_terms",
                 )
             },
             "compiled": {

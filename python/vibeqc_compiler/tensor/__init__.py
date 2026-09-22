@@ -6,6 +6,9 @@ plans for the existing CUDA lowering path; it supplies no CCSD method or
 complete solver.
 """
 
+from importlib import import_module
+from typing import TYPE_CHECKING
+
 from .ad_program import (
     GENERATION_VERSION,
     JVPProgram,
@@ -13,25 +16,12 @@ from .ad_program import (
     linearize,
     transpose_program,
 )
-from .autodiff import (
-    AD_PRIMITIVES,
-    AD_RULE_VERSION,
-    AD_RULES,
-    DotTestResult,
-    JVPResult,
-    VJPResult,
-    capabilities,
-    dot_test,
-    jvp,
-    vjp,
-)
 from .batch_schedule import (
     BATCH_SCHEDULE_SCHEMA,
     BatchScheduleIR,
     RaggedStepSchedule,
     analyze_batch_schedule,
 )
-from .interpreter import Execution, execute
 from .ir import (
     PRIMITIVES,
     Node,
@@ -50,6 +40,7 @@ from .ir import (
     power,
     reduce_sum,
     reshape,
+    runtime_indexed_scatter_add,
     runtime_indexed_select,
     scaled_bilinear,
     scatter_add,
@@ -60,7 +51,6 @@ from .ir import (
 )
 from .layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
-from .packing import PackedLayout
 from .precision import (
     CastBoundary,
     PrecisionDirective,
@@ -81,6 +71,53 @@ from .scf import (
     weighted_density_program,
 )
 from .types import Index, IndexSpace, Symmetry, TensorSpec
+
+if TYPE_CHECKING:
+    from .autodiff import (
+        AD_PRIMITIVES,
+        AD_RULE_VERSION,
+        AD_RULES,
+        DotTestResult,
+        JVPResult,
+        VJPResult,
+        capabilities,
+        dot_test,
+        jvp,
+        vjp,
+    )
+    from .interpreter import Execution, execute
+    from .packing import PackedLayout
+
+
+# Keep compiler/codegen-only imports dependency-light.  NumPy-backed reference
+# execution, AD, and packing remain available through the public
+# package API but load only when a caller actually asks for them.
+_LAZY_EXPORTS = {
+    "AD_PRIMITIVES": ("autodiff", "AD_PRIMITIVES"),
+    "AD_RULE_VERSION": ("autodiff", "AD_RULE_VERSION"),
+    "AD_RULES": ("autodiff", "AD_RULES"),
+    "DotTestResult": ("autodiff", "DotTestResult"),
+    "JVPResult": ("autodiff", "JVPResult"),
+    "VJPResult": ("autodiff", "VJPResult"),
+    "capabilities": ("autodiff", "capabilities"),
+    "dot_test": ("autodiff", "dot_test"),
+    "jvp": ("autodiff", "jvp"),
+    "vjp": ("autodiff", "vjp"),
+    "Execution": ("interpreter", "Execution"),
+    "execute": ("interpreter", "execute"),
+    "PackedLayout": ("packing", "PackedLayout"),
+}
+
+
+def __getattr__(name: str) -> object:
+    target = _LAZY_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attribute = target
+    value = getattr(import_module(f".{module_name}", __name__), attribute)
+    globals()[name] = value
+    return value
+
 
 __all__ = [
     "AD_PRIMITIVES",
@@ -142,6 +179,7 @@ __all__ = [
     "reduce_sum",
     "reshape",
     "rewrite",
+    "runtime_indexed_scatter_add",
     "runtime_indexed_select",
     "scaled_bilinear",
     "scatter_add",

@@ -27,8 +27,8 @@ if typing.TYPE_CHECKING:
 class Execution:
     """Detached outputs/debug snapshots; caller inputs are never modified."""
 
-    outputs: dict[str, np.ndarray]
-    intermediates: dict[str, np.ndarray]
+    outputs: dict[str, typing.Any]
+    intermediates: dict[str, typing.Any]
     logical_retained_bytes: int
     backend: str = "numpy-cpu-interpreter"
 
@@ -156,6 +156,25 @@ def _evaluate(
                 for axis in range(value.ndim)
             )
             result[domain_coordinate] = value[source]
+        return result
+    if op == "runtime_indexed_scatter_add":
+        value, maps = operands[0], operands[1:]
+        axes = tuple(a["axes"])
+        result = np.zeros(node.spec.shape, dtype=node.spec.dtype)
+        for mapping, axis in zip(maps, axes, strict=True):
+            if np.any(mapping < 0) or np.any(mapping >= result.shape[axis]):
+                raise ValueError(
+                    "runtime_indexed_scatter_add coordinate is outside its target axis"
+                )
+        selected = dict(zip(axes, maps, strict=True))
+        for domain_coordinate in range(value.shape[0]):
+            target = tuple(
+                int(selected[axis][domain_coordinate])
+                if axis in selected
+                else slice(None)
+                for axis in range(result.ndim)
+            )
+            result[target] += value[domain_coordinate]
         return result
     value = operands[0]
     if op == "transpose":
@@ -300,14 +319,27 @@ def execute(
     *,
     debug: bool = False,
     max_bytes: int = 256 * 1024 * 1024,
+    namespace: typing.Any | None = None,
 ) -> Execution:
     """Evaluate live nodes in order, checking shapes, dtypes, and finiteness.
+
+    ``namespace`` selects a bounded Array API-style validation backend.  The
+    default (and explicit ``numpy``) path retains the independent NumPy oracle.
+    Alternate namespaces fail closed for primitives without a portable lowering.
 
     Noncontiguous/negative-stride input arrays and read-only views are legal.
     Feed dictionaries may contain unused inputs so original and optimized
     programs share a fixture. Returned arrays never alias each other, inputs,
     or interpreter views. Every output/debug entry is an independent snapshot.
     """
+    if namespace is not None and namespace is not np:
+        from .namespace_interpreter import execute_namespace
+
+        outputs, snapshots, retained, backend = execute_namespace(
+            program, feeds, namespace, debug=debug, max_bytes=max_bytes
+        )
+        return Execution(outputs, snapshots, retained, backend)
+
     values, snapshots, retained = _run(program, feeds, debug=debug, max_bytes=max_bytes)
     return Execution(
         {name: values[node].copy() for name, node in program.outputs.items()},

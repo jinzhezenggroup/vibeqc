@@ -20,6 +20,7 @@ from .cuda_plan import (
     static_data_slices,
     strides,
 )
+from .cuda_reduction import cooperative_reduction_provider
 from .ir import TRANSCENDENTALS
 from .scaled_arithmetic import emit_scaled_bilinear
 
@@ -410,31 +411,12 @@ __global__ void {_name(prefix, f"scatter_{i}")}(unsigned char* p, const {ty}* c,
 
 
 def _cooperative_reduce(plan: typing.Any, i: int) -> bool:
-    """Use one persistent CUDA block per reduction output when worthwhile."""
+    """Whether this step uses either cooperative reduction provider."""
 
-    step = plan.steps[i]
-    if (
-        not plan.schedule.stream_reductions
-        or step.virtual
-        or step.node.op != "reduce"
-        or plan.target.warp_size != 32
-    ):
-        return False
-    _, reduction_size = _reduce_source_index(step.node)
-    return reduction_size >= plan.target.warp_size
+    return cooperative_reduction_provider(plan, i) is not None
 
 
-def cooperative_reduction_shared_bytes(plan: typing.Any, i: int) -> int:
-    """Exact static shared-memory footprint of one cooperative reduction kernel."""
-
-    if not _cooperative_reduce(plan, i):
-        return 0
-    accumulator = scalar_type(_value_precision(plan, i).accumulation_dtype)
-    warps = (plan.schedule.threads + plan.target.warp_size - 1) // plan.target.warp_size
-    return warps * accumulator.itemsize
-
-
-def _cooperative_reduce_kernel(
+def _generated_cooperative_reduce_kernel(
     plan: typing.Any, i: int, prefix: typing.Any = ""
 ) -> str:
     step = plan.steps[i]
@@ -477,6 +459,62 @@ def _cooperative_reduce_kernel(
         __syncthreads();
     }}
 }}"""
+
+
+def _cub_cooperative_reduce_kernel(
+    plan: typing.Any, i: int, prefix: typing.Any = ""
+) -> str:
+    step = plan.steps[i]
+    node = step.node
+    scalar = scalar_type(node.spec.dtype)
+    accumulator = scalar_type(_value_precision(plan, i).accumulation_dtype)
+    acc_add = accumulator.intrinsic("add")
+    source_index, reduction_size = _reduce_source_index(node)
+    contribution = _convert(
+        _read(step.inputs[0], source_index, prefix), scalar, accumulator
+    )
+    result = _convert("value", accumulator, scalar)
+    threads = plan.schedule.threads
+    reduction_pragma = (
+        ""
+        if plan.schedule.reduction_unroll == 1
+        else f"#pragma unroll {plan.schedule.reduction_unroll}\n"
+    )
+    target = _physical_index(step.layout, "z")
+    add_name = _name(prefix, f"cub_add_{i}")
+    return f"""struct {add_name} {{
+    __device__ __forceinline__ {accumulator.ctype} operator()(
+        {accumulator.ctype} a, {accumulator.ctype} b) const {{
+        return {acc_add}(a, b);
+    }}
+}};
+__global__ void {prefix}kernel_{i}(unsigned char* p, int* error) {{
+    using BlockReduce = cub::BlockReduce<
+        {accumulator.ctype}, {threads}, cub::BLOCK_REDUCE_WARP_REDUCTIONS>;
+    using TempStorage = typename BlockReduce::TempStorage;
+    __shared__ TempStorage temp_storage;
+    for (I z = I(blockIdx.x); z < {node.spec.size}LL; z += I(gridDim.x)) {{
+        {accumulator.ctype} value = {accumulator.zero};
+{reduction_pragma}        for (I r = threadIdx.x; r < {_integer(reduction_size)}; r += blockDim.x)
+            value = {acc_add}(value, {contribution});
+        value = BlockReduce(temp_storage).Reduce(value, {add_name}{{}});
+        if (threadIdx.x == 0)
+            reinterpret_cast<{scalar.ctype}*>(p + {step.offset})[{target}] =
+                finite({result}, error, {i});
+        __syncthreads();
+    }}
+}}"""
+
+
+def _cooperative_reduce_kernel(
+    plan: typing.Any, i: int, prefix: typing.Any = ""
+) -> str:
+    provider = cooperative_reduction_provider(plan, i)
+    if provider == "generated":
+        return _generated_cooperative_reduce_kernel(plan, i, prefix)
+    if provider == "cub":
+        return _cub_cooperative_reduce_kernel(plan, i, prefix)
+    raise ValueError("cooperative reduction kernel requested for an ordinary step")
 
 
 def _launch(plan: typing.Any, i: typing.Any, prefix: typing.Any = "") -> typing.Any:
@@ -581,7 +619,12 @@ def emit_cuda(
         raise ValueError("symbol_prefix must be a valid C++ identifier")
     prefix = symbol_prefix
     namespace = f"namespace {_name(prefix, 'generated')} {{" if prefix else ""
-    parts = ['#include "cuda_graph_context.cuh"', "using namespace vibeqc_tensor;"]
+    parts = ['#include "cuda_graph_context.cuh"']
+    if any(
+        cooperative_reduction_provider(plan, i) == "cub" for i in range(len(plan.steps))
+    ):
+        parts.append("#include <cub/block/block_reduce.cuh>")
+    parts.append("using namespace vibeqc_tensor;")
     if namespace:
         parts.append(namespace)
     dtypes = sorted({step.node.spec.dtype for step in plan.steps})

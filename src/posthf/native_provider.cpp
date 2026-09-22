@@ -8,16 +8,18 @@
 #include "posthf/cuda_transform.hpp"
 
 namespace vibeqc::posthf {
-NativeBlockProvider::NativeBlockProvider(const RawSource& source,
+NativeBlockProvider::NativeBlockProvider(const integrals::ElectronInteractionSource& source,
                                          const scf::PhysicalReference& reference,
                                          std::size_t budget, unsigned axis_tile)
     : source_(source),
       ref_(reference),
       budget_(budget),
-      source_bytes_(source_capacity(source.orbital())),
+      source_bytes_(source.retained_numeric_bytes()),
       reference_bytes_(checked_mul(
           8,
           checked_add(checked_mul(5, checked_mul(reference.nbf, reference.nbf)), reference.nbf))) {
+  if (!source_.supports(integrals::ElectronInteractionOperator::eri))
+    throw std::invalid_argument("native MO provider requires AO ERI source capability");
   if (!axis_tile || ref_.nbf != source_.nbf() || ref_.coefficients.size() != ref_.nbf * ref_.nbf)
     throw std::invalid_argument("native MO provider/reference dimensions mismatch");
   std::size_t largest_shell = 0;
@@ -184,7 +186,8 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
             current[k] = std::min(tile_[k], ref_.nbf - begin[k]);
             elements = checked_mul(elements, current[k]);
           }
-          source_.read(RawSource::Operator::eri, begin, current, raw.data(), elements);
+          source_.read(integrals::ElectronInteractionOperator::eri, begin, current, raw.data(),
+                       elements);
           if (work) {
             work->source_reads = checked_add(work->source_reads, 1);
             work->source_values = checked_add(work->source_values, elements);

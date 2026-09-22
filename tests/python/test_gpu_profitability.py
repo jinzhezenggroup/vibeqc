@@ -1,7 +1,10 @@
 """Shared GPU profitability records and ordering contracts."""
 
 import pytest
-from vibeqc_compiler.common.gpu_profitability import GpuProfitability
+from vibeqc_compiler.common.gpu_profitability import (
+    GpuProfitability,
+    scalar_reduction_promotion_rejection,
+)
 
 
 def test_static_priority_rejects_pressure_growth_without_a_traffic_win() -> None:
@@ -28,6 +31,27 @@ def test_static_priority_rejects_pressure_growth_without_a_traffic_win() -> None
     assert rematerialized.static_compile_priority(
         1
     ) < retained_fusion.static_compile_priority(0)
+
+
+def test_precision_overheads_break_static_ties_without_hiding_total_traffic() -> None:
+    strict = GpuProfitability(
+        semantic_traffic_bytes=4096,
+        precision_cast_read_bytes=0,
+        precision_cast_write_bytes=0,
+        precision_cast_simultaneous_bytes=0,
+        precision_widened_accumulation_terms=0,
+    )
+    mixed = GpuProfitability(
+        semantic_traffic_bytes=4096,
+        precision_cast_read_bytes=256,
+        precision_cast_write_bytes=128,
+        precision_cast_simultaneous_bytes=96,
+        precision_widened_accumulation_terms=1024,
+    )
+
+    assert strict.precision_cast_bytes == 0
+    assert mixed.precision_cast_bytes == 384
+    assert strict.static_compile_priority(1) < mixed.static_compile_priority(0)
 
 
 def test_compiled_priority_never_rewards_spills_for_a_smaller_artifact() -> None:
@@ -128,6 +152,8 @@ def test_payload_preserves_unknown_evidence_instead_of_guessing() -> None:
 
     assert payload["schema"] == "vibeqc.compiler.gpu-profitability.v1"
     assert payload["static"]["peak_live_values"] == 5
+    assert payload["static"]["precision_cast_read_bytes"] is None
+    assert payload["static"]["precision_widened_accumulation_terms"] is None
     assert payload["compiled"]["compiled_registers_per_thread"] is None
     assert payload["endpoint_seconds"] is None
 
@@ -139,6 +165,8 @@ def test_payload_preserves_unknown_evidence_instead_of_guessing() -> None:
         {"estimated_occupancy_upper_bound": 1.01},
         {"compile_seconds": float("nan")},
         {"spill_store_bytes": True},
+        {"precision_cast_read_bytes": -1},
+        {"precision_widened_accumulation_terms": True},
     ],
 )
 def test_invalid_profitability_evidence_fails_closed(
@@ -146,3 +174,71 @@ def test_invalid_profitability_evidence_fails_closed(
 ) -> None:
     with pytest.raises((TypeError, ValueError)):
         GpuProfitability(**options)
+
+
+def test_precision_fields_preserve_positional_compiled_registers() -> None:
+    facts = GpuProfitability(None, None, None, None, None, None, None, None, 64)
+    assert facts.compiled_registers_per_thread == 64
+    assert facts.precision_cast_read_bytes is None
+    assert facts.precision_cast_write_bytes is None
+    assert facts.precision_cast_simultaneous_bytes is None
+    assert facts.precision_widened_accumulation_terms is None
+
+
+def test_pathological_scalar_reduction_requires_a_concrete_parallel_alternative() -> (
+    None
+):
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative="GEMM",
+        )
+        == "scalar reduction exposes 1 independent output element(s) for reduction extent 4096; legal GEMM lowering exists"
+    )
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative=None,
+        )
+        is None
+    )
+
+
+def test_small_or_already_parallel_reductions_remain_promotion_eligible() -> None:
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=1,
+            reduction_elements=127,
+            parallel_width=32,
+            alternative="cooperative-reduction",
+        )
+        is None
+    )
+    assert (
+        scalar_reduction_promotion_rejection(
+            output_elements=32,
+            reduction_elements=4096,
+            parallel_width=32,
+            alternative="cooperative-reduction",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"output_elements": -1, "reduction_elements": 1, "parallel_width": 32},
+        {"output_elements": 1, "reduction_elements": -1, "parallel_width": 32},
+        {"output_elements": 1, "reduction_elements": 1, "parallel_width": 0},
+    ],
+)
+def test_scalar_reduction_diagnostic_rejects_invalid_counts(
+    options: dict[str, int],
+) -> None:
+    with pytest.raises(ValueError):
+        scalar_reduction_promotion_rejection(**options, alternative="parallel")

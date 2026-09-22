@@ -130,7 +130,7 @@ def test_failed_preparation_keeps_evidence_and_failed_scf_keeps_samples(
     monkeypatch: typing.Any,
 ) -> None:
     from vibeqc import _native
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(method="pbe-uks", resource_budget=ResourceBudget())
     # CPU allocations have no limiter. Inject the native status at the prepare
@@ -196,8 +196,12 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
     assert output["requests"][0]["name"] == "ks"
 
 
+@pytest.mark.parametrize(
+    ("has_semantic_abi", "diagnostic"),
+    ((False, "semantic KS execution-plan ABI"), (True, "allocation inventory")),
+)
 def test_missing_inventory_and_foreign_plan_reject_before_preparation(
-    monkeypatch: typing.Any,
+    monkeypatch: typing.Any, has_semantic_abi: bool, diagnostic: str
 ) -> None:
     from types import SimpleNamespace
 
@@ -205,9 +209,20 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     foreign = estimate_ks_resources([H2], method="lda-rks")
     with pytest.raises(ValueError, match="KS inputs differ"):
         calculator.prepare_batch([H2], resource_plan=foreign)
-    monkeypatch.setattr(calculator, "_library", SimpleNamespace())
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("unsupported KS library attempted native preparation")
+
+    library = SimpleNamespace(
+        vibeqc_context_create=forbidden,
+        vibeqc_calculation_prepare=forbidden,
+        vibeqc_batch_prepare=forbidden,
+    )
+    if has_semantic_abi:
+        library.vibeqc_ks_options_version = lambda: 1
+    monkeypatch.setattr(calculator, "_library", library)
     assert calculator.estimate_resources([H2]).status == "unsupported"
-    with pytest.raises(NotImplementedError, match="allocation inventory"):
+    with pytest.raises(NotImplementedError, match=diagnostic):
         calculator.prepare_batch([H2])
 
 
@@ -304,7 +319,7 @@ def test_cuda_failed_preparation_retains_ledger_rejection_and_releases_buffers(
     monkeypatch: typing.Any,
     partial: typing.Any,
 ) -> None:
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(
         method="pbe-rks", device="cuda", resource_budget=ResourceBudget()

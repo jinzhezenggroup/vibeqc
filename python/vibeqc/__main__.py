@@ -5,13 +5,39 @@ import json
 import sys
 from pathlib import Path
 
+from . import _generated_methods as _method_manifest
 from . import _native, profiles
+
+
+def _public_method_rows() -> tuple[dict[str, object], ...]:
+    """Return the generated public native method catalog without loading the ABI."""
+
+    rows = []
+    for name, metadata in _method_manifest.METHOD_METADATA.items():
+        properties = tuple(metadata["properties"])
+        rows.append(
+            {
+                "name": name,
+                "family": metadata["family"],
+                "properties": properties,
+                "supports_batch": bool(metadata["supports_batch"]),
+                "aliases": tuple(metadata["aliases"]),
+                "status": "available" if properties else "unavailable",
+            }
+        )
+    return tuple(rows)
 
 
 def parser() -> argparse.ArgumentParser:
     """Expose stable quick/full, diagnostic, and cluster installation commands."""
     root = argparse.ArgumentParser(prog="vibeqc")
     commands = root.add_subparsers(dest="command", required=True)
+    methods = commands.add_parser(
+        "methods", help="list public native methods and declared capabilities"
+    )
+    methods.add_argument(
+        "--json", action="store_true", help="emit the catalog as machine-readable JSON"
+    )
     resources = commands.add_parser(
         "resources",
         help="dry-run HF/KS resource estimates without scientific execution",
@@ -122,9 +148,25 @@ def main() -> int:
     arguments = parser()
     args = arguments.parse_args()
     try:
+        if args.command == "methods":
+            rows = _public_method_rows()
+            if args.json:
+                print(json.dumps(rows, indent=2))
+            else:
+                print("METHOD\tFAMILY\tPROPERTIES\tBATCH\tALIASES\tSTATUS")
+                for row in rows:
+                    properties = ",".join(row["properties"]) or "-"
+                    aliases = ",".join(row["aliases"]) or "-"
+                    batch = "yes" if row["supports_batch"] else "no"
+                    print(
+                        f"{row['name']}\t{row['family']}\t{properties}\t"
+                        f"{batch}\t{aliases}\t{row['status']}"
+                    )
+            return 0
         if args.command == "resources":
+            from vibeqc_compiler.common.resources import ResourceBudget
+
             from .autotune import read_xyz
-            from .resources import ResourceBudget
             from .resources_hf import estimate_hf_resources
             from .resources_ks import estimate_ks_resources
 

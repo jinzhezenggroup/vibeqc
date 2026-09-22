@@ -29,13 +29,15 @@ Their SPDX identities remain recorded in the registry and retained license files
 
 The repository-only D3 tools under `tools/vibeqc_d3/native/` adapt GPL-3.0-or-later
 code from xTBloom commit `2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3`.
-`external/xtbloom-d3/` retains its source hashes, original additional CUDA/MKL
-permission, upstream parameter manifests and LGPL/Apache license texts.
+The exact pinned GFN1/D3 source data are retained under
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/`; implementation
+source hashes and the derived covalent-radii identity are recorded in
+`manifests/xtbloom-d3.json`. The original CUDA/MKL additional permission and
+relevant LGPL/Apache license texts are retained under `LICENSES/`.
 The D3 tables derive from simple-dftd3 v1.4.0 (LGPL-3.0-or-later); the extracted
 covalent radii retain the source's LGPL-3.0-or-later AND Apache-2.0 provenance.
-See that directory's README and manifest for the exact material and changes.
-No xTBloom/simple-dftd3 binary or runtime dependency is added, and these
-qualification sources/data are not included as VibeQC wheel assets.
+No xTBloom/simple-dftd3 binary or runtime dependency is added. The pinned data
+needed by compiler/runtime provenance are packaged as VibeQC wheel assets.
 
 ## xTBloom / DFT-D4 molecular qualification baseline
 
@@ -83,7 +85,7 @@ The canonical H-Ar def2-mTZVPP snapshot shipped under
 `python/vibeqc/data/r2scan3c/` is generated offline from MolSSI Basis Set
 Exchange commit `4adaf1372c7101620ca1a9f3130be9ae97fb8f30`. The exact source
 export, content identity, and supported-element domain are recorded in
-`external/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
+`manifests/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
 `LICENSES/bse-data-BSD-3-Clause.txt`.
 
 The repository-only gCP qualification data and CPU/native reference providers

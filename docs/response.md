@@ -347,9 +347,14 @@ the relevant performance evidence.
 The caller owns the `NativeSource` lifetime. Closed sources/backends, unrelated
 geometry/basis/reference/Hamiltonian identities, nonsymmetric or nonfinite
 inputs, unavailable CUDA and impossible device allocations fail explicitly.
-Invalid results never increment successful action counts. The backend is
-qualified for closed-shell RHF only; UHF/KS and molecular Hessian/HVP endpoints
-are not enabled by its existence.
+Invalid results never increment successful action counts. The RHF owner is
+qualified for closed-shell RHF only. A separate `CudaResidentUHFResponse`
+owner now covers exact, unscreened unrestricted HF: alpha and beta
+occupied-virtual blocks share one device slot arena, the coupled spin J/K
+action stays on the prepared CUDA stream, and the same blocked/recycled GMRES
+controller consumes the owner. Density-fitted UHF and KS/CPKS resident owners
+remain unsupported until their device action and independent numerical evidence
+are qualified.
 
 ```python
 import numpy as np
@@ -410,8 +415,12 @@ either exact or density-fitted J/K with zero screening. One evaluation produces
 `J[Delta Pa+Delta Pb]`, `K[Delta Pa]`, and `K[Delta Pb]`; the existing UHF operator
 then applies the same orbital action and shared Krylov controller. It uses raw
 J/K rather than subtracting hcore from a total Fock, preserving tiny signed
-directions. CUDA contracts the integrals; AO/MO transforms, returned matrices,
-and Krylov vectors remain on the host. This is not a resident spin solver.
+directions. CUDA contracts the integrals; the default response path keeps
+AO/MO transforms, returned matrices and Krylov vectors on the host. For exact
+conventional UHF, `backend.resident_response(problem)` opts into the resident
+owner described above; it shares the direct provider stream and keeps both
+spin blocks and response scratch on device while returning only scalar
+reductions and the final solution. DF remains host-orchestrated.
 
 The backend borrows a `NativeSource` and owns its copied prepared Fock plan.
 Reference validation binds geometry, actual orbital basis/representation,

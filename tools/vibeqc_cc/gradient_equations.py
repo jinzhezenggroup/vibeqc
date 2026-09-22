@@ -48,7 +48,9 @@ class CCSDHamiltonianPrograms:
     nvir: int
 
 
-def build_hamiltonian_programs(nocc: int, nvir: int) -> CCSDHamiltonianPrograms:
+def build_hamiltonian_programs(
+    nocc: int, nvir: int, *, explicit_density_input: bool = False
+) -> CCSDHamiltonianPrograms:
     """Map independent raw h/g/U into all #152 input fields and RHF energy.
 
     The same full-g input feeds overlapping/permuted q blocks, so the generated
@@ -80,9 +82,16 @@ def build_hamiltonian_programs(nocc: int, nvir: int) -> CCSDHamiltonianPrograms:
         ),
     )
     rotation = input_tensor("rotation", TensorSpec(idx[:2], **common))
-    density = constant(
-        tuple(2 if p == q and p < nocc else 0 for p in range(n) for q in range(n)),
-        TensorSpec(idx[:2], role="constant", representation="restricted_spatial"),
+    density_spec = TensorSpec(
+        idx[:2], role="input", representation="restricted_spatial"
+    )
+    density = (
+        input_tensor("density", density_spec)
+        if explicit_density_input
+        else constant(
+            tuple(2 if p == q and p < nocc else 0 for p in range(n) for q in range(n)),
+            TensorSpec(idx[:2], role="constant", representation="restricted_spatial"),
+        )
     )
     # Staged one-axis transforms avoid a single high-rank einsum intermediate.
     rotated_h = einsum("pv,vq->pq", einsum("up,uv->pv", rotation, h), rotation)
@@ -147,7 +156,9 @@ def build_hamiltonian_programs(nocc: int, nvir: int) -> CCSDHamiltonianPrograms:
     return CCSDHamiltonianPrograms(primal, reverse, weights, orbital_jvp, nocc, nvir)
 
 
-def build_fock_weight_program(nocc: int, nvir: int) -> Program:
+def build_fock_weight_program(
+    nocc: int, nvir: int, *, explicit_density_input: bool = False
+) -> Program:
     """Generate raw h/g/metric/orbital weights from a full-Fock cotangent.
 
     This is the upstream response needed when a post-HF model depends directly
@@ -162,7 +173,9 @@ def build_fock_weight_program(nocc: int, nvir: int) -> Program:
     This program alone does not solve the RHF response equations or establish a
     complete nuclear gradient.
     """
-    parent = build_hamiltonian_programs(nocc, nvir)
+    parent = build_hamiltonian_programs(
+        nocc, nvir, explicit_density_input=explicit_density_input
+    )
     reverse = transpose_program(
         parent.primal,
         ("fock",),

@@ -14,6 +14,7 @@
 #include "scf/cuda/direct_fock_quartet.cuh"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
+#include "scf/cuda/direct_force_order3.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_queue_index.cuh"
 #include "scf/cuda/direct_queue_profile.cuh"
@@ -133,7 +134,7 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
       __syncthreads();
 
       // Retained low-order specialized tasks fit in one scalar lane. Drain
-      // ssss/order2 Fock and ssss/psss/order2 force tasks concurrently before
+      // ssss/order2 Fock and order-zero-through-three force tasks concurrently before
       // assigning generic fallback classes one warp each. psss Fock is
       // compiler-owned; if that generated class is unavailable, order one
       // deliberately falls through to the generic full-warp oracle/fallback.
@@ -160,6 +161,9 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
             contract_two_electron_force_pair_order2_task<Unrestricted, kDsssShellClass>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
+          } else if (angular_order == 3U) {
+            contract_two_electron_force_order3_task<Unrestricted>(
+                batch, task, screening_tolerance, schwarz_bounds, density, active, output, 0U);
           }
         } else {
           if (angular_order == 0U) {
@@ -185,7 +189,8 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
             batch.shell_angular[first_shell] + batch.shell_angular[second_shell] +
             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
         if constexpr (Force) {
-          if (angular_order <= 2U) continue;
+          // The generated scalar force adapter also covers order three.
+          if (angular_order <= 3U) continue;
         } else {
           // Fock order one has no psss-specific handwritten fallback anymore.
           // When generated psss is unavailable, evaluate it through the shared
@@ -263,6 +268,32 @@ void launch_bounded_direct_shell_quartet_kernel(
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile);
     }
+  }
+}
+
+void launch_bounded_direct_fock_shell_quartet_kernel(
+    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
+    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
+    const double* shell_pair_block_bounds, const double* system_density_bounds,
+    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
+    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
+    const double* density, const std::uint8_t* active, double* fock,
+    unsigned long long* global_cursor) {
+  if (unrestricted) {
+    bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
+  } else {
+    bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
   }
 }
 

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
-from vibeqc_compiler.dft.ao import jet_indices
+from vibeqc_compiler.dft.ao import directional_ao_jets, jet_indices
 from vibeqc_compiler.dft.features import density_features, spin_densities
 
 from .coefficients import coefficient_program, jet_pullback_program
@@ -96,6 +96,170 @@ def density_feature_response(
         jets, delta_density, ingredients=("rho", "gradient", "tau")
     )
     return _response_features(reference, linear)
+
+
+def _ao_bilinear(
+    left: typing.Any, density: typing.Any, right: typing.Any
+) -> typing.Any:
+    """Contract one pointwise AO bilinear without materializing AO-pair data."""
+    return np.einsum("pi,ij,pj->p", left, density, right, optimize=True)
+
+
+def _geometry_feature_directions(
+    reference: typing.Any,
+    jets: typing.Any,
+    left_jets: typing.Any,
+    right_jets: typing.Any,
+    mixed_jets: typing.Any,
+    density: typing.Any,
+    delta_density: typing.Any,
+    family: typing.Any,
+) -> typing.Any:
+    """Return left/right/mixed LDA/GGA feature directions.
+
+    The right direction includes the supplied density response. The mixed
+    direction differentiates the left fixed-density geometry source under that
+    right geometry+density perturbation. Only first and second XC feature
+    derivatives are needed; no third XC derivative enters a Hessian bilinear.
+    """
+    if family not in ("lda", "gga"):
+        raise UnsupportedXC("mixed XC geometry supports semilocal LDA/GGA only")
+    nao = np.asarray(jets).shape[2]
+    d = spin_densities(density, nao)
+    dd = spin_densities(delta_density, nao)
+    npoint = np.asarray(jets).shape[1]
+    left_rho = np.zeros((2, npoint))
+    right_rho = np.zeros_like(left_rho)
+    mixed_rho = np.zeros_like(left_rho)
+    left_gradient = np.zeros((2, npoint, 3)) if family == "gga" else None
+    right_gradient = np.zeros_like(left_gradient) if family == "gga" else None
+    mixed_gradient = np.zeros_like(left_gradient) if family == "gga" else None
+
+    p, lp, rp, mp = jets[0], left_jets[0], right_jets[0], mixed_jets[0]
+    for spin in range(2):
+        ds, dds = d[spin], dd[spin]
+        left_rho[spin] = _ao_bilinear(lp, ds, p) + _ao_bilinear(p, ds, lp)
+        right_rho[spin] = (
+            _ao_bilinear(rp, ds, p) + _ao_bilinear(p, ds, rp) + _ao_bilinear(p, dds, p)
+        )
+        mixed_rho[spin] = (
+            _ao_bilinear(mp, ds, p)
+            + _ao_bilinear(lp, dds, p)
+            + _ao_bilinear(lp, ds, rp)
+            + _ao_bilinear(rp, ds, lp)
+            + _ao_bilinear(p, dds, lp)
+            + _ao_bilinear(p, ds, mp)
+        )
+        if family == "lda":
+            continue
+        assert left_gradient is not None
+        assert right_gradient is not None
+        assert mixed_gradient is not None
+        for axis in range(3):
+            row = axis + 1
+            pk = jets[row]
+            lpk = left_jets[row]
+            rpk = right_jets[row]
+            mpk = mixed_jets[row]
+            left_gradient[spin, :, axis] = (
+                _ao_bilinear(lpk, ds, p)
+                + _ao_bilinear(pk, ds, lp)
+                + _ao_bilinear(lp, ds, pk)
+                + _ao_bilinear(p, ds, lpk)
+            )
+            right_gradient[spin, :, axis] = (
+                _ao_bilinear(rpk, ds, p)
+                + _ao_bilinear(pk, ds, rp)
+                + _ao_bilinear(rp, ds, pk)
+                + _ao_bilinear(p, ds, rpk)
+                + _ao_bilinear(pk, dds, p)
+                + _ao_bilinear(p, dds, pk)
+            )
+            mixed_gradient[spin, :, axis] = (
+                _ao_bilinear(mpk, ds, p)
+                + _ao_bilinear(lpk, dds, p)
+                + _ao_bilinear(lpk, ds, rp)
+                + _ao_bilinear(rpk, ds, lp)
+                + _ao_bilinear(pk, dds, lp)
+                + _ao_bilinear(pk, ds, mp)
+                + _ao_bilinear(mp, ds, pk)
+                + _ao_bilinear(lp, dds, pk)
+                + _ao_bilinear(lp, ds, rpk)
+                + _ao_bilinear(rp, ds, lpk)
+                + _ao_bilinear(p, dds, lpk)
+                + _ao_bilinear(p, ds, mpk)
+            )
+
+    left = {"rho": immutable(left_rho)}
+    right = {"rho": immutable(right_rho)}
+    mixed = {"rho": immutable(mixed_rho)}
+    if family == "gga":
+        assert left_gradient is not None
+        assert right_gradient is not None
+        assert mixed_gradient is not None
+        base_gradient = reference["gradient"]
+        left["gradient"] = immutable(left_gradient)
+        right["gradient"] = immutable(right_gradient)
+        mixed["gradient"] = immutable(mixed_gradient)
+        pairs = ((0, 0), (0, 1), (1, 1))
+        left["sigma"] = immutable(
+            np.stack(
+                [
+                    np.sum(
+                        left_gradient[a] * base_gradient[b]
+                        + base_gradient[a] * left_gradient[b],
+                        axis=1,
+                    )
+                    for a, b in pairs
+                ]
+            )
+        )
+        right["sigma"] = immutable(
+            np.stack(
+                [
+                    np.sum(
+                        right_gradient[a] * base_gradient[b]
+                        + base_gradient[a] * right_gradient[b],
+                        axis=1,
+                    )
+                    for a, b in pairs
+                ]
+            )
+        )
+        mixed["sigma"] = immutable(
+            np.stack(
+                [
+                    np.sum(
+                        mixed_gradient[a] * base_gradient[b]
+                        + left_gradient[a] * right_gradient[b]
+                        + right_gradient[a] * left_gradient[b]
+                        + base_gradient[a] * mixed_gradient[b],
+                        axis=1,
+                    )
+                    for a, b in pairs
+                ]
+            )
+        )
+    return left, right, mixed
+
+
+@dataclass(frozen=True)
+class XCMixedDirectional:
+    """Four audited pieces of one semilocal XC Hessian bilinear."""
+
+    mixed_measure: float
+    left_measure_right_feature: float
+    right_measure_left_feature: float
+    feature_mixed: float
+
+    @property
+    def total(self) -> float:
+        return (
+            self.mixed_measure
+            + self.left_measure_right_feature
+            + self.right_measure_left_feature
+            + self.feature_mixed
+        )
 
 
 @dataclass(frozen=True, eq=False)
@@ -192,6 +356,140 @@ class ContractionProgram:
         result = np.zeros((len(self.spec.features), npoint))
         for index in self.contract.ingredients.feature_indices:
             result[index] = rows[(index,)]
+        return result
+
+    def mixed_geometry_directional(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        left_centers: typing.Any,
+        left_points: typing.Any,
+        left_weights: typing.Any,
+        right_centers: typing.Any,
+        right_points: typing.Any,
+        right_weights: typing.Any,
+        mixed_weights: typing.Any,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Contract one LDA/GGA XC Hessian bilinear without a Hessian tensor.
+
+        The left direction is geometric. The right direction may additionally
+        carry the CPKS density response. The chain rule differentiates the left
+        directional XC energy with respect to the right direction using
+        generated XC feature gradients/Hessians, analytic AO-jet JVPs and
+        externally supplied first/mixed quadrature motions. It owns no CPKS
+        solve and no molecular-grid motion policy.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("mixed geometry requires a geometry contraction")
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("mixed XC geometry supports semilocal LDA/GGA only")
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 2))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError("mixed XC geometry requires AO jets through order+2")
+        npoint, nao = raw_jets.shape[1:]
+        weights = immutable(weights, shape=(npoint,))
+        left_points = immutable(left_points, shape=(npoint, 3))
+        right_points = immutable(right_points, shape=(npoint, 3))
+        left_weights = immutable(left_weights, shape=(npoint,))
+        right_weights = immutable(right_weights, shape=(npoint,))
+        mixed_weights = immutable(mixed_weights, shape=(npoint,))
+        left_centers = immutable(left_centers)
+        right_centers = immutable(right_centers, shape=left_centers.shape)
+        if left_centers.ndim != 2 or left_centers.shape[1:] != (3,):
+            raise ValueError("mixed XC geometry requires [atom,3] center directions")
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(left_centers))
+        ):
+            raise ValueError("mixed XC geometry requires one valid atom per AO")
+
+        d = spin_densities(density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "unpolarized mixed geometry requires equal spin density directions"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        extended_count = len(jet_indices(ingredient_order + 1))
+        left_extended = directional_ao_jets(
+            raw_jets,
+            ingredient_order + 1,
+            ao_atoms=atoms,
+            point_motion=left_points,
+            center_motion=left_centers,
+        )
+        left_jets = left_extended[:base_count]
+        right_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        mixed_jets = directional_ao_jets(
+            left_extended[:extended_count],
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        base_jets = raw_jets[:base_count]
+        features = self.features(base_jets, d)
+        left, right, mixed = _geometry_feature_directions(
+            features,
+            base_jets,
+            left_jets,
+            right_jets,
+            mixed_jets,
+            d,
+            dd,
+            family,
+        )
+
+        second = ContractionProgram(self.spec, "response")
+        rows = second.scalar_values(features)
+        gradient = second._gradient(rows, npoint)
+        left_packed = _pack(self.spec, left)
+        right_packed = _pack(self.spec, right)
+        mixed_packed = _pack(self.spec, mixed)
+        indices = second.contract.ingredients.feature_indices
+        active = list(indices)
+        left_energy = np.sum(gradient[active] * left_packed[active], axis=0)
+        right_energy = np.sum(gradient[active] * right_packed[active], axis=0)
+        mixed_feature_energy = np.sum(gradient[active] * mixed_packed[active], axis=0)
+        for i in indices:
+            for j in indices:
+                mixed_feature_energy += (
+                    left_packed[i] * rows[(min(i, j), max(i, j))] * right_packed[j]
+                )
+
+        result = XCMixedDirectional(
+            mixed_measure=float(mixed_weights @ rows[()]),
+            left_measure_right_feature=float(left_weights @ right_energy),
+            right_measure_left_feature=float(right_weights @ left_energy),
+            feature_mixed=float(weights @ mixed_feature_energy),
+        )
+        if not np.isfinite(result.total):
+            raise ArithmeticError("nonfinite mixed XC geometry contraction")
         return result
 
     def potential_tile(

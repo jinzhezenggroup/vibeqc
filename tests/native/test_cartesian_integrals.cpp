@@ -129,6 +129,25 @@ vibeqc::scf::detail::DirectQuartetTaskLayout direct_task_layout(
 
 int main() {
   try {
+    // For a normalized exp(-r^2) s Gaussian on He, T=3/2 and
+    // V=-4*sqrt(2/pi). The generated attraction already includes the minus sign.
+    {
+      vibeqc::core::System helium;
+      helium.atoms = {{2, {0.0, 0.0, 0.0}}};
+      helium.shells = {{0, 0, {{1.0, 1.0}}}};
+      helium.multiplicity = 1;
+      std::string detail;
+      require(vibeqc::molecule::validate_and_normalize(helium, detail) == VIBEQC_STATUS_SUCCESS,
+              "analytic He s fixture normalization failed");
+      const auto one = vibeqc::integrals::build_integrals(helium, true, false);
+      const double expected = 1.5 - 4.0 * std::sqrt(2.0 / std::acos(-1.0));
+      require(std::isfinite(one.hcore[0]) && one.hcore[0] < 0.0,
+              "positive nuclear charge must give attractive generated V");
+      require_close(one.hcore[0], expected, 2.0e-13, "analytic He hcore sign/value mismatch");
+      for (double derivative : one.hcore_derivative)
+        require(std::isfinite(derivative) && std::abs(derivative) < 2.0e-13,
+                "coincident basis/nuclear center derivatives must cancel");
+    }
     require(vibeqc::scf::detail::kDirectFixedTopologyTileLimit == 536870911ULL &&
                 !vibeqc::scf::detail::direct_topology_requires_bounded_streaming(536870911ULL) &&
                 vibeqc::scf::detail::direct_topology_requires_bounded_streaming(536870912ULL),
@@ -240,12 +259,12 @@ int main() {
       const auto [oracle_overlap, oracle_hcore] = raw_one_electron(sdf);
       require(production.overlap.size() == oracle_overlap.size() &&
                   production.hcore.size() == oracle_hcore.size(),
-              "generated S/T production dimensions disagree with the independent oracle");
+              "generated S/T/V production dimensions disagree with the independent oracle");
       for (std::size_t element = 0; element < oracle_overlap.size(); ++element) {
         require_close(production.overlap[element], oracle_overlap[element], 2.0e-12,
                       "generated overlap differs from independent RawSource");
         require_close(production.hcore[element], oracle_hcore[element], 4.0e-12,
-                      "generated S/T hcore differs from independent RawSource");
+                      "generated S/T/V hcore differs from independent RawSource");
       }
 
       constexpr double step = 1.0e-5;
@@ -265,7 +284,7 @@ int main() {
                         "generated overlap derivative differs from independent finite difference");
           require_close(
               production.hcore_derivative[coordinate * matrix_size + element], hcore_fd, 2.0e-7,
-              "generated S/T hcore derivative differs from independent finite difference");
+              "generated S/T/V hcore derivative differs from independent finite difference");
         }
       }
     }

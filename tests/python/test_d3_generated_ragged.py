@@ -7,17 +7,19 @@ import os
 import typing
 from itertools import pairwise
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from vibeqc.profiles import find_nvcc
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.geometry import (
     PreparedD3CudaBatch,
     compile_d3_bj_batch,
     execute_d3_bj_batch,
 )
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 from tools.vibeqc_d3.reference import gfn1_compatibility, make_spec
 
@@ -133,6 +135,57 @@ def test_ragged_d3_primal_and_batch_vjp_lower_as_one_cuda_program() -> None:
     assert "tensor_create" in source
     assert "tensor_run" in source
     assert program.provenance["kind"] == "d3-bj-generated-ragged-cuda-candidate"
+
+
+def test_generated_d3_prepared_owner_uses_shared_compiled_execution_contract(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import vibeqc_compiler.geometry.d3_cuda as runtime
+
+    cases = _PBE[:2]
+    spec = make_spec(**cases[0]["parameters"])
+    systems = [
+        (case["numbers"], np.asarray(case["positions"], dtype=np.float64))
+        for case in cases
+    ]
+    artifact = SimpleNamespace(
+        metadata={
+            "key": canonical_hash("d3-test-artifact"),
+            "binary_sha256": canonical_hash("d3-test-binary"),
+        }
+    )
+
+    class FakePrepared:
+        def __init__(
+            self, plan: typing.Any, unused_artifact: typing.Any, *, device: int = 0
+        ) -> None:
+            self.plan = plan
+            self.closed = False
+
+        def execute(self, feeds: typing.Any, *, profile: bool = False) -> typing.Any:
+            outputs = {}
+            for name, node in self.plan.program.outputs.items():
+                outputs[name] = np.zeros(node.spec.shape, dtype=np.float64)
+            return SimpleNamespace(outputs=outputs, metrics={"fake": True})
+
+        def close(self) -> None:
+            self.closed = True
+
+    monkeypatch.setattr(runtime, "compile_cuda", lambda *args, **kwargs: artifact)
+    monkeypatch.setattr(runtime, "PreparedCuda", FakePrepared)
+    compiler = SimpleNamespace(target=cuda_target_info("sm_80"))
+    with runtime.PreparedD3CudaBatch(
+        spec, systems, compiler, tmp_path / "cache"
+    ) as batch:
+        before = batch.diagnostic()
+        assert len(before.prepared_identity) == 64
+        assert before.prepared_executions == 0
+        batch.execute()
+        batch.execute([None, None])
+        after = batch.diagnostic()
+        assert after.prepared_identity == before.prepared_identity
+        assert after.prepared_executions == 2
+        assert after.rebuild_count == 0
 
 
 @pytest.mark.skipif(

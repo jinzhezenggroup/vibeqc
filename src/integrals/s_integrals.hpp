@@ -70,6 +70,14 @@ struct EspProbeDerivativeData {
   std::vector<double> probe_derivative;
 };
 
+/** Direct contraction of one ESP matrix cotangent with molecular-center and
+ * explicit-probe derivatives. This bounded reference/oracle path never forms
+ * a coordinate-major ESP derivative tensor. */
+struct EspContractedGeometryDerivative {
+  std::vector<double> nuclear_derivative;
+  std::array<double, 3> probe_derivative{};
+};
+
 /**
  * Evaluate normalized, contracted Cartesian or real-spherical integrals.
  *
@@ -97,6 +105,12 @@ EspIntegralData build_esp_integrals(const core::System& system, std::span<const 
 /** Evaluate AO ESP matrices and analytic explicit-probe coordinate derivatives. */
 EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
     const core::System& system, std::span<const double> points_xyz);
+
+/** Contract arbitrary public-AO ESP weights with analytic basis-center and
+ * probe-coordinate derivatives at one explicit point. */
+EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
+    const core::System& system, std::span<const double> point_xyz,
+    std::span<const double> matrix_weights);
 
 /** Contract one ordered public-AO shell quartet with arbitrary weights.
  *

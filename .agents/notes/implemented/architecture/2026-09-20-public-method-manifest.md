@@ -13,7 +13,7 @@ policy out of the scientific compiler.
 
 ## Decision
 
-`methods/public_methods.json` is the canonical source for stable public method
+`manifests/public_methods.json` is the canonical source for stable public method
 identity, family, public properties, batch expectation and native provider class.
 `tools/generate_method_manifest.py` deterministically emits the C ABI method IDs,
 Python identity maps and the native C++ metadata table.

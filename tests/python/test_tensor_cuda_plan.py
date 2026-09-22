@@ -4,7 +4,7 @@ import typing
 from dataclasses import replace
 
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -67,6 +67,43 @@ def test_reuse_keeps_inputs_and_outputs_and_releases_dead_work() -> None:
     for _, i in plan.outputs:
         assert plan.steps[i].last_use == len(plan.steps)
     assert plan.peak_bytes == plan.device_bytes + plan.host_bytes
+
+
+def test_opt_in_inplace_donation_reuses_final_elementwise_owner() -> None:
+    x = vector()
+    transient = add(x, x)
+    result = multiply(transient, x)
+    program = Program({"result": result})
+
+    baseline = plan_cuda(program, TARGET)
+    donated = plan_cuda(
+        program,
+        TARGET,
+        schedule=TensorSchedule(inplace_donation=True),
+    )
+    transient_index = next(
+        i for i, step in enumerate(donated.steps) if step.node is transient
+    )
+    result_index = next(
+        i for i, step in enumerate(donated.steps) if step.node is result
+    )
+    assert donated.steps[result_index].donated_from == transient_index
+    assert donated.steps[result_index].offset == donated.steps[transient_index].offset
+    assert donated.arena_bytes == baseline.arena_bytes - aligned(result.spec.size * 8)
+    storage = donated.storage_analysis()
+    assert storage.donations == ((result_index, transient_index, result_index),)
+    assert storage.slot_for(transient_index) == storage.slot_for(result_index)
+    assert storage.peak_by_space["device"] == donated.arena_bytes
+
+
+def test_inplace_donation_fails_closed_with_layout_optimization() -> None:
+    x = vector()
+    with pytest.raises(ValueError, match="not yet qualified"):
+        plan_cuda(
+            Program({"result": add(x, x)}),
+            TARGET,
+            schedule=TensorSchedule(inplace_donation=True, layouts=True),
+        )
 
 
 def test_alias_lifetime_follows_materialized_ancestors() -> None:

@@ -10,6 +10,7 @@
 #include "posthf/mp2_gradient.hpp"
 #include "posthf/native_provider.hpp"
 #include "posthf/raw_source.hpp"
+#include "response/solve.hpp"
 #include "scf/types.hpp"
 
 namespace vibeqc::mp2 {
@@ -52,32 +53,34 @@ EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
   return canonical_energy_adjoint(ordered, reference.orbital_energies, no, denominator_threshold);
 }
 
-response::LinearOperator response_operator(const scf::PhysicalReference& reference,
-                                           const posthf::NativeBlockProvider& provider, bool cuda,
-                                           int device_id) {
+response::LinearResponseProblem response_problem(const scf::PhysicalReference& reference,
+                                                 const posthf::NativeBlockProvider& provider,
+                                                 bool cuda, int device_id) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
-  return [&reference, &provider, no, nv, occupied, virtuals, cuda, device_id](
-             std::span<const double> input, std::span<double> output) {
-    if (input.size() != no * nv || output.size() != input.size())
-      throw std::invalid_argument("RHF response vector has the wrong shape");
-    for (std::size_t i = 0; i < no; ++i)
-      for (std::size_t a = 0; a < nv; ++a) {
-        const std::vector<std::size_t> ai{no + a};
-        const std::vector<std::size_t> oi{i};
-        const auto ovov = provider.get({ai, oi, virtuals, occupied}, cuda, device_id);
-        const auto vvoo = provider.get({ai, virtuals, oi, occupied}, cuda, device_id);
-        const auto voov = provider.get({ai, occupied, oi, virtuals}, cuda, device_id);
-        double value = (reference.orbital_energies[no + a] - reference.orbital_energies[i]) *
-                       input[i * nv + a];
-        for (std::size_t j = 0; j < no; ++j)
-          for (std::size_t b = 0; b < nv; ++b)
-            value +=
-                (4.0 * ovov[b * no + j] - vvoo[b * no + j] - voov[j * nv + b]) * input[j * nv + b];
-        output[i * nv + a] = value;
-      }
-  };
+  return {posthf::checked_mul(no, nv),
+          [&reference, &provider, no, nv, occupied, virtuals, cuda, device_id](
+              std::span<const double> input, std::span<double> output) {
+            if (input.size() != no * nv || output.size() != input.size())
+              throw std::invalid_argument("RHF response vector has the wrong shape");
+            for (std::size_t i = 0; i < no; ++i)
+              for (std::size_t a = 0; a < nv; ++a) {
+                const std::vector<std::size_t> ai{no + a};
+                const std::vector<std::size_t> oi{i};
+                const auto ovov = provider.get({ai, oi, virtuals, occupied}, cuda, device_id);
+                const auto vvoo = provider.get({ai, virtuals, oi, occupied}, cuda, device_id);
+                const auto voov = provider.get({ai, occupied, oi, virtuals}, cuda, device_id);
+                double value =
+                    (reference.orbital_energies[no + a] - reference.orbital_energies[i]) *
+                    input[i * nv + a];
+                for (std::size_t j = 0; j < no; ++j)
+                  for (std::size_t b = 0; b < nv; ++b)
+                    value += (4.0 * ovov[b * no + j] - vvoo[b * no + j] - voov[j * nv + b]) *
+                             input[j * nv + b];
+                output[i * nv + a] = value;
+              }
+          }};
 }
 
 ConventionalForceResult conventional_force_impl(
@@ -92,8 +95,9 @@ ConventionalForceResult conventional_force_impl(
       !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0 || device_id < 0)
     throw std::invalid_argument("invalid conventional MP2 force request");
   posthf::NativeBlockProvider provider(source, reference, budget_bytes);
-  const auto dimension = posthf::checked_mul(reference.nocc, reference.nbf - reference.nocc);
-  const auto plan = response::prepare_gmres(dimension, response_options);
+  const auto problem = response_problem(reference, provider, cuda, device_id);
+  const auto dimension = problem.dimension();
+  const auto plan = response::prepare_response(problem, response_options);
   std::size_t maximum_shell = 0;
   for (const auto& shell : source.orbital().shells) {
     const auto count = source.orbital().basis_representation == VIBEQC_BASIS_SPHERICAL
@@ -123,8 +127,7 @@ ConventionalForceResult conventional_force_impl(
       diagonal[i * (reference.nbf - reference.nocc) + a] =
           reference.orbital_energies[reference.nocc + a] - reference.orbital_energies[i];
   auto response_result =
-      response::solve_gmres(plan, response_operator(reference, provider, cuda, device_id),
-                            orbital.response_rhs, {}, diagonal);
+      response::solve_response(plan, problem, orbital.response_rhs, {}, diagonal);
   if (!response_result.converged())
     throw std::runtime_error("canonical MP2 orbital response did not converge");
   auto weights = canonical_lagrangian_weights_streamed(reference, h, provider, adjoint,

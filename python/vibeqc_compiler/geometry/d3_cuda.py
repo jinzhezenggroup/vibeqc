@@ -15,6 +15,12 @@ from pathlib import Path
 
 import numpy as np
 
+from vibeqc_compiler.common.prepared_execution import (
+    PreparedArtifactBinding,
+    PreparedExecutionLease,
+    PreparedExecutionRequest,
+)
+from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import Program
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_plan import TensorPlan, plan_cuda
@@ -52,6 +58,9 @@ class D3GeneratedCudaDiagnostic:
     peak_bytes: int
     program_identity: str
     plan_identity: str
+    prepared_identity: str
+    prepared_executions: int
+    prepared_refreshes: int
     rebuild_count: int
 
 
@@ -163,6 +172,8 @@ class PreparedD3CudaBatch:
         self._program: Program | None = None
         self._seed_name = ""
         self._plan: TensorPlan | None = None
+        self._prepared_request: PreparedExecutionRequest | None = None
+        self._lease = PreparedExecutionLease()
         self._rebuild_count = 0
         try:
             self._install(default_flat)
@@ -188,16 +199,42 @@ class PreparedD3CudaBatch:
             max_bytes=self.max_bytes,
         )
         artifact = compile_cuda(plan, self.compiler, self.cache)
+        request = PreparedExecutionRequest(
+            "d3-generated-cuda",
+            compiled.identity,
+            canonical_hash(self.compiler.target.to_payload()),
+            plan.identity,
+            canonical_hash(
+                {
+                    "host_bytes": plan.host_bytes,
+                    "device_bytes": plan.device_bytes,
+                    "max_bytes": self.max_bytes,
+                    "systems": self.system_count,
+                }
+            ),
+            device=self.device,
+        )
+        lease = PreparedExecutionLease()
+        # Validate the metadata-only contract before creating device resources.
+        lease.install(
+            request,
+            (PreparedArtifactBinding.from_artifact(artifact),),
+            host_bytes=plan.host_bytes,
+            device_bytes=plan.device_bytes,
+        )
         prepared = PreparedCuda(plan, artifact, device=self.device)
 
-        old = self._prepared
+        old, old_lease = self._prepared, self._lease
         self._compiled = compiled
         self._program = program
         self._seed_name = seed_name
         self._plan = plan
         self._prepared = prepared
+        self._prepared_request = request
+        self._lease = lease
         if old is not None:
             old.close()
+            old_lease.invalidate()
             self._rebuild_count += 1
 
     def _require_open(
@@ -244,6 +281,11 @@ class PreparedD3CudaBatch:
         coordinates = self._coordinates(geometries)
         compiled, prepared, plan = self._require_open()
         rebuilt = False
+        if self._lease.needs_refresh:
+            # Rebuild method-owned runtime state before republishing after failure.
+            self._install(coordinates)
+            compiled, prepared, plan = self._require_open()
+            rebuilt = True
         try:
             compiled.validate_coordinates(coordinates)
         except ValueError as error:
@@ -253,31 +295,45 @@ class PreparedD3CudaBatch:
             compiled, prepared, plan = self._require_open()
             rebuilt = True
 
-        result = prepared.execute(
-            {
-                compiled.geometry.coordinate_name: coordinates,
-                self._seed_name: np.ones(self.system_count, dtype=np.float64),
-            },
-            profile=profile,
+        request = self._prepared_request
+        if request is None:
+            raise RuntimeError("generated D3 CUDA prepared identity is missing")
+        self._lease.require(
+            request,
+            max_host_bytes=self.max_bytes,
+            max_device_bytes=self.max_bytes,
         )
-        energies = np.asarray(result.outputs["energy"], dtype=np.float64).copy()
-        gradient = np.asarray(result.outputs["gradient"], dtype=np.float64)
-        split = None
-        if gradients:
-            split = tuple(
-                gradient[begin:end].copy()
-                for begin, end in zip(
-                    self._offsets[:-1], self._offsets[1:], strict=True
-                )
+        try:
+            result = prepared.execute(
+                {
+                    compiled.geometry.coordinate_name: coordinates,
+                    self._seed_name: np.ones(self.system_count, dtype=np.float64),
+                },
+                profile=profile,
             )
-        return D3GeneratedCudaExecution(
-            energies=energies,
-            gradients=split,
-            rebuilt=rebuilt,
-            program_identity=compiled.identity,
-            plan_identity=plan.identity,
-            metrics=dict(result.metrics),
-        )
+            energies = np.asarray(result.outputs["energy"], dtype=np.float64).copy()
+            gradient = np.asarray(result.outputs["gradient"], dtype=np.float64)
+            split = None
+            if gradients:
+                split = tuple(
+                    gradient[begin:end].copy()
+                    for begin, end in zip(
+                        self._offsets[:-1], self._offsets[1:], strict=True
+                    )
+                )
+            execution = D3GeneratedCudaExecution(
+                energies=energies,
+                gradients=split,
+                rebuilt=rebuilt,
+                program_identity=compiled.identity,
+                plan_identity=plan.identity,
+                metrics=dict(result.metrics),
+            )
+        except BaseException:
+            self._lease.mark_failure()
+            raise
+        self._lease.mark_success()
+        return execution
 
     def diagnostic(self) -> D3GeneratedCudaDiagnostic:
         compiled, _, plan = self._require_open()
@@ -292,6 +348,9 @@ class PreparedD3CudaBatch:
             peak_bytes=plan.peak_bytes,
             program_identity=compiled.identity,
             plan_identity=plan.identity,
+            prepared_identity=self._lease.identity or "",
+            prepared_executions=self._lease.executions,
+            prepared_refreshes=self._lease.refreshes,
             rebuild_count=self._rebuild_count,
         )
 
@@ -302,6 +361,8 @@ class PreparedD3CudaBatch:
         self._compiled = None
         self._program = None
         self._plan = None
+        self._prepared_request = None
+        self._lease.invalidate()
 
     def __enter__(self) -> Self:
         self._require_open()

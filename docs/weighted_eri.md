@@ -28,9 +28,40 @@ task domain or screening. See the
 | Bounded direct psss force | Lossless paged exact-class consumer | `VIBEQC_BOUNDED_DIRECT_STREAMING=force` or topology limits; uses the same weighted expression, retains page traversal |
 | Direct HF ssss force | Generated force-only weighted-ERI expression over the native primitive-pair cache | Generated mathematics is the unconditional production path; the qualified bounded/packed native scheduler remains, while the superseded handwritten ssss derivative body and runtime selector are deleted |
 | Direct HF psps/ppss | Common generated production kernels | Already migrated before this issue; manifest, signature policies and queues are retained |
+| Direct HF PPPS/DSPS/DPSS/FSSS force | Generated force-only Weighted IntegralIR over the existing compact order-three queue | Compiler-generated mathematics is unconditional for the native order-three route; generated-AOT mask ownership remains disjoint, while screening, density folding and atom scatter stay native |
 | Other direct HF classes | Manifest-selected generated kernels plus validated native fallbacks | Registry selects by architecture, consumer and class; no manifest rows added here |
 | External psss weights | Generated precontracted Hermite DAG | One primitive record carries all x/y/z weights; optional independent fallback |
 | External unmigrated s/p/d/f weights | Unscreened Hermite/Dual3 primitive fallback | One explicit component per record, with the caller's actual external weight |
+
+For forces, total angular order zero/one no longer has a generic AO-quartet scientific fallback.
+The fixed, resident, and bounded dispatchers consume generated `ssss_force` /
+`psss_force` through their exact shell tasks, and
+`contract_two_electron_force_quartet_subtile` now rejects `AngularOrder < 2`
+at compile time. The obsolete `direct_native_order01_gradient.cuh` body is
+therefore deleted rather than retained as a dead alternate implementation.
+
+### Bounded Direct-HF coverage and diagnostics
+
+The bounded Fock route covers canonical s/p/d/f classes. Generated and native
+streaming consumers own their registered classes; remaining classes use the
+existing exact recurrence through a fixed-capacity hierarchical queue. Its Fock
+entry point is distinct from the force entry point: Fock-style screening does
+not imply Fock output. The scalar Fock pass handles total orders zero and two;
+the generic value pass retains uncovered order one and includes order three,
+notably `(f s|s s)`.
+The force pass independently retains its order-three shell consumer.
+
+`VIBEQC_BOUNDED_DIRECT_STREAMING=force` selects this schedule explicitly. Normal
+execution selects it when the fixed descriptor grid or its memory budget would
+be exceeded. Neither mode restores a topology-sized descriptor allocation.
+
+`VIBEQC_DIRECT_TILE_VALIDATION=validate` is a structural diagnostic. It reports
+`NOT_IMPLEMENTED` for the numerical endpoint after descriptor validation; its
+output is never an SCF energy/force result. Unset it for numerical qualification.
+The allocated-GPU regression suite is
+`tests/python/test_bounded_direct_high_l_cuda.py`, including independent
+PySCF/libcint energies and analytic forces. See the
+[bounded coverage rationale](../.agents/notes/implemented/compatibility/2026-09-22-bounded-high-l-fock.md).
 
 The existing [component ledger](../benchmarks/results/rtx5090-0b6a573-issue-41-current-head-component-ledger.json)
 measured psss as the largest exact force class, 137.054 ms per replay, on its

@@ -154,6 +154,7 @@ jobs:
             cuda-nvcc-12-9 \
             cuda-cuobjdump-12-9 \
             cuda-cudart-dev-12-9 \
+            cuda-cccl-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
             libcusparse-12-9 \

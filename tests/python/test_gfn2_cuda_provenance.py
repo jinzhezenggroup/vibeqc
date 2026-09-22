@@ -29,8 +29,18 @@ def test_gfn2_cuda_source_manifest_is_current_and_gfn2_only() -> None:
         assert "gfn1_classical_corrections" not in lowered
 
     assert adapted == [
+        "src/backends/cuda/gfn2_aes2.cu",
+        "src/backends/cuda/gfn2_es2.cu",
+        "src/backends/cuda/gfn2_es3.cu",
+        "src/backends/cuda/gfn2_geometry.cu",
+        "src/backends/cuda/gfn2_h0_force.cu",
+        "src/backends/cuda/gfn2_hamiltonian.cu",
+        "src/backends/cuda/gfn2_hamiltonian_force.cu",
+        "src/backends/cuda/gfn2_integrals.cu",
         "src/backends/cuda/gfn2_pairlist.cu",
         "src/backends/cuda/gfn2_preprocessing.cu",
+        "src/backends/cuda/gfn2_repulsion.cu",
+        "src/backends/cuda/gfn2_repulsion.cuh",
         "src/runtime/gfn2_cuda_execution.cu",
     ]
 

@@ -13,12 +13,12 @@ import pytest
 from vibeqc import profiles
 from vibeqc.autotune import endpoint_gate, rank_hotspots, read_xyz
 from vibeqc.ks import profiled_ks_options, resolve_ks_options
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.dft.xc_schedule import (
     HOST_UNFUSED,
     GridXcScientificIdentity,
     molecular_grid_xc_workload,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
 

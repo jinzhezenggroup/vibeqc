@@ -4,6 +4,7 @@ import re
 
 from vibeqc_compiler.common.backend import TargetInfo
 from vibeqc_compiler.common.cuda_target import CUDA_TARGETS
+from vibeqc_compiler.common.schedule import ScheduleContract
 from vibeqc_compiler.integral.cooperative_schedule import CooperativeLaneSchedule
 from vibeqc_compiler.integral.df_rys_shell import COOPERATIVE_RYS_SHELL_CLASSES
 from vibeqc_compiler.integral.df_shell_derivatives import (
@@ -64,6 +65,19 @@ def test_one_electron_policy_emits_shared_schedule_identity_and_geometry() -> No
     policy = one_electron_derivative_policy_inventory()
     assert "schedule" not in scientific
     assert policy["cooperative_schedule_identity"] == schedule.identity
+    assert set(policy["schedule_contracts"]) == set(CUDA_TARGETS)
+    for architecture, payload in policy["schedule_contracts"].items():
+        contract = ScheduleContract.from_payload(payload)
+        assert contract.consumer == "integral.one_electron_derivative"
+        assert (
+            contract.schedule_hash
+            == nucleus_cooperative_schedule(
+                CUDA_TARGETS[architecture].target_info
+            ).identity
+        )
+        assert contract.profile_key == policy["workload_profile_key"]
+        assert contract.topology.cooperative
+        assert contract.topology.reduction == "lane-group"
     source = emit_one_electron_derivative_policy_cuda()
     assert schedule.identity in source
     assert "group_lanes=32U" in source

@@ -167,7 +167,10 @@ def build_df_component_kernel(
             and graph.node(coefficient).payload == 0
         ):
             continue
-        orders = tuple(a + b for a, b in zip(left_orders, right_orders))
+        orders = typing.cast(
+            "tuple[int, int, int]",
+            tuple(a + b for a, b in zip(left_orders, right_orders)),
+        )
         if orders not in states:
             states[orders] = _coulomb_derivative(graph, orders, rho, difference, boys)
         terms.append(

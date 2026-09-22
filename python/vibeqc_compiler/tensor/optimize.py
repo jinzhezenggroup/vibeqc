@@ -18,7 +18,6 @@ from vibeqc_compiler.common.value_numbering import (
     ValueNumberTable,
 )
 
-from .interpreter import execute
 from .ir import PRIMITIVES, Node, _infer, constant
 from .precision import precision_execution_contracts, remap_precision_execution
 from .program import Program, hash_node
@@ -82,6 +81,8 @@ def _fold(node: Node) -> Node:
     # Exact rational algebra alone is insufficient for floating-point folding:
     # e.g. 1e16 + 1 - 1e16 must not become 1 in an FP64 interpreter. Fold only
     # when the rounded literal agrees bit-for-bit with the original scalar DAG.
+    from .interpreter import execute
+
     try:
         before = execute(Program({"value": node}), {}).outputs["value"]
         after = execute(Program({"value": candidate}), {}).outputs["value"]

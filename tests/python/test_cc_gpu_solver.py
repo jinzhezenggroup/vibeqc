@@ -14,8 +14,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from test_cc_api import FixtureProvider, fixture_problem  # noqa: F401  (same fixtures)
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 
 from tools.vibeqc_cc.gpu_solver import PreparedGPUSolver, solve_gpu
 from tools.vibeqc_cc.solver import SolverOptions

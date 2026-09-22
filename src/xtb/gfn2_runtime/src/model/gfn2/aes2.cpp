@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_aes2_native.hpp"
 
 namespace xtbloom::detail::gfn2 {
 
@@ -353,54 +354,39 @@ xtbloom_status_t validate_finite_array(const double* values, std::int64_t count,
   return XTBLOOM_STATUS_SUCCESS;
 }
 
-/* Stable logistic form of 1/(1+exp(-argument)). */
-double logistic(double argument) {
-  if (argument >= 0.0) {
-    const double exponential = std::exp(-argument);
-    return 1.0 / (1.0 + exponential);
-  }
-  const double exponential = std::exp(argument);
-  return exponential / (1.0 + exponential);
-}
-
 double multipole_radius(const AES2Plan& plan, std::size_t atom, double coordination_number) {
-  const double argument = parameters::gfn2::kGlobal.multipole_kexp *
-                          (coordination_number - plan.multipole_valence_cn()[atom] -
-                           parameters::gfn2::kGlobal.multipole_shift);
-  return plan.multipole_radius()[atom] +
-         (parameters::gfn2::kGlobal.multipole_rmax - plan.multipole_radius()[atom]) *
-             logistic(argument);
+  vibeqc::xtb::generated::Gfn2AES2RadiusResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_radius(
+          coordination_number, plan.multipole_radius()[atom],
+          plan.multipole_valence_cn()[atom], result)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  return result.radius;
 }
 
 double multipole_radius_cn_derivative(const AES2Plan& plan, std::size_t atom,
                                       double coordination_number) {
-  const double argument = parameters::gfn2::kGlobal.multipole_kexp *
-                          (coordination_number - plan.multipole_valence_cn()[atom] -
-                           parameters::gfn2::kGlobal.multipole_shift);
-  const double fraction = logistic(argument);
-  return (parameters::gfn2::kGlobal.multipole_rmax - plan.multipole_radius()[atom]) *
-         parameters::gfn2::kGlobal.multipole_kexp * fraction * (1.0 - fraction);
+  vibeqc::xtb::generated::Gfn2AES2RadiusResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_radius(
+          coordination_number, plan.multipole_radius()[atom],
+          plan.multipole_valence_cn()[atom], result)) {
+    return std::numeric_limits<double>::quiet_NaN();
+  }
+  return result.cn_derivative;
 }
 
 bool pair_kernels(double distance, double radius, double& kernel3, double& kernel5) {
-  const double inverse = 1.0 / distance;
-  const double inverse2 = inverse * inverse;
-  const double inverse3 = inverse2 * inverse;
-  const double inverse5 = inverse3 * inverse2;
-  const double scaled = radius * inverse;
-  const double scaled2 = scaled * scaled;
-  const double scaled3 = scaled2 * scaled;
-  const double scaled4 = scaled2 * scaled2;
-  kernel3 = inverse3 / (1.0 + 6.0 * scaled3);
-  kernel5 = inverse5 / (1.0 + 6.0 * scaled4);
-  if (kernel3 >= 0.0 && std::isfinite(kernel3) && kernel5 >= 0.0 && std::isfinite(kernel5)) {
+  vibeqc::xtb::generated::Gfn2AES2KernelResult result{};
+  if (vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_kernels(distance, radius, result)) {
+    kernel3 = result.kernel3;
+    kernel5 = result.kernel5;
     return true;
   }
 
   /*
-   * Algebraically equivalent denominators avoid inf/inf for extreme but
-   * representable distances. Long double is only a range-recovery path; the
-   * ordinary binary64 operation order remains the fast/reference path.
+   * TensorIR owns the ordinary binary64 equation. Keep only this numerical
+   * range-recovery policy for extreme representable inputs where intermediate
+   * reciprocal powers overflow even though the algebraic result is finite.
    */
   const long double wide_distance = static_cast<long double>(distance);
   const long double wide_radius = static_cast<long double>(radius);
@@ -435,43 +421,22 @@ bool add_value(double contribution, double& target) {
   return true;
 }
 
-std::array<double, 6> packed_pair_tensor(double dx, double dy, double dz, double kernel5) {
-  return {{dx * dx * kernel5, 2.0 * dx * dy * kernel5, dy * dy * kernel5, 2.0 * dx * dz * kernel5,
-           2.0 * dy * dz * kernel5, dz * dz * kernel5}};
-}
-
-double packed_dot(const std::array<double, 6>& tensor, const double* quadrupole) {
-  double result = 0.0;
-  for (std::size_t component = 0; component < tensor.size(); ++component) {
-    result += tensor[component] * quadrupole[component];
-  }
-  return result;
-}
-
 bool initialize_onsite_potential(const AES2Plan& plan, const double* dipoles,
                                  const double* quadrupoles, double* scratch) {
   const std::size_t atom_count = static_cast<std::size_t>(plan.total_atoms());
   double* const charge_potential = scratch;
   double* const dipole_potential = scratch + atom_count;
   double* const quadrupole_potential = scratch + atom_count * 4u;
-  constexpr std::array<double, 6> scale{{1.0, 2.0, 1.0, 2.0, 2.0, 1.0}};
   std::fill_n(charge_potential, atom_count, 0.0);
   for (std::size_t atom = 0; atom < atom_count; ++atom) {
-    for (std::size_t component = 0; component < 3u; ++component) {
-      const std::size_t index = atom * 3u + component;
-      dipole_potential[index] = 2.0 * plan.dipole_kernel()[atom] * dipoles[index];
-      if (!std::isfinite(dipole_potential[index])) {
-        return false;
-      }
+    vibeqc::xtb::generated::Gfn2AES2OnsitePotentialResult result{};
+    if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_onsite_potential(
+            plan.dipole_kernel()[atom], plan.quadrupole_kernel()[atom],
+            dipoles + atom * 3u, quadrupoles + atom * 6u, result)) {
+      return false;
     }
-    for (std::size_t component = 0; component < 6u; ++component) {
-      const std::size_t index = atom * 6u + component;
-      quadrupole_potential[index] =
-          2.0 * plan.quadrupole_kernel()[atom] * scale[component] * quadrupoles[index];
-      if (!std::isfinite(quadrupole_potential[index])) {
-        return false;
-      }
-    }
+    std::copy_n(result.dipole, 3u, dipole_potential + atom * 3u);
+    std::copy_n(result.quadrupole, 6u, quadrupole_potential + atom * 6u);
   }
   return true;
 }
@@ -480,57 +445,28 @@ bool add_pair_potential(const double* pair_data, std::size_t first, std::size_t 
                         const double* charges, const double* dipoles, const double* quadrupoles,
                         double* charge_potential, double* dipole_potential,
                         double* quadrupole_potential) {
-  const double dx = pair_data[0];
-  const double dy = pair_data[1];
-  const double dz = pair_data[2];
-  const double kernel3 = pair_data[3];
-  const double kernel5 = pair_data[4];
-  const std::array<double, 3> displacement{{dx, dy, dz}};
-  const std::array<double, 3> sd{{dx * kernel3, dy * kernel3, dz * kernel3}};
-  const std::array<double, 6> sq = packed_pair_tensor(dx, dy, dz, kernel5);
-  const double distance2 = dx * dx + dy * dy + dz * dz;
-  const double isotropic_dd = distance2 * kernel5;
-
-  const double* const first_dipole = dipoles + first * 3u;
-  const double* const second_dipole = dipoles + second * 3u;
-  const double* const first_quadrupole = quadrupoles + first * 6u;
-  const double* const second_quadrupole = quadrupoles + second * 6u;
-  double first_projection = 0.0;
-  double second_projection = 0.0;
-  double first_sd_dot = 0.0;
-  double second_sd_dot = 0.0;
-  for (std::size_t component = 0; component < 3u; ++component) {
-    first_projection += displacement[component] * first_dipole[component];
-    second_projection += displacement[component] * second_dipole[component];
-    first_sd_dot += sd[component] * first_dipole[component];
-    second_sd_dot += sd[component] * second_dipole[component];
-  }
-
-  if (!std::isfinite(distance2) || !std::isfinite(isotropic_dd) ||
-      !std::isfinite(first_projection) || !std::isfinite(second_projection) ||
-      !std::isfinite(first_sd_dot) || !std::isfinite(second_sd_dot) ||
-      !add_value(second_sd_dot + packed_dot(sq, second_quadrupole), charge_potential[first]) ||
-      !add_value(-first_sd_dot + packed_dot(sq, first_quadrupole), charge_potential[second])) {
+  vibeqc::xtb::generated::Gfn2AES2PairPotentialResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_potential(
+          pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4],
+          charges[first], charges[second], dipoles + first * 3u, dipoles + second * 3u,
+          quadrupoles + first * 6u, quadrupoles + second * 6u, result)) {
     return false;
   }
-
+  if (!add_value(result.first_charge, charge_potential[first]) ||
+      !add_value(result.second_charge, charge_potential[second])) {
+    return false;
+  }
   for (std::size_t component = 0; component < 3u; ++component) {
-    const double first_dd = isotropic_dd * second_dipole[component] -
-                            3.0 * kernel5 * displacement[component] * second_projection;
-    const double second_dd = isotropic_dd * first_dipole[component] -
-                             3.0 * kernel5 * displacement[component] * first_projection;
-    if (!add_value(-charges[second] * sd[component] + first_dd,
-                   dipole_potential[first * 3u + component]) ||
-        !add_value(charges[first] * sd[component] + second_dd,
-                   dipole_potential[second * 3u + component])) {
+    if (!add_value(result.first_dipole[component], dipole_potential[first * 3u + component]) ||
+        !add_value(result.second_dipole[component], dipole_potential[second * 3u + component])) {
       return false;
     }
   }
-
   for (std::size_t component = 0; component < 6u; ++component) {
-    if (!std::isfinite(sq[component]) ||
-        !add_value(charges[second] * sq[component], quadrupole_potential[first * 6u + component]) ||
-        !add_value(charges[first] * sq[component], quadrupole_potential[second * 6u + component])) {
+    if (!add_value(result.first_quadrupole[component],
+                   quadrupole_potential[first * 6u + component]) ||
+        !add_value(result.second_quadrupole[component],
+                   quadrupole_potential[second * 6u + component])) {
       return false;
     }
   }
@@ -539,168 +475,39 @@ bool add_pair_potential(const double* pair_data, std::size_t first, std::size_t 
 
 bool onsite_energy(const AES2Plan& plan, std::size_t atom, const double* dipole,
                    const double* quadrupole, double& energy) {
-  constexpr std::array<double, 6> scale{{1.0, 2.0, 1.0, 2.0, 2.0, 1.0}};
-  double dipole_norm2 = 0.0;
-  double quadrupole_norm2 = 0.0;
-  for (std::size_t component = 0; component < 3u; ++component) {
-    dipole_norm2 += dipole[component] * dipole[component];
-  }
-  for (std::size_t component = 0; component < 6u; ++component) {
-    quadrupole_norm2 += scale[component] * quadrupole[component] * quadrupole[component];
-  }
-  energy =
-      plan.dipole_kernel()[atom] * dipole_norm2 + plan.quadrupole_kernel()[atom] * quadrupole_norm2;
-  return std::isfinite(dipole_norm2) && std::isfinite(quadrupole_norm2) && std::isfinite(energy);
+  return vibeqc::xtb::generated::evaluate_gfn2_aes2_onsite_energy(
+      plan.dipole_kernel()[atom], plan.quadrupole_kernel()[atom], dipole, quadrupole, energy);
 }
 
 bool pair_energy(const double* pair_data, std::size_t first, std::size_t second,
                  const double* charges, const double* dipoles, const double* quadrupoles,
                  double& energy) {
-  const double dx = pair_data[0];
-  const double dy = pair_data[1];
-  const double dz = pair_data[2];
-  const double kernel3 = pair_data[3];
-  const double kernel5 = pair_data[4];
-  const std::array<double, 3> displacement{{dx, dy, dz}};
-  const std::array<double, 6> sq = packed_pair_tensor(dx, dy, dz, kernel5);
-  const double* const first_dipole = dipoles + first * 3u;
-  const double* const second_dipole = dipoles + second * 3u;
-  const double* const first_quadrupole = quadrupoles + first * 6u;
-  const double* const second_quadrupole = quadrupoles + second * 6u;
-
-  double first_projection = 0.0;
-  double second_projection = 0.0;
-  double dipole_dot = 0.0;
-  double charge_dipole_numerator = 0.0;
-  for (std::size_t component = 0; component < 3u; ++component) {
-    first_projection += displacement[component] * first_dipole[component];
-    second_projection += displacement[component] * second_dipole[component];
-    dipole_dot += first_dipole[component] * second_dipole[component];
-    charge_dipole_numerator +=
-        displacement[component] *
-        (charges[first] * second_dipole[component] - charges[second] * first_dipole[component]);
-  }
-  const double distance2 = dx * dx + dy * dy + dz * dz;
-  const double charge_dipole = kernel3 * charge_dipole_numerator;
-  const double dipole_dipole =
-      kernel5 * (distance2 * dipole_dot - 3.0 * first_projection * second_projection);
-  const double charge_quadrupole = charges[first] * packed_dot(sq, second_quadrupole) +
-                                   charges[second] * packed_dot(sq, first_quadrupole);
-  energy = charge_dipole + dipole_dipole + charge_quadrupole;
-  return std::isfinite(first_projection) && std::isfinite(second_projection) &&
-         std::isfinite(dipole_dot) && std::isfinite(charge_dipole_numerator) &&
-         std::isfinite(distance2) && std::isfinite(charge_dipole) && std::isfinite(dipole_dipole) &&
-         std::isfinite(charge_quadrupole) && std::isfinite(energy);
+  return vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_energy(
+      pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4],
+      charges[first], charges[second], dipoles + first * 3u, dipoles + second * 3u,
+      quadrupoles + first * 6u, quadrupoles + second * 6u, energy);
 }
 
 bool pair_vjp(const double* pair_data, double average_radius, double first_radius_cn_derivative,
               double second_radius_cn_derivative, std::size_t first, std::size_t second,
               const double* charges, const double* dipoles, const double* quadrupoles,
               double* gradient_scratch, double* coordination_scratch) {
-  const std::array<double, 3> displacement{{pair_data[0], pair_data[1], pair_data[2]}};
-  const double kernel3 = pair_data[3];
-  const double kernel5 = pair_data[4];
-  const double distance = std::hypot(std::hypot(displacement[0], displacement[1]), displacement[2]);
-  if (!(distance > 0.0) || !std::isfinite(distance) || !(average_radius > 0.0) ||
-      !std::isfinite(average_radius) || !std::isfinite(first_radius_cn_derivative) ||
-      !std::isfinite(second_radius_cn_derivative)) {
+  vibeqc::xtb::generated::Gfn2AES2PairVjpResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_vjp(
+          pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4],
+          average_radius, first_radius_cn_derivative, second_radius_cn_derivative,
+          charges[first], charges[second], dipoles + first * 3u, dipoles + second * 3u,
+          quadrupoles + first * 6u, quadrupoles + second * 6u, result)) {
     return false;
   }
-
-  /* Reconstruct f3/f5 without storing two more pair scalars. */
-  const double scaled = average_radius / distance;
-  const double scaled2 = scaled * scaled;
-  const double scaled3 = scaled2 * scaled;
-  const double scaled4 = scaled2 * scaled2;
-  const double damping3 = 1.0 / (1.0 + 6.0 * scaled3);
-  const double damping5 = 1.0 / (1.0 + 6.0 * scaled4);
-  if (!(damping3 >= 0.0) || !std::isfinite(damping3) || !(damping5 >= 0.0) ||
-      !std::isfinite(damping5)) {
-    return false;
-  }
-
-  const double* const first_dipole = dipoles + first * 3u;
-  const double* const second_dipole = dipoles + second * 3u;
-  const double* const first_quadrupole = quadrupoles + first * 6u;
-  const double* const second_quadrupole = quadrupoles + second * 6u;
-  std::array<double, 3> charge_dipole_vector{};
-  std::array<double, 3> tensor_vector{};
-  double first_projection = 0.0;
-  double second_projection = 0.0;
-  double dipole_dot = 0.0;
   for (std::size_t axis = 0; axis < 3u; ++axis) {
-    charge_dipole_vector[axis] =
-        charges[first] * second_dipole[axis] - charges[second] * first_dipole[axis];
-    first_projection += displacement[axis] * first_dipole[axis];
-    second_projection += displacement[axis] * second_dipole[axis];
-    dipole_dot += first_dipole[axis] * second_dipole[axis];
-  }
-  const double charge_dipole_numerator = displacement[0] * charge_dipole_vector[0] +
-                                         displacement[1] * charge_dipole_vector[1] +
-                                         displacement[2] * charge_dipole_vector[2];
-  const double distance2 = displacement[0] * displacement[0] + displacement[1] * displacement[1] +
-                           displacement[2] * displacement[2];
-  const double dipole_dipole_numerator =
-      distance2 * dipole_dot - 3.0 * first_projection * second_projection;
-
-  /* T = q_first Q_second + q_second Q_first in symmetric packed form. */
-  const std::array<double, 6> tensor{{
-      charges[first] * second_quadrupole[0] + charges[second] * first_quadrupole[0],
-      charges[first] * second_quadrupole[1] + charges[second] * first_quadrupole[1],
-      charges[first] * second_quadrupole[2] + charges[second] * first_quadrupole[2],
-      charges[first] * second_quadrupole[3] + charges[second] * first_quadrupole[3],
-      charges[first] * second_quadrupole[4] + charges[second] * first_quadrupole[4],
-      charges[first] * second_quadrupole[5] + charges[second] * first_quadrupole[5],
-  }};
-  tensor_vector[0] =
-      tensor[0] * displacement[0] + tensor[1] * displacement[1] + tensor[3] * displacement[2];
-  tensor_vector[1] =
-      tensor[1] * displacement[0] + tensor[2] * displacement[1] + tensor[4] * displacement[2];
-  tensor_vector[2] =
-      tensor[3] * displacement[0] + tensor[4] * displacement[1] + tensor[5] * displacement[2];
-  const double charge_quadrupole_numerator = displacement[0] * tensor_vector[0] +
-                                             displacement[1] * tensor_vector[1] +
-                                             displacement[2] * tensor_vector[2];
-  const double inverse_distance = 1.0 / distance;
-  const double kernel3_distance_derivative = -3.0 * damping3 * kernel3 * inverse_distance;
-  const double kernel5_distance_derivative = -(1.0 + 4.0 * damping5) * kernel5 * inverse_distance;
-  const double inverse_radius = 1.0 / average_radius;
-  const double kernel3_radius_derivative = -3.0 * (1.0 - damping3) * kernel3 * inverse_radius;
-  const double kernel5_radius_derivative = -4.0 * (1.0 - damping5) * kernel5 * inverse_radius;
-  const double kernel5_numerator = dipole_dipole_numerator + charge_quadrupole_numerator;
-  const double energy_radius_derivative = kernel3_radius_derivative * charge_dipole_numerator +
-                                          kernel5_radius_derivative * kernel5_numerator;
-  if (!std::isfinite(charge_dipole_numerator) || !std::isfinite(distance2) ||
-      !std::isfinite(dipole_dipole_numerator) || !std::isfinite(charge_quadrupole_numerator) ||
-      !std::isfinite(kernel3_distance_derivative) || !std::isfinite(kernel5_distance_derivative) ||
-      !std::isfinite(kernel3_radius_derivative) || !std::isfinite(kernel5_radius_derivative) ||
-      !std::isfinite(kernel5_numerator) || !std::isfinite(energy_radius_derivative)) {
-    return false;
-  }
-
-  for (std::size_t axis = 0; axis < 3u; ++axis) {
-    const double dipole_dipole_derivative =
-        2.0 * dipole_dot * displacement[axis] -
-        3.0 * (first_projection * second_dipole[axis] + second_projection * first_dipole[axis]);
-    const double pair_gradient =
-        kernel3 * charge_dipole_vector[axis] +
-        kernel3_distance_derivative * charge_dipole_numerator * displacement[axis] *
-            inverse_distance +
-        kernel5 * (dipole_dipole_derivative + 2.0 * tensor_vector[axis]) +
-        kernel5_distance_derivative * kernel5_numerator * displacement[axis] * inverse_distance;
-    const std::size_t first_coordinate = first * 3u + axis;
-    const std::size_t second_coordinate = second * 3u + axis;
-    if (!add_value(pair_gradient, gradient_scratch[first_coordinate]) ||
-        !add_value(-pair_gradient, gradient_scratch[second_coordinate])) {
+    if (!add_value(result.gradient[axis], gradient_scratch[first * 3u + axis]) ||
+        !add_value(-result.gradient[axis], gradient_scratch[second * 3u + axis])) {
       return false;
     }
   }
-
-  /* average_radius = (mrad_first + mrad_second)/2. */
-  return add_value(0.5 * energy_radius_derivative * first_radius_cn_derivative,
-                   coordination_scratch[first]) &&
-         add_value(0.5 * energy_radius_derivative * second_radius_cn_derivative,
-                   coordination_scratch[second]);
+  return add_value(result.first_cn_adjoint, coordination_scratch[first]) &&
+         add_value(result.second_cn_adjoint, coordination_scratch[second]);
 }
 
 }  // namespace

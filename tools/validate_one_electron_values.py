@@ -27,17 +27,17 @@ sys.path.insert(0, str(ROOT))
 
 import numpy as np
 import pyscf
-from vibeqc_compiler.integral.cuda_adapter import (
+from vibeqc_compiler.common.cuda_adapter import (
     CudaBenchmarkExecutor,
     CudaCompilerAdapter,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import block_error, file_hash
 from vibeqc_compiler.integral.one_electron_cuda import emit_one_electron_values_cuda
 
 from tools.vibeqc_validation.f_shell import cuobjdump_resources
 from tools.vibeqc_validation.one_electron_cuda import emit_one_electron_value_driver
 from tools.vibeqc_validation.one_electron_values import one_electron_value_matrix
-from tools.vibeqc_validation.schema import block_error, file_hash
 
 
 def main() -> None:

@@ -16,6 +16,7 @@ from fractions import Fraction
 from functools import cache
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.compiler_work import charge_symbolic_intern
 from vibeqc_compiler.common.value_numbering import (
     ValueNumberingDiagnostics,
     ValueNumberTable,
@@ -354,6 +355,7 @@ class Graph:
         self._value_numbers = ValueNumberTable[Node]()
 
     def _intern(self, node: Node) -> Expr:
+        charge_symbolic_intern()
         identifier = self._value_numbers.number_exact_pure(node)
         if identifier == len(self.nodes):
             self.nodes.append(node)

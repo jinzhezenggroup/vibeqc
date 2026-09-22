@@ -56,6 +56,10 @@ void analytic_rks_and_uks() {
   near(gradient.weighted_density[0][0], -1, "wrong restricted W");
   near(gradient.diagnostic.component_energy, -1.4, "wrong KS component energy");
   near(gradient.diagnostic.reported_energy_error, 0, "identical KS energies disagreed");
+  const auto rks_reference = electronic_reference(gradient, rks.s, rks.h);
+  require(core::electronic_reference_shape_valid(rks_reference) && rks_reference.restricted() &&
+              rks_reference.channels[0].coefficients.data() == gradient.orbitals[0].vectors.data(),
+          "RKS common electronic reference copied or changed orbital ownership");
 
   Fixture cpu;
   // Resolve the complete CPU strategy, including its schedule; relabeling a
@@ -83,6 +87,11 @@ void analytic_rks_and_uks() {
     require(state.weighted_density.size() == 2, "UKS lost a spin W block");
     near(state.weighted_density[0][0], -.5, "wrong alpha W");
     near(state.weighted_density[1][0], -.5 * beta, "wrong beta W");
+    const auto uks_reference = electronic_reference(state, uks.s, uks.h);
+    require(core::electronic_reference_shape_valid(uks_reference) &&
+                uks_reference.spin_channels == 2 && uks_reference.channels[0].occupied == 1 &&
+                uks_reference.channels[1].occupied == beta,
+            "UKS common electronic reference lost spin occupations");
 
     Fixture cpu_uks = uks;
     cpu_uks.id.determinant.model =

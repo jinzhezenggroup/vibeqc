@@ -12,6 +12,7 @@
 #include "dft/grid.hpp"
 #include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "runtime/resource_usage.hpp"
+#include "xc_cpu_generated.hpp"
 
 namespace vibeqc::dft::nlc {
 namespace {
@@ -74,8 +75,14 @@ void add_potential_point(std::vector<double>& potential, const double* phi, cons
 
 Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
                                 const std::vector<double>& density, Vv10Plan& plan,
-                                std::size_t tile_points, XcDensitySource source) {
+                                std::size_t tile_points, XcDensitySource source,
+                                Vv10DensityDomain domain) {
   validate_density(basis, grid, density, tile_points);
+  if (domain != Vv10DensityDomain::StrictPositive && domain != Vv10DensityDomain::MolecularV1)
+    throw std::invalid_argument("unknown VV10 integration density domain");
+  if (domain == Vv10DensityDomain::MolecularV1 && (plan.backend() != VIBEQC_BACKEND_CPU_REFERENCE ||
+                                                   plan.parameters().variant != Vv10Variant::vv10))
+    throw std::invalid_argument("molecular VV10 density screening is CPU VV10 only");
   if (source.route != XcDensityRoute::DensityMatrix)
     throw std::invalid_argument(
         "self-consistent VV10 currently requires the density-matrix AO route");
@@ -101,9 +108,29 @@ Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
     }
   }
 
+  // Keep the prepared pair extent fixed. Inactive points carry zero quadrature
+  // weight and benign dummy features; they do not contribute to either pair
+  // sum, the local beta term, or the AO potential. Physical active features are
+  // untouched. Validate BEFORE padding so screening cannot conceal bad input.
+  std::vector<double> screened_weights;
+  if (domain == Vv10DensityDomain::MolecularV1) {
+    screened_weights = grid.weights();
+    for (std::size_t p = 0; p < points; ++p) {
+      if (!std::isfinite(rho[p]) || rho[p] < 0.0 || !std::isfinite(gradient[3 * p]) ||
+          !std::isfinite(gradient[3 * p + 1]) || !std::isfinite(gradient[3 * p + 2]) ||
+          !std::isfinite(screened_weights[p]))
+        throw std::domain_error("invalid molecular VV10 density/gradient/weight");
+      if (rho[p] < generated::kMolecularVv10DensityThreshold) {
+        screened_weights[p] = 0.0;
+        rho[p] = 1.0;
+        gradient[3 * p] = gradient[3 * p + 1] = gradient[3 * p + 2] = 0.0;
+      }
+    }
+  }
+  const auto& effective_weights = screened_weights.empty() ? grid.weights() : screened_weights;
   double energy = 0.0;
   std::string detail;
-  const auto status = plan.execute(xyz, grid.weights(), rho, gradient, energy, vrho, vsigma,
+  const auto status = plan.execute(xyz, effective_weights, rho, gradient, energy, vrho, vsigma,
                                    std::span<double>{}, std::span<double>{}, detail);
   if (status != VIBEQC_STATUS_SUCCESS)
     throw std::runtime_error(detail.empty() ? "VV10 pair execution failed" : detail);
@@ -112,7 +139,7 @@ Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
   result.energy = energy;
   result.points = points;
   result.potential.assign(matrix_size(n), 0.0);
-  const auto& weights = grid.weights();
+  const auto& weights = effective_weights;
   for (std::size_t begin = 0; begin < points; begin += tile_points) {
     const auto count = std::min(tile_points, points - begin);
     ao.resize(4 * count * n);
@@ -137,22 +164,22 @@ Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
                    [](double value) { return std::isfinite(value); }))
     throw std::runtime_error("nonfinite self-consistent VV10 AO contribution");
 
-  result.owned_numeric_bytes =
-      runtime::vector_capacities(rho, gradient, vrho, vsigma, ao, result.potential);
+  result.owned_numeric_bytes = runtime::vector_capacities(rho, gradient, vrho, vsigma, ao,
+                                                          result.potential, screened_weights);
   return result;
 }
 
 SpinVv10Integral integrate_vv10_uks(const AoBasis& basis, const MolecularGrid& grid,
                                     const std::vector<double>& alpha_density,
                                     const std::vector<double>& beta_density, Vv10Plan& plan,
-                                    std::size_t tile_points) {
+                                    std::size_t tile_points, Vv10DensityDomain domain) {
   validate_density(basis, grid, alpha_density, tile_points);
   validate_density(basis, grid, beta_density, tile_points);
   if (alpha_density.size() != beta_density.size())
     throw std::invalid_argument("VV10 UKS spin densities must have matching dimensions");
   std::vector<double> total(alpha_density.size());
   for (std::size_t i = 0; i < total.size(); ++i) total[i] = alpha_density[i] + beta_density[i];
-  auto common = integrate_vv10_rks(basis, grid, total, plan, tile_points);
+  auto common = integrate_vv10_rks(basis, grid, total, plan, tile_points, {}, domain);
 
   SpinVv10Integral result;
   result.energy = common.energy;

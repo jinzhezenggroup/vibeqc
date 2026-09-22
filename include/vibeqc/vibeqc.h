@@ -145,7 +145,7 @@ typedef struct vibeqc_d4_batch vibeqc_d4_batch;
 typedef struct vibeqc_nonlocal_plan vibeqc_nonlocal_plan;
 
 typedef int32_t vibeqc_d3_damping;
-enum { VIBEQC_D3_DAMPING_BJ = 1 };
+enum { VIBEQC_D3_DAMPING_BJ = 1, VIBEQC_D3_DAMPING_ZERO = 2 };
 
 /** Geometry-only D3 system. Coordinates are Bohr and copied at prepare. */
 typedef struct vibeqc_d3_system_descriptor {
@@ -156,7 +156,14 @@ typedef struct vibeqc_d3_system_descriptor {
   uint32_t atom_count;
 } vibeqc_d3_system_descriptor;
 
-/** Two-body D3(BJ) model. s9 must remain zero in the production v1 slice. */
+/**
+ * Explicit molecular D3 model.
+ *
+ * The historical typedef name and prefix through maximum_bytes are preserved
+ * for ABI-0 two-body D3(BJ) callers. Zero damping and BJ+ATM require the
+ * appended fields below and are accepted only by separately qualified
+ * capability paths. Zero-damping+ATM is deliberately unsupported.
+ */
 typedef struct vibeqc_d3_bj_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -170,6 +177,13 @@ typedef struct vibeqc_d3_bj_descriptor {
   double pair_cutoff;
   double pair_switch_width;
   uint64_t maximum_bytes;
+  /** Zero-damping radius scalings; ignored for BJ. */
+  double rs6;
+  double rs8;
+  double alp;
+  /** BJ-ATM cutoff/switch in bohr; ignored when s9 == 0. */
+  double atm_cutoff;
+  double atm_switch_width;
 } vibeqc_d3_bj_descriptor;
 
 /** Optional changed geometry for one prepared D3 batch member. */
@@ -585,16 +599,43 @@ typedef struct vibeqc_system_descriptor {
   vibeqc_basis_representation basis_representation;
 } vibeqc_system_descriptor;
 
-/** Native KS model snapshot, copied during preparation. Suffixes supply resolved
- * composition (v2), XC execution schedule (v3), compiler-resolved spin/family
- * identity (v4), and optional nonlocal-correlation primitive parameters (v5).
- * Legacy v1/v2/v3/v4 callers retain method-selector compatibility projection;
- * v1/v2 retain device-fused CUDA XC. */
+/** One semilocal XC component from the compiler-owned KS execution plan. */
+typedef struct vibeqc_ks_semilocal_component {
+  /** Stable compiler component identifier such as GGA_X_PBE. */
+  const char* component_id;
+  /** Physical coefficient carried by MethodIR. */
+  double coefficient;
+} vibeqc_ks_semilocal_component;
+
+/** Exact-exchange operator carried by one KS execution-plan contribution. */
+typedef int32_t vibeqc_ks_exchange_operator;
+enum {
+  VIBEQC_KS_EXCHANGE_FULL_RANGE = 1,
+  VIBEQC_KS_EXCHANGE_SHORT_RANGE = 2,
+  VIBEQC_KS_EXCHANGE_LONG_RANGE = 3,
+};
+
+typedef struct vibeqc_ks_exchange_term {
+  vibeqc_ks_exchange_operator operator_kind;
+  /** Physical exact-exchange fraction. */
+  double coefficient;
+  /** Range parameter in bohr^-1; zero for full-range exchange. */
+  double omega;
+  /** Spin-convention-resolved coefficient applied to the native K build. */
+  double fock_coefficient;
+} vibeqc_ks_exchange_term;
+
+/** Current compiler-to-native KS execution plan.
+ *
+ * This is intentionally a breaking, single-layout ABI: MethodIR is lowered once
+ * into semantic primitive arrays instead of accumulating method-specific v2/v3/...
+ * suffixes. Native preparation copies every pointee before returning.
+ */
 typedef struct vibeqc_ks_options {
   uint32_t struct_size;
   uint32_t abi_version;
-  /** Version 1: semilocal-scaled-v1/pbe-spin-c2-1e-18. */
-  uint32_t scf_domain_version;
+  /** Exact compiler-owned numerical-domain identity. */
+  const char* scf_domain;
   /** Grid contract version. Version 1 is the deterministic reference
    * prescription with unit-radius fallback. Version 2 is a fully resolved
    * production prescription with sourced element radii. */
@@ -605,38 +646,20 @@ typedef struct vibeqc_ks_options {
   uint32_t partition_iterations;
   double coincident_tolerance;
   uint64_t tile_points;
-  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused.
-   * Version 1 accepts NULL/zero as the historical unit-radius fallback.
-   * Version 2 requires a positive finite entry for every element actually
-   * materialized; zero/missing entries fail closed. */
+  /** Radii [0..118] in Bohr, indexed by atomic number; slot zero is unused. */
   const double* element_radii;
   uint32_t element_radius_count;
-  uint32_t reserved_v1_padding;
-  /** Optional v2 suffix: 0 retains legacy defaults; 1 uses the coefficients
-   * below. Scaled composition is CPU PBE-family only. Full-range exact J has cJ=1.
-   * PBE0 is X=3/4, C=1, cK=-1/8 (RKS total D) or -1/4 (UKS spin D).
-   * Values are supplied by resolved MethodIR, never inferred from a name. */
-  uint32_t composition_version;
-  double semilocal_exchange_scale;
-  double semilocal_correlation_scale;
-  double fock_exchange_coefficient;
-  /** Optional v3 suffix. Older prefixes use DEVICE_FUSED. */
   vibeqc_xc_execution_schedule xc_execution_schedule;
-  /** Preserve the complete v3 prefix, including its trailing alignment padding. */
-  uint32_t reserved_v3_padding;
-  /** Optional v4 suffix: compiler-resolved execution identity. Version 1
-   * means the fields below are authoritative for scientific dispatch.
-   * spin_channels is 1 for RKS and 2 for UKS. semilocal_family is the
-   * primitive-family selector: 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP (CPU only). */
-  uint32_t execution_plan_version;
+  /** 1 for RKS and 2 for UKS, copied directly from MethodIR. */
   uint32_t spin_channels;
-  uint32_t semilocal_family;
-  uint32_t reserved_v4_padding;
-  /** Optional v5 suffix: one MethodIR NonlocalCorrelation contribution.
-   * Version 0 means absent; version 1 makes the fields below authoritative.
-   * This is a scientific primitive description, not a named-method selector.
-   * maximum_bytes bounds the retained/native pair-provider workspace. */
-  uint32_t nonlocal_correlation_version;
+  const vibeqc_ks_semilocal_component* semilocal_components;
+  uint32_t semilocal_component_count;
+  /** Semilocal range parameter in bohr^-1, or zero when absent. */
+  double semilocal_range_omega;
+  const vibeqc_ks_exchange_term* exchange_terms;
+  uint32_t exchange_term_count;
+  /** 0/1 optional MethodIR NonlocalCorrelation contribution. */
+  uint32_t has_nonlocal_correlation;
   vibeqc_nonlocal_variant nonlocal_variant;
   double nonlocal_b;
   double nonlocal_c;
@@ -644,7 +667,7 @@ typedef struct vibeqc_ks_options {
   uint64_t nonlocal_maximum_bytes;
 } vibeqc_ks_options;
 
-/** Pure capability query. Version 5 accepts the v1/v2/v3/v4 prefixes and v5 suffix. */
+/** Current KS execution-plan ABI schema. No legacy prefix layouts are accepted. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
 typedef struct vibeqc_method_descriptor {
@@ -724,6 +747,24 @@ typedef struct vibeqc_precision_provenance {
    * includes these refinement iterations.
    */
   int32_t refinement_iterations;
+  /** Mixed-stage Fock/operator applications actually executed for this item. */
+  uint64_t mixed_stage_fock_builds;
+  /** Strict-FP64 SCF-stage Fock/operator applications actually executed. */
+  uint64_t strict_stage_fock_builds;
+  /** Additional strict physical-Fock builds after SCF convergence. */
+  uint64_t post_scf_fock_builds;
+  /** Whole-execution provider retries before the returned attempt. */
+  uint64_t execution_retries;
+  /** Certified mixed-capable work census used by per-item admission. */
+  uint64_t mixed_admission_census;
+  /** Exact final physical-residual audits executed for this item. */
+  uint64_t final_residual_audits;
+  /** Final-Fock operator applications skipped by retained-state reuse. */
+  uint64_t skipped_final_fock_builds;
+  /** Nonzero only when the operator-work counters above are fully instrumented.
+   * Numerical failures can leave partially executed stages uncounted; their
+   * counters are not certified by this flag. */
+  uint32_t operator_work_counters_valid;
 } vibeqc_precision_provenance;
 
 typedef struct vibeqc_correlation_diagnostic {
@@ -1124,9 +1165,10 @@ VIBEQC_API vibeqc_status vibeqc_calculation_get_ks_transport_diagnostic(
  * - After a normal execution return (converged or not) the resolved record is
  *   copied into \p out and SUCCESS is returned.
  *
- * The out-parameter must carry the current struct_size/abi_version. A NULL
- * \p out is a cheap availability probe that never writes. Adding this query
- * never changes existing descriptors.
+ * The out-parameter must carry the current abi_version. struct_size may be the
+ * legacy prefix ending at refinement_iterations or the current larger record;
+ * fields beyond the supplied size are never written. A NULL \p out is a cheap
+ * availability probe that never writes.
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
     const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
@@ -1304,9 +1346,14 @@ VIBEQC_API vibeqc_status vibeqc_batch_execute(vibeqc_batch* batch,
 /** Canonical compact-table identities compiled into the D3 production owner. */
 VIBEQC_API const char* vibeqc_d3_table_sha256(void);
 VIBEQC_API const char* vibeqc_d3_radii_sha256(void);
+/** Stable executable-owner identities, separate from method/parameter identity. */
+VIBEQC_API const char* vibeqc_d3_provider_identity(void);
+VIBEQC_API const char* vibeqc_d3_scheduler_identity(void);
+/** Prepared capability identity: d3.bj-two-body, d3.bj-atm, or d3.zero-two-body. */
+VIBEQC_API const char* vibeqc_d3_batch_variant_identity(const vibeqc_d3_batch* batch);
 
 /**
- * Prepare a standalone two-body D3(BJ) ragged fleet.
+ * Prepare a standalone explicitly selected D3 ragged fleet.
  *
  * The owner copies atomic numbers and prepared geometries. maximum_bytes bounds
  * the plan plus worst-case execution staging and, on CUDA, device ownership.

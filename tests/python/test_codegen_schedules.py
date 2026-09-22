@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -12,6 +13,7 @@ from types import SimpleNamespace
 
 import pytest
 from codegen_fixtures import factored_dppp_variables, sample_variables
+from vibeqc_compiler.common.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral import (
     DDDD_SPEC,
     DDPS_SPEC,
@@ -63,7 +65,6 @@ from vibeqc_compiler.integral.autotune import (
     supported_schedule_trials,
     update_manifest_payload,
 )
-from vibeqc_compiler.integral.backend import TargetInfo, TargetScheduleShape
 from vibeqc_compiler.integral.benchmark import (
     emit_dppp_benchmark_cuda,
     emit_shell_class_benchmark_cuda,
@@ -71,6 +72,10 @@ from vibeqc_compiler.integral.benchmark import (
 from vibeqc_compiler.integral.production import (
     _schedule_from_payload,
     load_production_kernel_selections,
+)
+from vibeqc_compiler.integral.tuning.emission import schedule_execution_source_identity
+from vibeqc_compiler.integral.tuning.policy import (
+    deduplicate_execution_equivalent_trials,
 )
 
 TEST_CUDA_TARGET = cuda_target_info("sm_120")
@@ -125,13 +130,37 @@ def test_integral_and_schedule_irs_separate_math_from_cuda_mapping() -> None:
     assert integral.independent_force_centers == (0, 1, 2)
     assert integral.recovered_derivative_centers == (3,)
     candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.COMPONENT_LANES,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-    ]
-    assert candidates[0].block_threads == 192
-    assert [item.component_tile for item in candidates[1:]] == [64, 128]
+    component = next(
+        item for item in candidates if item.kind == ScheduleKind.COMPONENT_LANES
+    )
+    assert component.block_threads == 192
+    assert [
+        item.component_tile
+        for item in candidates
+        if item.kind == ScheduleKind.TILED_COMPONENTS
+    ] == [64, 128]
+    assert any(item.kind == ScheduleKind.PACKED_TASKS for item in candidates)
+    assert any(item.kind == ScheduleKind.SHELL_TASK for item in candidates)
+
+
+def test_default_value_schedule_preserves_component_lane_fallback_order() -> None:
+    """Do not retune high-component value paths while removing name gates."""
+
+    integral = build_integral_ir(DPPP_SPEC, consumers=(KernelConsumer.FOCK,))
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+    first_component = next(
+        candidate
+        for candidate in candidates
+        if candidate.kind == ScheduleKind.COMPONENT_LANES
+    )
+
+    plan = build_fused_shell_plan(
+        DPPP_SPEC,
+        integral=integral,
+        target=TEST_CUDA_TARGET,
+    )
+
+    assert plan.schedule == first_component
 
 
 def test_fock_autotune_reuses_manifest_declared_baseline_schedules() -> None:
@@ -150,18 +179,146 @@ def test_small_shell_schedule_space_includes_packed_and_cooperative_variants() -
     candidates = schedule_candidates(
         build_integral_ir(PSPS_SPEC), target=TEST_CUDA_TARGET
     )
-    assert [item.kind for item in candidates[:5]] == [
-        ScheduleKind.PACKED_TASKS,
-        ScheduleKind.SHELL_TASK,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.SUBGROUP_TASKS,
-        ScheduleKind.COMPONENT_LANES,
-    ]
-    assert candidates[0].tasks_per_warp == 32
-    assert candidates[2].subgroup_lanes == 16
-    assert candidates[2].tasks_per_block == 16
-    assert candidates[3].subgroup_lanes == 8
-    assert candidates[3].tasks_per_block == 32
+    assert candidates[0].kind == ScheduleKind.PACKED_TASKS
+    assert candidates[1].kind == ScheduleKind.SHELL_TASK
+    assert candidates[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
+    subgroup = [item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS]
+    assert [item.tasks_per_warp for item in subgroup] == [2, 4, 8, 16, 32]
+    assert [item.subgroup_lanes for item in subgroup] == [16, 8, 4, 2, 1]
+    assert subgroup[0].block_threads == 256
+    assert subgroup[0].tasks_per_block == 16
+    assert subgroup[-1].tasks_per_block == 256
+
+
+def test_candidate_search_has_no_small_shell_component_cutoffs() -> None:
+    """Legal task/subgroup candidates are not hidden behind 9/64 component gates."""
+
+    integral = build_integral_ir(DPPP_SPEC)
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+
+    assert any(item.kind == ScheduleKind.PACKED_TASKS for item in candidates)
+    assert any(item.kind == ScheduleKind.SHELL_TASK for item in candidates)
+    assert {
+        item.tasks_per_warp
+        for item in candidates
+        if item.kind == ScheduleKind.SUBGROUP_TASKS
+    } == {2, 4, 8, 16, 32}
+
+
+def test_schedule_search_scales_block_and_tiles_from_target_limits() -> None:
+    """Derive search geometry from target resources rather than fixed warp multiples."""
+
+    target = replace(
+        TEST_CUDA_TARGET,
+        maximum_threads_per_block=512,
+        maximum_threads_per_sm=1024,
+        registers_per_sm=32768,
+        maximum_registers_per_thread=255,
+    )
+    integral = build_integral_ir(DPPP_SPEC)
+    candidates = schedule_candidates(integral, target=target)
+
+    subgroup = next(
+        item for item in candidates if item.kind == ScheduleKind.SUBGROUP_TASKS
+    )
+    expected_threads = min(
+        target.maximum_threads_per_block,
+        target.maximum_threads_per_sm,
+        target.registers_per_sm // target.maximum_registers_per_thread,
+    )
+    expected_threads -= expected_threads % target.warp_size
+    assert subgroup.block_threads == expected_threads
+    assert [
+        item.component_tile
+        for item in candidates
+        if item.kind == ScheduleKind.TILED_COMPONENTS
+    ] == [64, 128]
+
+
+def test_two_root_scalar_schedule_is_compiler_owned_for_untuned_class() -> None:
+    """Let a compatible two-root force inherit scalar mapping from IR traits."""
+
+    integral = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+        recurrence="rys2",
+    )
+    candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
+    scalar = [item for item in candidates if item.kind == ScheduleKind.THREAD_TASKS]
+    assert len(scalar) == 1
+    assert scalar[0].block_threads == TEST_CUDA_TARGET.warp_size == 32
+    assert scalar[0].tasks_per_warp == TEST_CUDA_TARGET.warp_size
+    expected_resident_blocks = min(
+        TEST_CUDA_TARGET.maximum_blocks_per_sm,
+        TEST_CUDA_TARGET.maximum_threads_per_sm // TEST_CUDA_TARGET.warp_size,
+        TEST_CUDA_TARGET.registers_per_sm
+        // (TEST_CUDA_TARGET.maximum_registers_per_thread * TEST_CUDA_TARGET.warp_size),
+    )
+    assert scalar[0].minimum_blocks_per_sm == expected_resident_blocks
+    assert not scalar[0].shared_coulomb
+
+    constrained_target = replace(TEST_CUDA_TARGET, maximum_blocks_per_sm=4)
+    constrained = next(
+        item
+        for item in schedule_candidates(integral, target=constrained_target)
+        if item.kind == ScheduleKind.THREAD_TASKS
+    )
+    assert constrained.minimum_blocks_per_sm == 4
+
+    fock_integral = build_integral_ir(PSSS_SPEC, consumers=(KernelConsumer.FOCK,))
+    fock_plan = build_fused_shell_plan(
+        PSSS_SPEC, integral=fock_integral, target=TEST_CUDA_TARGET
+    )
+    assert fock_plan.schedule.kind == ScheduleKind.PACKED_TASKS
+    assert fock_plan.schedule.block_threads == 32
+    assert fock_plan.schedule.tasks_per_warp == 32
+    assert not fock_plan.schedule.shared_coulomb
+
+    plan = build_fused_shell_plan(PSSS_SPEC, integral=integral, target=TEST_CUDA_TARGET)
+    assert plan.schedule == scalar[0]
+
+    trials = supported_schedule_trials(
+        PSSS_SPEC, target=TEST_CUDA_TARGET, integral=integral
+    )
+    assert any(trial.schedule == scalar[0] for trial in trials)
+
+    generic = build_integral_ir(
+        PSSS_SPEC,
+        consumers=(KernelConsumer.FORCE,),
+        recurrence="subset_wick",
+    )
+    assert all(
+        candidate.kind != ScheduleKind.THREAD_TASKS
+        for candidate in schedule_candidates(generic, target=TEST_CUDA_TARGET)
+    )
+
+
+@pytest.mark.parametrize(
+    "sm_threads,block_limit,expected",
+    [(32, 16, 1), (64, 16, 2), (128, 16, 4), (1536, 4, 4), (1536, 24, 8)],
+)
+def test_scalar_two_root_launch_bounds_fit_target_resources(
+    sm_threads: int, block_limit: int, expected: int
+) -> None:
+    """Launch bounds must fit the target block, thread, and register limits."""
+    target = replace(
+        TEST_CUDA_TARGET,
+        maximum_threads_per_block=min(
+            TEST_CUDA_TARGET.maximum_threads_per_block, sm_threads
+        ),
+        maximum_threads_per_sm=sm_threads,
+        maximum_blocks_per_sm=block_limit,
+    )
+    integral = build_integral_ir(
+        PSSS_SPEC, consumers=(KernelConsumer.FORCE,), recurrence="rys2"
+    )
+    scalar = next(
+        candidate
+        for candidate in schedule_candidates(integral, target)
+        if candidate.kind == ScheduleKind.THREAD_TASKS
+    )
+    assert scalar.minimum_blocks_per_sm == expected
+    assert scalar.minimum_blocks_per_sm * scalar.block_threads <= sm_threads
 
 
 def test_subgroup_schedule_advances_independent_ppps_tasks_per_block() -> None:
@@ -289,20 +446,29 @@ def test_ppps_scalar_thread_schedule_emits_component_scoped_dag() -> None:
 def test_packed_schedule_models_low_order_fock_workers(spec: typing.Any) -> None:
     """Keep the accepted Fock topology while force moves to scalar Rys2."""
 
+    manifest = (
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_shell_classes.json"
+    )
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    rows = payload["architectures"]["sm_120"]["kernels"]
+    row = next(item for item in rows if item["shell_class"] == spec.name)
+    assert "schedule" not in row
+    assert "fock_schedule" not in row
+
     selection = next(
         selection
-        for selection in load_production_kernel_selections(
-            REPOSITORY_ROOT
-            / "python"
-            / "vibeqc_compiler"
-            / "integral"
-            / "production_shell_classes.json"
-        )
+        for selection in load_production_kernel_selections(manifest)
         if selection.spec == spec
     )
     schedule = selection.fock_schedule
     assert selection.recurrence == "rys2"
     assert selection.schedule.kind == ScheduleKind.THREAD_TASKS
+    assert selection.schedule.block_threads == 32
+    assert selection.schedule.minimum_blocks_per_sm == 8
     assert schedule is not None
     assert schedule.kind == ScheduleKind.PACKED_TASKS
     assert schedule.block_threads == 32
@@ -895,6 +1061,84 @@ def test_autotune_deduplicates_batch_schedule_family_filters() -> None:
     assert _requested_schedule_kinds(SimpleNamespace()) == ()
 
 
+def test_execution_source_dedup_removes_only_byte_identical_cuda() -> None:
+    trials = supported_schedule_trials(PSSS_SPEC, target=TEST_CUDA_TARGET)[:16]
+    identities = tuple(schedule_execution_source_identity(trial) for trial in trials)
+
+    topological = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+        and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
+    )
+    pressure = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+        and trial.schedule.algebra_fusion == AlgebraFusion.SEPARATE
+        and trial.schedule.algebra_form == AlgebraForm.BINARY
+    )
+    identity_by_key = dict(
+        zip((trial.key for trial in trials), identities, strict=True)
+    )
+    assert identity_by_key[topological.key] == identity_by_key[pressure.key]
+
+    changed_topological = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.TOPOLOGICAL
+        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.CANONICAL_NARY
+    )
+    changed_pressure = next(
+        trial
+        for trial in trials
+        if trial.schedule.algebra_placement == AlgebraPlacement.MATERIALIZED_CSE
+        and trial.schedule.algebra_ordering == AlgebraOrdering.PRESSURE_AWARE
+        and trial.schedule.algebra_fusion == AlgebraFusion.FMA
+        and trial.schedule.algebra_form == AlgebraForm.CANONICAL_NARY
+    )
+    assert (
+        identity_by_key[changed_topological.key]
+        != identity_by_key[changed_pressure.key]
+    )
+
+    kept, deduplicated = deduplicate_execution_equivalent_trials(
+        trials,
+        schedule_execution_source_identity,
+        protected_keys=frozenset((topological.key,)),
+    )
+    kept_keys = {trial.key for trial in kept}
+    assert topological.key in kept_keys
+    assert pressure.key not in kept_keys
+    assert deduplicated
+    row = next(record for record in deduplicated if record["trial_key"] == pressure.key)
+    assert row["equivalent_to"] == topological.key
+    assert row["execution_source_sha256"] == identity_by_key[topological.key]
+    assert row["reason"] == (
+        "algebra-ordering peer emits byte-identical unsuffixed CUDA"
+    )
+    assert len(kept) + len(deduplicated) == len(trials)
+
+    quick_calls: list[str] = []
+
+    def quick_identity(trial: typing.Any) -> str:
+        quick_calls.append(trial.key)
+        return schedule_execution_source_identity(trial)
+
+    quick = trials[:4]
+    quick_kept, quick_deduplicated = deduplicate_execution_equivalent_trials(
+        quick, quick_identity
+    )
+    assert quick_kept == quick
+    assert quick_deduplicated == ()
+    assert quick_calls == []
+
+
 @pytest.mark.parametrize("name", ("dddp", "dddd"))
 def test_high_order_rys5_tuning_exposes_pressure_rematerialization(
     name: str,
@@ -1018,3 +1262,19 @@ def test_algebra_placement_schedule_payload_is_backward_compatible() -> None:
             build_fused_shell_plan(DPDS_SPEC, target=TEST_CUDA_TARGET).schedule,
             algebra_form=AlgebraForm.CANONICAL_NARY,
         )
+
+
+@pytest.mark.parametrize("block_limit", [32, 64])
+@pytest.mark.parametrize(
+    "name,recurrence", [("ppps", "rys3"), ("dppp", "rys4"), ("dddd", "rys5")]
+)
+def test_high_root_search_omits_unimplemented_small_subgroups(
+    block_limit: int, name: str, recurrence: str
+) -> None:
+    """Resource legality cannot substitute for a supported lowering geometry."""
+    target = replace(TEST_CUDA_TARGET, maximum_threads_per_block=block_limit)
+    integral = build_integral_ir(FUSED_SHELL_SPEC_BY_NAME[name], recurrence=recurrence)
+    assert all(
+        candidate.kind != ScheduleKind.SUBGROUP_TASKS
+        for candidate in schedule_candidates(integral, target)
+    )

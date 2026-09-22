@@ -715,9 +715,10 @@ ownership/publication checks pass; 48 optional compiler probes are skipped.
 
 ## Retained direct kernels and C++ host control
 
-The remaining direct arithmetic now lives in 24 bounded `direct_native_*.cuh`
-headers: Cartesian/Hermite/Coulomb recurrences, sparse pair families, psss/psps/
-ppss/dsss gradients, order-specific gradients and contractions. Their largest
+The remaining direct arithmetic now lives in 21 bounded `direct_native_*.cuh`
+headers: Cartesian/Hermite/Coulomb recurrences, sparse pair families, the psss
+generated-math adapter, and order-specific gradients/contractions. PSPS/PPSS/DSSS
+weighted-force mathematics is compiler-owned. Their largest
 header is 438 lines. Eleven consumer helper headers separate contraction,
 density and symmetry handling from nine CUDA launch owners: cached tensors,
 Schwarz bounds, packed Fock, angular Fock, reference force, bounded dddd,
@@ -943,26 +944,27 @@ as ordinary C++ against the required XsyevBatched declarations.
 
 ### Pending production acceptance
 
-The ownership split above is implemented, but #240 remains open until the exact
-final PR tree is measured in a suitable CUDA 12.9+ production environment.
-Generic green CI, older-SHA measurements and development-only compile samples
-must not be substituted for these gates. When that environment is available,
-use an empty `cuda-release-sm120` build tree with the production toolchain and
-record the exact command/result receipts against the final SHA.
+The ownership split above is implemented, but #240 remains open. The retained
+[production audit](../benchmarks/results/acceptance-closeout-20260922/README.md)
+qualifies build and dependency behavior at
+`0d89ab6fb6219d9af6641d5cfafe0b43f8387206`; its runtime checks expose failures.
+Later native/build changes require reconciliation before final acceptance.
+Generic green CI and development-only compile samples do not replace these gates.
 
 | Acceptance item | Current status |
 | --- | --- |
-| Clean production build | Pending exact-final-SHA measurement |
-| Shared library size | Pending exact-final-SHA measurement |
-| Direct-native device link | Pending exact-final-SHA measurement |
-| Representative incremental Graph-owner edit | Pending exact-final-SHA measurement |
-| Representative incremental bucket-owner edit | Pending exact-final-SHA measurement |
-| Representative incremental driver edit | Pending exact-final-SHA measurement |
-| Native CTest/runtime gate | Pending exact-final-SHA measurement |
-| Python endpoint/runtime gate | Pending exact-final-SHA measurement |
-| Weighted-integral/reference gate | Pending exact-final-SHA measurement |
+| Clean production build | Pinned Release/CUDA 12.9.86/sm_120 build passed; fast compile and cache OFF |
+| Shared library size | 384,660,784 bytes; exact hash in the audit |
+| Direct-native device link | Passed; complete build records two device links |
+| Representative incremental Graph-owner edit | Content-neutral touch: 3.13681 s, zero CUDA compilations/device links |
+| Representative incremental bucket-owner edit | Content-neutral touch: 3.90727 s, zero CUDA compilations/device links |
+| Representative incremental driver edit | Content-neutral touch: 8.73854 s, zero CUDA compilations/device links |
+| Native CTest/runtime gate | Failed: original suite 81/86 passed; test-contract repairs and remaining numerical failures recorded separately |
+| Python endpoint/runtime gate | Failed: 247/251 HF/DF/MP2 checks passed after explicit MP2 energy selection; two stale assertions and two DF-UHF failures |
+| Weighted-integral/reference gate | Passed: 3349 records / 141 tiles / four runs |
 
-After those measurements exist, replace the pending statuses with the exact
-toolchain/host identity, commands and results, then promote this section to a
-production-acceptance record. Until then, neither this document nor the PR
-claims completion of #240.
+Incremental measurements also include generated CUDA-driver Implib glue and
+relink work; the library hash remains unchanged. Complete commands, object sets,
+test outcomes and subsequent focused repairs are retained in the audit. Final
+closure requires resolving the runtime blockers, including #1041, and qualifying
+one stable final source without relaxing numerical gates.

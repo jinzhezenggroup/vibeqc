@@ -6,6 +6,7 @@ import pytest
 from vibeqc_compiler.common.program import PlanCall, ProgramBuffer, ProgramIR
 from vibeqc_compiler.common.program_storage import (
     BufferAliasBinding,
+    CallDonationBinding,
     CallEffectBinding,
     ProgramStoragePlan,
 )
@@ -48,6 +49,84 @@ def test_view_binding_shares_owner_capacity() -> None:
     assert owner.members == ("a", "a_view")
     assert owner.first_phase == 1 and owner.last_phase == 3
     assert plan.diagnostics()["elided_alias_allocations"] == ["a_view"]
+
+
+def test_program_donation_reuses_same_call_slot_and_reduces_peak() -> None:
+    program = ProgramIR(
+        "donation-overlay",
+        (
+            ProgramBuffer("x", 64),
+            ProgramBuffer("a", 64),
+            ProgramBuffer("b", 64),
+            ProgramBuffer("out", 8),
+        ),
+        ("x",),
+        (
+            PlanCall("make_a", "provider.a", "v1", ("x",), ("a",)),
+            PlanCall("update", "provider.update", "v1", ("a",), ("b",)),
+            PlanCall("finish", "provider.out", "v1", ("b",), ("out",)),
+        ),
+        ("out",),
+    )
+    baseline = ProgramStoragePlan(program).storage_analysis()
+    plan = ProgramStoragePlan(
+        program,
+        donations=(CallDonationBinding("update", "a", "b"),),
+    )
+    donated = plan.storage_analysis()
+
+    assert donated.donations == ((2, "a", "b"),)
+    assert donated.slot_for("a") == donated.slot_for("b")
+    assert baseline.peak_by_space["pageable"] == 192
+    assert donated.peak_by_space["pageable"] == 136
+    assert ProgramStoragePlan.from_payload(program, plan.to_payload()) == plan
+    assert plan.identity != ProgramStoragePlan(program).identity
+
+
+def test_program_donation_fails_closed_on_opaque_or_invalid_edges() -> None:
+    program = ProgramIR(
+        "donation-fail-closed",
+        (
+            ProgramBuffer("x", 64),
+            ProgramBuffer("a", 64),
+            ProgramBuffer("b", 64),
+        ),
+        ("x",),
+        (
+            PlanCall("make_a", "provider.a", "v1", ("x",), ("a",)),
+            PlanCall("update", "provider.update", "v1", ("a",), ("b",)),
+        ),
+        ("b",),
+    )
+    donation = CallDonationBinding("update", "a", "b")
+    with pytest.raises(ValueError, match="explicit memory effects"):
+        ProgramStoragePlan(
+            program,
+            effects=(CallEffectBinding("update", MemoryEffect.OPAQUE),),
+            donations=(donation,),
+        )
+    with pytest.raises(ValueError, match="call read to a call write"):
+        ProgramStoragePlan(
+            program,
+            donations=(CallDonationBinding("update", "x", "b"),),
+        )
+    with pytest.raises(ValueError, match="unknown ProgramIR call"):
+        ProgramStoragePlan(
+            program,
+            donations=(CallDonationBinding("missing", "a", "b"),),
+        )
+
+
+def test_schema_v1_replay_remains_supported_without_donations() -> None:
+    program = example()
+    payload = ProgramStoragePlan(program).to_payload()
+    payload["schema_version"] = 1
+    payload.pop("donations")
+    replayed = ProgramStoragePlan.from_payload(program, payload)
+
+    assert replayed.schema_version == 1
+    assert replayed.donations == ()
+    assert replayed.to_payload() == payload
 
 
 def test_opaque_effect_retains_touched_owner() -> None:
@@ -143,3 +222,12 @@ def test_untrusted_replay_rejects_unknown_fields_and_kinds() -> None:
     payload["aliases"] = [{"buffer": "x", "alias": "invented", "alias_of": None}]
     with pytest.raises(ValueError, match="kind"):
         ProgramStoragePlan.from_payload(program, payload)
+
+
+def test_legacy_positional_schema_argument_is_not_a_donation() -> None:
+    program = example()
+    plan = ProgramStoragePlan(program, (), (), 1)
+    assert plan.schema_version == 1
+    assert plan.donations == ()
+    assert "donations" not in plan.to_payload()
+    assert ProgramStoragePlan.from_payload(program, plan.to_payload()) == plan

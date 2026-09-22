@@ -42,6 +42,35 @@ def _energy(pair_program: typing.Any, coordinates: typing.Any) -> typing.Any:
     )
 
 
+def test_inplace_donation_reduces_real_pairir_peak_storage() -> None:
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+
+    atom_count = 64
+    geometry = GeometryIR(
+        (1,) * atom_count,
+        parameter_identity="donation-storage-evidence-v1",
+    )
+    compiled = inverse_power_program(
+        geometry,
+        PairTopology.complete(atom_count),
+        1,
+        exponent=-2,
+    )
+    target = cuda_target_info("sm_80")
+    baseline = plan_cuda(compiled.program, target)
+    donated = plan_cuda(
+        compiled.program,
+        target,
+        schedule=TensorSchedule(inplace_donation=True),
+    )
+
+    assert sum(step.donated_from is not None for step in donated.steps) >= 1
+    assert donated.arena_bytes < baseline.arena_bytes
+    assert baseline.arena_bytes - donated.arena_bytes == 48_384
+    assert donated.storage_analysis().peak_by_space["device"] <= donated.arena_bytes
+
+
 def test_pair_topology_is_canonical_explicit_and_deterministic() -> None:
     cutoff = PairCutoff(8.0, 6.0)
     topology = PairTopology.complete(4, cutoff=cutoff)

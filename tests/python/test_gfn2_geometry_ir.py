@@ -591,8 +591,8 @@ def test_gfn2_ragged_geometry_primal_and_vjps_execute_on_cuda(
     tmp_path: Path,
 ) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
@@ -641,8 +641,8 @@ def test_gfn2_ragged_geometry_primal_and_vjps_execute_on_cuda(
 )
 def test_gfn2_geometry_primal_and_vjps_execute_on_cuda(tmp_path: Path) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 

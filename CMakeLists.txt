@@ -47,7 +47,7 @@ set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
     "CUDA execution provider identity: nvidia or cumetal")
 set_property(CACHE VIBEQC_CUDA_PROVIDER PROPERTY STRINGS nvidia cumetal)
 set(VIBEQC_AOT_PROFILE "auto" CACHE STRING
-    "AOT profile for every target: auto, portable, sm_XX, or a named profile")
+    "AOT profile for every target: strict auto, explicit portable, sm_XX, or a named profile")
 set(VIBEQC_AOT_PROFILES "" CACHE STRING
     "Optional explicit list of AOT profiles, independent of architecture order")
 set(VIBEQC_AOT_SHARDS "8" CACHE STRING

@@ -4,9 +4,14 @@ VibeQC uses the compiler-owned generated CUDA consumer for first nuclear
 derivatives of overlap S, kinetic T and nuclear attraction V as the production
 default. It accepts arbitrary external weights, and the Direct/DF RHF/UHF
 adapters use that same contract. The qualified default schedule is
-`nucleus_cooperative`; `shell_warp` remains an explicit control. The
+`nucleus_cooperative`; `shell_warp` remains an explicit control. Its cooperative
+lane ownership is projected into the compiler-wide schedule contract and bound
+to the shared workload/profile vocabulary rather than a one-electron-local tuning
+stack. The
 [nucleus-cooperative promotion decision](../.agents/notes/implemented/performance/2026-09-20-generated-nucleus-cooperative-one-electron-default.md)
-records the matched endpoint and holdout evidence for this default.
+records the matched endpoint and holdout evidence; the
+[compiler-absorption decision](../.agents/notes/implemented/performance/2026-09-22-one-electron-derivative-schedule-contract.md)
+records the shared scheduling/profile boundary.
 
 ```bash
 # Explicit retained native exception for comparison or a documented workload.
@@ -20,8 +25,14 @@ VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial your-command
 ```
 
 The retained `reference` route uses the cooperative native force consumer (or
-the previous DF derivative-tensor route where applicable). The old scalar
-native force family and `VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
+the previous DF derivative-tensor route where applicable). It is an explicit
+oracle/performance control, not an automatic production fallback: only
+`VIBEQC_ONE_ELECTRON_DERIVATIVES=reference`, `native`, or `0` selects it. The
+legacy `tensor` control remains an explicit non-generated DF comparison route
+(and therefore the native control for Direct HF). Unknown or misspelled values
+stay on the compiler-owned generated path instead of silently changing
+scientific ownership. The old scalar native force family and
+`VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
 `thread` owns triangular AO pairs by thread; `shell_warp` assigns a shell
 pair to a warp whose lanes own AO components; `nucleus_cooperative` assigns an
 AO pair to a warp whose lanes own one nuclear center per tile and share the

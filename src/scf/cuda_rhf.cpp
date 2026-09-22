@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "integrals/ecp_cuda.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
@@ -580,7 +581,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const bool bounded_direct_aot_only_diagnostic = bounded_direct_aot_only_diagnostic_requested();
   const bool bounded_direct_fock_only_diagnostic = bounded_direct_fock_only_diagnostic_requested();
   const bool bounded_fock_class_timing = bounded_fock_class_timing_requested();
-  const bool direct_tile_validation = direct_tile_validation_requested();
+  const auto direct_tile_validation_policy = cuda_policy::resolve_direct_tile_validation_policy();
+  const bool direct_tile_validation = direct_tile_validation_policy.requested;
   // Read this per execution so one prepared topology can compare the new
   // route with the complete ordinary ppps queue in the same binary.
   const bool resident_ppps_bra = resident_ppps_bra_requested();
@@ -612,7 +614,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       direct_task_layout = {};
       total_shell_quartet_tiles = 0;
     } else if (direct_task_layout.exact_tile_count >
-               direct_schedule.generated_task_arena_maximum_bytes / sizeof(GeneratedShellTask)) {
+               direct_schedule.fixed_topology.arena_maximum_bytes / sizeof(GeneratedShellTask)) {
       // The uint32 grid limit is much larger than a practical descriptor
       // arena on a 32 GiB device.  Route large-but-grid-addressable buckets
       // through bounded streaming before make_layout() reserves the complete
@@ -749,9 +751,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       fill_global_failure(outputs, VIBEQC_STATUS_OUT_OF_MEMORY);
       return outputs;
     }
-    bounded_generated_task_capacity = std::min(bounded_generated_task_capacity,
-                                               cuda_policy::direct_jk_generated_task_capacity_limit(
-                                                   direct_schedule, sizeof(GeneratedShellTask)));
+    bounded_generated_task_capacity =
+        std::min(bounded_generated_task_capacity,
+                 cuda_policy::direct_jk_bounded_streaming_task_capacity_limit(
+                     direct_schedule, sizeof(GeneratedShellTask)));
   }
   if (requested_quartet_direct && first_setup && !requested_bounded_direct_streaming) {
     // The shared generated-task arena serves both exact Fock and force
@@ -1055,7 +1058,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   plan.resident_warm_positions.clear();
   plan.resident_warm_density.clear();
   plan.resident_previous_energy.clear();
-  const bool use_cublas = plan.cublas_enabled && nbf >= kCublasMatrixProductAoThreshold;
+  const cuda_policy::SmallHfWorkload small_hf_workload{nbf, spin_batch_size, batch_size,
+                                                       spin_batch_size};
+  const cuda_policy::SmallHfProfitabilityPolicy small_hf_profitability =
+      cuda_policy::resolve_small_hf_profitability(direct_target, small_hf_workload);
+  const bool use_cublas = plan.cublas_enabled && small_hf_profitability.use_cublas;
   std::size_t reference_base_bytes = 0;
   const std::size_t reference_provider_allowance =
       (use_cublas ? 96ULL << 20 : 0) + (use_cusolver ? 96ULL << 20 : 0);
@@ -2144,16 +2151,35 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     }
     return cudaSuccess;
   };
+  const auto launch_bounded_generic_fock = [&](bool is_unrestricted, const double* quartet_density,
+                                               double* quartet_fock) -> cudaError_t {
+    if (host_uncovered_fock_shell_class_mask == 0U || bounded_direct_aot_only_diagnostic) {
+      return cudaSuccess;
+    }
+    // Generated/native pages own every class in host_generated_fock_shell_class_mask.
+    // Visit only the remaining high-l registry gaps through the hierarchical
+    // pair-block dispatcher. This preserves bounded memory without resurrecting
+    // a topology-sized descriptor arena or double-counting qualified classes.
+    cudaError_t error = cudaMemsetAsync(
+        bounded_direct_generated_overflow, 0,
+        detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
+    if (error == cudaSuccess) {
+      error =
+          cudaMemsetAsync(bounded_direct_cursor, 0, sizeof(unsigned long long), resources.stream_);
+    }
+    if (error != cudaSuccess) return error;
+    launch_bounded_direct_fock_shell_quartet_kernel(
+        is_unrestricted, plan.persistent_quartet_worker_blocks, kBoundedDirectThreads, 0,
+        resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
+        shell_pair_density_bounds, bounded_direct_shell_pair_order,
+        bounded_direct_shell_pair_block_bounds, bounded_direct_system_density_bounds, nullptr,
+        host_generated_fock_shell_class_mask, bounded_direct_generated_overflow, schwarz_bounds,
+        quartet_density, active, quartet_fock, bounded_direct_cursor);
+    return cudaPeekAtLastError();
+  };
   const auto launch_bounded_generated_fock =
       [&](bool is_unrestricted, const double* quartet_density, double* quartet_fock,
           bool allow_mixed_precision) -> cudaError_t {
-    // The bounded Fock path follows the same hard routing invariant as force:
-    // every present class must have a generated or native exact consumer.
-    // Missing classes are unsupported instead of silently invoking the
-    // whole-topology generic evaluator.
-    if (host_uncovered_fock_shell_class_mask != 0U && !bounded_direct_aot_only_diagnostic) {
-      return cudaErrorNotSupported;
-    }
     if (bounded_direct_fock_only_diagnostic) {
       // The fixed-density measurement uses one uniform streaming schedule.
       // Mark every generated class for that consumer so an all-FP64 page does
@@ -2162,8 +2188,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           bounded_direct_generated_overflow, 1,
           detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
       if (diagnostic_error != cudaSuccess) return diagnostic_error;
-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                           allow_mixed_precision);
+      diagnostic_error = launch_bounded_streaming_fock(is_unrestricted, quartet_density,
+                                                       quartet_fock, allow_mixed_precision);
+      return diagnostic_error == cudaSuccess
+                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+                 : diagnostic_error;
     }
     if (!bounded_direct_count_diagnostic) {
       // Normal bounded execution uses disjoint exact pages for every
@@ -2177,8 +2206,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       cudaError_t paged_error =
           launch_bounded_paged_generated_fock(is_unrestricted, quartet_density, quartet_fock);
       if (paged_error != cudaSuccess) return paged_error;
-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                           allow_mixed_precision);
+      cudaError_t streaming_error = launch_bounded_streaming_fock(
+          is_unrestricted, quartet_density, quartet_fock, allow_mixed_precision);
+      return streaming_error == cudaSuccess
+                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+                 : streaming_error;
     }
     cudaError_t error = cudaMemsetAsync(
         bounded_direct_generated_task_counts, 0,
@@ -2279,8 +2311,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     error = consume_generated_wave(bounded_direct_generated_retry_task_offsets);
     if (error != cudaSuccess) return error;
 
-    return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
-                                         allow_mixed_precision);
+    error = launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
+                                          allow_mixed_precision);
+    return error == cudaSuccess
+               ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
+               : error;
   };
   // The exact provider is resolved/validated by run_hf_cuda_bucket_cached.
   // Dense, packed, generated and streamed paths below are execution schedules
@@ -3040,6 +3075,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       }
     }
   }
+  if (cuda_error == cudaSuccess && direct_tile_validation) {
+    // This mode validates descriptor structure only.  The Fock consumer was
+    // intentionally skipped above, so returning a numerical SCF endpoint here
+    // would turn a structural diagnostic into misleading scientific evidence.
+    std::fprintf(stderr,
+                 "direct-tile-validation mode=structural-only numerical-endpoint=disabled\n");
+    std::fflush(stderr);
+    fill_global_failure(outputs, direct_tile_validation_policy.endpoint_status);
+    return outputs;
+  }
   if (cuda_error == cudaSuccess && bounded_direct_count_diagnostic && bounded_direct_streaming) {
     cuda_error = cudaStreamSynchronize(resources.stream_);
     std::array<std::uint32_t, detail::kDirectQuartetShellClassCount> host_counts{};
@@ -3438,11 +3483,19 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // it to count every tested determinant, including final-state rejections.
     cuda_error =
         cudaMemsetAsync(final_fock_rebuild_count, 0, sizeof(std::uint32_t), resources.stream_);
+    // Device warm_mask is dead after initial-state admission. Reuse those
+    // per-item bytes as exact audit participation flags without growing the
+    // arena solely for diagnostics.
+    if (cuda_error == cudaSuccess) {
+      cuda_error =
+          cudaMemsetAsync(warm_mask, 0, batch_size * sizeof(std::uint8_t), resources.stream_);
+    }
     if (cuda_error == cudaSuccess) {
       launch_validate_force_residual_kernel(
           resources.stream_, static_cast<std::int32_t>(batch_size),
           static_cast<std::int32_t>(spin_count), static_cast<std::int32_t>(nbf),
-          options.density_tolerance, residual, active, converged, final_fock_rebuild_count);
+          options.density_tolerance, residual, active, converged, final_fock_rebuild_count,
+          warm_mask);
       cuda_error = cudaGetLastError();
     }
     if (cuda_error != cudaSuccess) {
@@ -4161,7 +4214,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       kBoundedDirectThreads, 0, resources.stream_, device_batch, bounded_stream_topology,         \
       shell_class, high_pair_class, low_pair_class, options.screening_tolerance, page_begin,      \
       page_capacity, page_range.bra_begin, page_range.bra_end, high_pair_class == low_pair_class, \
-      schwarz_bounds, quartet_density, forces, bounded_direct_generated_task_heads + shell_class)
+      schwarz_bounds, quartet_density, forces, bounded_direct_generated_task_heads + shell_class, \
+      shell_class_profiling ? shell_class_profile : nullptr)
         if (purpose == DirectScreeningPurpose::Force) {
           if (is_unrestricted) {
             VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(true, DirectScreeningPurpose::Force);
@@ -4398,6 +4452,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   std::vector<std::uint8_t> host_converged(batch_size);
   std::vector<std::uint8_t> host_failed(batch_size);
   std::vector<std::uint32_t> host_iterations(batch_size);
+  std::vector<std::uint8_t> host_final_fock_reuse_mask(batch_size, 0U);
+  std::vector<std::uint8_t> host_final_audit_mask(batch_size, 0U);
   std::uint32_t host_inactive_eigensolver_profile_count = 0U;
   std::vector<DeviceInactiveEigensolverProfileEntry> host_inactive_eigensolver_profile(
       inactive_eigensolver_profiling ? options.max_iterations : 0U);
@@ -4422,6 +4478,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       {host_converged.data(), converged, batch_size * sizeof(std::uint8_t)},
       {host_failed.data(), failed, batch_size * sizeof(std::uint8_t)},
       {host_iterations.data(), iterations, batch_size * sizeof(std::uint32_t)},
+      {host_final_fock_reuse_mask.data(), final_fock_reuse_mask,
+       reuse_converged_fock && !scf_force_ready_state ? batch_size * sizeof(std::uint8_t) : 0U},
+      {host_final_audit_mask.data(), warm_mask,
+       force_finalization_fallback ? batch_size * sizeof(std::uint8_t) : 0U},
   };
   for (const Download& download : downloads) {
     cuda_error = cudaMemcpyAsync(download.host, download.device, download.bytes,
@@ -4619,6 +4679,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.converged = host_converged[system] != 0 && host_failed[system] == 0;
     result.initial_density_used = host.warm_mask[system] != 0;
     result.precision.requested_mode = requested_precision_mode;
+    // A numerical failure can occur after an operator application but before
+    // the iteration/final-audit counters advance. Do not certify that partial
+    // history as complete. Ordinary exhaustion/audit rejection remains counted.
+    result.precision.operator_work_counters_valid = host_failed[system] == 0 ? 1U : 0U;
     result.precision.effective_bits = precision_item_mixed ? 32U : 64U;
     result.precision.mixed_precision_fock_threshold =
         precision_item_mixed ? host_mixed_item_threshold[system] : 0.0;
@@ -4626,6 +4690,25 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     result.precision.mixed_precision_reserved_error =
         precision_item_mixed ? requested_precision_policy.item_budget_error : 0.0;
     result.precision.refinement_iterations = precision_item_mixed ? host_iterations[system] : 0U;
+    result.precision.mixed_stage_fock_builds =
+        precision_item_mixed ? host_mixed_iterations[system] : 0U;
+    result.precision.strict_stage_fock_builds = host_iterations[system];
+    const bool audited_item = host_final_audit_mask[system] != 0U;
+    const bool completed_item = host_converged[system] != 0 && host_failed[system] == 0;
+    const bool entered_finalization = completed_item || audited_item;
+    if (!scf_force_ready_state && entered_finalization) {
+      result.precision.post_scf_fock_builds =
+          reuse_converged_fock ? (host_final_fock_reuse_mask[system] == 0U ? 1U : 0U) : 1U;
+    }
+    if (audited_item) ++result.precision.post_scf_fock_builds;
+    result.precision.mixed_admission_census =
+        precision_item_mixed ? host_mixed_item_census[system] : 0U;
+    result.precision.final_residual_audits = audited_item ? 1U : 0U;
+    if (entered_finalization &&
+        (scf_force_ready_state ||
+         (reuse_converged_fock && host_final_fock_reuse_mask[system] != 0U))) {
+      result.precision.skipped_final_fock_builds = 1U;
+    }
     const std::size_t density_stride = spin_count * matrix_size;
     result.density.assign(host_density.begin() + system * density_stride,
                           host_density.begin() + (system + 1) * density_stride);

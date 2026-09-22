@@ -20,6 +20,7 @@ enum class Gfn2RepulsionDeviceError : std::uint32_t {
   kInvalidAtomicNumberOrParameter = 2u,
   kNonfinitePosition = 3u,
   kCoincidentAtoms = 4u,
+  kNonfinitePairArithmetic = 5u,
 };
 
 /*

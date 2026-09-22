@@ -1,12 +1,16 @@
 """RHF density-fitting source weights generated through StationaryProblem (#358)."""
 
+import subprocess
+import sys
 import typing
 from fractions import Fraction
+from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.method import DensityFittingRHFResponsePlan
 from vibeqc_compiler.method.df_hf_response_contract import CONTRACT_IDENTITY
 from vibeqc_compiler.method.df_hf_response_cuda import (
+    df_rhf_charge_gemm_kind,
     emit_df_hf_response_contract,
     emit_df_hf_response_cuda,
 )
@@ -165,6 +169,11 @@ def test_production_native_lowering_is_bound_to_stationary_plan() -> None:
     assert CONTRACT_IDENTITY in plan.problem.model_identity
     assert CONTRACT_IDENTITY in contract and CONTRACT_IDENTITY in cuda
     assert "df_rhf_exchange_coefficient =\n    0.25;" in contract
+    assert df_rhf_charge_gemm_kind() == "direct-NT"
+    assert "charge-contraction: tij,pij->tp" in cuda
+    assert "tensorir-charge-lowering: direct-NT" in cuda
+    assert "df_rhf_charge_contract" in cuda
+    assert "cublasDgemm" in cuda
     for kernel in (
         "coulomb_weights_kernel",
         "coulomb_metric_kernel",
@@ -173,3 +182,27 @@ def test_production_native_lowering_is_bound_to_stationary_plan() -> None:
         "fitted_exchange_weights_kernel",
     ):
         assert kernel in cuda
+
+
+def test_production_lowering_codegen_import_is_dependency_light(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[2]
+    cuda = tmp_path / "generated_df_hf_response.cuh"
+    contract = tmp_path / "generated_df_hf_response_contract.hpp"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(root / "tools" / "generate_df_hf_response.py"),
+            "--cuda-output",
+            str(cuda),
+            "--contract-output",
+            str(contract),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "tensorir-charge-lowering: direct-NT" in cuda.read_text()
+    assert "df_rhf_exchange_coefficient" in contract.read_text()

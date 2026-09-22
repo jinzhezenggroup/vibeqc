@@ -194,6 +194,7 @@ def build_catalog(
     d3_path, d3_source = _verified_source(manifest, "simple_dftd3")
     d4_path, d4_source = _verified_source(manifest, "dftd4")
     d3_upstream = _parse_variant(d3_path, "d3.bj")
+    d3_zero_upstream = _parse_variant(d3_path, "d3.zero")
     d4_upstream = _parse_variant(d4_path, "d4.bj-eeq-atm")
 
     d3_records: list[dict[str, Any]] = []
@@ -217,6 +218,40 @@ def build_catalog(
                     d3_source,
                     key,
                     "d3.bj",
+                    doi=source.get("doi"),
+                    projection="two-body-s9=0",
+                ),
+            }
+        )
+
+    d3_zero_records: list[dict[str, Any]] = []
+    for key in sorted(d3_zero_upstream):
+        source = d3_zero_upstream[key]
+        # Some upstream functionals declare the zero-damping variant without a
+        # complete parameter tuple. Such records are not executable capability.
+        if any(
+            source.get(field) is None for field in ("s6", "s8", "rs6", "rs8", "alp")
+        ):
+            continue
+        parameters = {
+            "s6": _finite(source.get("s6"), f"d3-zero/{key}.s6"),
+            "s8": _finite(source.get("s8"), f"d3-zero/{key}.s8"),
+            "rs6": _finite(source.get("rs6"), f"d3-zero/{key}.rs6"),
+            "rs8": _finite(source.get("rs8"), f"d3-zero/{key}.rs8"),
+            "alp": _finite(source.get("alp"), f"d3-zero/{key}.alp"),
+            # Capability is the separately qualified two-body projection. Do
+            # not infer ATM merely because upstream defaults contain s9.
+            "s9": 0.0,
+        }
+        d3_zero_records.append(
+            {
+                "name": f"{_display_name(key)}-D3(0)",
+                "cpp_symbol": _cpp_symbol(key, "D3Zero"),
+                "parameters": parameters,
+                "provenance": _provenance(
+                    d3_source,
+                    key,
+                    "d3.zero",
                     doi=source.get("doi"),
                     projection="two-body-s9=0",
                 ),
@@ -274,9 +309,10 @@ def build_catalog(
         "d3_bj": d3_records,
         "d4": d4_records,
         "gcp": overrides["gcp"],
+        "d3_zero": d3_zero_records,
     }
     symbols: set[str] = set()
-    for category in ("d3_bj", "d4", "gcp"):
+    for category in ("d3_bj", "d4", "gcp", "d3_zero"):
         for record in payload[category]:
             symbol = record["cpp_symbol"]
             if symbol in symbols:

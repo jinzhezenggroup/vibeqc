@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "data/parameters/gfn2.hpp"
+#include "generated_gfn2_es3_native.cuh"
 
 namespace xtbloom::detail::gfn2 {
 namespace {
@@ -182,56 +183,6 @@ xtbloom_status_t validate_system_view(ES3View view, std::int64_t system, std::in
   return XTBLOOM_STATUS_SUCCESS;
 }
 
-/*
- * Evaluate in double for ordinary inputs, matching the operation order of the
- * reference formula. If an intermediate overflows, underflows, or loses range
- * while the mathematically final double remains representable, retry in the
- * wider host reference type.
- */
-bool shell_potential(double gamma3, double charge, double& result) {
-  if (charge == 0.0 || gamma3 == 0.0) {
-    result = 0.0;
-    return true;
-  }
-  const double square = charge * charge;
-  result = square * gamma3;
-  if (std::isnormal(square) && std::isnormal(gamma3) && std::isnormal(result)) {
-    return true;
-  }
-  const long double wide = static_cast<long double>(charge) * static_cast<long double>(charge) *
-                           static_cast<long double>(gamma3);
-  if (!std::isfinite(wide) ||
-      std::abs(wide) > static_cast<long double>(std::numeric_limits<double>::max())) {
-    return false;
-  }
-  result = static_cast<double>(wide);
-  return std::isfinite(result);
-}
-
-bool shell_energy(double gamma3, double charge, double& result) {
-  if (charge == 0.0 || gamma3 == 0.0) {
-    result = 0.0;
-    return true;
-  }
-  const double square = charge * charge;
-  const double cube = square * charge;
-  const double scaled = cube * gamma3;
-  result = scaled / 3.0;
-  if (std::isnormal(square) && std::isnormal(cube) && std::isnormal(gamma3) &&
-      std::isnormal(scaled) && std::isnormal(result)) {
-    return true;
-  }
-  const long double wide = static_cast<long double>(charge) * static_cast<long double>(charge) *
-                           static_cast<long double>(charge) * static_cast<long double>(gamma3) /
-                           3.0L;
-  if (!std::isfinite(wide) ||
-      std::abs(wide) > static_cast<long double>(std::numeric_limits<double>::max())) {
-    return false;
-  }
-  result = static_cast<double>(wide);
-  return std::isfinite(result);
-}
-
 xtbloom_status_t validate_charges(ES3View view, const double* shell_charges, std::string& error) {
   if (shell_charges == nullptr) {
     error = "ES3 shell charges must not be NULL";
@@ -362,14 +313,16 @@ xtbloom_status_t evaluate_es3_potential_cpu(ES3View view, const double* shell_ch
   /* Preflight every result before overwriting any caller-owned output. */
   for (std::int64_t shell = 0; shell < view.total_shells; ++shell) {
     double potential = 0.0;
-    if (!shell_potential(view.shell_gamma3[shell], shell_charges[shell], potential)) {
+    if (!vibeqc::xtb::generated::evaluate_gfn2_es3_potential(view.shell_gamma3[shell],
+                                                             shell_charges[shell], &potential)) {
       error = "ES3 shell potential arithmetic exceeded floating-point range";
       return XTBLOOM_STATUS_INVALID_ARGUMENT;
     }
   }
   for (std::int64_t shell = 0; shell < view.total_shells; ++shell) {
     double potential = 0.0;
-    (void)shell_potential(view.shell_gamma3[shell], shell_charges[shell], potential);
+    (void)vibeqc::xtb::generated::evaluate_gfn2_es3_potential(view.shell_gamma3[shell],
+                                                              shell_charges[shell], &potential);
     shell_potentials[shell] = potential;
   }
 
@@ -409,7 +362,7 @@ xtbloom_status_t evaluate_es3_potential_system_cpu(ES3View view, std::int64_t sy
     const double charge = shell_charges[shell];
     double potential = 0.0;
     if (!std::isfinite(gamma3) || !std::isfinite(charge) ||
-        !shell_potential(gamma3, charge, potential)) {
+        !vibeqc::xtb::generated::evaluate_gfn2_es3_potential(gamma3, charge, &potential)) {
       error = "ES3 target-system shell potential contains invalid data or overflowed";
       return XTBLOOM_STATUS_INTERNAL_ERROR;
     }
@@ -458,7 +411,8 @@ xtbloom_status_t add_es3_energy_cpu(ES3View view, const double* shell_charges, d
     for (std::int64_t shell = view.batch_shell_offsets[batch];
          shell < view.batch_shell_offsets[batch + 1]; ++shell) {
       double contribution = 0.0;
-      if (!shell_energy(view.shell_gamma3[shell], shell_charges[shell], contribution)) {
+      if (!vibeqc::xtb::generated::evaluate_gfn2_es3_energy(view.shell_gamma3[shell],
+                                                            shell_charges[shell], &contribution)) {
         error = "ES3 shell energy arithmetic exceeded floating-point range";
         return XTBLOOM_STATUS_INVALID_ARGUMENT;
       }
@@ -476,7 +430,8 @@ xtbloom_status_t add_es3_energy_cpu(ES3View view, const double* shell_charges, d
     for (std::int64_t shell = view.batch_shell_offsets[batch];
          shell < view.batch_shell_offsets[batch + 1]; ++shell) {
       double contribution = 0.0;
-      (void)shell_energy(view.shell_gamma3[shell], shell_charges[shell], contribution);
+      (void)vibeqc::xtb::generated::evaluate_gfn2_es3_energy(view.shell_gamma3[shell],
+                                                             shell_charges[shell], &contribution);
       energy += contribution;
     }
     energies[batch] = energy;
@@ -522,7 +477,8 @@ xtbloom_status_t add_es3_energy_system_cpu(ES3View view, std::int64_t system,
     const double charge = shell_charges[shell];
     double contribution = 0.0;
     if (!std::isfinite(gamma3) || !std::isfinite(charge) ||
-        !shell_energy(gamma3, charge, contribution) || !std::isfinite(energy + contribution)) {
+        !vibeqc::xtb::generated::evaluate_gfn2_es3_energy(gamma3, charge, &contribution) ||
+        !std::isfinite(energy + contribution)) {
       error = "ES3 target-system energy contains invalid numerical data or overflowed";
       return XTBLOOM_STATUS_INTERNAL_ERROR;
     }

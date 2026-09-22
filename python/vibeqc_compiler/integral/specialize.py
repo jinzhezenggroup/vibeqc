@@ -130,3 +130,27 @@ def specialize_integral_ir(
         contractions=selected,
         recurrence=selected_recurrence,
     )
+
+
+def specialize_fock_integral(integral: IntegralIR) -> IntegralIR:
+    """Return the value-only Direct-Fock view of a shared integral request.
+
+    Fixed-root Rys recurrences on mixed Fock/force plans are derivative
+    implementation choices.  The currently qualified Direct-Fock value
+    lowering remains subset/Wick, so that backend capability is centralized
+    here instead of being rediscovered by production/profile and CUDA-emission
+    callers.
+    """
+
+    if KernelConsumer.FOCK not in integral.consumers:
+        raise ValueError("Fock specialization requires a Fock consumer")
+    selected_recurrence = (
+        "subset_wick"
+        if integral.derivative is not None and integral.recurrence.startswith("rys")
+        else None
+    )
+    return specialize_integral_ir(
+        integral,
+        consumers=(KernelConsumer.FOCK,),
+        recurrence=selected_recurrence,
+    )

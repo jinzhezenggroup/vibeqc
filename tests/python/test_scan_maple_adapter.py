@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
@@ -18,8 +19,6 @@ from vibeqc_compiler.xc.scan_maple import (
     scan_maple_provenance,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
-
-from tools.vibeqc_validation.schema import block_error
 
 POLARIZED_FEATURES = (
     "rho_a",

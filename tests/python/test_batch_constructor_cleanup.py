@@ -5,7 +5,7 @@ import typing
 import pytest
 from vibeqc import Calculator, ResourceBudget, _native
 from vibeqc.batch import PreparedBatch
-from vibeqc.resources import ResourceAllocationError
+from vibeqc_compiler.common.resources import ResourceAllocationError
 
 
 @pytest.mark.parametrize(

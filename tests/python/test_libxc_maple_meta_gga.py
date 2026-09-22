@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
@@ -21,11 +22,9 @@ from vibeqc_compiler.xc.libxc_maple import (
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
-from tools.vibeqc_validation.schema import block_error
-
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 MANIFEST = json.loads((LIBXC_MANIFEST_ROOT / "manifest.json").read_text())
 POLARIZED_FEATURES = (
     "rho_a",

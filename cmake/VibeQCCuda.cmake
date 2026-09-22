@@ -36,6 +36,7 @@ macro(vibeqc_configure_cuda_backend target)
   add_library(vibeqc_direct_angular_force OBJECT
     src/scf/cuda/direct_angular_force.cu
     "${VIBEQC_WEIGHTED_ERI_HEADER}"
+    "${VIBEQC_DIRECT_RESIDENT_PSSS_SCHEDULE_HEADER}"
     "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
     "${VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER}")
   target_include_directories(vibeqc_direct_angular_force PRIVATE
@@ -308,7 +309,7 @@ macro(vibeqc_configure_cuda_backend target)
     )
     set(_vibeqc_stationary_contract_inputs)
     foreach(_input IN LISTS _vibeqc_identity_inputs)
-      if(_input MATCHES "^python/vibeqc_compiler/(integral|xc|dft)/.*\\.(py|json)$" OR
+      if(_input MATCHES "^python/vibeqc_compiler/(common|integral|xc|dft)/.*\\.(py|json)$" OR
          _input STREQUAL "python/vibeqc_compiler/__init__.py" OR
          _input IN_LIST _vibeqc_stationary_contract_assets)
         list(APPEND _vibeqc_stationary_contract_inputs "${CMAKE_CURRENT_SOURCE_DIR}/${_input}")

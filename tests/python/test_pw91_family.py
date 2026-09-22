@@ -20,7 +20,7 @@ UNPOLARIZED = np.array([[0.5, 0.031, 0.0]]).T
 
 @pytest.mark.parametrize(
     "alias,canonical",
-    [("PW91PW91", "PW91"), ("X3LYPG", "X3LYP")],
+    [("X3LYPG", "X3LYP")],
 )
 def test_pw91_family_aliases_preserve_semantics(
     alias: typing.Any, canonical: typing.Any

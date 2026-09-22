@@ -15,8 +15,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc.profiles import find_nvcc
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -70,7 +70,11 @@ def test_two_tensor_providers_share_one_global_budget(
     compiler: typing.Any, cache: typing.Any
 ) -> None:
     """A retained neighbor forces an executable recomputation alternative."""
-    from vibeqc.resources import ResourceBudget, ResourceSession, plan_resources
+    from vibeqc_compiler.common.resources import (
+        ResourceBudget,
+        ResourceSession,
+        plan_resources,
+    )
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
     index = Index("i", IndexSpace("axis", "batch", 8192))
@@ -244,6 +248,50 @@ def check(
                 in result.metrics["observed_traffic_scope"]
             )
         return result
+
+
+def test_cub_block_reduce_matches_interpreter(
+    compiler: typing.Any, cache: typing.Any
+) -> None:
+    i = Index("cub_rows", IndexSpace("cub_rows", "batch", 65))
+    k = Index("cub_inner", IndexSpace("cub_inner", "batch", 4097))
+    x = input_tensor("x", TensorSpec((i, k), role="input"))
+    program = Program({"result": reduce_sum(x, (1,))})
+    feeds = {"x": np.linspace(-0.25, 0.75, 65 * 4097).reshape(65, 4097)}
+    result = check(
+        program,
+        feeds,
+        compiler,
+        cache,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    assert result.metrics["kernel_ms"] >= 0.0
+
+
+def test_inplace_donation_executes_alias_safe_elementwise_chain(
+    compiler: typing.Any, cache: typing.Any
+) -> None:
+    index = Index("i", IndexSpace("donation_axis", "batch", 4097))
+    x = input_tensor("x", TensorSpec((index,), role="input"))
+    transient = add(x, x, coefficients=(3, -1))
+    result = multiply(transient, x)
+    program = Program({"result": result})
+    baseline = plan_cuda(program, compiler.target)
+    schedule = TensorSchedule(inplace_donation=True, elements_per_thread=4)
+    donated = plan_cuda(program, compiler.target, schedule=schedule)
+
+    assert donated.arena_bytes < baseline.arena_bytes
+    assert any(step.donated_from is not None for step in donated.steps)
+    check(
+        program,
+        {"x": np.linspace(-1.25, 2.0, x.spec.size)},
+        compiler,
+        cache,
+        schedule=schedule,
+    )
 
 
 @pytest.mark.parametrize("case", ["diagonal", "named_inputs", "inactive_operand"])
@@ -668,7 +716,7 @@ def test_graph_arithmetic_failure_is_preserved_and_next_replay_recovers(
 def test_graph_global_budget_falls_back_without_untracked_graph_storage(
     compiler: typing.Any, cache: typing.Any
 ) -> None:
-    from vibeqc.resources import ResourceBudget, plan_resources
+    from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
     from vibeqc_compiler.tensor.resources import tensor_resource_choices
 
     program = Program({"scalar": constant(3)})

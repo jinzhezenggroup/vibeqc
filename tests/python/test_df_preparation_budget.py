@@ -212,3 +212,46 @@ int main() {
         check=True,
     )
     subprocess.run([str(executable)], check=True)
+
+
+def test_roomy_live_budget_admits_the_batch_resident_value_owner(
+    tmp_path: Path,
+) -> None:
+    """A roomy device must not stream a full resident batch for lack of budget."""
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    source = tmp_path / "resident_batch_budget.cpp"
+    source.write_text(r"""
+#include "scf/df_preparation_budget.hpp"
+int main() {
+  using namespace vibeqc::scf;
+  const DfBudgetWorkload work{96, 96, 12, 4, 8, true};
+  const auto floor = df_resident_value_admission_floor(work);
+  const auto roomy = resolve_df_budget(work, {30ULL << 30, 32ULL << 30, true}, 0);
+  const auto tight = resolve_df_budget(work, {400ULL << 20, 8ULL << 30, true}, 0);
+  if (!roomy.feasible || roomy.value_bytes < floor) return 1;
+  // The same shape on a constrained live envelope retains the streamed
+  // workload target instead of borrowing the response owner for residency.
+  if (tight.value_bytes >= floor || tight.total_bytes >= roomy.total_bytes) return 2;
+  if (roomy.value_bytes + roomy.response_bytes != roomy.total_bytes) return 3;
+  return 0;
+}
+""")
+    executable = tmp_path / "resident_batch_budget"
+    root = Path(__file__).resolve().parents[2]
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)

@@ -513,12 +513,12 @@ def run(args: typing.Any) -> dict:
             "loaded compiler differs from --source-dir; install the matching checkout"
         )
 
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.integral.autotune import (
         _run_autotune,
         argument_parser,
         supported_schedule_trials,
     )
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
     from vibeqc_compiler.integral.shell_spec import FUSED_SHELL_SPEC_BY_NAME
 
     from tools.vibeqc_validation.local_tuning import validate_schedule

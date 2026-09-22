@@ -132,3 +132,120 @@ def test_alias_contract_rejects_undeclared_or_oversized_views() -> None:
             inputs=("owner",),
             outputs=("view",),
         )
+
+
+def test_explicit_donation_reuses_final_use_slot_and_reduces_physical_peak() -> None:
+    values = (
+        BufferValue("x", 64, "device", compiler_owned=False),
+        BufferValue("a", 64, "device"),
+        BufferValue("b", 64, "device"),
+    )
+    operations = (
+        explicit("make_a", ("x",), ("a",)),
+        BufferOp(
+            "update",
+            ("a",),
+            ("b",),
+            MemoryEffect.EXPLICIT,
+            donations=(("a", "b"),),
+        ),
+    )
+    baseline = analyze_storage(
+        values,
+        (operations[0], explicit("update", ("a",), ("b",))),
+        inputs=("x",),
+        outputs=("b",),
+    )
+    donated = analyze_storage(values, operations, inputs=("x",), outputs=("b",))
+
+    assert donated.donations == ((2, "a", "b"),)
+    assert donated.slot_for("a") == donated.slot_for("b")
+    assert ("a", "b") not in donated.interference
+    assert baseline.peak_by_space["device"] == 192
+    assert donated.peak_by_space["device"] == 128
+
+
+def test_donation_requires_final_use_owned_equal_capacity_and_explicit_effect() -> None:
+    with pytest.raises(ValueError, match="explicit memory effects"):
+        BufferOp("opaque", ("a",), ("b",), donations=(("a", "b"),))
+
+    with pytest.raises(ValueError, match="equal-capacity"):
+        analyze_storage(
+            (
+                BufferValue("x", 8, "device", compiler_owned=False),
+                BufferValue("a", 64, "device"),
+                BufferValue("b", 32, "device"),
+            ),
+            (
+                explicit("make_a", ("x",), ("a",)),
+                BufferOp(
+                    "update",
+                    ("a",),
+                    ("b",),
+                    MemoryEffect.EXPLICIT,
+                    donations=(("a", "b"),),
+                ),
+            ),
+            inputs=("x",),
+            outputs=("b",),
+        )
+
+    with pytest.raises(ValueError, match="final use"):
+        analyze_storage(
+            (
+                BufferValue("x", 8, "device", compiler_owned=False),
+                BufferValue("a", 64, "device"),
+                BufferValue("b", 64, "device"),
+                BufferValue("c", 8, "device"),
+            ),
+            (
+                explicit("make_a", ("x",), ("a",)),
+                BufferOp(
+                    "update",
+                    ("a",),
+                    ("b",),
+                    MemoryEffect.EXPLICIT,
+                    donations=(("a", "b"),),
+                ),
+                explicit("late_read", ("a", "b"), ("c",)),
+            ),
+            inputs=("x",),
+            outputs=("c",),
+        )
+
+
+@pytest.mark.parametrize("previous_capacity", (128, 256, 512))
+def test_donation_preserves_owner_slot_after_larger_capacity_reuse(
+    previous_capacity: int,
+) -> None:
+    values = (
+        BufferValue("x", 8, "device", compiler_owned=False),
+        BufferValue("large", previous_capacity, "device"),
+        BufferValue("donor", 64, "device"),
+        BufferValue("recipient", 64, "device"),
+        BufferValue("final", 64, "device"),
+    )
+    operations = (
+        explicit("large", ("x",), ("large",)),
+        explicit("small", ("x",), ("donor",)),
+        BufferOp(
+            "transfer",
+            ("donor",),
+            ("recipient",),
+            MemoryEffect.EXPLICIT,
+            donations=(("donor", "recipient"),),
+        ),
+        BufferOp(
+            "transfer_again",
+            ("recipient",),
+            ("final",),
+            MemoryEffect.EXPLICIT,
+            donations=(("recipient", "final"),),
+        ),
+    )
+    analysis = analyze_storage(values, operations, inputs=("x",), outputs=("final",))
+    assert analysis.slot_for("large") == analysis.slot_for("donor")
+    assert analysis.slot_for("donor") == analysis.slot_for("recipient")
+    assert analysis.slot_for("recipient") == analysis.slot_for("final")
+    assert len(analysis.slots) == 1
+    assert analysis.slots[0].bytes == previous_capacity

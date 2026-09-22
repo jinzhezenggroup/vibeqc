@@ -334,7 +334,7 @@ def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -
 
 
 def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates() -> None:
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
     program = build_runtime_tile_triples_program(4, 8, capacity=120)

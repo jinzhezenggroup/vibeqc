@@ -50,6 +50,11 @@ from .df_factorized import (
     virtual_correction_workspace_bytes,
     virtual_corrections,
 )
+from .df_gradient import (
+    DFThreeIndexCotangent,
+    DFThreeIndexPullback,
+    pullback_df_three_index,
+)
 from .df_triples import (
     DFCCSDTResult,
     factorized_triples_energy,
@@ -69,6 +74,14 @@ from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
 from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
+from .state_transport import (
+    OrbitalFrameDiagnostics,
+    StateIdentity,
+    StateTransport,
+    StateTransportPolicy,
+    StateTransportRequest,
+    TransportCompatibility,
+)
 from .triples import (
     build_triples_program,
     triples_energy,
@@ -142,8 +155,11 @@ __all__ = [
     "CudaTriplesTiles",
     "DFCCSDResult",
     "DFCCSDTResult",
+    "DFThreeIndexCotangent",
+    "DFThreeIndexPullback",
     "FactorizedDFIntegralState",
     "LambdaOptions",
+    "OrbitalFrameDiagnostics",
     "PreparedCCSD",
     "PreparedCUDALambda",
     "PreparedDFCCSD",
@@ -156,7 +172,12 @@ __all__ = [
     "RCCSDTForceBatchItemResult",
     "RCCSDTResult",
     "SolverOptions",
+    "StateIdentity",
+    "StateTransport",
+    "StateTransportPolicy",
+    "StateTransportRequest",
     "TileSpec",
+    "TransportCompatibility",
     "TriplesTileConfig",
     "TriplesTileEnumerator",
     "accumulate_tile_triples_vjp",
@@ -180,6 +201,7 @@ __all__ = [
     "full_triples_vjp",
     "gradient_capabilities",
     "method_capabilities",
+    "pullback_df_three_index",
     "rccsd_t_batch_energy",
     "rccsd_t_batch_forces",
     "rccsd_t_energy",

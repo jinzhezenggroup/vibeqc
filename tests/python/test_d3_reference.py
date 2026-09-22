@@ -13,6 +13,10 @@ from vibeqc_compiler.method import (
     D3Spec,
     DispersionCorrectionPrimitive,
     MethodIR,
+    pbe0_d3_zero_spec,
+    pbe_d3_bj_atm_spec,
+    pbe_d3_bj_spec,
+    pbe_d3_zero_spec,
     resolve_method,
 )
 
@@ -187,6 +191,60 @@ def test_canonical_methodir_composition_and_identity() -> None:
         MethodIR("duplicate", mixed.spin, mixed.primitives + (mixed.primitives[-1],))
     hybrid = resolve_method(replace(METHOD_CATALOG["PBE0"], dispersion=spec))
     assert len(hybrid.primitives) == 3
+
+
+def test_variant_capabilities_are_explicit_and_fail_closed() -> None:
+    bj = pbe_d3_bj_spec()
+    zero = pbe_d3_zero_spec()
+    zero0 = pbe0_d3_zero_spec()
+    atm = pbe_d3_bj_atm_spec()
+
+    # Adding new dataclass fields must not perturb the established BJ semantic payload.
+    assert set(bj.to_payload()) == {
+        "s6",
+        "s8",
+        "a1",
+        "a2",
+        "table_sha256",
+        "radii_sha256",
+        "s9",
+        "damping",
+        "cn_cutoff",
+        "pair_cutoff",
+        "pair_switch_width",
+        "version",
+    }
+    assert bj.damping == "bj" and bj.s9 == 0.0
+    assert zero.damping == "zero" and zero.version == "d3-zero-spec-v1"
+    assert zero.s9 == 0.0 and zero.rs6 > 0 and zero.rs8 > 0 and zero.alp > 0
+    assert zero0.damping == "zero" and zero0.s9 == 0.0
+    assert atm.damping == "bj" and atm.s9 == 1.0
+    assert atm.version == "d3-bj-atm-spec-v1"
+
+    assert resolve_method("PBE-D3(BJ)").requirements["operators"] == (
+        "semilocal-xc",
+        "geometry-d3-bj",
+    )
+    assert resolve_method("PBE-D3(BJ)-ATM").requirements["operators"] == (
+        "semilocal-xc",
+        "geometry-d3-bj-atm",
+    )
+    assert resolve_method("PBE-D3(0)").requirements["operators"] == (
+        "semilocal-xc",
+        "geometry-d3-zero",
+    )
+    assert resolve_method("PBE0-D3(0)").requirements["operators"] == (
+        "semilocal-xc",
+        "full-range-exchange",
+        "geometry-d3-zero",
+    )
+
+    with pytest.raises(ValueError, match="zero-damping D3 plus ATM"):
+        replace(zero, s9=1.0)
+    with pytest.raises(ValueError, match="zero-damping D3 requires"):
+        replace(bj, damping="zero")
+    with pytest.raises(ValueError, match=r"D3\(BJ\)-ATM requires"):
+        replace(bj, s9=1.0)
 
 
 @pytest.mark.parametrize(

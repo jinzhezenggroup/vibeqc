@@ -1,6 +1,6 @@
 """Build-time symbolic code generation for shell-class CUDA kernels."""
 
-from .backend import (
+from vibeqc_compiler.common.backend import (
     BenchmarkExecutor,
     CompilerAdapter,
     DeviceProbe,
@@ -10,6 +10,17 @@ from .backend import (
     TargetInfo,
     TargetScheduleShape,
 )
+from vibeqc_compiler.common.cuda_target import (
+    CUDA_TARGETS,
+    DEFAULT_CUDA_TARGET,
+    CudaArchitecture,
+    CudaTargetInfo,
+    cuda_architecture,
+    cuda_target_info,
+    normalize_cuda_architecture,
+    normalize_cuda_compile_architecture,
+)
+
 from .blocks import (
     BlockRequest,
     BlockResponse,
@@ -29,8 +40,13 @@ from .cache import NvrtcCacheSpec, integral_cache_key, nvrtc_cache_key
 from .capabilities import query_integral_capability
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_lowering import (
+    DpppFusedPlan,
+    build_dppp_fused_plan,
+    dppp_components,
+    emit_dppp_fused_cuda,
     emit_ppps_1110_resident_bra_cuda,
     emit_ppps_resident_bra_rys3_cuda,
+    evaluate_dppp_fused_component,
     supports_component_lane_rys,
 )
 from .cuda_schedule import (
@@ -49,23 +65,6 @@ from .cuda_schedule import (
     schedule_candidates,
     tuning_schedule_candidates,
 )
-from .cuda_target import (
-    CUDA_TARGETS,
-    DEFAULT_CUDA_TARGET,
-    CudaArchitecture,
-    CudaTargetInfo,
-    cuda_architecture,
-    cuda_target_info,
-    normalize_cuda_architecture,
-    normalize_cuda_compile_architecture,
-)
-from .dppp_specialization import (
-    DpppFusedPlan,
-    build_dppp_fused_plan,
-    dppp_components,
-    emit_dppp_fused_cuda,
-    evaluate_dppp_fused_component,
-)
 from .expr import (
     MaterializationDecision,
     MaterializationPlan,
@@ -81,6 +80,13 @@ from .fused_schedule import (
     evaluate_fused_shell_component,
     evaluate_fused_shell_observables,
     evaluate_fused_shell_value,
+)
+from .gfn2_sdq import (
+    GFN2_SDQ_COMPONENTS,
+    Gfn2SdqPrimitiveEvaluation,
+    Gfn2SdqPrimitiveKernel,
+    build_gfn2_sdq_primitive_kernel,
+    evaluate_gfn2_sdq_primitive,
 )
 from .ir import (
     FOUR_CENTER_ERI_OPERATOR,
@@ -103,6 +109,7 @@ from .ir_serialization import (
     integral_from_payload,
     integral_to_payload,
 )
+from .precision import generated_fock_precision_schedule
 from .production_cost import production_compile_cost, stable_aot_shard_slot
 from .production_selection import KernelSelection
 from .rys import (
@@ -178,7 +185,11 @@ from .shell_spec import (
     shell_class_name,
     shell_pair_class,
 )
-from .specialize import integral_specialization_diagnostics, specialize_integral_ir
+from .specialize import (
+    integral_specialization_diagnostics,
+    specialize_fock_integral,
+    specialize_integral_ir,
+)
 
 __all__ = [
     "CUDA_TARGETS",
@@ -192,6 +203,7 @@ __all__ = [
     "FOUR_CENTER_ERI_OPERATOR",
     "FUSED_SHELL_SPECS",
     "FUSED_SHELL_SPEC_BY_NAME",
+    "GFN2_SDQ_COMPONENTS",
     "INTEGRAL_SCHEMA_VERSION",
     "PPSS_SPEC",
     "PSPS_SPEC",
@@ -224,6 +236,8 @@ __all__ = [
     "DpppFusedPlan",
     "FusedShellPlan",
     "FusedShellResult",
+    "Gfn2SdqPrimitiveEvaluation",
+    "Gfn2SdqPrimitiveKernel",
     "IntegralIR",
     "KernelConsumer",
     "KernelIR",
@@ -275,6 +289,7 @@ __all__ = [
     "build_dppp_contraction_kernel",
     "build_dppp_fused_plan",
     "build_fused_shell_plan",
+    "build_gfn2_sdq_primitive_kernel",
     "build_integral_ir",
     "build_packed_force_geometry_algebra",
     "build_ppps_rys_force_program",
@@ -306,8 +321,10 @@ __all__ = [
     "evaluate_fused_shell_component",
     "evaluate_fused_shell_observables",
     "evaluate_fused_shell_value",
+    "evaluate_gfn2_sdq_primitive",
     "evaluate_ppps_rys_component",
     "evaluate_rys_component",
+    "generated_fock_precision_schedule",
     "integral_cache_key",
     "integral_from_payload",
     "integral_specialization_diagnostics",
@@ -329,6 +346,7 @@ __all__ = [
     "schedule_candidates",
     "shell_class_name",
     "shell_pair_class",
+    "specialize_fock_integral",
     "specialize_integral_ir",
     "stable_aot_shard_slot",
     "supports_component_lane_rys",

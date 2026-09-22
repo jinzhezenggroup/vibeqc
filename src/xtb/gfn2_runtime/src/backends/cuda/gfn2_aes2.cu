@@ -6,6 +6,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_aes2.cuh"
+#include "generated_gfn2_aes2_native.cuh"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -13,11 +14,6 @@ namespace {
 constexpr int kThreadsPerBlock = 256;
 constexpr std::int64_t kInt64Maximum = 9223372036854775807LL;
 constexpr double kMinimumDistanceSquared = 1.0e-12;
-constexpr double kMultipoleDamping3 = 3.0;
-constexpr double kMultipoleDamping5 = 4.0;
-constexpr double kMultipoleExponent = 4.0;
-constexpr double kMultipoleShift = 1.2;
-constexpr double kMultipoleMaximumRadius = 5.0;
 
 struct SystemRanges {
   std::int64_t atom_begin;
@@ -125,8 +121,8 @@ __device__ bool load_and_validate_system(const Gfn2AES2DeviceBatch& batch, std::
     const double radius = batch.multipole_radius[atom];
     const double valence_cn = batch.multipole_valence_cn[atom];
     if (!isfinite(dipole_kernel) || !isfinite(quadrupole_kernel) || !(radius > 0.0) ||
-        radius > kMultipoleMaximumRadius || !isfinite(radius) || !(valence_cn > 0.0) ||
-        !isfinite(valence_cn)) {
+        radius > vibeqc::xtb::generated::gfn2_aes2_multipole_max_radius || !isfinite(radius) ||
+        !(valence_cn > 0.0) || !isfinite(valence_cn)) {
       record_system_error(system_errors, system, device_error,
                           Gfn2AES2DeviceError::kInvalidElementParameter);
       atomicExch(valid, 0);
@@ -136,44 +132,36 @@ __device__ bool load_and_validate_system(const Gfn2AES2DeviceBatch& batch, std::
   return *valid != 0;
 }
 
-__device__ double logistic(double argument) {
-  if (argument >= 0.0) {
-    const double exponential = exp(-argument);
-    return 1.0 / (1.0 + exponential);
-  }
-  const double exponential = exp(argument);
-  return exponential / (1.0 + exponential);
-}
-
 __device__ double multipole_radius(const Gfn2AES2DeviceBatch& batch, std::int64_t atom,
                                    double coordination_number) {
-  const double argument = kMultipoleExponent * (coordination_number -
-                                                batch.multipole_valence_cn[atom] - kMultipoleShift);
-  return batch.multipole_radius[atom] +
-         (kMultipoleMaximumRadius - batch.multipole_radius[atom]) * logistic(argument);
+  vibeqc::xtb::generated::Gfn2AES2RadiusResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_radius(
+          coordination_number, batch.multipole_radius[atom], batch.multipole_valence_cn[atom],
+          result)) {
+    return nan("");
+  }
+  return result.radius;
 }
 
 __device__ double multipole_radius_cn_derivative(const Gfn2AES2DeviceBatch& batch,
                                                  std::int64_t atom, double coordination_number) {
-  const double argument = kMultipoleExponent * (coordination_number -
-                                                batch.multipole_valence_cn[atom] - kMultipoleShift);
-  const double fraction = logistic(argument);
-  return (kMultipoleMaximumRadius - batch.multipole_radius[atom]) * kMultipoleExponent * fraction *
-         (1.0 - fraction);
+  vibeqc::xtb::generated::Gfn2AES2RadiusResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_radius(
+          coordination_number, batch.multipole_radius[atom], batch.multipole_valence_cn[atom],
+          result)) {
+    return nan("");
+  }
+  return result.cn_derivative;
 }
 
 __device__ bool pair_kernels(double distance, double radius, double* kernel3, double* kernel5) {
-  const double inverse = 1.0 / distance;
-  const double inverse2 = inverse * inverse;
-  const double inverse3 = inverse2 * inverse;
-  const double inverse5 = inverse3 * inverse2;
-  const double scaled = radius * inverse;
-  const double scaled2 = scaled * scaled;
-  const double scaled3 = scaled2 * scaled;
-  const double scaled4 = scaled2 * scaled2;
-  *kernel3 = inverse3 / (1.0 + 6.0 * scaled3);
-  *kernel5 = inverse5 / (1.0 + 6.0 * scaled4);
-  return *kernel3 >= 0.0 && isfinite(*kernel3) && *kernel5 >= 0.0 && isfinite(*kernel5);
+  vibeqc::xtb::generated::Gfn2AES2KernelResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_kernels(distance, radius, result)) {
+    return false;
+  }
+  *kernel3 = result.kernel3;
+  *kernel5 = result.kernel5;
+  return true;
 }
 
 __device__ bool finite_add(double contribution, double* target) {
@@ -192,24 +180,6 @@ __device__ bool finite_cache_pair(const double* pair_data) {
   return isfinite(pair_data[0]) && isfinite(pair_data[1]) && isfinite(pair_data[2]) &&
          pair_data[3] >= 0.0 && isfinite(pair_data[3]) && pair_data[4] >= 0.0 &&
          isfinite(pair_data[4]);
-}
-
-__device__ double packed_dot(const double* packed, const double* quadrupole) {
-  double result = 0.0;
-  for (int component = 0; component < 6; ++component) {
-    result += packed[component] * quadrupole[component];
-  }
-  return result;
-}
-
-__device__ void packed_pair_tensor(double dx, double dy, double dz, double kernel5,
-                                   double* packed) {
-  packed[0] = dx * dx * kernel5;
-  packed[1] = 2.0 * dx * dy * kernel5;
-  packed[2] = dy * dy * kernel5;
-  packed[3] = 2.0 * dx * dz * kernel5;
-  packed[4] = 2.0 * dy * dz * kernel5;
-  packed[5] = dz * dz * kernel5;
 }
 
 __device__ bool validate_multipoles_and_cache(
@@ -350,24 +320,20 @@ __global__ void potential_preflight_kernel(Gfn2AES2DeviceBatch batch, Gfn2AES2De
   double* const charge_scratch = potential_scratch;
   double* const dipole_scratch = potential_scratch + total_atoms;
   double* const quadrupole_scratch = potential_scratch + total_atoms * 4;
-  constexpr double quadrupole_scale[6] = {1.0, 2.0, 1.0, 2.0, 2.0, 1.0};
-
   for (std::int64_t atom = ranges.atom_begin + threadIdx.x; atom < ranges.atom_end;
        atom += blockDim.x) {
+    vibeqc::xtb::generated::Gfn2AES2OnsitePotentialResult onsite{};
+    bool finite_result = vibeqc::xtb::generated::evaluate_gfn2_aes2_onsite_potential(
+        batch.dipole_kernel[atom], batch.quadrupole_kernel[atom], atomic_dipoles + atom * 3,
+        atomic_quadrupoles + atom * 6, onsite);
     double charge_potential = 0.0;
     double dipole_potential[3];
     double quadrupole_potential[6];
-    bool finite_result = true;
     for (int component = 0; component < 3; ++component) {
-      dipole_potential[component] =
-          2.0 * batch.dipole_kernel[atom] * atomic_dipoles[atom * 3 + component];
-      finite_result = finite_result && isfinite(dipole_potential[component]);
+      dipole_potential[component] = onsite.dipole[component];
     }
     for (int component = 0; component < 6; ++component) {
-      quadrupole_potential[component] = 2.0 * batch.quadrupole_kernel[atom] *
-                                        quadrupole_scale[component] *
-                                        atomic_quadrupoles[atom * 6 + component];
-      finite_result = finite_result && isfinite(quadrupole_potential[component]);
+      quadrupole_potential[component] = onsite.quadrupole[component];
     }
 
     for (std::int64_t peer = ranges.atom_begin; finite_result && peer < ranges.atom_end; ++peer) {
@@ -379,40 +345,26 @@ __global__ void potential_preflight_kernel(Gfn2AES2DeviceBatch batch, Gfn2AES2De
       const std::int64_t second = target_is_first ? peer : atom;
       const std::int64_t pair = pair_index(ranges, first, second);
       const double* const pair_data = cache.pair_data + pair * kGfn2AES2PairDataElements;
-      const double dx = pair_data[0];
-      const double dy = pair_data[1];
-      const double dz = pair_data[2];
-      const double kernel3 = pair_data[3];
-      const double kernel5 = pair_data[4];
-      const double displacement[3] = {dx, dy, dz};
-      const double sd[3] = {dx * kernel3, dy * kernel3, dz * kernel3};
-      double sq[6];
-      packed_pair_tensor(dx, dy, dz, kernel5, sq);
-      const double distance2 = dx * dx + dy * dy + dz * dz;
-      const double isotropic_dd = distance2 * kernel5;
-      const double* const peer_dipole = atomic_dipoles + peer * 3;
-      const double* const peer_quadrupole = atomic_quadrupoles + peer * 6;
-      double peer_projection = 0.0;
-      double peer_sd_dot = 0.0;
-      for (int component = 0; component < 3; ++component) {
-        peer_projection += displacement[component] * peer_dipole[component];
-        peer_sd_dot += sd[component] * peer_dipole[component];
+      vibeqc::xtb::generated::Gfn2AES2PairPotentialResult pair_result{};
+      finite_result = vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_potential(
+          pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4],
+          atomic_charges[first], atomic_charges[second], atomic_dipoles + first * 3,
+          atomic_dipoles + second * 3, atomic_quadrupoles + first * 6,
+          atomic_quadrupoles + second * 6, pair_result);
+      if (!finite_result) {
+        break;
       }
-      finite_result =
-          isfinite(distance2) && isfinite(isotropic_dd) && isfinite(peer_projection) &&
-          isfinite(peer_sd_dot) &&
-          finite_add((target_is_first ? 1.0 : -1.0) * peer_sd_dot + packed_dot(sq, peer_quadrupole),
-                     &charge_potential);
+      const double charge = target_is_first ? pair_result.first_charge : pair_result.second_charge;
+      finite_result = finite_add(charge, &charge_potential);
       for (int component = 0; finite_result && component < 3; ++component) {
-        const double dd = isotropic_dd * peer_dipole[component] -
-                          3.0 * kernel5 * displacement[component] * peer_projection;
-        const double charge_dipole =
-            (target_is_first ? -1.0 : 1.0) * atomic_charges[peer] * sd[component];
-        finite_result = finite_add(charge_dipole + dd, &dipole_potential[component]);
+        const double value = target_is_first ? pair_result.first_dipole[component]
+                                             : pair_result.second_dipole[component];
+        finite_result = finite_add(value, &dipole_potential[component]);
       }
       for (int component = 0; finite_result && component < 6; ++component) {
-        finite_result = isfinite(sq[component]) && finite_add(atomic_charges[peer] * sq[component],
-                                                              &quadrupole_potential[component]);
+        const double value = target_is_first ? pair_result.first_quadrupole[component]
+                                             : pair_result.second_quadrupole[component];
+        finite_result = finite_add(value, &quadrupole_potential[component]);
       }
     }
 
@@ -457,59 +409,18 @@ __global__ void publish_potential_kernel(Gfn2AES2DeviceBatch batch, const double
 
 __device__ bool onsite_energy(const Gfn2AES2DeviceBatch& batch, std::int64_t atom,
                               const double* dipoles, const double* quadrupoles, double* energy) {
-  constexpr double scale[6] = {1.0, 2.0, 1.0, 2.0, 2.0, 1.0};
-  double dipole_norm2 = 0.0;
-  double quadrupole_norm2 = 0.0;
-  for (int component = 0; component < 3; ++component) {
-    const double value = dipoles[atom * 3 + component];
-    dipole_norm2 += value * value;
-  }
-  for (int component = 0; component < 6; ++component) {
-    const double value = quadrupoles[atom * 6 + component];
-    quadrupole_norm2 += scale[component] * value * value;
-  }
-  *energy =
-      batch.dipole_kernel[atom] * dipole_norm2 + batch.quadrupole_kernel[atom] * quadrupole_norm2;
-  return isfinite(dipole_norm2) && isfinite(quadrupole_norm2) && isfinite(*energy);
+  return vibeqc::xtb::generated::evaluate_gfn2_aes2_onsite_energy(
+      batch.dipole_kernel[atom], batch.quadrupole_kernel[atom], dipoles + atom * 3,
+      quadrupoles + atom * 6, *energy);
 }
 
 __device__ bool pair_energy(const double* pair_data, std::int64_t first, std::int64_t second,
                             const double* charges, const double* dipoles, const double* quadrupoles,
                             double* energy) {
-  const double dx = pair_data[0];
-  const double dy = pair_data[1];
-  const double dz = pair_data[2];
-  const double kernel3 = pair_data[3];
-  const double kernel5 = pair_data[4];
-  const double displacement[3] = {dx, dy, dz};
-  double sq[6];
-  packed_pair_tensor(dx, dy, dz, kernel5, sq);
-  const double* const first_dipole = dipoles + first * 3;
-  const double* const second_dipole = dipoles + second * 3;
-  const double* const first_quadrupole = quadrupoles + first * 6;
-  const double* const second_quadrupole = quadrupoles + second * 6;
-  double first_projection = 0.0;
-  double second_projection = 0.0;
-  double dipole_dot = 0.0;
-  double charge_dipole_numerator = 0.0;
-  for (int component = 0; component < 3; ++component) {
-    first_projection += displacement[component] * first_dipole[component];
-    second_projection += displacement[component] * second_dipole[component];
-    dipole_dot += first_dipole[component] * second_dipole[component];
-    charge_dipole_numerator +=
-        displacement[component] *
-        (charges[first] * second_dipole[component] - charges[second] * first_dipole[component]);
-  }
-  const double distance2 = dx * dx + dy * dy + dz * dz;
-  const double charge_dipole = kernel3 * charge_dipole_numerator;
-  const double dipole_dipole =
-      kernel5 * (distance2 * dipole_dot - 3.0 * first_projection * second_projection);
-  const double charge_quadrupole = charges[first] * packed_dot(sq, second_quadrupole) +
-                                   charges[second] * packed_dot(sq, first_quadrupole);
-  *energy = charge_dipole + dipole_dipole + charge_quadrupole;
-  return isfinite(first_projection) && isfinite(second_projection) && isfinite(dipole_dot) &&
-         isfinite(charge_dipole_numerator) && isfinite(distance2) && isfinite(charge_dipole) &&
-         isfinite(dipole_dipole) && isfinite(charge_quadrupole) && isfinite(*energy);
+  return vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_energy(
+      pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4], charges[first],
+      charges[second], dipoles + first * 3, dipoles + second * 3, quadrupoles + first * 6,
+      quadrupoles + second * 6, *energy);
 }
 
 __global__ void energy_preflight_kernel(Gfn2AES2DeviceBatch batch, Gfn2AES2DeviceCache cache,
@@ -682,101 +593,20 @@ __device__ bool pair_vjp(const double* pair_data, double average_radius,
                          std::int64_t first, std::int64_t second, const double* charges,
                          const double* dipoles, const double* quadrupoles, double* pair_gradient,
                          double* first_cn_adjoint, double* second_cn_adjoint) {
-  const double displacement[3] = {pair_data[0], pair_data[1], pair_data[2]};
-  const double kernel3 = pair_data[3];
-  const double kernel5 = pair_data[4];
-  const double distance = hypot(hypot(displacement[0], displacement[1]), displacement[2]);
-  if (!(distance > 0.0) || !isfinite(distance) || !(average_radius > 0.0) ||
-      !isfinite(average_radius) || !isfinite(first_radius_cn_derivative) ||
-      !isfinite(second_radius_cn_derivative)) {
-    return false;
-  }
-  const double scaled = average_radius / distance;
-  const double scaled2 = scaled * scaled;
-  const double scaled3 = scaled2 * scaled;
-  const double scaled4 = scaled2 * scaled2;
-  const double damping3 = 1.0 / (1.0 + 6.0 * scaled3);
-  const double damping5 = 1.0 / (1.0 + 6.0 * scaled4);
-  if (!(damping3 >= 0.0) || !isfinite(damping3) || !(damping5 >= 0.0) || !isfinite(damping5)) {
-    return false;
-  }
-
-  const double* const first_dipole = dipoles + first * 3;
-  const double* const second_dipole = dipoles + second * 3;
-  const double* const first_quadrupole = quadrupoles + first * 6;
-  const double* const second_quadrupole = quadrupoles + second * 6;
-  double charge_dipole_vector[3];
-  double tensor_vector[3];
-  double first_projection = 0.0;
-  double second_projection = 0.0;
-  double dipole_dot = 0.0;
-  for (int axis = 0; axis < 3; ++axis) {
-    charge_dipole_vector[axis] =
-        charges[first] * second_dipole[axis] - charges[second] * first_dipole[axis];
-    first_projection += displacement[axis] * first_dipole[axis];
-    second_projection += displacement[axis] * second_dipole[axis];
-    dipole_dot += first_dipole[axis] * second_dipole[axis];
-  }
-  const double charge_dipole_numerator = displacement[0] * charge_dipole_vector[0] +
-                                         displacement[1] * charge_dipole_vector[1] +
-                                         displacement[2] * charge_dipole_vector[2];
-  const double distance2 = displacement[0] * displacement[0] + displacement[1] * displacement[1] +
-                           displacement[2] * displacement[2];
-  const double dipole_dipole_numerator =
-      distance2 * dipole_dot - 3.0 * first_projection * second_projection;
-  const double tensor[6] = {
-      charges[first] * second_quadrupole[0] + charges[second] * first_quadrupole[0],
-      charges[first] * second_quadrupole[1] + charges[second] * first_quadrupole[1],
-      charges[first] * second_quadrupole[2] + charges[second] * first_quadrupole[2],
-      charges[first] * second_quadrupole[3] + charges[second] * first_quadrupole[3],
-      charges[first] * second_quadrupole[4] + charges[second] * first_quadrupole[4],
-      charges[first] * second_quadrupole[5] + charges[second] * first_quadrupole[5]};
-  tensor_vector[0] =
-      tensor[0] * displacement[0] + tensor[1] * displacement[1] + tensor[3] * displacement[2];
-  tensor_vector[1] =
-      tensor[1] * displacement[0] + tensor[2] * displacement[1] + tensor[4] * displacement[2];
-  tensor_vector[2] =
-      tensor[3] * displacement[0] + tensor[4] * displacement[1] + tensor[5] * displacement[2];
-  const double charge_quadrupole_numerator = displacement[0] * tensor_vector[0] +
-                                             displacement[1] * tensor_vector[1] +
-                                             displacement[2] * tensor_vector[2];
-  const double inverse_distance = 1.0 / distance;
-  const double kernel3_distance_derivative =
-      -kMultipoleDamping3 * damping3 * kernel3 * inverse_distance;
-  const double kernel5_distance_derivative =
-      -(1.0 + kMultipoleDamping5 * damping5) * kernel5 * inverse_distance;
-  const double inverse_radius = 1.0 / average_radius;
-  const double kernel3_radius_derivative =
-      -kMultipoleDamping3 * (1.0 - damping3) * kernel3 * inverse_radius;
-  const double kernel5_radius_derivative =
-      -kMultipoleDamping5 * (1.0 - damping5) * kernel5 * inverse_radius;
-  const double kernel5_numerator = dipole_dipole_numerator + charge_quadrupole_numerator;
-  const double energy_radius_derivative = kernel3_radius_derivative * charge_dipole_numerator +
-                                          kernel5_radius_derivative * kernel5_numerator;
-  if (!isfinite(charge_dipole_numerator) || !isfinite(distance2) ||
-      !isfinite(dipole_dipole_numerator) || !isfinite(charge_quadrupole_numerator) ||
-      !isfinite(kernel3_distance_derivative) || !isfinite(kernel5_distance_derivative) ||
-      !isfinite(kernel3_radius_derivative) || !isfinite(kernel5_radius_derivative) ||
-      !isfinite(kernel5_numerator) || !isfinite(energy_radius_derivative)) {
+  vibeqc::xtb::generated::Gfn2AES2PairVjpResult result{};
+  if (!vibeqc::xtb::generated::evaluate_gfn2_aes2_pair_vjp(
+          pair_data[0], pair_data[1], pair_data[2], pair_data[3], pair_data[4], average_radius,
+          first_radius_cn_derivative, second_radius_cn_derivative, charges[first], charges[second],
+          dipoles + first * 3, dipoles + second * 3, quadrupoles + first * 6,
+          quadrupoles + second * 6, result)) {
     return false;
   }
   for (int axis = 0; axis < 3; ++axis) {
-    const double dipole_dipole_derivative =
-        2.0 * dipole_dot * displacement[axis] -
-        3.0 * (first_projection * second_dipole[axis] + second_projection * first_dipole[axis]);
-    pair_gradient[axis] =
-        kernel3 * charge_dipole_vector[axis] +
-        kernel3_distance_derivative * charge_dipole_numerator * displacement[axis] *
-            inverse_distance +
-        kernel5 * (dipole_dipole_derivative + 2.0 * tensor_vector[axis]) +
-        kernel5_distance_derivative * kernel5_numerator * displacement[axis] * inverse_distance;
-    if (!isfinite(pair_gradient[axis])) {
-      return false;
-    }
+    pair_gradient[axis] = result.gradient[axis];
   }
-  *first_cn_adjoint = 0.5 * energy_radius_derivative * first_radius_cn_derivative;
-  *second_cn_adjoint = 0.5 * energy_radius_derivative * second_radius_cn_derivative;
-  return isfinite(*first_cn_adjoint) && isfinite(*second_cn_adjoint);
+  *first_cn_adjoint = result.first_cn_adjoint;
+  *second_cn_adjoint = result.second_cn_adjoint;
+  return true;
 }
 
 __global__ void vjp_preflight_kernel(Gfn2AES2DeviceBatch batch, Gfn2AES2DeviceCache cache,

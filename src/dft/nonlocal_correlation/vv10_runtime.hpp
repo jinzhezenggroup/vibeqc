@@ -18,6 +18,7 @@ struct Vv10Parameters {
   double b{};
   double c{};
   double coefficient{1.0};
+  bool operator==(const Vv10Parameters&) const = default;
 };
 
 struct Vv10ResourceUsage {

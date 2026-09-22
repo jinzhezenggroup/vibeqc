@@ -13,12 +13,17 @@ import typing
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 
+from vibeqc_compiler.common.precision import (
+    DTYPES,
+    STRICT_MATH_MODE,
+    ExecutionPrecisionSchedule,
+    PrecisionDirective,
+)
+
 from .ir import TRANSCENDENTALS, Node, cast
 from .program import Program, _hash
 from .types import checked_size
 
-DTYPES = frozenset(("float32", "float64"))
-STRICT_MATH_MODE = "ieee-rn-no-tf32"
 REDUCTION_OPS = frozenset(("reduce", "einsum", "scatter_add", "segment_sum"))
 MIXED_ACCUMULATION_OPS = frozenset(("reduce", "einsum"))
 MIXED_ACCUMULATION_SCHEMA = "vibeqc.tensor.precision-execution.v1"
@@ -32,36 +37,6 @@ def _dtype(value: typing.Any, label: str) -> str:
     if value not in DTYPES:
         raise ValueError(f"{label} must be float32 or float64")
     return value
-
-
-@dataclass(frozen=True)
-class PrecisionDirective:
-    """Requested per-value storage, compute, and accumulation precision."""
-
-    storage_dtype: str
-    compute_dtype: str
-    accumulation_dtype: str
-    qualification: str | None = None
-    math_mode: str = STRICT_MATH_MODE
-
-    def __post_init__(self) -> None:
-        for label in ("storage_dtype", "compute_dtype", "accumulation_dtype"):
-            _dtype(getattr(self, label), label)
-        if self.math_mode != STRICT_MATH_MODE:
-            raise ValueError("unsupported TensorIR arithmetic mode")
-        if self.qualification is not None and (
-            not isinstance(self.qualification, str) or not self.qualification.strip()
-        ):
-            raise ValueError("precision qualification must be a nonempty string")
-
-    def to_payload(self) -> dict:
-        return {
-            "storage_dtype": self.storage_dtype,
-            "compute_dtype": self.compute_dtype,
-            "accumulation_dtype": self.accumulation_dtype,
-            "qualification": self.qualification,
-            "math_mode": self.math_mode,
-        }
 
 
 @dataclass(frozen=True)
@@ -220,6 +195,35 @@ class PrecisionSchedule:
     def maximum_cast_live_bytes(self) -> int:
         return max((cast.simultaneous_bytes for cast in self.casts), default=0)
 
+    @property
+    def execution_precision(self) -> ExecutionPrecisionSchedule:
+        """Project TensorIR precision into the shared cross-IR contract."""
+
+        qualification_by_source = dict(self.qualification_scope)
+        source_by_lowered = {
+            lowered: source for source, lowered in self.execution_scope
+        }
+        return ExecutionPrecisionSchedule(
+            tuple(
+                (
+                    value.name,
+                    PrecisionDirective(
+                        storage_dtype=value.storage_dtype,
+                        compute_dtype=value.compute_dtype,
+                        accumulation_dtype=value.accumulation_dtype,
+                        qualification=qualification_by_source.get(
+                            source_by_lowered.get(value.name, "")
+                        ),
+                        math_mode=value.math_mode,
+                    ),
+                )
+                for value in self.values
+            ),
+            strict_audit_dtype=self.strict_audit_dtype,
+            audit_owner=self.audit_owner,
+            math_mode=self.math_mode,
+        )
+
     def to_payload(self) -> dict:
         return {
             "schema": "vibeqc.tensor.precision-schedule.v3",
@@ -259,10 +263,6 @@ def _sensitivity(op: str) -> str:
     if op in SENSITIVE_OPS:
         return "sensitive"
     return "ordinary"
-
-
-def _ensure_dtype(node: Node, dtype: str) -> Node:
-    return node if node.spec.dtype == dtype else cast(node, dtype)
 
 
 def _execution_bindings(

@@ -21,11 +21,11 @@ namespace vibeqc::scf::cuda_execution {
 constexpr double kMixedPrecisionFloat32UnitRoundoff = 5.9604644775390625e-08;
 static_assert(kMixedPrecisionFloat32UnitRoundoff ==
               cuda_policy::kMixedPrecisionFloat32UnitRoundoff);
-// Workload thresholds still shared with bucket/topology admission. They are
-// intentionally left for the next profile-identity slice; this change first
-// removes device-resource constants whose legality can be resolved now.
+// Persistent ERI still participates in topology/layout construction before
+// runtime profitability is available. Keep only this compatibility boundary
+// here until the topology cache consumes the derived small-HF policy. Matrix
+// product routing is already owned by cuda_policy::resolve_small_hf_profitability.
 constexpr std::size_t kPersistentEriAoLimit = 16;
-constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Schwarz diagonal ERIs use the largest device call frame in the direct path.
 // One thread per block prevents a full warp of those frames from exhausting
 // the SM local-memory stack pool while preserving the dense AO-pair grid.
@@ -36,11 +36,9 @@ constexpr unsigned kSchwarzThreads = 1;
 // exact-class pages and the same generated consumers. Keeping the cache modest
 // also leaves room for the large AOT module and CUDA Graph on a 32 GiB device.
 constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;
-// Resident psss force blocks keep one p-s primitive-pair list in shared
-// memory while their threads traverse the system's s-s ket pairs. Large
-// contracted bases fall back to the established compact-tile worker.
-constexpr unsigned kResidentPsssThreads = 128;
-constexpr std::size_t kResidentPsssMaximumBraPrimitivePairs = 64;
+// Resident-PSSS launch/admission parameters are compiler-owned and emitted
+// through generated_direct_resident_psss_schedule.cuh. Keep this header for
+// native correctness/topology invariants rather than accepted tuning evidence.
 // Orders zero through six have dedicated analytic derivatives and enough work
 // to amortize the device queue. Higher generic Dual3 orders retain fixed grids
 // because queue state raises their already-maximal register footprint without
@@ -93,6 +91,7 @@ constexpr unsigned kDdpsShellClass = 16;
 constexpr unsigned kDdppShellClass = 17;
 constexpr unsigned kDddpShellClass = 19;
 constexpr unsigned kDdddShellClass = 20;
+constexpr unsigned kFsssShellClass = 21;
 constexpr unsigned kDdddAngularOrder = 8;
 constexpr std::uint64_t kDdddShellClassMask = std::uint64_t{1} << kDdddShellClass;
 // The production profile covers the contiguous canonical class range from

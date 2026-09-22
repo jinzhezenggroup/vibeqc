@@ -123,7 +123,15 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-candidates",
         type=int,
-        help="bound schedule candidates per class (plus a required baseline)",
+        help="bound diverse schedule candidates per class (plus a required baseline)",
+    )
+    parser.add_argument(
+        "--no-execution-dedup",
+        action="store_true",
+        help=(
+            "compile byte-identical generated CUDA candidates too; useful for "
+            "exhaustive schedule-ID studies"
+        ),
     )
     return parser
 
@@ -138,11 +146,14 @@ def main() -> None:
     if not (arguments.shell_class or arguments.shell_class_file):
         parser.error("autotune requires --shell-class or --shell-class-file")
     report = _run_autotune(arguments)
+    winners = report.get("winners")
+    if not isinstance(winners, list):
+        raise TypeError("autotune report winners must be a list")
     output = json.dumps(report, indent=2, sort_keys=True) + "\n"
     if arguments.output is None:
         print(output, end="")
     else:
         arguments.output.parent.mkdir(parents=True, exist_ok=True)
         arguments.output.write_text(output, encoding="utf-8")
-    if len(report["winners"]) != len(set(arguments.shell_class)):
+    if len(winners) != len(set(arguments.shell_class)):
         raise SystemExit(4)

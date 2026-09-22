@@ -97,6 +97,9 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
             )
         ):
             select_response(monkeypatch, storage)
+            if not force:
+                # Response-only overrides are invalid for an energy request.
+                monkeypatch.delenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES")
             trace = tmp_path / f"stage-{step}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
             result = batch.execute(
@@ -126,17 +129,19 @@ def test_jk_scratch_survives_response_property_and_geometry_replays(
                         assert (
                             counters["response_borrowed_jk_bytes"] == 3 * n * n * a * 8
                         )
-                        # One system retains raw device values in former K
-                        # scratch; batch scratch keeps its explicit upload.
-                        uploads = int(batch_size != 1)
+                        # A public batch may use a batched value owner or
+                        # independent singleton owners after an SCF retry.
+                        # Source owners generate missing A on device; only a
+                        # host-value owner can upload it.
+                        regenerated = counters.get("response_generated_raw_bytes", 0)
+                        reused = counters.get("raw_value_reused_bytes", 0)
+                        uploads = int(not response["source_backed"] and not reused)
                         assert (
                             counters["raw_value_upload_bytes"]
                             == uploads * n * n * a * 8
                         )
                         assert counters["raw_value_bulk_uploads"] == uploads
-                        assert counters.get("raw_value_reused_bytes", 0) == (
-                            (1 - uploads) * n * n * a * 8
-                        )
+                        assert reused + regenerated == ((1 - uploads) * n * n * a * 8)
                         assert counters["response_ao_matrix_products"] == 2 * a * (
                             2 if case.method == "uhf" else 1
                         )
@@ -344,7 +349,16 @@ def test_raw_view_binds_model_and_survives_upload_ablation(
                     r for r in read_trace(trace) if r["operation"] == "force_response"
                 ]
                 counters = response["counters"]
-                assert counters["raw_value_bulk_uploads"] == int(policy == "off")
+                if response["source_backed"]:
+                    assert counters["raw_value_bulk_uploads"] == 0
+                    assert counters.get("response_generated_raw_bytes", 0) == (
+                        int(policy == "off")
+                        * response["nbf"] ** 2
+                        * response["naux"]
+                        * 8
+                    )
+                else:
+                    assert counters["raw_value_bulk_uploads"] == int(policy == "off")
                 if policy == "auto":
                     current_owners.append(counters["raw_value_owner_identity"])
         assert current_owners[0] == current_owners[1]

@@ -246,23 +246,14 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_queue_diagnostics.cu",
             "cuda/direct_native_cartesian.cuh",
             "cuda/direct_native_contraction.cuh",
-            "cuda/direct_native_dsss_gradient.cuh",
             "cuda/direct_native_eri_order2.cuh",
             "cuda/direct_native_eri_order3.cuh",
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
-            "cuda/direct_native_high_order_coulomb.cuh",
-            "cuda/direct_native_order01_gradient.cuh",
-            "cuda/direct_native_order2_gradient.cuh",
             "cuda/direct_native_order2_shell.cuh",
-            "cuda/direct_native_order3_gradient.cuh",
-            "cuda/direct_native_order456_gradient.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
-            "cuda/direct_native_pair_order3_gradient.cuh",
-            "cuda/direct_native_ppss_gradient.cuh",
-            "cuda/direct_native_psps_gradient.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",
             "cuda/direct_native_shell_pair_hermite.cuh",
@@ -275,6 +266,7 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_force_density.cuh",
             "cuda/direct_force_low_order.cuh",
             "cuda/direct_force_order2.cuh",
+            "cuda/direct_force_order3.cuh",
             "cuda/direct_force_quartet.cuh",
             "cuda/direct_bounded_contraction.cuh",
             "cuda/direct_cached_tensor_kernels.cu",
@@ -330,9 +322,6 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     emitter = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "cuda_emitter.py"
     ).read_text(encoding="utf-8")
-    compatibility = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
-    ).read_text(encoding="utf-8")
     production = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
     ).read_text(encoding="utf-8")
@@ -341,8 +330,9 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
-    assert "from .cuda_lowering import" in compatibility
-    assert "emit_shell_class_fused_cuda" not in compatibility
+    assert not (
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
+    ).exists()
     assert "from .dppp_dispatch import" not in production
     assert "from .dppp_dispatch import" not in benchmark
 
@@ -951,12 +941,26 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert DDDD_SPEC.pair_orders == (4, 4)
     integral = build_integral_ir(DDDD_SPEC)
     candidates = schedule_candidates(integral, target=TEST_CUDA_TARGET)
-    assert [item.kind for item in candidates] == [
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
-        ScheduleKind.TILED_COMPONENTS,
+    # Search now exposes all target-legal mappings; the production default
+    # below must still use the qualified 64-component tile.
+    tiled = [item for item in candidates if item.kind == ScheduleKind.TILED_COMPONENTS]
+    limit = min(
+        TEST_CUDA_TARGET.maximum_threads_per_block,
+        TEST_CUDA_TARGET.maximum_threads_per_sm,
+    )
+    expected_tiles = [
+        TEST_CUDA_TARGET.warp_size * 2**power
+        for power in range(1, limit.bit_length())
+        if TEST_CUDA_TARGET.warp_size * 2**power <= limit
+        and TEST_CUDA_TARGET.warp_size * 2**power < DDDD_SPEC.component_count
     ]
-    assert [item.component_tile for item in candidates] == [64, 128, 256]
+    assert [item.component_tile for item in tiled] == expected_tiles
+    assert {item.kind for item in candidates} == {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.TILED_COMPONENTS,
+    }
     plan = build_fused_shell_plan(DDDD_SPEC, target=TEST_CUDA_TARGET)
     assert plan.schedule.kind == ScheduleKind.TILED_COMPONENTS
     assert plan.block_threads == 64
@@ -969,8 +973,16 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
     assert "component_tile_begin += 64U" in source
 
     trials = supported_schedule_trials(DDDD_SPEC, target=TEST_CUDA_TARGET)
-    assert len(trials) == 24
     assert len({trial.schedule_id for trial in trials}) == len(trials)
+    tiled_trials = [
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.TILED_COMPONENTS
+    ]
+    assert (
+        len(tiled_trials)
+        == len(expected_tiles) * len(PairStorage) * len(PairOrientation) * 2
+    )
     assert {
         (
             trial.schedule.component_tile,
@@ -978,10 +990,10 @@ def test_large_dddd_class_defaults_to_tiled_lowering() -> None:
             trial.schedule.pair_orientation,
             trial.schedule.unroll_pair_terms,
         )
-        for trial in trials
+        for trial in tiled_trials
     } == {
         (tile, storage, orientation, unrolled)
-        for tile in (64, 128, 256)
+        for tile in expected_tiles
         for storage in PairStorage
         for orientation in PairOrientation
         for unrolled in (True, False)
@@ -1673,6 +1685,50 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback() -> None:
     assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
 
 
+def test_bounded_fock_registry_gaps_use_exact_runtime_fallback() -> None:
+    """Keep high-l bounded Fock correct without an unbounded descriptor arena."""
+
+    source = _direct_cuda_source()
+    fallback = source.index("const auto launch_bounded_generic_fock")
+    dispatch = source.index("const auto launch_bounded_generated_fock", fallback)
+    dispatch_end = source.index(
+        "// The exact provider is resolved/validated by run_hf_cuda_bucket_cached.",
+        dispatch,
+    )
+    assert fallback < dispatch < dispatch_end
+    assert "host_uncovered_fock_shell_class_mask == 0U" in source[fallback:dispatch]
+    assert (
+        "launch_bounded_direct_fock_shell_quartet_kernel" in source[fallback:dispatch]
+    )
+    assert "host_generated_fock_shell_class_mask" in source[fallback:dispatch]
+    assert "launch_bounded_generic_fock" in source[dispatch:dispatch_end]
+    assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
+
+    fallback_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu"
+    ).read_text()
+    fock_wrapper = fallback_source.index(
+        "void launch_bounded_direct_fock_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>"
+        in fallback_source[fock_wrapper:]
+    )
+    # The older force fallback may use Fock screening while still writing forces.
+    # Do not conflate screening purpose with the scientific consumer again.
+    force_wrapper = fallback_source.index(
+        "void launch_bounded_direct_shell_quartet_kernel("
+    )
+    assert (
+        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, true>"
+        in fallback_source[force_wrapper:fock_wrapper]
+    )
+
+
 def test_production_manifest_drives_generated_registry_and_shards(
     tmp_path: Path,
 ) -> None:
@@ -1863,10 +1919,10 @@ def test_production_manifest_drives_generated_registry_and_shards(
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90"))
-def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
+def test_unmeasured_cuda_targets_require_explicit_portable_profile(
     architecture: str,
 ) -> None:
-    """Never reuse the measured RTX 5090 schedule on another compute target."""
+    """Never hide a missing tuned profile behind an implicit generic build."""
 
     manifest = (
         REPOSITORY_ROOT
@@ -1875,7 +1931,9 @@ def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
         / "integral"
         / "production_shell_classes.json"
     )
-    resolved = resolve_production_profile(manifest, architecture)
+    with pytest.raises(ValueError, match="portable_cuda.*explicitly"):
+        resolve_production_profile(manifest, architecture)
+    resolved = resolve_production_profile(manifest, architecture, "portable_cuda")
     assert resolved.profile == "portable_cuda"
     assert resolved.portable is True
     assert resolved.tuned is False
@@ -2083,6 +2141,11 @@ def test_generated_one_electron_derivatives_are_the_production_default() -> None
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES")' in selection
     assert "selection == nullptr" in selection
     assert 'std::strcmp(selection, "generated") == 0' in selection
+    assert 'std::strcmp(selection, "reference") == 0' in selection
+    assert 'std::strcmp(selection, "native") == 0' in selection
+    assert 'std::strcmp(selection, "tensor") == 0' in selection
+    assert "silently changing scientific owner" in selection
+    assert selection.count("return true;") >= 2
     assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
     assert (
         "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"
@@ -2270,11 +2333,24 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     """Route large grid-addressable buckets before a multi-GiB allocation."""
 
     source = _direct_cuda_source()
-    assert "direct_schedule.generated_task_arena_maximum_bytes" in source
+    assert "direct_schedule.fixed_topology.arena_maximum_bytes" in source
+    assert "direct_jk_bounded_streaming_task_capacity_limit" in source
     assert "resolve_direct_jk_schedule_policy" in source
     assert "direct_task_layout.exact_tile_count >" in source
     assert "sizeof(GeneratedShellTask)" in source
     assert "requested_bounded_direct_streaming = true" in source
+
+
+def test_direct_task_resource_domains_remain_separate() -> None:
+    """Do not reuse fixed-topology storage to size bounded streaming pages."""
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text()
+    begin = source.index("direct_jk_bounded_streaming_task_capacity_limit")
+    end = source.index("bool reuse_converged_fock_requested", begin)
+    capacity_source = source[begin:end]
+    assert "policy.fixed_topology" not in capacity_source
+    assert "policy.bounded_streaming.task_capacity_ceiling" in capacity_source
+    assert "policy.bounded_streaming.arena_maximum_bytes" in capacity_source
 
 
 def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
@@ -2365,18 +2441,13 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     types_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_native_gradient_types.cuh"
     ).read_text(encoding="utf-8")
-    gradient_source = (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
-    ).read_text(encoding="utf-8")
     low_order_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_low_order.cuh"
     ).read_text(encoding="utf-8")
     assert "SsssWeightedGradient" not in types_source
-    assert (
-        "contracted_eri_cartesian_source_ssss_weighted_gradient" not in gradient_source
-    )
     assert "contract_two_electron_force_ssss_task" in low_order_source
     assert "generated_weighted_eri::ssss_force" in low_order_source
+    assert "direct_native_order01_gradient.cuh" not in low_order_source
     assert "generated_math" not in low_order_source
     assert "geometry.product_scales[3]" not in low_order_source
     assert "geometry.decay[3][axis]" not in low_order_source
@@ -2394,6 +2465,122 @@ def test_ssss_force_retires_handwritten_math_and_selector() -> None:
     assert "const std::uint64_t ssss_shell_class_mask" in driver
     assert "~ssss_shell_class_mask" in driver
     assert "~explicit_generated_force_shell_class_mask" in driver
+
+
+def test_order01_force_retires_handwritten_generic_fallback() -> None:
+    """Keep total-order-zero/one Direct-HF force mathematics compiler-owned."""
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order01_gradient.cuh"
+    ).exists()
+
+    quartet = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "direct_native_order01_gradient.cuh" not in quartet
+    assert "contracted_eri_cartesian_source_order01_gradient" not in quartet
+    assert "static_assert(AngularOrder >= 2U" in quartet
+
+    bounded = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(0)" not in bounded
+    assert "VIBEQC_BOUNDED_FORCE_CASE(1)" not in bounded
+
+
+def test_order2_force_codegen_emits_only_independent_gradient_roots() -> None:
+    """Keep PSPS/PPSS/DSSS native schedulers backed by force-only compiler roots."""
+
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    names = ("psps_force", "ppss_force", "dsss_force")
+    for index, name in enumerate(names):
+        begin = source.index(f"IndependentGradient {name}(")
+        if index + 1 < len(names):
+            end = source.index(f"IndependentGradient {names[index + 1]}(", begin)
+        else:
+            end = source.index(
+                "}  // namespace vibeqc::scf::generated_weighted_eri", begin
+            )
+        function = source[begin:end]
+        assert "result.value" not in function
+        assert "result.center[3]" not in function
+        for center in range(3):
+            for axis in range(3):
+                assert f"result.center[{center}][{axis}]" in function
+
+
+def test_order2_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep exact order-two Direct-HF force mathematics compiler-owned."""
+
+    for name in ("dsss", "ppss", "psps"):
+        assert not (
+            REPOSITORY_ROOT / f"src/scf/cuda/direct_native_{name}_gradient.cuh"
+        ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order2_generated_weighted_gradient" in source
+    )
+    for name in ("psps", "ppss", "dsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+        assert f"direct_native_{name}_gradient.cuh" not in source
+        assert f"contracted_eri_cartesian_source_{name}_weighted_gradient" not in source
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order2_gradient.cuh"
+    ).exists()
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in source
+    quartet_source = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
+    ).read_text(encoding="utf-8")
+    assert "direct_native_order2_gradient.cuh" not in quartet_source
+    assert "contracted_eri_cartesian_source_order2_generated_gradient" in quartet_source
+    assert "generated_weighted_eri::Geometry geometry;" in source
+    assert "generated_weighted_eri::Geometry geometry{};" not in source
+
+
+def test_order3_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep all total-order-three Direct-HF force mathematics compiler-owned."""
+
+    generated = emit_low_order_weighted_header(inline_single_use=True)
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"IndependentGradient {name}_force(" in generated
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order3_gradient.cuh"
+    ).exists()
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_order3_gradient.cuh"
+    ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order3_generated_weighted_gradient" in source
+    )
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+
+    generic = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "contracted_eri_cartesian_source_order3_gradient" not in generic
+    assert "direct_native_order3_gradient.cuh" not in generic
+
+
+def test_bounded_order3_force_uses_generated_shell_task_math() -> None:
+    """Keep bounded streaming disjoint from the retired order-three AO formula."""
+
+    bounded = (REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "contract_two_electron_force_order3_task<Unrestricted>(" in bounded
+    dispatcher = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(3)" not in dispatcher
 
 
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
@@ -2504,7 +2691,11 @@ def test_bounded_streaming_uses_monotonic_system_density_tail() -> None:
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -2518,7 +2709,11 @@ def test_bounded_streaming_profiles_executed_precision_per_shell_class() -> None
     """Count actual retained quartets without changing normal kernel work."""
 
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     source = _direct_cuda_source()
     assert "record_fock_precision" in generator
@@ -4846,6 +5041,44 @@ def test_autotune_expands_shell_class_list_files_for_batch_runs(
     )
 
 
+@pytest.mark.parametrize("name", ("ssss", "psss", "psps", "ppss"))
+def test_fock_autotune_includes_shared_production_baseline(name: str) -> None:
+    """Treat a shared primary schedule as the shipped Fock baseline."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    expected = dict(_production_fock_schedule_index("sm_120"))[name]
+    trials = supported_schedule_trials(
+        spec, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    assert sum(trial.schedule == expected for trial in trials) == 1
+
+
+def test_production_subgroup_fock_baseline_is_not_experimental() -> None:
+    """The shipped subgroup mapping is evidence, not a new proposal."""
+
+    from vibeqc_compiler.integral.tuning.driver import _experimental_subgroup_blocked
+
+    expected = dict(_production_fock_schedule_index("sm_120"))["ppps"]
+    trials = supported_schedule_trials(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
+    )
+    baseline = next(trial for trial in trials if trial.schedule == expected)
+    proposal = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule != expected
+    )
+    assert not _experimental_subgroup_blocked(
+        baseline, is_production_baseline=True, allow_experimental=False
+    )
+    assert _experimental_subgroup_blocked(
+        proposal, is_production_baseline=False, allow_experimental=False
+    )
+
+
 @pytest.mark.parametrize(
     "name",
     ("ppps", "pppp", "dpps", "dppp", "dpdp", "ddds", "dddp"),
@@ -4973,7 +5206,10 @@ def test_autotune_trials_preserve_an_explicit_integral_ir() -> None:
     assert trials[0].static_model.recurrence_state_count == 84
 
     source = emit_schedule_oracle_translation_unit(trials[0])
-    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+    assert re.search(
+        r"constexpr unsigned derivative_centers\[3\]\s*=\s*\{\s*0U,\s*2U,\s*3U\s*\};",
+        source,
+    )
 
 
 def test_autotune_trial_identity_includes_explicit_integral_intent() -> None:
@@ -5326,6 +5562,29 @@ def test_packed_autotune_searches_real_algebra_placement_variants() -> None:
     )
 
 
+def test_autotune_candidate_limit_samples_distinct_execution_geometries() -> None:
+    """Quick tuning must not spend its budget on one enumeration prefix."""
+
+    from vibeqc_compiler.integral.tuning.driver import (
+        _diverse_bounded_trials,
+        _schedule_geometry_key,
+    )
+
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    chosen = _diverse_bounded_trials(trials, 8)
+
+    assert len(chosen) == 8
+    assert len({_schedule_geometry_key(trial) for trial in chosen}) == len(chosen)
+    assert {trial.schedule.kind for trial in chosen} >= {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.COMPONENT_LANES,
+    }
+
+
 def test_autotune_candidate_artifact_includes_static_model(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -5415,6 +5674,12 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
     assert report["search"] == {
         "schedule_kinds": [trial.schedule.kind.value],
+        "bounded_trial_count": 1,
+        "execution_dedup_enabled": True,
+        "execution_deduplicated_count": 0,
+        "execution_deduplicated": [],
+        "candidate_limit_per_class": None,
+        "candidate_limit_strategy": None,
         "trial_count": 1,
     }
     assert report["manifest"]["write_skipped"] is True
@@ -5482,7 +5747,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "vibeqc_compiler.integral.tuning.driver._compile_trial", successful_compile
     )
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaCompilerAdapter.link",
+        "vibeqc_compiler.common.cuda_adapter.CudaCompilerAdapter.link",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
         ),
@@ -5498,7 +5763,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "fused_ms": 1.0,
     }
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaBenchmarkExecutor.run",
+        "vibeqc_compiler.common.cuda_adapter.CudaBenchmarkExecutor.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[],
             returncode=0,

@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 from .cuda import CudaEmitter
 from .expr import Expr, Graph
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
-from .shell_spec import AXES, DPPP_SPEC, PSSS_SPEC, ShellClassSpec
+from .shell_signature import BasisConvention, ShellSignature
+from .shell_spec import AXES, DPPP_SPEC, PSSS_SPEC, ShellClassSpec, cartesian_components
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping, Sequence
@@ -76,7 +77,7 @@ class ShellClassComponentKernel:
     """One component and its build-time symbolic all-center gradients."""
 
     graph: Graph
-    spec: ShellClassSpec
+    spec: ShellClassSpec | ShellSignature
     component: tuple[str, str, str, str]
     variables: Mapping[str, Expr]
     boys_argument: Expr
@@ -578,7 +579,7 @@ def build_psss_kernel(
 
 
 def build_shell_class_component_kernel(
-    spec: ShellClassSpec,
+    spec: ShellClassSpec | ShellSignature,
     component: Sequence[str],
     *,
     integral: IntegralIR | None = None,
@@ -593,10 +594,32 @@ def build_shell_class_component_kernel(
     reconstructed from its declared invariants.
     """
 
-    normalized = spec.validate_component(component)
     selected_integral = integral or build_integral_ir(spec)
     if selected_integral.spec != spec:
         raise ValueError("shell component spec does not match its integral IR")
+    signature = selected_integral.signature
+    if len(signature.shells) != 4:
+        raise ValueError(
+            "four-center component lowering requires exactly four basis shells"
+        )
+    if any(shell.convention != BasisConvention.CARTESIAN for shell in signature.shells):
+        raise ValueError(
+            "four-center component lowering consumes Cartesian primitive signatures; "
+            "spherical transforms remain caller-owned"
+        )
+    normalized = tuple(component)
+    if len(normalized) != 4:
+        raise ValueError(
+            "four-center component lowering requires exactly four components"
+        )
+    for center, (label, shell) in enumerate(
+        zip(normalized, signature.shells, strict=True)
+    ):
+        if label not in cartesian_components(shell.angular):
+            raise ValueError(
+                f"unsupported center-{center} component {label!r} for l={shell.angular}"
+            )
+    normalized = (normalized[0], normalized[1], normalized[2], normalized[3])
     # Value-only contractions must not inherit the extra Coulomb order needed
     # by a first derivative.  The explicit integral IR owns this recurrence
     # boundary so FOCK and FORCE consumers materialize only the states they

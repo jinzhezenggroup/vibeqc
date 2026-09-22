@@ -1174,11 +1174,16 @@ static DensityFittingTilePlan plan_density_fitting_tiles_impl(
   // contraction/setup/SCF allowance fits. Zero keeps the compatibility policy.
   if (memory_budget_bytes != 0) {
     plan.ao_pair_tile = ao_pair_count;
-    // Generated B retention needs one full tensor plus three bounded K panels.
-    // Full AO rows keep the resident GEMM/capture layout; Q is independent of
-    // the stored auxiliary extent. A fixed ceiling avoids spending every extra
-    // GiB on interchangeable contraction scratch after B already fits.
-    plan.auxiliary_tile = generated_source ? std::min<std::size_t>(naux, 128) : naux;
+    // Generated B retention needs one full tensor plus three K panels. The
+    // ordinary dense path caps interchangeable Q scratch at 128, but a
+    // method-authorized occupied-RHF plan needs the complete Q extent so that
+    // both SCF K and the exact raw-response owner can be reused. If that full
+    // layout does not fit, the generated branch below finds the largest
+    // bounded resident panel and the automatic wrapper drops the optional
+    // factor reservation.
+    plan.auxiliary_tile = generated_source && occupied_exchange ? naux
+                          : generated_source                    ? std::min<std::size_t>(naux, 128)
+                                                                : naux;
     plan.stores_full_three_center = generated_source;
     update_bytes();
     if (plan.peak_workspace_bytes <= memory_budget_bytes) {
@@ -1265,13 +1270,18 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t
                                                   std::size_t budget, std::size_t fixed,
                                                   bool generated_source,
                                                   std::size_t automatic_rhf_rank) {
-  const bool automatic = df_occupied_exchange_auto_requested() && !generated_source &&
+  const bool automatic = df_occupied_exchange_auto_requested() &&
                          df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank);
   if (automatic) {
     try {
       auto plan = plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget, fixed,
                                                   generated_source, true);
-      if (plan.stores_full_three_center) {
+      const auto ao_pair_count = nbf * nbf;
+      // A retained B tensor with a bounded Q panel cannot consume the
+      // automatic occupied owner. Keep the ordinary dense/source plan in that
+      // case instead of charging SCF factor state that execution cannot use.
+      if (plan.stores_full_three_center && plan.ao_pair_tile == ao_pair_count &&
+          plan.auxiliary_tile == naux) {
         plan.automatic_rhf_rank = automatic_rhf_rank;
         return plan;
       }

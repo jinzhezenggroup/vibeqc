@@ -8,6 +8,7 @@ during nuclear differentiation.
 
 from __future__ import annotations
 
+import importlib
 import math
 import typing
 from dataclasses import dataclass
@@ -47,7 +48,8 @@ class CoulombKernel:
 
     def to_payload(self) -> typing.Any:
         """Return normalized scientific inputs for IR/cache serialization."""
-        return {"version": 1, "family": self.family.value, "omega": self.omega}
+        family = CoulombKernelFamily(self.family)
+        return {"version": 1, "family": family.value, "omega": self.omega}
 
 
 def reference_moments(
@@ -73,7 +75,7 @@ def reference_moments(
         )
     if not isinstance(kernel, CoulombKernel):
         raise TypeError("expected explicit CoulombKernel semantics")
-    from scipy.integrate import quad
+    quad = importlib.import_module("scipy.integrate").quad
 
     radius = math.hypot(kernel.omega, math.sqrt(rho))
     boundary = kernel.omega / radius

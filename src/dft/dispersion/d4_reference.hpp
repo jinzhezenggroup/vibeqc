@@ -69,8 +69,15 @@ inline D4Tables gfn2_d4_host_tables() {
           2.0};
 }
 
+VIBEQC_D4_HD inline std::size_t d4_unbounded_workspace_elements(int atoms) {
+  if (atoms < 0) return 0u;
+  constexpr std::size_t kMaximumSize = static_cast<std::size_t>(-1);
+  const std::size_t count = static_cast<std::size_t>(atoms);
+  return count <= kMaximumSize / (27u * sizeof(double)) ? 27u * count : 0u;
+}
+
 VIBEQC_D4_HD inline std::size_t d4_workspace_elements(int atoms) {
-  return atoms >= 0 && atoms <= kD4MaximumAtoms ? 27u * static_cast<std::size_t>(atoms) : 0u;
+  return atoms >= 0 && atoms <= kD4MaximumAtoms ? d4_unbounded_workspace_elements(atoms) : 0u;
 }
 
 namespace d4_detail {
@@ -206,6 +213,34 @@ VIBEQC_D4_HD inline double atm_radial(double x, double y, double z, double r5, d
 }
 }  // namespace d4_detail
 
+// Shared cached-geometry D4 primitives for SCC/runtime consumers that already
+// own and validate geometry/CN state. These helpers deliberately do not build
+// geometry, pair lists, or CNs: they own only the charge/CN interpolation and
+// pair-coefficient science also used by the complete fixed-charge evaluator.
+struct D4CachedPairCoefficient {
+  double c6 = 0.0;
+  double first_cn = 0.0;
+  double second_cn = 0.0;
+  double first_charge = 0.0;
+  double second_charge = 0.0;
+};
+
+VIBEQC_D4_HD inline void prepare_d4_cached_weights(int n, const std::int32_t* z, const double* cn,
+                                                   const double* q, const D4Parameters& p,
+                                                   D4Tables tables, double* weights,
+                                                   double* cn_derivatives,
+                                                   double* charge_derivatives) {
+  d4_detail::weights(n, z, cn, q, p, tables, weights, cn_derivatives, charge_derivatives);
+}
+
+VIBEQC_D4_HD inline D4CachedPairCoefficient d4_cached_pair_coefficient(
+    int first, int second, const std::int32_t* z, D4Tables tables, const double* weights,
+    const double* cn_derivatives, const double* charge_derivatives) {
+  const auto coefficient =
+      d4_detail::coefficient(first, second, z, tables, weights, cn_derivatives, charge_derivatives);
+  return {coefficient.c6, coefficient.ci, coefficient.cj, coefficient.qi, coefficient.qj};
+}
+
 // Complete derivative at independent/supplied charges, NOT complete DFT-D4
 // forces. grad=dE/dR (Eh/bohr); dq=dE/dq (Eh/e); energy={two-body, zero-q ATM}.
 // Add (dq/dR)^T*(dE/dq) through the selected charge provider for total forces.
@@ -213,16 +248,17 @@ VIBEQC_D4_HD inline double atm_radial(double x, double y, double z, double r5, d
 // Every numeric buffer must be disjoint. Tables must be the immutable pinned
 // arrays (or byte-identical device copies). Workspace is disposable; outputs
 // are committed only on success. One CPU worker or CUDA lane owns one call.
-VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t* z,
-                                                      const double* xyz, const double* q,
-                                                      const D4Parameters& p, D4Tables t,
-                                                      double* workspace, std::size_t workspace_size,
-                                                      double* energy, double* grad, double* dq) {
+VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge_impl(
+    int n, const std::int32_t* z, const double* xyz, const double* q, const D4Parameters& p,
+    D4Tables t, double* workspace, std::size_t workspace_size, double* energy, double* grad,
+    double* dq, bool enforce_atom_bound) {
   using namespace d4_detail;
-  if (n > kD4MaximumAtoms || p.reference_model != t.reference_model ||
+  const std::size_t required_workspace = d4_unbounded_workspace_elements(n);
+  if ((enforce_atom_bound && n > kD4MaximumAtoms) || p.reference_model != t.reference_model ||
       fabs(p.ga - t.ga) > 1.0e-15 || fabs(p.gc - t.gc) > 1.0e-15)
     return D4Status::unsupported;
-  if (n < 0 || !valid_parameters(p) || workspace_size < d4_workspace_elements(n))
+  if (n < 0 || (n > 0 && required_workspace == 0u) || !valid_parameters(p) ||
+      workspace_size < required_workspace)
     return D4Status::invalid_argument;
   if (t.element_count != data::kElementCount || t.reference_count != data::kReferenceCount ||
       t.reference_c6_count != data::kReferenceCount * (data::kReferenceCount + 1) / 2)
@@ -233,7 +269,7 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
   const std::size_t bytes[] = {count * sizeof(*z),
                                3 * count * sizeof(double),
                                count * sizeof(double),
-                               d4_workspace_elements(n) * sizeof(double),
+                               required_workspace * sizeof(double),
                                2 * sizeof(double),
                                3 * count * sizeof(double),
                                count * sizeof(double),
@@ -272,7 +308,7 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
   double* adj = wq + 7 * n;
   double* g = adj + n;
   double* d = g + 3 * n;
-  for (std::size_t a = 0; a < d4_workspace_elements(n); ++a) workspace[a] = 0.0;
+  for (std::size_t a = 0; a < required_workspace; ++a) workspace[a] = 0.0;
   for (int i = 1; i < n; ++i)
     for (int j = 0; j < i; ++j) {
       double v[3];
@@ -360,5 +396,28 @@ VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t*
   for (int i = 0; i < n; ++i) dq[i] = d[i];
   return D4Status::success;
 }
+
+VIBEQC_D4_HD inline D4Status evaluate_d4_fixed_charge(int n, const std::int32_t* z,
+                                                      const double* xyz, const double* q,
+                                                      const D4Parameters& p, D4Tables t,
+                                                      double* workspace, std::size_t workspace_size,
+                                                      double* energy, double* grad, double* dq) {
+  return evaluate_d4_fixed_charge_impl(n, z, xyz, q, p, t, workspace, workspace_size, energy, grad,
+                                       dq, true);
+}
+
+// Internal CPU owner used by GFN2 after its larger-system runtime has already
+// supplied and validated storage. Public D4 and every CUDA schedule remain
+// bounded by kD4MaximumAtoms through evaluate_d4_fixed_charge above.
+inline D4Status evaluate_d4_fixed_charge_unbounded_cpu(int n, const std::int32_t* z,
+                                                       const double* xyz, const double* q,
+                                                       const D4Parameters& p, D4Tables t,
+                                                       double* workspace,
+                                                       std::size_t workspace_size, double* energy,
+                                                       double* grad, double* dq) {
+  return evaluate_d4_fixed_charge_impl(n, z, xyz, q, p, t, workspace, workspace_size, energy, grad,
+                                       dq, false);
+}
+
 }  // namespace vibeqc::dft::dispersion
 #undef VIBEQC_D4_HD

@@ -23,17 +23,16 @@ sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 
 import numpy as np
 from vibeqc.profiles import atomic_json, canonical_hash, file_hash
-from vibeqc_compiler.dft import NativeAO
-from vibeqc_compiler.dft.fixtures import basis_arguments
-from vibeqc_compiler.xc import FixedDensityXC, functional
-from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixture
-
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     block_error,
     new_evidence,
     outcome,
     validate_evidence,
 )
+from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.dft.fixtures import basis_arguments
+from vibeqc_compiler.xc import FixedDensityXC, functional
+from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixture
 
 
 def run(output: typing.Any) -> None:

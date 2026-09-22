@@ -31,6 +31,9 @@ struct D3CudaOwner {
 
 namespace {
 
+inline constexpr unsigned kD3CooperativeThreads = 128;
+inline constexpr std::size_t kD3CooperativeMinimumAtoms = 8;
+
 class DeviceScope {
  public:
   explicit DeviceScope(int requested) {
@@ -83,26 +86,237 @@ bool upload(cudaStream_t stream, T* destination, const T* source, std::size_t co
 __global__ void d3_ragged_kernel(std::uint32_t systems, const std::uint32_t* offsets,
                                  const std::int32_t* atomic_numbers, const double* coordinates,
                                  const std::uint8_t* active, const std::uint8_t* want_gradient,
-                                 D3Parameters parameters, D3Tables tables, double* workspace,
+                                 D3ModelParameters parameters, D3Tables tables, double* workspace,
                                  D3Status* statuses, double* energies, double* gradients) {
   const auto system = static_cast<std::uint32_t>(blockIdx.x);
-  if (system >= systems || threadIdx.x != 0) return;
+  if (system >= systems) return;
   if (!active[system]) {
-    statuses[system] = D3Status::success;
-    energies[system] = 0.0;
+    if (threadIdx.x == 0) {
+      statuses[system] = D3Status::success;
+      energies[system] = 0.0;
+    }
     return;
   }
 
   const std::size_t begin = offsets[system];
   const std::size_t end = offsets[system + 1];
   const std::size_t atoms = end - begin;
-  double energy = 0.0;
   double* gradient = want_gradient[system] ? gradients + 3 * begin : nullptr;
-  const auto status =
-      evaluate_d3_bj(atoms, atomic_numbers + begin, coordinates + 3 * begin, parameters, tables,
-                     workspace + 16 * begin, 16 * atoms, &energy, gradient);
-  statuses[system] = status;
-  energies[system] = status == D3Status::success ? energy : 0.0;
+  if (atoms < kD3CooperativeMinimumAtoms) {
+    if (threadIdx.x == 0) {
+      double energy = 0.0;
+      const auto status =
+          evaluate_d3_model(atoms, atomic_numbers + begin, coordinates + 3 * begin, parameters,
+                            tables, workspace + 16 * begin, 16 * atoms, &energy, gradient);
+      statuses[system] = status;
+      energies[system] = status == D3Status::success ? energy : 0.0;
+    }
+    return;
+  }
+
+  __shared__ int failure;
+  if (threadIdx.x == 0) failure = 0;
+  __syncthreads();
+
+  const auto* z = atomic_numbers + begin;
+  const auto* xyz = coordinates + 3 * begin;
+  double* system_workspace = workspace + 16 * begin;
+  double* weights = system_workspace;
+  double* derivatives = weights + 7 * atoms;
+  double* adjoints = derivatives + 7 * atoms;
+  double* cn = adjoints + atoms;
+  const double cn_cutoff =
+      parameters.damping == D3Damping::bj ? parameters.bj.cn_cutoff : parameters.zero.cn_cutoff;
+
+  for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x) {
+    if (z[atom] < 1 || z[atom] > 86) {
+      atomicMax(&failure, static_cast<int>(D3Status::unsupported));
+      continue;
+    }
+    for (int axis = 0; axis < 3; ++axis)
+      if (!d3_detail::finite(xyz[3 * atom + axis]))
+        atomicMax(&failure, static_cast<int>(D3Status::invalid_argument));
+  }
+  __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) {
+      statuses[system] = static_cast<D3Status>(failure);
+      energies[system] = 0.0;
+    }
+    return;
+  }
+
+  // Atom-centric CN evaluation duplicates each pair once per endpoint but
+  // eliminates global atomics and gives each logical atom one deterministic
+  // owner across ragged systems.
+  for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x) {
+    double value = 0.0;
+    for (std::size_t other = 0; other < atoms; ++other) {
+      if (other == atom) continue;
+      const double dx = xyz[3 * atom] - xyz[3 * other];
+      const double dy = xyz[3 * atom + 1] - xyz[3 * other + 1];
+      const double dz = xyz[3 * atom + 2] - xyz[3 * other + 2];
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      if (!d3_detail::finite(r2) || r2 < 1.0e-12) {
+        atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+        continue;
+      }
+      if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) continue;
+      const double radius = tables.elements[z[atom] - 1].covalent_radius +
+                            tables.elements[z[other] - 1].covalent_radius;
+      value += d3_detail::logistic(16.0 * (radius / sqrt(r2) - 1.0));
+    }
+    cn[atom] = value;
+    adjoints[atom] = 0.0;
+  }
+  __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) {
+      statuses[system] = static_cast<D3Status>(failure);
+      energies[system] = 0.0;
+    }
+    return;
+  }
+
+  for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x)
+    if (!d3_detail::prepare_atom_weights(atom, z, cn, tables, weights, derivatives))
+      atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+  __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) {
+      statuses[system] = static_cast<D3Status>(failure);
+      energies[system] = 0.0;
+    }
+    return;
+  }
+
+  // One logical owner per atom: unique-pair energy uses other < atom while
+  // force/adjoint work visits both orientations, avoiding cross-thread writes.
+  for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x) {
+    double partial_energy = 0.0;
+    double adjoint = 0.0;
+    double gx = 0.0, gy = 0.0, gz = 0.0;
+    for (std::size_t other = 0; other < atoms; ++other) {
+      if (other == atom) continue;
+      const double dx = xyz[3 * atom] - xyz[3 * other];
+      const double dy = xyz[3 * atom + 1] - xyz[3 * other + 1];
+      const double dz = xyz[3 * atom + 2] - xyz[3 * other + 2];
+      const double r2 = dx * dx + dy * dy + dz * dz;
+      D3PairTerm term{};
+      if (!d3_pair_term(atom, other, z, r2, parameters, tables, term)) {
+        atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+        continue;
+      }
+      if (!term.included) continue;
+      const auto c = d3_detail::coefficient(atom, other, z, tables, weights, derivatives);
+      if (!d3_detail::finite(c.c6) || !d3_detail::finite(c.first_cn)) {
+        atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+        continue;
+      }
+      if (other < atom) {
+        const double pair_energy = -c.c6 * term.damping;
+        const double next_energy = partial_energy + pair_energy;
+        if (!d3_detail::finite(pair_energy) || !d3_detail::finite(next_energy)) {
+          atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+          continue;
+        }
+        partial_energy = next_energy;
+      }
+      if (gradient) {
+        adjoint += -c.first_cn * term.damping;
+        const double scale = -c.c6 * term.radial_derivative_over_distance;
+        gx += scale * dx;
+        gy += scale * dy;
+        gz += scale * dz;
+      }
+    }
+    cn[atom] = partial_energy;  // CN is dead after weight preparation; reuse as reduction scratch.
+    if (gradient) {
+      adjoints[atom] = adjoint;
+      gradient[3 * atom] = gx;
+      gradient[3 * atom + 1] = gy;
+      gradient[3 * atom + 2] = gz;
+    }
+  }
+  __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) {
+      statuses[system] = static_cast<D3Status>(failure);
+      energies[system] = 0.0;
+    }
+    return;
+  }
+
+  if (threadIdx.x == 0) {
+    double energy = 0.0;
+    for (std::size_t atom = 0; atom < atoms; ++atom) {
+      const double next_energy = energy + cn[atom];
+      if (!d3_detail::finite(cn[atom]) || !d3_detail::finite(next_energy)) {
+        failure = static_cast<int>(D3Status::numerical_failure);
+        break;
+      }
+      energy = next_energy;
+    }
+    energies[system] = failure == 0 ? energy : 0.0;
+  }
+  __syncthreads();
+  if (failure != 0) {
+    if (threadIdx.x == 0) statuses[system] = static_cast<D3Status>(failure);
+    return;
+  }
+
+  if (gradient) {
+    for (std::size_t atom = threadIdx.x; atom < atoms; atom += blockDim.x) {
+      double gx = gradient[3 * atom], gy = gradient[3 * atom + 1], gz = gradient[3 * atom + 2];
+      for (std::size_t other = 0; other < atoms; ++other) {
+        if (other == atom) continue;
+        const double dx = xyz[3 * atom] - xyz[3 * other];
+        const double dy = xyz[3 * atom + 1] - xyz[3 * other + 1];
+        const double dz = xyz[3 * atom + 2] - xyz[3 * other + 2];
+        const double r2 = dx * dx + dy * dy + dz * dz;
+        if (cn_cutoff > 0.0 && r2 > cn_cutoff * cn_cutoff) continue;
+        const double r = sqrt(r2);
+        const double radius = tables.elements[z[atom] - 1].covalent_radius +
+                              tables.elements[z[other] - 1].covalent_radius;
+        const double argument = 16.0 * (radius / r - 1.0);
+        const double e = exp(-fabs(argument));
+        const double logistic_derivative = e / ((1.0 + e) * (1.0 + e));
+        const double derivative = -16.0 * radius / r2 * logistic_derivative;
+        const double scale = (adjoints[atom] + adjoints[other]) * derivative / r;
+        gx += scale * dx;
+        gy += scale * dy;
+        gz += scale * dz;
+      }
+      gradient[3 * atom] = gx;
+      gradient[3 * atom + 1] = gy;
+      gradient[3 * atom + 2] = gz;
+      if (!d3_detail::finite(gx) || !d3_detail::finite(gy) || !d3_detail::finite(gz))
+        atomicMax(&failure, static_cast<int>(D3Status::numerical_failure));
+    }
+    __syncthreads();
+  }
+  if (failure != 0) {
+    if (threadIdx.x == 0) {
+      statuses[system] = static_cast<D3Status>(failure);
+      energies[system] = 0.0;
+    }
+    return;
+  }
+
+  // ATM is already independently qualified. Keep its O(N^3) primitive on one
+  // deterministic owner after the cooperative two-body stage; it accumulates
+  // into the same publication buffers and preserves per-system failure isolation.
+  if (parameters.atm_enabled) {
+    if (threadIdx.x == 0) {
+      const auto status =
+          evaluate_d3_bj_atm(atoms, z, xyz, parameters.atm, tables, system_workspace, 16 * atoms,
+                             energies + system, gradient, true);
+      statuses[system] = status;
+      if (status != D3Status::success) energies[system] = 0.0;
+    }
+  } else if (threadIdx.x == 0) {
+    statuses[system] = D3Status::success;
+  }
 }
 
 }  // namespace
@@ -197,7 +411,7 @@ void destroy_d3_cuda_owner(D3CudaOwner* owner) noexcept {
   delete owner;
 }
 
-vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters,
+vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3ModelParameters& parameters,
                               std::span<const double> coordinates,
                               std::span<const std::uint8_t> active,
                               std::span<const std::uint8_t> want_gradient,
@@ -212,6 +426,14 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters
   DeviceScope scope(owner->device_id);
   if (scope.error() != cudaSuccess)
     return cuda_failure(scope.error(), "select D3 CUDA replay device", detail);
+
+  struct ReplayDrain {
+    cudaStream_t stream{};
+    bool drained{false};
+    ~ReplayDrain() noexcept {
+      if (!drained && stream) (void)cudaStreamSynchronize(stream);
+    }
+  } replay_drain{owner->stream};
 
   auto copy_h2d = [&](void* destination, const void* source, std::size_t bytes,
                       const char* action) -> vibeqc_status {
@@ -235,7 +457,7 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters
       cudaMemsetAsync(owner->gradients, 0, gradients.size() * sizeof(double), owner->stream);
   if (clear != cudaSuccess) return cuda_failure(clear, "clear D3 gradient publication", detail);
   const D3Tables tables{owner->elements, owner->pairs, owner->reference_cn, owner->reference_c6};
-  d3_ragged_kernel<<<owner->systems, 1, 0, owner->stream>>>(
+  d3_ragged_kernel<<<owner->systems, kD3CooperativeThreads, 0, owner->stream>>>(
       owner->systems, owner->offsets, owner->atomic_numbers, owner->coordinates, owner->active,
       owner->want_gradient, parameters, tables, owner->workspace, owner->statuses, owner->energies,
       owner->gradients);
@@ -264,6 +486,7 @@ vibeqc_status execute_d3_cuda(D3CudaOwner* owner, const D3Parameters& parameters
   }
 
   error = cudaStreamSynchronize(owner->stream);
+  replay_drain.drained = true;
   return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
                               : cuda_failure(error, "synchronize D3 CUDA replay", detail);
 }

@@ -7,9 +7,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "sources/xtb/gfn1/gfn1.json"
-RAW = ROOT / "sources/xtb/gfn1/gfn1.toml"
-MANIFEST = ROOT / "sources/xtb/gfn1/gfn1_manifest.json"
+SOURCE = ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+RAW = ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.toml"
+MANIFEST = (
+    ROOT
+    / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
+)
 HEADER = ROOT / "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
 
 

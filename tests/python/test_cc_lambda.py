@@ -5,7 +5,7 @@ from functools import lru_cache
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import Program, execute
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 

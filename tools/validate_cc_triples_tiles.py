@@ -35,8 +35,8 @@ for candidate in (ROOT, Path(os.environ.get("SCRATCH", "")) / "repo"):
 _compiler_sys.path.insert(0, str(ROOT / "python"))
 
 import numpy as np
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor.cuda_execute import tensor_source_identity
 
 from tools.vibeqc_cc.triples import triples_energy

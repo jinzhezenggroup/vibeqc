@@ -15,12 +15,12 @@ from dataclasses import asdict, dataclass
 from hashlib import sha256
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import Program, execute
 
 from tools.vibeqc_posthf import MOBlock, ReferenceSnapshot
 from tools.vibeqc_posthf.df import DFProvider
 from tools.vibeqc_posthf.reference import immutable
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .df_contract import DFCCSDTMethodContract
 from .doubles import build_ccsd_program

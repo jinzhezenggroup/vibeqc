@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -131,16 +131,33 @@ def test_runtime_indexed_reference_adjoint_matches_runtime_maps() -> None:
     assert result.passed, result
 
 
-def test_runtime_indexed_generated_ad_fails_closed_until_transpose_rule_lands() -> None:
+def test_runtime_indexed_generated_ad_matches_runtime_maps() -> None:
     program = _program()
-    with pytest.raises(
-        ValueError, match="no demand-driven JVP rule.*runtime_indexed_select"
-    ):
-        linearize(program, ["source"])
-    with pytest.raises(
-        ValueError, match="no demand-driven VJP rule.*runtime_indexed_select"
-    ):
-        transpose_program(program, ["selected"], inputs=["source"])
+    feeds = _feeds(a=(3, 1, 3), b=(0, 2, 0))
+    tangent = np.linspace(-1.0, 1.0, feeds["source"].size).reshape(
+        feeds["source"].shape
+    )
+    cotangent = np.arange(6, dtype=np.float64).reshape(3, 2)
+
+    forward = linearize(program, ["source"])
+    forward_result = execute(
+        forward.program,
+        {**feeds, "d_source": tangent},
+    ).outputs["d_selected"]
+    expected_forward = np.stack(
+        [tangent[a, b] for a, b in zip(feeds["a_map"], feeds["b_map"], strict=True)]
+    )
+    np.testing.assert_array_equal(forward_result, expected_forward)
+
+    reverse = transpose_program(program, ["selected"], inputs=["source"])
+    reverse_result = execute(
+        reverse.program,
+        {**feeds, "bar_selected": cotangent},
+    ).outputs["bar_source"]
+    expected_reverse = np.zeros_like(feeds["source"])
+    for lane, (a, b) in enumerate(zip(feeds["a_map"], feeds["b_map"], strict=True)):
+        expected_reverse[a, b] += cotangent[lane]
+    np.testing.assert_array_equal(reverse_result, expected_reverse)
 
 
 @pytest.mark.skipif(
@@ -151,7 +168,7 @@ def test_runtime_indexed_cuda_replays_changed_maps_and_recovers_bounds(
     tmp_path: Path,
 ) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident
 

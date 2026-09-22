@@ -26,10 +26,15 @@ GRID = GridSpec(radial_points=24, angular_polar=8, angular_azimuth=16)
 def test_r2scan_keeps_unscaled_composition_descriptor(method: str) -> None:
     options = resolve_ks_options(method)
     assert options.coefficients == (1.0, 1.0, 0.0)
-    assert not options.requires_composition_v2
+    assert not options.has_nondefault_composition
     native = native_ks_options(options)
-    assert native.semilocal_exchange_scale == native.semilocal_correlation_scale == 1.0
-    assert native.fock_exchange_coefficient == 0.0
+    assert {
+        native.semilocal_components[
+            i
+        ].component_id.decode(): native.semilocal_components[i].coefficient
+        for i in range(native.semilocal_component_count)
+    } == {"MGGA_C_R2SCAN": 1.0, "MGGA_X_R2SCAN": 1.0}
+    assert native.exchange_term_count == 0
 
 
 def test_b3lyp_point_bridge_matches_pinned_libxc_oracle() -> None:

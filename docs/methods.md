@@ -1,10 +1,12 @@
 # Methods and long-term scope
 
 VibeQC's long-term mission is to cover **all quantum-chemistry methods** in one
-accelerator-native system. This is a roadmap commitment, not a statement of
-current availability. RHF and UHF provide energies and analytic nuclear forces.
-Closed-shell conventional MP2 provides CPU/CUDA energies and analytic forces,
-while RI-MP2 and CPU/CUDA LDA/PBE RKS/UKS slices provide energy-only execution.
+accelerator-native system. Current executable method identity is registry-driven:
+the canonical native names, aliases, declared properties, and batch capability
+are generated from `manifests/public_methods.json` into the
+[public method table](public_methods.md). That generated table is authoritative
+for public native discovery; backend-, basis-, grid-, and model-specific
+execution constraints remain method-specific and fail closed.
 
 ## Current method status
 
@@ -14,13 +16,15 @@ while RI-MP2 and CPU/CUDA LDA/PBE RKS/UKS slices provide energy-only execution.
 | Hartree-Fock | UHF | Implemented: energy and analytic forces |
 | Hartree-Fock | ROHF, GHF, spinor HF | Planned |
 | Density fitting | Two-/three-center integral oracle, first nuclear derivatives, metric conditioning, memory planner | CPU oracle plus CUDA-native batched integral generation, RI-J/K, raw two-electron force-response contractions, and device-resident SCF integration implemented; streamed host tiles and provider-dependent Graph replay are documented acceptance-boundary modes |
-| Density functional theory | LDA RKS | CPU/CUDA single-system and native ragged energy only, closed shell, conventional J; independent matched-grid H2, He and water gates |
-| Density functional theory | PBE RKS | CPU/CUDA single-system and native ragged energy only, closed shell, conventional J; scaled PBE tail algebra and independent matched-grid H2, He and water gates |
-| Density functional theory | LDA/PBE UKS | CPU/CUDA single-system and native ragged energy only, independent spins, conventional J; matched-grid H, Li and H2+ gates; explicit PBE spin boundary policy |
-| Density functional theory | Meta-GGA, hybrid, range-separated, nonlocal correlation | Planned |
+| Density functional theory | LDA/PBE RKS/UKS | Public native energy selectors with batching; backend/grid qualification remains explicit |
+| Density functional theory | r2SCAN RKS/UKS | Public native energy selectors with batching; meta-GGA execution uses the audited r2SCAN composition |
+| Density functional theory | PBE0/B3LYP RKS/UKS | Public native energy selectors with batching; global-hybrid backend/grid constraints fail closed |
+| Density functional theory | PBE-D4 RKS | Public native energy selector with batching and method-owned D4 composition |
+| Density functional theory | wB97M-V and broader range-separated/nonlocal coverage | `wb97m-v` retains a reserved public identity but has no executable provider; broader coverage remains planned |
 | Perturbation theory | Closed-shell MP2 | Conventional energy and analytic forces implemented on CPU/CUDA; RI energy implemented on CPU/CUDA; RI analytic forces remain C2 work |
 | Perturbation theory | Open-shell, frozen-core, ECP and higher-order variants | Planned |
-| Coupled cluster | CCSD, perturbative triples, higher-rank variants | Planned |
+| Coupled cluster | RCCSD and RCCSD(T) | Public native energy endpoints are registered; qualified execution boundaries remain method-specific |
+| Coupled cluster | Higher-rank and broader open-shell variants | Planned |
 | Configuration interaction | CIS, selected CI, truncated and full CI | Planned |
 | Multireference | CASCI, CASSCF, internally contracted and selected-space methods | Planned |
 | Excited states and response | TDHF, TDDFT, EOM-CC, linear response | Planned |

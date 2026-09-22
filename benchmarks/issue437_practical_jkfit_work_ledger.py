@@ -31,6 +31,7 @@ except ModuleNotFoundError:
     from _retention import raw_output_path
 
 from benchmarks.df_component_ledger import read_trace
+from benchmarks.df_shell_work_ledger import DISTANCE_EDGES_BOHR, EXPONENT_EDGES
 
 SCHEMA = "vibeqc.issue437_practical_jkfit_work"
 VERSION = 1
@@ -39,6 +40,19 @@ _MISSING_PHASE_A_FIELDS = (
     "distance_exponent_bins",
     "measured_shell_metadata_bytes_read",
 )
+WEIGHT_MAGNITUDE_EDGES = (
+    1e-18,
+    1e-16,
+    1e-14,
+    1e-12,
+    1e-10,
+    1e-8,
+    1e-6,
+    1e-4,
+    1e-2,
+    1.0,
+)
+WEIGHT_MAGNITUDE_BIN_COUNT = len(WEIGHT_MAGNITUDE_EDGES) + 2
 
 
 def _sha256(path: Path) -> str:
@@ -131,6 +145,80 @@ def _class_map(work_ledger: dict) -> dict[tuple[int, int, int], dict]:
     return result
 
 
+def _weight_histogram(
+    counters: dict, angular: tuple[int, int, int], work: dict
+) -> dict | None:
+    version = counters.get("screening_weight_histogram_version")
+    if version is None:
+        return None
+    if (
+        version != 1
+        or counters.get("screening_weight_histogram_bin_count")
+        != WEIGHT_MAGNITUDE_BIN_COUNT
+    ):
+        raise ValueError("unsupported screening response-weight histogram schema")
+    prefix = f"shell_{''.join(map(str, angular))}_weight_"
+    samples = _nonnegative_integer(
+        counters.get(prefix + "effective_samples"), "weight effective samples"
+    )
+    loads = _nonnegative_integer(
+        counters.get(prefix + "underlying_loads"), "weight underlying loads"
+    )
+    bins = [
+        _nonnegative_integer(
+            counters.get(prefix + f"magnitude_bin_{index:02d}"),
+            "weight magnitude bin",
+        )
+        for index in range(WEIGHT_MAGNITUDE_BIN_COUNT)
+    ]
+    if sum(bins) != samples:
+        raise ValueError(
+            "response-weight histogram does not conserve effective samples"
+        )
+    if loads != work["public_weight_loads"]:
+        raise ValueError("response-weight histogram does not conserve public loads")
+    if samples - bins[0] != work["public_nonzero_weights"]:
+        raise ValueError("response-weight histogram does not conserve nonzero weights")
+    return {
+        "schema_version": version,
+        "effective_samples": samples,
+        "underlying_loads": loads,
+        "zero": bins[0],
+        "positive_edges": list(WEIGHT_MAGNITUDE_EDGES),
+        "positive_bins": bins[1:],
+        "interpretation": (
+            "Bin 0 is exact zero. Positive bins are (0,e0), [e0,e1), ..., "
+            "[e_last,+inf) over the folded public response weight seen by this shell class."
+        ),
+    }
+
+
+def _validate_distance_histogram(feature: dict, expected: int) -> None:
+    """Reject corrupt bins instead of trusting the headline work total."""
+    total = _nonnegative_integer(
+        feature.get("primitive_products_considered"), "feature primitive count"
+    )
+    if total != expected:
+        raise ValueError("distance/exponent histogram does not conserve primitive work")
+    for name, axes, width in (
+        ("distance_bohr", ("ab", "ac", "bc"), len(DISTANCE_EDGES_BOHR) + 2),
+        ("exponents", ("alpha", "beta", "gamma"), len(EXPONENT_EDGES) + 1),
+    ):
+        histograms = feature.get(name)
+        if not isinstance(histograms, dict) or set(histograms) != set(axes):
+            raise ValueError("invalid distance/exponent histogram axes")
+        for histogram in histograms.values():
+            if not isinstance(histogram, list) or len(histogram) != width:
+                raise ValueError("invalid distance/exponent histogram width")
+            counts = [
+                _nonnegative_integer(x, "feature histogram bin") for x in histogram
+            ]
+            if sum(counts) != total:
+                raise ValueError(
+                    "distance/exponent histogram does not conserve primitive work"
+                )
+
+
 def summarize_cell(
     label: str,
     role: str,
@@ -168,6 +256,20 @@ def summarize_cell(
     auxiliary_counts = _auxiliary_shell_counts(auxiliary_shells)
     considered_primitives = _considered_primitive_products(work_ledger)
     classes = _class_map(work_ledger)
+    distance_block = work_ledger.get("distance_exponent_bins")
+    distance_features: dict[tuple[int, int, int], dict] = {}
+    if distance_block is not None:
+        if not isinstance(distance_block, dict) or not isinstance(
+            distance_block.get("classes"), list
+        ):
+            raise TypeError("invalid distance/exponent screening feature block")
+        for feature in distance_block["classes"]:
+            angular = tuple(feature.get("angular", ()))
+            if len(angular) != 3 or angular in distance_features:
+                raise ValueError("invalid distance/exponent class domain")
+            distance_features[angular] = feature
+        if set(distance_features) != set(classes):
+            raise ValueError("distance/exponent class domain differs from work ledger")
 
     rows = []
     totals: Counter = Counter()
@@ -216,6 +318,10 @@ def summarize_cell(
             timing_source = "nsight_kernel_activity"
             class_launches += launches
         class_gpu_ms += gpu_ms
+        weight_histogram = _weight_histogram(counters, angular, work)
+        distance_feature = distance_features.get(angular)
+        if distance_feature is not None:
+            _validate_distance_histogram(distance_feature, primitive_considered)
 
         row = {
             "angular": list(angular),
@@ -228,6 +334,8 @@ def summarize_cell(
             "public_weight_loads": public_weight_loads,
             "public_nonzero_weights": public_nonzero,
             "public_nonzero_fraction": _ratio(public_nonzero, public_weight_loads),
+            "response_weight_magnitude_distribution": weight_histogram,
+            "distance_exponent_bins": distance_feature,
             "logical_response_weight_bytes": public_weight_loads * 8,
             "lowering": source["lowering"],
             "schedule": schedule,
@@ -248,6 +356,23 @@ def summarize_cell(
         ):
             totals[key] += row[key]
 
+    missing = list(_MISSING_PHASE_A_FIELDS)
+    screening_diagnostic = None
+    if counters.get("screening_weight_histogram_version") is not None:
+        missing.remove("response_weight_magnitude_distribution")
+        screening_diagnostic = {
+            "weight_d2h_bytes": _nonnegative_integer(
+                counters.get("screening_feature_weight_d2h_bytes"),
+                "screening feature D2H bytes",
+            ),
+            "stream_drains": _nonnegative_integer(
+                counters.get("screening_feature_stream_drains"),
+                "screening feature stream drains",
+            ),
+        }
+    if distance_block is not None:
+        missing.remove("distance_exponent_bins")
+
     return {
         "label": label,
         "role": role,
@@ -262,7 +387,17 @@ def summarize_cell(
         "nsight_launches": class_launches if complete_nsys else None,
         "totals": dict(totals),
         "classes": rows,
-        "missing_phase_a_fields": list(_MISSING_PHASE_A_FIELDS),
+        "screening_feature_diagnostic": screening_diagnostic,
+        "distance_exponent_bin_definitions": (
+            None
+            if distance_block is None
+            else {
+                "weighting": distance_block.get("weighting"),
+                "distance_bohr": distance_block.get("distance_bohr"),
+                "exponents": distance_block.get("exponents"),
+            }
+        ),
+        "missing_phase_a_fields": missing,
         "interpretation": (
             "Considered primitive work is reconstructed from the complete host "
             "signature domain; executed work and nonzero weights come from device "

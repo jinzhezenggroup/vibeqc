@@ -13,7 +13,7 @@ from __future__ import annotations
 import ctypes as ct
 import threading
 import typing
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from hashlib import sha256
 from pathlib import Path
 from time import perf_counter
@@ -24,6 +24,12 @@ from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+from vibeqc_compiler.common.prepared_execution import (
+    PreparedArtifactBinding,
+    PreparedExecutionLease,
+    PreparedExecutionMismatch,
+    PreparedExecutionRequest,
+)
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.runtime_domain import RuntimeTaskDomain
 from vibeqc_compiler.dft.cuda import (
@@ -60,6 +66,61 @@ from .ks import resolve_ks_method
 _DOUBLE = ct.POINTER(ct.c_double)
 _INT = ct.POINTER(ct.c_int64)
 _SOURCE_NAMES = STATIONARY_RUNTIME_SOURCE_NAMES
+
+
+class _ExclusiveWallTimeline:
+    """Additive host-wall phases that do not introduce CUDA synchronization."""
+
+    def __init__(self, clock: typing.Callable[[], float] | None = None) -> None:
+        self._clock = perf_counter if clock is None else clock
+        self._started = self._last = self._clock()
+        self._active = "preparation"
+        self._seconds: dict[str, float] = {}
+        self._closed = False
+
+    def _charge(self, now: float) -> None:
+        elapsed = now - self._last
+        if elapsed < 0:
+            raise RuntimeError("stationary timeline clock moved backwards")
+        self._seconds[self._active] = self._seconds.get(self._active, 0.0) + elapsed
+        self._last = now
+
+    def switch(self, name: str) -> None:
+        if self._closed or not name:
+            raise RuntimeError("invalid stationary timeline phase transition")
+        now = self._clock()
+        self._charge(now)
+        self._active = name
+
+    @contextmanager
+    def phase(self, name: str) -> typing.Iterator[None]:
+        previous = self._active
+        self.switch(name)
+        try:
+            yield
+        finally:
+            self.switch(previous)
+
+    def finish(self) -> dict[str, typing.Any]:
+        if self._closed:
+            raise RuntimeError("stationary timeline is already closed")
+        now = self._clock()
+        self._charge(now)
+        self._closed = True
+        endpoint = now - self._started
+        reconciled = sum(self._seconds.values())
+        return {
+            "schema": "vibeqc.stationary-cuda-exclusive-wall.v1",
+            "clock": "time.perf_counter",
+            "exclusive_wall_seconds": dict(sorted(self._seconds.items())),
+            "reconciled_seconds": reconciled,
+            "endpoint_seconds": endpoint,
+            "reconciliation_error_seconds": endpoint - reconciled,
+            "measurement_policy": (
+                "exclusive host-wall phases; CUDA transfer/kernel attribution is reported "
+                "separately and is not added to wall time"
+            ),
+        }
 
 
 def _ptr(array: typing.Any) -> typing.Any:
@@ -125,10 +186,14 @@ class _CudaSources:
         spin_blocks: typing.Any = 1,
         target: typing.Any = None,
         work_budget: typing.Any = 2_000_000,
+        timeline: _ExclusiveWallTimeline | None = None,
+        profile_device: bool = False,
     ) -> None:
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
         self.artifact = artifact
+        self.timeline = timeline
+        self.profile_device = False
         self.handle = ct.c_void_p()
         self.library = lib = ct.CDLL(str(artifact.library))
         self.natom, self.nao, self.point_capacity = basis.natom, basis.nao, points
@@ -224,6 +289,8 @@ class _CudaSources:
             budget,
             ct.byref(self.handle),
         )
+        if profile_device:
+            self.enable_profile()
         self._call(
             "stationary_topology",
             self.handle,
@@ -237,6 +304,14 @@ class _CudaSources:
         error = ct.create_string_buffer(2048)
         if getattr(self.library, name)(*args, error, len(error)):
             raise RuntimeError(error.value.decode())
+
+    def enable_profile(self) -> None:
+        if self.profile_device:
+            return
+        tail = [ct.c_char_p, ct.c_size_t]
+        self.library.stationary_profile.argtypes = [ct.c_void_p, *tail]
+        self._call("stationary_profile", self.handle)
+        self.profile_device = True
 
     def rebind_geometry(self, basis: typing.Any) -> None:
         """Refresh centers only for a basis with the prepared scientific topology."""
@@ -278,13 +353,19 @@ class _CudaSources:
             order = np.lexsort((pending[:, 1], pending[:, 0]))
             tasks = np.ascontiguousarray(pending[order])
             charges = np.ascontiguousarray(self.charges[: self.used][order])
-            self._call(
-                "stationary_tasks",
-                self.handle,
-                _ptr(tasks),
-                _ptr(charges),
-                self.used,
+            phase = (
+                self.timeline.phase("primitive_derivative_reduction_sync")
+                if self.timeline is not None
+                else nullcontext()
             )
+            with phase:
+                self._call(
+                    "stationary_tasks",
+                    self.handle,
+                    _ptr(tasks),
+                    _ptr(charges),
+                    self.used,
+                )
             self.used = 0
 
     def integral(
@@ -383,10 +464,10 @@ class _CudaSources:
         return out
 
     def metrics(self) -> typing.Any:
-        values = (ct.c_uint64 * 10)()
-        if self.library.stationary_metrics(self.handle, values, 10):
+        values = (ct.c_uint64 * 14)()
+        if self.library.stationary_metrics(self.handle, values, 14):
             raise RuntimeError("stationary metrics unavailable")
-        return dict(
+        metrics = dict(
             zip(
                 (
                     "owned_device_bytes",
@@ -399,10 +480,43 @@ class _CudaSources:
                     "stream",
                     "task_descriptors",
                     "task_batches",
+                    "h2d_calls",
+                    "d2h_calls",
+                    "synchronizations",
+                    "geometry_batches",
                 ),
                 values,
             )
         )
+        metrics["primitive_batches"] = metrics["task_batches"]
+        profile = (ct.c_double * 10)()
+        if self.profile_device:
+            self.library.stationary_profile_metrics.argtypes = [
+                ct.c_void_p,
+                ct.POINTER(ct.c_double),
+                ct.c_size_t,
+            ]
+            if self.library.stationary_profile_metrics(self.handle, profile, 10):
+                raise RuntimeError("stationary profile metrics unavailable")
+        metrics["device_profile_enabled"] = self.profile_device
+        metrics["device_phase_ms"] = dict(
+            zip(
+                (
+                    "synchronization_wait_wall",
+                    "setup_transfer_and_clear",
+                    "setup_validation_kernel",
+                    "primitive_h2d",
+                    "primitive_derivative_kernel",
+                    "primitive_reduction",
+                    "geometry_h2d",
+                    "geometry_kernel",
+                    "geometry_reduction",
+                    "final_d2h_wall",
+                ),
+                profile,
+            )
+        )
+        return metrics
 
     def close(self) -> None:
         if self.handle:
@@ -446,17 +560,111 @@ class PreparedStationaryCudaTopologyMismatch(ValueError):
 
 
 class PreparedStationaryCudaExecution:
-    """Retain verified artifacts and bounded CUDA owners for force replay."""
+    """Retain method-owned CUDA resources behind the shared prepared-region lease."""
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._stack: ExitStack | None = None
-        self._key: tuple[typing.Any, ...] | None = None
-        self._failed = False
-        self._executions = 0
-        self._geometry_rebinds = 0
+        self._lease = PreparedExecutionLease()
         self.preparation_seconds = 0.0
-        self.identity: str | None = None
+
+    @property
+    def identity(self) -> str | None:
+        return self._lease.identity
+
+    @property
+    def host_bound(self) -> int:
+        contract = self._lease.contract
+        return 0 if contract is None else contract.host_bytes
+
+    @property
+    def device_peak_bound(self) -> int:
+        contract = self._lease.contract
+        return 0 if contract is None else contract.device_bytes
+
+    def _request(
+        self,
+        *,
+        state: typing.Any,
+        basis: typing.Any,
+        contract: typing.Any,
+        plan: typing.Any,
+        tensor_plans: typing.Any,
+        target: typing.Any,
+        aot_directory: typing.Any,
+        native_grid_library: typing.Any,
+        ecp: bool,
+        device: int,
+        spec: typing.Any,
+        grid_plan: typing.Any,
+        source_bytes: int,
+        tile_points: int,
+        primitive_tile: int,
+        integral_terms: int,
+        work_budget: int,
+    ) -> PreparedExecutionRequest:
+        topology = _basis_topology_identity(basis)
+        scientific_identity = canonical_hash(
+            {
+                "plan": plan.identity,
+                "method": state.identity.method,
+                "family": contract.family,
+                "spin": contract.spin,
+                "ecp": ecp,
+                "topology": topology,
+                "backend": state._source.backend,
+                "functional": state.identity.functional_identity,
+                "regularization": state.identity.regularization_identity,
+                "ecp_model": repr(
+                    (state._source.ecp_cores, state._source.ecp_terms)
+                    if ecp
+                    else ("all-electron",)
+                ),
+                "grid_spec": repr(spec),
+            }
+        )
+        schedule_identity = canonical_hash(
+            {
+                "partition_iterations": spec.partition_iterations,
+                "tile_points": tile_points,
+                "primitive_tile": primitive_tile,
+                "integral_terms": integral_terms,
+                "work_budget": work_budget,
+                "grid_allocation_bytes": grid_plan.allocation_bytes,
+                "tensor_plans": [
+                    (name, value.identity)
+                    for name, value in sorted(tensor_plans.items())
+                ],
+                "aot_directory": (
+                    None
+                    if aot_directory is None
+                    else str(Path(aot_directory).resolve())
+                ),
+                "native_grid_library": (
+                    None
+                    if native_grid_library is None
+                    else str(Path(native_grid_library).resolve())
+                ),
+            }
+        )
+        workspace_identity = canonical_hash(
+            {
+                "grid_peak_bytes": grid_plan.peak_bytes,
+                "source_bytes": source_bytes,
+                "tensor": [
+                    (name, value.peak_bytes, value.host_bytes)
+                    for name, value in sorted(tensor_plans.items())
+                ],
+            }
+        )
+        return PreparedExecutionRequest(
+            "stationary-dft-cuda",
+            scientific_identity,
+            canonical_hash(target.to_payload()),
+            schedule_identity,
+            workspace_identity,
+            device=device,
+        )
 
     def ensure(
         self,
@@ -485,51 +693,47 @@ class PreparedStationaryCudaExecution:
         max_device_bytes: int,
         max_host_bytes: int,
         host_bound: int,
+        profile_device: bool = False,
     ) -> None:
         target = compiler.target if target is None else target
-        topology = _basis_topology_identity(basis)
-        key = (
-            plan.identity,
-            state.identity.method,
-            contract.family,
-            contract.spin,
-            ecp,
-            topology,
-            state._source.backend,
-            state.identity.functional_identity,
-            state.identity.regularization_identity,
-            repr(
-                (state._source.ecp_cores, state._source.ecp_terms)
-                if ecp
-                else ("all-electron",)
-            ),
-            device,
-            repr(target.to_payload()),
-            None if aot_directory is None else str(Path(aot_directory).resolve()),
-            None
-            if native_grid_library is None
-            else str(Path(native_grid_library).resolve()),
-            repr(spec),
-            spec.partition_iterations,
-            tile_points,
-            primitive_tile,
-            integral_terms,
-            work_budget,
-            grid_plan.allocation_bytes,
-            tuple(
-                (name, value.identity) for name, value in sorted(tensor_plans.items())
-            ),
+        request = self._request(
+            state=state,
+            basis=basis,
+            contract=contract,
+            plan=plan,
+            tensor_plans=tensor_plans,
+            target=target,
+            aot_directory=aot_directory,
+            native_grid_library=native_grid_library,
+            ecp=ecp,
+            device=device,
+            spec=spec,
+            grid_plan=grid_plan,
+            source_bytes=source_bytes,
+            tile_points=tile_points,
+            primitive_tile=primitive_tile,
+            integral_terms=integral_terms,
+            work_budget=work_budget,
         )
-        if self._key is not None:
-            if key != self._key:
+        if self._lease.contract is not None:
+            try:
+                self._lease.require(
+                    request,
+                    max_host_bytes=max_host_bytes,
+                    max_device_bytes=max_device_bytes,
+                )
+            except PreparedExecutionMismatch as error:
                 raise PreparedStationaryCudaTopologyMismatch(
                     "stationary CUDA prepared execution topology changed"
+                ) from error
+            if getattr(self.sources, "profile_device", False) != profile_device:
+                raise PreparedStationaryCudaTopologyMismatch(
+                    "stationary CUDA prepared profiling mode changed"
                 )
-            if self.host_bound > max_host_bytes:
-                raise ValueError("prepared stationary CUDA host budget exceeded")
-            if self.device_peak_bound > max_device_bytes:
-                raise ValueError("prepared stationary CUDA device budget exceeded")
-            if basis.identity != self._bound_basis_identity or self._failed:
+            if (
+                basis.identity != self._bound_basis_identity
+                or self._lease.needs_refresh
+            ):
                 if any(
                     file_hash(artifact.library) != artifact.metadata["binary_sha256"]
                     for artifact in self.artifacts
@@ -542,19 +746,18 @@ class PreparedStationaryCudaExecution:
                     )
                 )
                 self._bound_basis_identity = basis.identity
-                self._geometry_rebinds += 1
+                self._lease.mark_refresh()
             return
 
         tensor_peak = sum(value.peak_bytes for value in tensor_plans.values())
-        self.device_peak_bound = grid_plan.peak_bytes + source_bytes + tensor_peak
-        if self.device_peak_bound > max_device_bytes:
+        device_peak_bound = grid_plan.peak_bytes + source_bytes + tensor_peak
+        if device_peak_bound > max_device_bytes:
             raise ValueError("prepared stationary CUDA device budget exceeded")
         retained_host = host_bound + sum(
             value.host_bytes for value in tensor_plans.values()
         )
         if retained_host > max_host_bytes:
             raise ValueError("prepared stationary CUDA host budget exceeded")
-        self.host_bound = retained_host
 
         started = perf_counter()
         cache = Path(cache)
@@ -600,6 +803,7 @@ class PreparedStationaryCudaExecution:
                     spin_blocks=plan.spin_blocks,
                     target=target,
                     work_budget=work_budget,
+                    profile_device=profile_device,
                 )
             )
             needs_first = functional != 0
@@ -612,7 +816,9 @@ class PreparedStationaryCudaExecution:
                     budget_bytes=grid_plan.peak_bytes,
                     device_id=device,
                     active_ao_capacity=basis.nao,
-                    ingredients=("rho", "gradient", "tau") if needs_first else ("rho",),
+                    ingredients=(
+                        ("rho", "gradient", "tau") if needs_first else ("rho",)
+                    ),
                 )
             )
             tensors = {
@@ -624,8 +830,22 @@ class PreparedStationaryCudaExecution:
         except Exception:
             stack.close()
             raise
+        artifacts = (
+            stationary_artifact,
+            grid_artifact,
+            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+        )
+        try:
+            self._lease.install(
+                request,
+                tuple(PreparedArtifactBinding.from_artifact(a) for a in artifacts),
+                host_bytes=retained_host,
+                device_bytes=device_peak_bound,
+            )
+        except Exception:
+            stack.close()
+            raise
         self._stack = stack
-        self._key = key
         self.sources, self.grid, self.tensors = sources, grid, tensors
         self.stationary_plan = plan
         self.tensor_plans = dict(tensor_plans)
@@ -633,31 +853,16 @@ class PreparedStationaryCudaExecution:
         self.stationary_artifact = stationary_artifact
         self.grid_artifact = grid_artifact
         self.tensor_artifacts = tensor_artifacts
-        self.artifacts = (
-            stationary_artifact,
-            grid_artifact,
-            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
-        )
+        self.artifacts = artifacts
         self._bound_basis_identity = basis.identity
         self.preparation_seconds = perf_counter() - started
-        self.identity = sha256(
-            repr(
-                (
-                    key,
-                    tuple(
-                        (artifact.metadata["key"], artifact.metadata["binary_sha256"])
-                        for artifact in self.artifacts
-                    ),
-                )
-            ).encode()
-        ).hexdigest()
 
     def close(self) -> None:
         with self._lock:
             if self._stack is not None:
                 self._stack.close()
                 self._stack = None
-            self._key = None
+            self._lease.invalidate()
 
     def __enter__(self) -> typing.Any:
         return self
@@ -679,13 +884,17 @@ def _tensor_execution(
     cache: typing.Any,
     device: int,
     artifacts: list[typing.Any],
+    timeline: _ExclusiveWallTimeline,
 ) -> typing.Iterator[PreparedCuda]:
     if prepared is not None:
         yield prepared.tensors[name]
         return
-    artifact = compile_cuda(plan, compiler, cache)
+    with timeline.phase("artifact_lookup_compile"):
+        artifact = compile_cuda(plan, compiler, cache)
     artifacts.append(artifact)
-    with PreparedCuda(plan, artifact, device=device) as owner:
+    with timeline.phase("owner_construction"):
+        owner = PreparedCuda(plan, artifact, device=device)
+    with owner:
         yield owner
 
 
@@ -702,6 +911,20 @@ def _metric_delta(after: typing.Any, before: typing.Any) -> typing.Any:
         "task_batches",
     ):
         result[name] = after[name] - before[name]
+    for name in (
+        "h2d_calls",
+        "d2h_calls",
+        "synchronizations",
+        "primitive_batches",
+        "geometry_batches",
+    ):
+        if name in after and name in before:
+            result[name] = after[name] - before[name]
+    if "device_phase_ms" in after and "device_phase_ms" in before:
+        result["device_phase_ms"] = {
+            name: value - before["device_phase_ms"][name]
+            for name, value in after["device_phase_ms"].items()
+        }
     return result
 
 
@@ -738,6 +961,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
     prepared: PreparedStationaryCudaExecution | None = None,
+    profile_device: bool = False,
 ) -> typing.Any:
     """Consume a current native CUDA RKS/UKS snapshot with every plan source.
 
@@ -753,7 +977,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     preserves the checked native two-grid gate. The public wrapper restricts ECP
     force capability to Cartesian/real-spherical s/p records.
     """
-    started = perf_counter()
+    timeline = _ExclusiveWallTimeline()
     contract = StationaryDerivativeContract(state.identity)
     contract.validate(state)
     if state._source.backend != "cuda":
@@ -951,58 +1175,61 @@ def _complete_rks_cuda_gradient_diagnostic(
     cache = Path(cache)
     spec = state._source.grid_spec
     if prepared is None:
-        artifact = (
-            compile_stationary_cuda(
-                emit_first_derivative_cuda(requests),
-                functional=functional,
-                plan=plan,
-                iterations=spec.partition_iterations,
-                compiler=compiler,
-                cache=cache,
+        with timeline.phase("artifact_lookup_compile"):
+            artifact = (
+                compile_stationary_cuda(
+                    emit_first_derivative_cuda(requests),
+                    functional=functional,
+                    plan=plan,
+                    iterations=spec.partition_iterations,
+                    compiler=compiler,
+                    cache=cache,
+                )
+                if aot_directory is None or ecp
+                else load_stationary_aot_artifact(
+                    aot_directory,
+                    functional=functional,
+                    spin=contract.spin,
+                    plan=plan,
+                    architecture=target.architecture,
+                    iterations=spec.partition_iterations,
+                )
             )
-            if aot_directory is None or ecp
-            else load_stationary_aot_artifact(
-                aot_directory,
-                functional=functional,
-                spin=contract.spin,
-                plan=plan,
-                architecture=target.architecture,
-                iterations=spec.partition_iterations,
+            grid_artifact = (
+                compile_grid(compiler, cache)
+                if native_grid_library is None
+                else _native_grid_artifact(native_grid_library, target.architecture)
             )
-        )
-        grid_artifact = (
-            compile_grid(compiler, cache)
-            if native_grid_library is None
-            else _native_grid_artifact(native_grid_library, target.architecture)
-        )
         artifacts = [artifact, grid_artifact]
     else:
-        prepared.ensure(
-            state=state,
-            basis=basis,
-            contract=contract,
-            plan=plan,
-            tensor_plans=tensor_plans,
-            compiler=compiler,
-            cache=cache,
-            aot_directory=aot_directory,
-            native_grid_library=native_grid_library,
-            target=target,
-            requests=requests,
-            functional=functional,
-            ecp=ecp,
-            device=device,
-            spec=spec,
-            grid_plan=grid_plan,
-            source_bytes=source_bytes,
-            tile_points=tile_points,
-            primitive_tile=primitive_tile,
-            integral_terms=integral_terms,
-            work_budget=records,
-            max_device_bytes=max_device_bytes,
-            max_host_bytes=max_host_bytes,
-            host_bound=host_bound,
-        )
+        with timeline.phase("prepared_owner_lookup_or_construction"):
+            prepared.ensure(
+                state=state,
+                basis=basis,
+                contract=contract,
+                plan=plan,
+                tensor_plans=tensor_plans,
+                compiler=compiler,
+                cache=cache,
+                aot_directory=aot_directory,
+                native_grid_library=native_grid_library,
+                target=target,
+                requests=requests,
+                functional=functional,
+                ecp=ecp,
+                device=device,
+                spec=spec,
+                grid_plan=grid_plan,
+                source_bytes=source_bytes,
+                tile_points=tile_points,
+                primitive_tile=primitive_tile,
+                integral_terms=integral_terms,
+                work_budget=records,
+                max_device_bytes=max_device_bytes,
+                max_host_bytes=max_host_bytes,
+                host_bound=host_bound,
+                profile_device=profile_device,
+            )
         artifact = prepared.stationary_artifact
         grid_artifact = prepared.grid_artifact
         artifacts = list(prepared.artifacts)
@@ -1028,7 +1255,8 @@ def _complete_rks_cuda_gradient_diagnostic(
             tensor_work[name] += result.metrics[name]
 
     # Run the checked CUDA provider only after all admission checks pass.
-    derivatives = state._source.ecp_derivatives() if ecp else None
+    with timeline.phase("ecp_provider") if ecp else nullcontext():
+        derivatives = state._source.ecp_derivatives() if ecp else None
     peak = (
         max(ecp_workspace, grid_plan.peak_bytes + source_bytes)
         if prepared is None
@@ -1041,40 +1269,51 @@ def _complete_rks_cuda_gradient_diagnostic(
     )
     with ExitStack() as stack:
         if prepared is None:
-            sources = stack.enter_context(
-                _CudaSources(
-                    basis,
-                    artifact,
-                    compiler,
-                    device,
-                    tile_points,
-                    primitive_tile,
-                    source_bytes,
-                    spin_blocks=plan.spin_blocks,
-                    target=target,
-                    work_budget=records,
+            with timeline.phase("owner_construction"):
+                sources = stack.enter_context(
+                    _CudaSources(
+                        basis,
+                        artifact,
+                        compiler,
+                        device,
+                        tile_points,
+                        primitive_tile,
+                        source_bytes,
+                        spin_blocks=plan.spin_blocks,
+                        target=target,
+                        work_budget=records,
+                        timeline=timeline,
+                        profile_device=profile_device,
+                    )
                 )
-            )
-            ao = stack.enter_context(
-                CudaGrid(
-                    basis,
-                    grid_artifact,
-                    order=2 if needs_first else 1,
-                    tile_points=tile_points,
-                    budget_bytes=grid_plan.peak_bytes,
-                    device_id=device,
-                    active_ao_capacity=n,
-                    # GGA/meta-GGA geometry needs all four D*jet panels; r2SCAN
-                    # additionally consumes tau from the same current density.
-                    ingredients=("rho", "gradient", "tau") if needs_first else ("rho",),
+                ao = stack.enter_context(
+                    CudaGrid(
+                        basis,
+                        grid_artifact,
+                        order=2 if needs_first else 1,
+                        tile_points=tile_points,
+                        budget_bytes=grid_plan.peak_bytes,
+                        device_id=device,
+                        active_ao_capacity=n,
+                        # GGA/meta-GGA geometry needs all four D*jet panels; r2SCAN
+                        # additionally consumes tau from the same current density.
+                        ingredients=("rho", "gradient", "tau")
+                        if needs_first
+                        else ("rho",),
+                    )
                 )
-            )
             source_before = grid_before = None
         else:
             sources, ao = prepared.sources, prepared.grid
-            source_before, grid_before = sources.metrics(), ao.metrics()
-        sources.reset(spec.coincident_tolerance, state.density, state.weighted_density)
-        ao.set_density(density)
+            sources.timeline = timeline
+            with timeline.phase("metrics_collection"):
+                source_before, grid_before = sources.metrics(), ao.metrics()
+        with timeline.phase("owner_state_reset"):
+            sources.reset(
+                spec.coincident_tolerance, state.density, state.weighted_density
+            )
+            ao.set_density(density)
+        timeline.switch("python_packing")
         for source, rank, operator in (
             ("one_electron", 2, "kinetic"),
             ("overlap_pulay", 2, "overlap"),
@@ -1085,35 +1324,37 @@ def _complete_rks_cuda_gradient_diagnostic(
                 for indices in page.coordinates:
                     sources.integral(_SOURCE_NAMES.index(source), operator, indices)
                     if source == "one_electron":
-                        for a in range(na):
+                        for atom in range(na):
                             sources.integral(
                                 0,
                                 "nuclear_attraction",
                                 indices,
-                                a,
-                                charges[a],
+                                atom,
+                                charges[atom],
                             )
             sources.flush()
-        for a in range(na):
-            for b in range(a):
-                sources.nuclear(a, b, charges)
+        for atom in range(na):
+            for other in range(atom):
+                sources.nuclear(atom, other, charges)
         sources.flush()
         grid = state.grid
-        for begin in range(0, len(grid.points), tile_points):
-            end = min(begin + tile_points, len(grid.points))
-            with ao.xc_task(
-                grid.points[begin:end],
-                np.arange(n, dtype=np.uintp),
-                functional_name,
-            ) as task:
-                sources.geometry(
-                    task,
-                    np.asarray(grid.owners[begin:end], dtype=np.int64),
-                    grid.weights[begin:end],
-                    state._source.atomic_weights[begin:end],
-                    functional=functional,
-                )
-        components = sources.finish()
+        with timeline.phase("xc_geometry_and_sync"):
+            for begin in range(0, len(grid.points), tile_points):
+                end = min(begin + tile_points, len(grid.points))
+                with ao.xc_task(
+                    grid.points[begin:end],
+                    np.arange(n, dtype=np.uintp),
+                    functional_name,
+                ) as task:
+                    sources.geometry(
+                        task,
+                        np.asarray(grid.owners[begin:end], dtype=np.int64),
+                        grid.weights[begin:end],
+                        state._source.atomic_weights[begin:end],
+                        functional=functional,
+                    )
+        with timeline.phase("source_d2h_publication"):
+            components = sources.finish()
         if ecp:
             # Full ordered AO-pair contraction; the existing TensorIR supplies
             # spin summation and every scientific weight/reduction on CUDA.
@@ -1132,9 +1373,10 @@ def _complete_rks_cuda_gradient_diagnostic(
                     ),
                 }
                 with _tensor_execution(
-                    prepared, name, tp, compiler, cache, device, artifacts
+                    prepared, name, tp, compiler, cache, device, artifacts, timeline
                 ) as contraction:
-                    result = contraction.execute(feeds)
+                    with timeline.phase("tensorir_weight_execution"):
+                        result = contraction.execute(feeds)
                     record_tensor(result, feeds)
                     components[name] = result.outputs["gradient"].reshape(na, 3)
         # Validate actual coverage before the complete reduction. All-electron
@@ -1146,31 +1388,49 @@ def _complete_rks_cuda_gradient_diagnostic(
             if prepared is None:
                 peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
             with _tensor_execution(
-                prepared, "reduction", tp, compiler, cache, device, artifacts
+                prepared, "reduction", tp, compiler, cache, device, artifacts, timeline
             ) as reduction:
-                reduced = reduction.execute(components)
+                with timeline.phase("final_reduction"):
+                    reduced = reduction.execute(components)
                 record_tensor(reduced, components)
                 gradient = reduced.outputs["gradient"]
         else:
-            gradient = sources.reduced()
-        source_after = sources.metrics()
-        grid_after = ao.metrics()
-        work = (
-            source_after
-            if source_before is None
-            else _metric_delta(source_after, source_before)
-        )
-        work["grid_metrics"] = (
-            grid_after
-            if grid_before is None
-            else _grid_metric_delta(grid_after, grid_before)
-        )
-        work["borrowed_grid_streams"] = tuple(sorted(sources.borrowed_streams))
+            with timeline.phase("final_reduction"):
+                gradient = sources.reduced()
+        with timeline.phase("metrics_collection"):
+            source_after = sources.metrics()
+            grid_after = ao.metrics()
+            work = (
+                source_after
+                if source_before is None
+                else _metric_delta(source_after, source_before)
+            )
+            work["grid_metrics"] = (
+                grid_after
+                if grid_before is None
+                else _grid_metric_delta(grid_after, grid_before)
+            )
+            work["borrowed_grid_streams"] = tuple(sorted(sources.borrowed_streams))
         if work["owned_device_bytes"] != source_bytes:
             raise RuntimeError("stationary allocation disagrees with admitted bytes")
+        timeline.switch("owner_cleanup")
+    timeline.switch("publication_validation")
     contract.validate(state)  # Replay/replacement/closure revokes publication.
     if work["primitive_records"] != records or work["grid_pair_visits"] != pair_visits:
         raise RuntimeError("CUDA executed work disagrees with admitted source coverage")
+    published_gradient = immutable(gradient)
+    published_components = MappingProxyType(
+        {key: immutable(value) for key, value in components.items()}
+    )
+    artifacts_record = tuple(
+        {
+            "library": str(item.library),
+            "binary_sha256": item.metadata["binary_sha256"],
+            "key": item.metadata["key"],
+        }
+        for item in artifacts
+    )
+    timeline.switch("publication_metadata")
     work.update(
         ecp_provider="generated-cuda/two-grid/dense-host-export" if ecp else None,
         ecp_provider_workspace_bound=ecp_workspace,
@@ -1211,22 +1471,31 @@ def _complete_rks_cuda_gradient_diagnostic(
         prepared_execution=prepared is not None,
         prepared_execution_identity=None if prepared is None else prepared.identity,
         prepared_execution_reused=(
-            False if prepared is None else prepared._executions > 0
+            False if prepared is None else prepared._lease.executions > 0
         ),
         prepared_execution_index=(
-            None if prepared is None else prepared._executions + 1
+            None if prepared is None else prepared._lease.executions + 1
         ),
         prepared_owner_preparation_seconds=(
             0.0 if prepared is None else prepared.preparation_seconds
         ),
         prepared_geometry_rebinds=(
-            0 if prepared is None else prepared._geometry_rebinds
+            0 if prepared is None else prepared._lease.refreshes
         ),
         snapshot_host_bytes=state._source.values.nbytes,
         snapshot_export_work=dict(state._source.export_work),
         snapshot_export="explicit native CUDA final-state export; W/frame validation is host work",
-        host_scope="snapshot validation; primitive enumeration/record packing; one D/W owner upload; final TensorIR reduction; immutable result copies",
-        endpoint_seconds=perf_counter() - started,
+        host_scope="snapshot validation; AO task descriptor packing/sorting; one D/W owner upload; final TensorIR reduction; immutable result copies",
+        measurement_profile_enabled=bool(work.get("device_profile_enabled", False)),
+        transfer_work={
+            "source_h2d_bytes": work["h2d_bytes"],
+            "source_d2h_bytes": work["d2h_bytes"],
+            "source_h2d_calls": work.get("h2d_calls", 0),
+            "source_d2h_calls": work.get("d2h_calls", 0),
+            "source_synchronizations": work.get("synchronizations", 0),
+            "tensor_h2d_numeric_bytes": tensor_work["h2d_numeric_bytes"],
+            "tensor_d2h_bytes": tensor_work["d2h_bytes"],
+        },
         stationary_artifact_kind=artifact.metadata.get("artifact_kind", "runtime-jit"),
         stationary_runtime_module_load=True,
         stationary_driver_ptx_jit_possible=artifact.metadata.get(
@@ -1236,18 +1505,16 @@ def _complete_rks_cuda_gradient_diagnostic(
             "driver_ptx_jit_required", False
         ),
         grid_artifact_kind=grid_artifact.metadata.get("artifact_kind", "runtime-jit"),
-        artifacts=tuple(
-            {
-                "library": str(a.library),
-                "binary_sha256": a.metadata["binary_sha256"],
-                "key": a.metadata["key"],
-            }
-            for a in artifacts
-        ),
+        artifacts=artifacts_record,
+    )
+    timeline_record = timeline.finish()
+    work.update(
+        endpoint_seconds=timeline_record["endpoint_seconds"],
+        timeline=timeline_record,
     )
     return DiagnosticStationaryGradient(
-        immutable(gradient),
-        MappingProxyType({k: immutable(v) for k, v in components.items()}),
+        published_gradient,
+        published_components,
         plan.identity,
         state.identity,
         MappingProxyType(work),
@@ -1275,6 +1542,7 @@ def complete_rks_cuda_gradient_diagnostic(
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
     prepared: PreparedStationaryCudaExecution | None = None,
+    profile_device: bool = False,
 ) -> typing.Any:
     """Execute once, optionally retaining validated CUDA owners for later replay."""
     kwargs = {
@@ -1293,6 +1561,7 @@ def complete_rks_cuda_gradient_diagnostic(
         "max_grid_pair_visits": max_grid_pair_visits,
         "max_ecp_pair_samples": max_ecp_pair_samples,
         "prepared": prepared,
+        "profile_device": profile_device,
     }
     if prepared is None:
         return _complete_rks_cuda_gradient_diagnostic(state, basis, **kwargs)
@@ -1302,8 +1571,7 @@ def complete_rks_cuda_gradient_diagnostic(
         try:
             result = _complete_rks_cuda_gradient_diagnostic(state, basis, **kwargs)
         except Exception:
-            prepared._failed = True
+            prepared._lease.mark_failure()
             raise
-        prepared._failed = False
-        prepared._executions += 1
+        prepared._lease.mark_success()
         return result

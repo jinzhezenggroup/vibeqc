@@ -73,10 +73,15 @@ packed coordinate buffer. Diagnostics expose exact workspace slots, H2D bytes,
 kernel launches and host/device capacity bounds.
 
 The public named endpoint `pbe-d4-rks` executes native PBE RKS plus
-D4(BJ-EEQ-ATM) and advertises energy only. PBE stationary nuclear gradients are
-still owned by #163, so the analytic D4 gradient does not silently widen the
-complete method force capability. `D4CorrectionBatch` exposes the standalone D4
-energy, analytic gradient and EEQ charges.
+D4(BJ-EEQ-ATM). Native energy remains exact-once owned by the prepared KS/D4
+composition. In the bounded qualified force domain, the stationary derivative
+projects that composite state onto its electronic PBE MethodIR, evaluates the
+existing PBE stationary force, and combines it with the existing D4 analytic
+gradient as `F_total = F_PBE - dE_D4/dR`. The auxiliary D4 force owner publishes
+the correction component/gradient but never adds its energy a second time.
+Unsupported PBE-D4/ECP force combinations remain fail-closed.
+`D4CorrectionBatch` also continues to expose standalone D4 energy, analytic
+gradient and EEQ charges.
 
 There is no runtime dependency on xTBloom or an external dftd4 executable.
 Standard EEQ uses `ga/gc=3/2`; r2SCAN-3c uses the separate `2/1` profile. GFN2
@@ -104,21 +109,26 @@ Hessian execution remain unsupported.
 Regenerate the retained GFN2 compatibility table:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4.py \
-  --source-git-dir /path/to/dftd4/.git \
-  --revision 6e1f59c3f39d919a2dbef0601d2576727c8b30e8 \
   --output-dir src/dft/dispersion
 ```
 
 Regenerate the EEQ tables from pinned dftd4, multicharge and mctc-lib sources:
 
 ```sh
+python tools/source_registry.py sync dftd4-reference
+python tools/source_registry.py sync multicharge-eeq2019
+python tools/source_registry.py sync mctc-lib-eeq
 python tools/parameters/generate_d4_eeq.py \
-  --dftd4-git-dir /path/to/dftd4/.git \
-  --multicharge-git-dir /path/to/multicharge/.git \
-  --mctc-git-dir /path/to/mctc-lib/.git \
   --output-dir src/dft/dispersion
 ```
+
+Both generators bind to the named products in `upstream/manifest.json`, verify
+the product's source-identity digest, and parse only SHA-256-verified files in
+`.cache/vibeqc-sources/`. The explicit `sync` commands are maintainer network
+operations; normal configure, build, tests, and runtime remain offline.
 
 Qualification CTest targets are `vibeqc_d4_reference_tests`,
 `vibeqc_d4_eeq_tests` and their CUDA variants, plus

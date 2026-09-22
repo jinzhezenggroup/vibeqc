@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from vibeqc_compiler.integral.one_electron_cpu import emit_one_electron_st_cpu
+from vibeqc_compiler.integral.one_electron_cpu import emit_one_electron_cpu
 from vibeqc_compiler.integral.one_electron_cuda import (
     emit_one_electron_values_cuda,
     one_electron_program_inventory,
@@ -86,7 +86,7 @@ def main() -> None:
     if derivative_policy_source is not None:
         write_if_changed(args.derivative_policy_output, derivative_policy_source)
     if args.cpu_st_output:
-        write_if_changed(args.cpu_st_output, emit_one_electron_st_cpu())
+        write_if_changed(args.cpu_st_output, emit_one_electron_cpu())
     source = None
     if args.output:
         source = (

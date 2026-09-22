@@ -1,8 +1,18 @@
 {
   "adaptations": {
-    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references.",
+    "src/backends/cuda/gfn2_aes2.cu": "Consume compiler-generated TensorIR/AD AES2 energy/potential/coordinate and CN reverse response; preserve runtime validation, topology, and publication ownership.",
+    "src/backends/cuda/gfn2_es3.cu": "Consume compiler-generated TensorIR/AD ES3 energy/potential and finite-range recovery; preserve runtime validation, topology, and publication ownership.",
+    "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
+    "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
+    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references. Consume the same compiler-generated TensorIR/AD coordination pair helper as dense geometry, preserving bitwise CN admission and canonical neighbor accumulation.",
     "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
-    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored."
+    "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
+    "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored.",
+    "src/backends/cuda/gfn2_h0_force.cu": "Consume compiler-generated TensorIR H0 Pulay seed, Cartesian distance/pullback, pair factors, CN/radial reverse response, and AO contraction arithmetic while retaining CUDA topology, validation, reductions, atomics, thresholds, and failure semantics.",
+    "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership.",
+    "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership."
   },
   "backports": {
     "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
@@ -75,9 +85,9 @@
       "vendored_sha256": "ed0b9065a98dcbb191e371ad3680d3a41c21f42a5fc621f8f1e9d6a774010334"
     },
     "src/backends/cuda/gfn2_aes2.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de",
-      "vendored_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de"
+      "vendored_sha256": "65d96603c5d02d89c853d0be985573b47c951304581b6589dd40a3518bd3abf6"
     },
     "src/backends/cuda/gfn2_aes2.cuh": {
       "adapted": false,
@@ -160,9 +170,9 @@
       "vendored_sha256": "a136325ad2e5651b20d8f8798312c999eb90b3012d3d83d78adfd19c0b6676b6"
     },
     "src/backends/cuda/gfn2_es2.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b",
-      "vendored_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b"
+      "vendored_sha256": "73bfc0e85c91d21cfc9d658a98ad1f30e8760d06c8e0b597d838c44586d1323c"
     },
     "src/backends/cuda/gfn2_es2.cuh": {
       "adapted": false,
@@ -170,9 +180,9 @@
       "vendored_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae"
     },
     "src/backends/cuda/gfn2_es3.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313",
-      "vendored_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313"
+      "vendored_sha256": "828a3bd57ef5f711ae0e422a1877bd435b0e1e0562359df7d6647129692eca09"
     },
     "src/backends/cuda/gfn2_es3.cuh": {
       "adapted": false,
@@ -205,9 +215,9 @@
       "vendored_sha256": "c143fbf951d3248535dcbd7fec9d57b4b59585ae8f953577603c38caedb4c3e8"
     },
     "src/backends/cuda/gfn2_geometry.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003",
-      "vendored_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003"
+      "vendored_sha256": "2974a9f4db3bb557f1d341c41d5042f0c1520e2b31fa4b43617a4a88e120cb66"
     },
     "src/backends/cuda/gfn2_geometry.cuh": {
       "adapted": false,
@@ -215,9 +225,9 @@
       "vendored_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87"
     },
     "src/backends/cuda/gfn2_h0_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a",
-      "vendored_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a"
+      "vendored_sha256": "4e11ca6b2f2da2085f481e3e6c147edce34ff61cf5b3ae5b8377cb82f42cefec"
     },
     "src/backends/cuda/gfn2_h0_force.cuh": {
       "adapted": false,
@@ -225,9 +235,9 @@
       "vendored_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6"
     },
     "src/backends/cuda/gfn2_hamiltonian.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b",
-      "vendored_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b"
+      "vendored_sha256": "89e8124105963898a294dd8f7abb1968d3ab73181a19498c787b9c7a7bced7d3"
     },
     "src/backends/cuda/gfn2_hamiltonian.cuh": {
       "adapted": false,
@@ -235,9 +245,9 @@
       "vendored_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198",
-      "vendored_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198"
+      "vendored_sha256": "7bab5af32caeaa1d596dd7ecb26d3f59017f711f289abbc40da2d93db06276cb"
     },
     "src/backends/cuda/gfn2_hamiltonian_force.cuh": {
       "adapted": false,
@@ -260,9 +270,9 @@
       "vendored_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d"
     },
     "src/backends/cuda/gfn2_integrals.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6",
-      "vendored_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6"
+      "vendored_sha256": "afa85509e2c9e8e929c099cace0754943e2c8d0c7f7b597796b29c5c53fcf503"
     },
     "src/backends/cuda/gfn2_integrals.cuh": {
       "adapted": false,
@@ -292,7 +302,7 @@
     "src/backends/cuda/gfn2_pairlist.cu": {
       "adapted": true,
       "upstream_sha256": "4eadf7ae80179453ba3543a6354b9430228efe25575dedf41629b8b94aa8be13",
-      "vendored_sha256": "e934221e547997528fe21cf0287fa1f095d3acf7114857f578846ccccfc5d41b"
+      "vendored_sha256": "1dee9292facbb9d8f5331344e84a3d5083253ffa2ab9ca6987195c46f28eeae0"
     },
     "src/backends/cuda/gfn2_pairlist.cuh": {
       "adapted": false,
@@ -360,14 +370,14 @@
       "vendored_sha256": "d76e4debf164898d776b027e664c297fceb57437e5d252cdd11bd6e4e3ce7403"
     },
     "src/backends/cuda/gfn2_repulsion.cu": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1",
-      "vendored_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1"
+      "vendored_sha256": "34a2325a38615a3a94727e4f8c5bc64c412627262c2330aac39ce3cffd866e37"
     },
     "src/backends/cuda/gfn2_repulsion.cuh": {
-      "adapted": false,
+      "adapted": true,
       "upstream_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b",
-      "vendored_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b"
+      "vendored_sha256": "de5f293dec3a45ebc023bdb533e979be678e29cce79f545f1b7e6147d5076da2"
     },
     "src/backends/cuda/gfn2_scc.cu": {
       "adapted": false,

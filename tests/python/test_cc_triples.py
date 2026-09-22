@@ -532,8 +532,9 @@ def test_pinned_ground_truth_regression(name: typing.Any) -> None:
 
 def test_committed_production_reference_provenance() -> None:
     """Keep the independent reference tied to its source and endpoint arrays."""
+    from vibeqc_compiler.common.evidence import canonical_hash
+
     from tools.cc_endpoint_fixtures import array_hash
-    from tools.vibeqc_validation.schema import canonical_hash
 
     root = Path(__file__).resolve().parents[2]
     data = json.loads((ENDPOINTS.parent / "rccsd-t.json").read_text())

@@ -30,8 +30,16 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 import numpy as np
 from vibeqc.profiles import probe_device
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import (
+    block_error,
+    canonical_hash,
+    file_hash,
+    new_evidence,
+    outcome,
+    validate_evidence,
+)
 
 from tools.vibeqc_posthf.conventions import MOBlock
 from tools.vibeqc_posthf.cuda import compile_cuda
@@ -45,14 +53,6 @@ from tools.vibeqc_posthf.fixtures import (
 from tools.vibeqc_posthf.mp2 import restricted_mp2
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.sources import CudaDFSource, NativeSource
-from tools.vibeqc_validation.schema import (
-    block_error,
-    canonical_hash,
-    file_hash,
-    new_evidence,
-    outcome,
-    validate_evidence,
-)
 
 
 def source_hash() -> typing.Any:

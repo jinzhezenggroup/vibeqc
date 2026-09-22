@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+from typing import TYPE_CHECKING
+
 from vibeqc_compiler.common.backend import TargetInfo
 from vibeqc_compiler.common.cuda_target import CUDA_TARGETS
-from vibeqc_compiler.integral.cooperative_schedule import CooperativeLaneSchedule
+from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.specialization import WorkloadSignature
+from vibeqc_compiler.integral.cooperative_schedule import (
+    CooperativeLaneSchedule,
+    cooperative_schedule_contract,
+)
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.common.schedule import ScheduleContract
 
 NUCLEUS_COOPERATIVE_SCHEDULE_CODE = 3
 _PREFERRED_GROUPS_PER_WORKGROUP = 4
@@ -54,18 +65,64 @@ def production_nucleus_cooperative_schedule() -> CooperativeLaneSchedule:
     return schedule
 
 
+def one_electron_derivative_workload() -> WorkloadSignature:
+    """Return the shared profile-key input for the production schedule.
+
+    #693 deliberately promoted one schedule across measured 29-768 AO holdouts,
+    so no AO-count, molecule, or product-name threshold belongs here. #597 can
+    add general workload features later without creating a local profile stack.
+    """
+
+    return WorkloadSignature(
+        "one-electron-derivative",
+        (
+            ("cooperative_axis", "nuclear_center"),
+            ("precision", "fp64"),
+            ("task_axis", "ao_pair"),
+        ),
+    )
+
+
+def one_electron_derivative_schedule_contract(target: TargetInfo) -> ScheduleContract:
+    """Bind cooperative ownership to shared workload/target/profile identity."""
+
+    workload = one_electron_derivative_workload()
+    workload_hash = canonical_hash(asdict(workload))
+    return cooperative_schedule_contract(
+        nucleus_cooperative_schedule(target),
+        consumer="integral.one_electron_derivative",
+        target=target,
+        workload_hash=workload_hash,
+        profile_key=workload_hash,
+        provenance=(
+            ("policy", "generated-nucleus-cooperative"),
+            ("profile_owner", "compiler-specialization-target-profile"),
+        ),
+    )
+
+
 def one_electron_derivative_policy_inventory() -> dict[str, object]:
     """Serialize execution ownership separately from the scientific DAG."""
     schedule = production_nucleus_cooperative_schedule()
+    workload = one_electron_derivative_workload()
+    contracts = {
+        architecture: one_electron_derivative_schedule_contract(
+            target.target_info
+        ).to_payload()
+        for architecture, target in sorted(CUDA_TARGETS.items())
+    }
     return {
         "schema": "vibeqc.one_electron_derivative_schedule",
-        "version": 1,
+        "version": 2,
         "schedule": "nucleus_cooperative",
         "schedule_code": NUCLEUS_COOPERATIVE_SCHEDULE_CODE,
         "task_axis": "ao_pair",
         "cooperative_axis": "nuclear_center",
         "cooperative_schedule": schedule.to_payload(),
         "cooperative_schedule_identity": schedule.identity,
+        "workload": asdict(workload),
+        "workload_profile_key": canonical_hash(asdict(workload)),
+        "schedule_contracts": contracts,
     }
 
 

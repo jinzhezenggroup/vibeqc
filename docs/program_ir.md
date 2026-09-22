@@ -190,7 +190,18 @@ publication points. User-supplied initial amplitudes remain the ordinary solver
 initial state. The solver result records the region identity and bound.
 
 The RCCSD consumer remains descriptive: execution still uses the established
-Python loop, so it makes **no host-overhead or speedup claim**. CUDA now also has
+Python loop, so it makes **no host-overhead or speedup claim**. Its CPU result
+also retains the exact serialized region. The Lambda boundary reconstructs and
+checks that region against the executed identity/bound before response work.
+Only after the existing checked transpose solve and independent stationarity
+gate succeed does the response bind an identified `implicit_vjp` rule to a
+derived `custom` region. Parameter-weight requests consult that registered rule
+and fail closed on a missing or stale identity; no CC iteration tape is retained.
+The specialized CC rule keeps the existing independently weighted T2 coordinate
+contract rather than pretending the redundant dense T2 representation is the
+generic `ImplicitSolveSpec` coordinate model.
+
+CUDA now also has
 a method-neutral `runtime::SolverRegionCudaExecutor` that bounds native body
 submission and delegates optional capture/replay to the existing shared
 `CudaGraphRegion` lifecycle. The opt-in direct-RKS two-iteration path from #370
@@ -216,6 +227,16 @@ This remains analysis, not a second allocator. Unknown alias metadata blocks
 reuse for its memory space and opaque effects retain touched owners through the
 region boundary. TensorIR keeps its qualified arena offsets as the execution plan
 of record until a later #831 slice independently validates allocator migration.
+
+ProgramStoragePlan schema v2 also admits explicit same-call ownership transfer
+through `CallDonationBinding`. A donation maps one call read to one call write
+and is forwarded to the same backend-neutral storage analyzer used by TensorIR.
+The donor and recipient must resolve to compiler-owned physical owners with equal
+capacity in one memory space, the donor must die at that call, and an opaque call
+is rejected. Donation therefore removes only one proven interference edge; it is
+never inferred from liveness alone, does not donate borrowed inputs, and does not
+turn ProgramIR providers into implicit in-place operations. Schema-v1 replay
+remains supported for plans without donation metadata.
 
 The first production layout-propagation slice now goes one step beyond the #460
 feature-input prototype on polarized native CPU fixed-density potentials. Scalar

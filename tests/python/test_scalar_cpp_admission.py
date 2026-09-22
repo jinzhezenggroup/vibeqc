@@ -7,7 +7,7 @@ import typing
 from pathlib import Path
 
 import pytest
-from vibeqc_compiler.tensor import Program, TensorSpec, input_tensor, multiply
+from vibeqc_compiler.tensor import Program, TensorSpec, add, input_tensor, multiply
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
 
 
@@ -55,3 +55,18 @@ def test_scalar_failure_preserves_all_output_references(tmp_path: Path) -> None:
     a, b = ct.c_double(-7), ct.c_double(-9)
     assert call(1e200, ct.byref(a), ct.byref(b)) == 0
     assert (a.value, b.value) == (-7.0, -9.0)
+
+
+def test_fma_lowering_is_opt_in_and_does_not_hide_shared_products() -> None:
+    spec = TensorSpec((), role="input")
+    a, b, c = (input_tensor(name, spec) for name in ("a", "b", "c"))
+    product = multiply(a, b)
+    program = Program({"out": add(c, product)})
+    default = emit_scalar_cpp(program, function_name="default")
+    fused = emit_scalar_cpp(program, function_name="fused", fused_accumulation=True)
+    assert "std::fma" not in default
+    assert "std::fma" in fused
+    shared = Program({"out": add(c, product), "product": product})
+    assert "std::fma" not in emit_scalar_cpp(
+        shared, function_name="shared", fused_accumulation=True
+    )

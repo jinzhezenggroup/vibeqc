@@ -16,7 +16,10 @@
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Delete the generic scientific fallback only after every supported production angular domain has a generated/class-specific qualified consumer or a compiler-owned generic lowering; until then, keep it quarantined from already-qualified tuned s/p/d production.",
       "files": [
         "src/scf/cuda/direct_bounded_contraction.cuh",
@@ -36,7 +39,10 @@
         "docs/weighted_eri.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Retire each class-specific native scientific body when its generated consumer preserves the qualified streaming/page schedule and passes RHF/UHF numerical, resource and endpoint gates; scheduler-only runtime may remain native.",
       "files": [
         "src/scf/cuda/direct_bounded_dddd.cu",
@@ -56,7 +62,11 @@
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "For each retained Fock family, demonstrate generated mathematical parity plus matched complete-endpoint non-regression; then delete the duplicate native scientific body unless an independently measured exception remains.",
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
@@ -73,9 +83,9 @@
     {
       "id": "native-low-order-force",
       "status": "performance-exception",
-      "capability": "Retained low/order-2/order-3 Direct force contraction families outside the already-retired ssss and psss weighted-force mathematics.",
-      "current_selector": "Production uses generated force mathematics for promoted ssss/psss domains while retained low-order native families cover remaining qualified schedules/classes.",
-      "generated_alternative": "Weighted IntegralIR first derivatives and force-only roots provide the common mathematical source; additional class promotion is limited by consumer/schedule qualification rather than missing derivative algebra.",
+      "capability": "Order-0/1, generic order-two, and total-order-three Direct force mathematics consume compiler-owned Weighted IntegralIR; retained low-order files own runtime contraction and scheduling.",
+      "current_selector": "Order-0/1 and total-order-three generated shell workers bypass the generic quartet path. Both exact order-two schedulers and the generic AO-quartet fallback call the same generated PSPS/PPSS/DSSS force roots.",
+      "generated_alternative": "Weighted IntegralIR first derivatives and force-only roots provide the shared mathematical source through total order three; remaining optimization concerns schedule and consumer profitability, not duplicate native derivative formulas.",
       "schedule_requirements": "Preserve center recovery, arbitrary external weights, shared quartet work, and native fixed/resident/paged schedule semantics while moving optimization choices to generic compiler schedules.",
       "resource_profile": "Promotion must compare complete force endpoint time plus registers/stack/shared memory and actual primitive/derivative work; generated source existence alone is insufficient.",
       "evidence": [
@@ -83,42 +93,38 @@
         "benchmarks/results/weighted-eri-144/README.md",
         "benchmarks/results/issue356-psss-retirement/README.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Promote and delete each native low-order formula only after independent derivative checks and matched RHF/UHF fixed/resident/paged endpoint gates pass for the claimed domain.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
         "src/scf/cuda/direct_force_low_order.cuh",
         "src/scf/cuda/direct_force_order2.cuh",
-        "src/scf/cuda/direct_force_quartet.cuh",
-        "src/scf/cuda/direct_native_dsss_gradient.cuh",
-        "src/scf/cuda/direct_native_order01_gradient.cuh",
-        "src/scf/cuda/direct_native_order2_gradient.cuh",
-        "src/scf/cuda/direct_native_order3_gradient.cuh",
-        "src/scf/cuda/direct_native_ppss_gradient.cuh",
-        "src/scf/cuda/direct_native_psps_gradient.cuh"
+        "src/scf/cuda/direct_force_order3.cuh",
+        "src/scf/cuda/direct_force_quartet.cuh"
       ]
     },
     {
       "id": "native-high-order-force",
       "status": "performance-exception",
-      "capability": "Order-4/5/6 Direct force families that fuse high-order recurrence/source contraction work. The shared high-order pair coefficient/first-center-gradient mathematics is now compiler-generated.",
-      "current_selector": "Retained native high-order force consumers remain production exceptions while generated multi-root sharing and resource-aware lowering are not yet endpoint-qualified. Their subset/Wick pair-gradient helper is generated at build time, so the native exception no longer owns that duplicate scientific formula.",
-      "generated_alternative": "IntegralIR already represents the derivatives, and the compiler now emits the high-order pair-gradient helper used by the retained consumer. Full consumer retirement still requires shared multi-root recurrence work and derivative-center recovery without excessive intermediates.",
+      "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra, complete primitive ERI-gradient composition, and the bounded high-order Coulomb recurrence are compiler-generated.",
+      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer and its compiler-emitted high-order Coulomb recurrence while retaining the existing queue/runtime schedule and selector semantics.",
+      "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer together with its shared high-order Coulomb workspace and recurrence support; no native high-order Coulomb mathematical owner remains.",
       "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
       "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
       "evidence": [
         "docs/second_integral_derivatives.md",
         "docs/cuda_ownership.md",
         "python/vibeqc_compiler/integral/production_shell_classes.json",
-        "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py"
+        "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py",
+        "python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
       ],
       "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
-      "retirement_condition": "At least one retained order-4/5/6 family must reach generated multi-root/resource parity before deleting its native body; repeat the same measured gate per remaining family.",
+      "retirement_condition": "The order-4/5/6 consumer body and high-order Coulomb recurrence are retired from native scientific ownership. Remaining pair/source helpers stay tracked separately until their other production consumers have qualified generated replacements.",
       "files": [
-        "src/scf/cuda/direct_native_high_order_coulomb.cuh",
-        "src/scf/cuda/direct_native_order456_gradient.cuh",
         "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
-        "src/scf/cuda/direct_native_pair_order3_gradient.cuh",
         "src/scf/cuda/direct_native_source_contraction.cuh"
       ]
     },
@@ -134,7 +140,11 @@
         "docs/shell_codegen.md",
         "docs/cuda_ownership.md"
       ],
-      "required_compiler_capabilities": ["#351 shared recurrence/spec ownership", "#832 resource-aware lowering", "#833 reusable schedules"],
+      "required_compiler_capabilities": [
+        "#351 shared recurrence/spec ownership",
+        "#832 resource-aware lowering",
+        "#833 reusable schedules"
+      ],
       "retirement_condition": "Delete a shared native helper only after all production consumers that depend on its scientific mathematics have qualified generated replacements; runtime-only traversal may remain native.",
       "files": [
         "src/scf/cuda/direct_native_cartesian.cuh",
@@ -160,7 +170,9 @@
         "docs/cuda_ownership.md",
         "docs/accuracy.md"
       ],
-      "required_compiler_capabilities": ["#173/#174/#175 numerical screening and error-policy contracts"],
+      "required_compiler_capabilities": [
+        "#173/#174/#175 numerical screening and error-policy contracts"
+      ],
       "retirement_condition": "Retain as explicit scientific policy unless a shared policy owner replaces it with identical validated admission semantics; do not count a policy relocation as formula retirement.",
       "files": [
         "src/scf/cuda/direct_density_bounds.cu",
@@ -183,7 +195,10 @@
         "docs/cuda_ownership.md",
         "docs/weighted_eri.md"
       ],
-      "required_compiler_capabilities": ["#832 profitability/resource planning", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#832 profitability/resource planning",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "Remove when generated consumers cover the same production domain with independent numerical qualification and no measured complete-endpoint disadvantage.",
       "files": [
         "src/scf/cuda/direct_reference_force.cu"

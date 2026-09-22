@@ -110,7 +110,7 @@ Redistributed or derived material:
   representations of the GFN2 parameter export from revision
   `fa8a4416e8fe093d0075bc10ac875494c2a449a9`. Exact source paths and hashes
   are recorded in `data/parameters/manifest.json`.
-- `sources/xtb/gfn1/gfn1.toml` and `gfn1.json` are the checked-in
+- `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.toml` and `gfn1.json` are the checked-in
   canonical GFN1 parameter snapshots from the same tblite 0.7.0 export.
   `data/parameters/gfn1.hpp` is deterministically regenerated from that JSON
   by `tools/parameters/generate_gfn1.py` and must reproduce the audited
@@ -120,7 +120,7 @@ Redistributed or derived material:
   and the CODATA-derived binary64 Angstrom-to-bohr factor. Exact tblite/mctc
   source and legal paths, hashes, exporter identity, and a diagnostic dxtb
   semantic cross-check are recorded in
-  `sources/xtb/gfn1/gfn1_manifest.json`; `sources/manifest.json` records the
+  `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json`; `upstream/manifest.json` records the
   VibeQC source/product identity. The mixed-source generated header carries
   `LGPL-3.0-or-later AND Apache-2.0`.
 - The Stewart STO-nG tables in `data/parameters/tblite_sto.hpp` come from

@@ -143,11 +143,11 @@ def test_r2scan3c_backend_must_acknowledge_both_corrections() -> None:
 
 def test_r2scan3c_audit_manifest_hashes_match_catalog() -> None:
     root = _root()
-    manifest = json.loads((root / "external/r2scan3c/manifest.json").read_text())
+    manifest = json.loads((root / "manifests/r2scan3c/manifest.json").read_text())
     spec = METHOD_CATALOG["R2SCAN-3c"]
     assert manifest["basis"]["basis_identity"] == spec.basis.basis_identity
     assert manifest["basis"]["source_export_sha256"] == spec.basis.source_sha256
-    gcp_data = root / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
+    gcp_data = root / "tools/parameters/r2scan3c_gcp.json"
     assert hashlib.sha256(gcp_data.read_bytes()).hexdigest() == spec.gcp.data_sha256
     assert manifest["gcp"]["data_sha256"] == spec.gcp.data_sha256
     generated = root / "src/dft/dispersion/gcp_r2scan3c_data.hpp"

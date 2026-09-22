@@ -15,6 +15,7 @@ from __future__ import annotations
 import math
 import typing
 from dataclasses import asdict, dataclass, replace
+from itertools import pairwise
 
 from .accuracy import _identity, _number
 from .force_aware_numerics import ObservableDelta, TargetErrorBudget
@@ -285,6 +286,17 @@ class ScfForceErrorEstimator:
         samples: typing.Iterable[ScfForceCalibrationSample],
         budget: TargetErrorBudget,
     ) -> dict:
+        """Report pass/fail reliability and force-envelope coverage.
+
+        ``force_coverage`` measures whether the empirical max-force envelope
+        covers each observed strict error; it does not promote the envelope to
+        a certified bound.  The per-row underestimation factor is
+        ``actual_force_max / predicted_force_max``.  The aggregate maximum is
+        taken over underestimation rows only, or is ``None`` if any such row
+        has no finite floating-point ratio.  Zero over zero is recorded as
+        1.0 (no miss); a positive observation over a zero prediction remains
+        an underestimation with a ``None`` factor.
+        """
         rows = []
         for sample in samples:
             if sample.family in self.training_families:
@@ -301,6 +313,19 @@ class ScfForceErrorEstimator:
             )
             predicted_pass = estimate.accepted(budget)
             actual_pass = budget.accepts(sample.strict_error)
+            predicted_force_max = estimate.force_max_abs
+            actual_force_max = sample.strict_error.force_max_abs
+            force_covered = actual_force_max <= predicted_force_max
+            if predicted_force_max > 0.0:
+                force_underestimation_factor = actual_force_max / predicted_force_max
+                if not math.isfinite(force_underestimation_factor):
+                    # Keep strict JSON output valid even when finite errors
+                    # have a ratio beyond the floating-point reporting range.
+                    force_underestimation_factor = None
+            elif actual_force_max == 0.0:
+                force_underestimation_factor = 1.0
+            else:
+                force_underestimation_factor = None
             rows.append(
                 {
                     "sample_id": sample.sample_id,
@@ -312,21 +337,44 @@ class ScfForceErrorEstimator:
                     "actual_pass": actual_pass,
                     "false_success": predicted_pass and not actual_pass,
                     "overconservative": actual_pass and not predicted_pass,
+                    "force_covered": force_covered,
+                    "force_underestimated": not force_covered,
                     "predicted_energy": estimate.energy_abs,
                     "actual_energy": sample.strict_error.energy_abs,
-                    "predicted_force_max": estimate.force_max_abs,
-                    "actual_force_max": sample.strict_error.force_max_abs,
+                    "predicted_force_max": predicted_force_max,
+                    "actual_force_max": actual_force_max,
+                    "force_underestimation_factor": force_underestimation_factor,
                     "predicted_force_rms": estimate.force_rms,
                     "actual_force_rms": sample.strict_error.force_rms,
                 }
             )
         false_successes = sum(row["false_success"] for row in rows)
+        force_coverage = sum(row["force_covered"] for row in rows)
+        force_underestimation_rows = sum(row["force_underestimated"] for row in rows)
+        finite_underestimation_factors = [
+            row["force_underestimation_factor"]
+            for row in rows
+            if row["force_underestimated"]
+            and row["force_underestimation_factor"] is not None
+        ]
+        force_underestimation_nonfinite_rows = sum(
+            row["force_underestimation_factor"] is None for row in rows
+        )
         return {
             "rows": rows,
             "samples": len(rows),
             "false_successes": false_successes,
             "false_success_rate": false_successes / len(rows) if rows else 0.0,
             "overconservative": sum(row["overconservative"] for row in rows),
+            "force_coverage": force_coverage,
+            "force_coverage_rate": force_coverage / len(rows) if rows else 0.0,
+            "force_underestimation_rows": force_underestimation_rows,
+            "max_force_underestimation_factor": (
+                None
+                if force_underestimation_nonfinite_rows
+                else max(finite_underestimation_factors, default=None)
+            ),
+            "force_underestimation_nonfinite_rows": force_underestimation_nonfinite_rows,
             "certified": False,
         }
 
@@ -405,6 +453,12 @@ class ForceAwareScfPolicy:
             {item.name for item in levels}
         ) != len(levels):
             raise ValueError("SCF effort level names/ranks must be unique")
+        if any(
+            later.energy_tolerance > earlier.energy_tolerance
+            or later.density_tolerance > earlier.density_tolerance
+            for earlier, later in pairwise(levels)
+        ):
+            raise ValueError("SCF effort tolerances must tighten with level rank")
         if not levels[-1].strict or any(item.strict for item in levels[:-1]):
             raise ValueError("exactly the final SCF effort level must be strict")
         if not isinstance(self.estimator, ScfForceErrorEstimator):

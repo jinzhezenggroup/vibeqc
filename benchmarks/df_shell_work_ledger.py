@@ -47,6 +47,12 @@ RYS_PROTOTYPE = {
     (2, 0, 0),
 }
 
+# #437 screening observability. Distance bins are in Bohr; exponent bins are
+# primitive Gaussian exponents in Bohr^-2. These are descriptive evidence, not
+# force-screening thresholds.
+DISTANCE_EDGES_BOHR = (0.5, 1.0, 2.0, 4.0, 8.0, 16.0)
+EXPONENT_EDGES = (1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0, 1e2, 1e3, 1e4, 1e5)
+
 # Required source-operation fields form the diagnostic report contract. Zero
 # counts must still be present so a truncated capture cannot look like no work.
 WORK_FIELDS = (
@@ -124,6 +130,176 @@ def reconstruct_domain(
                     )
                     result[signature] += pairs * nthird * repetitions
     return result
+
+
+def _screening_bin(value: float, edges: tuple[float, ...], *, zero_bin: bool) -> int:
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("screening feature must be finite and nonnegative")
+    if zero_bin and value == 0:
+        return 0
+    index = 1 if zero_bin else 0
+    for edge in edges:
+        if value < edge:
+            return index
+        index += 1
+    return index
+
+
+def screening_feature_bins(
+    shells: typing.Sequence[typing.Sequence[int]],
+    auxiliary_shells: typing.Sequence[typing.Sequence[int]],
+    orbital_metadata: typing.Sequence[typing.Any],
+    auxiliary_metadata: typing.Sequence[typing.Any],
+    atoms: typing.Sequence[typing.Any],
+    panels: typing.Sequence[typing.Sequence[int]],
+    pair_mode: int,
+) -> dict:
+    """Reconstruct #437 distance/exponent distributions over considered primitives.
+
+    Every entry is weighted by primitive-product work before zero-weight pruning.
+    Panel intersections are repeated exactly, matching reconstruct_domain.
+    Distances use the three physical shell centers; exponent histograms retain
+    the alpha/beta/gamma roles of the executed shell orientation.
+    """
+    if pair_mode not in (0, 1, 2):
+        raise ValueError("unknown public pair mode")
+    if len(shells) != len(orbital_metadata) or len(auxiliary_shells) != len(
+        auxiliary_metadata
+    ):
+        raise ValueError("screening feature shell metadata mismatch")
+
+    visits = []
+    for row in auxiliary_shells:
+        offset, width = int(row[2]), int(row[3])
+        visits.append(
+            sum(
+                int(repeats)
+                for begin, count, repeats in panels
+                if offset < int(begin) + int(count) and offset + width > int(begin)
+            )
+        )
+
+    distance_bins = len(DISTANCE_EDGES_BOHR) + 2
+    exponent_bins = len(EXPONENT_EDGES) + 1
+    classes: dict[tuple[int, int, int], dict[str, typing.Any]] = {}
+
+    def row_for(angular: tuple[int, int, int]) -> dict[str, typing.Any]:
+        return classes.setdefault(
+            angular,
+            {
+                "primitive_products_considered": 0,
+                "distance_bohr": {
+                    key: [0] * distance_bins for key in ("ab", "ac", "bc")
+                },
+                "exponents": {
+                    key: [0] * exponent_bins for key in ("alpha", "beta", "gamma")
+                },
+            },
+        )
+
+    positions = [tuple(float(value) for value in atom.position) for atom in atoms]
+    exponent_hists = []
+    for metadata in (*orbital_metadata, *auxiliary_metadata):
+        histogram = [0] * exponent_bins
+        for primitive in metadata.primitives:
+            exponent = float(primitive.exponent)
+            if not math.isfinite(exponent) or exponent <= 0:
+                raise ValueError("primitive exponent must be finite and positive")
+            histogram[_screening_bin(exponent, EXPONENT_EDGES, zero_bin=False)] += 1
+        exponent_hists.append(histogram)
+    orbital_exponent_hists = exponent_hists[: len(orbital_metadata)]
+    auxiliary_exponent_hists = exponent_hists[len(orbital_metadata) :]
+
+    for ia, (a_row, a_shell) in enumerate(zip(shells, orbital_metadata, strict=True)):
+        pa = int(a_row[1])
+        if pa != len(a_shell.primitives):
+            raise ValueError("orbital primitive count mismatch")
+        a_key = ((int(a_row[0]), pa), ia)
+        ra = positions[a_shell.atom_index]
+        for ib, (b_row, b_shell) in enumerate(
+            zip(shells, orbital_metadata, strict=True)
+        ):
+            pb = int(b_row[1])
+            b_key = ((int(b_row[0]), pb), ib)
+            if pair_mode and a_key < b_key:
+                continue
+            if pb != len(b_shell.primitives):
+                raise ValueError("orbital primitive count mismatch")
+            rb = positions[b_shell.atom_index]
+            ab = math.dist(ra, rb)
+            for ic, (c_row, c_shell) in enumerate(
+                zip(auxiliary_shells, auxiliary_metadata, strict=True)
+            ):
+                repetitions = visits[ic]
+                if not repetitions:
+                    continue
+                pc = int(c_row[1])
+                if pc != len(c_shell.primitives):
+                    raise ValueError("auxiliary primitive count mismatch")
+                rc = positions[c_shell.atom_index]
+                angular = (int(a_row[0]), int(b_row[0]), int(c_row[0]))
+                output = row_for(angular)
+                products = pa * pb * pc * repetitions
+                output["primitive_products_considered"] += products
+                for key, distance in (
+                    ("ab", ab),
+                    ("ac", math.dist(ra, rc)),
+                    ("bc", math.dist(rb, rc)),
+                ):
+                    output["distance_bohr"][key][
+                        _screening_bin(distance, DISTANCE_EDGES_BOHR, zero_bin=True)
+                    ] += products
+
+                for bin_index, count in enumerate(orbital_exponent_hists[ia]):
+                    output["exponents"]["alpha"][bin_index] += (
+                        count * pb * pc * repetitions
+                    )
+                for bin_index, count in enumerate(orbital_exponent_hists[ib]):
+                    output["exponents"]["beta"][bin_index] += (
+                        count * pa * pc * repetitions
+                    )
+                for bin_index, count in enumerate(auxiliary_exponent_hists[ic]):
+                    output["exponents"]["gamma"][bin_index] += (
+                        count * pa * pb * repetitions
+                    )
+
+    expected = reconstruct_domain(shells, panels, pair_mode, auxiliary_shells)
+    expected_by_class: Counter = Counter()
+    for signature, tasks in expected.items():
+        expected_by_class[signature[:3]] += tasks * math.prod(signature[3:])
+    if set(classes) != set(expected_by_class):
+        raise ValueError(
+            "screening feature class domain differs from host reconstruction"
+        )
+
+    rows = []
+    for angular, values in sorted(classes.items()):
+        total = values["primitive_products_considered"]
+        if total != expected_by_class[angular]:
+            raise ValueError(
+                "screening feature primitive domain does not conserve work"
+            )
+        for histogram in (
+            *values["distance_bohr"].values(),
+            *values["exponents"].values(),
+        ):
+            if sum(histogram) != total:
+                raise ValueError(
+                    "screening feature histogram does not conserve primitive work"
+                )
+        rows.append({"angular": list(angular), **values})
+    return {
+        "weighting": "considered primitive products before zero-response pruning",
+        "distance_bohr": {
+            "positive_edges": list(DISTANCE_EDGES_BOHR),
+            "bins": "zero,(0,e0),[e0,e1),...,[e_last,+inf)",
+        },
+        "exponents": {
+            "positive_edges": list(EXPONENT_EDGES),
+            "bins": "(0,e0),[e0,e1),...,[e_last,+inf)",
+        },
+        "classes": rows,
+    }
 
 
 def _primitive_work_domains(
@@ -500,12 +676,21 @@ def main() -> None:
         return rows, offset, metadata
 
     shells, nbf, metadata = shell_rows(args.orbital_basis_file, "orbital")
-    auxiliary_shells, naux, _ = shell_rows(
+    auxiliary_shells, naux, auxiliary_metadata = shell_rows(
         args.auxiliary_basis_file, "auxiliary", metadata
     )
     if nbf != aos or measurement["aos"] != aos or records[0]["naux"] != naux:
         raise ValueError("headline basis/model shape mismatch")
     result = reduce_work(records[0], shells, auxiliary_shells)
+    result["distance_exponent_bins"] = screening_feature_bins(
+        shells,
+        auxiliary_shells,
+        metadata,
+        auxiliary_metadata,
+        atoms,
+        result["host_reconstruction"]["panels"],
+        records[0]["counters"]["shell_work_pair_mode"],
+    )
     if args.nsys:
         activities = kernel_activity(args.nsys, records[0])
         for row in result["classes"]:

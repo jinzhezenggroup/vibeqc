@@ -260,3 +260,94 @@ def test_trace_protocol_preserves_raw_evidence_and_requires_force_components(
             probe.main()
     assert "VIBEQC_DF_TRACE" not in os.environ
     assert "VIBEQC_DF_HOST_TRACE" not in os.environ
+
+
+def test_traced_force_records_publish_selected_response_policy(
+    protocol: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Trace evidence must identify the executed route, not only its request."""
+    _library, output, energy, force = protocol
+    directory = output.parent / "policy-traces"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            *sys.argv,
+            "--component-trace-dir",
+            str(directory),
+            "--expected-response-policy",
+            "streamed",
+        ],
+    )
+
+    def sample(
+        case: object, properties: tuple[str, ...], selected_library: object
+    ) -> dict[str, object]:
+        operations = ["ri_j", "ri_k"]
+        if "forces" in properties:
+            operations.extend(["force_response", "one_electron_response"])
+        rows = []
+        for index, operation in enumerate(operations):
+            rows.append(
+                {
+                    "schema": "vibeqc.df_trace",
+                    "version": 1,
+                    "id": index,
+                    "operation": operation,
+                    "execution": "stream",
+                    "valid": True,
+                    "cuda_error": 0,
+                    "nvtx": True,
+                    "systems": 1,
+                    "system_offset": 0,
+                    "nbf": 2,
+                    "naux": 2,
+                    "source_backed": True,
+                    "streamed": True,
+                    "final_synchronization_ms": 1,
+                    "host_completion_ms": 3,
+                    "profiler_event_count": 2,
+                    "dropped_regions": 0,
+                    "dropped_tiles": 0,
+                    "regions": [
+                        {"name": operation, "parent": -1, "host_ms": 2, "gpu_ms": 2}
+                    ],
+                    "counters": {},
+                    "tiles": [],
+                }
+            )
+        Path(os.environ["VIBEQC_DF_TRACE"]).write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+        Path(os.environ["VIBEQC_DF_HOST_TRACE"]).write_text(
+            json.dumps(
+                {
+                    "schema": "vibeqc.df_host_trace",
+                    "version": 1,
+                    "id": 0,
+                    "valid": True,
+                    "regions": [
+                        {
+                            "name": "device_eigensolve",
+                            "reason": "iteration",
+                            "parent": -1,
+                            "item": 0,
+                            "nbf": 2,
+                            "wall_ms": 1,
+                            "cpu_ms": 0.5,
+                            "finished": True,
+                            "failed": False,
+                        }
+                    ],
+                }
+            )
+            + "\n"
+        )
+        return dict(force if "forces" in properties else energy)
+
+    monkeypatch.setattr(probe, "_sample", sample)
+    probe.main()
+    payload = json.loads(output.read_text())
+    invariants = payload["records"][0]["energy_plus_force"]["response_invariants"]
+    assert invariants[0]["policy"]["residency"] == "streamed"
+    assert invariants[0]["policy"]["storage"] == "streamed-source"

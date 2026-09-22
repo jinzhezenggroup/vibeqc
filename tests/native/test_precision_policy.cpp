@@ -10,6 +10,7 @@
 #include "molecule/basis.hpp"
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/direct_task_layout.hpp"
+#include "scf/generated_shell_task.hpp"
 #include "scf/rhf.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -48,23 +49,28 @@ constexpr double kTestFloat32UnitRoundoff = 5.9604644775390625e-08;
 
 void verify_direct_jk_target_policy() {
   using vibeqc::runtime::CudaTargetInfo;
-  using vibeqc::scf::cuda_policy::direct_jk_generated_task_capacity_limit;
+  using vibeqc::scf::cuda_policy::direct_jk_bounded_streaming_task_capacity_limit;
   using vibeqc::scf::cuda_policy::DirectJkTuningProfile;
   using vibeqc::scf::cuda_policy::resolve_direct_jk_schedule_policy;
+  using vibeqc::scf::detail::GeneratedShellTask;
 
   CudaTargetInfo qualified;
   qualified.warp_size = 32;
   qualified.maximum_threads_per_sm = 1536;
   qualified.maximum_blocks_per_sm = 24;
   qualified.multiprocessor_count = 170;
-  qualified.total_global_memory = std::size_t{32} << 30;
+  // Actual cudaDeviceProp::totalGlobalMem observed on the qualified RTX 5090.
+  qualified.total_global_memory = 33666498560ULL;
   const auto production = resolve_direct_jk_schedule_policy(qualified);
-  require(production.generated_task_arena_maximum_bytes == (std::size_t{1} << 30),
-          "32-GiB targets preserve the qualified 1-GiB arena ceiling");
+  require(production.fixed_topology.arena_maximum_bytes == qualified.total_global_memory / 32U,
+          "fixed-topology storage keeps its independent 1/32 device-memory budget");
+  require(production.bounded_streaming.arena_maximum_bytes == (std::size_t{3} << 29),
+          "5090 bounded streaming preserves the qualified 1.5-GiB page arena");
   require(production.persistent_quartet_warps_per_sm == 8U,
           "resource-rich targets preserve the qualified eight-worker schedule");
-  require(direct_jk_generated_task_capacity_limit(production, 32U) == 8U * 1024U * 1024U,
-          "the qualified task-count ceiling remains eight million records");
+  require(direct_jk_bounded_streaming_task_capacity_limit(production, sizeof(GeneratedShellTask)) ==
+              8U * 1024U * 1024U,
+          "5090 bounded streaming preserves the qualified eight-million-task page");
 
   CudaTargetInfo synthetic;
   synthetic.warp_size = 32;
@@ -73,35 +79,98 @@ void verify_direct_jk_target_policy() {
   synthetic.multiprocessor_count = 8;
   synthetic.total_global_memory = std::size_t{2} << 30;
   const auto constrained = resolve_direct_jk_schedule_policy(synthetic);
-  require(constrained.generated_task_arena_maximum_bytes == (std::size_t{64} << 20),
-          "a 2-GiB synthetic target selects a smaller explicit arena budget");
+  require(constrained.fixed_topology.arena_maximum_bytes == (std::size_t{64} << 20),
+          "a 2-GiB target selects a smaller fixed-topology arena");
+  require(constrained.bounded_streaming.arena_maximum_bytes == (std::size_t{128} << 20),
+          "a 2-GiB target independently bounds reusable streaming scratch");
   require(constrained.persistent_quartet_warps_per_sm == 2U,
           "a 64-thread synthetic SM cannot inherit eight resident warp workers");
-  require(direct_jk_generated_task_capacity_limit(constrained, 32U) == 2U * 1024U * 1024U,
-          "task capacity follows the constrained target memory budget");
+  require(direct_jk_bounded_streaming_task_capacity_limit(constrained,
+                                                          sizeof(GeneratedShellTask)) == 699050U,
+          "bounded task capacity follows only its own constrained scratch budget");
 
   const CudaTargetInfo unknown{};
   const auto fallback = resolve_direct_jk_schedule_policy(unknown);
-  require(fallback.generated_task_arena_maximum_bytes == (std::size_t{256} << 20),
-          "unknown memory uses the conservative 256-MiB fallback");
+  require(fallback.fixed_topology.arena_maximum_bytes == (std::size_t{256} << 20),
+          "unknown fixed storage uses the conservative 256-MiB fallback");
+  require(fallback.bounded_streaming.arena_maximum_bytes == (std::size_t{256} << 20),
+          "unknown bounded scratch has its own conservative fallback");
   require(fallback.persistent_quartet_warps_per_sm == 4U,
           "unknown occupancy uses the conservative four-worker fallback");
+
   CudaTargetInfo partial;
   partial.maximum_blocks_per_sm = 2;
   require(resolve_direct_jk_schedule_policy(partial).persistent_quartet_warps_per_sm == 2U,
           "known resource ceilings still tighten a partially unknown target");
 
-  DirectJkTuningProfile profile;
-  profile.maximum_generated_task_capacity = 1024U * 1024U;
-  profile.maximum_generated_task_arena_bytes = std::size_t{128} << 20;
-  profile.maximum_persistent_quartet_warps_per_sm = 3;
-  const auto tuned = resolve_direct_jk_schedule_policy(qualified, profile);
-  require(tuned.generated_task_arena_maximum_bytes == (std::size_t{128} << 20),
-          "profile evidence can tighten the target-legal arena ceiling");
-  require(tuned.persistent_quartet_warps_per_sm == 3U,
-          "profile evidence can choose a different legal worker schedule");
-  require(direct_jk_generated_task_capacity_limit(tuned, 32U) == 1024U * 1024U,
-          "profile evidence can tune generated-task capacity independently");
+  DirectJkTuningProfile fixed_only;
+  fixed_only.fixed_topology.maximum_arena_bytes = std::size_t{64} << 20;
+  const auto fixed_tuned = resolve_direct_jk_schedule_policy(qualified, fixed_only);
+  require(direct_jk_bounded_streaming_task_capacity_limit(
+              fixed_tuned, sizeof(GeneratedShellTask)) == 8U * 1024U * 1024U,
+          "tightening fixed-topology storage must not shrink bounded streaming pages");
+
+  DirectJkTuningProfile bounded_only;
+  bounded_only.bounded_streaming.maximum_arena_bytes = std::size_t{96} << 20;
+  const auto bounded_tuned = resolve_direct_jk_schedule_policy(qualified, bounded_only);
+  require(bounded_tuned.fixed_topology.arena_maximum_bytes ==
+              production.fixed_topology.arena_maximum_bytes,
+          "tightening bounded scratch must not alter fixed-topology admission");
+  require(direct_jk_bounded_streaming_task_capacity_limit(bounded_tuned,
+                                                          sizeof(GeneratedShellTask)) == 524288U,
+          "bounded streaming remains independently tunable");
+
+  using vibeqc::scf::cuda_policy::estimate_small_hf_workload;
+  using vibeqc::scf::cuda_policy::resolve_small_hf_profitability;
+  using vibeqc::scf::cuda_policy::SmallHfProfitabilityProfile;
+  using vibeqc::scf::cuda_policy::SmallHfWorkload;
+
+  const SmallHfWorkload small16{16U, 1U, 1U, 1U};
+  const auto estimate16 = estimate_small_hf_workload(qualified, small16);
+  require(estimate16.matrix_flops == 8192U, "16-AO native GEMM work is exactly 2*n^3");
+  require(estimate16.native_matrix_semantic_bytes == 67584U,
+          "16-AO native GEMM traffic follows the untiled per-output loop");
+  require(estimate16.cublas_matrix_semantic_bytes == 6144U,
+          "16-AO tiled GEMM lower bound reads A/B and writes C once");
+  require(estimate16.native_matrix_blocks == 8U && estimate16.native_matrix_waves == 1U,
+          "16-AO native GEMM is eight one-warp blocks and one qualified-target wave");
+  require(estimate16.eri_elements == 65536U && estimate16.eri_bytes == 524288U,
+          "16-AO persistent ERI storage is exactly n^4 FP64 values");
+  require(estimate16.cached_fock_ao_quartets == 65536U,
+          "16-AO cached Fock contracts one n^4 AO-quartet census per RHF state");
+
+  const auto fallback16 = resolve_small_hf_profitability(qualified, small16);
+  const auto fallback17 =
+      resolve_small_hf_profitability(qualified, SmallHfWorkload{17U, 1U, 1U, 1U});
+  require(
+      !fallback16.use_cublas && fallback16.persistent_eri && !fallback16.cublas_from_calibration,
+      "missing calibration preserves the qualified <=16 small-HF fallback");
+  require(
+      fallback17.use_cublas && !fallback17.persistent_eri && !fallback17.cublas_from_calibration,
+      "missing calibration preserves the qualified >=17 library fallback");
+
+  SmallHfProfitabilityProfile early_library;
+  early_library.matrix.native_launch_nanoseconds = 100.0;
+  early_library.matrix.native_fp64_flops_per_nanosecond = 1.0;
+  early_library.matrix.native_bytes_per_nanosecond = 1000.0;
+  early_library.matrix.cublas_launch_nanoseconds = 1.0;
+  early_library.matrix.cublas_fp64_flops_per_nanosecond = 1000.0;
+  early_library.matrix.cublas_bytes_per_nanosecond = 1000.0;
+  const auto calibrated8 =
+      resolve_small_hf_profitability(qualified, SmallHfWorkload{8U, 1U, 1U, 1U}, early_library);
+  require(calibrated8.cublas_from_calibration && calibrated8.use_cublas &&
+              calibrated8.cublas_matrix_nanoseconds < calibrated8.native_matrix_nanoseconds,
+          "calibrated device costs can move the cuBLAS crossover below 17");
+
+  SmallHfProfitabilityProfile late_library = early_library;
+  late_library.matrix.native_launch_nanoseconds = 1.0;
+  late_library.matrix.native_fp64_flops_per_nanosecond = 1000.0;
+  late_library.matrix.cublas_launch_nanoseconds = 100000.0;
+  const auto calibrated32 =
+      resolve_small_hf_profitability(qualified, SmallHfWorkload{32U, 1U, 1U, 1U}, late_library);
+  require(calibrated32.cublas_from_calibration && !calibrated32.use_cublas &&
+              calibrated32.native_matrix_nanoseconds < calibrated32.cublas_matrix_nanoseconds,
+          "calibrated device costs can move the cuBLAS crossover above 17");
 }
 
 /**
@@ -457,6 +526,45 @@ void verify_one_electron_provider_policy() {
   }
 }
 
+void verify_direct_tile_validation_policy() {
+  using vibeqc::scf::cuda_policy::direct_tile_validation_requested;
+  using vibeqc::scf::cuda_policy::resolve_direct_tile_validation_policy;
+
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", nullptr);
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(!policy.requested && policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
+            "ordinary CUDA execution keeps its numerical endpoint");
+    require(!direct_tile_validation_requested(),
+            "absent tile-validation diagnostic remains disabled");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(policy.requested && !policy.produces_numerical_endpoint,
+            "tile validation is explicitly structural-only");
+    require(policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "structural validation cannot report a successful numerical endpoint");
+    require(direct_tile_validation_requested(),
+            "the compatibility selector follows the explicit validation policy");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "1");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(policy.requested && !policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "legacy truthy tile-validation selector preserves diagnostic semantics");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "unexpected");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(!policy.requested && policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
+            "unknown tile-validation spellings do not silently enter diagnostic mode");
+  }
+}
+
 void verify_cpu_provenance() {
   const vibeqc::scf::ScfResult fp64 =
       run_cpu_rhf(std::optional<vibeqc_precision_mode>(VIBEQC_PRECISION_FP64));
@@ -503,6 +611,7 @@ int main() {
     verify_aot_shell_class_selection_override();
     verify_converged_fock_reuse_rms();
     verify_one_electron_provider_policy();
+    verify_direct_tile_validation_policy();
     verify_cpu_provenance();
     std::cout << "validated precision policy controller and CPU provenance\n";
     return EXIT_SUCCESS;

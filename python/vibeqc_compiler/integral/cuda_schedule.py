@@ -7,18 +7,19 @@ from enum import Enum
 from math import comb
 from typing import TYPE_CHECKING
 
-from .backend import TargetScheduleShape
+from vibeqc_compiler.common.backend import TargetScheduleShape
+
 from .expr import (
     AlgebraForm,
     AlgebraFusion,
     AlgebraOrdering,
     RematerializationPolicy,
 )
-from .ir import IntegralIR, OperatorFamily
-from .shell_spec import ShellClassSpec
+from .ir import IntegralIR, KernelConsumer, OperatorFamily
+from .shell_spec import AXES, ShellClassSpec
 
 if TYPE_CHECKING:
-    from .cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 
 class ScheduleKind(str, Enum):
@@ -151,10 +152,13 @@ class CudaScheduleIR:
                     "thread-task schedules require lane-local Coulomb data"
                 )
         elif self.kind == ScheduleKind.SUBGROUP_TASKS:
-            if self.tasks_per_warp not in (1, 2, 4, 8):
-                raise ValueError("subgroup-task schedules require 1, 2, 4, or 8 tasks")
             if self.warp_size % self.tasks_per_warp != 0:
                 raise ValueError("subgroup tasks must divide the target warp")
+            subgroup_lanes = self.warp_size // self.tasks_per_warp
+            if self.tasks_per_warp & (self.tasks_per_warp - 1) or subgroup_lanes & (
+                subgroup_lanes - 1
+            ):
+                raise ValueError("subgroup tasks and lane widths must be powers of two")
             if not self.shared_coulomb:
                 raise ValueError(
                     "subgroup tasks require task-local shared Coulomb data"
@@ -225,6 +229,133 @@ class CudaKernelIR:
 KernelIR = CudaKernelIR
 
 
+def _uses_scalar_fixed_root_force(integral: IntegralIR) -> bool:
+    """Return whether the generic one-task-per-lane fixed-root path is required."""
+
+    return (
+        isinstance(integral.spec, ShellClassSpec)
+        and KernelConsumer.FORCE in integral.consumers
+        and integral.recurrence.startswith("rys")
+        and integral.required_rys_roots == 2
+    )
+
+
+def _target_resident_block_floor(
+    target: CudaTargetInfo,
+    block_threads: int,
+) -> int:
+    """Derive a legal launch-bound floor only from target resource limits."""
+
+    thread_limit = target.maximum_threads_per_sm // block_threads
+    register_limit = target.registers_per_sm // (
+        target.maximum_registers_per_thread * block_threads
+    )
+    return max(
+        1,
+        min(
+            target.maximum_blocks_per_sm,
+            thread_limit,
+            register_limit,
+        ),
+    )
+
+
+def _power_of_two_subgroup_counts(warp_size: int) -> tuple[int, ...]:
+    """Enumerate every power-of-two task split supported by one target warp."""
+
+    counts: list[int] = []
+    tasks = 2
+    while tasks <= warp_size:
+        if warp_size % tasks == 0:
+            subgroup_lanes = warp_size // tasks
+            if subgroup_lanes & (subgroup_lanes - 1) == 0:
+                counts.append(tasks)
+        tasks *= 2
+    return tuple(counts)
+
+
+def _subgroup_task_counts(
+    integral: IntegralIR,
+    block_threads: int,
+    warp_size: int,
+) -> tuple[int, ...]:
+    """Return lowering-legal subgroup task splits for this mathematical IR."""
+
+    generic = _power_of_two_subgroup_counts(warp_size)
+    if not integral.recurrence.startswith("rys"):
+        return generic
+    if integral.required_rys_roots not in (3, 4, 5):
+        return ()
+    # This is the current uniform-warp backend capability, not a tuning winner.
+    # Smaller resource-legal blocks are not implemented by that lowering.
+    if warp_size != 32 or block_threads not in (128, 256):
+        return ()
+    warp_count = block_threads // warp_size
+    if warp_count < 1 or warp_size % warp_count != 0:
+        return ()
+    tasks_per_warp = warp_size // warp_count
+    return (tasks_per_warp,) if tasks_per_warp in (1, *generic) else ()
+
+
+def _target_register_bounded_block_threads(target: CudaTargetInfo) -> int:
+    """Return a warp-aligned block size legal at worst-case register pressure."""
+
+    register_threads = target.registers_per_sm // target.maximum_registers_per_thread
+    threads = min(
+        target.maximum_threads_per_block,
+        target.maximum_threads_per_sm,
+        register_threads,
+    )
+    return threads - threads % target.warp_size
+
+
+def _power_of_two_tiles(target: CudaTargetInfo) -> tuple[int, ...]:
+    """Enumerate warp-multiple component tiles up to the target block limit."""
+
+    limit = min(target.maximum_threads_per_block, target.maximum_threads_per_sm)
+    tiles: list[int] = []
+    tile = target.warp_size * 2
+    while tile <= limit:
+        tiles.append(tile)
+        tile *= 2
+    return tuple(tiles)
+
+
+def _packed_default_fits_target(
+    integral: IntegralIR,
+    target: CudaTargetInfo,
+) -> bool:
+    """Admit packed fallback only when its static value-state envelope is bounded."""
+
+    value_state_count = comb(integral.value_coulomb_order + len(AXES), len(AXES))
+    live_state_units = integral.spec.component_count * value_state_count
+    return live_state_units <= target.tuning_maximum_registers
+
+
+def _default_schedule_priority(
+    integral: IntegralIR,
+    schedule: CudaScheduleIR,
+    target: CudaTargetInfo,
+) -> int:
+    """Rank correctness fallbacks without shell, recurrence-name, or device tables."""
+
+    if _uses_scalar_fixed_root_force(integral):
+        family_rank = 0 if schedule.kind == ScheduleKind.THREAD_TASKS else 4
+    elif (
+        integral.derivative is None
+        and schedule.kind == ScheduleKind.PACKED_TASKS
+        and _packed_default_fits_target(integral, target)
+    ):
+        family_rank = 0
+    elif schedule.kind == ScheduleKind.COMPONENT_LANES:
+        family_rank = 1
+    elif schedule.kind == ScheduleKind.TILED_COMPONENTS:
+        family_rank = 2
+    else:
+        family_rank = 3
+    return family_rank
+
+
 def schedule_candidates(
     integral: IntegralIR,
     target: CudaTargetInfo,
@@ -239,50 +370,77 @@ def schedule_candidates(
     warp_size = target.warp_size
     candidates: list[CudaScheduleIR] = []
 
-    if component_count <= 9:
+    # The two-root fixed-root force backend owns one complete shell task per
+    # lane.  Root count comes from IntegralIR mathematics; launch bounds come
+    # only from target resources.  No shell class, recurrence spelling, GPU
+    # model, or occupancy magic number participates in this candidate.
+    if _uses_scalar_fixed_root_force(integral):
         candidates.append(
             CudaScheduleIR(
-                kind=ScheduleKind.PACKED_TASKS,
+                kind=ScheduleKind.THREAD_TASKS,
                 block_threads=warp_size,
                 component_tile=component_count,
                 tasks_per_warp=warp_size,
                 shared_coulomb=False,
-                warp_size=warp_size,
-            )
-        )
-        candidates.append(
-            CudaScheduleIR(
-                kind=ScheduleKind.SHELL_TASK,
-                block_threads=warp_size,
-                component_tile=component_count,
-                shared_coulomb=False,
+                minimum_blocks_per_sm=_target_resident_block_floor(
+                    target,
+                    warp_size,
+                ),
                 warp_size=warp_size,
             )
         )
 
-    subgroup_block_threads = min(
-        target.maximum_threads_per_block,
-        target.maximum_threads_per_sm,
-        warp_size * 8,
+    # Packed and shell-task mappings are legal independently of shell size.
+    # Profitability/promotion decides whether the lane-local live state is
+    # worthwhile; candidate construction does not hide a component threshold.
+    candidates.append(
+        CudaScheduleIR(
+            kind=ScheduleKind.PACKED_TASKS,
+            block_threads=warp_size,
+            component_tile=component_count,
+            tasks_per_warp=warp_size,
+            shared_coulomb=False,
+            warp_size=warp_size,
+        )
     )
-    subgroup_block_threads -= subgroup_block_threads % warp_size
-    if component_count <= 64 and subgroup_block_threads >= warp_size:
-        for tasks_per_warp in (2, 4):
-            if warp_size % tasks_per_warp == 0:
-                candidates.append(
-                    CudaScheduleIR(
-                        kind=ScheduleKind.SUBGROUP_TASKS,
-                        block_threads=subgroup_block_threads,
-                        component_tile=component_count,
-                        tasks_per_warp=tasks_per_warp,
-                        shared_coulomb=True,
-                        warp_size=warp_size,
-                    )
+    candidates.append(
+        CudaScheduleIR(
+            kind=ScheduleKind.SHELL_TASK,
+            block_threads=warp_size,
+            component_tile=component_count,
+            shared_coulomb=False,
+            warp_size=warp_size,
+        )
+    )
+
+    subgroup_block_threads = _target_register_bounded_block_threads(target)
+    if subgroup_block_threads >= warp_size:
+        for tasks_per_warp in _subgroup_task_counts(
+            integral,
+            subgroup_block_threads,
+            warp_size,
+        ):
+            candidates.append(
+                CudaScheduleIR(
+                    kind=ScheduleKind.SUBGROUP_TASKS,
+                    block_threads=subgroup_block_threads,
+                    component_tile=component_count,
+                    tasks_per_warp=tasks_per_warp,
+                    shared_coulomb=True,
+                    warp_size=warp_size,
                 )
+            )
 
     coulomb_state_count = comb(integral.maximum_coulomb_order + 3, 3)
+    derivative_output_count = (
+        len(integral.operator.centers) * 3 if integral.derivative is not None else 1
+    )
     cooperative_threads = (
-        (max(component_count, coulomb_state_count, 12) + warp_size - 1)
+        (
+            max(component_count, coulomb_state_count, derivative_output_count)
+            + warp_size
+            - 1
+        )
         // warp_size
         * warp_size
     )
@@ -305,8 +463,8 @@ def schedule_candidates(
                 )
             )
 
-    for tile in (warp_size * 2, warp_size * 4, warp_size * 8):
-        if component_count > tile and tile <= target.maximum_threads_per_block:
+    for tile in _power_of_two_tiles(target):
+        if component_count > tile:
             candidates.append(
                 CudaScheduleIR(
                     kind=ScheduleKind.TILED_COMPONENTS,
@@ -324,15 +482,23 @@ def default_schedule(
     integral: IntegralIR,
     target: CudaTargetInfo,
 ) -> CudaScheduleIR:
-    """Return the conservative component schedule for ``target``."""
+    """Return a conservative target-legal schedule for ``integral``."""
 
     candidates = schedule_candidates(integral, target)
-    for candidate in candidates:
-        if candidate.kind == ScheduleKind.COMPONENT_LANES:
-            return candidate
-    for candidate in candidates:
-        if candidate.kind == ScheduleKind.TILED_COMPONENTS:
-            return candidate
+    conservative = tuple(
+        candidate
+        for candidate in candidates
+        if _default_schedule_priority(integral, candidate, target) < 3
+    )
+    if conservative:
+        return min(
+            conservative,
+            key=lambda candidate: _default_schedule_priority(
+                integral,
+                candidate,
+                target,
+            ),
+        )
     name = (
         integral.spec.name
         if isinstance(integral.spec, ShellClassSpec)

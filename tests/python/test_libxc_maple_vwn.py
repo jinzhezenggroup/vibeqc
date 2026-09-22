@@ -19,7 +19,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-RSH_MANIFEST = ROOT / "external/libxc-7.0.0/rsh-manifest.json"
+RSH_MANIFEST = ROOT / "manifests/libxc/7.0.0/rsh-manifest.json"
 POLARIZED_FEATURES = (
     "rho_a",
     "rho_b",

@@ -422,6 +422,15 @@ class NativeRKSResponse(_NativeKSLease, CPKSResponseOperator):
     _spin_blocks = 1
     _response_identity = staticmethod(cpks_operator_identity)
 
+    def induced_fock(
+        self, delta_density: typing.Any, *, transpose: bool = False
+    ) -> typing.Any:
+        """Apply the live native KS density-response map with lease validation."""
+        self.validate_current()
+        result = super().induced_fock(delta_density, transpose=transpose)
+        self.validate_current()
+        return result
+
     def _base_action(
         self, vector: typing.Any, *, transpose: bool = False
     ) -> typing.Any:
