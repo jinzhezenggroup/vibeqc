@@ -12,7 +12,15 @@ from vibeqc_compiler.common.lowering_provider import (
     lowering_diagnostics,
 )
 from vibeqc_compiler.common.schedule import ScheduleContract
-from vibeqc_compiler.tensor import Index, IndexSpace, Program, TensorSpec, add, einsum, input_tensor
+from vibeqc_compiler.tensor import (
+    Index,
+    IndexSpace,
+    Program,
+    TensorSpec,
+    add,
+    einsum,
+    input_tensor,
+)
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 from vibeqc_compiler.tensor.cuda_providers import tensor_lowering_diagnostics
 from vibeqc_compiler.tensor.cuda_search import estimate_schedule
