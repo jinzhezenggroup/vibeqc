@@ -144,6 +144,14 @@ selector for direct all-electron RKS only. UKS keeps its occupation
 stabilization and bounded final-closure host policy; ECP RKS keeps the strict
 physical final closure required by #586. CUDA Graphs are not required.
 
+When the two-slot path is selected, its device-control chunk is bound to the
+shared compiled-execution lifecycle also used by TensorIR graph replay. The KS
+transfer diagnostic reports region bindings, invalidations, successful
+executions, failures and recoveries. These counters describe ownership and
+failure isolation only: KS does **not** capture direct-J/XC into a CUDA Graph,
+and ordinary host-controlled KS leaves the region counters zero. See the
+[shared execution-lifecycle decision](../../.agents/notes/implemented/architecture/2026-09-21-shared-compiled-execution-lifecycle.md).
+
 RTX 5090 / CUDA 12.9 cold, warm and changed-geometry A/B measurements preserved
 identical energies and iteration counts but found no reproducible endpoint
 benefit; PBE cold was materially slower with two-slot submission. The chunked
