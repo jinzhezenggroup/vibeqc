@@ -182,12 +182,10 @@ class ProgramStoragePlan:
             "schema_version": self.schema_version,
             "program_identity": self.program.identity,
             "aliases": [
-                {**asdict(item), "alias": item.alias.value}
-                for item in self.aliases
+                {**asdict(item), "alias": item.alias.value} for item in self.aliases
             ],
             "effects": [
-                {**asdict(item), "effect": item.effect.value}
-                for item in self.effects
+                {**asdict(item), "effect": item.effect.value} for item in self.effects
             ],
         }
         if self.schema_version >= 2:
@@ -257,9 +255,7 @@ class ProgramStoragePlan:
         effect_map = {item.call: item.effect for item in self.effects}
         donation_map: dict[str, list[tuple[str, str]]] = {}
         for item in self.donations:
-            donation_map.setdefault(item.call, []).append(
-                (item.donor, item.recipient)
-            )
+            donation_map.setdefault(item.call, []).append((item.donor, item.recipient))
         values = []
         for buffer in self.program.buffers:
             binding = alias_map.get(buffer.name)
