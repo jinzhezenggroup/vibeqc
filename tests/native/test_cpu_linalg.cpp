@@ -152,6 +152,96 @@ bool check_symm(CpuLinalgProvider provider,
   return scaled[0] == 8.0 && scaled[1] == -12.0;
 }
 
+bool check_syr(CpuLinalgProvider provider,
+               CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+               int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  const std::array<double, 3> x{1.0, -2.0, 0.5};
+  constexpr double alpha = 1.5;
+  for (char uplo : {'L', 'U'}) {
+    std::array<double, 9> a{};
+    std::array<double, 9> expected{};
+    for (std::size_t i = 0; i < 3; ++i) {
+      for (std::size_t j = 0; j < 3; ++j) {
+        const bool selected = uplo == 'U' ? j >= i : j <= i;
+        if (!selected) {
+          a[i * 3 + j] = poison;
+          expected[i * 3 + j] = poison;
+          continue;
+        }
+        const double initial = 1.0 + static_cast<double>(i * 3 + j);
+        a[i * 3 + j] = initial;
+        expected[i * 3 + j] = initial + alpha * x[i] * x[j];
+      }
+    }
+    vibeqc::tensor::cpu_syr(uplo, 3, x.data(), a.data(), alpha, plan);
+    for (std::size_t i = 0; i < a.size(); ++i) {
+      const std::size_t row = i / 3, column = i % 3;
+      const bool selected = uplo == 'U' ? column >= row : column <= row;
+      if (selected && (!std::isfinite(a[i]) || !close(a[i], expected[i]))) return false;
+      if (!selected && !std::isnan(a[i])) return false;
+    }
+  }
+  vibeqc::tensor::cpu_syr('L', 2, &poison, nullptr, 0.0, plan);
+  vibeqc::tensor::cpu_syr('U', 0, nullptr, nullptr, 1.0, plan);
+  return true;
+}
+
+bool check_syr2(CpuLinalgProvider provider,
+                CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
+                int threads = 1) {
+  const CpuLinalgPlan plan{provider, ownership, threads};
+  const double poison = std::numeric_limits<double>::quiet_NaN();
+  const std::array<double, 3> x{1.0, -2.0, 0.5};
+  const std::array<double, 3> y{-3.0, 0.25, 4.0};
+  constexpr double alpha = 0.75;
+  for (char uplo : {'L', 'U'}) {
+    std::array<double, 9> a{};
+    std::array<double, 9> expected{};
+    for (std::size_t i = 0; i < 3; ++i) {
+      for (std::size_t j = 0; j < 3; ++j) {
+        const bool selected = uplo == 'U' ? j >= i : j <= i;
+        if (!selected) {
+          a[i * 3 + j] = poison;
+          expected[i * 3 + j] = poison;
+          continue;
+        }
+        const double initial = 1.0 + static_cast<double>(i * 3 + j);
+        a[i * 3 + j] = initial;
+        expected[i * 3 + j] = initial + alpha * (x[i] * y[j] + y[i] * x[j]);
+      }
+    }
+    vibeqc::tensor::cpu_syr2(uplo, 3, x.data(), y.data(), a.data(), alpha, plan);
+    for (std::size_t i = 0; i < a.size(); ++i) {
+      const std::size_t row = i / 3, column = i % 3;
+      const bool selected = uplo == 'U' ? column >= row : column <= row;
+      if (selected && (!std::isfinite(a[i]) || !close(a[i], expected[i]))) return false;
+      if (!selected && !std::isnan(a[i])) return false;
+    }
+  }
+  // Exact powers of two expose premature product overflow and underflow.
+  for (int exponent : {-600, 600}) {
+    const double scale = std::ldexp(1.0, exponent);
+    const std::array<double, 2> xx{scale, -scale}, yy{scale, 2.0 * scale};
+    const std::array<double, 4> expected{2.0 * scale, scale, scale, -4.0 * scale};
+    for (char uplo : {'L', 'U'}) {
+      std::array<double, 4> a{};
+      a[uplo == 'U' ? 2 : 1] = poison;
+      vibeqc::tensor::cpu_syr2(uplo, 2, xx.data(), yy.data(), a.data(), std::ldexp(1.0, -exponent),
+                               plan);
+      for (std::size_t i = 0; i < a.size(); ++i) {
+        const bool selected = uplo == 'U' ? i / 2 <= i % 2 : i / 2 >= i % 2;
+        if (selected && (!std::isfinite(a[i]) || a[i] != expected[i])) return false;
+        if (!selected && !std::isnan(a[i])) return false;
+      }
+    }
+  }
+  vibeqc::tensor::cpu_syr2('L', 2, &poison, &poison, nullptr, 0.0, plan);
+  vibeqc::tensor::cpu_syr2('U', 0, nullptr, nullptr, nullptr, 1.0, plan);
+  return true;
+}
+
 bool check_syrk(CpuLinalgProvider provider,
                 CpuLinalgThreadOwnership ownership = CpuLinalgThreadOwnership::task_parallel,
                 int threads = 1) {
@@ -367,6 +457,7 @@ bool check_eigen(CpuLinalgProvider provider,
 int main() {
   if (!check_gemm(CpuLinalgProvider::scalar) || !check_gemv(CpuLinalgProvider::scalar) ||
       !check_ger(CpuLinalgProvider::scalar) || !check_symm(CpuLinalgProvider::scalar) ||
+      !check_syr(CpuLinalgProvider::scalar) || !check_syr2(CpuLinalgProvider::scalar) ||
       !check_syrk(CpuLinalgProvider::scalar) || !check_syr2k(CpuLinalgProvider::scalar) ||
       !check_trsm(CpuLinalgProvider::scalar) || !check_trmm(CpuLinalgProvider::scalar) ||
       !check_cholesky(CpuLinalgProvider::scalar) || !check_eigen(CpuLinalgProvider::scalar)) {
@@ -400,6 +491,8 @@ int main() {
                               !check_gemv(CpuLinalgProvider::openblas, ownership) ||
                               !check_ger(CpuLinalgProvider::openblas, ownership) ||
                               !check_symm(CpuLinalgProvider::openblas, ownership) ||
+                              !check_syr(CpuLinalgProvider::openblas, ownership) ||
+                              !check_syr2(CpuLinalgProvider::openblas, ownership) ||
                               !check_syrk(CpuLinalgProvider::openblas, ownership) ||
                               !check_syr2k(CpuLinalgProvider::openblas, ownership) ||
                               !check_trsm(CpuLinalgProvider::openblas, ownership) ||
