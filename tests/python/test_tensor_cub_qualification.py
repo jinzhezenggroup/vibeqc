@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 from vibeqc_compiler.common.evidence import canonical_hash, validate_evidence
 
 from benchmarks.tensor_cub_qualification import (
     _cub_candidate,
     _validation_record,
+    _verified_archive_digest,
     qualification_case,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_qualification_case_fixes_equation_precision_and_layout_domain() -> None:
@@ -40,6 +46,14 @@ def test_cub_candidate_requires_complete_endpoint_evidence() -> None:
     }
     with pytest.raises(RuntimeError, match="did not complete"):
         _cub_candidate({"candidates": [incomplete]})
+
+
+def test_source_archive_digest_fails_closed(tmp_path: Path) -> None:
+    path = tmp_path / "source.tar.gz"
+    path.write_bytes(b"reviewed source")
+    digest = canonical_hash("not the file bytes")
+    with pytest.raises(ValueError, match="mismatch"):
+        _verified_archive_digest(path, digest)
 
 
 def test_validation_wrapper_is_a_publishable_nonpromotion_record() -> None:
@@ -124,8 +138,11 @@ def test_validation_wrapper_is_a_publishable_nonpromotion_record() -> None:
         tuning=tuning,
         candidate=candidate,
         allocation_id="unit-allocation",
+        source_revision="c" * 40,
+        source_archive_sha256="d" * 64,
     )
 
     validate_evidence(record)
     assert record["stages"]["production"]["status"] == "not-run"
     assert record["performance"]["status"] == "not-run"
+    assert record["settings"]["source_archive_sha256"] == "d" * 64

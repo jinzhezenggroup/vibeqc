@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.evidence import (
     canonical_hash,
+    file_hash,
     new_evidence,
     outcome,
     write_evidence,
@@ -49,6 +51,17 @@ ROWS = 65
 INNER = 4097
 ATOL = 1e-11
 RTOL = 1e-10
+
+
+def _verified_archive_digest(path: Path, expected: str) -> str:
+    """Bind the extracted snapshot to the caller's reviewed archive bytes."""
+
+    if not path.is_file():
+        raise ValueError("source archive is unavailable")
+    actual = file_hash(path)
+    if actual != expected:
+        raise ValueError("source archive SHA-256 mismatch")
+    return actual
 
 
 def qualification_case(
@@ -128,6 +141,8 @@ def _validation_record(
     tuning: dict[str, Any],
     candidate: dict[str, Any],
     allocation_id: str,
+    source_revision: str,
+    source_archive_sha256: str,
 ) -> dict[str, Any]:
     fixture_identity = [
         {
@@ -153,7 +168,7 @@ def _validation_record(
         inputs_hash=inputs_hash,
     )
     record.update(
-        revision=environment["git"]["commit"],
+        revision=source_revision,
         hashes={
             "equation": program.logical_hash,
             "ir": canonical_hash(program.to_payload()),
@@ -171,6 +186,7 @@ def _validation_record(
             "comparison_kind": "kernel",
             "fixed_state_hash": inputs_hash,
             "allocation_id": allocation_id,
+            "source_archive_sha256": source_archive_sha256,
             "precision": "float64->float64",
             "rows": rows,
             "inner": inner,
@@ -192,6 +208,7 @@ def _validation_record(
             allocation_id=allocation_id,
             target=tuning["baseline_plan"]["target"],
             device=tuning["device"],
+            execution_environment=environment,
         ),
         timings=_flatten_samples(candidate),
         memory={
@@ -278,6 +295,9 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=8)
     parser.add_argument("--maximum-seconds", type=float, default=900.0)
     parser.add_argument("--allocation-id", required=True)
+    parser.add_argument("--source-revision", required=True)
+    parser.add_argument("--source-archive", type=Path, required=True)
+    parser.add_argument("--source-archive-sha256", required=True)
     parser.add_argument("--output", type=raw_output_path, required=True)
     args = parser.parse_args()
     if not 5 <= args.repeats <= 30:
@@ -286,13 +306,21 @@ def main() -> None:
         parser.error("--maximum-seconds must be positive")
     if not os.environ.get("CUDA_VISIBLE_DEVICES"):
         parser.error("a finite scheduler allocation must set CUDA_VISIBLE_DEVICES")
+    if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", args.source_revision):
+        parser.error("--source-revision must be a full lowercase Git SHA")
+    if not re.fullmatch(r"[0-9a-f]{64}", args.source_archive_sha256):
+        parser.error("--source-archive-sha256 must be a lowercase SHA-256")
+    try:
+        source_archive_sha256 = _verified_archive_digest(
+            args.source_archive.resolve(), args.source_archive_sha256
+        )
+    except ValueError as error:
+        parser.error(str(error))
     output = args.output.resolve()
     raw_output_path(output / "evidence.json")
     if output.exists():
         parser.error("--output must name a new directory")
     environment = environment_metadata(distributions={"numpy": ("numpy",)})
-    if not environment["git"]["commit"] or environment["git"]["dirty"] is not False:
-        parser.error("qualification requires an exact clean Git revision")
     output.mkdir(parents=True)
 
     program, fixtures = qualification_case()
@@ -333,12 +361,15 @@ def main() -> None:
         tuning=selection.evidence,
         candidate=candidate,
         allocation_id=args.allocation_id,
+        source_revision=args.source_revision,
+        source_archive_sha256=source_archive_sha256,
     )
     write_evidence(output / "evidence.json", record)
     detailed = selection.evidence_path.relative_to(output)
     summary = {
         "schema": SCHEMA,
-        "revision": environment["git"]["commit"],
+        "revision": args.source_revision,
+        "source_archive_sha256": source_archive_sha256,
         "allocation_id": args.allocation_id,
         "equation": program.logical_hash,
         "target": selection.evidence["baseline_plan"]["target"],
