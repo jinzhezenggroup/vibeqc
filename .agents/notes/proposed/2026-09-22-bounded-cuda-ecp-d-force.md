@@ -31,3 +31,28 @@ fresh snapshot is required for recovery.
 Higher-angular ECP force records or broader all-electron CUDA forces have an
 independent source-size, resource, numerical and complete-endpoint
 qualification.
+
+
+## Review repairs and remaining boundary
+
+Canonical derivative bindings map both centers and coordinate axes. The first
+CUDA record implementation rotated only the output scatter, unlike the shared
+CPU component owner. Pack input coordinates with both binding permutations;
+keep the existing inverse scatter. Four nontrivial axis cases failed the host
+record check before repair, while an identity-axis control passed.
+
+The 26-double record and 12-int64 map retain 38 eight-byte entries per slot.
+The initial 34-entry host charge undercounted the actual arrays; the device
+allocation already used the correct map width. Charge all retained entries.
+A Cartesian d shell has six components, whereas a real-spherical d shell has
+five. Keep both independent oracle/finite-difference matrices, but do not apply
+the s/p-only cross-representation equivalence assertion to d.
+
+These local fixes do not establish production acceptance. Mainline has since
+moved to the native task/topology interface and packaged all-electron AOT;
+porting this proposal must preserve those accepted owners rather than restore
+the retired host-record ABI. The requested GPU allocation for a narrow record
+probe was unavailable, and no new full CUDA endpoint result is claimed here.
+
+Agent: ChatGPT (Even-PR Review R9 hjhmhw3o)
+Model: GPT-6 Astra Pro

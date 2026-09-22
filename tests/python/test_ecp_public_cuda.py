@@ -104,9 +104,9 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
     assert max(errors) < 2e-7
     record_property("fd_errors", errors)
-    if representation == "spherical":
-        # Cartesian and real spherical spaces are equivalent, but public
-        # normalized AO ordering/representation identities remain distinct.
+    if representation == "spherical" and not d_shell:
+        # Only s/p Cartesian and real spherical spaces are equivalent; d adds
+        # a sixth Cartesian component and is tested against its own oracle.
         from dataclasses import replace
 
         cartesian = calculator(replace(record, representation="cartesian"), method)

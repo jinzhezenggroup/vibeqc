@@ -502,6 +502,9 @@ The default property set includes forces for these records; use
 method registry remains conservative and does not advertise DFT forces.
 All-electron CUDA force capability retains its existing s/p boundary; this
 slice extends only the bounded scalar-ECP owner through d.
+The d extension still requires current-mainline integration and the complete
+independent CUDA endpoint qualification; host record/generation checks alone
+do not establish it.
 
 This route reuses the live energy owner's v5 snapshot and shared nine-source
 compiler plan. It binds the actual core counts and ECP parameters, includes
@@ -521,7 +524,7 @@ does not promise scientific convergence or work admission. Budgeted batch
 bounds separately from the native SCF ledger. This includes dense host exports
 and does not claim complete residency or performance promotion.
 
-Qualification covers Cartesian and real-spherical s/p/d LANL2DZ Na / STO-3G H,
+The retained s/p qualification covers Cartesian and real-spherical LANL2DZ Na / STO-3G H,
 neutral RKS and +1 doublet UKS,
 with the retained 24 x 8 x 16 unpruned XC grid. It checks independent PySCF
 full-grid-response gradients, two-step reconverged energy differences, force

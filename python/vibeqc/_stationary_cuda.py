@@ -246,7 +246,7 @@ class _CudaSources:
                 primitive_slots = list(binding.centers[: len(ids)])
                 r[: len(ids)] = primitives[primitive_slots, 0]
                 r[4 : 4 + 3 * len(mapped_owners)] = self.centers[
-                    mapped_owners
+                    np.ix_(mapped_owners, binding.axes)
                 ].reshape(-1)
                 r[16 : 16 + len(ids)] = primitives[primitive_slots, 1]
                 m[: 3 * len(mapped_owners)] = np.asarray(
@@ -497,7 +497,7 @@ def complete_rks_cuda_gradient_diagnostic(
         grid_plan.host_bytes
         + 8
         * (
-            34 * primitive_tile
+            38 * primitive_tile
             + 4 * plan.spin_blocks * n * n
             + 120 * na
             + 26 * integral_terms
