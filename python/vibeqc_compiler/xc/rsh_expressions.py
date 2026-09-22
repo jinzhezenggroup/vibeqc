@@ -36,11 +36,10 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
     if spec.spin == "polarized":
-        ra, rb, saa, sab, sbb, _, _ = variables
+        ra, rb = variables[:2]
     else:
-        rho, sigma, _ = variables
+        rho = variables[0]
         ra = rb = rho / 2
-        saa = sab = sbb = sigma / 4
     n = ra + rb
     cx = F(3, 8) * (3 / math.pi) ** (1 / 3) * 4 ** (2 / 3)
 
