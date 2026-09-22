@@ -26,9 +26,7 @@ def _sizes(value: str) -> tuple[int, ...]:
     return parsed
 
 
-def _validated_energies(
-    result: typing.Any, batch_size: int, phase: str
-) -> list[float]:
+def _validated_energies(result: typing.Any, batch_size: int, phase: str) -> list[float]:
     """Require complete, converged, finite evidence before computing throughput."""
     if len(result.items) != batch_size:
         raise RuntimeError(f"{phase} batch item count differs from request")
