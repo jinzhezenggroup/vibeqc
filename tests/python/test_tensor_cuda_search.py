@@ -251,9 +251,7 @@ def test_new_schedule_dimensions_change_generated_execution_without_changing_def
     assert cub_estimate["estimated_shared_bytes"] == 128 * 8
     assert (
         dict(
-            ScheduleContract.from_payload(
-                cub_estimate["schedule_contract"]
-            ).provenance
+            ScheduleContract.from_payload(cub_estimate["schedule_contract"]).provenance
         )["lowering_providers"]
         == "nvidia.cccl.cub,vibeqc.generated_cuda"
     )

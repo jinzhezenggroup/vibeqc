@@ -23,10 +23,6 @@ from vibeqc_compiler.common.schedule import (
 
 from .cuda_emit import emit_cuda
 from .cuda_gemm import gemm_contract
-from .cuda_reduction import (
-    cooperative_reduction_provider,
-    cooperative_reduction_shared_bytes,
-)
 from .cuda_plan import (
     TensorPlan,
     TensorSchedule,
@@ -34,6 +30,10 @@ from .cuda_plan import (
     plan_cuda,
 )
 from .cuda_providers import tensor_lowering_diagnostics
+from .cuda_reduction import (
+    cooperative_reduction_provider,
+    cooperative_reduction_shared_bytes,
+)
 from .precision import describe_precision
 from .program import Program
 

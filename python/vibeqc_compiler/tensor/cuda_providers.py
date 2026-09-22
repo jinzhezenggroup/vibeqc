@@ -105,7 +105,10 @@ def _cooperative_reduction_rejection(
 ) -> str | None:
     if request.operation != "reduce" or len(request.shape) != 2:
         return "provider requires a flattened TensorIR reduction request"
-    if request.dtype not in ("float32", "float64") or request.accumulation_dtype not in (
+    if request.dtype not in (
+        "float32",
+        "float64",
+    ) or request.accumulation_dtype not in (
         "float32",
         "float64",
     ):
@@ -247,7 +250,9 @@ def reduction_provider_candidates(
     )
     target = TargetCapabilities(
         plan.target.target_info,
-        features=tuple((feature, True) for feature in plan.target.required_cuda_features),
+        features=tuple(
+            (feature, True) for feature in plan.target.required_cuda_features
+        ),
     )
     return collect_lowering_candidates(
         request,

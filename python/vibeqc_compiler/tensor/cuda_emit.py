@@ -621,8 +621,7 @@ def emit_cuda(
     namespace = f"namespace {_name(prefix, 'generated')} {{" if prefix else ""
     parts = ['#include "cuda_graph_context.cuh"']
     if any(
-        cooperative_reduction_provider(plan, i) == "cub"
-        for i in range(len(plan.steps))
+        cooperative_reduction_provider(plan, i) == "cub" for i in range(len(plan.steps))
     ):
         parts.append("#include <cub/block/block_reduce.cuh>")
     parts.append("using namespace vibeqc_tensor;")
