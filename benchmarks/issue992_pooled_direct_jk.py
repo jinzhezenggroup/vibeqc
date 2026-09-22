@@ -8,6 +8,7 @@ import math
 import os
 import statistics
 import time
+import typing
 
 from _support import environment_metadata, raw_output_path, write_result
 
@@ -23,6 +24,20 @@ def _sizes(value: str) -> tuple[int, ...]:
     if not parsed or any(item < 1 for item in parsed):
         raise argparse.ArgumentTypeError("batch sizes must be positive")
     return parsed
+
+
+def _validated_energies(
+    result: typing.Any, batch_size: int, phase: str
+) -> list[float]:
+    """Require complete, converged, finite evidence before computing throughput."""
+    if len(result.items) != batch_size:
+        raise RuntimeError(f"{phase} batch item count differs from request")
+    if any(not item.converged for item in result.items):
+        raise RuntimeError(f"{phase} batch did not converge")
+    energies = [float(item.energy) for item in result.items]
+    if not all(math.isfinite(energy) for energy in energies):
+        raise RuntimeError(f"{phase} batch returned nonfinite energies")
+    return energies
 
 
 def main() -> None:
@@ -56,12 +71,10 @@ def main() -> None:
         systems = [WATER for _ in range(batch_size)]
         with calculator.prepare_batch(systems, warm_start=True) as batch:
             cold = batch.execute(strict=True, properties=("energy",))
-            if any(not item.converged for item in cold.items):
-                raise RuntimeError("cold batch did not converge")
+            _validated_energies(cold, batch_size, "cold")
             batch.set_warm_start_updates(False)
             setup = batch.execute(strict=True, properties=("energy",))
-            if any(not item.converged for item in setup.items):
-                raise RuntimeError("warm setup did not converge")
+            _validated_energies(setup, batch_size, "warm setup")
             samples: list[float] = []
             iterations: list[list[int]] = []
             for _ in range(arguments.repeats):
@@ -70,14 +83,8 @@ def main() -> None:
                 replay = batch.execute(strict=True, properties=("energy",))
                 cp.cuda.Stream.null.synchronize()
                 samples.append(time.perf_counter() - started)
-                if len(replay.items) != batch_size:
-                    raise RuntimeError("replayed batch item count differs from request")
-                if any(not item.converged for item in replay.items):
-                    raise RuntimeError("replayed batch did not converge")
                 iterations.append([item.iterations for item in replay.items])
-                energies = [float(item.energy) for item in replay.items]
-                if not all(math.isfinite(energy) for energy in energies):
-                    raise RuntimeError("replayed batch energies must be finite")
+                energies = _validated_energies(replay, batch_size, "warm replay")
                 spread = max(energies) - min(energies)
                 if spread > 2.0e-10:
                     raise RuntimeError(f"pooled batch energy spread {spread:.3e} Eh")
