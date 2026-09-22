@@ -159,7 +159,7 @@ def test_method_capabilities_report_families_and_properties() -> None:
     assert ccsd_t.family == "coupled_cluster"
     assert ccsd_t.available
     assert ccsd_t.supports_batch
-    assert ccsd_t.supported_properties == frozenset(("energy",))
+    assert ccsd_t.supported_properties == frozenset(("energy", "forces"))
 
     lda = method_capabilities("lda-rks")
     assert lda.family == "density_functional"
