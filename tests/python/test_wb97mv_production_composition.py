@@ -1,4 +1,4 @@
-"""Production B97M composition admission; no numerical oracle is stubbed."""
+"""Production B97M composition ownership across the master/#935 cutover."""
 
 from fractions import Fraction
 
@@ -28,14 +28,14 @@ def _stop_at_source(_omega: Fraction) -> None:
         ((X, Fraction(1)), (C, Fraction(-1))),
     ),
 )
-def test_production_rejects_noncanonical_b97m_before_source_loading(
+def test_production_accepts_separated_and_weighted_b97m_lowering(
     monkeypatch: pytest.MonkeyPatch,
     spin: str,
     components: tuple[tuple[str, Fraction], ...],
 ) -> None:
     spec = FunctionalSpec("test", components, spin=spin, range_omega=Fraction(3, 10))
-    monkeypatch.setattr(wb97mv_maple, "_module", _stop_at_source)
-    with pytest.raises(ValueError, match="canonical unit-weight"):
+    monkeypatch.setattr(wb97mv_maple, "_wb97mv_module", _stop_at_source)
+    with pytest.raises(_ReachedMaple):
         wb97mv_maple.energy_expression(spec)
 
 
@@ -49,7 +49,7 @@ def test_canonical_b97m_reaches_unchanged_maple_lowering(
         spin=spin,
         range_omega=Fraction(3, 10),
     )
-    monkeypatch.setattr(wb97mv_maple, "_module", _stop_at_source)
+    monkeypatch.setattr(wb97mv_maple, "_wb97mv_module", _stop_at_source)
     with pytest.raises(_ReachedMaple):
         wb97mv_maple.energy_expression(spec)
 

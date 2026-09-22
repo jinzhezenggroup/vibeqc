@@ -7,6 +7,7 @@
 
 #include "backends/cuda/cuda_atomics.cuh"
 #include "backends/cuda/gfn2_es2.cuh"
+#include "generated_gfn2_es2_native.hpp"
 
 namespace xtbloom::detail::cuda {
 namespace {
@@ -128,11 +129,8 @@ __device__ void validate_shell_charges(const SystemRanges& ranges, const double*
 }
 
 __device__ bool arithmetic_hardness(double first, double second, double* average) {
-  const double sum = first + second;
-  /* Match CPU ES2 exactly, including its subnormal-preserving finite path. */
-  *average = isfinite(sum) ? 0.5 * sum : 0.5 * first + 0.5 * second;
-  const double inverse = 1.0 / *average;
-  return *average > 0.0 && isfinite(*average) && isfinite(inverse);
+  return vibeqc::xtb::generated::evaluate_gfn2_es2_arithmetic_hardness(
+      first, second, *average);
 }
 
 __device__ bool softened_kernel(double dx, double dy, double dz, double first_hardness,
@@ -141,11 +139,8 @@ __device__ bool softened_kernel(double dx, double dy, double dz, double first_ha
   if (!arithmetic_hardness(first_hardness, second_hardness, &average)) {
     return false;
   }
-  const double inverse_average = 1.0 / average;
-  const double softened_distance = hypot(hypot(dx, dy), hypot(dz, inverse_average));
-  *kernel = 1.0 / softened_distance;
-  return softened_distance > 0.0 && isfinite(softened_distance) && *kernel > 0.0 &&
-         isfinite(*kernel);
+  return vibeqc::xtb::generated::evaluate_gfn2_es2_kernel_from_hardness(
+      dx, dy, dz, average, *kernel);
 }
 
 __global__ void geometry_preflight_kernel(Gfn2ES2DeviceBatch batch, const double* positions,
@@ -231,14 +226,12 @@ __global__ void potential_preflight_kernel(Gfn2ES2DeviceBatch batch, Gfn2ES2Devi
         finite_result = false;
         break;
       }
-      const double contribution = kernel * charge;
-      const double updated = potential + contribution;
-      if (!isfinite(contribution) || !isfinite(updated)) {
+      if (!vibeqc::xtb::generated::accumulate_gfn2_es2_potential(
+              kernel, charge, potential)) {
         record_error(device_error, Gfn2ES2DeviceError::kNonfinitePotentialArithmetic);
         finite_result = false;
         break;
       }
-      potential = updated;
     }
     if (finite_result) {
       shell_scratch[row_shell] = potential;
@@ -288,26 +281,22 @@ __global__ void energy_preflight_kernel(Gfn2ES2DeviceBatch batch, Gfn2ES2DeviceC
         finite_result = false;
         break;
       }
-      const double contribution = kernel * column_charge;
-      const double updated = potential + contribution;
-      if (!isfinite(contribution) || !isfinite(updated)) {
+      if (!vibeqc::xtb::generated::accumulate_gfn2_es2_potential(
+              kernel, column_charge, potential)) {
         record_error(device_error, Gfn2ES2DeviceError::kNonfiniteEnergyArithmetic);
         finite_result = false;
         break;
       }
-      potential = updated;
     }
     if (!finite_result) {
       break;
     }
-    const double contribution = 0.5 * row_charge * potential;
-    const double updated = local_energy + contribution;
-    if (!isfinite(contribution) || !isfinite(updated)) {
+    if (!vibeqc::xtb::generated::accumulate_gfn2_es2_energy(
+            row_charge, potential, local_energy)) {
       record_error(device_error, Gfn2ES2DeviceError::kNonfiniteEnergyArithmetic);
       finite_result = false;
       break;
     }
-    local_energy = updated;
   }
 
   partial_energy[threadIdx.x] = finite_result ? local_energy : 0.0;
@@ -396,21 +385,29 @@ __global__ void gradient_preflight_kernel(Gfn2ES2DeviceBatch batch, Gfn2ES2Devic
             record_error(device_error, Gfn2ES2DeviceError::kInvalidCacheMatrix);
             return;
           }
-          double contribution = first_charge * kernel;
-          contribution *= second_charge;
-          contribution *= kernel;
-          contribution *= kernel;
-          const double updated = weighted_derivative + contribution;
-          if (!isfinite(contribution) || !isfinite(updated)) {
+          double shell_weight = 0.0;
+          if (!vibeqc::xtb::generated::evaluate_gfn2_es2_cached_gradient_weight(
+                  kernel, first_charge, second_charge, shell_weight)) {
+            record_error(device_error, Gfn2ES2DeviceError::kNonfiniteGradientArithmetic);
+            return;
+          }
+          const double updated = weighted_derivative + shell_weight;
+          if (!isfinite(updated)) {
             record_error(device_error, Gfn2ES2DeviceError::kNonfiniteGradientArithmetic);
             return;
           }
           weighted_derivative = updated;
         }
       }
-      const double displacement[3]{dx, dy, dz};
+      double pair_gradient[3]{};
+      if (!vibeqc::xtb::generated::project_gfn2_es2_gradient(
+              weighted_derivative, dx, dy, dz,
+              pair_gradient[0], pair_gradient[1], pair_gradient[2])) {
+        record_error(device_error, Gfn2ES2DeviceError::kNonfiniteGradientArithmetic);
+        return;
+      }
       for (std::int64_t axis = 0; axis < 3; ++axis) {
-        const double pair_contribution = -weighted_derivative * displacement[axis];
+        const double pair_contribution = pair_gradient[axis];
         const std::int64_t first_index = first_coordinate + axis;
         const std::int64_t second_index = second_coordinate + axis;
         if (!isfinite(pair_contribution)) {
@@ -610,14 +607,12 @@ __global__ void es2_scc_potential_preflight_kernel(
         record_scc_system_error(system_errors, system, Gfn2ES2DeviceError::kNonfiniteShellCharge);
         return;
       }
-      const double contribution = kernel * charge;
-      const double updated = potential + contribution;
-      if (!isfinite(contribution) || !isfinite(updated)) {
+      if (!vibeqc::xtb::generated::accumulate_gfn2_es2_potential(
+              kernel, charge, potential)) {
         record_scc_system_error(system_errors, system,
                                 Gfn2ES2DeviceError::kNonfinitePotentialArithmetic);
         return;
       }
-      potential = updated;
     }
     shell_scratch[row] = potential;
   }
@@ -685,22 +680,18 @@ __global__ void es2_scc_energy_preflight_kernel(Gfn2ES2DeviceBatch batch, Gfn2ES
         atomicCAS(&failure_code, 0, static_cast<int>(Gfn2ES2DeviceError::kNonfiniteShellCharge));
         continue;
       }
-      const double contribution = kernel * column_charge;
-      const double updated = potential + contribution;
-      if (!isfinite(contribution) || !isfinite(updated)) {
+      if (!vibeqc::xtb::generated::accumulate_gfn2_es2_potential(
+              kernel, column_charge, potential)) {
         atomicCAS(&failure_code, 0,
                   static_cast<int>(Gfn2ES2DeviceError::kNonfiniteEnergyArithmetic));
         continue;
       }
-      potential = updated;
     }
-    const double contribution = 0.5 * row_charge * potential;
-    const double updated = local_energy + contribution;
-    if (!isfinite(contribution) || !isfinite(updated)) {
+    if (!vibeqc::xtb::generated::accumulate_gfn2_es2_energy(
+            row_charge, potential, local_energy)) {
       atomicCAS(&failure_code, 0, static_cast<int>(Gfn2ES2DeviceError::kNonfiniteEnergyArithmetic));
       continue;
     }
-    local_energy = updated;
   }
   partial[threadIdx.x] = local_energy;
   __syncthreads();

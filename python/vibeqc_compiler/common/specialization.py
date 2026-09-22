@@ -257,14 +257,18 @@ class SpecializationDecision:
 
     selected: ImplementationProfile | None
     evaluations: tuple[ProfileEvaluation, ...]
-    fallback: ProfileEvaluation
+    fallback: ProfileEvaluation | None
     selection_key: str
 
     @property
     def status(self) -> Literal["specialized", "fallback", "unsupported"]:
         if self.selected is None:
             return "unsupported"
-        return "fallback" if self.selected.name == self.fallback.name else "specialized"
+        return (
+            "fallback"
+            if self.fallback is not None and self.selected.name == self.fallback.name
+            else "specialized"
+        )
 
     def to_payload(self) -> dict:
         """A detached JSON record; selection_key is not an executable cache key."""
@@ -276,7 +280,7 @@ class SpecializationDecision:
             "artifact_key": self.selected.artifact_key if self.selected else None,
             "implementation": asdict(self.selected) if self.selected else None,
             "evaluations": [asdict(e) for e in self.evaluations],
-            "fallback": asdict(self.fallback),
+            "fallback": asdict(self.fallback) if self.fallback is not None else None,
         }
 
 
@@ -286,13 +290,14 @@ def select_specialization(
     target: TargetCapabilities,
     identity: CompilationIdentity,
     profiles: Sequence[ImplementationProfile],
-    fallback: ImplementationProfile,
+    fallback: ImplementationProfile | None = None,
 ) -> SpecializationDecision:
-    """Choose the first eligible promoted profile, or a correctness-checked fallback.
+    """Choose the first eligible promoted profile, or an explicit optional fallback.
 
     Caller order is explicit priority and participates in selection identity.
-    Unknown workloads/devices can use the supplied generic implementation only
-    when its own identity and correctness guard pass. No implicit CPU fallback,
+    Passing ``fallback=None`` is fail-closed: a specialization miss is reported
+    as unsupported instead of selecting a lower-tier implementation. A supplied
+    fallback remains identity/correctness checked. No implicit CPU fallback,
     binary loading, compilation or on-disk cache mutation is performed.
     """
     if (
@@ -304,9 +309,10 @@ def select_specialization(
             "selection requires typed workload, target and identity records"
         )
     profiles = tuple(profiles)
-    if any(not isinstance(p, ImplementationProfile) for p in (*profiles, fallback)):
+    records = profiles if fallback is None else (*profiles, fallback)
+    if any(not isinstance(p, ImplementationProfile) for p in records):
         raise ValueError("selection requires ImplementationProfile records")
-    names = [p.name for p in (*profiles, fallback)]
+    names = [p.name for p in records]
     if len(names) != len(set(names)):
         raise ValueError("profile names, including the fallback, must be unique")
     facts = {
@@ -329,11 +335,16 @@ def select_specialization(
         )
 
     evaluations = tuple(evaluate(p) for p in profiles)
-    fallback_evaluation = evaluate(fallback)
+    fallback_evaluation = evaluate(fallback) if fallback is not None else None
     selected = next(
         (p for p, e in zip(profiles, evaluations) if e.eligible and e.promoted), None
     )
-    if selected is None and fallback_evaluation.eligible:
+    if (
+        selected is None
+        and fallback is not None
+        and fallback_evaluation is not None
+        and fallback_evaluation.eligible
+    ):
         selected = fallback
     key = canonical_hash(
         {
@@ -342,7 +353,7 @@ def select_specialization(
             "target": asdict(target),
             "identity": asdict(identity),
             "profiles": [asdict(p) for p in profiles],
-            "fallback": asdict(fallback),
+            "fallback": asdict(fallback) if fallback is not None else None,
         }
     )
     return SpecializationDecision(selected, evaluations, fallback_evaluation, key)

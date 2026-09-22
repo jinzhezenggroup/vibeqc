@@ -157,6 +157,7 @@ jobs:
             -DVIBEQC_CUDA_ARCHITECTURES=80 \
             -DVIBEQC_CUDA_COMPILE_ARCHITECTURES=80 \
             -DVIBEQC_CUDA_PROVIDER=cumetal \
+            -DVIBEQC_AOT_PROFILE=portable \
             -DVIBEQC_BUILD_TESTS=ON \
             -DVIBEQC_COMPILER_CACHE=ccache
 
