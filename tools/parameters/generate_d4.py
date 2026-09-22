@@ -28,6 +28,7 @@ from tools import source_registry
 
 PRODUCT_ID = "d4-gfn2-tables"
 PRODUCT_INPUTS = ("dftd4-reference", "mctc-lib-eeq")
+PRODUCT_CANONICAL_INPUTS: tuple[str, ...] = ()
 D4_SOURCE_COLLECTION = "d4-generator"
 ELEMENT_COUNT = 86
 ANGSTROM_TO_BOHR = 1.8897261246204404
@@ -424,8 +425,9 @@ def main() -> int:
 
     registered = source_registry.load_product_sources(
         PRODUCT_ID,
-        generator="tools/parameters/generate_d4.py",
+        generator=Path(__file__),
         expected_inputs=PRODUCT_INPUTS,
+        expected_canonical_inputs=PRODUCT_CANONICAL_INPUTS,
         registry_path=args.registry,
     )
     dftd4 = registered["dftd4-reference"]

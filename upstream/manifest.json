@@ -30,8 +30,8 @@
   "products": {
     "d4-eeq-tables": {
       "generator": "tools/parameters/generate_d4_eeq.py",
-      "generator_sha256": "d08fb74435f7a0b384829a4ae0c126338da152f171684d4a47071463672e24d7",
-      "input_identity_sha256": "3e3dab8ad59213850374c605efd6398f6b7f62a2e7c0423f71d0f1e4de3ad960",
+      "generator_sha256": "5e7e8de824e5cfd346e39d66287ac76f12fa98dba81b37ddfb95294ebbe2cbe2",
+      "input_identity_sha256": "8415e712731bb4ee4213c16e0b3c73f92cd212f9ff596380ca868280811ea471",
       "inputs": [
         "dftd4-reference",
         "multicharge-eeq2019",
@@ -45,8 +45,8 @@
     },
     "d4-gfn2-tables": {
       "generator": "tools/parameters/generate_d4.py",
-      "generator_sha256": "8d1abde0ea6657a3165791a6243d1e15403c9065f073aca03d163e6846132e30",
-      "input_identity_sha256": "3d5796a964976d3566db65cc08cc993e63f6b7878716e4e3aaff1b90cda6b4ba",
+      "generator_sha256": "2e16df0aa282c44107ddfbda0525ce483ca33ce6ce8af5b373ec854d666bb877",
+      "input_identity_sha256": "62d85b4c32c7b854e7c91457f200db61ebf174dddc66b47b9ec6d32359b05eac",
       "inputs": [
         "dftd4-reference",
         "mctc-lib-eeq"
@@ -141,7 +141,7 @@
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "b629f749fd71fbbf6b85b98a614fb26977975351c96da29ba43de16ab44fbaf9",
-      "input_identity_sha256": "e593f34010e3f13105191d7b202e3fad2d17fbc17e1685253361ae3944072376",
+      "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -164,7 +164,7 @@
         "tools/parameters/r2scan3c_gcp.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
       },
       "generator": "tools/parameters/generate_gcp_r2scan3c.py",
-      "generator_sha256": "2bf322dda5c41670ba5d037beeec4f8f16e8ff3c199888d85510a8dac89c3b72",
+      "generator_sha256": "cb0130c8e85dbbb72ff45255faf3b88c23d9ca5e2132fabfef486f7da45f33b7",
       "input_identity_sha256": "78ae1b369893bf081b986bf4a0187611ec823fd046eb8594c71ba4f14779914c",
       "inputs": [
         "simple-dftd3-gcp"

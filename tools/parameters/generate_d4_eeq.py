@@ -14,6 +14,7 @@ from tools import source_registry
 
 PRODUCT_ID = "d4-eeq-tables"
 PRODUCT_INPUTS = ("dftd4-reference", "multicharge-eeq2019", "mctc-lib-eeq")
+PRODUCT_CANONICAL_INPUTS: tuple[str, ...] = ()
 ELEMENT_COUNT = base.ELEMENT_COUNT
 
 
@@ -150,8 +151,9 @@ def main() -> int:
 
     registered = source_registry.load_product_sources(
         PRODUCT_ID,
-        generator="tools/parameters/generate_d4_eeq.py",
+        generator=Path(__file__),
         expected_inputs=PRODUCT_INPUTS,
+        expected_canonical_inputs=PRODUCT_CANONICAL_INPUTS,
         registry_path=args.registry,
     )
     dftd4 = registered["dftd4-reference"]

@@ -19,6 +19,7 @@ SOURCE = ROOT / "tools/parameters/r2scan3c_gcp.json"
 OUTPUT = ROOT / "src/dft/dispersion/gcp_r2scan3c_data.hpp"
 PRODUCT_ID = "r2scan3c-gcp"
 PRODUCT_INPUTS = ("simple-dftd3-gcp",)
+PRODUCT_CANONICAL_INPUTS = ("tools/parameters/r2scan3c_gcp.json",)
 
 
 def _number(value: typing.Any) -> typing.Any:
@@ -96,16 +97,16 @@ def render(data: dict[str, typing.Any], source: dict[str, typing.Any]) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=source_registry.REGISTRY)
-    parser.add_argument("--source", type=Path, default=SOURCE)
     parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args()
     registered = source_registry.load_product_sources(
         PRODUCT_ID,
-        generator="tools/parameters/generate_gcp_r2scan3c.py",
+        generator=Path(__file__),
         expected_inputs=PRODUCT_INPUTS,
+        expected_canonical_inputs=PRODUCT_CANONICAL_INPUTS,
         registry_path=args.registry,
     )
-    data = json.loads(args.source.read_text(encoding="utf-8"))
+    data = json.loads(SOURCE.read_text(encoding="utf-8"))
     output = render(data, registered["simple-dftd3-gcp"])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(output, encoding="utf-8", newline="\n")
