@@ -78,3 +78,17 @@ def test_wb97mv_identity_records_maple_provenance() -> None:
     assert provenance["components"] == direct["components"]
     assert len(provenance["adapter_sha256"]) == 64
     assert len(provenance["importer_sha256"]) == 64
+
+
+def test_cutover_adapter_is_pinned_in_scientific_source_registry() -> None:
+    import hashlib
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    registry = json.loads((root / "upstream/manifest.json").read_text())
+    inputs = registry["products"]["libxc-xc-admission"]["canonical_inputs"]
+    relative = "python/vibeqc_compiler/xc/wb97mv_maple.py"
+    assert (
+        inputs[relative] == hashlib.sha256((root / relative).read_bytes()).hexdigest()
+    )
