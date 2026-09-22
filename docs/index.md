@@ -73,6 +73,8 @@ Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [RCCSD state transport](state_transport.md): complete compatibility identities,
+  orbital-frame diagnostics and exact T1/T2 rotations.
 - [Conventional CPU RCCSD equations and solver](rccsd_bc.md)
 - [Generated RCCSD Lambda equation actions](rccsd_lambda.md)
 - [Localized occupied and pair-natural-orbital spaces](local_spaces.md)
