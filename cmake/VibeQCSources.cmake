@@ -60,10 +60,20 @@ function(vibeqc_add_dft_sources target)
       src/dft/cuda_xc.cpp
       src/dft/cuda_ks.cpp
       src/dft/cuda_ks_kernels.cu
+      src/dft/cuda_quadrature.cu
       src/dft/dispersion/d3_cuda.cu
       src/dft/dispersion/d4_cuda.cu
       src/dft/dispersion/d4_runtime_cuda.cu
       src/dft/nonlocal_correlation/vv10_runtime_cuda.cu)
+    # Preserve Becke tail behavior; reassociation/FMA changes cancellation at
+    # saturated partition boundaries. Independent grids qualify this policy.
+    if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+      set_property(SOURCE src/dft/cuda_quadrature.cu APPEND PROPERTY
+                   COMPILE_OPTIONS "-ffp-contract=off")
+    else()
+      set_property(SOURCE src/dft/cuda_quadrature.cu APPEND PROPERTY
+                   COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>")
+    endif()
   endif()
 endfunction()
 
@@ -72,6 +82,7 @@ function(vibeqc_add_posthf_cc_sources target)
     src/cc/solver.cpp
     src/cc/lambda_response.cpp
     src/cc/triples_response.cpp
+    src/cc/rccsdt_force.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
     src/methods/rccsdt_method.cpp
@@ -186,6 +197,7 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/runtime_support.cpp
       src/scf/cuda/scf_state_kernels.cu
       src/scf/cuda/scf_matrix_kernels.cu
+      src/scf/cuda/mean_field_setup.cu
       src/scf/cuda/scf_density_kernels.cu
       src/scf/cuda/scf_diis_kernels.cu
       src/scf/cuda/scf_convergence_kernels.cu

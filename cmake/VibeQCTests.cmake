@@ -23,6 +23,10 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_mean_field_setup_cuda_tests tests/native/test_mean_field_setup_cuda.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cuda_quadrature_tests tests/native/test_cuda_quadrature.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_xc_response_cuda_tests tests/native/test_xc_response_cuda.cu
                        NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
     target_compile_definitions(vibeqc_xc_response_cuda_tests PRIVATE

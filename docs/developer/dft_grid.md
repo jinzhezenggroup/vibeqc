@@ -75,6 +75,23 @@ centers, and partition weights are recomputed for every new geometry. Tests
 cover far-separated, near-coincident and reordered atoms. Partition of unity
 alone is not a quadrature accuracy guarantee.
 
+Native CUDA KS preparation constructs its molecular grid with compiler-generated
+CUDA quadrature (`xc/quadrature_cuda.py`). The shared small Gauss–Legendre rules
+are host inputs. Atom-pair separations are computed once per geometry and
+point-center distances once per tile, with at most 4096 points per tile. Becke
+switches reuse the existing scalar graph; log accumulation retains the scalar
+reference's pair orientation and ordering. Versions 1/2, radii, coincidence,
+normalization and derivative exports share the same prescription.
+
+The native owner retains host coordinates, weights and owners for current export
+contracts; tile downloads and the subsequent XC upload are part of preparation.
+All temporary CUDA arrays are charged through the resource ledger and the pure
+`vibeqc_resource_quadrature_cuda_v1` shape bridge. Quadrature scratch coexists with
+the prepared Fock provider and retires before KS/XC state allocation. Unsupported
+inputs or failed normalization throw without a CPU partition fallback. The
+ordinary `MolecularGrid` constructor remains the independent CPU reference.
+See the [CUDA quadrature decision](../../.agents/notes/implemented/performance/2026-09-23-cuda-molecular-quadrature.md).
+
 `grid.explicit(max_points=...)` is a guarded small-grid exporter. `ExplicitGrid`
 stores exact points, weights, owners, provenance and a verified content hash.
 Independent tests pass identical unpartitioned atomic data to PySCF, compare
