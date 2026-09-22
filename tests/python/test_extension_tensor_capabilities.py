@@ -6,6 +6,7 @@ import shutil
 import subprocess
 
 import pytest
+import vibeqc_compiler.tensor.cpu as tensor_cpu
 from vibeqc.extensions import tensor
 from vibeqc_compiler.common import cpp_adapter
 
@@ -30,6 +31,7 @@ def test_compile_capabilities_reports_lowering_without_toolchain_activation(
     monkeypatch.setattr(shutil, "which", forbidden)
     monkeypatch.setattr(subprocess, "Popen", forbidden)
     monkeypatch.setattr(cpp_adapter, "CppCompilerAdapter", ForbiddenCompilerAdapter)
+    monkeypatch.setattr(tensor_cpu, "CppCompilerAdapter", ForbiddenCompilerAdapter)
 
     program = _program()
     report = tensor.compile_capabilities(
