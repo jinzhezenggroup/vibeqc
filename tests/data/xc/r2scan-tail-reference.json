@@ -1,5 +1,11 @@
 {
   "schema": "vibeqc.r2scan-tail-reference/v1",
+  "boundary_semantics": "semilocal-boundary-v1",
+  "functional": "R2SCAN",
+  "spin": "polarized",
+  "suite": "high-precision-tail-v1",
+  "expected_current_status": "pass",
+  "reason": "The compiled CPU FP64 production entry point matches the stabilized 113-bit Libxc Maple oracle across zero/near-zero minority tails and spin exchange.",
   "points": [
     {
       "label": "zero-spin-0",
