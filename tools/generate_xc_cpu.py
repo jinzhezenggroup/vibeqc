@@ -44,6 +44,8 @@ from vibeqc_compiler.xc.production_policy import (
 )
 from vibeqc_compiler.xc.semilocal_codegen import (
     build_roots,
+)
+from vibeqc_compiler.xc.semilocal_codegen import (
     emit_polarized_semilocal as _emit_polarized_semilocal,
 )
 from vibeqc_compiler.xc.spec import functional
