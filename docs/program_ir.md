@@ -228,6 +228,16 @@ reuse for its memory space and opaque effects retain touched owners through the
 region boundary. TensorIR keeps its qualified arena offsets as the execution plan
 of record until a later #831 slice independently validates allocator migration.
 
+ProgramStoragePlan schema v2 also admits explicit same-call ownership transfer
+through `CallDonationBinding`. A donation maps one call read to one call write
+and is forwarded to the same backend-neutral storage analyzer used by TensorIR.
+The donor and recipient must resolve to compiler-owned physical owners with equal
+capacity in one memory space, the donor must die at that call, and an opaque call
+is rejected. Donation therefore removes only one proven interference edge; it is
+never inferred from liveness alone, does not donate borrowed inputs, and does not
+turn ProgramIR providers into implicit in-place operations. Schema-v1 replay
+remains supported for plans without donation metadata.
+
 The first production layout-propagation slice now goes one step beyond the #460
 feature-input prototype on polarized native CPU fixed-density potentials. Scalar
 XC writes a consumer-ready physical owner whose first row is energy and whose
