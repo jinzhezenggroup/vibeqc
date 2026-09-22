@@ -18,7 +18,7 @@ DEFAULT_MANIFEST = (
     ROOT
     / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
 )
-DEFAULT_OUTPUT = ROOT / "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp"
+DEFAULT_OUTPUT = ROOT / "src/xtb/native/data/parameters/gfn1.hpp"
 
 TOP_KEYS = {
     "charge",
@@ -264,7 +264,7 @@ def render_header(parameters: dict[str, Any], source_revision: str) -> bytes:
         "#include <cstdint>",
         "#include <type_traits>",
         "",
-        "namespace xtbloom::parameters::gfn1 {",
+        "namespace vibeqc::xtb::parameters::gfn1 {",
         "",
         "inline constexpr std::uint32_t kSchemaVersion = 2u;",
         f"inline constexpr char kSourceRevision[] = {json.dumps(source_revision)};",
@@ -473,7 +473,7 @@ def render_header(parameters: dict[str, Any], source_revision: str) -> bytes:
             "  return kGlobal.pair_scale_default;",
             "}",
             "",
-            "}  // namespace xtbloom::parameters::gfn1",
+            "}  // namespace vibeqc::xtb::parameters::gfn1",
             "",
         )
     )
@@ -494,7 +494,13 @@ def load_and_render(source: Path, manifest_path: Path) -> bytes:
         raise ParameterError("GFN1 normalized JSON does not match its source manifest")
     validate(parameters)
     rendered = render_header(parameters, source_revision)
-    if sha256(rendered) != expected_header:
+    # Reconstruct the audited upstream namespace for its pinned digest gate.
+    # Native ownership must not change any parameter, schema or arithmetic byte.
+    upstream_image = rendered.replace(
+        b"namespace vibeqc::xtb::parameters::gfn1",
+        b"namespace xtbloom::parameters::gfn1",
+    )
+    if sha256(upstream_image) != expected_header:
         raise ParameterError(
             "generated GFN1 header differs from the audited upstream product; "
             "review the schema/renderer before accepting new bytes"

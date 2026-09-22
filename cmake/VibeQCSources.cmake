@@ -72,6 +72,7 @@ function(vibeqc_add_posthf_cc_sources target)
     src/cc/solver.cpp
     src/cc/lambda_response.cpp
     src/cc/triples_response.cpp
+    src/cc/rccsdt_force.cpp
     src/methods/mp2_method.cpp
     src/methods/rccsd_method.cpp
     src/methods/rccsdt_method.cpp
@@ -99,6 +100,7 @@ endfunction()
 function(vibeqc_add_integrals_scf_sources target)
   target_sources(${target} PRIVATE
     src/integrals/s_integrals.cpp
+    src/integrals/density_fitting_metric.cpp
     src/integrals/generated_df_cpu.cpp
     src/integrals/ecp.cpp
     src/methods/hf_method.cpp
@@ -167,6 +169,7 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/nuclear_kernels.cu
       src/scf/cuda/direct_pair_cache.cu
       src/scf/cuda/direct_jk.cpp
+      src/scf/cuda_fock_execution.cpp
       src/scf/cuda/one_electron_view.cpp
       src/scf/cuda/one_electron_export.cpp
       src/scf/cuda/one_electron_export_batch.cpp

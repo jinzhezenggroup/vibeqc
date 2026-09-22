@@ -4,6 +4,18 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_exchange_schedule_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_exchange_schedule.py"
+    OUTPUTS "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_exchange_schedule.py"
+    ARGS --output "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    COMMENT "Generating compiler-owned DF source-reuse schedule")
+
   # The native host policy is built even when CUDA execution is disabled.
   # Generate its CUDA-independent constants once for both build variants.
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
@@ -105,6 +117,8 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
     OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
   set(VIBEQC_SCF_ARRAY_CPU_HEADER
@@ -158,6 +172,40 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
     ARGS --output "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
     COMMENT "Generating compiler-owned GFN2 ES2 scalar kernels")
+
+  set(VIBEQC_GFN2_H0_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_h0_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_h0_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_h0_native.py"
+    OUTPUTS "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA H0 values and adjoints")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_h0_native_codegen)
+  endif()
+
+  set(VIBEQC_GFN2_SPIN_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_spin_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_spin_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_spin_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_spin_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA spin energy/potential")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_spin_native_codegen)
+  endif()
 
   set(VIBEQC_GFN2_ES3_NATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es3_native.cuh")
@@ -259,23 +307,6 @@ macro(vibeqc_register_host_generated_sources target)
 endmacro()
 
 macro(vibeqc_register_cuda_generated_sources target)
-  if(TARGET vibeqc_gfn2_cuda)
-    set(VIBEQC_GFN2_H0_FORCE_CUDA_HEADER
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_h0_force.cuh")
-    vibeqc_register_generated_sources(
-      NAME vibeqc_gfn2_h0_force_cuda_codegen
-      TARGET vibeqc_gfn2_cuda
-      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_h0_force_cuda.py"
-      OUTPUTS "${VIBEQC_GFN2_H0_FORCE_CUDA_HEADER}"
-      DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
-      ARGS --output "${VIBEQC_GFN2_H0_FORCE_CUDA_HEADER}"
-      COMMENT "Generating compiler-owned GFN2 CUDA H0-force pair science")
-    target_include_directories(vibeqc_gfn2_cuda PRIVATE
-      "${CMAKE_CURRENT_BINARY_DIR}/generated")
-  endif()
 
   set(VIBEQC_MATRIX_FUNCTION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_symmetric_matrix_function.cuh")
@@ -486,10 +517,21 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
     OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
 
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
+  # The r2SCAN minority-spin derivative is sensitive to contraction of 1-zeta
+  # near the work-density floor. Match the compiler XC FP64 policy and the
+  # independent Libxc boundary qualification; do not introduce FMA. CuMetal's
+  # nvcc-compatible driver delegates to Clang and requires its native spelling.
+  if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+    set(_vibeqc_grid_fp_contract_option -ffp-contract=off)
+  else()
+    set(_vibeqc_grid_fp_contract_option --fmad=false)
+  endif()
   vibeqc_register_generated_sources(
     TARGET ${target}
     ADD_TO_TARGET
@@ -498,6 +540,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    COMPILE_OPTIONS "${_vibeqc_grid_fp_contract_option}"
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 
   set(VIBEQC_XC_GRADIENT_SOURCE

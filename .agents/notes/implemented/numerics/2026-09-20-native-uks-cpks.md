@@ -71,5 +71,5 @@ not an inference from the present tangent qualification.
 
 - [Issue #179](https://github.com/jinzhezenggroup/vibeqc/issues/179)
 - [RKS binding](2026-09-20-native-rks-cpks.md)
-- [Response contract](../../../../docs/response.md)
-- [SCF point domain](../../../../docs/xc_scf_domain.md)
+- [Response contract](../../../../docs/developer/response.md)
+- [SCF point domain](../../../../docs/developer/xc_scf_domain.md)

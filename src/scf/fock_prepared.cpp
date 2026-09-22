@@ -370,6 +370,10 @@ std::size_t PreparedFockPlan::cpu_observation_capacity() const noexcept {
 const FockPreparationDiagnostic& PreparedFockPlan::diagnostic() const noexcept {
   return impl_->diagnostic;
 }
+CudaDensityFittingJkPlan* PreparedFockPlan::cuda_fitted_source() const noexcept {
+  return impl_->cuda_df.get();
+}
+
 CudaDirectJkPlan* PreparedFockPlan::cuda_direct_source() const noexcept {
   return impl_->cuda_exact.get();
 }

@@ -11,17 +11,23 @@ if TYPE_CHECKING:
     from .expr import Coefficient, Expr, Graph, MaterializationPlan
 
 
-def format_constant(value: Coefficient) -> str:
-    """Lower an exact/approximate coefficient to one C-family double literal."""
+def format_constant(value: Coefficient, *, scalar_type: str = "double") -> str:
+    """Lower an exact/approximate coefficient to one typed C-family literal."""
 
+    if scalar_type not in ("double", "float"):
+        raise ValueError("scalar type must be double or float")
     numeric = float(value)
+    suffix = "f" if scalar_type == "float" else ""
     if numeric == 0.0:
-        return "0.0"
+        return "0.0" + suffix
     if numeric == 1.0:
-        return "1.0"
+        return "1.0" + suffix
     if numeric == -1.0:
-        return "-1.0"
-    return f"{numeric:.17g}"
+        return "-1.0" + suffix
+    rendered = f"{numeric:.17g}"
+    if scalar_type == "float" and "." not in rendered and "e" not in rendered.lower():
+        rendered += ".0"
+    return rendered + suffix
 
 
 class ScalarCEmitter:
@@ -32,10 +38,15 @@ class ScalarCEmitter:
         graph: Graph,
         variables: Mapping[str, str],
         materialization_plan: MaterializationPlan | None = None,
+        *,
+        scalar_type: str = "double",
     ) -> None:
+        if scalar_type not in ("double", "float"):
+            raise ValueError("scalar type must be double or float")
         self.graph = graph
         self.variables = dict(variables)
         self.materialization_plan = materialization_plan
+        self.scalar_type = scalar_type
         self.names: dict[int, str] = {}
         self.lines: list[str] = []
         self._temporary = 0
@@ -84,7 +95,9 @@ class ScalarCEmitter:
                     payload = node.payload
                     if payload is None:
                         raise ValueError("constant node requires a numeric payload")
-                    self.names[identifier] = format_constant(float(payload))
+                    self.names[identifier] = format_constant(
+                        float(payload), scalar_type=self.scalar_type
+                    )
                 elif node.operation == "variable":
                     name = str(node.payload)
                     self.names[identifier] = self.variables.get(name, name)
@@ -97,7 +110,9 @@ class ScalarCEmitter:
                 payload = node.payload
                 if payload is None:
                     raise ValueError("constant node requires a numeric payload")
-                self.names[identifier] = format_constant(float(payload))
+                self.names[identifier] = format_constant(
+                    float(payload), scalar_type=self.scalar_type
+                )
                 continue
             if node.operation == "variable":
                 name = str(node.payload)
@@ -109,7 +124,7 @@ class ScalarCEmitter:
             name = f"v{self._temporary}"
             self._temporary += 1
             self.names[identifier] = name
-            self.lines.append(f"  const double {name} = {code};")
+            self.lines.append(f"  const {self.scalar_type} {name} = {code};")
 
     def _emit_piecewise(self, roots: Sequence[Expr]) -> None:
         """Emit lexical branches so inactive piecewise arithmetic stays unevaluated."""
@@ -126,7 +141,9 @@ class ScalarCEmitter:
             if node.operation == "constant":
                 if not isinstance(node.payload, (Fraction, float)):
                     raise TypeError("constant node requires a numeric coefficient")
-                self.names[identifier] = format_constant(node.payload)
+                self.names[identifier] = format_constant(
+                    node.payload, scalar_type=self.scalar_type
+                )
                 return
             if node.operation == "variable":
                 name = str(node.payload)
@@ -137,7 +154,7 @@ class ScalarCEmitter:
                 visit(left, indent)
                 visit(right, indent)
                 output = temporary()
-                self.lines.append(f"{indent}double {output};")
+                self.lines.append(f"{indent}{self.scalar_type} {output};")
                 self.lines.append(
                     f"{indent}if ({self.names[left]} <= {self.names[right]}) {{"
                 )
@@ -158,7 +175,7 @@ class ScalarCEmitter:
             code = self._operation_code(identifier)
             output = temporary()
             self.names[identifier] = output
-            self.lines.append(f"{indent}const double {output} = {code};")
+            self.lines.append(f"{indent}const {self.scalar_type} {output} = {code};")
 
         for root in roots:
             visit(root.identifier, "  ")
@@ -198,7 +215,9 @@ class ScalarCEmitter:
         if node.operation == "multiply":
             return " * ".join(arguments)
         if node.operation == "reciprocal":
-            return f"1.0 / {arguments[0]}"
+            return (
+                f"{format_constant(1.0, scalar_type=self.scalar_type)} / {arguments[0]}"
+            )
         if node.operation in (
             "exp",
             "log",
@@ -216,7 +235,7 @@ class ScalarCEmitter:
             exponent = float(payload)
             if exponent == 0.5:
                 return f"sqrt({arguments[0]})"
-            return f"pow({arguments[0]}, {format_constant(exponent)})"
+            return f"pow({arguments[0]}, {format_constant(exponent, scalar_type=self.scalar_type)})"
         raise ValueError(f"unsupported scalar operation {node.operation!r}")
 
     def _reference(self, identifier: int) -> str:

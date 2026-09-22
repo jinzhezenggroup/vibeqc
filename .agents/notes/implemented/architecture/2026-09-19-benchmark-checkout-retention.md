@@ -59,7 +59,7 @@ uses tiny local Git fixtures and does not download historical data.
 ## References
 
 - #238 and #474: repository retention/checkout cleanup.
-- [Current policy](../../../../docs/evidence_retention.md).
+- [Current policy](../../../../docs/maintainer/evidence_retention.md).
 - [Snapshot and recovery](../../../../benchmarks/results/retention-checkout/README.md).
 
 Agent: ChatGPT

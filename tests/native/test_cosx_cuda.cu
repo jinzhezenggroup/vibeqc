@@ -179,6 +179,53 @@ int main() {
                 "CUDA COSX point derivative changed with tile partition");
     }
 
+    const auto cpu_molecular = vibeqc::dft::build_cosx_molecular_derivative_reference(
+        grid, density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+    std::vector<double> first_molecular;
+    for (std::size_t tile : {std::size_t(1), std::size_t(7), grid.point_count()}) {
+      const auto gpu_molecular = vibeqc::dft::cuda_cosx_molecular_energy_derivative(
+          grid, density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed, tile, device);
+      require(max_error(gpu_molecular, cpu_molecular.nuclear_gradient) < 2.0e-10,
+              "bounded CUDA COSX molecular derivative differs from the CPU analytic oracle");
+      if (first_molecular.empty())
+        first_molecular = gpu_molecular;
+      else
+        require(max_error(gpu_molecular, first_molecular) < 2.0e-10,
+                "CUDA COSX molecular derivative changed with tile partition");
+      const auto info = vibeqc::dft::cuda_cosx_molecular_derivative_diagnostic(grid, tile);
+      require(info.nbf == 2 && info.natom == system.atoms.size() &&
+                  info.npoint == grid.point_count() &&
+                  info.tile_points == std::min(tile, grid.point_count()) &&
+                  info.device_bytes == info.grid_device_bytes + info.derivative_device_bytes &&
+                  info.esp_tile_elements == info.tile_points * info.nbf * info.nbf &&
+                  info.ao_jet_elements == 4 * info.tile_points * info.nbf &&
+                  info.coordinate_elements == 3 * info.natom && info.bounded_tiling &&
+                  info.atomic_coordinate_reduction,
+              "CUDA COSX molecular derivative diagnostics lost the bounded reduction contract");
+      if (info.tile_points < info.npoint)
+        require(info.esp_tile_elements < info.npoint * info.nbf * info.nbf,
+                "CUDA COSX molecular derivative allocated a global point-by-AO^2 ESP tensor");
+    }
+    for (unsigned axis = 0; axis < 3; ++axis) {
+      double translation = 0.0;
+      for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+        translation += first_molecular[3 * atom + axis];
+      require(std::abs(translation) < 2.0e-10,
+              "CUDA COSX molecular derivative violates translational invariance");
+    }
+
+    auto changed_system = system;
+    changed_system.atoms[1].position[0] += 0.07;
+    changed_system.atoms[1].position[2] -= 0.05;
+    const vibeqc::dft::MolecularGrid changed_grid(changed_system,
+                                                  vibeqc::dft::GridSpec{1, 12, 8, 16, 3, 1.0e-12});
+    const auto changed_cpu = vibeqc::dft::build_cosx_molecular_derivative_reference(
+        changed_grid, density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed);
+    const auto changed_gpu = vibeqc::dft::cuda_cosx_molecular_energy_derivative(
+        changed_grid, density, vibeqc::dft::CosxDensityConvention::rhf_spin_summed, 7, device);
+    require(max_error(changed_gpu, changed_cpu.nuclear_gradient) < 2.0e-10,
+            "CUDA COSX molecular derivative replay failed on changed geometry");
+
     std::vector<double> half_density = density;
     for (double& value : half_density) value *= 0.5;
     vibeqc::dft::CudaCosxStagingPlan spin_plan(system, grid.points(), grid.weights(), 7, device);
@@ -190,6 +237,12 @@ int main() {
     require(max_error(gpu_spin.exchange, cpu_spin.exchange) < 3.0e-12 &&
                 std::abs(gpu_spin.exchange_energy - cpu_spin.exchange_energy) < 3.0e-12,
             "native CUDA COSX single-spin convention differs from the CPU oracle");
+    const auto cpu_spin_molecular = vibeqc::dft::build_cosx_molecular_derivative_reference(
+        grid, half_density, vibeqc::dft::CosxDensityConvention::spin_resolved);
+    const auto gpu_spin_molecular = vibeqc::dft::cuda_cosx_molecular_energy_derivative(
+        grid, half_density, vibeqc::dft::CosxDensityConvention::spin_resolved, 7, device);
+    require(max_error(gpu_spin_molecular, cpu_spin_molecular.nuclear_gradient) < 2.0e-10,
+            "native CUDA COSX single-spin molecular derivative differs from the CPU oracle");
 
     {
       const auto high = spherical_sdf();
@@ -220,6 +273,12 @@ int main() {
           vibeqc::dft::CosxDensityConvention::spin_resolved, high_derivative_points, device);
       require(max_error(high_gpu_point, high_cpu_point.point_gradient) < 2.0e-10,
               "native CUDA COSX spherical d/f point derivative differs from the CPU oracle");
+      const auto high_cpu_molecular = vibeqc::dft::build_cosx_molecular_derivative_reference(
+          high_grid, high_density, vibeqc::dft::CosxDensityConvention::spin_resolved);
+      const auto high_gpu_molecular = vibeqc::dft::cuda_cosx_molecular_energy_derivative(
+          high_grid, high_density, vibeqc::dft::CosxDensityConvention::spin_resolved, 5, device);
+      require(max_error(high_gpu_molecular, high_cpu_molecular.nuclear_gradient) < 2.0e-9,
+              "native CUDA COSX spherical d/f molecular derivative differs from the CPU oracle");
     }
 
     bool bad_density = false;

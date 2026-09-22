@@ -27,8 +27,8 @@
     "libxc": "7.0.0"
   },
   "suite": "zero-minority-tail-v1",
-  "expected_current_status": "fail",
-  "reason": "Generated production r2SCAN is nonfinite at rho_b=0; issue #1028 owns the repair.",
+  "expected_current_status": "pass",
+  "reason": "The compiled CPU production entry point, including the shared Libxc work-MGGA boundary wrapper, matches the retained oracle in both spin orientations.",
   "rtol": 2e-10,
   "atol": 2e-11,
   "points": [
