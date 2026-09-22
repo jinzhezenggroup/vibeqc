@@ -15,6 +15,7 @@ from vibeqc_compiler.integral.expr import AlgebraForm, Expr, Graph
 from .expressions import energy_expression as semilocal_energy_expression
 from .rsh_expressions import energy_expression as rsh_energy_expression
 from .spec import (
+    AUTO_BULK_COMPONENTS,
     SPECIAL_EXPRESSION_COMPONENTS,
     WB97MV_COMPONENTS,
     FunctionalSpec,
@@ -219,6 +220,11 @@ class XCProgram:
 
 def _energy_expression(spec: typing.Any) -> typing.Any:
     active = {name for name, coefficient in spec.components if coefficient}
+    if active & set(AUTO_BULK_COMPONENTS):
+        raise UnsupportedXC(
+            "bulk Libxc component is represented and pointwise-validated "
+            "but not production-domain admitted"
+        )
     if active & set(WB97MV_COMPONENTS):
         if not active <= set(WB97MV_COMPONENTS):
             raise UnsupportedXC(
