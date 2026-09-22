@@ -129,10 +129,14 @@ Only the second fact may eventually satisfy the `production-domain` stage.
 A finite value by itself is not a correctness claim.  Oracle-nonfinite points
 remain unqualified instead of being coerced into a pass.
 
-The retained `tests/data/xc/boundary/r2scan-zero-minority.json` fixture has
+The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
 machine-readable status `pass` for the compiled CPU FP64 production entry point,
-including its shared Libxc work-MGGA boundary wrapper. CI checks all nine retained
-points and their spin permutations. Bare derivative roots omit that wrapper and
-cannot establish the production entry point's status. The oracle values and
-acceptance tolerances remain fixed; this bounded qualification does not promote
-the bulk inventory's production-domain or public-method capabilities.
+including its shared Libxc work-MGGA boundary wrapper. Its acceptance oracle uses
+the original Libxc 7.0.0 Maple formulas evaluated in 113-bit arithmetic, because
+the raw binary64 Libxc empty-spin derivatives are cancellation-sensitive. CI checks
+the canonical zero/near-zero-minority tail points and their spin permutations.
+`tests/data/xc/boundary/r2scan-zero-minority.json` remains a retained binary64
+Libxc diagnostic, not the production acceptance target. Bare derivative roots omit
+the wrapper and cannot establish the production entry point's status. This bounded
+qualification does not promote the bulk inventory's production-domain or
+public-method capabilities.
