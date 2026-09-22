@@ -73,7 +73,7 @@
     },
     "gfn1-geometry-python-data": {
       "generator": "tools/parameters/generate_gfn1_geometry.py",
-      "generator_sha256": "ae89cd60a1603775f6bcda589f74ab59f2b040827ef7646cf0de7f426933d632",
+      "generator_sha256": "50576738a7a4dee8bcecda06ccfc9f18868fdb8825722ce64ac9867f526c2e66",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
@@ -84,7 +84,7 @@
     },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "9bdad15d45703b9917ccaf7833e9abcaab612982052338cc489b861f920619f5",
+      "generator_sha256": "ca4ab8bdcaf3d3e931c4f93ec3bf1f7c2fd12aff94fe7a68d5c9bac5390a47fe",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
@@ -3511,7 +3511,7 @@
       },
       "kind": "snapshot",
       "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "sources/xtb/gfn1",
+      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }
