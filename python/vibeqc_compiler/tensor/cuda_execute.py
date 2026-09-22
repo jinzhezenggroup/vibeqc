@@ -107,6 +107,7 @@ def tensor_source_identity() -> str:
                     "src/runtime/resource_ledger.hpp",
                     "src/tensor/cuda_graph_context.cuh",
                     "src/runtime/cuda_graph_region.cuh",
+                    "src/runtime/compiled_execution_region.hpp",
                     "src/tensor/cuda_error.hpp",
                     "src/tensor/metrics.hpp",
                     "src/runtime/allocation_measurement.hpp",
