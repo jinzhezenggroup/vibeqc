@@ -11,8 +11,13 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = ROOT / "sources/xtb/gfn1/gfn1.json"
-DEFAULT_MANIFEST = ROOT / "sources/xtb/gfn1/gfn1_manifest.json"
+DEFAULT_SOURCE = (
+    ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+)
+DEFAULT_MANIFEST = (
+    ROOT
+    / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
+)
 DEFAULT_OUTPUT = ROOT / "python/vibeqc_compiler/geometry/_gfn1_data.py"
 
 

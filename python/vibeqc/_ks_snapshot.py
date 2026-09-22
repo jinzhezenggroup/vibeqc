@@ -8,6 +8,7 @@ snapshots. Export is explicit and may transfer the final CUDA matrices.
 import ctypes as ct
 import threading
 import typing
+from dataclasses import replace
 from hashlib import sha256
 from types import MappingProxyType
 
@@ -362,7 +363,29 @@ class NativeKsSnapshot:
             or (options.method_ir.spin == "polarized") != (spins == 2)
         ):
             raise ValueError("native stationary composition mismatch")
-        self.method_ir, self.functional = options.method_ir, options.functional
+        full_method_ir = options.method_ir
+        method = self._batch._calculator._method_name
+        if method == "pbe-d4-rks":
+            from vibeqc_compiler.method import DispersionCorrectionPrimitive
+
+            electronic_primitives = tuple(
+                primitive
+                for primitive in full_method_ir.primitives
+                if not isinstance(primitive, DispersionCorrectionPrimitive)
+            )
+            if len(electronic_primitives) != 1:
+                raise ValueError(
+                    "PBE-D4 stationary projection requires one electronic primitive"
+                )
+            self.method_ir = replace(
+                full_method_ir,
+                identifier=f"{full_method_ir.identifier}/electronic",
+                primitives=electronic_primitives,
+            )
+            method = "pbe-rks"
+        else:
+            self.method_ir = full_method_ir
+        self.functional = options.functional
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         if self.hamiltonian != "unbound" and not np.isclose(
@@ -399,7 +422,6 @@ class NativeKsSnapshot:
         ):
             raise ValueError("native stationary grid source mismatch")
         self.grid = grid
-        method = self._batch._calculator._method_name
         spec = self.functional
         composition_identity = (
             {"method_ir": self.method_ir.identity, "coefficients": self.coefficients}

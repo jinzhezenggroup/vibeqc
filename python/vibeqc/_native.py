@@ -50,6 +50,7 @@ XC_EXECUTION_HOST_UNFUSED = 1
 BASIS_CARTESIAN = 0
 BASIS_SPHERICAL = 1
 D3_DAMPING_BJ = 1
+D3_DAMPING_ZERO = 2
 D4_PROFILE_STANDARD_EEQ = 1
 D4_PROFILE_R2SCAN3C_EEQ = 2
 NONLOCAL_VV10 = 1
@@ -411,6 +412,14 @@ class PrecisionProvenance(ctypes.Structure):
         ("strict_refinement_applied", ctypes.c_int32),
         ("mixed_precision_reserved_error", ctypes.c_double),
         ("refinement_iterations", ctypes.c_int32),
+        ("mixed_stage_fock_builds", ctypes.c_uint64),
+        ("strict_stage_fock_builds", ctypes.c_uint64),
+        ("post_scf_fock_builds", ctypes.c_uint64),
+        ("execution_retries", ctypes.c_uint64),
+        ("mixed_admission_census", ctypes.c_uint64),
+        ("final_residual_audits", ctypes.c_uint64),
+        ("skipped_final_fock_builds", ctypes.c_uint64),
+        ("operator_work_counters_valid", ctypes.c_uint32),
     ]
 
 
@@ -447,6 +456,11 @@ class D3BjDescriptor(ctypes.Structure):
         ("pair_cutoff", ctypes.c_double),
         ("pair_switch_width", ctypes.c_double),
         ("maximum_bytes", ctypes.c_uint64),
+        ("rs6", ctypes.c_double),
+        ("rs8", ctypes.c_double),
+        ("alp", ctypes.c_double),
+        ("atm_cutoff", ctypes.c_double),
+        ("atm_switch_width", ctypes.c_double),
     ]
 
 
@@ -1064,6 +1078,12 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         library.vibeqc_d3_table_sha256.restype = ctypes.c_char_p
         library.vibeqc_d3_radii_sha256.argtypes = []
         library.vibeqc_d3_radii_sha256.restype = ctypes.c_char_p
+        library.vibeqc_d3_provider_identity.argtypes = []
+        library.vibeqc_d3_provider_identity.restype = ctypes.c_char_p
+        library.vibeqc_d3_scheduler_identity.argtypes = []
+        library.vibeqc_d3_scheduler_identity.restype = ctypes.c_char_p
+        library.vibeqc_d3_batch_variant_identity.argtypes = [ctypes.c_void_p]
+        library.vibeqc_d3_batch_variant_identity.restype = ctypes.c_char_p
         d3_prepare.argtypes = [
             ctypes.c_void_p,
             ctypes.POINTER(D3SystemDescriptor),

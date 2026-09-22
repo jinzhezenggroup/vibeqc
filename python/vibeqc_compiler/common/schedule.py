@@ -103,6 +103,91 @@ class ScheduleResources:
         return asdict(self)
 
 
+@dataclass(frozen=True, slots=True)
+class ScheduleResourceLimits:
+    """Shared fail-closed resource limits for schedule admission.
+
+    Domain schedulers own scientific legality and resource estimation.  This
+    record only centralizes comparable compiler resource bounds so consumers do
+    not reimplement the same maximum/minimum checks with local policy.
+    """
+
+    maximum_device_bytes: int | None = None
+    maximum_host_bytes: int | None = None
+    maximum_workspace_bytes: int | None = None
+    maximum_peak_live_values: int | None = None
+    maximum_registers_per_thread: int | None = None
+    maximum_shared_bytes: int | None = None
+    maximum_source_bytes: int | None = None
+    minimum_resident_workgroups: int | None = None
+
+    def __post_init__(self) -> None:
+        for label in (
+            "maximum_device_bytes",
+            "maximum_host_bytes",
+            "maximum_workspace_bytes",
+            "maximum_peak_live_values",
+            "maximum_registers_per_thread",
+            "maximum_shared_bytes",
+            "maximum_source_bytes",
+        ):
+            _optional_count(getattr(self, label), label)
+        _optional_count(
+            self.minimum_resident_workgroups,
+            "minimum_resident_workgroups",
+            positive=True,
+        )
+
+
+def schedule_resource_rejections(
+    resources: ScheduleResources,
+    limits: ScheduleResourceLimits,
+) -> tuple[str, ...]:
+    """Return deterministic shared resource-limit failures.
+
+    A requested limit requires the corresponding resource fact.  Unknown facts
+    fail closed rather than silently passing a finite admission bound.
+    """
+
+    if not isinstance(resources, ScheduleResources):
+        raise TypeError("schedule resource admission requires ScheduleResources")
+    if not isinstance(limits, ScheduleResourceLimits):
+        raise TypeError("schedule resource admission requires ScheduleResourceLimits")
+    reasons: list[str] = []
+    maxima = (
+        ("device_bytes", "maximum_device_bytes", "device bytes"),
+        ("host_bytes", "maximum_host_bytes", "host bytes"),
+        ("workspace_bytes", "maximum_workspace_bytes", "workspace bytes"),
+        ("peak_live_values", "maximum_peak_live_values", "peak live values"),
+        (
+            "registers_per_thread",
+            "maximum_registers_per_thread",
+            "registers per thread",
+        ),
+        ("shared_bytes", "maximum_shared_bytes", "shared bytes"),
+        ("source_bytes", "maximum_source_bytes", "source bytes"),
+    )
+    for resource_name, limit_name, label in maxima:
+        limit = getattr(limits, limit_name)
+        if limit is None:
+            continue
+        value = getattr(resources, resource_name)
+        if value is None:
+            reasons.append(f"{label} unavailable for required limit {limit}")
+        elif value > limit:
+            reasons.append(f"{label} {value} exceeds limit {limit}")
+    minimum = limits.minimum_resident_workgroups
+    if minimum is not None:
+        value = resources.resident_workgroups
+        if value is None:
+            reasons.append(
+                f"resident workgroups unavailable for required minimum {minimum}"
+            )
+        elif value < minimum:
+            reasons.append(f"resident workgroups {value} below minimum {minimum}")
+    return tuple(reasons)
+
+
 def _profitability_from_payload(payload: typing.Any) -> GpuProfitability:
     if (
         not isinstance(payload, dict)

@@ -2,6 +2,6 @@
   "path": "src/dft/dispersion/d3_cuda.cu",
   "role": "runtime",
   "subsystem": "d3_dispersion",
-  "reason": "Persistent ragged CUDA owner, compact-table transport, bounded workspace, stream ownership and launch/result transfers around the shared D3(BJ) arithmetic; no separate dispersion equations.",
+  "reason": "Persistent ragged CUDA owner for the explicit BJ two-body, BJ+ATM, and zero-damping two-body capabilities, with compact-table transport, bounded workspace, stream ownership, cooperative scheduling, and launch/result transfers around shared D3 scientific arithmetic.",
   "regions": []
 }

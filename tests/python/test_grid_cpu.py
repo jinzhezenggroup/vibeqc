@@ -14,6 +14,7 @@ from vibeqc_compiler.dft import (
     MolecularGrid,
     NativeAO,
     density_features,
+    directional_ao_jets,
     jet_indices,
     orbital_features,
     partition_weights,
@@ -99,6 +100,55 @@ def test_jet_dictionary_and_spatial_center_chain_rule() -> None:
         ]
         with NativeAO(**{**args, "atoms": shifted_atoms}) as shifted:
             check(shifted.evaluate(points + [1e-5, 0, 0], 3), full)
+
+        rng = np.random.default_rng(180)
+        point_motion = rng.normal(size=points.shape) * 0.07
+        center_motion = rng.normal(size=(basis.natom, 3)) * 0.05
+        counts = [
+            2 * shell.angular_momentum + 1
+            if basis.representation == "real_spherical"
+            else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+            for shell in basis.shells
+        ]
+        ao_atoms = np.repeat([shell.atom_index for shell in basis.shells], counts)
+        analytic = directional_ao_jets(
+            full,
+            2,
+            ao_atoms=ao_atoms,
+            point_motion=point_motion,
+            center_motion=center_motion,
+        )
+        errors = []
+        for step in (1e-3, 2e-4, 4e-5):
+            displaced = []
+            for sign in (1, -1):
+                moved_atoms = [
+                    (
+                        z,
+                        np.asarray(xyz) + sign * step * center_motion[atom],
+                    )
+                    for atom, (z, xyz) in enumerate(args["atoms"])
+                ]
+                with NativeAO(**{**args, "atoms": moved_atoms}) as moved:
+                    displaced.append(
+                        moved.evaluate(points + sign * step * point_motion, 2)
+                    )
+            fd = (displaced[0] - displaced[1]) / (2 * step)
+            errors.append(float(np.max(np.abs(fd - analytic))))
+        assert errors[-1] < 3e-8
+        assert errors[-1] < errors[0] / 100
+
+        rigid = np.broadcast_to([0.2, -0.3, 0.1], (basis.natom, 3))
+        np.testing.assert_array_equal(
+            directional_ao_jets(
+                full,
+                2,
+                ao_atoms=ao_atoms,
+                point_motion=np.broadcast_to(rigid[0], points.shape),
+                center_motion=rigid,
+            ),
+            0,
+        )
 
 
 def test_partition_unity_coincidence_extremes_and_permutation() -> None:
