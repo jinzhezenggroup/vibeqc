@@ -84,15 +84,15 @@ def energy_expression(spec: typing.Any) -> typing.Any:
 
     graph = Graph()
     variables = tuple(graph.variable(name) for name in spec.features)
-    density, zeta, rs, xs_a, xs_b, ts_a, ts_b = _coordinates(
-        graph, spec, variables
-    )
+    density, zeta, rs, xs_a, xs_b, ts_a, ts_b = _coordinates(graph, spec, variables)
     module = _wb97mv_module(spec.range_omega)
     builders = {
-        "MGGA_X_WB97M_V": lambda: density
-        * module.call(graph, "wb97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b),
-        "MGGA_C_WB97M_V": lambda: density
-        * module.call(graph, "b97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b),
+        "MGGA_X_WB97M_V": lambda: (
+            density * module.call(graph, "wb97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b)
+        ),
+        "MGGA_C_WB97M_V": lambda: (
+            density * module.call(graph, "b97mv_f", rs, zeta, xs_a, xs_b, ts_a, ts_b)
+        ),
     }
     total = graph.sum(
         coefficient * builders[name]()
