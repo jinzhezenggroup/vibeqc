@@ -67,8 +67,13 @@ function(vibeqc_add_dft_sources target)
       src/dft/nonlocal_correlation/vv10_runtime_cuda.cu)
     # Preserve Becke tail behavior; reassociation/FMA changes cancellation at
     # saturated partition boundaries. Independent grids qualify this policy.
-    set_property(SOURCE src/dft/cuda_quadrature.cu APPEND PROPERTY
-                 COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>")
+    if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+      set_property(SOURCE src/dft/cuda_quadrature.cu APPEND PROPERTY
+                   COMPILE_OPTIONS "-ffp-contract=off")
+    else()
+      set_property(SOURCE src/dft/cuda_quadrature.cu APPEND PROPERTY
+                   COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>")
+    endif()
   endif()
 endfunction()
 
