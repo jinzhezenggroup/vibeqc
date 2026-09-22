@@ -241,7 +241,7 @@ def energy_expression(spec: typing.Any, *, production: bool = False) -> typing.A
             if production
             else maple_b88_exchange(graph, spec, variables)
         ),
-        "GGA_X_ITYH": lambda: b88_exchange(True),
+        "GGA_X_ITYH": lambda: imported_ityh_exchange(graph, spec, variables),
         "GGA_X_PW91": lambda: imported_pw91_exchange(graph, spec, variables),
         "LDA_C_PW": pw92_correlation,
         "GGA_C_PW91": lambda: imported_pw91_correlation(graph, spec, variables),
