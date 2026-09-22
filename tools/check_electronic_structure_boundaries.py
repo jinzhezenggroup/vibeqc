@@ -170,20 +170,55 @@ REGRESSION_GATES = {
     },
 }
 
-COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.DOTALL)
-INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.MULTILINE)
-CPP_TOKEN_RE = re.compile(
-    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|[A-Za-z_]\w*|::|->|[{}();<>\[\],&*:=]'
+# Consume complete literals before recognizing comment delimiters. Number
+# tokens protect C++ digit separators from being mistaken for character quotes.
+CPP_NONCODE_RE = re.compile(
+    r'(?P<raw>(?:u8|u|U|L)?R"(?P<delimiter>[^\s()\\]{0,16})\(.*?\)(?P=delimiter)")'
+    r"|(?P<number>\b[0-9][\w.']*)"
+    r'|(?P<quoted>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')'
+    r"|(?P<comment>/\*.*?\*/|//(?:\\\r?\n|[^\n])*)",
+    re.DOTALL,
 )
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.MULTILINE)
+CPP_TOKEN_RE = re.compile(r"[A-Za-z_]\w*|::|->|[{}();<>\[\],&*:=]")
+
+
+def _mask_non_newlines(text: str) -> str:
+    return re.sub(r"[^\n]", " ", text)
 
 
 def _without_comments(text: str) -> str:
-    """Remove comments while preserving line numbering."""
+    """Remove only real C++ comments, preserving literal bytes and line numbers."""
+    return CPP_NONCODE_RE.sub(
+        lambda match: (
+            _mask_non_newlines(match.group())
+            if match.group("comment") is not None
+            else match.group()
+        ),
+        text,
+    )
+
+
+def _cpp_code(text: str, *, keep_include_paths: bool = False) -> str:
+    """Mask literals as well, except quoted operands of actual include directives."""
+    clean = _without_comments(text)
 
     def replacement(match: re.Match[str]) -> str:
-        return " " + "\n" * match.group(0).count("\n")
+        if match.group("number") is not None:
+            return match.group()
+        if (
+            keep_include_paths
+            and match.group("quoted") is not None
+            and match.group().startswith('"')
+        ):
+            begin = clean.rfind("\n", 0, match.start()) + 1
+            if re.fullmatch(
+                r"[ \t]*#[ \t]*include[ \t]*", clean[begin : match.start()]
+            ):
+                return match.group()
+        return _mask_non_newlines(match.group())
 
-    return COMMENT_RE.sub(replacement, text)
+    return CPP_NONCODE_RE.sub(replacement, clean)
 
 
 def _source_target(source: Path, path: Path, include: str) -> str | None:
@@ -262,7 +297,7 @@ def _ownership_metrics(root: Path) -> dict[str, dict[str, int]]:
 
 def _cpp_tokens(text: str) -> list[tuple[str, int]]:
     """Lex identifiers/punctuation while excluding comments and literals."""
-    clean = _without_comments(text)
+    clean = _cpp_code(text)
     tokens: list[tuple[str, int]] = []
     for match in CPP_TOKEN_RE.finditer(clean):
         token = match.group(0)
@@ -364,7 +399,7 @@ def _native_dependency_edges(root: Path) -> list[dict[str, object]]:
     edges: list[dict[str, object]] = []
     for path in _native_files(root):
         relative = path.relative_to(source).as_posix()
-        text = _without_comments(path.read_text(encoding="utf-8"))
+        text = _cpp_code(path.read_text(encoding="utf-8"), keep_include_paths=True)
         for match in INCLUDE_RE.finditer(text):
             target = _source_target(source, path, match.group(1))
             if target is None:

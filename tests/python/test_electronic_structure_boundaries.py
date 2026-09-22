@@ -322,3 +322,41 @@ def test_infrastructure_inventory_separates_direct_and_transitive_consumers(
     ]
     assert item["direct_consumers"] == ["response/solve.hpp"]
     assert item["transitive_consumers"] == ["posthf/force.cpp"]
+
+
+def test_literal_comment_delimiters_do_not_hide_real_include(
+    tmp_path: typing.Any,
+) -> None:
+    path = tmp_path / "src/solver/literal.hpp"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        'const char* begin = "/*";\n#include "scf/types.hpp"\nconst char* end = "*/";\n'
+    )
+    report = audit_electronic_structure_boundaries(tmp_path)
+    assert len(report["errors"]) == 1
+    assert "solver/literal.hpp:2: forbidden solver dependency" in report["errors"][0]
+
+
+def test_literal_comment_delimiters_do_not_hide_cpp_definitions(
+    tmp_path: typing.Any,
+) -> None:
+    path = tmp_path / "src/cc/literal.cpp"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        'const char* begin = "/*";\nclass Diis {};\ndouble solve_linear() { return 0; }\nconst char* end = "*/";\n'
+    )
+    report = audit_electronic_structure_boundaries(tmp_path)
+    duplicates = report["duplicate_infrastructure"]
+    assert duplicates["cc_cpu_diis_owner"]["locations"] == ["cc/literal.cpp:2"]
+    assert duplicates["cc_cpu_local_linear_solver"]["locations"] == ["cc/literal.cpp:3"]
+
+
+def test_raw_string_examples_do_not_create_dependency_edges(
+    tmp_path: typing.Any,
+) -> None:
+    path = tmp_path / "src/solver/example.hpp"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        'const char* example = R"sample(\n"quoted example"\n#include "scf/types.hpp"\n)sample";\n'
+    )
+    assert audit_electronic_structure_boundaries(tmp_path)["errors"] == []
