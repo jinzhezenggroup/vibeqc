@@ -3,6 +3,7 @@
 from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 from vibeqc.accuracy import (
     AccuracyAssessment,
@@ -37,6 +38,9 @@ SOURCE_MODEL = model("s" * 64)
 TARGET_ACCURACY = TargetAccuracy(
     (ObservableTarget("energy", "absolute", "Eh", absolute=1.0e-8),)
 )
+FORCE_ACCURACY = TargetAccuracy(
+    (ObservableTarget("forces", "max_abs", "Eh/bohr", absolute=1.0e-7),)
+)
 TARGET_HASHES = (("orbital.mathematical_identity", "c" * 64),)
 SOURCE_HASHES = (("orbital.mathematical_identity", "d" * 64),)
 TARGET_CONVERGENCE = HFConvergence(1.0e-10, 1.0e-8, 100, 1.0e-8)
@@ -46,6 +50,7 @@ PROBLEM = TargetProblem(
     TARGET_HASHES,
     TARGET_ACCURACY,
     TARGET_CONVERGENCE,
+    2,
 )
 
 
@@ -136,6 +141,27 @@ def assessment(*, observed: bool) -> AccuracyAssessment:
     return AccuracyAssessment(TARGET_MODEL, TARGET_ACCURACY, evidence)
 
 
+def force_assessment() -> AccuracyAssessment:
+    evidence = (
+        ErrorEvidence(
+            EvidenceKind.OBSERVED,
+            TARGET_MODEL.identity,
+            TARGET_MODEL.identity,
+            TARGET_MODEL.identity,
+            "forces",
+            "max_abs",
+            "Eh/bohr",
+            1.0e-12,
+            1.0,
+            "total_numerical",
+            "relaxed_target",
+            (("reference", "strict-independent-audit"),),
+            actual_reference_error=1.0e-12,
+        ),
+    )
+    return AccuracyAssessment(TARGET_MODEL, FORCE_ACCURACY, evidence)
+
+
 def result(
     *, accuracy: AccuracyAssessment | None, precision: dict | None = None
 ) -> SimpleNamespace:
@@ -162,6 +188,7 @@ def result(
 def verify(
     output: SimpleNamespace,
     *,
+    problem: TargetProblem = PROBLEM,
     selected_plan: DeterministicHFPlan | None = None,
     actual_model: ResolvedModel = TARGET_MODEL,
     hashes: tuple[tuple[str, str], ...] = TARGET_HASHES,
@@ -174,7 +201,7 @@ def verify(
         else executions
     )
     return finalize_hf_verification(
-        PROBLEM,
+        problem,
         selected.stages[1],
         output,
         actual_model,
@@ -191,6 +218,15 @@ def test_target_problem_and_stage_plan_are_immutable_and_identity_stable() -> No
     with pytest.raises(FrozenInstanceError):
         stages()[0].allowed_next_stages = ()  # type: ignore[misc]
     assert PROBLEM.identity == before
+
+
+def test_target_problem_identity_binds_atom_count() -> None:
+    assert PROBLEM.atom_count == 2
+    assert replace(PROBLEM, atom_count=3).identity != PROBLEM.identity
+    with pytest.raises(ValueError, match="atom_count"):
+        replace(PROBLEM, atom_count=0)
+    with pytest.raises(ValueError, match="atom_count"):
+        replace(PROBLEM, atom_count=True)
 
 
 def test_plan_rejects_substituted_target_and_unbounded_work() -> None:
@@ -241,6 +277,44 @@ def test_observed_accuracy_and_exact_target_produce_verified_record() -> None:
     assert final.succeeded and final.target_established
     assert final.actual_model_identity == final.requested_model_identity
     assert final.actual_provider_hashes == final.requested_provider_hashes
+
+
+@pytest.mark.parametrize(
+    "forces",
+    [
+        np.empty((0, 3)),
+        np.zeros((1, 3)),
+        np.zeros((3, 3)),
+        np.zeros((2, 3), dtype=np.complex128),
+    ],
+    ids=("empty", "missing-atom", "extra-atom", "complex"),
+)
+def test_force_capability_rejects_incomplete_or_nonreal_target_array(
+    forces: np.ndarray,
+) -> None:
+    force_problem = replace(PROBLEM, accuracy=FORCE_ACCURACY)
+    output = result(accuracy=force_assessment())
+    output.forces = forces
+
+    final = verify(output, problem=force_problem)
+
+    assert final.status == "unmet"
+    assert not final.target_established
+    assert final.accuracy_status == "observed_met"
+    assert "forces" not in final.capabilities
+    assert any("omitted required observables: forces" in item for item in final.reasons)
+
+
+def test_force_capability_accepts_complete_finite_real_target_array() -> None:
+    force_problem = replace(PROBLEM, accuracy=FORCE_ACCURACY)
+    output = result(accuracy=force_assessment())
+    output.forces = np.zeros((2, 3), dtype=np.float64)
+
+    final = verify(output, problem=force_problem)
+
+    assert final.status == "verified"
+    assert final.target_established
+    assert "forces" in final.capabilities
 
 
 def test_failed_source_is_charged_but_cannot_invalidate_verified_cold_target() -> None:

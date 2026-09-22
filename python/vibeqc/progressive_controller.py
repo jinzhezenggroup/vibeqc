@@ -150,6 +150,7 @@ class TargetProblem:
     provider_hashes: tuple[tuple[str, str], ...]
     accuracy: TargetAccuracy
     convergence: HFConvergence
+    atom_count: int
     grid_policy_identity: str | None = None
     local_policy_identity: str | None = None
     schema_version: int = _SCHEMA_VERSION
@@ -168,6 +169,8 @@ class TargetProblem:
             raise TypeError("target convergence must be typed")
         if self.convergence.physical_residual_rms is None:
             raise ValueError("target convergence requires a physical residual gate")
+        if type(self.atom_count) is not int or self.atom_count < 1:
+            raise ValueError("target atom_count must be a positive integer")
         _identity(self.provider_identity, "target provider identity", digest=True)
         hashes = tuple(tuple(pair) for pair in self.provider_hashes)
         if not hashes or any(len(pair) != 2 for pair in hashes):
@@ -203,6 +206,7 @@ class TargetProblem:
             "provider_hashes": self.provider_hashes,
             "accuracy": self.accuracy.to_dict(),
             "convergence": asdict(self.convergence),
+            "atom_count": self.atom_count,
             "grid_policy_identity": self.grid_policy_identity,
             "local_policy_identity": self.local_policy_identity,
         }
@@ -246,6 +250,7 @@ class TargetProblem:
                 calculator._max_iterations,
                 residual,
             ),
+            atom_count=len(atoms),
         )
 
 
@@ -719,7 +724,14 @@ def finalize_hf_verification(
     capabilities = {"energy"}
     if result.forces is not None:
         forces = np.asarray(result.forces)
-        if forces.ndim == 2 and forces.shape[1] == 3 and np.isfinite(forces).all():
+        real_numeric = np.issubdtype(forces.dtype, np.number) and not np.issubdtype(
+            forces.dtype, np.complexfloating
+        )
+        if (
+            forces.shape == (problem.atom_count, 3)
+            and real_numeric
+            and np.isfinite(forces).all()
+        ):
             capabilities.add("forces")
     missing = requested_observables - capabilities
     if missing:

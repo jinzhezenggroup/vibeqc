@@ -52,9 +52,10 @@ print(run.target.energy, run.verification.status)
 
 `TargetProblem` snapshots the resolved #173 scientific model, prepared-provider
 identity, basis mathematical/source hashes, observable accuracy requirements,
-solver tolerances and the final physical-residual gate. Grid and local-policy
-identities are explicit fields and must be absent in the first HF slice. This
-prevents a later adapter from silently changing those parts of the target.
+solver tolerances, requested atom count and the final physical-residual gate.
+Grid and local-policy identities are explicit fields and must be absent in the
+first HF slice. This prevents a later adapter from silently changing those parts
+of the target.
 
 `StagePlan` separately records the resolved model, provider, arithmetic policy,
 solve tolerance, transfer operation, optional cost estimate, typed #173 error
@@ -93,6 +94,10 @@ relaxing tolerances.
 identity, basis mathematical/source hashes, native success/convergence,
 energy/density gates, physical SCF residual, requested energy/force capabilities,
 effective final FP64 arithmetic and complete execution budgets. It distinguishes:
+
+A force capability is established only by a finite, real numerical array with
+shape exactly `(TargetProblem.atom_count, 3)`. Empty, partial, extra-atom,
+complex or nonnumeric arrays fail closed as an omitted requested observable.
 
 Legacy HF results do not export the optional public physical-residual field. The
 controller therefore performs one explicit fixed-density rebuild with the exact

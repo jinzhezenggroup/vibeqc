@@ -19,7 +19,9 @@ only through #189 metric occupied-density projection. Source failure and
 projection rejection fall back to the unchanged target calculation. The final
 record independently compares scientific identity, prepared-provider identity,
 basis provider hashes, solver state, physical residual, requested capabilities,
-final arithmetic and work budgets.
+final arithmetic and work budgets. The immutable target also binds the requested
+atom count; force capability requires a complete finite real `(atom_count, 3)`
+array rather than trusting the result array to define its own extent.
 
 Because the legacy HF result ABI intentionally leaves its optional physical
 residual absent, the controller rebuilds the exact target Fock once at the final
@@ -54,6 +56,8 @@ produce overall `verified` status.
 - A source or transfer failure never changes target physics or tolerances.
 - Grid/local/CC/rank adapters require separate typed plans and validation.
 - No successful accuracy claim follows from SCF residual alone.
+- Force capability must match the target's atom count and real numerical dtype;
+  partial, extra-atom or complex arrays are not target observables.
 - A missing native HF residual requires an exact fixed-density target audit; the
   extra Fock build and elapsed time remain part of endpoint work.
 
@@ -61,7 +65,7 @@ produce overall `verified` status.
 
 - `tests/python/test_progressive_controller.py` covers immutable schemas,
   substituted targets, missing strict cleanup, unverified accuracy and budget
-  failure.
+  failure, including target-bound force shape and dtype rejection.
 - `tests/python/test_progressive_controller_native.py` covers the real HF
   source/projection/target path plus cold fallback after source and projection
   failures.
