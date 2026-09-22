@@ -531,9 +531,12 @@ bool df_value_raw_lanes_requested(unsigned& lanes) noexcept {
 }
 
 unsigned df_value_mapping_requested() noexcept {
-  // Primitive-oriented warps won the endpoint comparisons at both budgets
-  // and batch sizes. Other mappings remain explicit diagnostic candidates.
-  if (std::getenv("VIBEQC_DF_VALUE_MAPPING") == nullptr) return 2U;
+  // Auto is resolved by the compiler separately for raw and transformed
+  // consumers. A transformed output's auxiliary reduction is absent in raw
+  // tiles; sharing its full warp schedule wastes lanes on short contractions.
+  if (std::getenv("VIBEQC_DF_VALUE_MAPPING") == nullptr ||
+      selected("VIBEQC_DF_VALUE_MAPPING", "auto"))
+    return 3U;
   if (selected("VIBEQC_DF_VALUE_MAPPING", "component")) return 1U;
   if (selected("VIBEQC_DF_VALUE_MAPPING", "primitive")) return 2U;
   return 0U;

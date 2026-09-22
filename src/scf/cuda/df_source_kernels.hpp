@@ -21,6 +21,12 @@ struct DfPublicAoExpansion {
   double coefficients[molecule::kMaximumAoExpansionTerms]{};
 };
 
+/** Resolve the compiler's raw/transformed source schedule without GPU work.
+ * The host freezes both mappings before deriving launch geometry, so launch
+ * extent and kernel lane ownership cannot disagree.
+ */
+unsigned resolve_cuda_df_source_value_mapping(unsigned requested, bool transformed) noexcept;
+
 /** Host-callable DF generation boundary. Callers own valid ranges, device buffers, stream ordering
  * and last-error inspection. */
 /** Submit the selected value/coordinate-response specialization with the caller's launch geometry.
