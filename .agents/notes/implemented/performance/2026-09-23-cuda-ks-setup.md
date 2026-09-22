@@ -99,3 +99,11 @@ preparation 0.3842 s, cold 27.1023 s, warm 3.4276 / 3.4408 s, maximum error
 1.23e-11 Eh. DF: preparation 0.5959 s, cold 17.6167 s, warm 2.2150 / 2.2563 s,
 maximum error 4.40e-11 Eh. These include the separate GPU-grid/source repairs;
 no standalone large endpoint or complete 96-atom SCF claim follows.
+
+## Updated master qualification
+
+After composing master 41834864 (execution lifecycle and deferred activation),
+code head 6de0d62c passes Slurm 11401: native analytic setup gates and 30 Python
+CUDA endpoint/resource/diagnostic/DF checks, with two expected skips, in
+131.26 s. Preparation still calls the GPU initial-state constructor, and
+master's compiled execution region remains active for compatible replay.
