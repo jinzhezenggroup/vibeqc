@@ -54,6 +54,8 @@ def test_retired_xc_handwritten_builders_stay_deleted() -> None:
         "r2scan_correlation",
         "pw91_exchange",
         "pw91_correlation",
+        "pw",
+        "lda_correlation",
     }
     assert function_names.isdisjoint(retired)
 
