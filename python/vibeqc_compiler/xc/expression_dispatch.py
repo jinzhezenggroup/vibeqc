@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import typing
 
-from .expressions import energy_expression as semilocal_energy_expression
 from .rsh_expressions import energy_expression as rsh_energy_expression
+from .semilocal_family import energy_expression as semilocal_energy_expression
 from .spec import (
     AUTO_BULK_COMPONENTS,
     SPECIAL_EXPRESSION_COMPONENTS,
