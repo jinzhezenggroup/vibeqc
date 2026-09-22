@@ -77,8 +77,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          # Include every family that can alter generated/native compilation.
+          # The previous key omitted compiler/CMake inputs, so an immutable
+          # exact cache could stay permanently half-stale after codegen changes.
+          key: ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
             ccache-cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
 
       - name: Build pinned CuMetal
