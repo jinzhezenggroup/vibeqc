@@ -10,6 +10,7 @@
 #include "scf/fock_prepared.hpp"
 #include "scf/fock_provider.hpp"
 #include "scf/mean_field.hpp"
+#include "scf/proposals.hpp"
 
 namespace {
 using namespace vibeqc::scf;
@@ -340,6 +341,41 @@ void molecular_endpoints() {
     require(refresh.anchor_full_builds + refresh.delta_builds == periodic.iterations,
             "periodic counter accounting lost an accepted iterate");
     require(refresh.post_scf_full_builds == 2, "periodic mode bypassed physical finalization");
+
+    // A physically valid but non-improving proposal must execute full trial
+    // operators without becoming an accepted incremental anchor.
+    unsigned trial_builds = 0;
+    unsigned rejected_proposals = 0;
+    ScfHooks hooks;
+    hooks.propose = [](const ScfSnapshot& snapshot) {
+      if (snapshot.iteration != 1) return ScfProposal{};
+      return ScfProposal{ProposalRepresentation::ensemble_density, snapshot.generation,
+                         snapshot.iteration, snapshot.density};
+    };
+    hooks.observe = [&](const ScfSnapshot& snapshot, const ProposalDecision& decision) {
+      trial_builds += decision.trials;
+      if (snapshot.iteration == 1) {
+        require(decision.action == ProposalAction::rejected && decision.trials == 4,
+                "non-improving physical proposal did not exercise four rejected full builds");
+        ++rejected_proposals;
+      }
+    };
+    auto proposal_options = periodic_options;
+    proposal_options.hooks = &hooks;
+    const auto guarded = run_cpu_fock_strategy(asymmetric, nullptr, proposal_options);
+    require(guarded.converged && rejected_proposals == 1,
+            "incremental proposal rejection lost the converged fallback");
+    const auto& guarded_work = guarded.incremental_direct_jk;
+    require(guarded_work.bypass_full_builds == trial_builds && trial_builds == 4,
+            "incremental proposal bypass work was not counted exactly");
+    require(guarded_work.anchor_full_builds + guarded_work.delta_builds == guarded.iterations,
+            "a rejected trial became an accepted incremental anchor");
+    require(guarded.fock_builds == guarded.iterations + trial_builds + 2,
+            "incremental trial/physical Fock work does not reconcile");
+    require(guarded_work.post_scf_full_builds == 2,
+            "proposal mode bypassed strict full physical finalization");
+    close(guarded.energy, full_asymmetric.energy, 2e-11, "rejected proposal changed energy");
+    matrix(guarded.forces, full_asymmetric.forces, "rejected proposal changed forces", 2e-9);
   }
 
   // Approximate providers are deliberately outside #990's exact baseline and
