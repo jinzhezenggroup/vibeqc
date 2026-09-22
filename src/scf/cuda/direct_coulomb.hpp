@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cuda_runtime_api.h>
+
 #include <memory>
 
 #include "scf/cuda/packed_basis.hpp"

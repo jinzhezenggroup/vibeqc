@@ -261,8 +261,8 @@ cudaError_t enqueue_generated_coulomb(GeneratedCoulombPlan& p, const double* den
   error = cudaMemsetAsync(p.heads, 0, detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t),
                           p.stream);
   if (error != cudaSuccess) return error;
-  // Keep the geometry-only Schwarz contract of the public provider. Null
-  // consumer identity disables HF's extra density-dependent screening gates.
+  // Keep the geometry-only Schwarz contract of the public provider. The
+  // Coulomb consumer disables HF's extra density-dependent screening gates.
   std::size_t count = 0;
   const auto* kernels = generated::selected_fock_shell_kernels(count);
   for (std::size_t i = 0; i < count; ++i) {

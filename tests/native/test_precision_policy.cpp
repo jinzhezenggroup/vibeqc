@@ -137,8 +137,7 @@ void verify_direct_jk_target_policy() {
           "16-AO tiled GEMM lower bound reads A/B and writes C once");
   require(estimate16.native_matrix_blocks == 8U && estimate16.native_matrix_waves == 1U,
           "16-AO native GEMM is eight one-warp blocks and one qualified-target wave");
-  require(estimate16.eri_elements == 65536U &&
-              estimate16.eri_bytes == (std::size_t{96} << 20) / sizeof(GeneratedShellTask),
+  require(estimate16.eri_elements == 65536U && estimate16.eri_bytes == 524288U,
           "16-AO persistent ERI storage is exactly n^4 FP64 values");
   require(estimate16.cached_fock_ao_quartets == 65536U,
           "16-AO cached Fock contracts one n^4 AO-quartet census per RHF state");
