@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.integral.expr import Expr, Graph
-from vibeqc_compiler.xc import rsh_expressions
+from vibeqc_compiler.xc import ityh_maple
 from vibeqc_compiler.xc.ityh_maple import ityh_exchange, ityh_maple_provenance
 from vibeqc_compiler.xc.program import build_program
 from vibeqc_compiler.xc.spec import FunctionalSpec
@@ -69,10 +69,12 @@ def test_rsh_dispatch_calls_ityh_maple_adapter(
         called = True
         return graph.constant(0)
 
-    monkeypatch.setattr(rsh_expressions, "imported_ityh_exchange", replacement)
-    graph, energy, _ = rsh_expressions.energy_expression(_spec("unpolarized"))
+    monkeypatch.setattr(ityh_maple, "ityh_exchange", replacement)
+    program = build_program(_spec("unpolarized"), order=0)
     assert called
-    assert graph.node(energy).operation == "constant"
+    np.testing.assert_array_equal(
+        program.evaluate(np.array([[0.5], [0.031], [0.0]])), 0.0
+    )
 
 
 def test_ityh_identity_records_maple_provenance() -> None:
