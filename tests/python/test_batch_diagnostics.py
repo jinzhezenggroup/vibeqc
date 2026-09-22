@@ -325,7 +325,7 @@ def test_prepared_batch_diagnostic_methods_are_thin_delegates(
 ) -> None:
     prepared = object.__new__(batch_facade.PreparedBatch)
     prepared._batch = ctypes.c_void_p(123)
-    prepared._library = object()
+    monkeypatch.setattr(prepared, "_library", object(), raising=False)
     prepared._shell_class_profiling = flag == "shell"
     prepared._inactive_eigensolver_profiling = flag == "inactive"
     sentinel = object()
@@ -345,7 +345,7 @@ def test_prepared_batch_opt_in_guards_run_before_native_readers(
 ) -> None:
     prepared = object.__new__(batch_facade.PreparedBatch)
     prepared._batch = ctypes.c_void_p(123)
-    prepared._library = object()
+    monkeypatch.setattr(prepared, "_library", object(), raising=False)
     prepared._shell_class_profiling = False
     prepared._inactive_eigensolver_profiling = False
 

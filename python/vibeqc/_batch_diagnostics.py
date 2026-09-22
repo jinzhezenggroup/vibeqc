@@ -301,9 +301,13 @@ def decode_ppps_queue_profile(native: typing.Any) -> PppsQueueProfile:
         primitive_tail_imbalance=tuple(
             float(value) for value in native.primitive_tail_imbalance
         ),
-        orientation_tasks=tuple(int(value) for value in native.orientation_tasks),
-        orientation_primitive_work=tuple(
-            int(value) for value in native.orientation_primitive_work
+        orientation_tasks=(
+            int(native.orientation_tasks[0]),
+            int(native.orientation_tasks[1]),
+        ),
+        orientation_primitive_work=(
+            int(native.orientation_primitive_work[0]),
+            int(native.orientation_primitive_work[1]),
         ),
         bra_primitive_tasks=tuple(int(value) for value in native.bra_primitive_tasks),
         bra_primitive_work=tuple(int(value) for value in native.bra_primitive_work),
