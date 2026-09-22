@@ -20,6 +20,20 @@ def _definition(source: str, signature: str) -> str:
     return source[start:end]
 
 
+def test_becke_pair_derivative_contraction_stays_sparse() -> None:
+    source = (ROOT / "src/dft/grid.cpp").read_text()
+    body = _definition(
+        source, "std::vector<double> MolecularGrid::contract_weight_derivative("
+    )
+
+    # Each Becke pair depends on at most the owner, a, and b atom blocks.  A
+    # nuclear-coordinate sweep inside the pair loop adds an avoidable atom-count
+    # factor to every molecular COSX force evaluation.
+    assert "std::vector<double> pair_derivative(ncoord)" not in body
+    assert "for (double& derivative : pair_derivative)" not in body
+    assert body.count("coordinate < ncoord") == 2
+
+
 @pytest.mark.parametrize("requested_tile", (1, 7, 64))
 def test_molecular_cosx_diagnostic_accounts_for_all_device_buffers(
     tmp_path: Path, requested_tile: int

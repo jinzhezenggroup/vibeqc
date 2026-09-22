@@ -1,6 +1,7 @@
 #include "dft/grid.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <numbers>
@@ -189,7 +190,7 @@ std::vector<double> MolecularGrid::contract_weight_derivative(
   if (atoms == 1) return result;
 
   std::vector<double> logs(atoms), partition(atoms), log_derivative(multiply(atoms, ncoord));
-  std::vector<double> pair_derivative(ncoord), average(ncoord);
+  std::vector<double> average(ncoord);
   for (std::size_t point_index = 0; point_index < point_count(); ++point_index) {
     std::fill(logs.begin(), logs.end(), 0.0);
     std::fill(log_derivative.begin(), log_derivative.end(), 0.0);
@@ -215,7 +216,17 @@ std::vector<double> MolecularGrid::contract_weight_derivative(
         const double distance_a = std::sqrt(distance_a2);
         const double distance_b = std::sqrt(distance_b2);
         double mu = 0.0;
-        std::fill(pair_derivative.begin(), pair_derivative.end(), 0.0);
+        std::array<std::size_t, 3> pair_atoms{owner, 0, 0};
+        std::array<std::array<double, 3>, 3> pair_derivative{};
+        std::size_t pair_atom_count = 1;
+        const auto pair_block = [&](std::size_t atom) {
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            if (pair_atoms[block] == atom) return block;
+          pair_atoms[pair_atom_count] = atom;
+          return pair_atom_count++;
+        };
+        const std::size_t a_block = pair_block(a);
+        const std::size_t b_block = pair_block(b);
         if (separation > spec_.coincident_tolerance) {
           const double numerator = distance_a - distance_b;
           const double raw_mu = numerator / separation;
@@ -226,28 +237,31 @@ std::vector<double> MolecularGrid::contract_weight_derivative(
               const double unit_b = distance_b > 0.0 ? point_b[axis] / distance_b : 0.0;
               const double unit_ab = separation_vector[axis] / separation;
               const double numerator_owner = unit_a - unit_b;
-              pair_derivative[3 * owner + axis] += numerator_owner / separation;
-              pair_derivative[3 * a + axis] +=
+              pair_derivative[0][axis] += numerator_owner / separation;
+              pair_derivative[a_block][axis] +=
                   -unit_a / separation - numerator * unit_ab / separation2;
-              pair_derivative[3 * b + axis] +=
+              pair_derivative[b_block][axis] +=
                   unit_b / separation + numerator * unit_ab / separation2;
             }
           }
         }
         for (unsigned iteration = 0; iteration < spec_.partition_iterations; ++iteration) {
           const double slope = 1.5 * (1.0 - mu * mu);
-          for (double& derivative : pair_derivative) derivative *= slope;
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            for (double& derivative : pair_derivative[block]) derivative *= slope;
           mu = 0.5 * mu * (3.0 - mu * mu);
         }
         const double pair = std::clamp(0.5 * (1.0 - mu), 0.0, 1.0);
         logs[a] += std::log(pair);
         logs[b] += std::log1p(-pair);
         if (pair > 0.0 && pair < 1.0) {
-          for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
-            const double pair_response = -0.5 * pair_derivative[coordinate];
-            log_derivative[a * ncoord + coordinate] += pair_response / pair;
-            log_derivative[b * ncoord + coordinate] -= pair_response / (1.0 - pair);
-          }
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            for (unsigned axis = 0; axis < 3; ++axis) {
+              const std::size_t coordinate = 3 * pair_atoms[block] + axis;
+              const double pair_response = -0.5 * pair_derivative[block][axis];
+              log_derivative[a * ncoord + coordinate] += pair_response / pair;
+              log_derivative[b * ncoord + coordinate] -= pair_response / (1.0 - pair);
+            }
         }
       }
     }
