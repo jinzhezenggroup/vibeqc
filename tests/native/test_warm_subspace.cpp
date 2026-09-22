@@ -10,9 +10,8 @@
 namespace {
 using Matrix = std::vector<double>;
 
-void require(bool value, const char *detail) {
-  if (!value)
-    throw std::runtime_error(detail);
+void require(bool value, const char* detail) {
+  if (!value) throw std::runtime_error(detail);
 }
 
 void invariant_subspace_survives_occupied_rotation() {
@@ -55,8 +54,7 @@ void invalid_evidence_is_fail_closed() {
   Matrix orbitals{1.0, 0.0, 0.0, 1.0};
   orbitals[0] = std::numeric_limits<double>::quiet_NaN();
   const auto diagnostic = inspect_warm_occupied_subspace(fock, orbitals, 2, 1);
-  require(!diagnostic.finite,
-          "non-finite orbital frame was accepted as finite");
+  require(!diagnostic.finite, "non-finite orbital frame was accepted as finite");
   std::string detail;
   require(!accept_warm_occupied_subspace(diagnostic, 1.0, 1.0, detail),
           "non-finite warm evidence did not fail closed");
@@ -64,7 +62,7 @@ void invalid_evidence_is_fail_closed() {
   bool threw = false;
   try {
     (void)inspect_warm_occupied_subspace(Matrix{1.0}, Matrix{1.0}, 2, 1);
-  } catch (const std::invalid_argument &) {
+  } catch (const std::invalid_argument&) {
     threw = true;
   }
   require(threw, "shape mismatch did not reject warm-subspace input");
@@ -79,7 +77,7 @@ void full_space_is_trivially_invariant() {
           "full orbital space should have no external residual");
 }
 
-} // namespace
+}  // namespace
 
 int main() {
   try {
@@ -87,7 +85,7 @@ int main() {
     occupied_virtual_coupling_triggers_fallback();
     invalid_evidence_is_fail_closed();
     full_space_is_trivially_invariant();
-  } catch (const std::exception &error) {
+  } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;
   }
