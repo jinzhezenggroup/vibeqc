@@ -17,6 +17,7 @@ def checkout(tmp_path: Path) -> Path:
     for relative in (
         SOURCE,
         GENERATOR,
+        "tools/__init__.py",
         "tools/source_registry.py",
         "upstream/manifest.json",
     ):
@@ -65,6 +66,24 @@ def test_gcp_cli_valid_checkout_regenerates_pinned_header(
             path = checkout / relative
             path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
     output = checkout / "generated.hpp"
+    subprocess.run(
+        [sys.executable, str(checkout / GENERATOR), "--output", str(output)],
+        cwd=checkout,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=True,
+    )
+    expected = ROOT / "src/dft/dispersion/gcp_r2scan3c_data.hpp"
+    assert output.read_bytes() == expected.read_bytes().replace(b"\r\n", b"\n")
+
+
+def test_gcp_cli_uses_its_checkout_with_foreign_pythonpath(
+    checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A real package in another checkout must not replace the copied tool."""
+    monkeypatch.setenv("PYTHONPATH", str(ROOT))
+    output = checkout / "foreign-pythonpath.hpp"
     subprocess.run(
         [sys.executable, str(checkout / GENERATOR), "--output", str(output)],
         cwd=checkout,
