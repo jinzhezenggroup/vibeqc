@@ -127,8 +127,7 @@ void verify_direct_jk_target_policy() {
 
   const SmallHfWorkload small16{16U, 1U, 1U, 1U};
   const auto estimate16 = estimate_small_hf_workload(qualified, small16);
-  require(estimate16.matrix_flops == 8192U,
-          "16-AO native GEMM work is exactly 2*n^3");
+  require(estimate16.matrix_flops == 8192U, "16-AO native GEMM work is exactly 2*n^3");
   require(estimate16.native_matrix_semantic_bytes == 67584U,
           "16-AO native GEMM traffic follows the untiled per-output loop");
   require(estimate16.cublas_matrix_semantic_bytes == 6144U,
@@ -143,12 +142,12 @@ void verify_direct_jk_target_policy() {
   const auto fallback16 = resolve_small_hf_profitability(qualified, small16);
   const auto fallback17 =
       resolve_small_hf_profitability(qualified, SmallHfWorkload{17U, 1U, 1U, 1U});
-  require(!fallback16.use_cublas && fallback16.persistent_eri &&
-              !fallback16.cublas_from_calibration,
-          "missing calibration preserves the qualified <=16 small-HF fallback");
-  require(fallback17.use_cublas && !fallback17.persistent_eri &&
-              !fallback17.cublas_from_calibration,
-          "missing calibration preserves the qualified >=17 library fallback");
+  require(
+      !fallback16.use_cublas && fallback16.persistent_eri && !fallback16.cublas_from_calibration,
+      "missing calibration preserves the qualified <=16 small-HF fallback");
+  require(
+      fallback17.use_cublas && !fallback17.persistent_eri && !fallback17.cublas_from_calibration,
+      "missing calibration preserves the qualified >=17 library fallback");
 
   SmallHfProfitabilityProfile early_library;
   early_library.matrix.native_launch_nanoseconds = 100.0;
@@ -157,8 +156,8 @@ void verify_direct_jk_target_policy() {
   early_library.matrix.cublas_launch_nanoseconds = 1.0;
   early_library.matrix.cublas_fp64_flops_per_nanosecond = 1000.0;
   early_library.matrix.cublas_bytes_per_nanosecond = 1000.0;
-  const auto calibrated8 = resolve_small_hf_profitability(
-      qualified, SmallHfWorkload{8U, 1U, 1U, 1U}, early_library);
+  const auto calibrated8 =
+      resolve_small_hf_profitability(qualified, SmallHfWorkload{8U, 1U, 1U, 1U}, early_library);
   require(calibrated8.cublas_from_calibration && calibrated8.use_cublas &&
               calibrated8.cublas_matrix_nanoseconds < calibrated8.native_matrix_nanoseconds,
           "calibrated device costs can move the cuBLAS crossover below 17");
@@ -167,8 +166,8 @@ void verify_direct_jk_target_policy() {
   late_library.matrix.native_launch_nanoseconds = 1.0;
   late_library.matrix.native_fp64_flops_per_nanosecond = 1000.0;
   late_library.matrix.cublas_launch_nanoseconds = 100000.0;
-  const auto calibrated32 = resolve_small_hf_profitability(
-      qualified, SmallHfWorkload{32U, 1U, 1U, 1U}, late_library);
+  const auto calibrated32 =
+      resolve_small_hf_profitability(qualified, SmallHfWorkload{32U, 1U, 1U, 1U}, late_library);
   require(calibrated32.cublas_from_calibration && !calibrated32.use_cublas &&
               calibrated32.native_matrix_nanoseconds < calibrated32.cublas_matrix_nanoseconds,
           "calibrated device costs can move the cuBLAS crossover above 17");
