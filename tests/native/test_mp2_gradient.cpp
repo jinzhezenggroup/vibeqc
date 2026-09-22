@@ -9,11 +9,13 @@
 #include <stdexcept>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "posthf/mp2_gradient.hpp"
 #include "posthf/native_provider.hpp"
 #include "posthf/raw_source.hpp"
 #include "response/native_gmres.hpp"
+#include "scf/density_fitting.hpp"
 #include "scf/mean_field.hpp"
 
 namespace {
@@ -282,6 +284,231 @@ void streamed_provider_matches_dense_oracle() {
 #endif
 }
 
+void density_fitted_provider_matches_dense_ri_oracle() {
+  const auto system = h2();
+  const auto auxiliary = system;
+  constexpr double metric_threshold = 1.0e-10;
+  vibeqc::scf::ScfOptions options;
+  options.export_physical_reference = true;
+  options.compute_forces = false;
+  options.screening_tolerance = 0.0;
+  options.energy_tolerance = options.density_tolerance = 1e-11;
+  options.density_fitting_relative_threshold = metric_threshold;
+  options.reference_memory_budget_bytes = 256ULL << 20;
+  const auto hf = vibeqc::scf::run_rhf_density_fitting(system, auxiliary, options);
+  require(hf.converged && hf.reference, "H2 RI reference did not converge");
+  const auto& reference = *hf.reference;
+  vibeqc::posthf::RawSource source(system, &auxiliary);
+  vibeqc::posthf::DensityFittedBlockProvider provider(source, reference, 256ULL << 20,
+                                                      metric_threshold);
+  const auto n = reference.nbf, na = provider.auxiliary_count();
+  std::vector<std::size_t> orbitals(n);
+  for (std::size_t p = 0; p < n; ++p) orbitals[p] = p;
+  const auto actual_eri = provider.get({orbitals, orbitals, orbitals, orbitals});
+
+  // Independent value-side RI reconstruction from public AO A/M tensors.
+  const auto raw = vibeqc::integrals::build_density_fitting_integrals(system, auxiliary, false);
+  const auto factor = vibeqc::scf::factor_density_fitting_metric(raw.metric, na, metric_threshold);
+  std::vector<double> transformed(n * n * na), whitened(n * n * na), expected_eri(n * n * n * n);
+  auto three = [n, na](std::size_t p, std::size_t q, std::size_t P) {
+    return (p * n + q) * na + P;
+  };
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu)
+          for (std::size_t P = 0; P < na; ++P)
+            transformed[three(p, q, P)] += reference.coefficients[mu * n + p] *
+                                           reference.coefficients[nu * n + q] *
+                                           raw.three_center[(mu * n + nu) * na + P];
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t Q = 0; Q < na; ++Q)
+        for (std::size_t P = 0; P < na; ++P)
+          whitened[three(p, q, Q)] +=
+              transformed[three(p, q, P)] * factor.inverse_square_root[P * na + Q];
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t r = 0; r < n; ++r)
+        for (std::size_t t = 0; t < n; ++t)
+          for (std::size_t Q = 0; Q < na; ++Q)
+            expected_eri[eri_index(n, p, q, r, t)] +=
+                whitened[three(p, q, Q)] * whitened[three(r, t, Q)];
+  auto close = [](std::span<const double> first, std::span<const double> second, double tolerance) {
+    if (first.size() != second.size()) return false;
+    for (std::size_t i = 0; i < first.size(); ++i)
+      if (std::abs(first[i] - second[i]) > tolerance) return false;
+    return true;
+  };
+  require(close(actual_eri, expected_eri, 2e-12),
+          "density-fitted MO provider differs from independent RI reconstruction");
+  require(close(provider.metric(), raw.metric, 0.0) &&
+              close(provider.inverse_square_root(), factor.inverse_square_root, 2e-14),
+          "density-fitted MO provider lost its metric branch identity");
+
+  std::vector<double> hcore_mo(n * n);
+  for (std::size_t p = 0; p < n; ++p)
+    for (std::size_t q = 0; q < n; ++q)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu)
+          hcore_mo[p * n + q] += reference.coefficients[mu * n + p] * reference.hcore[mu * n + nu] *
+                                 reference.coefficients[nu * n + q];
+  const auto nv = n - reference.nocc;
+  std::vector<double> g(reference.nocc * reference.nocc * nv * nv);
+  for (std::size_t i = 0; i < reference.nocc; ++i)
+    for (std::size_t j = 0; j < reference.nocc; ++j)
+      for (std::size_t a = 0; a < nv; ++a)
+        for (std::size_t b = 0; b < nv; ++b)
+          g[g_index(reference.nocc, nv, i, j, a, b)] =
+              expected_eri[eri_index(n, i, reference.nocc + a, j, reference.nocc + b)];
+  const auto adjoint =
+      vibeqc::mp2::canonical_energy_adjoint(g, reference.orbital_energies, reference.nocc, 1e-10);
+  const auto dense = vibeqc::mp2::canonical_orbital_rhs(hcore_mo, expected_eri, adjoint, 1e-10);
+  const auto streamed =
+      vibeqc::mp2::canonical_orbital_rhs_streamed(reference, hcore_mo, provider, adjoint, 1e-10);
+  require(close(streamed.energy_gradient, dense.energy_gradient, 2e-10) &&
+              close(streamed.response_rhs, dense.response_rhs, 2e-10) &&
+              close(streamed.one_electron, dense.one_electron, 2e-10) &&
+              close(streamed.two_electron, dense.two_electron, 2e-10),
+          "RI provider cannot drive the shared streamed MP2 orbital response");
+
+  // H2/STO-3G has one occupied and one virtual MO, so solve the response scalar
+  // independently and compare the complete relaxed-weight construction.
+  const double denominator =
+      reference.orbital_energies[reference.nocc] - reference.orbital_energies[0] +
+      4.0 * expected_eri[eri_index(n, reference.nocc, 0, reference.nocc, 0)] -
+      expected_eri[eri_index(n, reference.nocc, reference.nocc, 0, 0)] -
+      expected_eri[eri_index(n, reference.nocc, 0, 0, reference.nocc)];
+  const std::array<double, 1> response{streamed.response_rhs[0] / denominator};
+  const auto dense_weights =
+      vibeqc::mp2::canonical_lagrangian_weights(hcore_mo, expected_eri, adjoint, response, 1e-10);
+  const auto streamed_weights = vibeqc::mp2::canonical_lagrangian_weights_streamed(
+      reference, hcore_mo, provider, adjoint, response, 1e-10);
+  require(close(streamed_weights.one_electron, dense_weights.one_electron, 2e-10) &&
+              close(streamed_weights.two_electron, dense_weights.two_electron, 2e-10) &&
+              close(streamed_weights.overlap, dense_weights.overlap, 2e-10) &&
+              std::abs(streamed_weights.stationarity_residual -
+                       dense_weights.stationarity_residual) < 2e-10,
+          "RI provider cannot drive the shared relaxed MP2 Lagrangian");
+
+  const auto raw_weights = vibeqc::mp2::density_fitted_lagrangian_weights(
+      reference, provider, streamed_weights, 256ULL << 20);
+  require(raw_weights.orbitals == n && raw_weights.auxiliary == na &&
+              raw_weights.three_center.size() == n * n * na && raw_weights.metric.size() == na * na,
+          "RI reverse returned inconsistent raw-weight dimensions");
+
+  // Independent directional derivative of the relaxed two-electron functional
+  // with respect to raw A and M. This simultaneously exercises A->B reverse
+  // composition and the shared #466 M^(-1/2) pullback.
+  auto ri_two_functional = [&](std::span<const double> raw_a, std::span<const double> metric) {
+    const auto local_factor = vibeqc::scf::factor_density_fitting_metric(
+        std::vector<double>(metric.begin(), metric.end()), na, metric_threshold);
+    std::vector<double> local_transformed(n * n * na), local_whitened(n * n * na);
+    for (std::size_t p = 0; p < n; ++p)
+      for (std::size_t q = 0; q < n; ++q)
+        for (std::size_t mu = 0; mu < n; ++mu)
+          for (std::size_t nu = 0; nu < n; ++nu)
+            for (std::size_t P = 0; P < na; ++P)
+              local_transformed[three(p, q, P)] += reference.coefficients[mu * n + p] *
+                                                   reference.coefficients[nu * n + q] *
+                                                   raw_a[(mu * n + nu) * na + P];
+    for (std::size_t p = 0; p < n; ++p)
+      for (std::size_t q = 0; q < n; ++q)
+        for (std::size_t Q = 0; Q < na; ++Q)
+          for (std::size_t P = 0; P < na; ++P)
+            local_whitened[three(p, q, Q)] +=
+                local_transformed[three(p, q, P)] * local_factor.inverse_square_root[P * na + Q];
+    double value = 0.0;
+    for (std::size_t p = 0; p < n; ++p)
+      for (std::size_t q = 0; q < n; ++q)
+        for (std::size_t r = 0; r < n; ++r)
+          for (std::size_t t = 0; t < n; ++t) {
+            double eri = 0.0;
+            for (std::size_t Q = 0; Q < na; ++Q)
+              eri += local_whitened[three(p, q, Q)] * local_whitened[three(r, t, Q)];
+            value += streamed_weights.two_electron[eri_index(n, p, q, r, t)] * eri;
+          }
+    return value;
+  };
+  std::vector<double> d_a(raw.three_center.size()), d_m(raw.metric.size());
+  for (std::size_t i = 0; i < d_a.size(); ++i) d_a[i] = 0.013 * (static_cast<double>(i % 7) - 2.5);
+  for (std::size_t P = 0; P < na; ++P)
+    for (std::size_t Q = P; Q < na; ++Q) {
+      const double value = 0.009 * (1.0 + P + 2.0 * Q);
+      d_m[P * na + Q] = d_m[Q * na + P] = value;
+    }
+  double reverse_dot = 0.0;
+  for (std::size_t i = 0; i < d_a.size(); ++i) reverse_dot += raw_weights.three_center[i] * d_a[i];
+  for (std::size_t i = 0; i < d_m.size(); ++i) reverse_dot += raw_weights.metric[i] * d_m[i];
+  double previous_error = std::numeric_limits<double>::infinity();
+  for (const double step : {1e-3, 2e-4, 4e-5}) {
+    auto plus_a = raw.three_center, minus_a = raw.three_center;
+    auto plus_m = raw.metric, minus_m = raw.metric;
+    for (std::size_t i = 0; i < d_a.size(); ++i) {
+      plus_a[i] += step * d_a[i];
+      minus_a[i] -= step * d_a[i];
+    }
+    for (std::size_t i = 0; i < d_m.size(); ++i) {
+      plus_m[i] += step * d_m[i];
+      minus_m[i] -= step * d_m[i];
+    }
+    const double plus_value = ri_two_functional(plus_a, plus_m);
+    const double minus_value = ri_two_functional(minus_a, minus_m);
+    const double finite = (plus_value - minus_value) / (2 * step);
+    const double error = std::abs(finite - reverse_dot);
+    // Below the subtraction roundoff floor, a smaller step can increase the
+    // error. Keep the independent absolute acceptance gate below unchanged.
+    const double roundoff_floor = 64 * std::numeric_limits<double>::epsilon() *
+                                  (std::abs(plus_value) + std::abs(minus_value)) / (2 * step);
+    require(error <= previous_error + roundoff_floor,
+            "RI raw-weight finite difference did not improve above its roundoff floor");
+    previous_error = error;
+  }
+  require(previous_error < 2e-8,
+          "RI raw A/M weights do not match the independent finite-difference functional");
+
+  const auto direct_df = vibeqc::integrals::contract_weighted_density_fitting_derivative(
+      system, auxiliary, raw_weights.three_center, raw_weights.metric, 256ULL << 20);
+  const auto dense_df = vibeqc::integrals::build_density_fitting_integrals(system, auxiliary, true);
+  std::vector<double> dense_df_contraction(dense_df.ncoord, 0.0);
+  for (std::size_t coordinate = 0; coordinate < dense_df.ncoord; ++coordinate) {
+    for (std::size_t i = 0; i < raw_weights.three_center.size(); ++i)
+      dense_df_contraction[coordinate] +=
+          dense_df.three_center_derivative[coordinate * raw_weights.three_center.size() + i] *
+          raw_weights.three_center[i];
+    for (std::size_t i = 0; i < raw_weights.metric.size(); ++i)
+      dense_df_contraction[coordinate] +=
+          dense_df.metric_derivative[coordinate * raw_weights.metric.size() + i] *
+          raw_weights.metric[i];
+  }
+  require(close(direct_df, dense_df_contraction, 2e-11),
+          "direct weighted DF derivative contraction differs from the dense derivative oracle");
+  bool derivative_budget_rejected = false;
+  try {
+    (void)vibeqc::integrals::contract_weighted_density_fitting_derivative(
+        system, auxiliary, raw_weights.three_center, raw_weights.metric, 1);
+  } catch (const std::length_error&) {
+    derivative_budget_rejected = true;
+  }
+  require(derivative_budget_rejected, "direct weighted DF derivative ignored its memory budget");
+
+  bool budget_rejected = false;
+  try {
+    (void)vibeqc::mp2::density_fitted_lagrangian_weights(reference, provider, streamed_weights, 1);
+  } catch (const std::length_error&) {
+    budget_rejected = true;
+  }
+  require(budget_rejected, "RI Lagrangian reverse ignored its memory budget");
+
+  bool rejected = false;
+  try {
+    (void)provider.get({orbitals, orbitals, orbitals, orbitals}, true, 0);
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  require(rejected, "CPU RI provider silently accepted a CUDA request");
+}
+
 double rotated_mp2_energy(const Fixture& fixture, std::span<const double> direction, double step) {
   const auto n = fixture.n, no = fixture.no;
   std::vector<double> generator(n * n), left(n * n), right(n * n);
@@ -420,6 +647,7 @@ int main() {
     energy_adjoint_matches_independent_finite_difference();
     orbital_rhs_and_relaxed_weights_match_independent_oracles();
     streamed_provider_matches_dense_oracle();
+    density_fitted_provider_matches_dense_ri_oracle();
     invalid_inputs_and_resource_boundaries();
     std::cout << "MP2 native gradient contracts passed\n";
     return 0;

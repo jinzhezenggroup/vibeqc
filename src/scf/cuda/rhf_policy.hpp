@@ -232,6 +232,20 @@ bool bounded_direct_fock_only_diagnostic_requested() noexcept;
 bool bounded_fock_class_timing_requested() noexcept;
 /** True when force AOT classes are explicitly narrowed for a diagnostic replay. */
 bool aot_shell_class_selection_override_requested() noexcept;
+/**
+ * Direct-tile validation is a structural diagnostic, never a numerical endpoint.
+ *
+ * When requested, CUDA execution may build and validate the compacted descriptor
+ * queue, but it must stop before reporting SCF energy/force results.  The explicit
+ * non-success endpoint status prevents diagnostic output from being mistaken for
+ * scientific correctness evidence.
+ */
+struct DirectTileValidationPolicy {
+  bool requested{};
+  bool produces_numerical_endpoint{true};
+  vibeqc_status endpoint_status{VIBEQC_STATUS_SUCCESS};
+};
+DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept;
 bool direct_tile_validation_requested() noexcept;
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept;
 bool force_density_product_screening_requested() noexcept;

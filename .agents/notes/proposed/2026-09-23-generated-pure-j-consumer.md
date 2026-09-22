@@ -62,3 +62,28 @@ A bounded profile exposed a separate ordinary-KS eigensolver problem (#1090,
 PR #1091): one completed graph-native Jacobi call took 9.2 seconds. This is
 not evidence that 96-atom endpoint qualification is complete. Keep the larger
 gates and HF ABI performance check pending.
+
+## Correctness and master integration update
+
+The later 24-atom discrepancy was localized to an existing global-cursor
+screening/exhaustion defect, fixed separately by merged #1096. With that fix
+and #1091 in the preserved integration, the unchanged screening/grid gates
+pass at 24 atoms: maximum cold/priming/warm energy difference 1.444e-11 Eh;
+cold execute 27.249 s, warm 3.397/3.438 s. Native preparation additionally costs
+27.836 s and must be included in complete cold reporting. Direct HF12
+energy-plus-force gates also pass (3.19e-12 Eh / 1.59e-11 Eh/Bohr maxima).
+
+The pure-J branch now merges master `1ac50d59`, including #1096. Resolve source
+registration by retaining both the generated Coulomb owner and the master's
+shared Fock executor. Regenerate artifact fingerprints from the composed
+compiler: only sm_120 shard_2 differs from the previous pure-J fingerprints;
+both historical artifact-correction records remain. The emitted screening
+regression, independent scatter and frozen-artifact tests pass (52 tests), as
+do compiler and SCF ownership audits. This is host integration qualification;
+no standalone merged-head GPU benchmark is claimed.
+
+The attempted PBE48 endpoint was stopped during preparation after about 160 s,
+before any SCF measurement started. Issue #1099 tracks the now-isolated serial
+native reference-grid construction (25.375 s at 24 atoms). Keep 48/96 complete
+endpoint qualification pending; do not misattribute that preparation bottleneck
+to generated J or silently omit it from the endpoint.

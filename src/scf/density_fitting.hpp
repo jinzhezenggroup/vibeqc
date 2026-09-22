@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "integrals/density_fitting_metric.hpp"
 #include "integrals/s_integrals.hpp"
 #include "scf/df_preparation_budget.hpp"
 #include "scf/df_value_storage.hpp"
@@ -16,14 +17,7 @@ namespace vibeqc::scf {
 /** Diagnostic A/B control: retain coordinate-resolved CPU DF derivative tensors. */
 [[nodiscard]] bool cpu_materialized_df_derivatives_requested() noexcept;
 
-/** Conditioning diagnostics and symmetric inverse square root of (P|Q). */
-struct DensityFittingMetricFactor {
-  std::size_t dimension{};
-  std::size_t effective_rank{};
-  double absolute_threshold{};
-  double condition_number{};
-  std::vector<double> inverse_square_root;
-};
+using DensityFittingMetricFactor = integrals::DensityFittingMetricFactor;
 
 /**
  * Remove linearly dependent metric eigenvectors and form J^(-1/2).

@@ -513,7 +513,7 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "dc57b43f958951eed08df8b89c22161ae560425004e44f76c12ed4eb3f2bbb39",
     "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "86f63490e0bbc09eb96fd0c909b4c1f5fa1d07cc61492b75a21c0b6f13c20696",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "9141f5902bf4d4164c47c42fba7a184c798c14f3b5540e7c49989e759d7a4dd6",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "bf177d29ff6fefde6e68f104045f3b4099d98135a3a1ca1c51f9d0d331f61c2e",
     "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "c42413573c65f8a96f13b225b9362d4520eb487741b7dd1eca8f3408aed5ce3f",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
     "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
@@ -574,6 +574,13 @@
         "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
+      ]
+    },
+    {
+      "issue": 1095,
+      "reason": "Keep screened candidates distinct from exhausted global pair-product domains in component-lane Fock workers. Only the sm_120 ddpp shard changes; equations, screening gates, manifest, catalog, registry, and portable artifacts are unchanged. Executed emitted-control-flow regression verifies complete retained work.",
+      "paths": [
+        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu"
       ]
     }
   ]

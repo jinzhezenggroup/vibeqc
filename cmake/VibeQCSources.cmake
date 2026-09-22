@@ -99,6 +99,7 @@ endfunction()
 function(vibeqc_add_integrals_scf_sources target)
   target_sources(${target} PRIVATE
     src/integrals/s_integrals.cpp
+    src/integrals/density_fitting_metric.cpp
     src/integrals/generated_df_cpu.cpp
     src/integrals/ecp.cpp
     src/methods/hf_method.cpp
@@ -168,6 +169,7 @@ function(vibeqc_add_integrals_scf_sources target)
       src/scf/cuda/direct_pair_cache.cu
       src/scf/cuda/direct_jk.cpp
       src/scf/cuda/direct_coulomb.cpp
+      src/scf/cuda_fock_execution.cpp
       src/scf/cuda/one_electron_view.cpp
       src/scf/cuda/one_electron_export.cpp
       src/scf/cuda/one_electron_export_batch.cpp
