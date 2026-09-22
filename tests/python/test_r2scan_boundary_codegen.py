@@ -92,6 +92,78 @@ REFERENCE = (
 )
 
 
+# Independent Libxc 7.0.0 C API at an actual H2 default-grid point and its
+# two adjacent FP64 occupied densities. The minority potential is sensitive to
+# 1-zeta cancellation: endpoint comparisons must hold these inputs identical.
+# Preserve the original fixtures and their 5e-12 / 1e-12 gates above.
+ROUNDING_REFERENCE = (
+    (
+        (
+            0.04603137593786226,
+            0.0,
+            0.0023299235150585004,
+            0.0,
+            0.0,
+            0.029349040301134496,
+            0.0,
+        ),
+        (
+            -0.016665153367926778,
+            -0.5205168262667701,
+            60.04172865208638,
+            -0.20806057887363344,
+            0.30181603355670217,
+            0.15090801677835108,
+            0.06585768202669184,
+            -0.0318473576993236,
+        ),
+    ),
+    (
+        (
+            0.04603137593786225,
+            0.0,
+            0.0023299235150585004,
+            0.0,
+            0.0,
+            0.029349040301134496,
+            0.0,
+        ),
+        (
+            -0.01666515336792677,
+            -0.5205168262667699,
+            60.0417286520867,
+            -0.20806057887363363,
+            0.301816033556702,
+            0.150908016778351,
+            0.0658576820266919,
+            -0.0318473576993235,
+        ),
+    ),
+    (
+        (
+            0.046031375937862266,
+            0.0,
+            0.0023299235150585004,
+            0.0,
+            0.0,
+            0.029349040301134496,
+            0.0,
+        ),
+        (
+            -0.016665153367927083,
+            -0.5205168262667764,
+            60.14451563784888,
+            -0.20806057887360477,
+            0.3018160335567596,
+            0.1509080167783798,
+            0.06585768202667963,
+            -0.031577007658775844,
+        ),
+    ),
+)
+REFERENCE += ROUNDING_REFERENCE
+
+
 def _generate(script: str, output: Path) -> None:
     """Exercise the actual AOT entry point without changing pytest imports."""
     subprocess.run(
