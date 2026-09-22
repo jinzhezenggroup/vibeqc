@@ -58,7 +58,16 @@ def select_fixture(
         d_shell: bool = False,
     ) -> typing.Any:
         assert not d_shell
-        atoms, basis, mol = heavy_fixture(symbol, spin=spin)
+        atoms, basis, mol = heavy_fixture(symbol, spin=0)
+        if spin:
+            # The cationic doublet has a symmetry-degenerate pi hole and
+            # oscillates between equivalent integer occupations in both
+            # VibeQC and an independent PySCF solve. The anionic doublet has
+            # a nondegenerate sigma* frontier while retaining the same pinned
+            # two-center LANL2DZ/STO-3G ECP fixture.
+            mol.charge = -1
+            mol.spin = 1
+            mol.build(False, False)
         assert all(
             shell.angular_momentum <= 1
             for element in basis.elements
@@ -68,6 +77,8 @@ def select_fixture(
         basis = replace(basis, representation=representation)
         record_property("parameter_sha256", PARAMETER_SHA256[symbol])
         record_property("effective_charges", [VALENCE_CHARGES[symbol], 1])
+        record_property("qualification_charge", mol.charge)
+        record_property("qualification_multiplicity", mol.spin + 1)
         record_property("nao", mol.nao_nr())
         return atoms, basis, mol
 
