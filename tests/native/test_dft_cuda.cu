@@ -15,7 +15,7 @@
 
 namespace {
 using namespace vibeqc::dft;
-void require(bool condition, const char* message) {
+void require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 void check(cudaError_t status) {
@@ -118,7 +118,12 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
              const std::vector<double>& d) {
   fixture.submit(d);
   const auto result = fixture.scalars();
-  require(result.error == 0, "valid density failed device XC evaluation");
+  require(result.error == 0,
+          "valid density failed device XC evaluation: n=" + std::to_string(basis.nao) +
+              " functional=" + std::to_string(fixture.layout.functional) +
+              " spins=" + std::to_string(fixture.layout.spins) +
+              " tile=" + std::to_string(fixture.layout.tile_points) +
+              " error=" + std::to_string(result.error));
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
@@ -154,8 +159,8 @@ __global__ void halve_density(double* d, std::size_t n) {
 }
 
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
-                           std::uint32_t functional) {
-  Fixture good(basis, grid, functional, true, 7), bad(basis, grid, functional, true, 11);
+                           std::uint32_t functional, std::size_t tile = 7) {
+  Fixture good(basis, grid, functional, true, tile), bad(basis, grid, functional, true, tile + 4);
   auto d = density(basis.nao, 2);
   good.submit(d);
   auto invalid = d;
@@ -216,8 +221,8 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   bad.canary();
 }
 
-void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
-  Fixture captured(basis, grid, 1U, false, 9);
+void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t tile = 9) {
+  Fixture captured(basis, grid, 1U, false, tile);
   const auto d = density(basis.nao, 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
@@ -242,12 +247,40 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
   check(cudaGraphExecDestroy(executable));
   check(cudaGraphDestroy(graph));
 }
+void matrix_schedule_cases() {
+  // Cross the generated matrix-tile boundary with two distinct f shells.
+  // Cartesian/spherical shapes and partial point tiles exercise both matrix
+  // tails and the final scalar fallback, using the independent CPU integrator.
+  for (bool spherical : {false, true}) {
+    auto large = system(3, spherical);
+    large.shells.push_back({0, 3, {{0.51, 1.0}}});
+    large.shells.push_back({0, 0, {{0.22, 1.0}}});
+    const AoBasis large_basis(large);
+    require(large_basis.nao >= 16 && large_basis.nao % 16 != 0,
+            "matrix schedule fixture must have a partial AO block");
+    const MolecularGrid large_grid(large, {1, 3, 3, 4, 3, 1e-12});
+    for (std::uint32_t functional : {0U, 1U, 2U})
+      for (bool uks : {false, true})
+        for (std::size_t tile : {17U, 31U, 64U}) {
+          Fixture test(large_basis, large_grid, functional, uks, tile);
+          compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+        }
+    graph_capture(large_basis, large_grid, 33);
+    for (std::uint32_t functional : {0U, 1U, 2U})
+      variational_and_state(large_basis, large_grid, functional, 17);
+  }
+}
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    matrix_schedule_cases();
+    if (argc == 2 && std::string(argv[1]) == "--matrix-schedule") {
+      std::cout << "CUDA XC matrix-tail, spin, functional, variational and capture gates passed\n";
+      return 0;
+    }
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});

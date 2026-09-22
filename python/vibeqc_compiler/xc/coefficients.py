@@ -14,6 +14,7 @@ import numpy as np
 
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.arrays import immutable
+from vibeqc_compiler.dft.xc_bilinear import ao_pair_bilinear
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph
 
 
@@ -240,18 +241,8 @@ def jet_pullback_program(family: typing.Any) -> typing.Any:
     """
     if family not in ("lda", "gga", "mgga"):
         raise ValueError("AO pullbacks support LDA/GGA/meta-GGA")
-    graph = Graph()
-    jets = 1 if family == "lda" else 4
-    coefficient_count = jets + (1 if family == "mgga" else 0)
-    x = [graph.variable(f"x{j}") for j in range(jets)]
-    y = [graph.variable(f"y{j}") for j in range(jets)]
-    c = [graph.variable(f"c{j}") for j in range(coefficient_count)]
-    bilinear = c[0] * x[0] * y[0]
-    for j in range(1, jets):
-        bilinear += c[j] * (x[j] * y[0] + x[0] * y[j])
-    if family == "mgga":
-        for j in range(1, 4):
-            bilinear += c[4] * x[j] * y[j]
+    graph, x, y, _coefficients, bilinear = ao_pair_bilinear(family)
+    jets = len(x)
     roots = [
         graph.differentiate(bilinear, x[j]) + graph.differentiate(bilinear, y[j])
         for j in range(jets)

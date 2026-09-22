@@ -35,6 +35,8 @@ RUNTIME_ADAPTERS = {
 # AO lowering reuses exactly these neutral facilities, as XC already does;
 # it must not acquire integral recurrence, SCF, or schedule dependencies.
 SCALAR_CLIENTS = {
+    "dft.xc_bilinear": {"vibeqc_compiler.integral.expr"},
+    "dft.xc_contraction_cuda": {"vibeqc_compiler.integral.cuda"},
     "dft.ao_cuda": {
         "vibeqc_compiler.integral.expr",
         "vibeqc_compiler.integral.cuda",

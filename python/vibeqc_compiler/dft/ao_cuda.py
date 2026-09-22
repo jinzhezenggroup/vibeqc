@@ -17,6 +17,7 @@ from vibeqc_compiler.integral.expr import AlgebraForm, Graph
 
 from .ao import jet_indices
 from .feature_policy import emit_feature_policy
+from .xc_contraction_cuda import emit_native_xc_matrix_schedule
 
 _GRID_SCIENTIFIC_KERNELS = r"""#include "../tensor/cuda_runtime.cuh"
 #include "xc_point.hpp"
@@ -431,7 +432,7 @@ __global__ void accumulate_totals(const double* point_totals, I count, double* t
 def emit_native_xc_contraction_kernels() -> str:
     """Emit resident XC features, point algebra, potential and scalar reductions."""
 
-    return _NATIVE_XC_CONTRACTION_KERNELS
+    return _NATIVE_XC_CONTRACTION_KERNELS + emit_native_xc_matrix_schedule()
 
 
 def emit_grid_scientific_kernels() -> str:
