@@ -286,7 +286,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     batch = plan.batch_schedule
     lowering = tensor_lowering_diagnostics(plan)
     lowering_providers = (
-        ",".join(typing.cast(list[str], lowering["providers"])) or "none"
+        ",".join(typing.cast("list[str]", lowering["providers"])) or "none"
     )
     contract = ScheduleContract(
         consumer="tensor.cuda",
@@ -325,7 +325,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         provenance=(
             ("batch_schedule_identity", canonical_hash(batch.to_payload())),
             ("layout_identity", plan.layout_identity),
-            ("lowering_identity", typing.cast(str, lowering["identity"])),
+            ("lowering_identity", typing.cast("str", lowering["identity"])),
             ("lowering_providers", lowering_providers),
             ("plan_identity", plan.identity),
         ),
