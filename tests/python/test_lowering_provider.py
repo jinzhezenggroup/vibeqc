@@ -129,7 +129,9 @@ def test_tensor_cublas_is_explicit_composite_lowering(
 def test_schedule_contract_carries_resolved_lowering_identity() -> None:
     plan = plan_cuda(_gemm_program(), TARGET)
     lowering = tensor_lowering_diagnostics(plan)
-    contract = ScheduleContract.from_payload(estimate_schedule(plan)["schedule_contract"])
+    contract = ScheduleContract.from_payload(
+        estimate_schedule(plan)["schedule_contract"]
+    )
     provenance = dict(contract.provenance)
 
     assert provenance["lowering_identity"] == lowering["identity"]
