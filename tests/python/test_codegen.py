@@ -4904,6 +4904,44 @@ def test_autotune_expands_shell_class_list_files_for_batch_runs(
     )
 
 
+@pytest.mark.parametrize("name", ("ssss", "psss", "psps", "ppss"))
+def test_fock_autotune_includes_shared_production_baseline(name: str) -> None:
+    """Treat a shared primary schedule as the shipped Fock baseline."""
+
+    spec = FUSED_SHELL_SPEC_BY_NAME[name]
+    expected = dict(_production_fock_schedule_index("sm_120"))[name]
+    trials = supported_schedule_trials(
+        spec, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    assert sum(trial.schedule == expected for trial in trials) == 1
+
+
+def test_production_subgroup_fock_baseline_is_not_experimental() -> None:
+    """The shipped subgroup mapping is evidence, not a new proposal."""
+
+    from vibeqc_compiler.integral.tuning.driver import _experimental_subgroup_blocked
+
+    expected = dict(_production_fock_schedule_index("sm_120"))["ppps"]
+    trials = supported_schedule_trials(
+        FUSED_SHELL_SPEC_BY_NAME["ppps"],
+        KernelConsumer.FOCK,
+        target=TEST_CUDA_TARGET,
+    )
+    baseline = next(trial for trial in trials if trial.schedule == expected)
+    proposal = next(
+        trial
+        for trial in trials
+        if trial.schedule.kind == ScheduleKind.SUBGROUP_TASKS
+        and trial.schedule != expected
+    )
+    assert not _experimental_subgroup_blocked(
+        baseline, is_production_baseline=True, allow_experimental=False
+    )
+    assert _experimental_subgroup_blocked(
+        proposal, is_production_baseline=False, allow_experimental=False
+    )
+
+
 @pytest.mark.parametrize(
     "name",
     ("ppps", "pppp", "dpps", "dppp", "dpdp", "ddds", "dddp"),
@@ -5384,6 +5422,29 @@ def test_packed_autotune_searches_real_algebra_placement_variants() -> None:
     )
 
 
+def test_autotune_candidate_limit_samples_distinct_execution_geometries() -> None:
+    """Quick tuning must not spend its budget on one enumeration prefix."""
+
+    from vibeqc_compiler.integral.tuning.driver import (
+        _diverse_bounded_trials,
+        _schedule_geometry_key,
+    )
+
+    trials = supported_schedule_trials(
+        PSPS_SPEC, KernelConsumer.FOCK, target=TEST_CUDA_TARGET
+    )
+    chosen = _diverse_bounded_trials(trials, 8)
+
+    assert len(chosen) == 8
+    assert len({_schedule_geometry_key(trial) for trial in chosen}) == len(chosen)
+    assert {trial.schedule.kind for trial in chosen} >= {
+        ScheduleKind.PACKED_TASKS,
+        ScheduleKind.SHELL_TASK,
+        ScheduleKind.SUBGROUP_TASKS,
+        ScheduleKind.COMPONENT_LANES,
+    }
+
+
 def test_autotune_candidate_artifact_includes_static_model(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -5473,6 +5534,8 @@ def test_autotune_candidate_artifact_includes_static_model(
     assert report["artifacts"]["schedule_objects"] == {trial.key: None}
     assert report["search"] == {
         "schedule_kinds": [trial.schedule.kind.value],
+        "candidate_limit_per_class": None,
+        "candidate_limit_strategy": None,
         "trial_count": 1,
     }
     assert report["manifest"]["write_skipped"] is True

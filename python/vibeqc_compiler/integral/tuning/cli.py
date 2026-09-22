@@ -123,7 +123,7 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-candidates",
         type=int,
-        help="bound schedule candidates per class (plus a required baseline)",
+        help="bound diverse schedule candidates per class (plus a required baseline)",
     )
     return parser
 
