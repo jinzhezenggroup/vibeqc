@@ -140,6 +140,11 @@ def test_df_batch_warm_replay_rebinds_auxiliary_centers(device: str) -> None:
         with pytest.raises(NotImplementedError):
             NativeKsSnapshot(batch, 0)
         warm = batch.execute(strict=True)
+        if device == "cuda":
+            # Ordinary SCF and same-geometry replay retain device matrices.
+            assert all(
+                item.matrix_d2h_bytes == 0 for item in batch.ks_transport_diagnostics
+            )
         updated = batch.execute(
             coordinates=[None, [xyz for _, xyz in moved]], strict=True
         )
@@ -155,7 +160,10 @@ def test_df_batch_warm_replay_rebinds_auxiliary_centers(device: str) -> None:
                 for item in metrics
             )
             transport = batch.ks_transport_diagnostics
-            assert all(item.matrix_d2h_bytes == 0 for item in transport)
+            # Rebuilding only the moved item's owner exports its last-good RKS
+            # density once; WATER/STO-3G has seven orbital basis functions.
+            density_bytes = 7 * 7 * np.dtype(np.float64).itemsize
+            assert [item.matrix_d2h_bytes for item in transport] == [0, density_bytes]
 
 
 def test_df_rejects_unqualified_force_precision_and_resource_consumers(
