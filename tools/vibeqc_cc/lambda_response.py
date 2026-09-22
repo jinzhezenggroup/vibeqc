@@ -248,6 +248,12 @@ class BoundCCSDResponse:
         return PARAMETERS
 
     def _prepare(self, parameter: typing.Any) -> typing.Any:
+        if self.solver_region is not None:
+            rule = self.solver_region.derivative_rule("implicit_vjp")
+            if rule.identity != self.derivative_plan_identity:
+                raise ResponseCompatibilityError(
+                    "CC solver-region derivative registration is stale"
+                )
         shared = build_parameter_vjp(self.bound.programs.primal, parameter)
         independent = build_parameter_vjp(self.bound.independent.primal, parameter)
         spec = next(
