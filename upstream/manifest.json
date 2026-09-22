@@ -128,13 +128,14 @@
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
         "python/vibeqc_compiler/xc/expressions.py": "ddab1083272b76046347360b00afd8c81756e738be96bfa9423f34671a636c21",
+        "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
         "python/vibeqc_compiler/xc/p86_pz_maple.py": "4e5cba59e03750fbd172f738f6233c5995e60a3381d0fd4ff798fae7bf11e9d4",
         "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
         "python/vibeqc_compiler/xc/pw91_maple.py": "1171d5171401090ac13352525d3df49ffe48863cc149851d36d34af4e7fe983a",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "636ff472dd5615f66af5ca882e0e0bd44c333b6910ca21c7ce5d4ec789a701ad",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "5d67869c600fe9639f615f8ef9df7a8d2772826c18a79a12486ccb7bded26f86",
         "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
         "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
-        "python/vibeqc_compiler/xc/spec.py": "1e37b33ea6a6cbf6b4150c7ba3823ae86c778d6bcf3a7a6ead580594c0c018dd",
+        "python/vibeqc_compiler/xc/spec.py": "5dd1388d38fded89e69344c2b6a5e060206b5e96b2f9d33e57cec11993ffe41e",
         "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "ded9f1a20de03aa5b1dee8b957c1f4e9c64065e6e8023145cbf8d09023fc2339"
       },
