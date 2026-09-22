@@ -30,16 +30,8 @@ LEGACY_MODULE_FILES = {
 LEGACY_CONSUMER_CEILING = {
     (
         "python/vibeqc_compiler/xc/expression_dispatch.py",
-        "vibeqc_compiler.xc.expressions",
-    ),
-    (
-        "python/vibeqc_compiler/xc/expression_dispatch.py",
         "vibeqc_compiler.xc.rsh_expressions",
     ),
-    ("python/vibeqc_compiler/xc/geometry_cuda.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_libxc_maple_import.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_xc_expressions.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_libxc_maple_meta_gga.py", "vibeqc_compiler.xc.expressions"),
     ("tests/python/test_libxc_maple_pw91.py", "vibeqc_compiler.xc.rsh_expressions"),
     ("tests/python/test_libxc_maple_lyp.py", "vibeqc_compiler.xc.rsh_expressions"),
     # Qualification oracles already present in the integration base (6b965bd7).
