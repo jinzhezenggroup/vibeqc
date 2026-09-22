@@ -695,7 +695,10 @@ def _validate_gfn1_parameter_set(parameter_set: XtbParameterSet) -> None:
         raise UnsupportedXtbMethod(
             "GFN1-xTB parameter revision must match the canonical normalized JSON"
         )
-    if parameter_set.source != "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json":
+    if (
+        parameter_set.source
+        != "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+    ):
         raise UnsupportedXtbMethod(
             "GFN1-xTB parameter source must use the canonical repository snapshot"
         )
