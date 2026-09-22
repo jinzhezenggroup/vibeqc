@@ -88,6 +88,11 @@ class CubReductionProvider:
         self, request: LoweringRequest, target: TargetCapabilities
     ) -> tuple[LoweringCandidate, ...]:
         reason = _cooperative_reduction_rejection(request, target)
+        if (
+            reason is None
+            and dict(target.features).get("cub-block-reduce-header") is not True
+        ):
+            reason = "CUB requires explicit cub-block-reduce-header capability"
         return (
             LoweringCandidate(
                 request=request,
@@ -225,9 +230,17 @@ def resolved_lowering_candidates(plan: TensorPlan) -> tuple[LoweringCandidate, .
 
 
 def reduction_provider_candidates(
-    plan: TensorPlan, index: int
+    plan: TensorPlan,
+    index: int,
+    *,
+    target_capabilities: TargetCapabilities | None = None,
 ) -> tuple[LoweringCandidate, ...]:
-    """Advertise generated and CUB lowerings for one cooperative reduction."""
+    """Advertise reductions using explicit, plan-bound toolkit capability facts.
+
+    GPU architecture alone does not establish that CUB headers are installed.
+    Without caller-supplied header evidence the CUB offer is unsupported; the
+    generated offer remains available. This routine does not probe a toolkit.
+    """
 
     if not isinstance(plan, TensorPlan):
         raise TypeError("reduction provider candidates require a TensorPlan")
@@ -254,6 +267,12 @@ def reduction_provider_candidates(
             (feature, True) for feature in plan.target.required_cuda_features
         ),
     )
+    if target_capabilities is not None:
+        if not isinstance(target_capabilities, TargetCapabilities):
+            raise TypeError("reduction capabilities require TargetCapabilities")
+        if target_capabilities.target != plan.target.target_info:
+            raise ValueError("reduction capabilities do not match the planned target")
+        target = target_capabilities
     return collect_lowering_candidates(
         request,
         target,

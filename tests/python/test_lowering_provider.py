@@ -25,6 +25,7 @@ from vibeqc_compiler.tensor import (
 )
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.cuda_providers import (
+    CubReductionProvider,
     reduction_provider_candidates,
     tensor_lowering_diagnostics,
 )
@@ -116,7 +117,9 @@ def test_lowering_contract_is_canonical_and_keeps_negative_evidence() -> None:
     assert report["providers"] == ["nvidia.cublaslt"]
     assert report["candidates"][0]["reason"] == rejected.reason
 
-    with pytest.raises(ValueError, match="rejection reason"):
+    with pytest.raises(
+        ValueError, match="unsupported lowering reason must be a nonempty string"
+    ):
         LoweringCandidate(
             request=first,
             implementation="invalid",
@@ -245,7 +248,20 @@ def test_generated_and_cub_reduction_providers_share_one_request() -> None:
     index = next(
         i for i, step in enumerate(generated.steps) if step.node.op == "reduce"
     )
-    candidates = reduction_provider_candidates(generated, index)
+    unknown = reduction_provider_candidates(generated, index)
+    assert [candidate.status for candidate in unknown] == ["ready", "unsupported"]
+    capabilities = TargetCapabilities(
+        TARGET.target_info, features=(("cub-block-reduce-header", True),)
+    )
+    candidates = reduction_provider_candidates(
+        generated, index, target_capabilities=capabilities
+    )
+    foreign = TargetCapabilities(
+        cuda_target_info("sm_120").target_info,
+        features=(("cub-block-reduce-header", True),),
+    )
+    with pytest.raises(ValueError, match="planned target"):
+        reduction_provider_candidates(generated, index, target_capabilities=foreign)
 
     assert [candidate.status for candidate in candidates] == ["ready", "ready"]
     assert candidates[0].request == candidates[1].request
@@ -286,3 +302,36 @@ def test_schedule_contract_carries_resolved_lowering_identity() -> None:
 
     assert provenance["lowering_identity"] == lowering["identity"]
     assert provenance["lowering_providers"] == "nvidia.cublas,vibeqc.generated_cuda"
+
+
+@pytest.mark.parametrize("evidence", [None, False, 0, 1, "true"])
+def test_cub_provider_requires_explicit_typed_header_evidence(evidence: object) -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(17, 129),
+    )
+    features = () if evidence is None else (("cub-block-reduce-header", evidence),)
+    target = TargetCapabilities(TARGET.target_info, features=features)
+    offered = CubReductionProvider().candidates(request, target)
+    assert len(offered) == 1
+    assert offered[0].status == "unsupported"
+    assert "cub-block-reduce-header" in offered[0].reason
+
+
+def test_cub_provider_accepts_explicit_header_evidence() -> None:
+    request = LoweringRequest(
+        consumer="tensor.cuda",
+        operation="reduce",
+        backend="cuda",
+        dtype="float64",
+        accumulation_dtype="float64",
+        shape=(17, 129),
+    )
+    target = TargetCapabilities(
+        TARGET.target_info, features=(("cub-block-reduce-header", True),)
+    )
+    assert CubReductionProvider().candidates(request, target)[0].status == "ready"
