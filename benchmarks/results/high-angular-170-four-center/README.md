@@ -6,6 +6,23 @@ initial g-shell snapshot in `../high-angular-170/`.
 
 Source base: `9d6d44236e4a09205afbdd1cbcc6f43b8014084d`
 Measured implementation commit: `1c551ddb46bdf377fcae573eb5e9ca746af0d081`
+Final synchronized PR candidate: `af5313627c178ab4a1cd791093dff8dc6e5f6c92`.
+
+The final candidate was not re-executed on a GPU. A restart of the dedicated
+CUDA-12.4 4090 notebook and fresh CUDA-13.2 4090/H200 notebook requests were all
+left unschedulable by the platform under the available node-memory/priority
+constraints, and all pending requests were stopped. The existing RTX4090
+measurements below remain directly applicable to the scientific change because
+the three GPU-relevant source/test files are byte-identical between measured
+commit `1c551ddb` and final candidate `af531362`:
+
+- `bounded_component.py`: `9aa34bc4689a0391376c49e5f45102c12fb0d495a9e6fadd6301d57fee14cb48`
+- `shell_class.py`: `2d32caa12b457af45c44a45c9eb1fa85ad640a3529ff6cb5398a6794af3e4239`
+- `test_high_angular.py`: `63a949350c23b481f7de05dbfb63cb897ad66b13a2a7dcc5f9070967ea28248a`
+
+`git diff --exit-code 1c551ddb..af531362 -- <those three paths>` passed. This
+source-equivalence statement is intentionally not labeled as a final-head GPU
+rerun.
 
 ## CPU/reference gates
 

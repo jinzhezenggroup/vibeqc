@@ -70,6 +70,13 @@ closed before code emission.
   existing S/T/V/DF cases. This is resource and numerical qualification for the
   opt-in scalar route, not a complete CUDA molecular endpoint or production
   promotion.
+  The final synchronized PR candidate `af5313627c178ab4a1cd791093dff8dc6e5f6c92`
+  could not be re-executed on a GPU because current qz 4090/H200 notebook
+  requests were unschedulable under the available node-memory/priority
+  constraints. The measured `1c551ddb` implementation and final candidate are
+  byte-identical in the bounded emitter, four-center component builder and
+  high-angular test source; this is retained as source-equivalence evidence,
+  not reported as a final-head rerun.
 * The matching CPU qualification rebuilt the native library from the same
   source and ran the high-angular suite with molecular gates enabled: 38 passed
   and 6 CUDA-only cases skipped. Loaded orbital-g HeH+ RHF remained within

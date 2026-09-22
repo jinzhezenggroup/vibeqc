@@ -57,6 +57,14 @@ to fail closed for g.
 
 Measured implementation commit: `1c551ddb46bdf377fcae573eb5e9ca746af0d081`, based on
 `9d6d44236e4a09205afbdd1cbcc6f43b8014084d`.
+The final synchronized PR candidate is `af5313627c178ab4a1cd791093dff8dc6e5f6c92`.
+A final-head GPU rerun was requested but could not be scheduled: the dedicated
+4090 restart and fresh 4090/H200 notebook requests all remained pending under
+current qz node-memory/priority constraints and were stopped. The measured
+implementation and final candidate are byte-identical in
+`bounded_component.py`, `shell_class.py`, and `test_high_angular.py`; their
+SHA-256 values are retained in the benchmark snapshot. This establishes source
+equivalence, not a claimed rerun.
 
 - Independent CPU g-s-s-s primitive value and all 12 center derivatives matched
   PySCF/libcint 2.14.0 at two changed geometries; translation and arbitrary
