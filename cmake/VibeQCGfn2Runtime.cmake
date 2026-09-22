@@ -100,7 +100,9 @@ function(vibeqc_add_gfn2_runtime target)
     )
     add_library(vibeqc_gfn2_cuda STATIC ${_gfn2_cuda_sources})
     # Both CPU and CUDA consume the one compiler-owned pair artifact.
-    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_pair_cpu_codegen)
+    add_dependencies(vibeqc_gfn2_cuda
+      vibeqc_gfn2_pair_cpu_codegen
+      vibeqc_gfn2_sdq_cuda_codegen)
     target_include_directories(vibeqc_gfn2_cuda PRIVATE
       "${CMAKE_CURRENT_BINARY_DIR}/generated"
       ${_gfn2_root}
