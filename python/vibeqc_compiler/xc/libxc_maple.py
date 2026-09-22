@@ -34,7 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v10"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v11"
 # Whitespace-normalized helper definitions from pinned Libxc 7.0.0 attenuation.mpl.
 _ERF_SMOOTHING_HELPERS = (
     "attenuation_erf0",
