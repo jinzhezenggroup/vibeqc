@@ -564,6 +564,7 @@ def solve(
         "logical_required_bytes": prepared.logical_required_bytes,
         "solver_region_identity": prepared.solver_region.identity,
         "solver_region_max_steps": prepared.solver_region.max_steps,
+        "solver_region_payload": prepared.solver_region.to_payload(),
         "reference_energy": snapshot.reference_energy,
         "solver_source_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
     }
