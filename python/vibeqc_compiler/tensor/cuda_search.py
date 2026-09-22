@@ -331,7 +331,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
             workspace_bytes=plan.allocation_bytes,
             peak_live_values=max(live_values, default=0),
             registers_per_thread=registers,
-            shared_bytes=0,
+            shared_bytes=shared_bytes,
             resident_workgroups=resident,
             source_bytes=source_bytes,
         ),
