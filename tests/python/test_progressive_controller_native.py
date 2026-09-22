@@ -1,0 +1,110 @@
+"""Native HF endpoint coverage for the typed #192 deterministic controller."""
+
+from vibeqc import Calculator
+from vibeqc.accuracy import ObservableTarget, TargetAccuracy
+from vibeqc.progressive_controller import (
+    ProgressiveBudget,
+    TargetProblem,
+    make_deterministic_hf_plan,
+    run_progressive_hf,
+)
+
+ATOMS = (("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.0, 0.7)))
+ACCURACY = TargetAccuracy(
+    (
+        ObservableTarget("energy", "absolute", "Eh", absolute=1.0e-8),
+        ObservableTarget("forces", "max_abs", "Eh/bohr", absolute=1.0e-7),
+    )
+)
+
+
+def calculators(*, source_iterations: int = 20) -> tuple[Calculator, Calculator]:
+    source = Calculator(
+        basis="sto-3g",
+        max_iterations=source_iterations,
+        energy_tolerance=1.0e-7,
+        density_tolerance=1.0e-6,
+    )
+    target = Calculator(
+        basis="def2-svp",
+        max_iterations=100,
+        energy_tolerance=1.0e-12,
+        density_tolerance=1.0e-10,
+        screening_tolerance=1.0e-14,
+        target_accuracy=ACCURACY,
+    )
+    return source, target
+
+
+def test_typed_plan_reaches_exact_target_without_fabricating_accuracy() -> None:
+    source, target = calculators()
+    problem = TargetProblem.from_calculator(target, ATOMS)
+    plan = make_deterministic_hf_plan(
+        problem,
+        source,
+        target,
+        ATOMS,
+        budget=ProgressiveBudget(
+            maximum_source_iterations=20,
+            maximum_total_iterations=120,
+            maximum_estimated_cost_units=5.0,
+        ),
+        source_estimated_cost_units=1.0,
+        target_estimated_cost_units=4.0,
+    )
+    run = run_progressive_hf(plan, source, target, ATOMS)
+    assert run.target.converged and run.target.restart_origin == "basis_projection"
+    assert run.verification.target_established
+    assert run.verification.status == "unverified"
+    assert run.verification.accuracy_status == "unverified"
+    assert run.verification.actual_model_identity == problem.model.identity
+    assert run.verification.actual_provider_identity == problem.provider_identity
+    assert run.verification.physical_residual_rms is not None
+    assert (
+        run.verification.physical_residual_rms
+        <= run.verification.physical_residual_tolerance
+    )
+    assert run.diagnostics["projection"]["status"] == "accepted"
+    assert run.target_density is not None and not run.target_density.flags.writeable
+
+
+def test_failed_source_falls_back_to_cold_exact_target() -> None:
+    source, target = calculators(source_iterations=1)
+    problem = TargetProblem.from_calculator(target, ATOMS)
+    plan = make_deterministic_hf_plan(
+        problem,
+        source,
+        target,
+        ATOMS,
+        budget=ProgressiveBudget(
+            maximum_source_iterations=1,
+            maximum_total_iterations=101,
+        ),
+    )
+    run = run_progressive_hf(plan, source, target, ATOMS)
+    assert not run.source.succeeded
+    assert run.executions[0].transfer_status == "skipped_failed_source"
+    assert run.target.converged and run.target.restart_origin == "cold"
+    assert run.verification.target_established
+
+
+def test_projection_memory_budget_rejection_falls_back_to_target() -> None:
+    source, target = calculators()
+    problem = TargetProblem.from_calculator(target, ATOMS)
+    plan = make_deterministic_hf_plan(
+        problem,
+        source,
+        target,
+        ATOMS,
+        budget=ProgressiveBudget(
+            maximum_source_iterations=20,
+            maximum_total_iterations=120,
+            maximum_host_bytes=1,
+        ),
+    )
+    run = run_progressive_hf(plan, source, target, ATOMS)
+    assert run.source.succeeded
+    assert run.executions[0].transfer_status == "rejected"
+    assert "maximum_host_bytes" in run.diagnostics["projection"]["reason"]
+    assert run.target.converged and run.target.restart_origin == "cold"
+    assert run.verification.target_established
