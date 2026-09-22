@@ -336,13 +336,24 @@ def test_pbe_packed_donation_matches_independent_complete_tile(
     assert owner is not None
     owner_pointer = owner.ctypes.data
 
+    # The storage change must be bitwise neutral within the native path.
+    # Evaluate the ordinary owner before donation overwrites the packed rows.
+    native_reference = program.potential_from_rows(
+        jets,
+        block.features(),
+        weights,
+        program.scalar_values_packed(block.scalar, donate_coefficients=False),
+    )
     actual = program.potential_from_rows(jets, block.features(), weights, rows)
 
     assert owner.ctypes.data == owner_pointer
     assert not owner.flags.writeable
-    np.testing.assert_array_equal(actual["energy"], reference["energy"])
-    np.testing.assert_array_equal(actual["electrons"], reference["electrons"])
-    np.testing.assert_array_equal(actual["potential"], reference["potential"])
+    for key in ("energy", "electrons", "potential"):
+        np.testing.assert_array_equal(actual[key], native_reference[key])
+        # The independent NumPy and compiled scalar evaluators can differ by
+        # a few rounding bits across CPUs/libm versions. This strict FP64 gate
+        # is separate from the exact storage-only equivalence above.
+        np.testing.assert_allclose(actual[key], reference[key], rtol=1e-14, atol=1e-16)
 
 
 def test_feature_block_matches_public_features_and_native_scalar_consumes_owner(
