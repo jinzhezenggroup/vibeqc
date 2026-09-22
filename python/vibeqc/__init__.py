@@ -1,5 +1,16 @@
 """Thin Python interface to the versioned native VIBEQC ABI."""
 
+from vibeqc_compiler.common.resources import (
+    ResourceAllocationError,
+    ResourceBudget,
+    ResourceCandidate,
+    ResourceEstimate,
+    ResourceIdentity,
+    ResourcePlan,
+    ResourceRequest,
+    ResourceSession,
+    plan_resources,
+)
 from vibeqc_compiler.dft.grid import GridPolicy, GridProfile, GridSpec
 
 from ._cuda_runtime import install_native_loader as _install_native_loader
@@ -95,6 +106,23 @@ from .mean_field import (
 )
 from .overlap import cross_overlap
 from .progressive import ProgressiveResult, projected_singlepoint
+from .progressive_controller import (
+    ArithmeticPolicy,
+    DeterministicHFPlan,
+    FinalVerification,
+    HFConvergence,
+    HFPhysicalResidualAudit,
+    ProgressiveBudget,
+    ProgressiveHFResult,
+    StageExecution,
+    StagePlan,
+    StageRole,
+    TargetProblem,
+    TransferOperation,
+    finalize_hf_verification,
+    make_deterministic_hf_plan,
+    run_progressive_hf,
+)
 from .projection import (
     OccupiedProjection,
     ProjectionDiagnostics,
@@ -104,17 +132,6 @@ from .projection import (
     project_occupied,
 )
 from .r2scan3c import load_r2scan3c_basis
-from .resources import (
-    ResourceAllocationError,
-    ResourceBudget,
-    ResourceCandidate,
-    ResourceEstimate,
-    ResourceIdentity,
-    ResourcePlan,
-    ResourceRequest,
-    ResourceSession,
-    plan_resources,
-)
 from .resources_hf import estimate_hf_resources
 from .resources_ks import estimate_ks_resources
 
@@ -125,6 +142,7 @@ __all__ = [
     "AccuracyAssessment",
     "AdaptiveNumericsPolicy",
     "AdaptiveNumericsState",
+    "ArithmeticPolicy",
     "Atom",
     "BasisProvenance",
     "BasisSet",
@@ -141,12 +159,14 @@ __all__ = [
     "D4CorrectionResult",
     "D4RuntimeDiagnostic",
     "DensityFittingMetricDiagnostic",
+    "DeterministicHFPlan",
     "DiscreteTransition",
     "EigensolverDiagnostic",
     "ElectronState",
     "ElementBasis",
     "ErrorEvidence",
     "EvidenceKind",
+    "FinalVerification",
     "FixedDensityExchangeEvaluation",
     "FixedDensityMeanField",
     "FockBuildSpec",
@@ -160,6 +180,8 @@ __all__ = [
     "GridPolicy",
     "GridProfile",
     "GridSpec",
+    "HFConvergence",
+    "HFPhysicalResidualAudit",
     "InactiveEigensolverProfileEntry",
     "KsDiagnostic",
     "KsEnergyComponents",
@@ -182,6 +204,8 @@ __all__ = [
     "PppsQueueProfile",
     "PreparedBatch",
     "Primitive",
+    "ProgressiveBudget",
+    "ProgressiveHFResult",
     "ProgressiveResult",
     "ProjectionDiagnostics",
     "ProjectionPolicy",
@@ -208,8 +232,13 @@ __all__ = [
     "ScfForceErrorEstimator",
     "Shell",
     "ShellClassProfileEntry",
+    "StageExecution",
+    "StagePlan",
+    "StageRole",
     "TargetAccuracy",
     "TargetErrorBudget",
+    "TargetProblem",
+    "TransferOperation",
     "assemble_fixed_density_exchange",
     "basis_capability",
     "compare_observables",
@@ -222,13 +251,16 @@ __all__ = [
     "evaluate_r2scan3c_correction",
     "evaluate_r2scan3c_gcp",
     "exchange_operator_key",
+    "finalize_hf_verification",
     "import_bse",
     "load_basis",
     "load_r2scan3c_basis",
+    "make_deterministic_hf_plan",
     "method_capabilities",
     "plan_resources",
     "project_density",
     "project_occupied",
     "projected_singlepoint",
+    "run_progressive_hf",
 ]
 __version__ = "0.1.0"

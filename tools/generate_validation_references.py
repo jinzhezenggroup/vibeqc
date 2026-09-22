@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
+from vibeqc_compiler.common.evidence import block_error, canonical_hash, file_hash
 
 from tools.vibeqc_validation.fixtures import (
     REFERENCE_VERSION,
@@ -25,7 +26,6 @@ from tools.vibeqc_validation.fixtures import (
     molecular_inputs,
     small_inputs,
 )
-from tools.vibeqc_validation.schema import block_error, canonical_hash, file_hash
 
 
 def pyscf_molecule(

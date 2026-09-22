@@ -74,6 +74,14 @@ from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
 from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
+from .state_transport import (
+    OrbitalFrameDiagnostics,
+    StateIdentity,
+    StateTransport,
+    StateTransportPolicy,
+    StateTransportRequest,
+    TransportCompatibility,
+)
 from .triples import (
     build_triples_program,
     triples_energy,
@@ -151,6 +159,7 @@ __all__ = [
     "DFThreeIndexPullback",
     "FactorizedDFIntegralState",
     "LambdaOptions",
+    "OrbitalFrameDiagnostics",
     "PreparedCCSD",
     "PreparedCUDALambda",
     "PreparedDFCCSD",
@@ -163,7 +172,12 @@ __all__ = [
     "RCCSDTForceBatchItemResult",
     "RCCSDTResult",
     "SolverOptions",
+    "StateIdentity",
+    "StateTransport",
+    "StateTransportPolicy",
+    "StateTransportRequest",
     "TileSpec",
+    "TransportCompatibility",
     "TriplesTileConfig",
     "TriplesTileEnumerator",
     "accumulate_tile_triples_vjp",

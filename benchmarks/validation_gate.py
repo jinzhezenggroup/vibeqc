@@ -23,14 +23,7 @@ try:
 except ModuleNotFoundError:
     from _retention import raw_output_path
 
-from benchmarks._support import environment_metadata
-from tools.vibeqc_validation.fixtures import (
-    calculator_inputs,
-    load_fixtures,
-    mathematical_hash,
-)
-from tools.vibeqc_validation.performance import assess_comparison, measure_interleaved
-from tools.vibeqc_validation.schema import (
+from vibeqc_compiler.common.evidence import (
     TIERS,
     attach_artifact,
     block_error,
@@ -40,6 +33,14 @@ from tools.vibeqc_validation.schema import (
     new_evidence,
     outcome,
     write_evidence,
+)
+from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
+
+from benchmarks._support import environment_metadata
+from tools.vibeqc_validation.fixtures import (
+    calculator_inputs,
+    load_fixtures,
+    mathematical_hash,
 )
 
 

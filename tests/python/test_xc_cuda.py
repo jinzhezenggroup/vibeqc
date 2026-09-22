@@ -8,16 +8,15 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.xc import UnsupportedXC, build_program, functional
 from vibeqc_compiler.xc.capabilities import query_capability
 from vibeqc_compiler.xc.cuda import CudaXC, compile_cuda
 from vibeqc_compiler.xc.cuda_emit import XCSchedule
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.spec import CATALOG
-
-from tools.vibeqc_validation.schema import block_error
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("VIBEQC_XC_CUDA_TEST") != "1", reason="opt-in Slurm CUDA gate"

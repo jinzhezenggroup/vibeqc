@@ -12,6 +12,7 @@
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
+#include "scf/cuda/direct_force_order3.cuh"
 #include "scf/cuda/direct_force_quartet.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/direct_screening.cuh"
@@ -197,6 +198,22 @@ __global__ void two_electron_force_pair_order2_grid_stride_kernel(
  * therefore removes empty capacity blocks and balances irregular AO-quartet
  * derivative cost without introducing a host readback of compacted counts.
  */
+template <bool Unrestricted>
+__global__ void two_electron_force_order3_grid_stride_kernel(
+    DeviceBatch batch, const std::uint32_t* active_shell_quartet_tile_count,
+    const ActiveShellQuartetTile* active_shell_quartet_tiles, double screening_tolerance,
+    const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* forces,
+    std::uint64_t generated_shell_class_mask) {
+  const std::uint32_t work_count = *active_shell_quartet_tile_count;
+  const std::uint32_t stride = blockDim.x * gridDim.x;
+  for (std::uint32_t task_index = blockIdx.x * blockDim.x + threadIdx.x; task_index < work_count;
+       task_index += stride) {
+    contract_two_electron_force_order3_task<Unrestricted>(
+        batch, active_shell_quartet_tiles[task_index], screening_tolerance, schwarz_bounds, density,
+        active, forces, generated_shell_class_mask);
+  }
+}
+
 template <bool Unrestricted, unsigned AngularOrder>
 __global__ void two_electron_force_quartet_persistent_kernel(
     DeviceBatch batch, const std::uint32_t* active_shell_quartet_tile_count,
@@ -304,6 +321,15 @@ void launch_angular_force_quartets(
                0, stream>>>(batch, order_tile_count, order_tiles,
                             persistent_task_heads + AngularOrder, screening_tolerance,
                             schwarz_bounds, density, active, forces, generic_shell_class_mask);
+      } else if constexpr (AngularOrder == 3U) {
+        const unsigned capacity_workers =
+            static_cast<unsigned>((capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
+                                  detail::kDirectQuartetThreads);
+        const unsigned worker_blocks = std::min(capacity_workers, persistent_worker_blocks);
+        two_electron_force_order3_grid_stride_kernel<Unrestricted>
+            <<<worker_blocks, detail::kDirectQuartetThreads, 0, stream>>>(
+                batch, order_tile_count, order_tiles, screening_tolerance, schwarz_bounds, density,
+                active, forces, generated_shell_class_mask);
       } else if constexpr (AngularOrder < kPersistentForceAngularOrderCount) {
         const unsigned capacity_blocks = static_cast<unsigned>(
             capacities[AngularOrder] * detail::direct_quartet_subtiles_per_tile(AngularOrder));

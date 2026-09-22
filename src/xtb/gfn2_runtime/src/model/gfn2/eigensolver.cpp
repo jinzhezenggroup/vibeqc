@@ -227,11 +227,6 @@ std::array<const WavefunctionFieldLayout*, kEigensolverFieldCount> eigensolver_l
            &layout.energy_weighted_density}};
 }
 
-std::array<double*, kEigensolverFieldCount> eigensolver_view_fields(const WavefunctionView& view) {
-  return {{view.coefficients, view.eigenvalues, view.occupations, view.density,
-           view.energy_weighted_density}};
-}
-
 std::array<double*, kEigensolverFieldCount> eigensolver_view_fields(
     const EigensolverWavefunctionView& view) {
   return {{view.coefficients, view.eigenvalues, view.occupations, view.density,

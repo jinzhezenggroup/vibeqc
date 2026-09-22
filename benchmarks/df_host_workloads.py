@@ -15,6 +15,8 @@ import typing
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
+from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 
 from benchmarks._cases import benchmark_cases
 from benchmarks.compare_gpu4pyscf_batch import convergence_payload, scaled_geometries
@@ -25,8 +27,6 @@ from benchmarks.df_component_ledger import (
 )
 from benchmarks.issue206_df_force_probe import _source_metadata
 from benchmarks.validation_gate import _cuda
-from tools.vibeqc_validation.performance import assess_comparison, measure_interleaved
-from tools.vibeqc_validation.schema import canonical_hash
 
 
 class AblationBranchMismatch(ValueError):

@@ -27,12 +27,6 @@
       ]
     },
     {
-      "root": "tools/vibeqc_tensor",
-      "patterns": [
-        "*.py"
-      ]
-    },
-    {
       "root": "tools/vibeqc_mp2",
       "patterns": [
         "*.py"

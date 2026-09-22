@@ -7,11 +7,11 @@ from vibeqc_compiler.common.compiler_work import (
     CompilerWorkLimit,
     compiler_work_budget,
 )
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.capabilities import (
     _check_recurrence,
     build_capability_report,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.expr import Graph, Node
 from vibeqc_compiler.integral.shell_spec import PSSS_SPEC
 

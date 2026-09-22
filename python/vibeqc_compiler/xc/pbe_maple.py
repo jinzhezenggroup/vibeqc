@@ -1,6 +1,6 @@
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Production PBE expressions lowered from the pinned Libxc Maple source."""
 
 from __future__ import annotations
@@ -25,10 +25,7 @@ from .libxc_maple import (
 def _libxc_root() -> typing.Any:
     """Resolve packaged/repository assets lazily instead of at module import."""
 
-    try:
-        return asset_path("upstream/libxc/7.0.0")
-    except FileNotFoundError:
-        return asset_path("external/libxc-7.0.0")
+    return asset_path("upstream/libxc/7.0.0")
 
 
 @cache

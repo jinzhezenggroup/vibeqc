@@ -265,7 +265,7 @@ it might have skipped tests, so inspect/attach its actual numerical evidence.
 
 ## Shared results and performance protocol
 
-`tools/vibeqc_validation/schema.py` defines the `vibeqc.validation` version-1
+`python/vibeqc_compiler/common/evidence.py` defines the `vibeqc.validation` version-1
 envelope. `new_evidence`, `block_error`, `attach_artifact`, and `write_evidence`
 are the registration API for downstream tasks. Every record includes revision,
 equation/IR/source/schedule identities, device/toolchain, actual selected backend,

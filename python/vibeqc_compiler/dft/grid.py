@@ -156,7 +156,8 @@ class GridSpec:
 # Canonical production radii. These are the pinned covalent_radius_bohr values
 # extracted from xTBloom GFN1 data. Keep source identity beside the values.
 GRID_POLICY_RADII_SOURCE = (
-    "external/xtbloom-d3/covalent_radii.json@"
+    "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/"
+    "gfn1.json#elements[].covalent_radius_bohr@"
     "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
 )
 GRID_POLICY_UPSTREAM_REVISION = "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"

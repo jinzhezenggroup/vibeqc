@@ -16,13 +16,7 @@ import os
 import typing
 from dataclasses import asdict, replace
 
-from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
-from .basis import BasisSet
-from .basis_capabilities import require_basis
-from .calculator import Atom, _snapshot_basis
-from .elements import electron_state
-from .ks import resolve_ks_options
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -32,6 +26,13 @@ from .resources import (
     checked_bytes,
     plan_resources,
 )
+
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
+from .basis import BasisSet
+from .basis_capabilities import require_basis
+from .calculator import Atom, _snapshot_basis
+from .elements import electron_state
+from .ks import resolve_ks_options
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
 _METHODS = (
@@ -100,7 +101,7 @@ def _item_host_inventory(
     )
     nonlocal_provider = 0
     nonlocal_work = 0
-    if model.requires_nonlocal_v5:
+    if model.has_nonlocal_correlation:
         # Vv10Plan retains omega/kappa/weighted-density and three local
         # derivatives: six FP64 arrays. The AO bridge separately owns rho,
         # grad-rho, vrho/vsigma, one first-derivative AO tile and V_nlc.
@@ -241,11 +242,11 @@ def ks_resource_request(
     if precision == "auto" and backend != "cuda":
         raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
-    if backend == "cuda" and model.requires_nonlocal_v5:
+    if backend == "cuda" and model.has_nonlocal_correlation:
         raise NotImplementedError(
             "self-consistent nonlocal correlation currently requires CPU"
         )
-    if backend == "cuda" and model.requires_composition_v2:
+    if backend == "cuda" and model.has_nondefault_composition:
         raise NotImplementedError(
             "CUDA KS planning does not claim scaled/global-hybrid execution"
         )
@@ -428,27 +429,13 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            if model.requires_composition_v2 or model != resolve_ks_options(method):
-                options_version = getattr(library, "vibeqc_ks_options_version", None)
-                if options_version is not None:
-                    options_version.argtypes, options_version.restype = (
-                        [],
-                        ctypes.c_uint32,
-                    )
-                version_value = 0 if options_version is None else options_version()
-                required = (
-                    5
-                    if model.requires_nonlocal_v5
-                    else 3
-                    if model.requires_schedule_v3
-                    else 2
-                    if model.requires_composition_v2
-                    else 1
+            options_version = getattr(library, "vibeqc_ks_options_version", None)
+            if options_version is not None:
+                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if options_version is None or options_version() != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
-                if version_value < required:
-                    raise NotImplementedError(
-                        f"native library does not support KS model options v{required}"
-                    )
             version = getattr(library, "vibeqc_ks_resource_inventory_version_v1", None)
             if version is not None:
                 version.argtypes, version.restype = [], ctypes.c_int

@@ -213,6 +213,34 @@ VIBEQC_D4_HD inline double atm_radial(double x, double y, double z, double r5, d
 }
 }  // namespace d4_detail
 
+// Shared cached-geometry D4 primitives for SCC/runtime consumers that already
+// own and validate geometry/CN state. These helpers deliberately do not build
+// geometry, pair lists, or CNs: they own only the charge/CN interpolation and
+// pair-coefficient science also used by the complete fixed-charge evaluator.
+struct D4CachedPairCoefficient {
+  double c6 = 0.0;
+  double first_cn = 0.0;
+  double second_cn = 0.0;
+  double first_charge = 0.0;
+  double second_charge = 0.0;
+};
+
+VIBEQC_D4_HD inline void prepare_d4_cached_weights(int n, const std::int32_t* z, const double* cn,
+                                                   const double* q, const D4Parameters& p,
+                                                   D4Tables tables, double* weights,
+                                                   double* cn_derivatives,
+                                                   double* charge_derivatives) {
+  d4_detail::weights(n, z, cn, q, p, tables, weights, cn_derivatives, charge_derivatives);
+}
+
+VIBEQC_D4_HD inline D4CachedPairCoefficient d4_cached_pair_coefficient(
+    int first, int second, const std::int32_t* z, D4Tables tables, const double* weights,
+    const double* cn_derivatives, const double* charge_derivatives) {
+  const auto coefficient =
+      d4_detail::coefficient(first, second, z, tables, weights, cn_derivatives, charge_derivatives);
+  return {coefficient.c6, coefficient.ci, coefficient.cj, coefficient.qi, coefficient.qj};
+}
+
 // Complete derivative at independent/supplied charges, NOT complete DFT-D4
 // forces. grad=dE/dR (Eh/bohr); dq=dE/dq (Eh/e); energy={two-body, zero-q ATM}.
 // Add (dq/dR)^T*(dE/dq) through the selected charge provider for total forces.

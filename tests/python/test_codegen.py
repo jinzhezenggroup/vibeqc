@@ -251,11 +251,9 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_eri_order4.cuh",
             "cuda/direct_native_gradient_types.cuh",
             "cuda/direct_native_order2_shell.cuh",
-            "cuda/direct_native_order3_gradient.cuh",
             "cuda/direct_native_pair_order2.cuh",
             "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
-            "cuda/direct_native_pair_order3_gradient.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",
             "cuda/direct_native_shell_pair_hermite.cuh",
@@ -269,6 +267,7 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_force_density.cuh",
             "cuda/direct_force_low_order.cuh",
             "cuda/direct_force_order2.cuh",
+            "cuda/direct_force_order3.cuh",
             "cuda/direct_force_quartet.cuh",
             "cuda/direct_bounded_contraction.cuh",
             "cuda/direct_cached_tensor_kernels.cu",
@@ -324,9 +323,6 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     emitter = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "cuda_emitter.py"
     ).read_text(encoding="utf-8")
-    compatibility = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
-    ).read_text(encoding="utf-8")
     production = (
         REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
     ).read_text(encoding="utf-8")
@@ -335,8 +331,9 @@ def test_generic_cuda_emitter_uses_backend_lowering_not_dppp_compatibility() -> 
     ).read_text(encoding="utf-8")
     assert "from . import cuda_lowering as _implementation" in emitter
     assert "dppp_dispatch" not in emitter
-    assert "from .cuda_lowering import" in compatibility
-    assert "emit_shell_class_fused_cuda" not in compatibility
+    assert not (
+        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "dppp_dispatch.py"
+    ).exists()
     assert "from .dppp_dispatch import" not in production
     assert "from .dppp_dispatch import" not in benchmark
 
@@ -2500,6 +2497,49 @@ def test_order2_force_retires_handwritten_gradient_bodies() -> None:
     assert "generated_weighted_eri::Geometry geometry{};" not in source
 
 
+def test_order3_force_retires_handwritten_gradient_bodies() -> None:
+    """Keep all total-order-three Direct-HF force mathematics compiler-owned."""
+
+    generated = emit_low_order_weighted_header(inline_single_use=True)
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"IndependentGradient {name}_force(" in generated
+
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_order3_gradient.cuh"
+    ).exists()
+    assert not (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_order3_gradient.cuh"
+    ).exists()
+
+    source = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "contracted_eri_cartesian_source_order3_generated_weighted_gradient" in source
+    )
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in source
+
+    generic = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "contracted_eri_cartesian_source_order3_gradient" not in generic
+    assert "direct_native_order3_gradient.cuh" not in generic
+
+
+def test_bounded_order3_force_uses_generated_shell_task_math() -> None:
+    """Keep bounded streaming disjoint from the retired order-three AO formula."""
+
+    bounded = (REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu").read_text(
+        encoding="utf-8"
+    )
+    assert "contract_two_electron_force_order3_task<Unrestricted>(" in bounded
+    dispatcher = (
+        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_contraction.cuh"
+    ).read_text(encoding="utf-8")
+    assert "VIBEQC_BOUNDED_FORCE_CASE(3)" not in dispatcher
+
+
 def test_bounded_psss_resident_path_is_allocated_and_disjoint_from_page_fallback() -> (
     None
 ):
@@ -2608,7 +2648,11 @@ def test_bounded_streaming_uses_monotonic_system_density_tail() -> None:
         encoding="utf-8"
     )
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     assert "const double* system_density_bounds" in topology
     assert "const double* system_pair_density_bounds" in topology
@@ -2622,7 +2666,11 @@ def test_bounded_streaming_profiles_executed_precision_per_shell_class() -> None
     """Count actual retained quartets without changing normal kernel work."""
 
     generator = (
-        REPOSITORY_ROOT / "python" / "vibeqc_compiler" / "integral" / "production.py"
+        REPOSITORY_ROOT
+        / "python"
+        / "vibeqc_compiler"
+        / "integral"
+        / "production_emission.py"
     ).read_text(encoding="utf-8")
     source = _direct_cuda_source()
     assert "record_fock_precision" in generator
@@ -5656,7 +5704,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "vibeqc_compiler.integral.tuning.driver._compile_trial", successful_compile
     )
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaCompilerAdapter.link",
+        "vibeqc_compiler.common.cuda_adapter.CudaCompilerAdapter.link",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[], returncode=0, stdout="", stderr=""
         ),
@@ -5672,7 +5720,7 @@ def test_fock_autotune_rejects_candidates_without_baseline_runtime(
         "fused_ms": 1.0,
     }
     monkeypatch.setattr(
-        "vibeqc_compiler.integral.cuda_adapter.CudaBenchmarkExecutor.run",
+        "vibeqc_compiler.common.cuda_adapter.CudaBenchmarkExecutor.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(
             args=[],
             returncode=0,

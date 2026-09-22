@@ -14,7 +14,7 @@ do not validate neutral transition-metal chemistry or large-basis performance.
 | S/T/V and conventional ERI/HF | 0–4 | — | Values, first nuclear | Cartesian, real spherical | CPU reference |
 | DF metric / three-center integrals | 0–4 | 0–4 | Values, first nuclear | Cartesian, real spherical | CPU reference |
 | Raw shell-tile post-HF integral source | 0–4 | 0–4 | Values only | Cartesian, real spherical | CPU reference |
-| Explicit bounded S/T/V/DF component emitter | 0–4 | 0–4 for DF | Value and first nuclear | Unnormalized Cartesian primitive | CPU or CUDA scalar code |
+| Explicit bounded S/T/V/DF/full-range ERI component emitter | 0–4 | 0–4 for DF | Value and first nuclear | Unnormalized Cartesian primitive | CPU or CUDA scalar code |
 | Existing native CUDA HF/DF and production tables | 0–3 | 0–3 | Values, first nuclear | Cartesian, real spherical | CUDA |
 | AO/grid jets | 0–3 | — | Spatial orders 0–3 | Cartesian, real spherical | Existing CPU/CUDA routes |
 | Second derivatives, weighted four-center GPU executor | 0–3 | Existing separate limits | Existing separate limits | Existing separate limits | Existing backends |
@@ -26,6 +26,13 @@ profile identifiers and default compilation units retain their meanings.
 Auxiliary shells are never silently dropped. Use `basis_capability` for the
 actual backend/operator/derivative/role; mathematical data remains loadable
 above the execution boundary.
+
+Full-range four-center g components use a generic `ShellSignature` only in the
+explicit bounded emitter. They are not assigned a legacy shell-class identity,
+55-class mask bit, production manifest row, or default compilation unit. The
+raw emitter accepts Cartesian primitive signatures; real-spherical transforms
+and pulled-back weights stay caller-owned and a spherical raw signature fails
+closed before code emission.
 
 ## Mathematical and resource audit
 
@@ -54,6 +61,29 @@ above the execution boundary.
   planner derives its scratch bound from the supplied orbital/auxiliary l.
 * The production DF Rys root and axis tables remain through f. Opt-in g DF
   component DAGs require `subset_wick`. No larger root family is guessed.
+* On measured implementation commit `1c551ddb46bdf377fcae573eb5e9ca746af0d081`,
+  the generic g-s-s-s four-center `xxxx` component was executed on an allocated
+  RTX 4090 (compute capability 8.9, driver 550.163.01) with CUDA 12.9.86. The
+  `sm_89` build took 2.074 s, produced 50,160 B of source and a 1,210,768 B
+  shared object, and PTXAS reported 128 registers, a 48 B stack frame, zero
+  spills, 0 B shared memory and 0 B local memory. Six selected high-l CUDA numerical gates passed, including the
+  existing S/T/V/DF cases. This is resource and numerical qualification for the
+  opt-in scalar route, not a complete CUDA molecular endpoint or production
+  promotion.
+  The final synchronized PR candidate `af5313627c178ab4a1cd791093dff8dc6e5f6c92`
+  could not be re-executed on a GPU because current qz 4090/H200 notebook
+  requests were unschedulable under the available node-memory/priority
+  constraints. The measured `1c551ddb` implementation and final candidate are
+  byte-identical in the bounded emitter, four-center component builder and
+  high-angular test source; this is retained as source-equivalence evidence,
+  not reported as a final-head rerun.
+* The matching CPU qualification rebuilt the native library from the same
+  source and ran the high-angular suite with molecular gates enabled: 38 passed
+  and 6 CUDA-only cases skipped. Loaded orbital-g HeH+ RHF remained within
+  6.15e-11 Hartree/Bohr of PySCF forces; g-auxiliary DF-RHF remained within
+  1.92e-13 Hartree/Bohr. The detailed snapshot is in
+  `benchmarks/results/high-angular-170-four-center/` and the catalog-retention
+  rationale is recorded in the linked Agent Note.
 
 ## Opt-in generated components
 
@@ -131,8 +161,8 @@ VIBEQC_HIGH_L_MOLECULAR_TEST=1 python -m pytest -q -s \
 
 # Explicit allocated RTX 4090 tier (nvcc sm_89); logs compile time, source/
 # binary size, registers, stack and spills. This is not compile-only testing.
-VIBEQC_HIGH_L_CUDA_TEST=1 python -m pytest -q -s \
-  tests/python/test_high_angular.py -k bounded
+VIBEQC_HIGH_L_CUDA_ARCH=sm_89 VIBEQC_HIGH_L_CUDA_TEST=1 \
+  python -m pytest -q -s tests/python/test_high_angular.py -k bounded
 ```
 
 The g matrix is intentionally selected rather than exhaustively compiling all
@@ -140,3 +170,6 @@ g quartets in normal CI. The broader unchanged s–f tests and native suite rema
 regression gates. Molecular fixture generation uses the actual BSE importer;
 the independent oracle uses identical coordinates, charge, exponents,
 contractions, representation and approximation.
+
+Architecture rationale: [generic high-l four-center components without catalog
+promotion](../.agents/notes/implemented/architecture/2026-09-22-generic-high-l-four-center.md).

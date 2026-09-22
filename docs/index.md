@@ -15,6 +15,8 @@ declared properties; method-specific backend and model constraints fail closed.
   strict scientific compatibility, corruption handling and per-item restore.
 - [Cross-basis HF initialization](basis_projection.md): rectangular overlaps,
   occupied-space projection and complete source-plus-target cost accounting.
+- [Deterministic progressive HF](progressive_hf.md): immutable target problems,
+  typed two-stage plans, bounded fallback and fail-closed final verification.
 - [External basis data](external_basis.md): offline input, provenance, element/ECP
   bookkeeping, per-operator limits and prepared-state identities.
 - [Scalar Gaussian ECPs](ecp.md): local/nonlocal integrals, complete direct HF
@@ -73,6 +75,8 @@ Those belong in the developer documents so the first page remains an accurate,
 compact user entry point.
 
 - [HF reference snapshots and bounded MO integral providers](posthf.md)
+- [RCCSD state transport](state_transport.md): complete compatibility identities,
+  orbital-frame diagnostics and exact T1/T2 rotations.
 - [Conventional CPU RCCSD equations and solver](rccsd_bc.md)
 - [Generated RCCSD Lambda equation actions](rccsd_lambda.md)
 - [Localized occupied and pair-natural-orbital spaces](local_spaces.md)

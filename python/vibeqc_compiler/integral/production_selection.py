@@ -6,10 +6,11 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+
 from .capabilities import normalize_capabilities
 from .cuda_lowering import supports_component_lane_rys
 from .cuda_schedule import ScheduleIR, ScheduleKind
-from .cuda_target import cuda_target_info
 from .fused_schedule import build_fused_shell_plan
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .specialize import specialize_integral_ir

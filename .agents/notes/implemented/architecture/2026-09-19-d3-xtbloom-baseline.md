@@ -61,7 +61,7 @@ pair reductions and data reuse separately.
 ## References
 
 - VibeQC #492, #396 and #163.
-- `external/xtbloom-d3/manifest.json` and `docs/dft_d3.md`.
+- `manifests/xtbloom-d3.json` and `docs/dft_d3.md`.
 
 Agent: ChatGPT
 Model: GPT-6 Astra Pro

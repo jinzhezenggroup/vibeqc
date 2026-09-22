@@ -544,10 +544,6 @@ METHOD_CATALOG = MappingProxyType(
             "PW91",
             (("GGA_X_PW91", Fraction(1)), ("GGA_C_PW91", Fraction(1))),
         ),
-        "PW91PW91": MethodSpec(
-            "PW91PW91",
-            (("GGA_X_PW91", Fraction(1)), ("GGA_C_PW91", Fraction(1))),
-        ),
         "R2SCAN": MethodSpec(
             "R2SCAN",
             (("MGGA_X_R2SCAN", Fraction(1)), ("MGGA_C_R2SCAN", Fraction(1))),
@@ -579,16 +575,6 @@ METHOD_CATALOG = MappingProxyType(
             (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
             exact_exchange=Fraction(1, 4),
         ),
-        "PBE1PBE": MethodSpec(
-            "PBE1PBE",
-            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
-            exact_exchange=Fraction(1, 4),
-        ),
-        "PBEH": MethodSpec(
-            "PBEH",
-            (("GGA_X_PBE", Fraction(3, 4)), ("GGA_C_PBE", Fraction(1))),
-            exact_exchange=Fraction(1, 4),
-        ),
         "PBE50": MethodSpec(
             "PBE50",
             (("GGA_X_PBE", Fraction(1, 2)), ("GGA_C_PBE", Fraction(1))),
@@ -612,16 +598,6 @@ METHOD_CATALOG = MappingProxyType(
             ),
             exact_exchange=Fraction(1, 5),
         ),
-        "B3P86G": MethodSpec(
-            "B3P86G",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_VWN_RPA", Fraction(19, 100)),
-                ("GGA_C_P86", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
         "B3P86V5": MethodSpec(
             "B3P86V5",
             (
@@ -634,16 +610,6 @@ METHOD_CATALOG = MappingProxyType(
         ),
         "B3LYP": MethodSpec(
             "B3LYP",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_VWN_RPA", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
-        "B3LYPG": MethodSpec(
-            "B3LYPG",
             (
                 ("LDA_X", Fraction(2, 25)),
                 ("GGA_X_B88", Fraction(18, 25)),
@@ -685,17 +651,6 @@ METHOD_CATALOG = MappingProxyType(
             ),
             exact_exchange=Fraction(109, 500),
         ),
-        "X3LYPG": MethodSpec(
-            "X3LYPG",
-            (
-                ("LDA_X", Fraction(73, 1000)),
-                ("GGA_X_B88", Fraction(108477, 200000)),
-                ("GGA_X_PW91", Fraction(33323, 200000)),
-                ("LDA_C_VWN_RPA", Fraction(129, 1000)),
-                ("GGA_C_LYP", Fraction(871, 1000)),
-            ),
-            exact_exchange=Fraction(109, 500),
-        ),
         "X3LYP5": MethodSpec(
             "X3LYP5",
             (
@@ -724,11 +679,6 @@ METHOD_CATALOG = MappingProxyType(
         ),
         "BHANDHLYP": MethodSpec(
             "BHANDHLYP",
-            (("GGA_X_B88", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
-            exact_exchange=Fraction(1, 2),
-        ),
-        "BHHLYP": MethodSpec(
-            "BHHLYP",
             (("GGA_X_B88", Fraction(1, 2)), ("GGA_C_LYP", Fraction(1))),
             exact_exchange=Fraction(1, 2),
         ),
@@ -789,18 +739,6 @@ METHOD_CATALOG = MappingProxyType(
             long_range_exchange=Fraction(65, 100),
             range_omega=Fraction(33, 100),
         ),
-        "CAMB3LYP": MethodSpec(
-            "CAMB3LYP",
-            (
-                ("GGA_X_B88", Fraction(35, 100)),
-                ("GGA_X_ITYH", Fraction(46, 100)),
-                ("LDA_C_VWN", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            short_range_exchange=Fraction(19, 100),
-            long_range_exchange=Fraction(65, 100),
-            range_omega=Fraction(33, 100),
-        ),
         "CAMH-B3LYP": MethodSpec(
             "CAMH-B3LYP",
             (
@@ -824,10 +762,16 @@ def resolve_method(
     if spin not in _SPINS:
         raise UnsupportedMethod(f"unsupported spin mode {spin!r}")
     if isinstance(method, str):
+        from ._generated_xc_aliases import METHOD_ALIASES
+
+        requested_identifier = method
+        canonical_identifier = METHOD_ALIASES.get(method, method)
         try:
-            spec = METHOD_CATALOG[method]
+            spec = METHOD_CATALOG[canonical_identifier]
         except KeyError as error:
             raise UnsupportedMethod(f"unknown DFT method {method!r}") from error
+        if canonical_identifier != requested_identifier:
+            spec = replace(spec, identifier=requested_identifier)
     elif isinstance(method, MethodSpec):
         spec = method
         if spec.identifier == "R2SCAN-3c" and spec != METHOD_CATALOG["R2SCAN-3c"]:
