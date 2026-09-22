@@ -235,7 +235,11 @@ CUDA_ALLOWED["cuda_direct_queues"] = tuple(
 )
 # Provider host APIs own staging and lifetime while borrowing kernel launches.
 # A retained recurrence fragment must not enter a host implementation.
-CUDA_MODULES["cuda_direct_provider_host"] = ("direct_jk", "direct_jk_plan", "direct_coulomb")
+CUDA_MODULES["cuda_direct_provider_host"] = (
+    "direct_jk",
+    "direct_jk_plan",
+    "direct_coulomb",
+)
 CUDA_ALLOWED["cuda_direct_provider_host"] = (
     "scf/cuda/direct_jk.",
     "scf/cuda/direct_jk_plan.",
