@@ -85,3 +85,20 @@ raw/metric values and RHF/UHF J/K use the unchanged gates above. The integration
 library hash was
 `93b9d7ddf6366f618fd8037a9d85e626b2f441ab8bfdbc3c58be9a8ed7fa6ec5`.
 Complete endpoint qualification remains pending.
+
+## Bounded small endpoint A/B
+
+After fixing the shared comparator's GPU4PySCF DF `direct_scf=False` policy
+(PR #1085), HF-DF water12 (96 AOs, 464 cc-pVDZ-JKFIT auxiliaries, one system)
+passed complete cold/priming/warm energy-plus-force comparison on RTX 5090.
+Automatic mapping cold was 0.554 seconds versus explicit primitive mapping
+0.785 seconds; warm medians were 0.06573 and 0.06565 seconds. Both use full
+resident storage, so this does not qualify the large streamed work schedule.
+Maximum warm-pair energy/force errors were 5.344e-12 Hartree / 1.424e-11
+Hartree/Bohr (auto) and 5.230e-12 / 1.013e-11 (primitive), with the original
+convergence settings. Native warm solves used two iterations; reference used
+one. These are scoped endpoint comparisons, not iteration-matched speedups.
+
+Evidence: `hfdf12-{auto,primitive}-v3.json` and `hfdf12-mapping-v3.log` under
+the integration artifact directory, pinned to the same raw-v2 binary above.
+Changed-geometry and larger streamed endpoint qualification remain pending.
