@@ -1,0 +1,1463 @@
+{
+  "attachments": [],
+  "backend_selected": "cuda",
+  "block_errors": {},
+  "compilation": {
+    "binary_bytes": 1068592,
+    "reason": null,
+    "resources": [
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPflfPii",
+        "local_bytes": null,
+        "registers": 16,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+        "local_bytes": null,
+        "registers": 18,
+        "shared_bytes": 0,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      },
+      {
+        "function": "_Z8kernel_1PhPi",
+        "local_bytes": null,
+        "registers": 18,
+        "shared_bytes": 48,
+        "spill_load_bytes": 0,
+        "spill_store_bytes": 0,
+        "stack_bytes": 0
+      }
+    ],
+    "seconds": 4.0515666007995605,
+    "source_bytes": 9345
+  },
+  "device": {
+    "architecture": "sm_90",
+    "cublas": "12.8.3",
+    "driver": 12080,
+    "runtime": 12080,
+    "sm_count": 132,
+    "uuid": "5ea4d08d4c5888da489834cbfe92bfcb"
+  },
+  "hardware": {
+    "allocation_id": "issue-0971-cub-h200-ba577c7c-20260922",
+    "device": {
+      "architecture": "sm_90",
+      "cublas": "12.8.3",
+      "driver": 12080,
+      "runtime": 12080,
+      "sm_count": 132,
+      "uuid": "5ea4d08d4c5888da489834cbfe92bfcb"
+    },
+    "execution_environment": {
+      "accelerator": null,
+      "git": {
+        "commit": null,
+        "dirty": null,
+        "pending_generated_benchmark_artifacts": null
+      },
+      "host": {
+        "machine": "x86_64",
+        "node": "job-ec60d9aa-7694-46ec-94d8-f0f135b793de-worker-0",
+        "platform": "Linux-5.15.0-119-generic-x86_64-with-glibc2.39",
+        "processor": "x86_64"
+      },
+      "packages": {
+        "numpy": "1.26.4"
+      },
+      "python": {
+        "executable": "/usr/bin/python",
+        "version": "3.12.3"
+      },
+      "runtime": {
+        "cuda_visible_devices": null,
+        "vibeqc_library": null
+      },
+      "timestamp_utc": "2026-09-22T08:56:23.561081+00:00",
+      "toolchain": {
+        "cuobjdump": {
+          "path": "/usr/local/cuda/bin/cuobjdump",
+          "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Fri_Jan__3_19:19:51_PST_2025\nCuda compilation tools, release 12.8, V12.8.55\nBuild cuda_12.8.r12.8/compiler.35351055_0"
+        },
+        "host_cxx": {
+          "path": "/usr/bin/c++",
+          "version": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+        },
+        "nvcc": {
+          "path": "/usr/local/cuda/bin/nvcc",
+          "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Jan_15_19:20:09_PST_2025\nCuda compilation tools, release 12.8, V12.8.61\nBuild cuda_12.8.r12.8/compiler.35404655_0"
+        },
+        "ptxas": {
+          "path": "/usr/local/cuda/bin/ptxas",
+          "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Jan_15_19:17:38_PST_2025\nCuda compilation tools, release 12.8, V12.8.61\nBuild cuda_12.8.r12.8/compiler.35404655_0"
+        }
+      }
+    },
+    "reason": null,
+    "status": "pass",
+    "target": {
+      "architecture": "sm_90",
+      "compute_capability": "9.0",
+      "compute_capability_major": 9,
+      "compute_capability_minor": 0,
+      "cuda_toolkit_version": "",
+      "driver_version": "",
+      "generator_abi": 1,
+      "maximum_blocks_per_sm": 32,
+      "maximum_registers_per_thread": 255,
+      "maximum_threads_per_block": 1024,
+      "maximum_threads_per_sm": 2048,
+      "minimum_cuda_toolkit": "12.0",
+      "nvcc_version": "",
+      "packed_register_caps": [
+        192,
+        208
+      ],
+      "ptxas_version": "",
+      "registers_per_sm": 65536,
+      "required_cuda_features": [
+        "fp64",
+        "fp64_atomic_add"
+      ],
+      "shared_memory_per_block": 49152,
+      "shared_memory_per_block_optin": 232448,
+      "shared_memory_per_sm": 233472,
+      "sm_count": null,
+      "tuning_maximum_packed_registers": 224,
+      "tuning_maximum_registers": 192,
+      "tuning_maximum_shared_bytes": 49152,
+      "tuning_maximum_stack_bytes": 128,
+      "warp_size": 32
+    }
+  },
+  "hash_reasons": {},
+  "hashes": {
+    "equation": "487877c02663a047de1f4c4f7afecae55e0e853d6177d5ed9ccf6320abf040fc",
+    "ir": "438d84543d7ce4a287ac33af7a914d823c35946db9228650f8f045df41dddc06",
+    "schedule": "1b3d7e0516f27e27308d7c54ae9a51576cdaaee0c4c2ac9d2c41cd9f4f924a53",
+    "source": "d1ca26cb9725436e18fc26ff389a671e48a2dac990547d9631e900529b504351"
+  },
+  "inputs_hash": "c856e604793bc45d69227402f0e74d4623f32fce5c741ec47bc5d8fd60ff4f98",
+  "memory": {
+    "allocated_bytes": 2131712,
+    "peak_bytes": 4397840,
+    "reason": null
+  },
+  "performance": {
+    "candidate_status": "rejected",
+    "endpoint_gates": [
+      {
+        "bootstrap_lower_95": 0.9896015910466818,
+        "median_speedup": 1.0028510426285948,
+        "minimum_speedup": 1.02,
+        "passed": false
+      },
+      {
+        "bootstrap_lower_95": 0.9854370511161249,
+        "median_speedup": 0.9958376678742785,
+        "minimum_speedup": 1.02,
+        "passed": false
+      }
+    ],
+    "endpoint_profitability": [
+      {
+        "baseline_endpoint_seconds": 0.0007292190566658974,
+        "candidate": {
+          "compiled": {
+            "compile_seconds": 4.0515666007995605,
+            "compiled_occupancy_upper_bound": 1.0,
+            "compiled_registers_per_thread": 18,
+            "local_bytes": null,
+            "object_bytes": 1068592,
+            "shared_bytes": 48,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0
+          },
+          "endpoint_seconds": 0.0007271459326148033,
+          "schema": "vibeqc.compiler.gpu-profitability.v1",
+          "static": {
+            "arithmetic_operation_count": null,
+            "estimated_occupancy_upper_bound": 1.0,
+            "estimated_registers_per_thread": 22,
+            "launch_count": 2,
+            "peak_live_values": null,
+            "precision_cast_read_bytes": 0,
+            "precision_cast_simultaneous_bytes": 0,
+            "precision_cast_write_bytes": 0,
+            "precision_widened_accumulation_terms": 0,
+            "rematerialized_value_count": null,
+            "semantic_traffic_bytes": 6392360,
+            "source_bytes": 9345
+          }
+        },
+        "rejection_reasons": [
+          "endpoint speedup 1.00285x is below the required 1.02x"
+        ]
+      },
+      {
+        "baseline_endpoint_seconds": 0.0007907841354608536,
+        "candidate": {
+          "compiled": {
+            "compile_seconds": 4.0515666007995605,
+            "compiled_occupancy_upper_bound": 1.0,
+            "compiled_registers_per_thread": 18,
+            "local_bytes": null,
+            "object_bytes": 1068592,
+            "shared_bytes": 48,
+            "spill_load_bytes": 0,
+            "spill_store_bytes": 0
+          },
+          "endpoint_seconds": 0.0007940893992781639,
+          "schema": "vibeqc.compiler.gpu-profitability.v1",
+          "static": {
+            "arithmetic_operation_count": null,
+            "estimated_occupancy_upper_bound": 1.0,
+            "estimated_registers_per_thread": 22,
+            "launch_count": 2,
+            "peak_live_values": null,
+            "precision_cast_read_bytes": 0,
+            "precision_cast_simultaneous_bytes": 0,
+            "precision_cast_write_bytes": 0,
+            "precision_widened_accumulation_terms": 0,
+            "rematerialized_value_count": null,
+            "semantic_traffic_bytes": 6392360,
+            "source_bytes": 9345
+          }
+        },
+        "rejection_reasons": [
+          "endpoint speedup 0.995838x is below the required 1.02x"
+        ]
+      }
+    ],
+    "reason": "matched endpoints cover one reduction shape and target; they do not authorize a general production-default promotion",
+    "shared_gates": [
+      {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0008088592439889908,
+              "median_seconds": 0.0007292190566658974,
+              "minimum_seconds": 0.000718018040060997,
+              "raw_seconds": [
+                0.0008088592439889908,
+                0.0007421988993883133,
+                0.0007269978523254395,
+                0.0007314402610063553,
+                0.000731687992811203,
+                0.0007253363728523254,
+                0.0007188506424427032,
+                0.000718018040060997
+              ],
+              "relative_mad": 0.0097714794385135,
+              "samples": 8
+            },
+            "candidate": {
+              "maximum_seconds": 0.0007499624043703079,
+              "median_seconds": 0.0007271459326148033,
+              "minimum_seconds": 0.0007167235016822815,
+              "raw_seconds": [
+                0.0007499624043703079,
+                0.0007240939885377884,
+                0.0007298365235328674,
+                0.0007191002368927002,
+                0.0007296595722436905,
+                0.0007167235016822815,
+                0.0007377583533525467,
+                0.0007246322929859161
+              ],
+              "relative_mad": 0.0076309577633276,
+              "samples": 8
+            },
+            "noise_floor": 0.0348048744036822,
+            "relative_improvement": 0.0028429372931814134,
+            "significant": false
+          }
+        }
+      },
+      {
+        "reason": "difference within 2%, measurement noise, or no improvement",
+        "status": "not-run",
+        "workloads": {
+          "unchanged-geometry": {
+            "baseline": {
+              "maximum_seconds": 0.0007987041026353836,
+              "median_seconds": 0.0007907841354608536,
+              "minimum_seconds": 0.0007868930697441101,
+              "raw_seconds": [
+                0.0007916372269392014,
+                0.0007930602878332138,
+                0.0007868930697441101,
+                0.0007910635322332382,
+                0.0007904805243015289,
+                0.0007894355803728104,
+                0.0007905047386884689,
+                0.0007987041026353836
+              ],
+              "relative_mad": 0.0013920654624083439,
+              "samples": 8
+            },
+            "candidate": {
+              "maximum_seconds": 0.0008078962564468384,
+              "median_seconds": 0.0007940893992781639,
+              "minimum_seconds": 0.0007892698049545288,
+              "raw_seconds": [
+                0.0007920525968074799,
+                0.0007916241884231567,
+                0.0008078962564468384,
+                0.0007931869477033615,
+                0.0007949918508529663,
+                0.0008061490952968597,
+                0.0007971152663230896,
+                0.0007892698049545288
+              ],
+              "relative_mad": 0.003457468330974014,
+              "samples": 8
+            },
+            "noise_floor": 0.02,
+            "relative_improvement": -0.00417972954829704,
+            "significant": false
+          }
+        }
+      }
+    ],
+    "status": "not-run"
+  },
+  "residuals": {},
+  "revision": "ba577c7c83601c985f5126d81e68344119855ac7",
+  "schema": "vibeqc.validation",
+  "schema_version": 1,
+  "settings": {
+    "allocation_id": "issue-0971-cub-h200-ba577c7c-20260922",
+    "comparison_kind": "kernel",
+    "device": "cuda",
+    "fast_compile": false,
+    "fixed_state_hash": "c856e604793bc45d69227402f0e74d4623f32fce5c741ec47bc5d8fd60ff4f98",
+    "fixtures": [
+      {
+        "x": {
+          "dtype": "<f8",
+          "shape": [
+            65,
+            4097
+          ],
+          "strides": [
+            32776,
+            8
+          ],
+          "values": "c99baf074a0807d7983ea96a7b9e17fe4be00888698b9003edabf413deedad50"
+        }
+      },
+      {
+        "x": {
+          "dtype": "<f8",
+          "shape": [
+            65,
+            4097
+          ],
+          "strides": [
+            65552,
+            16
+          ],
+          "values": "859adf7c464dee80e1b513c5c23cc2163645b9c1664f1101c58470a03116d6a7"
+        }
+      }
+    ],
+    "inner": 4097,
+    "numerical_gate": {
+      "atol": 1e-11,
+      "rtol": 1e-10
+    },
+    "precision": "float64->float64",
+    "promotion_scope": "opt-in candidate qualification only; generated CUDA remains the production default",
+    "rows": 65,
+    "source_archive_sha256": "70d802582b2ba263b22e0d72a1c1c51f18815a6b6a9f234a0c0bbd6f93a386cb",
+    "timing_scope": "complete prepared TensorIR endpoint: caller validation/staging, H2D, identical reduction work, D2H, and detached output"
+  },
+  "solver_iterations": [],
+  "solver_trace_reason": "not exposed by executor",
+  "stages": {
+    "compilation": {
+      "cub_compile_seconds": 4.0515666007995605,
+      "cub_resources": [
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPflfPii",
+          "local_bytes": null,
+          "registers": 16,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+          "local_bytes": null,
+          "registers": 18,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z8kernel_1PhPi",
+          "local_bytes": null,
+          "registers": 18,
+          "shared_bytes": 48,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        }
+      ],
+      "generated_compile_seconds": 3.1832573730498552,
+      "generated_resources": [
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPflfPii",
+          "local_bytes": null,
+          "registers": 16,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_ZN13vibeqc_tensor11check_scaleEPdldPii",
+          "local_bytes": null,
+          "registers": 18,
+          "shared_bytes": 0,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        },
+        {
+          "function": "_Z8kernel_1PhPi",
+          "local_bytes": null,
+          "registers": 24,
+          "shared_bytes": 32,
+          "spill_load_bytes": 0,
+          "spill_store_bytes": 0,
+          "stack_bytes": 0
+        }
+      ],
+      "reason": null,
+      "status": "pass"
+    },
+    "endpoint": {
+      "baseline": "generated cooperative reduction",
+      "candidate": "CUB BlockReduce",
+      "fixtures": 2,
+      "reason": null,
+      "samples": 32,
+      "status": "pass",
+      "synchronized": true
+    },
+    "numerical": {
+      "atol": 1e-11,
+      "fixtures": 2,
+      "independent_oracle": "TensorIR CPU interpreter",
+      "max_absolute_error": 9.094947017729282e-13,
+      "reason": null,
+      "repeats_per_implementation": 8,
+      "rtol": 1e-10,
+      "status": "pass"
+    },
+    "production": {
+      "reason": "qualification does not modify the generated-CUDA production default",
+      "status": "not-run"
+    },
+    "representation": {
+      "equation": "487877c02663a047de1f4c4f7afecae55e0e853d6177d5ed9ccf6320abf040fc",
+      "matched_semantic_work": {
+        "input_elements": 266305,
+        "output_elements": 65,
+        "reduction_additions": 266240,
+        "reduction_terms": 266305
+      },
+      "reason": null,
+      "status": "pass"
+    },
+    "source": {
+      "cub_source_bytes": 9345,
+      "generated_source_bytes": 9452,
+      "reason": null,
+      "status": "pass"
+    }
+  },
+  "subject": "TensorIR FP64 CUB BlockReduce opt-in qualification",
+  "tier": "endpoint",
+  "timings": [
+    {
+      "diagnostics": {
+        "device_ms": 0.20073600113391876,
+        "endpoint_ms": 0.7798206061124802,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0008088592439889908,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18835200369358063,
+        "endpoint_ms": 0.7237624377012253,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007499624043703079,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18544000387191772,
+        "endpoint_ms": 0.7015317678451538,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007240939885377884,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.185248002409935,
+        "endpoint_ms": 0.7198303937911987,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007421988993883133,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18483200669288635,
+        "endpoint_ms": 0.7033143192529678,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007269978523254395,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18592000007629395,
+        "endpoint_ms": 0.7075369358062744,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007298365235328674,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18483200669288635,
+        "endpoint_ms": 0.6972644478082657,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007191002368927002,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18307200074195862,
+        "endpoint_ms": 0.7021464407444,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007314402610063553,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18457600474357605,
+        "endpoint_ms": 0.7102973759174347,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.000731687992811203,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.1849920004606247,
+        "endpoint_ms": 0.7038209587335587,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007296595722436905,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.1844480037689209,
+        "endpoint_ms": 0.6941035389900208,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007167235016822815,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18454399704933167,
+        "endpoint_ms": 0.7033590227365494,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007253363728523254,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18435199558734894,
+        "endpoint_ms": 0.698065385222435,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007188506424427032,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.19705599546432495,
+        "endpoint_ms": 0.716404989361763,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007377583533525467,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.1857600063085556,
+        "endpoint_ms": 0.7029492408037186,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.0007246322929859161,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.17881600558757782,
+        "endpoint_ms": 0.6959587335586548,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "ff9275b47ecf9c80db106afc009c10c3cbe64feea753919b66fa514c20707f3a",
+      "seconds": 0.000718018040060997,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18352000415325165,
+        "endpoint_ms": 0.7706843316555023,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007916372269392014,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18400000035762787,
+        "endpoint_ms": 0.7699001580476761,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007920525968074799,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18505600094795227,
+        "endpoint_ms": 0.7703211158514023,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007916241884231567,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18848000466823578,
+        "endpoint_ms": 0.7718820124864578,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007930602878332138,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18361599743366241,
+        "endpoint_ms": 0.765511766076088,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007868930697441101,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.19577600061893463,
+        "endpoint_ms": 0.7852427661418915,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0008078962564468384,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18540799617767334,
+        "endpoint_ms": 0.7707197219133377,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007931869477033615,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.1852799952030182,
+        "endpoint_ms": 0.768834725022316,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007910635322332382,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18451200425624847,
+        "endpoint_ms": 0.767536461353302,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007904805243015289,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18566399812698364,
+        "endpoint_ms": 0.7731374353170395,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007949918508529663,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18512000143527985,
+        "endpoint_ms": 0.7848683744668961,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0008061490952968597,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18438400328159332,
+        "endpoint_ms": 0.767657533288002,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007894355803728104,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.1852799952030182,
+        "endpoint_ms": 0.7682908326387405,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007905047386884689,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18854400515556335,
+        "endpoint_ms": 0.7757768034934998,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007971152663230896,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18457600474357605,
+        "endpoint_ms": 0.7685590535402298,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 8388608,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 6291456,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007892698049545288,
+      "selection": "candidate",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    },
+    {
+      "diagnostics": {
+        "device_ms": 0.18454399704933167,
+        "endpoint_ms": 0.7769465446472168,
+        "host_buffer_bytes": 2266128,
+        "input_ms": 0.0,
+        "kernel_ms": 0.0,
+        "library_ms": 0.0,
+        "observed_device_delta": 12582912,
+        "observed_device_to_host_bytes": 520,
+        "observed_host_to_device_bytes": 2130440,
+        "observed_layout_conversion_bytes": 0,
+        "observed_logical_tensor_bytes": 4261400,
+        "observed_semantic_traffic_bytes": 6392360,
+        "observed_traffic_scope": "planner logical tensor bytes plus exact declared copies/packing; excludes hardware cache/DRAM transactions and cuBLAS internal workspace/traffic; bound to a successfully executed endpoint, not a hardware DRAM counter",
+        "output_ms": 0.0,
+        "owned_device_bytes": 2131712,
+        "packing_ms": 0.0,
+        "precision": "fp64",
+        "predicted_peak_bytes": 4397840,
+        "prepare_device_delta": 4194304,
+        "profiled": false,
+        "provider_retained_bytes": 0
+      },
+      "inputs_hash": "a962d3af4c3c50fef55bd339677282bb617b50bc037ba96c44f7b6c04c79698c",
+      "seconds": 0.0007987041026353836,
+      "selection": "baseline",
+      "synchronized": true,
+      "workload": "unchanged-geometry"
+    }
+  ],
+  "toolchain": {
+    "cuda": {
+      "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Jan_15_19:20:09_PST_2025\nCuda compilation tools, release 12.8, V12.8.61\nBuild cuda_12.8.r12.8/compiler.35404655_0",
+      "ptxas": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Jan_15_19:17:38_PST_2025\nCuda compilation tools, release 12.8, V12.8.61\nBuild cuda_12.8.r12.8/compiler.35404655_0"
+    },
+    "host_compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+  }
+}
