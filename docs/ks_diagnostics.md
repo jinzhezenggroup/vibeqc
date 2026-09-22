@@ -101,6 +101,24 @@ explicit handoff from ordinary energy execution. The existing public
 `matrix_d2h_bytes` total still includes snapshot matrices, so legacy transport
 accounting remains conservative without an ABI change.
 
+## CUDA KS preparation
+
+CUDA semilocal RKS/UKS builds the symmetric overlap inverse square root and
+core-density seed on the ordinary GPU eigensolver. Compiler-generated weighted
+projectors reuse the shared SCF TensorIR and inverse-square-root scalar owner.
+The full overlap representation is retained: nonfinite eigenvalues or values
+below `1e-10` fail preparation, and `X^T S X` must agree with identity within
+`1e-8`. No default reference eigensolve or host cold-density staging occurs.
+Explicit host warm densities retain the shared normalization/validation policy.
+
+Preparation borrows iteration scratch and charges one retained cold-density
+matrix per spin. Cold retries copy that immutable device seed. Setup spectrum
+and metric checks download only scalar status; transport diagnostics therefore
+include setup scalar downloads and synchronizations, while default cold execution
+adds no density H2D bytes. Eigensolver workspace remains charged by the shared
+ordinary-stream provider. See the
+[setup decision](../.agents/notes/implemented/performance/2026-09-23-cuda-ks-setup.md).
+
 ## CUDA KS iteration residency
 
 Native CUDA LDA/PBE direct all-electron RKS has an explicitly selectable

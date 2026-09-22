@@ -1,0 +1,7 @@
+{
+  "path": "src/scf/cuda/mean_field_setup.cu",
+  "role": "runtime",
+  "subsystem": "scf_tensor",
+  "reason": "Allocation-free launches of compiler-owned overlap spectral weights, shared weighted-projector TensorIR lowering, occupations and metric gates. Borrows the method owner's stream and charged arena.",
+  "regions": []
+}

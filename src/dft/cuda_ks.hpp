@@ -47,9 +47,10 @@ std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_h
 
 /** Native ordinary-stream LDA/PBE RKS/UKS trajectory. The borrowed common
  * Fock plan must outlive it. Model/grid/functional identity is immutable;
- * changing it requires a new owner. Initial guesses/normalization and grid
- * preparation are explicit host setup, with no CPU XC or matrix export in
- * an iteration. Final output is a separate, measured operation.
+ * changing it requires a new owner. Symmetric overlap and core initial density
+ * are constructed on the device; explicit host warm inputs are normalized at
+ * admission. No CPU XC or matrix export occurs in an iteration. Final output
+ * is a separate, measured operation.
  *
  * Split enqueue/finish operations let a native ragged batch enqueue all
  * active item streams before reading their small scalar records. Each owner
