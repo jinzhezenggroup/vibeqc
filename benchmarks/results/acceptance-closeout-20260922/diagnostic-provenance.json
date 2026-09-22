@@ -1,0 +1,27 @@
+{
+  "source_sha": "0d89ab6fb6219d9af6641d5cfafe0b43f8387206",
+  "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
+  "probes": [
+    {
+      "baseline": "tests/native/test_density_fitting.cpp",
+      "diagnostic": "diagnose_df_counters.cpp",
+      "patch": "diagnose_df_counters.patch"
+    },
+    {
+      "baseline": "tests/native/test_ks_cuda.cpp",
+      "diagnostic": "diagnose_ks_cuda_v2.cpp",
+      "patch": "diagnose_ks_cuda_v2.patch"
+    },
+    {
+      "baseline": "tests/native/test_dft_api.cpp",
+      "diagnostic": "diagnose_dft_api.cpp",
+      "patch": "diagnose_dft_api.patch"
+    },
+    {
+      "baseline": "tests/native/test_density_fitting.cpp",
+      "diagnostic": "diagnose_df_counters_v2.cpp",
+      "patch": "diagnose_df_counters_v2.patch"
+    }
+  ],
+  "note": "Counter diagnostic v1 bypasses two traffic assertions; v2 bypasses three resource assertions and was intended to inspect 24 response cells, but stops at cell 13 (host UHF, 16 KiB) on the still-active nonfinite-input rejection assertion. Neither is passing native-test evidence. Numerical/transactional assertions remain active; the separately compiled attempted repair also fails and is excluded from PR #1046."
+}

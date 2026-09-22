@@ -1,0 +1,17 @@
+--- tests/native/test_dft_api.cpp
++++ diagnose_dft_api.cpp
+@@ -791,9 +791,11 @@
+         auto auto_method = method;
+         auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
+         vibeqc_calculation* auto_calculation = nullptr;
+-        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
+-                                           &auto_calculation) == VIBEQC_STATUS_SUCCESS &&
+-                    auto_calculation != nullptr,
++        const auto auto_status = vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
++                                           &auto_calculation);
++        std::cerr << "AUTO method=" << ks << " status=" << auto_status << " detail="
++                  << vibeqc_context_get_last_detail(cuda_context) << "\n";
++        require(auto_status == VIBEQC_STATUS_SUCCESS && auto_calculation != nullptr,
+                 "CUDA KS automatic-precision preparation failed");
+         auto auto_result = unconverged;
+         const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");

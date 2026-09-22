@@ -1,0 +1,518 @@
+[
+  {
+    "test": "vibeqc_xc_response_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.24,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_final_validation_tests",
+    "status": "Passed",
+    "seconds": 0.39,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_density_seed_tests",
+    "status": "Passed",
+    "seconds": 0.4,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_tracked_allocator_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_fock_build_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ecp_projector_tests",
+    "status": "Passed",
+    "seconds": 0.3,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ecp_capability_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ecp_cpu_tests",
+    "status": "Passed",
+    "seconds": 10.46,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_fock_provider_tests",
+    "status": "Passed",
+    "seconds": 0.16,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_fock_api_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_native_tests",
+    "status": "Passed",
+    "seconds": 0.7,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_final_state_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ks_final_state_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_eigen_frame_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_warm_subspace_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_initial_density_tests",
+    "status": "Passed",
+    "seconds": 0.08,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_mp2_contract_tests",
+    "status": "***Failed",
+    "seconds": 0.45,
+    "failure_detail": "CUDA derivative test must not run without the explicit GPU gate"
+  },
+  {
+    "test": "vibeqc_native_gmres_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_mp2_gradient_tests",
+    "status": "Passed",
+    "seconds": 0.14,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_reference_export_tests",
+    "status": "Passed",
+    "seconds": 0.02,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_mp2_cuda_status_tests",
+    "status": "Passed",
+    "seconds": 0.81,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_scf_proposal_tests",
+    "status": "Passed",
+    "seconds": 0.12,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_self_consistent_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_batch_tests",
+    "status": "Passed",
+    "seconds": 0.52,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cpp_api_tests",
+    "status": "Passed",
+    "seconds": 0.76,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cartesian_integral_tests",
+    "status": "Passed",
+    "seconds": 0.22,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_density_fitting_tests",
+    "status": "***Failed",
+    "seconds": 2.78,
+    "failure_detail": "48 weighted DF finite-difference gates passed\ntest failure: retained-value device response lost raw upload/weight accounting"
+  },
+  {
+    "test": "vibeqc_density_factor_tests",
+    "status": "Passed",
+    "seconds": 0.08,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_scf_array_native_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_eigensolver_policy_tests",
+    "status": "Passed",
+    "seconds": 0.45,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_uhf_tests",
+    "status": "Passed",
+    "seconds": 0.89,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_spherical_tests",
+    "status": "Passed",
+    "seconds": 6.5,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_basis_contract_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_grid_tests",
+    "status": "Passed",
+    "seconds": 0.08,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_runtime_workspace_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cpu_linalg_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cosx_reference_tests",
+    "status": "Passed",
+    "seconds": 0.72,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_dft_tests",
+    "status": "Passed",
+    "seconds": 0.73,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_atm_reference_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_zero_reference_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_ragged_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_public_variant_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_cooperative_cuda_tests",
+    "status": "Passed",
+    "seconds": 3.39,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_production_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_ragged_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_reference_tests",
+    "status": "Passed",
+    "seconds": 0.01,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_eeq_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_gcp_r2scan3c_tests",
+    "status": "Passed",
+    "seconds": 0.01,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_xc_point_tests",
+    "status": "Passed",
+    "seconds": 0.0,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_rks_response_tests",
+    "status": "Passed",
+    "seconds": 0.72,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_uks_response_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_uks_state_tests",
+    "status": "Passed",
+    "seconds": 4.92,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_atm_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.2,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_zero_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.17,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d3_cuda_replay_failure_tests",
+    "status": "Passed",
+    "seconds": 0.17,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_production_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.28,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_ragged_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.27,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_reference_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.23,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_schedule_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.25,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_d4_eeq_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.17,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_xc_point_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.18,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_dft_cuda_tests",
+    "status": "***Failed",
+    "seconds": 0.66,
+    "failure_detail": "valid density failed device XC evaluation"
+  },
+  {
+    "test": "vibeqc_ks_cuda_tests",
+    "status": "***Failed",
+    "seconds": 2.34,
+    "failure_detail": "KS atoms=2 restricted=1 functional=0 iterations=2 residual=1.57009e-16\nKS atoms=2 restricted=1 functional=1 iterations=2 residual=1.46869e-16\nKS atoms=2 restricted=1 functional=0 iterations=2 residual=1.57009e-16\nCUDA OH occupation cycle did not converge"
+  },
+  {
+    "test": "vibeqc_cosx_cuda_tests",
+    "status": "Passed",
+    "seconds": 1.46,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cosx_fock_provider_tests",
+    "status": "Passed",
+    "seconds": 0.96,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cosx_scf_tests",
+    "status": "Passed",
+    "seconds": 0.68,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_dft_api_tests",
+    "status": "***Failed",
+    "seconds": 6.61,
+    "failure_detail": "PBE RKS H2 energy: -1.1520643753396722\ntest failure: CUDA KS automatic-precision preparation failed"
+  },
+  {
+    "test": "vibeqc_scf_diagnostic_tests",
+    "status": "Passed",
+    "seconds": 1.02,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_dft_density_source_tests",
+    "status": "Passed",
+    "seconds": 1.83,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_uks_tests",
+    "status": "Passed",
+    "seconds": 2.82,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_wb97mv_scf_tests",
+    "status": "Passed",
+    "seconds": 0.84,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_mixed_precision_tests",
+    "status": "Passed",
+    "seconds": 1.85,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_precision_policy_tests",
+    "status": "Passed",
+    "seconds": 0.09,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_runtime_tests",
+    "status": "Passed",
+    "seconds": 0.35,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_eigensystem_tests",
+    "status": "Passed",
+    "seconds": 2.07,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_capture_recovery_tests",
+    "status": "Passed",
+    "seconds": 0.25,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_final_snapshot_tests",
+    "status": "Passed",
+    "seconds": 0.4,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_occupied_response_tests",
+    "status": "Passed",
+    "seconds": 0.73,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_diis_tests",
+    "status": "Passed",
+    "seconds": 0.28,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_force_convergence_tests",
+    "status": "Passed",
+    "seconds": 0.25,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_df_shell_pairs_tests",
+    "status": "Passed",
+    "seconds": 18.9,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_fock_provider_tests",
+    "status": "Passed",
+    "seconds": 3.32,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ecp_cuda_error_tests",
+    "status": "Passed",
+    "seconds": 1.16,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_ecp_policy_cuda_tests",
+    "status": "Passed",
+    "seconds": 0.17,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_cuda_fock_composition_tests",
+    "status": "Passed",
+    "seconds": 2.31,
+    "failure_detail": null
+  },
+  {
+    "test": "vibeqc_aot_profile_tests",
+    "status": "Passed",
+    "seconds": 0.25,
+    "failure_detail": null
+  }
+]

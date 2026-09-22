@@ -1,0 +1,59 @@
+diff --git a/tests/native/test_density_fitting.cpp b/tests/native/test_density_fitting.cpp
+index e09313f0..68589ed8 100644
+--- a/tests/native/test_density_fitting.cpp
++++ b/tests/native/test_density_fitting.cpp
+@@ -1872,9 +1872,14 @@ int main() {
+             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
+                     "generated DF-HF replay downloaded more than its final gradient");
+             if (response_plan == resident_plan.get()) {
++              // The single RHF term borrows full J/K scratch and uploads raw
++              // values once. Multi-term UHF retains the bounded panel route.
+               const auto width = resources.auxiliary_weight_tile;
+               const auto panels = (integrals.naux + width - 1) / width;
+-              const auto expected_slices = (panels + 1) * integrals.naux - width;
++              const auto expected_slices =
++                  unrestricted ? (panels + 1) * integrals.naux - width : integrals.naux;
++              require((resources.borrowed_device_bytes > 0) == !unrestricted,
++                      "retained-value RHF/UHF response changed its scratch ownership");
+               require(resources.device_response && resources.value_slices == expected_slices &&
+                           resources.tensor_host_to_device_bytes ==
+                               expected_slices * integrals.nbf * integrals.nbf * sizeof(double) &&
+@@ -1901,23 +1906,29 @@ int main() {
+             }
+             if (response_plan != resident_plan.get()) {
+               const bool packed = response_plan == packed_response_plan.get();
++              const bool retained = packed || response_plan == generated_resident.get();
+               const auto width = resources.auxiliary_weight_tile;
+               const auto panels = (integrals.naux + width - 1) / width;
+-              // Charges populate the first raw panel; exchange reuses each
+-              // panel's own auxiliary slices. A full panel reads A only once.
+-              const auto expected_slices = (panels + 1) * integrals.naux - width;
++              // Resident fitted values need no raw regeneration. The bounded
++              // full-rank source route instead fits each requested P/Q panel
++              // from a complete raw pass, in AO-pair blocks. Count those passes
++              // explicitly; a narrow weight panel must not hide reread work.
++              const auto pair_tile = std::min(integrals.naux, integrals.nbf * integrals.nbf);
++              const auto pair_blocks = (integrals.nbf * integrals.nbf + pair_tile - 1) / pair_tile;
++              const auto raw_passes = retained ? 0 : panels * panels;
++              const auto expected_slices =
++                  retained ? 0 : (panels == 1 ? integrals.naux : raw_passes * pair_blocks);
+               require(resources.value_slices == expected_slices &&
+-                          resources.recomputed_value_bytes ==
+-                              (packed ? 0
+-                                      : expected_slices * integrals.nbf * integrals.nbf *
+-                                            sizeof(double)),
+-                      "response cache regenerated an already retained raw slice");
++                          resources.recomputed_value_bytes == raw_passes * integrals.naux *
++                                                                  integrals.nbf * integrals.nbf *
++                                                                  sizeof(double),
++                      "response cache lost resident reuse or streamed raw-pass accounting");
+               require(resources.device_response && resources.tensor_host_to_device_bytes == 0 &&
+                           resources.tensor_device_to_host_bytes == 0 &&
+                           resources.response_host_to_device_bytes == 0 &&
+                           resources.density_host_to_device_bytes ==
+                               terms.size() * rhf_density.size() * sizeof(double) &&
+-                          (packed || resources.recomputed_value_bytes > 0) &&
++                          (retained || resources.recomputed_value_bytes > 0) &&
+                           resources.device_response_bytes ==
+                               (integrals.nbf * integrals.nbf * integrals.naux +
+                                integrals.naux * integrals.naux) *
