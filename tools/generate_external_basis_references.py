@@ -1,6 +1,6 @@
 """Generate redistributable local BSE data and independent PySCF integral/HF oracles.
 
-The BSE checkout must match provenance/external_references.toml. This script imports no
+The BSE checkout must match tools/reference_sources.toml. This script imports no
 VibeQC basis parser, normalizer, capability table or scientific evaluator.
 """
 

@@ -3,7 +3,7 @@
 
 The script intentionally does not vendor or link cloned code. After cloning,
 record the resolved commit and license checksum in
-provenance/external_references.toml before adapting any implementation.
+tools/reference_sources.toml before adapting any implementation.
 """
 
 from __future__ import annotations
@@ -35,9 +35,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    manifest_path = (
-        Path(__file__).resolve().parents[1] / "provenance" / "external_references.toml"
-    )
+    manifest_path = Path(__file__).with_name("reference_sources.toml")
     repositories = tomllib.loads(manifest_path.read_text())["repository"]
     selected = set(args.name)
     args.root.mkdir(parents=True, exist_ok=True)
