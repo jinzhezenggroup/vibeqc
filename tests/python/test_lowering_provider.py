@@ -33,10 +33,10 @@ def _vector_program() -> Program:
     return Program({"result": add(x, x)})
 
 
-def _gemm_program(*, packed: bool = False) -> Program:
+def _gemm_program(*, packed: bool = False, inner: int = 13) -> Program:
     i = Index("i", IndexSpace("rows", "batch", 7))
     j = Index("j", IndexSpace("cols", "batch", 11))
-    k = Index("k", IndexSpace("inner", "batch", 13))
+    k = Index("k", IndexSpace("inner", "batch", inner))
     a = input_tensor("a", TensorSpec((i, k), role="input"))
     b = input_tensor("b", TensorSpec((k, j), role="input"))
     equation = "ik,kj->ji" if packed else "ik,kj->ij"
@@ -123,6 +123,22 @@ def test_tensor_cublas_is_explicit_composite_lowering(
     ]
     assert candidate["workspace_bytes"] == plan.library_bytes
     assert candidate["provider_bytes"] == plan.provider_bytes
+
+
+def test_empty_gemm_is_attributed_to_cuda_runtime_zero_fill() -> None:
+    plan = plan_cuda(_gemm_program(inner=0), TARGET)
+    report = tensor_lowering_diagnostics(plan)
+    candidate = next(
+        row
+        for row in report["candidates"]
+        if row["implementation"] == "tensor-gemm-zero-fill"
+    )
+
+    assert [provider["name"] for provider in candidate["providers"]] == [
+        "nvidia.cuda_runtime"
+    ]
+    assert candidate["workspace_bytes"] == 0
+    assert candidate["provider_bytes"] == 0
 
 
 def test_schedule_contract_carries_resolved_lowering_identity() -> None:
