@@ -4996,7 +4996,10 @@ def test_autotune_trials_preserve_an_explicit_integral_ir() -> None:
     assert trials[0].static_model.recurrence_state_count == 84
 
     source = emit_schedule_oracle_translation_unit(trials[0])
-    assert "constexpr unsigned derivative_centers[3] = {0U, 2U, 3U};" in source
+    assert re.search(
+        r"constexpr unsigned derivative_centers\[3\]\s*=\s*\{\s*0U,\s*2U,\s*3U\s*\};",
+        source,
+    )
 
 
 def test_autotune_trial_identity_includes_explicit_integral_intent() -> None:
