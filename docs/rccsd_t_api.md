@@ -15,9 +15,11 @@ triples approximations are not silently substituted.
 `rccsd_t_method_capabilities("rccsd(t)")` reports the internal Python
 composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
 `native_public=False` still describes that internal force facade. Separately,
-the public native registry now exposes CPU `RCCSD(T)` **energy only** through
+the public native registry exposes CPU and CUDA `RCCSD(T)` **energy only** through
 `VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`, including homogeneous
-prepared batches.
+prepared batches. The native route and its host handoff are documented in
+[`rccsd_t.md`](rccsd_t.md#native-cuda-public-interface); it does not require this
+internal Python composition API.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
 `rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,

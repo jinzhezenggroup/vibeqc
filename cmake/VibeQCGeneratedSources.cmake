@@ -520,6 +520,21 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cuda-source "${VIBEQC_RCCSD_CUDA_SOURCE}")
 
+  set(VIBEQC_RCCSDT_CUDA_SOURCE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cuda.cu")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_rccsdt_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_cuda.py"
+    OUTPUTS "${VIBEQC_RCCSDT_CUDA_SOURCE}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_native.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/triples.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/cc/triples_cuda.hpp"
+    ARGS --output "${VIBEQC_RCCSDT_CUDA_SOURCE}")
+
   set(VIBEQC_MP2_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")
   set(VIBEQC_MP2_GENERATED_SOURCES

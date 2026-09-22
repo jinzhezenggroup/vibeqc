@@ -984,10 +984,6 @@ class Calculator:
                 | {"forces"},
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
-            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
-                raise NotImplementedError(
-                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
-                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
                     "native coupled-cluster density fitting is not implemented"

@@ -77,9 +77,9 @@ explicit `CudaCompilerAdapter` and cache — CUDA is never implicit.
 At the time this helper was introduced, the native C-ABI registry deliberately
 had no `VIBEQC_METHOD_RCCSD`; that historical boundary is why this module never
 claimed native execution. Slice C subsequently adds an independent additive
-RCCSD identifier and a native resident solver/owner. The reserved
-`VIBEQC_METHOD_RCCSD_T` remains unavailable until a separate native (T) owner is
-promoted. This ordinary-stream module remains an independent validation backend,
+RCCSD identifier and a native resident solver/owner. The separate native
+`VIBEQC_METHOD_RCCSD_T` CPU/CUDA energy owner is documented in `rccsd_t.md`.
+This ordinary-stream module remains an independent validation backend,
 not the production registry implementation.
 
 ## Validation status

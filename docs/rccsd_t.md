@@ -3,9 +3,8 @@
 `tools.vibeqc_cc/triples.py` provides the auditable standard closed-shell
 non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
 generated native CPU energy evaluator, and generated response paths share that
-definition. `VIBEQC_METHOD_RCCSD_T` now has a native/public CPU energy owner and
-homogeneous prepared-batch support; public analytic forces and the native CUDA
-owner remain fail-closed. PySCF is used only by pinned validation tooling and is
+definition. `VIBEQC_METHOD_RCCSD_T` has native/public CPU and CUDA energy owners
+and homogeneous prepared-batch support; public analytic forces remain fail-closed. PySCF is used only by pinned validation tooling and is
 never a runtime dependency.
 
 ## Mathematical contract
@@ -210,9 +209,41 @@ projection is applied after assembly.
 Pinned PySCF 2.14.0 analytic gradients for H2O and NH3 are independent acceptance
 oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
 finite differences and omission controls remain in
-`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU energy
-owner and homogeneous prepared batch are covered by
+`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU and CUDA energy
+owners and homogeneous prepared batches are covered by
 `tests/python/test_rccsdt_public.py`; native/public force publication remains
 #155 C even though the qualified CPU response/gradient TensorIR execution is now
 native. The ownership rationale is recorded in
 [the complete-gradient Agent Note](../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).
+
+## Native CUDA public interface
+
+`Calculator(method="ccsd(t)", device="cuda", basis="sto-3g")` executes native
+CUDA RHF, the existing conventional MO-block preparation, resident RCCSD with
+physical residual replay, and a generated CUDA standard `(T)` evaluator.
+`singlepoint(..., properties=("energy",))` and homogeneous prepared batches
+share this owner. No Python/CuPy/PySCF solver or CPU triples retry is required.
+
+The existing MO provider retains its explicit host integral preparation/staging
+contract. Converged CC amplitudes and MO blocks are host-owned between the
+resident CC solve and `(T)`; the triples owner stages its inputs once. This is
+GPU execution of the correlation stages, not an end-to-end device-residency or
+performance claim.
+
+The generated evaluator shares the CPU audited permutation inventory, evaluates
+all triangular virtual triples, and recomputes occupied intermediates in each
+work item without materializing T3. Fixed-order block/final reductions make
+repeated evaluations deterministic. `ccsd_t_workspace_bytes` includes all staged
+device inputs, alignment, reduction and status buffers. The correlation budget
+covers retained host CC state plus the active triples reservation, and infeasible
+budgets fail before device allocation. The diagnostic virtual-triple count is
+`nvir*(nvir+1)*(nvir+2)/6` on both backends.
+
+Acceptance uses pinned H2/H2O/NH3 energies (`3e-9 Eh` total, `2e-9 Eh` triples),
+independent expanded CC residuals, and unequal-dimension random CUDA triples
+against the independent full-sum oracle (`1e-10` absolute/`1e-12` relative).
+Enable `VIBEQC_RCCSDT_CUDA_TEST=1` and run
+`tests/python/test_rccsdt_public.py tests/python/test_rccsdt_cuda_codegen.py`
+inside a scheduler-allocated CUDA job.
+
+See the [native CUDA ownership note](../.agents/notes/implemented/architecture/2026-09-22-public-rccsdt-cuda.md).
