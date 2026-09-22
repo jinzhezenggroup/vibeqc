@@ -240,12 +240,12 @@ int main() {
       const auto [oracle_overlap, oracle_hcore] = raw_one_electron(sdf);
       require(production.overlap.size() == oracle_overlap.size() &&
                   production.hcore.size() == oracle_hcore.size(),
-              "generated S/T production dimensions disagree with the independent oracle");
+              "generated S/T/V production dimensions disagree with the independent oracle");
       for (std::size_t element = 0; element < oracle_overlap.size(); ++element) {
         require_close(production.overlap[element], oracle_overlap[element], 2.0e-12,
                       "generated overlap differs from independent RawSource");
         require_close(production.hcore[element], oracle_hcore[element], 4.0e-12,
-                      "generated S/T hcore differs from independent RawSource");
+                      "generated S/T/V hcore differs from independent RawSource");
       }
 
       constexpr double step = 1.0e-5;
@@ -265,7 +265,7 @@ int main() {
                         "generated overlap derivative differs from independent finite difference");
           require_close(
               production.hcore_derivative[coordinate * matrix_size + element], hcore_fd, 2.0e-7,
-              "generated S/T hcore derivative differs from independent finite difference");
+              "generated S/T/V hcore derivative differs from independent finite difference");
         }
       }
     }
