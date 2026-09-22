@@ -159,6 +159,40 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
     COMMENT "Generating compiler-owned GFN2 ES2 scalar kernels")
 
+  set(VIBEQC_GFN2_H0_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_h0_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_h0_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_h0_native.py"
+    OUTPUTS "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA H0 values and adjoints")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_h0_native_codegen)
+  endif()
+
+  set(VIBEQC_GFN2_SPIN_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_spin_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_spin_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_spin_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_spin_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA spin energy/potential")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_spin_native_codegen)
+  endif()
+
   set(VIBEQC_GFN2_ES3_NATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es3_native.cuh")
   vibeqc_register_generated_sources(
@@ -259,23 +293,6 @@ macro(vibeqc_register_host_generated_sources target)
 endmacro()
 
 macro(vibeqc_register_cuda_generated_sources target)
-  if(TARGET vibeqc_gfn2_cuda)
-    set(VIBEQC_GFN2_H0_FORCE_CUDA_HEADER
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_h0_force.cuh")
-    vibeqc_register_generated_sources(
-      NAME vibeqc_gfn2_h0_force_cuda_codegen
-      TARGET vibeqc_gfn2_cuda
-      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_h0_force_cuda.py"
-      OUTPUTS "${VIBEQC_GFN2_H0_FORCE_CUDA_HEADER}"
-      DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
-      ARGS --output "${VIBEQC_GFN2_H0_FORCE_CUDA_HEADER}"
-      COMMENT "Generating compiler-owned GFN2 CUDA H0-force pair science")
-    target_include_directories(vibeqc_gfn2_cuda PRIVATE
-      "${CMAKE_CURRENT_BINARY_DIR}/generated")
-  endif()
 
   set(VIBEQC_MATRIX_FUNCTION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_symmetric_matrix_function.cuh")

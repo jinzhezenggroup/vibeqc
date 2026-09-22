@@ -1,0 +1,658 @@
+{
+  "adaptations": {
+    "src/backends/cuda/gfn2_aes2.cu": "Consume compiler-generated TensorIR/AD AES2 energy/potential/coordinate and CN reverse response; preserve runtime validation, topology, and publication ownership.",
+    "src/backends/cuda/gfn2_es3.cu": "Consume compiler-generated TensorIR/AD ES3 energy/potential and finite-range recovery; preserve runtime validation, topology, and publication ownership.",
+    "src/backends/cuda/gfn2_geometry.cu": "Consume compiler-generated TensorIR/AD coordination pair science; retain CUDA geometry/topology ownership.",
+    "src/backends/cuda/gfn2_hamiltonian.cu": "Consume compiler-generated fixed-state TensorIR S/D/Q pair Hamiltonian for both spin layouts.",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": "Consume the matching compiler-generated S/D/Q reverse-mode pair adjoints, including spin overlap.",
+    "src/backends/cuda/gfn2_pairlist.cu": "Backport xTBloom #487: pass pair-list CUDA kernel descriptors by value so device code never dereferences launcher-stack host references. Consume the same compiler-generated TensorIR/AD coordination pair helper as dense geometry, preserving bitwise CN admission and canonical neighbor accumulation.",
+    "src/backends/cuda/gfn2_preprocessing.cu": "Backport xTBloom #487: pass committed pair-list CUDA kernel descriptors by value for GPUs without pageable host-memory access.",
+    "src/backends/cuda/gfn2_repulsion.cu": "Consume compiler-generated TensorIR/AD repulsion pair science; retain CUDA reduction and error ownership.",
+    "src/backends/cuda/gfn2_repulsion.cuh": "Add explicit generated-pair nonfinite arithmetic status.",
+    "src/runtime/gfn2_cuda_execution.cu": "Reuse VibeQC canonical packed D4 tables and expand the C6 matrix once in host setup; no duplicate generated D4 table is vendored. Retire standalone asynchronous request/plan APIs, diagnostic snapshots, their request graph and cell staging; preserve synchronous molecular SCC graph and bounded fallback.",
+    "src/backends/cuda/gfn2_h0_force.cu": "Consume compiler-generated TensorIR H0 Pulay seed, Cartesian distance/pullback, pair factors, CN/radial reverse response, and AO contraction arithmetic while retaining CUDA topology, validation, reductions, atomics, thresholds, and failure semantics.",
+    "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership. H0 values consume the same generated pair primal as CPU/CUDA forces.",
+    "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership.",
+    "src/backends/cuda/gfn2_spin.cu": "Consume shared compiler TensorIR FMA potential/energy updates and symmetric-energy AD identity; retain ragged admission, restricted zero branch and scratch publication."
+  },
+  "backports": {
+    "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
+  },
+  "cpu_snapshot_commit": "5a67cc59ace94c8296e873503b2ae1298e7c2861",
+  "cuda_sources": [
+    "src/backends/cuda/cuda_runtime.cu",
+    "src/runtime/cuda_descriptor_validation.cu",
+    "src/runtime/gfn2_cuda_topology_staging.cu",
+    "src/runtime/gfn2_cuda_execution.cu",
+    "src/backends/cuda/gfn2_aes2.cu",
+    "src/backends/cuda/gfn2_classical_force.cu",
+    "src/backends/cuda/gfn2_d4.cu",
+    "src/backends/cuda/gfn2_density.cu",
+    "src/backends/cuda/gfn2_electric_field.cu",
+    "src/backends/cuda/gfn2_electronic_gradient.cu",
+    "src/backends/cuda/gfn2_energy_force_execution.cu",
+    "src/backends/cuda/gfn2_eigensolver.cu",
+    "src/backends/cuda/gfn2_es2.cu",
+    "src/backends/cuda/gfn2_es3.cu",
+    "src/backends/cuda/gfn2_external_point_charges.cu",
+    "src/backends/cuda/gfn2_force_composition.cu",
+    "src/backends/cuda/gfn2_geometry.cu",
+    "src/backends/cuda/gfn2_preprocessing.cu",
+    "src/backends/cuda/gfn2_public_result_bridge.cu",
+    "src/backends/cuda/gfn2_h0_force.cu",
+    "src/backends/cuda/gfn2_hamiltonian.cu",
+    "src/backends/cuda/gfn2_hamiltonian_force.cu",
+    "src/backends/cuda/gfn2_inference_publication.cu",
+    "src/backends/cuda/gfn2_integrals.cu",
+    "src/backends/cuda/gfn2_mulliken.cu",
+    "src/backends/cuda/gfn2_occupations.cu",
+    "src/backends/cuda/gfn2_pairlist.cu",
+    "src/backends/cuda/gfn2_parameters.cu",
+    "src/backends/cuda/gfn2_plan_schema.cu",
+    "src/backends/cuda/gfn2_periodic_embedding.cu",
+    "src/backends/cuda/gfn2_post_scc_potential.cu",
+    "src/backends/cuda/gfn2_repulsion.cu",
+    "src/backends/cuda/gfn2_scc.cu",
+    "src/backends/cuda/gfn2_scc_bridge.cu",
+    "src/backends/cuda/gfn2_scc_classical_energy.cu",
+    "src/backends/cuda/gfn2_scc_energy.cu",
+    "src/backends/cuda/gfn2_scc_free_energy.cu",
+    "src/backends/cuda/gfn2_scc_iteration.cu",
+    "src/backends/cuda/gfn2_scc_loop.cu",
+    "src/backends/cuda/gfn2_scc_iteration_arena.cu",
+    "src/backends/cuda/gfn2_scc_iteration_control.cu",
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cu",
+    "src/backends/cuda/gfn2_scc_iteration_reports.cu",
+    "src/backends/cuda/gfn2_scc_mixer.cu",
+    "src/backends/cuda/gfn2_scc_potential.cu",
+    "src/backends/cuda/gfn2_scc_publication.cu",
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cu",
+    "src/backends/cuda/gfn2_scc_setup_inputs.cu",
+    "src/backends/cuda/gfn2_scc_setup_topology.cu",
+    "src/backends/cuda/gfn2_spin.cu",
+    "src/backends/cuda/gfn2_terminal_classical_energy.cu",
+    "src/backends/cuda/gfn2_total_energy.cu"
+  ],
+  "files": {
+    "src/backends/cuda/cuda_atomics.cuh": {
+      "adapted": true,
+      "upstream_sha256": "57e6a417df9edeacd92b9062859b2ab9182c3e94da908983f591021cde42d7df",
+      "vendored_sha256": "d771425869727cba4d7067fb2d944889705e3b91c571674ce38347434b83c28d"
+    },
+    "src/backends/cuda/cuda_runtime.cu": {
+      "adapted": true,
+      "upstream_sha256": "ed0b9065a98dcbb191e371ad3680d3a41c21f42a5fc621f8f1e9d6a774010334",
+      "vendored_sha256": "455b32e7cc238db59358fccb2d8cba724d17ec3ba355f0cd4a5a144d939b77f0"
+    },
+    "src/backends/cuda/gfn2_aes2.cu": {
+      "adapted": true,
+      "upstream_sha256": "86ebfe4e4c846f2f2358e75eaa521b98ff2627e0ff1d659ddb4a64be9eb801de",
+      "vendored_sha256": "8775e170cb8dfdc34e2dc49b6b30acadf2368bee765d0d53b2abcb75e8131165"
+    },
+    "src/backends/cuda/gfn2_aes2.cuh": {
+      "adapted": true,
+      "upstream_sha256": "06e84a7f2d0e1ee9d9fece225176846b8833f1d5542840d77377dcd0e688d0c4",
+      "vendored_sha256": "7da3896345fc7ff7331608823ac7cab87e94e2d8c79efdbbb24b1c0b7112c367"
+    },
+    "src/backends/cuda/gfn2_classical_force.cu": {
+      "adapted": true,
+      "upstream_sha256": "8b210634f051e4ff32a58afeac41f5271b7422f623808a747cb6bb3f075301c3",
+      "vendored_sha256": "d49ed45c7557c6ddcd33c0482fe20fec48bd53a88b411f02145370bee807fa6b"
+    },
+    "src/backends/cuda/gfn2_classical_force.cuh": {
+      "adapted": true,
+      "upstream_sha256": "3d2818e937f453445dc70eb735aee96e629fdafc4a616208abc6becb3f97dc99",
+      "vendored_sha256": "8ea30679d334afec9f64f463a19bd25b51bb65f60452583988b61cadc15ae41f"
+    },
+    "src/backends/cuda/gfn2_d4.cu": {
+      "adapted": true,
+      "upstream_sha256": "9e3982dbf865f64d9c7969a6dd4410bfa39fe6c532edb0124063a28d1be5fbb5",
+      "vendored_sha256": "ff5473259dfd3cebce9e59a60cecd8f8070370bb3a102881692f5e534ac5cc4b"
+    },
+    "src/backends/cuda/gfn2_d4.cuh": {
+      "adapted": true,
+      "upstream_sha256": "507ea4a8b3fb0619ed1951dad358a7548b7a395e5c5d0259f7a18937f7658701",
+      "vendored_sha256": "94f1474b48c2a7c48c09777276b16fb65af25cbe5941fef684bd8c782a2f244b"
+    },
+    "src/backends/cuda/gfn2_density.cu": {
+      "adapted": true,
+      "upstream_sha256": "22e2f182a418ddf43834578605ba913c9e9e043f491e0f95f2f7ec6f16735a34",
+      "vendored_sha256": "610eb572568021ccb21967d0b8e89aa2e24acec28cc679d4426da1061690d026"
+    },
+    "src/backends/cuda/gfn2_density.cuh": {
+      "adapted": true,
+      "upstream_sha256": "3d3059459ddaec1f8d38e630f42c97992d01dafad4fac9b00ee36e8c1c0368b4",
+      "vendored_sha256": "e8e88e3046e8d794fd06d247a65a547c9ec29c39f0751fcf1c72a319dcd63f8d"
+    },
+    "src/backends/cuda/gfn2_device_admission.cuh": {
+      "adapted": true,
+      "upstream_sha256": "fe0244b9a0b675afdce09ec2f1a110bf027df5b6ca5d6393a3da6ce23d0d78c6",
+      "vendored_sha256": "a89900c2e27bab4054f5e1993e93a61aec76d8634bafc5a40935bb0555d6cbdb"
+    },
+    "src/backends/cuda/gfn2_eigensolver.cu": {
+      "adapted": true,
+      "upstream_sha256": "c4bef7285e6afd0b880a060da005799aa65371135d14e5ad846d4e172b357c54",
+      "vendored_sha256": "6a67dec1ffdc6db67ced73901a9fe4b1ab9ac57c1640ab9fa86904fbfb662dba"
+    },
+    "src/backends/cuda/gfn2_eigensolver.cuh": {
+      "adapted": true,
+      "upstream_sha256": "c6e338e098cbdc9d8623be85c1f27648e03e40bfa51949065d95dd0db1910bbf",
+      "vendored_sha256": "c98515c03af41245069388e5a2293d032872d392b681dd4fa324883835cd2886"
+    },
+    "src/backends/cuda/gfn2_electric_field.cu": {
+      "adapted": true,
+      "upstream_sha256": "ac04444ced8026d39c235aa8e4fbdd66ce860d3b2c625bc4293fa3ecfdfa85bb",
+      "vendored_sha256": "b32cb55023e3d3dfc0fbf8be759b3109881b56887da15f0f82b538c05c2e4b4f"
+    },
+    "src/backends/cuda/gfn2_electric_field.cuh": {
+      "adapted": true,
+      "upstream_sha256": "21cecb34be57f2d4f01e573248bed8d0a80f32c3cf82303071f9181783492bf7",
+      "vendored_sha256": "9fb974f466226665a9a2e5b854cf480b91d7a2e7991e18112795eadbec26963a"
+    },
+    "src/backends/cuda/gfn2_electronic_gradient.cu": {
+      "adapted": true,
+      "upstream_sha256": "9d063923d2addceef68d7bcc16364445c83dfb79dfdcf53a388384e8c95c5a3e",
+      "vendored_sha256": "719b7485f55451b9d3e0cce16a0b89df8b4d9faa63b254988a3f9fc4997dd6ba"
+    },
+    "src/backends/cuda/gfn2_electronic_gradient.cuh": {
+      "adapted": true,
+      "upstream_sha256": "ce26a196a9aeb0da5af27ce593cc05a6765b743a73503607d205ba60c589358a",
+      "vendored_sha256": "bb041b4fecd0b76092b09291e0ead119587a7336bbd7031b96100cb1daaea692"
+    },
+    "src/backends/cuda/gfn2_energy_force_execution.cu": {
+      "adapted": true,
+      "upstream_sha256": "7bba6e839f917110cf6b36a51b3a962df2c7b758b53c2b9dc057f17fcab99329",
+      "vendored_sha256": "9fa6018abc8041472b9620cc116fbe42210badaace6e63e328b0c8b2e24e0c71"
+    },
+    "src/backends/cuda/gfn2_energy_force_execution.cuh": {
+      "adapted": true,
+      "upstream_sha256": "a136325ad2e5651b20d8f8798312c999eb90b3012d3d83d78adfd19c0b6676b6",
+      "vendored_sha256": "321d02c35ed2018f61a3dd1360d79417557eb3afda9c04ce4224a4b543d3eaa6"
+    },
+    "src/backends/cuda/gfn2_es2.cu": {
+      "adapted": true,
+      "upstream_sha256": "1f831ef1b95f4f9a0cdd12629d50cc2b7f5dd2e85d8f9413598ff3a6b862099b",
+      "vendored_sha256": "c092dc96b16eb3ad5089ef0a8800bbef070b68181969d50ce5fce83bc4937b00"
+    },
+    "src/backends/cuda/gfn2_es2.cuh": {
+      "adapted": true,
+      "upstream_sha256": "684fa6494f0ab10d200766b6bd54213edfb29d26c0fd3236a3c2c7cbbf10a6ae",
+      "vendored_sha256": "f0b3db6bc24c70c966e298fc688335818c83f3f6c2882579a2b45141d05d6a44"
+    },
+    "src/backends/cuda/gfn2_es3.cu": {
+      "adapted": true,
+      "upstream_sha256": "bc45598ffa06076f991fc118ccb52c61851ebafc1b9f9727b732def37f49f313",
+      "vendored_sha256": "2e66ba8ae9e59b84b7de9abea8881787222f7d3d02d67f9d31e7d21e859baed2"
+    },
+    "src/backends/cuda/gfn2_es3.cuh": {
+      "adapted": true,
+      "upstream_sha256": "865754a74f4a29b4a2f33eb3648aa26c74a50f2628c38eb1a0d3bf9cb881ba79",
+      "vendored_sha256": "0595aa5e4443588203446caf64a5c134a40fea7583e808fe3aaa39aef4c4646c"
+    },
+    "src/backends/cuda/gfn2_external_point_charges.cu": {
+      "adapted": true,
+      "upstream_sha256": "c281a16ebbf89d9591b63a521a691b35b13872677617599309d015440e9c9790",
+      "vendored_sha256": "fbe2ab9334042e29c20347a9e477dfb3f248c2087b269cc9906cebdb1ec45bea"
+    },
+    "src/backends/cuda/gfn2_external_point_charges.cuh": {
+      "adapted": true,
+      "upstream_sha256": "7d7aee3f4b8c8523c9e856c91809c4adbb5f7cb3afcaf5967570a8690b203ad7",
+      "vendored_sha256": "1c8abd5e98964cc786a9acb270ebf2c0f283539db763ee90e7041cd44698d287"
+    },
+    "src/backends/cuda/gfn2_force_common.cuh": {
+      "adapted": true,
+      "upstream_sha256": "f71d3f587c9fb04a618ff0a70f2472dcb960ee72fa37e7ef07508331da787822",
+      "vendored_sha256": "5704fdc023b1068846ba906324d4c5a818e6b6f3a3b7ed9917437c1a106b8fd2"
+    },
+    "src/backends/cuda/gfn2_force_composition.cu": {
+      "adapted": true,
+      "upstream_sha256": "689b70b18bbc44368bdb965f42eae0cbead1575ccb0283f62aef0f3bd9e46f08",
+      "vendored_sha256": "a2c1cadb306dee4aea037dde2a37b1ef7c331d8405be9ba5e90e36d30aac92f6"
+    },
+    "src/backends/cuda/gfn2_force_composition.cuh": {
+      "adapted": true,
+      "upstream_sha256": "c143fbf951d3248535dcbd7fec9d57b4b59585ae8f953577603c38caedb4c3e8",
+      "vendored_sha256": "23b01e41a362576bc34d7fe1741ad98186dcd5773ae9988cb244607175071406"
+    },
+    "src/backends/cuda/gfn2_geometry.cu": {
+      "adapted": true,
+      "upstream_sha256": "dab404d81963162181cb357b9bc8288b6a2ee5e6169918363a42f6f9a8bd5003",
+      "vendored_sha256": "cfa346b01a18d736a1c934ba95fa0b7abaab8da2e11c70df20a5f804b321276a"
+    },
+    "src/backends/cuda/gfn2_geometry.cuh": {
+      "adapted": true,
+      "upstream_sha256": "2790a8a1f2c40fcda3f5b0359e5a458cb5970945420c6b29099a2b93599d6f87",
+      "vendored_sha256": "d2672085a51d0ebef97f79d45fc0c26b0d8b12ccccc708cfa0f2c1e98999dedf"
+    },
+    "src/backends/cuda/gfn2_h0_force.cu": {
+      "adapted": true,
+      "upstream_sha256": "ffccf6543aefc02feba9c23913bff8c544f6389a67956535d9e2372f1b50176a",
+      "vendored_sha256": "8a4fb96c014117242f7ac0a1c83394a712e6ffe859b7435b759592a7711a9929"
+    },
+    "src/backends/cuda/gfn2_h0_force.cuh": {
+      "adapted": true,
+      "upstream_sha256": "2bb34759478f6cc26f98df496d4c826358505c92d66774ef7ab2b4c9043530c6",
+      "vendored_sha256": "f80b324b1f56585ec1f613ffe97887a14323ca0907ced1aac51323a4d6f82a69"
+    },
+    "src/backends/cuda/gfn2_hamiltonian.cu": {
+      "adapted": true,
+      "upstream_sha256": "3c3be624100613cef64a01b2d3bc78756f59f0847e832472678b9018bc11729b",
+      "vendored_sha256": "3d513f80617eed8f3c735a5d99bcddad8e303fd0e2b7b18bda334bd7d5827bd5"
+    },
+    "src/backends/cuda/gfn2_hamiltonian.cuh": {
+      "adapted": true,
+      "upstream_sha256": "2a937211fd28bff5b89979d292787032061016bac4d688ea9fd332032e099fa1",
+      "vendored_sha256": "e45e2edf2028252a11de2f582e4d7744cfd4706610e3ddf615934e02482cdf00"
+    },
+    "src/backends/cuda/gfn2_hamiltonian_force.cu": {
+      "adapted": true,
+      "upstream_sha256": "ea38771fa21ca9f1671c2d7b6ac0ac82c9f3b6bdce27c31ad5e9a14f2f976198",
+      "vendored_sha256": "44a20602aac0d60f3ab62342962f9b9fc530f6c34d7f3b4a2a20969bfb1a972d"
+    },
+    "src/backends/cuda/gfn2_hamiltonian_force.cuh": {
+      "adapted": true,
+      "upstream_sha256": "468134186020f27eb5c5a1d8233394dbda4bc25bc25918a95b24f49e00a86fed",
+      "vendored_sha256": "055ae821d87b07176866881e1e130c4f4aee1fe6554f1b7a818f568b8ae2b6e8"
+    },
+    "src/backends/cuda/gfn2_inference_publication.cu": {
+      "adapted": true,
+      "upstream_sha256": "a7ed69d1caa6cf3e0134a749911c266f03d9f1bcabd7cd669defd8dcc8610967",
+      "vendored_sha256": "edca88a0a094195a620ec7a4a2a9a81559570c5f26d473e22a0451258c82fafe"
+    },
+    "src/backends/cuda/gfn2_inference_publication.cuh": {
+      "adapted": true,
+      "upstream_sha256": "c15bed593a5f13ddc5422abf0c722f8ebbde623fa4e97b440f7f7fcdf83ccf66",
+      "vendored_sha256": "c72962401c4c95dfb8a57a5a6bbb235cebf510124cf1da3418a9cc71977bc62a"
+    },
+    "src/backends/cuda/gfn2_integral_force.cuh": {
+      "adapted": true,
+      "upstream_sha256": "463d2cbe0dac409c676e4e7af14e2648a27f597eaa70cc86b320b33b7ff7de6d",
+      "vendored_sha256": "05e8274b50cbdcbf671124c47dcf3baa4a4dbb7cdd2a436743a3abf05a542d53"
+    },
+    "src/backends/cuda/gfn2_integrals.cu": {
+      "adapted": true,
+      "upstream_sha256": "8da9042b184a7c81650cf9e7f4dbcc4b183cffeee0bf0eab6596b5adb18f99d6",
+      "vendored_sha256": "3078cd3339e13a3d6cd1ae496faa952981164a557043d165861184a66aedd2e3"
+    },
+    "src/backends/cuda/gfn2_integrals.cuh": {
+      "adapted": true,
+      "upstream_sha256": "ba0cae1e2f1830a075f0c280605318b0b78c34d03d76073eae46976db9ab7597",
+      "vendored_sha256": "0cbf0b8182261705b396d0980d432701b1f56159719f42394784607134c420d0"
+    },
+    "src/backends/cuda/gfn2_mulliken.cu": {
+      "adapted": true,
+      "upstream_sha256": "a38ac9d9b567181add01e2dbfa4c3955497b0035a774abc4ff3f62bde4124ad1",
+      "vendored_sha256": "dade0a5bcea066afbc525e2663163eb7684cf6b47e2b574686bfed830c8e86d4"
+    },
+    "src/backends/cuda/gfn2_mulliken.cuh": {
+      "adapted": true,
+      "upstream_sha256": "d59f514440ed33f40a0135b602f147b2bc307bb3bb4dd5b7f8b0e0e10e07b060",
+      "vendored_sha256": "1d7d28c96003c61bfd85e0eca6da8215c4a88d9e7183ccd5d631b02bce9afbd5"
+    },
+    "src/backends/cuda/gfn2_occupations.cu": {
+      "adapted": true,
+      "upstream_sha256": "565d3a11f08d7061ddd83858f3575938c24fd8b0542c0bd8177354e2acac5570",
+      "vendored_sha256": "d2fc35f13bfcec26e9099bd1d75fee3fe07c609925cdc7c9a4713e8b12174828"
+    },
+    "src/backends/cuda/gfn2_occupations.cuh": {
+      "adapted": true,
+      "upstream_sha256": "3ea8ddf540d6492abcef07c77313be759a114e621b1940e5e85c3cceab691a6e",
+      "vendored_sha256": "c41c2d2f84af542a6b05335266638ba7ae19343f3cb0ed9f955c989e00f67066"
+    },
+    "src/backends/cuda/gfn2_pairlist.cu": {
+      "adapted": true,
+      "upstream_sha256": "4eadf7ae80179453ba3543a6354b9430228efe25575dedf41629b8b94aa8be13",
+      "vendored_sha256": "b078bf5303548c78cf14d2f296513cce7a5067206ee90d38765e3b403b4bc648"
+    },
+    "src/backends/cuda/gfn2_pairlist.cuh": {
+      "adapted": true,
+      "upstream_sha256": "e64c830a8583e6ae8584c9d862e4c76771c66b981c96811c6407a850523e2390",
+      "vendored_sha256": "d1dad2af3e098842bea7a13a01a888844effb1b6efe8409afa4ea3e3678e095f"
+    },
+    "src/backends/cuda/gfn2_parameters.cu": {
+      "adapted": true,
+      "upstream_sha256": "54cbbdecf32c94c386c60eae73874445c1b94e005b23b06fabc77e1e1d2c4408",
+      "vendored_sha256": "7ea65baf4752e05aab7db5b40bcd095f85c961a168649af2dc6e3e79b802616d"
+    },
+    "src/backends/cuda/gfn2_parameters.cuh": {
+      "adapted": true,
+      "upstream_sha256": "91a5810ff3c75b9c3ab598f157d83d2eb003603f46686fbb64bacf4c3d24244f",
+      "vendored_sha256": "b98d93cc6e5075c171de337a7b107c11b8052965522958e9447f9a3100cb64a7"
+    },
+    "src/backends/cuda/gfn2_periodic_embedding.cu": {
+      "adapted": true,
+      "upstream_sha256": "03b4b00b54b3a83d91ac13e61d330aae01bfcc3594cbc938ea4f1a01a5d363e1",
+      "vendored_sha256": "8844e6a48f3376b19f27c69db1433fe53106c44e109ad55d1c6e3cb6f2e0a00a"
+    },
+    "src/backends/cuda/gfn2_periodic_embedding.cuh": {
+      "adapted": true,
+      "upstream_sha256": "dde5612841c3956c5fd603f62fa3f5533b927d639c9db636afa619b8dfbf96d1",
+      "vendored_sha256": "5db5fe7a64867e7c465ce0800cd094b190f2e73daa0f3306934098f778703b94"
+    },
+    "src/backends/cuda/gfn2_plan_schema.cu": {
+      "adapted": true,
+      "upstream_sha256": "14491b0bc26c4311b7c275a50fac589fc0859904604848dabf27689a987a6555",
+      "vendored_sha256": "05b9cacaf412662aa20aa406cfba533d25cde0613a05483ffc2c5dfd91cc254b"
+    },
+    "src/backends/cuda/gfn2_plan_schema.cuh": {
+      "adapted": true,
+      "upstream_sha256": "af64230b13c0ca7f1c547fbcb17dbd3b5f62b0626ca68a919185293e4b115a7a",
+      "vendored_sha256": "ec245f48186638cef10331891557e33e2e3bc112c9e42e91f8c6638db1da0491"
+    },
+    "src/backends/cuda/gfn2_post_scc_potential.cu": {
+      "adapted": true,
+      "upstream_sha256": "6b6650b56d4dd879f2b48a7185217ff57bad82b96f34e581846a3f4f2edff02d",
+      "vendored_sha256": "cabdfca488c8fa487a16d9c839999ef2caf6a0164863985e0784ffb44255cc92"
+    },
+    "src/backends/cuda/gfn2_post_scc_potential.cuh": {
+      "adapted": true,
+      "upstream_sha256": "5e1c65dc16893a58beeef56587abc22fb5968ffa424f057a2aecec62c2d38dae",
+      "vendored_sha256": "6444e456902fb76ead5ee7945675ecb1eb0c0322656529d4219c4216957f2ff4"
+    },
+    "src/backends/cuda/gfn2_preprocessing.cu": {
+      "adapted": true,
+      "upstream_sha256": "40d112fa6b88cafc78a74bd95f001662b1e81fc2fc1478b134f38353b6e19da9",
+      "vendored_sha256": "f7df77d68aec836564ae47e32b43abefd3e94e657f22aa049f14f148c3da4905"
+    },
+    "src/backends/cuda/gfn2_preprocessing.cuh": {
+      "adapted": true,
+      "upstream_sha256": "fed03f30fdc9cfe5f8ca5508b684451fd288975843fc286962d2b4c305620636",
+      "vendored_sha256": "79cae12a3dc93cdbc2df91db700800a6148e372969f8d297d49736b610530fb5"
+    },
+    "src/backends/cuda/gfn2_public_result_bridge.cu": {
+      "adapted": true,
+      "upstream_sha256": "1f9d10d1534472b86024e4e5f09dac41e32202fe0cb5918c6e0e302008e79ad1",
+      "vendored_sha256": "f6f12bbab5eee079d437b416b971f387198afc17961ac032295fe3f7b5f4e5eb"
+    },
+    "src/backends/cuda/gfn2_public_result_bridge.cuh": {
+      "adapted": true,
+      "upstream_sha256": "d76e4debf164898d776b027e664c297fceb57437e5d252cdd11bd6e4e3ce7403",
+      "vendored_sha256": "7965d6452badaebac6ccc6c1b3cb972bfaeac85d17e07d94dfc7c7eecef64b21"
+    },
+    "src/backends/cuda/gfn2_repulsion.cu": {
+      "adapted": true,
+      "upstream_sha256": "6a6a587f05ae54ecfa6df1c9fc7b3fadb799cae5c891366d2db5d56ad96d42b1",
+      "vendored_sha256": "5bd0e5a276cdcf120651cd8b6f109c3dcefff4a06674444083aa5bc7d21c3aca"
+    },
+    "src/backends/cuda/gfn2_repulsion.cuh": {
+      "adapted": true,
+      "upstream_sha256": "c6d600a8ad626d4e42b921d2c9c96e24b252c4d67045e3105502fb66243c955b",
+      "vendored_sha256": "06e39be33fb2dafad7d2e4a78cc912682a77a765764ec3ad9b8026e3fb848d06"
+    },
+    "src/backends/cuda/gfn2_scc.cu": {
+      "adapted": true,
+      "upstream_sha256": "8acc22635ac9e520d0688c864c05917a5b3690684f1c7c42dd980a6885c9923f",
+      "vendored_sha256": "7fc4d4bb54498e7c7f5382223e8ef02049f92c799cf2995befb3686446f65d15"
+    },
+    "src/backends/cuda/gfn2_scc.cuh": {
+      "adapted": true,
+      "upstream_sha256": "7f59fab7dddcbad62cad83884d2b6542c6e09594d26a28660c0a802a1a4606a3",
+      "vendored_sha256": "b5f720b84e86825bfbdeb118fed68ed59dce474071a46779b934d1720ee9d010"
+    },
+    "src/backends/cuda/gfn2_scc_bridge.cu": {
+      "adapted": true,
+      "upstream_sha256": "d9c6d22b75c34be79b443798222fef05e92513d4d4da8e617a77c743d6781581",
+      "vendored_sha256": "ce237a4eddbbeeb0be706c010695506e80b7e05007f20b1ae50ef92562aac872"
+    },
+    "src/backends/cuda/gfn2_scc_bridge.cuh": {
+      "adapted": true,
+      "upstream_sha256": "4d462fe1f0b6d23b4b2abab87dcfa90254896a6dd186cc3c29c2a766957a9df9",
+      "vendored_sha256": "c7a6271211c8f51997111947592b4c72c08c53acf24ffca5b70d7b628ba9d014"
+    },
+    "src/backends/cuda/gfn2_scc_classical_energy.cu": {
+      "adapted": true,
+      "upstream_sha256": "9088b4a8394f68dd0a1f77b7be20d177f74a218cf31596f42ddc38ca57478bd5",
+      "vendored_sha256": "f0b08d882ec0a6ae90562eecbcdcdefe42793e33b4ad1b27eeb46207959c9422"
+    },
+    "src/backends/cuda/gfn2_scc_classical_energy.cuh": {
+      "adapted": true,
+      "upstream_sha256": "3ca39dd7098ab6a9f97f249b21bbe0e724f9d891cec6574943e423ff031ce4ef",
+      "vendored_sha256": "7592e9ece44df1affe934fc8c31c85d0ca32888a48f82e130f37c7f7d0423563"
+    },
+    "src/backends/cuda/gfn2_scc_energy.cu": {
+      "adapted": true,
+      "upstream_sha256": "ae7ac935fa377b9ae59d36c9ddef41905cc48ebaee4b6a917992d41f87389641",
+      "vendored_sha256": "1e2be18f52a81acf91e388c9d6d913256759b7e8683273da5737fd4ab51190ed"
+    },
+    "src/backends/cuda/gfn2_scc_energy.cuh": {
+      "adapted": true,
+      "upstream_sha256": "b0750de4298f584e19475a13a4795d4c211b7a192dd2817b9a92a7c5ab0f5919",
+      "vendored_sha256": "0fb5f280581db3355947082f956b495f0b5c883c6cf1677f2f29340d85b0d4a7"
+    },
+    "src/backends/cuda/gfn2_scc_free_energy.cu": {
+      "adapted": true,
+      "upstream_sha256": "eefc52e4379f86889a4926218216e4276b07215de5abd33d02e321d4093b179b",
+      "vendored_sha256": "ec96875c9273c0f5a7debd89fb1eebdd10ca10da275e9f65f0da6d40dde4ac86"
+    },
+    "src/backends/cuda/gfn2_scc_free_energy.cuh": {
+      "adapted": true,
+      "upstream_sha256": "230c6e9b73f208eac1de9e62ff5dac5b6b0ee8bf7c429c989e8e471139b268bb",
+      "vendored_sha256": "a8f7bc0cf02dbfa1cb8876f275ab5bf219506a21007a35070c46c555e1aba9cf"
+    },
+    "src/backends/cuda/gfn2_scc_iteration.cu": {
+      "adapted": true,
+      "upstream_sha256": "e7eff14cec8cd351edaf52bbf37072bf1f5f1cf981ccaaf38debea5f633e4b2b",
+      "vendored_sha256": "cb425bf1aa4b96d7891bdd190abdf7c727086a79d0b7d963c5787f726301ebc9"
+    },
+    "src/backends/cuda/gfn2_scc_iteration.cuh": {
+      "adapted": true,
+      "upstream_sha256": "ceabc762d5ae800e202f138e56d52c3178d6dbd605e93731c0d18b903a9fdf95",
+      "vendored_sha256": "55fe70bf3c0330f7d617eeaab84fdf0c44e6a8b99173b3229bf07b808fc9e900"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_arena.cu": {
+      "adapted": true,
+      "upstream_sha256": "a145bcce1636b21b0563c440145d985cd8d85a57e69b8af4ce41ecce9d8213ff",
+      "vendored_sha256": "0380e27ee59ee0c8395fdfa0ba7d1cedc228a151a85e558f0db2c9e38e87cbc4"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_arena.cuh": {
+      "adapted": true,
+      "upstream_sha256": "2c1ba33547bd2b9824014999cdbdedc9a7ff72236c41e5e45b712b7d1cbe4a04",
+      "vendored_sha256": "85f6fdb3fe5d01bd81d56741da8c30eea9fb0b278d90e5833cf34c72ce7c8b82"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_control.cu": {
+      "adapted": true,
+      "upstream_sha256": "ab2c4f3dc69365b3c1b72de7fad352dbbf12a39d92c9c69de8ac97ed95e2b23e",
+      "vendored_sha256": "b02dd71024815cacff906e816d8c269fc24b74af00a54d783d3d5bf07afd30c9"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_control.cuh": {
+      "adapted": true,
+      "upstream_sha256": "e99384440d8b5567c18a801e150593f46a66c38d7fbce279ef6c02649bba5ee2",
+      "vendored_sha256": "3ec2d4b8dd462189744ea40424c5b673c55299ac366696da100dc58193b69ff4"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cu": {
+      "adapted": true,
+      "upstream_sha256": "b01a899eb4c5d99c6f804824ce3532804b2ccbfc6a6f0628c8179c2e65416b87",
+      "vendored_sha256": "58ca28b6ee734ff7f17afaceff28b585b9a70056ec03a0ed287eec44bd7535ca"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_initialize.cuh": {
+      "adapted": true,
+      "upstream_sha256": "a08c7d234edcf3cd77051a7d79edf1188ff9340acd5b7a19f7f7e00662d498fc",
+      "vendored_sha256": "60ebe8f2722390188902269a7d636243392a52f95f3e273619292f46ebea3d90"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_reports.cu": {
+      "adapted": true,
+      "upstream_sha256": "52738e18988211e8f6735a36ff12786bfc7a7370f02d65c17b54621a1ac85241",
+      "vendored_sha256": "01e47d4b999770c944deb19006ec4529fc1db5dd88668349ce174638f52f45f6"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_reports.cuh": {
+      "adapted": true,
+      "upstream_sha256": "470991db0f6f23bf58bcdacdf2d82264db36a1804c89165063d807f92dd5fa68",
+      "vendored_sha256": "7f29e77a89d3a1c3537b9b8e14b4b91964ee549add73aaf981ed032a29cd4805"
+    },
+    "src/backends/cuda/gfn2_scc_iteration_test.cuh": {
+      "adapted": true,
+      "upstream_sha256": "f3769bf74b0d56b26a40d6d2b8f7a182ce24fa8c5030051bcfff8eb18ac051f3",
+      "vendored_sha256": "c1dd4f99b464a9a791575899244b0bfbd1cf940e62c512f4960bb11205d2eeb0"
+    },
+    "src/backends/cuda/gfn2_scc_loop.cu": {
+      "adapted": true,
+      "upstream_sha256": "abd57e39f641f87c56a5780f93e2f1c9bd884d6c6c0dbf9eaf577143cf248d2b",
+      "vendored_sha256": "5aec7030674eba58f5b64ab159af28b3258c291bb67a35c5225a200c904f013a"
+    },
+    "src/backends/cuda/gfn2_scc_loop.cuh": {
+      "adapted": true,
+      "upstream_sha256": "318a127086cf15d5b376c1dd967b14c87e074e2fc499ca41a8d89e7ff88aa9ac",
+      "vendored_sha256": "1e7d0966a5cbaadb64a56acccde07bcff4d56c709afffaf5e206621f96c53208"
+    },
+    "src/backends/cuda/gfn2_scc_mixer.cu": {
+      "adapted": true,
+      "upstream_sha256": "459cc3347ae983fbb88080dcba6e37951baafda57b3e9c060503bafa094b1bb1",
+      "vendored_sha256": "058bb6e968bb4f6d5474855a90eb1aa28f1ab09b5d4dcfe5eb49652d486405f9"
+    },
+    "src/backends/cuda/gfn2_scc_mixer.cuh": {
+      "adapted": true,
+      "upstream_sha256": "60ba9a13d8836614afbdb373ec156cd6ff471d0d03417371aad5c2f472eea3d5",
+      "vendored_sha256": "6d2b5bb5c9c9ea73eaf68fbeb68afbaa23e2b507c571b5106e3c17b4c59aca86"
+    },
+    "src/backends/cuda/gfn2_scc_potential.cu": {
+      "adapted": true,
+      "upstream_sha256": "3cab6f5a694dbe5ab62440dd473e957524e19956ae87ab00213559c473e1299a",
+      "vendored_sha256": "80f30fb5a22bfaff58ee0319e3761d8877416138a928c275735138403c3cab6c"
+    },
+    "src/backends/cuda/gfn2_scc_potential.cuh": {
+      "adapted": true,
+      "upstream_sha256": "363bd819599933f2ac8c93fbc4189282d6966b21784c11ec5cd5bdbc801dda95",
+      "vendored_sha256": "f80ceb61b2c0e9b75a9c6d79614bcc3c9356a26c3ed14b8de266cc1f6b2e12de"
+    },
+    "src/backends/cuda/gfn2_scc_publication.cu": {
+      "adapted": true,
+      "upstream_sha256": "1984e4a3379af5cdf51232bd201836d2f07ceeaea71e3143276f3f69ad0e1ec7",
+      "vendored_sha256": "0196fdd2b2423346ff21fcc63e95fbbf5a095622b20687e88d98bb7b44f4ee72"
+    },
+    "src/backends/cuda/gfn2_scc_publication.cuh": {
+      "adapted": true,
+      "upstream_sha256": "54b69f6c7f570a88cb6154dc7ef01641de2723166eeaf847379eb51ee1923874",
+      "vendored_sha256": "4b7d805e4133fdfa77824c1f2dc64b9b39febe9aacecf58b98794e5d83a65eed"
+    },
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cu": {
+      "adapted": true,
+      "upstream_sha256": "b53efa1527059556065800aa9c455a3ab361a3e0f639b24a201f9edae81e7f07",
+      "vendored_sha256": "ec5ad9994eb297921cd3335ad7d42c6cae6bfab53af06fb6dcafca8568f5d85c"
+    },
+    "src/backends/cuda/gfn2_scc_setup_eigensolver.cuh": {
+      "adapted": true,
+      "upstream_sha256": "a522550fba995c8b16ad064360d8b258aad7bea544d55ea4498f0d1b3b7aa36b",
+      "vendored_sha256": "8cb84e08626951fe8db5b978e9aae6a5fcd70990b5d885fb9a6025dc617656c2"
+    },
+    "src/backends/cuda/gfn2_scc_setup_inputs.cu": {
+      "adapted": true,
+      "upstream_sha256": "6496a8dd876ff075b6f596afae85ffe2c28a6c98ac964e222bb321e892eb16b3",
+      "vendored_sha256": "7e1e302c6763124296fdb08ba50d66377e46613d8cc8dcfbca68143c38c8868d"
+    },
+    "src/backends/cuda/gfn2_scc_setup_inputs.cuh": {
+      "adapted": true,
+      "upstream_sha256": "c2a8604d877d6bd093a47a398c6981839dee484444eb3e18977925de5cec808d",
+      "vendored_sha256": "31c7e358348424ddf8dd02e7043f7155290a27a4a14883e682c3312d87520ce3"
+    },
+    "src/backends/cuda/gfn2_scc_setup_topology.cu": {
+      "adapted": true,
+      "upstream_sha256": "0b4113f1834be74fa929d46df3419aa1929f748d455e34b2fe4c03aa78c3f088",
+      "vendored_sha256": "e33a933198c7f1246c5161db3fe87da8705d4bbd80cbfe21e67d7c3d316e6d6f"
+    },
+    "src/backends/cuda/gfn2_scc_setup_topology.hpp": {
+      "adapted": true,
+      "upstream_sha256": "ca2b7a6cb9b785452761ec6ed616bd05ba6bb55f775e78e062a06d9d0a7b9633",
+      "vendored_sha256": "b50dc71d66b3772dfedd623bccfe70102f405fff96e0d2b969527ab1ec968949"
+    },
+    "src/backends/cuda/gfn2_spin.cu": {
+      "adapted": true,
+      "upstream_sha256": "06b898fd6a4b63f8e84d641a05cf61df2da8c98caa4a65d011d8dd2e475fc957",
+      "vendored_sha256": "3212a4942cb1bed315ae64494db14bc82fba6ea08de533b5bae831ec0f0c781e"
+    },
+    "src/backends/cuda/gfn2_spin.cuh": {
+      "adapted": true,
+      "upstream_sha256": "b317a7cd34f237847221b42dcd0f93c6ed3bf398e5634aa540b535615b90f105",
+      "vendored_sha256": "ce8eefea0441a49588f70621fa122c66240fe9fe179213b43728098ccf4d75d1"
+    },
+    "src/backends/cuda/gfn2_terminal_classical_energy.cu": {
+      "adapted": true,
+      "upstream_sha256": "5ce8d1562e9fb955f0c6b35190e0c08053cc829570701beab190eca1516e869e",
+      "vendored_sha256": "f0f6bd008d17d07fb1f59872cae25052d031b9b690f8a503ae3483c2dab8ffea"
+    },
+    "src/backends/cuda/gfn2_terminal_classical_energy.cuh": {
+      "adapted": true,
+      "upstream_sha256": "b31e95fd57f7260b568f2f96a76c1ad903088015edafdb2617bccee89e1251db",
+      "vendored_sha256": "4ebad61b2450f6b381116b13d958186c1f2a51a55d2a237f6ee51ef46941da6c"
+    },
+    "src/backends/cuda/gfn2_total_energy.cu": {
+      "adapted": true,
+      "upstream_sha256": "af65a0738e4e207b5d31c205b7e8924791b441897226bd666a3ddf8df609a6ff",
+      "vendored_sha256": "ac9464fc3f75d285759cd5a005293a9ada896a9006dc144995ce8f7b2ea375c9"
+    },
+    "src/backends/cuda/gfn2_total_energy.cuh": {
+      "adapted": true,
+      "upstream_sha256": "4827c2580aef42add2fab2af1d6929d41558182976b8117a939676a9536236e8",
+      "vendored_sha256": "d7fb1b0ec2b2c92f65c4775e3621bad83fbe14372716e268488ff393aaae7ee7"
+    },
+    "src/runtime/backend.hpp": {
+      "adapted": true,
+      "upstream_sha256": "f2c875319f70a2382ac2bc4ac86619b8690530e9a6ec4196492fd0e9d826b967",
+      "vendored_sha256": "e885a05337577f196bb10270aeb5534dbbce917e0eeba7c939b7754a0b201a8c"
+    },
+    "src/runtime/cuda_descriptor_validation.cu": {
+      "adapted": true,
+      "upstream_sha256": "7444c235bc128dc181389cf899acd8b31b6af449f2126f9e8f1222c1033ab779",
+      "vendored_sha256": "10997dddfc1e044803d9bac7cc91bd58f6ad36715dc489c44816acba8ba8bdf8"
+    },
+    "src/runtime/cuda_descriptor_validation.hpp": {
+      "adapted": true,
+      "upstream_sha256": "24318d733e893bf728f4ecb25df45e8b53f1b2d97018e0d1f1e98ccc4b4b64a2",
+      "vendored_sha256": "9f99c5ecc60c10df0f87916e8a5360049439e04264fad7df9784cb485f6c447c"
+    },
+    "src/runtime/gfn2_cuda_execution.cu": {
+      "adapted": true,
+      "upstream_sha256": "593eb50ce83db6f066748a29f41f09438c3cc142b5fc45408fefccf4fed317af",
+      "vendored_sha256": "186d1ab06cca8bf5dd6b93370644d933b8dc737438acdb9009b872c925e2fbb6"
+    },
+    "src/runtime/gfn2_cuda_execution.hpp": {
+      "adapted": true,
+      "upstream_sha256": "6c2a16e4fcaf87b1731d101976360cce27dc15bdef01e8165cacc136d9cbf974",
+      "vendored_sha256": "c0bc1c6326fb6f418268d3084f9f5c3e6faccf76a7f73040b5a0d4f094acbe17"
+    },
+    "src/runtime/gfn2_cuda_topology_staging.cu": {
+      "adapted": true,
+      "upstream_sha256": "78e6b96e8d3a0a67c73c1ab6871810bf9e020a053e82d036a92161de4ddc5e4a",
+      "vendored_sha256": "462f09520b7e17a9af81cf1f58ed164a2bf412ff9bb1bc02bea1a0b66f6045ef"
+    },
+    "src/runtime/gfn2_cuda_topology_staging.hpp": {
+      "adapted": true,
+      "upstream_sha256": "e98c96a7fef2b1dc9445bf0db0a17e28c955800d75bf7eb3e9b0953ebc4ab29d",
+      "vendored_sha256": "bdc8438874a3f25931b8caa6328c29b52cb2f9e092251e8ab3f92631d1de5f40"
+    },
+    "src/runtime/nvidia_host_api.h": {
+      "adapted": true,
+      "upstream_sha256": "431b17c4f112feeff647c4331ecbefbdd751ffa58c15c5d1e2efd32f89eeee2b",
+      "vendored_sha256": "b0fd40e3ad85f0145122175e60bdbf55d156a54c0fce957edc5aa390be0bf933"
+    }
+  },
+  "schema_version": 1,
+  "scope": "Native non-wheel molecular GFN2-xTB CUDA bootstrap",
+  "selection_reason": "Repository state immediately before xTBloom production GFN1 CUDA execution was integrated; selected to keep VibeQC CUDA ownership GFN2-only.",
+  "upstream_commit": "3c21f50195389b093941eb5ed6f1143b8802f96e",
+  "upstream_commit_subject": "chore(deps): bump astral-sh/setup-uv from 9.0.0 to 10.0.1 (#436)",
+  "upstream_repository": "https://github.com/jinzhezenggroup/xtbloom",
+  "native_ownership": {
+    "root": "src/xtb/native",
+    "namespace": "vibeqc::xtb",
+    "descriptors": "src/runtime/types.hpp",
+    "scope": "All imported sources use native identifiers/includes; external C entry points and version header are retired. Upstream hashes and revision provenance are preserved."
+  },
+  "retired_files": {
+    "src/runtime/request.hpp": {
+      "upstream_sha256": "948a98d2841e8258635630eb7fb3207a941f1ec0c4cdc205a43965bb70b86952",
+      "reason": "Unreachable standalone runtime API or periodic owner retired; original bytes remain in Git history."
+    },
+    "src/runtime/dlpack_layout.hpp": {
+      "upstream_sha256": "1d1d09b2ec5ee5da3174aecccd0692f20be419f887d51a3f99b358209a97ce5d",
+      "reason": "Standalone result-arena/DLPack API has no VibeQC callers."
+    },
+    "src/runtime/result_owner.hpp": {
+      "upstream_sha256": "0bf8775ea558faf44a872fedff4ce6fa50e380456409fda4051fa5e92e28400e",
+      "reason": "Standalone result-arena/DLPack API has no VibeQC callers."
+    },
+    "src/runtime/result_owner_cuda.cu": {
+      "upstream_sha256": "80f95c4e4d2d107053404f213599ee449bd7a04377276ecf51f00c024d2bbad3",
+      "reason": "Standalone result-arena/DLPack API has no VibeQC callers."
+    }
+  }
+}

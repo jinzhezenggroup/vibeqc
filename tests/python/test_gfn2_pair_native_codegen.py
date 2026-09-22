@@ -97,12 +97,12 @@ def test_gfn2_native_pair_codegen_needs_no_site_packages(tmp_path: Path) -> None
 
 
 def test_gfn2_cuda_pair_science_consumes_generated_helpers() -> None:
-    geometry = (
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_geometry.cu"
-    ).read_text(encoding="utf-8")
-    repulsion = (
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_repulsion.cu"
-    ).read_text(encoding="utf-8")
+    geometry = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_geometry.cu").read_text(
+        encoding="utf-8"
+    )
+    repulsion = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_repulsion.cu").read_text(
+        encoding="utf-8"
+    )
 
     for source in (geometry, repulsion):
         assert '#include "generated_gfn2_pair_native.hpp"' in source
@@ -118,7 +118,7 @@ def test_gfn2_cuda_pair_science_consumes_generated_helpers() -> None:
 def test_sparse_and_dense_cuda_coordination_share_generated_pair_science() -> None:
     """CN bitwise admission cannot mix generated and handwritten arithmetic."""
     root = Path(__file__).resolve().parents[2]
-    cuda = root / "src/xtb/gfn2_runtime/src/backends/cuda"
+    cuda = root / "src/xtb/native/src/backends/cuda"
     for name in ("gfn2_geometry.cu", "gfn2_pairlist.cu"):
         source = (cuda / name).read_text()
         assert '#include "generated_gfn2_pair_native.hpp"' in source
