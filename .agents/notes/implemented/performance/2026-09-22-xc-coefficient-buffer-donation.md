@@ -78,3 +78,32 @@ from the validated one-row offset.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Review qualification on current compiler ownership
+
+After integrating master `41834864`, 100 ProgramIR/native XC/empty-tile and
+contraction tests pass. The audience-documentation rename preserves this
+storage contract under `docs/developer/compiler_architecture.md`.
+
+A complete `PreparedXCContractions.execute` CPU E/V ablation compares donation
+on/off on the same source, including AO collocation, features, scalar XC,
+coefficient production, assembly and result publication. Both retained fixture
+cases use 32 grid points and five tiles (7/7/7/7/4), with five scalar calls,
+five coefficient calls and 30 logical matrix products. Donation removes 2,048
+bytes of new coefficient-output allocation over the call and reuses those exact
+bytes. All energy, electron and potential outputs are bitwise equal between
+arms and retain the independent fixture gates. This is a donation ablation;
+both arms retain the new zero-copy coefficient views.
+
+Python/NumPy tracemalloc peaks and complete-call times were also retained in
+local review evidence. The larger Python endpoint peak is not reduced by this
+small buffer transfer, and these tiny fixtures do not establish an endpoint
+speedup or a process/native allocator peak reduction. The qualified claim is
+the actual removal of a distinct coefficient owner with unchanged work, not a
+complete SCF performance improvement. Resource admission retains its existing
+conservative complete bound.
+
+Instrumented ABBA call-time medians (two samples per arm, tracing enabled) were
+28.05/28.69 ms without/with donation for the two-AO H2 fixture and
+28.43/28.44 ms for the 16-AO spherical-f fixture. These are small fixed-density
+E/V endpoint diagnostics, not converged-SCF or throughput qualification.

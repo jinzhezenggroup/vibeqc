@@ -1,0 +1,7 @@
+{
+  "slurm_job": "11270",
+  "source_identity": "846429c25ae1c00c02ad8599e87f6f1c461b7fa541b44f3faffbcb314204e03e",
+  "library_sha256": "a6e2810c5110d2790f221b61b288e5c157067c641d65e6fe32101f83daed25c5",
+  "cuda_visible_devices": "0",
+  "device": "NVIDIA GeForce RTX 5090, 580.95.05"
+}

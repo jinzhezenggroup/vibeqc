@@ -8,8 +8,8 @@ from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
-from .expressions import energy_expression
 from .grid_native import emit_grid_adjoint, emit_grid_partials
+from .semilocal_family import energy_expression
 from .spec import functional as resolve_functional
 
 

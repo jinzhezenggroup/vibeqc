@@ -7,6 +7,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
@@ -24,6 +25,16 @@ extern "C" int grid_cuda_create_v1(int, int, int, const std::size_t*, const doub
 #endif
 
 namespace {
+// Canonical graph features include tau even for GGA. Lowering must preserve
+// the five-derivative GGA ABI while MGGA exposes all seven active derivatives.
+using namespace vibeqc::dft::generated;
+static_assert(std::extent_v<decltype(B3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(CamB3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(Pw91PolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(ScanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(R2scanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(Wb97mvPolarizedValue::feature_derivative)> == 7);
+
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
@@ -120,6 +131,18 @@ int main() {
     for (std::size_t i = 0; i < 5; ++i)
       require(std::abs(pw91_point.feature_derivative[i] - pw91_oracle[i + 1]) < 2e-13,
               "PW91 generic-GGA derivative differs from pinned Libxc oracle");
+
+    const auto scan_point =
+        vibeqc::dft::generated::scan_polarized(0.55, 0.25, 0.025, 0.006, 0.018, 0.3, 0.16);
+    // Sum of pinned independent Libxc 7.0.0 MGGA_X_SCAN + MGGA_C_SCAN bulk fixtures.
+    const std::array<double, 8> scan_oracle{
+        -0.6716431723099776,   -1.2121359952027473,   -0.975507137482233,  -0.00557843033514503,
+        0.0063013418044912395, -0.029931891669623255, 0.02202134320410421, 0.04542853626023215};
+    require(std::abs(scan_point.energy_density - scan_oracle[0]) < 2e-13,
+            "SCAN generic-MGGA scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 7; ++i)
+      require(std::abs(scan_point.feature_derivative[i] - scan_oracle[i + 1]) < 2e-13,
+              "SCAN generic-MGGA derivative differs from pinned Libxc oracle");
 
     std::ifstream xc_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
     require(static_cast<bool>(xc_fixture), "missing independent XC SCF-domain fixture");

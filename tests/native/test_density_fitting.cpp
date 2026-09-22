@@ -1872,9 +1872,10 @@ int main() {
             require(resources.device_to_host_bytes == integrals.ncoord * sizeof(double),
                     "generated DF-HF replay downloaded more than its final gradient");
             if (response_plan == resident_plan.get()) {
-              const auto width = resources.auxiliary_weight_tile;
-              const auto panels = (integrals.naux + width - 1) / width;
-              const auto expected_slices = (panels + 1) * integrals.naux - width;
+              // The singleton RHF owner lends its complete J/K scratch and
+              // uploads raw A once. UHF consumes its retained whitened tensor;
+              // neither route repeats host uploads for derivative panels.
+              const auto expected_slices = unrestricted ? 0U : integrals.naux;
               require(resources.device_response && resources.value_slices == expected_slices &&
                           resources.tensor_host_to_device_bytes ==
                               expected_slices * integrals.nbf * integrals.nbf * sizeof(double) &&
@@ -1890,34 +1891,46 @@ int main() {
                           generated_gradient, generated_detail) == VIBEQC_STATUS_INVALID_ARGUMENT &&
                           generated_gradient == saved,
                       "missing retained raw values changed caller output");
-              auto nonfinite = integrals.three_center;
-              nonfinite.front() = std::numeric_limits<double>::quiet_NaN();
-              require(
-                  vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
-                      response_plan, 0, orbital, auxiliary, nonfinite, {}, terms, 0, budget, 0,
-                      generated_gradient, generated_detail) == VIBEQC_STATUS_NUMERICAL_FAILURE &&
-                      generated_gradient == saved,
-                  "nonfinite retained raw values changed caller output");
+              if (!unrestricted) {
+                // Only the RHF route actually consumes this caller-owned raw
+                // tensor. UHF's validated resident whitened owner is separate.
+                auto nonfinite = integrals.three_center;
+                nonfinite.front() = std::numeric_limits<double>::quiet_NaN();
+                require(
+                    vibeqc::scf::execute_cuda_density_fitting_generated_force_response(
+                        response_plan, 0, orbital, auxiliary, nonfinite, {}, terms, 0, budget, 0,
+                        generated_gradient, generated_detail) == VIBEQC_STATUS_NUMERICAL_FAILURE &&
+                        generated_gradient == saved,
+                    "nonfinite retained raw values changed caller output");
+              }
             }
             if (response_plan != resident_plan.get()) {
-              const bool packed = response_plan == packed_response_plan.get();
               const auto width = resources.auxiliary_weight_tile;
               const auto panels = (integrals.naux + width - 1) / width;
-              // Charges populate the first raw panel; exchange reuses each
-              // panel's own auxiliary slices. A full panel reads A only once.
-              const auto expected_slices = (panels + 1) * integrals.naux - width;
+              const bool streamed = response_plan == source_plan.get();
+              // Resident dense/packed B supplies fitted panels without reading
+              // raw A. The streamed factor-first route visits every ordered
+              // pair of auxiliary panels, producing one full A per visit. Its
+              // value_slices count is AO-pair source tiles, not auxiliary slices.
+              // A full-width response instead fits A once in place.
+              const auto raw_passes = streamed ? panels * panels : 0U;
+              const auto pair_tiles =
+                  (integrals.nbf * integrals.nbf + integrals.naux - 1) / integrals.naux;
+              const auto expected_slices = !streamed                 ? 0U
+                                           : width == integrals.naux ? integrals.naux
+                                                                     : raw_passes * pair_tiles;
               require(resources.value_slices == expected_slices &&
-                          resources.recomputed_value_bytes ==
-                              (packed ? 0
-                                      : expected_slices * integrals.nbf * integrals.nbf *
-                                            sizeof(double)),
-                      "response cache regenerated an already retained raw slice");
+                          resources.recomputed_value_bytes == raw_passes * integrals.naux *
+                                                                  integrals.nbf * integrals.nbf *
+                                                                  sizeof(double),
+                      "response raw production differs from the fitted-panel work census");
               require(resources.device_response && resources.tensor_host_to_device_bytes == 0 &&
                           resources.tensor_device_to_host_bytes == 0 &&
                           resources.response_host_to_device_bytes == 0 &&
                           resources.density_host_to_device_bytes ==
                               terms.size() * rhf_density.size() * sizeof(double) &&
-                          (packed || resources.recomputed_value_bytes > 0) &&
+                          (streamed ? resources.recomputed_value_bytes > 0
+                                    : resources.borrowed_device_bytes > 0) &&
                           resources.device_response_bytes ==
                               (integrals.nbf * integrals.nbf * integrals.naux +
                                integrals.naux * integrals.naux) *

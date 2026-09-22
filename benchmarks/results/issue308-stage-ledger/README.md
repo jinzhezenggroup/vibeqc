@@ -121,7 +121,7 @@ the fixed-D GPU peak must not be attributed to SCF. All archived members were
 restored byte-for-byte and their hashes are listed in the summaries.
 
 The stable fixed-D interface is documented in
-[the component-trace contract](../../../docs/df_component_trace.md).
+[the component-trace contract](../../../docs/developer/df_component_trace.md).
 For SCF reproduction, extract `scf-evidence.zip`, compile its
 `reproduction/scf-seed-probe.cpp` with the same include/link flags as
 `benchmarks/df_stage_probe.cpp`, prepare the 768-AO fixture using

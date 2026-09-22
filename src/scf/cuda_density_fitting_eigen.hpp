@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "scf/eigensolver_workspace.hpp"
 #include "scf/solver/eigen_frame.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -16,13 +17,7 @@ struct CudaDensityFittingJkPlan;
  * Its actual query is checked before allocation; a stack requiring more is
  * rejected explicitly. One serialized AO frame serves all items and spins. */
 inline std::size_t df_eigen_workspace_allowance(std::size_t n) {
-  constexpr auto maximum = std::numeric_limits<std::size_t>::max();
-  // CUDA 12.9 Xsyevd needs roughly 0.5 MiB even at n=1. A fixed
-  // allowance is essential; a purely quadratic bound under-admits small AOs.
-  constexpr std::size_t fixed = 1024U * 1024U;
-  if (n == 0 || n > maximum / n || n * n > (maximum - fixed) / (16U * sizeof(double)))
-    throw std::overflow_error("DF eigensolver workspace size overflows");
-  return fixed + 16U * n * n * sizeof(double);
+  return ordinary_eigensolver_workspace_allowance(n);
 }
 
 /** Compact batched solves own one workspace, independent of the metric solve.
