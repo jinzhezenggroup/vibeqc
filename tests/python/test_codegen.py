@@ -1861,10 +1861,10 @@ def test_production_manifest_drives_generated_registry_and_shards(
 
 
 @pytest.mark.parametrize("architecture", ("sm_80", "sm_86", "sm_89", "sm_90"))
-def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
+def test_unmeasured_cuda_targets_require_explicit_portable_profile(
     architecture: str,
 ) -> None:
-    """Never reuse the measured RTX 5090 schedule on another compute target."""
+    """Never hide a missing tuned profile behind an implicit generic build."""
 
     manifest = (
         REPOSITORY_ROOT
@@ -1873,7 +1873,9 @@ def test_unmeasured_cuda_targets_resolve_to_empty_portable_profile(
         / "integral"
         / "production_shell_classes.json"
     )
-    resolved = resolve_production_profile(manifest, architecture)
+    with pytest.raises(ValueError, match="portable_cuda.*explicitly"):
+        resolve_production_profile(manifest, architecture)
+    resolved = resolve_production_profile(manifest, architecture, "portable_cuda")
     assert resolved.profile == "portable_cuda"
     assert resolved.portable is True
     assert resolved.tuned is False

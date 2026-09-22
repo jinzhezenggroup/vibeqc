@@ -118,7 +118,7 @@ def _resolve_profile_payload(
     architecture: str,
     requested_profile: str,
 ) -> tuple[str, dict[str, object], ProfileMatch]:
-    """Resolve exact, compatible, portable, then synthetic generic fallback."""
+    """Resolve explicit portable requests or fail-closed tuned profiles."""
 
     architectures = payload.get("architectures")
     if not isinstance(architectures, dict):
@@ -171,12 +171,10 @@ def _resolve_profile_payload(
         )
     if compatible:
         return compatible[0][0], compatible[0][1], ProfileMatch.COMPATIBLE
-    portable = _portable_profile(architectures)
-    if portable is not None:
-        return portable[0], portable[1], ProfileMatch.PORTABLE
-    # An empty synthetic portable profile is the final safe fallback. It emits
-    # no generated class mask, leaving the validated generic CUDA path active.
-    return "portable_cuda", {"kind": "portable", "kernels": []}, ProfileMatch.PORTABLE
+    raise ValueError(
+        f"no tuned or compatible production profile for {architecture}; "
+        "request 'portable_cuda' explicitly to use the generic CUDA path"
+    )
 
 
 def _validate_measured_target(
@@ -502,7 +500,7 @@ def resolve_production_profile(
     architecture: str | None = None,
     profile: str = "auto",
 ) -> ResolvedProductionProfile:
-    """Resolve one target through exact, compatible, and portable profiles."""
+    """Resolve one target; generic CUDA requires an explicit portable request."""
 
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -528,10 +526,7 @@ def resolve_production_profile(
             if isinstance(accepted_architecture, str)
             else "sm_120"
         )
-        if selected_architecture != accepted_architecture or profile in (
-            "portable",
-            "portable_cuda",
-        ):
+        if profile in ("portable", "portable_cuda"):
             return ResolvedProductionProfile(
                 target=target,
                 profile="portable_cuda",
@@ -540,6 +535,13 @@ def resolve_production_profile(
                 selections=(),
                 cuda_toolkit="",
             )
+        if selected_architecture != accepted_architecture:
+            raise ValueError(
+                f"no tuned production profile for {selected_architecture}; "
+                "request 'portable_cuda' explicitly to use the generic CUDA path"
+            )
+        if profile not in ("auto", accepted_architecture):
+            raise ValueError(f"production manifest has no profile {profile!r}")
         rows = [
             {"shell_class": name, "consumers": [KernelConsumer.FORCE.value]}
             for name in names

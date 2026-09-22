@@ -99,6 +99,22 @@ def test_batch_native_metadata_identifies_loaded_profile_library(
     assert payload["probe"]["device"]["official_profile"] == "sm_120"
 
 
+def test_benchmark_build_profile_gate_is_fail_closed() -> None:
+    module = _batch_comparison_module()
+    tuned = {"probe": {"device": {"official_profile": "sm_120", "portable": 0}}}
+    module.require_tuned_native_build(tuned)
+
+    portable = {
+        "probe": {"device": {"official_profile": "generic_cuda", "portable": 1}}
+    }
+    with pytest.raises(RuntimeError, match="portable/generic"):
+        module.require_tuned_native_build(portable)
+    module.require_tuned_native_build(portable, allow_portable=True)
+
+    with pytest.raises(RuntimeError, match="profile metadata"):
+        module.require_tuned_native_build({"probe": {}})
+
+
 def _comparison_basis_fixture(
     tmp_path: typing.Any,
     *,

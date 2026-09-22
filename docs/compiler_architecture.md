@@ -114,10 +114,12 @@ separate work. The module contains no measured thresholds or method policy.
 
 `select_specialization(workload=..., target=..., identity=..., profiles=...,
 fallback=...)` chooses the first eligible promoted implementation in caller
-priority order. If none match, the explicit fallback must pass its own identity
-and correctness checks. Otherwise the result is `unsupported`: no *supplied*
-implementation is eligible, not proof that the mathematical method is impossible.
-There is no implicit CPU execution or compilation on a miss.
+priority order. Callers that require a promoted implementation pass
+`fallback=None`; a miss is then `unsupported` instead of a silent downgrade. If
+an explicit fallback is supplied, it must pass its own identity and correctness
+checks. `unsupported` means no supplied implementation is eligible, not proof
+that the mathematical method is impossible. There is no implicit CPU execution
+or compilation on a miss.
 
 The result exposes the original selected artifact and a detached JSON diagnostic
 record with profile/schedule/scientific/compiler identities and separate rejection
