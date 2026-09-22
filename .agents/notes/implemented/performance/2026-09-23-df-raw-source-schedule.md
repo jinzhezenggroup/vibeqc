@@ -1,6 +1,6 @@
 # Candidate: distinguish raw and transformed DF source schedules
 
-Status: proposed (implementation present; endpoint qualification pending)
+Status: implemented; original 96-atom completion remains tracked in #1078
 Date: 2026-09-23
 
 ## Problem
@@ -84,7 +84,8 @@ Each fixture has two geometries with different shell/primitive ordering;
 raw/metric values and RHF/UHF J/K use the unchanged gates above. The integration
 library hash was
 `93b9d7ddf6366f618fd8037a9d85e626b2f441ab8bfdbc3c58be9a8ed7fa6ec5`.
-Complete endpoint qualification remains pending.
+At this stage complete endpoint qualification remained pending; the subsequent
+small and constrained-memory qualifications are recorded below.
 
 ## Bounded small endpoint A/B
 
@@ -101,4 +102,34 @@ one. These are scoped endpoint comparisons, not iteration-matched speedups.
 
 Evidence: `hfdf12-{auto,primitive}-v3.json` and `hfdf12-mapping-v3.log` under
 the integration artifact directory, pinned to the same raw-v2 binary above.
-Changed-geometry and larger streamed endpoint qualification remain pending.
+At this stage changed-geometry and larger streamed endpoint qualification
+remained pending.
+
+## Streamed and changed-geometry qualification
+
+The subsequent integration with compiler source-reuse PR #1097 passes 44
+allocated Python cases plus the native eight-fixture seed and final-state tests.
+The raw automatic mapping is exercised through forced-streamed 12-atom
+cold/warm/changed-geometry energy and force endpoints with independent PySCF
+maxima 4.67e-12 Eh and 1.12e-11 Eh/Bohr. Both full/triangular source-first K
+traversals, balanced row panels and resource fallbacks are covered.
+
+At 24 atoms / 192 AOs / 928 cc-pVDZ-JKFIT auxiliaries / 256 MiB, both the dense
+and new automatic exchange controls complete while streaming with Q=79. All
+warm-pair GPU4PySCF energy errors are below 1.2e-12 Eh. Cold execution is
+51.294 s dense and 21.477 s automatic; warm medians are 8.614 s and 4.630 s,
+with identical 15/2 iteration branches between the native controls. **This
+comparison changes exchange reuse, not source mapping; do not attribute its
+speedup to this PR.** The larger completed endpoint qualifies the new raw
+mapping in composition with #1097. The reference warm branch differs, and the
+comparator's numerical summary covers warm pairs, not native cold energies.
+
+Evidence is preserved in the combined integration based on `60592ea9`, not an
+exact standalone PR-head build: library SHA256
+`076cb5502e86983bb23d12bdf191542deb36b59be860fdddb631e18635e0baec`, source
+archive `integration-source-v7.tar.gz` SHA256
+`f90f56441201e4b4a22a2004ce92ec2a215ca39d8db4a40f68fca020f7873459`.
+Relevant local files under `.artifacts/gpu-blocker-fixes/` are
+`hfdf24-streamed-{auto,dense}-v7.json`, `streamed-v7-gates.log`,
+`streamed-force-v7-gates.log` and their corresponding pytest directories.
+The complete 96-atom energy-plus-force endpoint is still unqualified.
