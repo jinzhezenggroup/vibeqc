@@ -32,6 +32,8 @@ def _validated_energies(result: typing.Any, batch_size: int, phase: str) -> list
         raise RuntimeError(f"{phase} batch item count differs from request")
     if any(not item.converged for item in result.items):
         raise RuntimeError(f"{phase} batch did not converge")
+    if any(getattr(item, "executed_backend", None) != "cuda" for item in result.items):
+        raise RuntimeError(f"{phase} batch lacks complete CUDA backend evidence")
     energies = [float(item.energy) for item in result.items]
     if not all(math.isfinite(energy) for energy in energies):
         raise RuntimeError(f"{phase} batch returned nonfinite energies")

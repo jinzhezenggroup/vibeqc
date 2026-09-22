@@ -40,6 +40,10 @@ def run_benchmark(
                 items[-1].energy = float(defect)
             elif defect == "unconverged":
                 items[-1].converged = False
+            elif defect in ("cpu_reference", "unknown_backend"):
+                items[-1].executed_backend = defect
+            elif defect == "missing_backend":
+                del items[-1].executed_backend
             elif defect == "spread":
                 items[-1].energy += 1e-6
         call += 1
@@ -85,7 +89,18 @@ def run_benchmark(
 
 @pytest.mark.parametrize("phase", [0, 1, 2], ids=["cold", "setup", "replay"])
 @pytest.mark.parametrize(
-    "defect", ["missing", "extra", "nan", "inf", "-inf", "unconverged"]
+    "defect",
+    [
+        "missing",
+        "extra",
+        "nan",
+        "inf",
+        "-inf",
+        "unconverged",
+        "cpu_reference",
+        "unknown_backend",
+        "missing_backend",
+    ],
 )
 def test_invalid_pooled_results_never_publish_throughput(
     monkeypatch: pytest.MonkeyPatch,
