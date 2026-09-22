@@ -1175,3 +1175,49 @@ def test_deadline_after_screening_does_not_promote_or_reopen_finalist(
     assert result.evidence["search_summary"]["endpoint_candidates"] == 0
     assert "deadline exhausted" in result.evidence["candidates"][0]["reason"]
     assert len(fake_cuda.prepared) == 4 and fake_cuda.active == 0
+
+
+@pytest.mark.parametrize("provider", ("generated", "cub"))
+@pytest.mark.parametrize("threads", (64, 256))
+def test_cooperative_reduction_is_not_rejected_as_scalar(
+    provider: str, threads: int
+) -> None:
+    program = scalar_reduction_program()
+    baseline = plan_cuda(program, TARGET)
+    schedule = TensorSchedule(
+        threads=threads, stream_reductions=True, reduction_provider=provider
+    )
+    candidate_plan = plan_cuda(program, TARGET, schedule=schedule)
+    assert estimate_schedule(candidate_plan)["static_promotion_rejections"] == []
+    (candidate,) = plan_schedule_search(baseline, [schedule])
+    assert candidate.status == "ready", candidate.reason
+
+
+def test_mixed_accumulation_without_legal_gemm_stays_eligible() -> None:
+    from vibeqc_compiler.tensor import PrecisionDirective, lower_precision
+
+    index = Index("i", IndexSpace("long_dot", "batch", 4096))
+    spec = TensorSpec((index,), role="input")
+    left, right = input_tensor("left", spec), input_tensor("right", spec)
+    dot = einsum("i,i->", left, right)
+    original = Program({"result": dot})
+    program = lower_precision(
+        original,
+        {
+            original.debug_names[dot]: PrecisionDirective(
+                "float32", "float32", "float64", qualification="review/mixed-dot"
+            )
+        },
+    )
+    baseline = plan_cuda(original, TARGET)
+    schedule = TensorSchedule(threads=64)
+    plan = plan_cuda(program, TARGET, schedule=schedule)
+    step = next(step for step in plan.steps if step.node.op == "einsum")
+    assert step.gemm == "none"
+    precision = plan.precision_by_node[step.node]
+    assert precision.compute_dtype != precision.accumulation_dtype
+    assert estimate_schedule(plan)["static_promotion_rejections"] == []
+    (candidate,) = plan_schedule_search(
+        baseline, [schedule], precision_programs=[program]
+    )
+    assert candidate.status == "ready", candidate.reason

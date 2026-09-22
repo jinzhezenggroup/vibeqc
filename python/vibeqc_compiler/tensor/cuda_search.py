@@ -271,7 +271,11 @@ def _scalar_reduction_promotion_rejections(plan: TensorPlan) -> tuple[str, ...]:
 
     reasons: list[str] = []
     for index, step in enumerate(plan.steps):
-        if step.virtual or step.gemm != "none":
+        if (
+            step.virtual
+            or step.gemm != "none"
+            or cooperative_reduction_provider(plan, index) is not None
+        ):
             continue
         node = step.node
         alternative: str | None = None
@@ -289,7 +293,12 @@ def _scalar_reduction_promotion_rejections(plan: TensorPlan) -> tuple[str, ...]:
                 alternative = "cooperative-reduction"
         elif node.op == "einsum":
             contract = gemm_contract(node)
-            if contract is not None and contract.k:
+            precision = plan.precision_by_node[node]
+            if (
+                contract is not None
+                and contract.k
+                and precision.compute_dtype == precision.accumulation_dtype
+            ):
                 output_elements = contract.batch * contract.m * contract.n
                 reduction_elements = contract.k
                 alternative = "GEMM"
