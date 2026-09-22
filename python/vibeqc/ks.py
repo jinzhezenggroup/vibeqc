@@ -25,24 +25,18 @@ from vibeqc_compiler.method import (
     compile_ks_execution_plan,
     resolve_method,
 )
-from vibeqc_compiler.xc.spec import FunctionalSpec, functional
+from vibeqc_compiler.xc.spec import CATALOG, FunctionalSpec, functional
+
+from ._generated_methods import METHOD_METADATA
 
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 B3LYP_SCF_DOMAIN = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
 _NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN))
 
 _NATIVE_KS_METHODS = {
-    "lda-rks": ("LDA_XC_PW", "unpolarized"),
-    "pbe-rks": ("PBE", "unpolarized"),
-    "lda-uks": ("LDA_XC_PW", "polarized"),
-    "pbe-uks": ("PBE", "polarized"),
-    "pbe0-rks": ("PBE0", "unpolarized"),
-    "pbe0-uks": ("PBE0", "polarized"),
-    "r2scan-rks": ("R2SCAN", "unpolarized"),
-    "r2scan-uks": ("R2SCAN", "polarized"),
-    "b3lyp-rks": ("B3LYP", "unpolarized"),
-    "b3lyp-uks": ("B3LYP", "polarized"),
-    "pbe-d4-rks": ("PBE-D4(BJ-EEQ-ATM)", "unpolarized"),
+    name: (metadata["compiler_method"], metadata["spin"])
+    for name, metadata in METHOD_METADATA.items()
+    if metadata["provider"] == "dft"
 }
 
 
@@ -299,28 +293,21 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
 
 
 def resolve_ks_method(method: typing.Any) -> typing.Any:
-    """Resolve a named native KS selector through canonical MethodIR."""
+    """Resolve a public native KS selector through its generated MethodIR binding."""
     if method not in _NATIVE_KS_METHODS:
         raise ValueError("KS options require a supported native RKS/UKS method")
     identifier, spin = _NATIVE_KS_METHODS[method]
     method_ir = resolve_method(identifier, spin=spin)
 
-    if identifier == "PBE-D4(BJ-EEQ-ATM)":
-        semilocal = _native_pbe_d4_semilocal(method_ir)
-        runtime_functional = functional("PBE", spin=spin)
-        if SemilocalXCPrimitive(semilocal).semantic_payload() != (
-            SemilocalXCPrimitive(runtime_functional).semantic_payload()
-        ):
-            raise RuntimeError(
-                "PBE-D4 MethodIR disagrees with its native PBE composition"
-            )
-        return method_ir, runtime_functional
-
-    semilocal = _native_semilocal(method_ir)
-
-    # Pure catalog selectors retain the independent projection gate. Global
-    # hybrids resolve their composed semilocal primitive directly from MethodIR.
-    if identifier not in ("PBE0", "B3LYP"):
+    # MethodIR is authoritative for scientific composition.  The public
+    # manifest owns only the stable name -> compiler-method/spin binding.
+    # Catalog-backed primitives retain their qualified native projection and
+    # declaration identity. Discover them from the existing catalog, not a
+    # second hand-maintained public-name or coefficient table.
+    if identifier in CATALOG:
+        # Reject unavailable post-SCF operators before the named-selector
+        # consistency check, preserving the established capability exception.
+        semilocal = _native_semilocal(method_ir)
         if len(method_ir.primitives) != 1:
             raise RuntimeError("MethodIR composition disagrees with native KS selector")
         runtime_functional = functional(identifier, spin=spin)
@@ -332,38 +319,24 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
             )
         return method_ir, runtime_functional
 
-    # Global hybrids are audited manifests whose semilocal/exchange
-    # coefficients are checked structurally, not by named-method arithmetic.
-    expected = (
-        (0.75, 1.0, -0.125 if spin == "unpolarized" else -0.25)
-        if identifier == "PBE0"
-        else (1.0, 1.0, -0.1 if spin == "unpolarized" else -0.2)
-    )
-    if ks_coefficients(method_ir) != expected:
-        raise RuntimeError(
-            f"{identifier} MethodIR disagrees with its native composition"
-        )
+    if _is_pbe_d4_composition(method_ir):
+        return method_ir, functional("PBE", spin=spin)
+
+    semilocal = _native_semilocal(method_ir)
+    ks_coefficients(method_ir)
     return method_ir, semilocal
 
 
 def scf_domain_for_method(method: typing.Any) -> str:
     """Return the exact native point-domain identity for one public KS method."""
-    if method not in _NATIVE_KS_METHODS:
-        raise ValueError("KS domain requires a supported native RKS/UKS method")
-    return B3LYP_SCF_DOMAIN if method.startswith("b3lyp-") else SCF_DOMAIN
+    method_ir, _ = resolve_ks_method(method)
+    return B3LYP_SCF_DOMAIN if _native_semilocal_family(method_ir) == 3 else SCF_DOMAIN
 
 
 def native_xc_functional_code(method: typing.Any) -> int:
-    """Map one resolved public KS method to the native point-model ABI code."""
-    if method not in _NATIVE_KS_METHODS:
-        raise ValueError("XC point code requires a supported native RKS/UKS method")
-    if method.startswith("b3lyp-"):
-        return 3
-    if method.startswith("r2scan-"):
-        return 2
-    if method.startswith(("pbe-", "pbe0-")):
-        return 1
-    return 0
+    """Return the lowerer code selected from the method's resolved semilocal IR."""
+    method_ir, _ = resolve_ks_method(method)
+    return _native_semilocal_family(method_ir)
 
 
 def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing.Any:
@@ -379,7 +352,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
     composition = options.composition or options._method_ir
     if composition is not None:
         method_ir = composition
-        if method == "pbe-d4-rks":
+        if _is_pbe_d4_composition(named_ir):
             if method_ir.identity != named_ir.identity:
                 raise NotImplementedError(
                     "public PBE-D4 requires the pinned named MethodIR without parameter overrides"
@@ -397,7 +370,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             raise NotImplementedError(
                 "KS composition/spin disagrees with native family selector"
             )
-        if method != "pbe-d4-rks":
+        if not _is_pbe_d4_composition(named_ir):
             ks_coefficients(method_ir)
         # Preserve the independent catalog projection's declaration order and
         # identity when options have already been resolved.
@@ -422,7 +395,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
 
     grid = options.grid
     if grid is None:
-        if method in ("r2scan-rks", "r2scan-uks"):
+        if _native_semilocal_family(named_ir) == 2:
             # The v2 policy has no qualified meta-GGA profile. Preserve the
             # existing explicit v1 default rather than assigning a GGA grid.
             if options.grid_accuracy != "standard":
@@ -430,7 +403,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
                     "r2SCAN grid accuracy profiles require an explicit GridSpec"
                 )
             grid = GridSpec()
-        elif method == "pbe-d4-rks":
+        elif _is_pbe_d4_composition(named_ir):
             grid = GridPolicy(options.grid_accuracy).resolve(
                 "pbe-rks", derivative_order=0
             )

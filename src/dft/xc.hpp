@@ -111,16 +111,23 @@ SpinXcIntegral integrate_pbe_uks_scaled(const AoBasis& basis, const MolecularGri
  */
 inline constexpr const char* kB3lypProductionTailPolicy =
     "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
-struct B3GgaPointValue {
+struct SemilocalPointValue {
   double energy{};
   double rho[2]{};
   double gradient[2][3]{};
+  /** Coefficient of grad(phi_mu).grad(phi_nu), i.e. vtau/2 when tau is active. */
+  double kinetic[2]{};
 };
-using B3lypPointValue = B3GgaPointValue;
-using CamB3lypPointValue = B3GgaPointValue;
+using GgaPointValue = SemilocalPointValue;
+using B3GgaPointValue = SemilocalPointValue;
+using B3lypPointValue = SemilocalPointValue;
+using CamB3lypPointValue = SemilocalPointValue;
+using Pw91PointValue = SemilocalPointValue;
+using R2scanPointValue = SemilocalPointValue;
 
 B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
 CamB3lypPointValue evaluate_cam_b3lyp_point(const double rho[2], const double (&gradient)[2][3]);
+Pw91PointValue evaluate_pw91_point(const double rho[2], const double (&gradient)[2][3]);
 
 XcIntegral integrate_b3lyp_rks(const AoBasis& basis, const MolecularGrid& grid,
                                const std::vector<double>& density, std::size_t tile_points = 256,
@@ -138,13 +145,16 @@ SpinXcIntegral integrate_cam_b3lyp_uks(const AoBasis& basis, const MolecularGrid
                                        const std::vector<double>& beta_density,
                                        std::size_t tile_points = 256);
 
-struct R2scanPointValue {
-  double energy{};
-  double rho[2]{};
-  double gradient[2][3]{};
-  /** Coefficient of grad(phi_mu).grad(phi_nu), i.e. vtau/2. */
-  double kinetic[2]{};
-};
+/** Interior-v1 PW91 native fixed-density qualification path.
+ * This is a generic-GGA lowerer proof and does not register a public KS method.
+ */
+XcIntegral integrate_pw91_rks(const AoBasis& basis, const MolecularGrid& grid,
+                              const std::vector<double>& density, std::size_t tile_points = 256,
+                              XcDensitySource source = {});
+SpinXcIntegral integrate_pw91_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                  const std::vector<double>& alpha_density,
+                                  const std::vector<double>& beta_density,
+                                  std::size_t tile_points = 256);
 
 R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradient)[2][3],
                                        const double tau[2]);

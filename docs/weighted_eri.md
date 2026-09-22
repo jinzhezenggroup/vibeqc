@@ -25,6 +25,13 @@ source emission alone does not select a production route.
 | External psss weights | Generated precontracted Hermite DAG | One primitive record carries all x/y/z weights; optional independent fallback |
 | External unmigrated s/p/d/f weights | Unscreened Hermite/Dual3 primitive fallback | One explicit component per record, with the caller's actual external weight |
 
+Total angular order zero/one no longer has a generic AO-quartet scientific fallback.
+The fixed, resident, and bounded dispatchers consume generated `ssss_force` /
+`psss_force` through their exact shell tasks, and
+`contract_two_electron_force_quartet_subtile` now rejects `AngularOrder < 2`
+at compile time. The obsolete `direct_native_order01_gradient.cuh` body is
+therefore deleted rather than retained as a dead alternate implementation.
+
 The existing [component ledger](../benchmarks/results/rtx5090-0b6a573-issue-41-current-head-component-ledger.json)
 measured psss as the largest exact force class, 137.054 ms per replay, on its
 384-AO workload. That measured hotspot motivates this slice. Its timings

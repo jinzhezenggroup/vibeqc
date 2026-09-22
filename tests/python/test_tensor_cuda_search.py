@@ -76,6 +76,12 @@ def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> Non
     assert {s.threads for s in custom.generate()} == {32, 128, 512, 1024}
     streaming = replace(space, stream_reductions=(False, True))
     assert {s.stream_reductions for s in streaming.generate()} == {False, True}
+    cub = replace(
+        space,
+        stream_reductions=(True,),
+        reduction_provider=("generated", "cub"),
+    )
+    assert {s.reduction_provider for s in cub.generate()} == {"generated", "cub"}
 
 
 @pytest.mark.parametrize(
@@ -85,6 +91,7 @@ def test_structured_search_is_bounded_reproducible_and_covers_each_axis() -> Non
         {"tile_m": (0,)},
         {"views": (1,)},
         {"stream_reductions": (1,)},
+        {"reduction_provider": ("invalid",)},
         {"threads": (128, 128)},
         {"tile_n": (False,)},
         {"elements_per_thread": (3,)},
@@ -157,6 +164,20 @@ def test_execution_identity_tracks_only_executable_new_schedule_dimensions() -> 
             schedule=TensorSchedule(reduction_unroll=4),
         )
     ) != execution_key(reduction)
+    generated_cooperative = plan_cuda(
+        reduction.program,
+        TARGET,
+        schedule=TensorSchedule(stream_reductions=True),
+    )
+    cub_cooperative = plan_cuda(
+        reduction.program,
+        TARGET,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    assert execution_key(cub_cooperative) != execution_key(generated_cooperative)
 
     direct = plan_cuda(gemm_program(), TARGET)
     assert execution_key(
@@ -212,6 +233,29 @@ def test_new_schedule_dimensions_change_generated_execution_without_changing_def
     assert "<<<blocks(65LL, 1), 128" in cooperative_source
     assert estimate_schedule(cooperative)["estimated_shared_bytes"] == 32
 
+    cub = plan_cuda(
+        reduction_program(),
+        TARGET,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            reduction_provider="cub",
+        ),
+    )
+    cub_source = emit_cuda(cub)
+    assert "#include <cub/block/block_reduce.cuh>" in cub_source
+    assert "cub::BlockReduce<" in cub_source
+    assert "cub::BLOCK_REDUCE_WARP_REDUCTIONS" in cub_source
+    assert "__dadd_rn" in cub_source
+    assert "__shfl_down_sync" not in cub_source
+    cub_estimate = estimate_schedule(cub)
+    assert cub_estimate["estimated_shared_bytes"] == 128 * 8
+    cub_contract = ScheduleContract.from_payload(cub_estimate["schedule_contract"])
+    assert cub_contract.resources.shared_bytes == 128 * 8
+    assert (
+        dict(cub_contract.provenance)["lowering_providers"]
+        == "nvidia.cccl.cub,vibeqc.generated_cuda"
+    )
+
     packed = plan_cuda(
         gemm_program(packed=True),
         TARGET,
@@ -220,6 +264,15 @@ def test_new_schedule_dimensions_change_generated_execution_without_changing_def
     packed_source = emit_cuda(packed)
     assert "#pragma unroll 2" in packed_source
     assert "blocks((tm*tk+tk*tn+1LL)/2LL" in packed_source
+
+
+def test_cub_reduction_pilot_requires_streaming_cooperative_schedule() -> None:
+    with pytest.raises(ValueError, match="requires stream_reductions"):
+        plan_cuda(
+            reduction_program(),
+            TARGET,
+            schedule=TensorSchedule(reduction_provider="cub"),
+        )
 
 
 def test_default_search_prunes_equivalent_plans_and_preserves_baseline() -> None:

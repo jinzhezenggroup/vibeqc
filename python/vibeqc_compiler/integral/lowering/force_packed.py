@@ -30,9 +30,10 @@ def _emit_packed_force_consumer_cuda(
 
     Packed lowering intentionally reuses the generic component recurrence and
     exact density permutation helpers emitted above it.  Only task ownership
-    changes: a 32-thread block processes up to 32 unrelated shell quartets.
+    changes: one target warp processes one unrelated shell quartet per lane.
     """
 
+    lane_count = plan.schedule.block_threads
     selected_integral = _packed_force_integral(spec, plan.kernel.integral)
     independent_centers = selected_integral.independent_derivative_centers
     recovered_centers = selected_integral.recovered_derivative_centers
@@ -82,7 +83,7 @@ def _emit_packed_force_consumer_cuda(
     kernel_qualifier = (
         f"__maxnreg__({plan.schedule.maximum_registers})"
         if plan.schedule.maximum_registers
-        else f"__launch_bounds__(32, {minimum_blocks_per_sm})"
+        else f"__launch_bounds__({lane_count}, {minimum_blocks_per_sm})"
     )
     return f"""struct GeneratedDpppPackedForceLaneStorage {{
   GeneratedDpppVec3 positions[4];
@@ -194,9 +195,9 @@ void generated_dppp_shell_class_force_rhf_kernel(
     const double* density,
     double* forces,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[{lane_count}];
   const std::size_t task_index =
-      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+      static_cast<std::size_t>(blockIdx.x) * {lane_count}U + threadIdx.x;
   if (task_index >= task_count) return;
   generated_dppp_packed_force_lane<false>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
@@ -216,9 +217,9 @@ void generated_dppp_shell_class_force_uhf_kernel(
     const double* density,
     double* forces,
     std::size_t task_count) {{
-  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[{lane_count}];
   const std::size_t task_index =
-      static_cast<std::size_t>(blockIdx.x) * 32U + threadIdx.x;
+      static_cast<std::size_t>(blockIdx.x) * {lane_count}U + threadIdx.x;
   if (task_index >= task_count) return;
   generated_dppp_packed_force_lane<true>(
       tasks, primitive_pairs, primitive_pair_offsets, ao_coefficients,
@@ -241,9 +242,9 @@ __device__ __forceinline__ void generated_dppp_packed_force_persistent(
     const std::uint32_t* task_count,
     std::uint32_t* task_head) {{
   __shared__ std::uint32_t task_base;
-  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[32];
+  __shared__ GeneratedDpppPackedForceLaneStorage lane_storage[{lane_count}];
   while (true) {{
-    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
+    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, {lane_count}U);
     __syncthreads();
     if (task_base >= *task_count) return;
     const std::uint32_t task_index = task_base + threadIdx.x;
@@ -316,9 +317,7 @@ def _emit_scalar_thread_force_consumer_cuda(
     come from ``spec`` and ``IntegralIR``; no shell-name dispatch is required.
     """
 
-    if plan.schedule.block_threads != 32:
-        raise ValueError("scalar thread tasks currently use one CUDA warp")
-
+    worker_count = plan.schedule.block_threads
     selected_integral = _packed_force_integral(spec, plan.kernel.integral)
     independent_centers = selected_integral.independent_derivative_centers
     recovered_centers = selected_integral.recovered_derivative_centers
@@ -507,7 +506,7 @@ def _emit_scalar_thread_force_consumer_cuda(
     primitive_call_code = "\n".join(primitive_calls)
     independent_atomic_code = "\n".join(independent_atomics)
     fourth_atomic_code = "\n".join(recovered_atomics)
-    kernel_qualifier = f"__launch_bounds__(32, {minimum_blocks_per_sm})"
+    kernel_qualifier = f"__launch_bounds__({worker_count}, {minimum_blocks_per_sm})"
     return f"""struct GeneratedDpppScalarThreadStorage {{
   GeneratedDpppVec3 positions[4];
   GeneratedDpppPrimitiveGeometry primitive;
@@ -608,7 +607,7 @@ __device__ __forceinline__ void generated_dppp_scalar_thread_force_persistent(
     std::uint32_t* task_head) {{
   __shared__ std::uint32_t task_base;
   __shared__ GeneratedDpppScalarThreadContext context;
-  __shared__ GeneratedDpppScalarThreadStorage lane_storage[32];
+  __shared__ GeneratedDpppScalarThreadStorage lane_storage[{worker_count}];
   if (threadIdx.x == 0U) {{
     context.tasks = tasks;
     context.primitive_pairs = primitive_pairs;
@@ -622,7 +621,7 @@ __device__ __forceinline__ void generated_dppp_scalar_thread_force_persistent(
   }}
   __syncthreads();
   while (true) {{
-    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, 32U);
+    if (threadIdx.x == 0U) task_base = atomicAdd(task_head, {worker_count}U);
     __syncthreads();
     if (task_base >= *task_count) return;
     const std::uint32_t task_index = task_base + threadIdx.x;
