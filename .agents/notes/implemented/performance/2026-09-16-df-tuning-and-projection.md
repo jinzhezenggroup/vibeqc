@@ -75,7 +75,7 @@ Keep FP64, auxiliary basis, metric cutoff and SCF tolerances fixed. Unsupported
 Rys derivatives are excluded, not relabeled polynomial. Resource/numerical
 failures and profile conflicts cannot select winners. Counters/profiling stay
 separate from clean timings. The full-rank proof, scratch invalidation and
-unsupported-path fallbacks in [current documentation](../../../../docs/df_tuning.md)
+unsupported-path fallbacks in [current documentation](../../../../docs/developer/df_tuning.md)
 are part of the scientific contract.
 
 The maintained native growth is policy, contraction and scheduling glue; no

@@ -246,7 +246,7 @@ void run_hydroxyl(bool pbe) {
   std::cout << "KS OH pbe=" << pbe << " iterations=" << cold.iterations << '\n';
 }
 
-void run_case(unsigned atoms, bool restricted, bool functional) {
+void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
   const auto system = hydrogens(atoms, restricted);
   const dft::AoBasis basis(system);
   const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
@@ -275,12 +275,20 @@ void run_case(unsigned atoms, bool restricted, bool functional) {
   require(cold_execution.iterations == result.iterations &&
               cold_execution.iteration_chunks == cold_execution.iteration_synchronizations,
           "CUDA KS chunk accounting does not match the physical trajectory");
-  if (restricted && expect_iteration_chunking() && result.iterations > 1)
+  if (restricted && expect_iteration_chunking() && result.iterations > 1) {
     require(cold_execution.iteration_synchronizations < cold_execution.iterations,
             "qualified CUDA RKS retained a mandatory host fence after every iteration");
-  else
+    require(cold_execution.execution_region_bindings == 1 &&
+                cold_execution.execution_region_executions == cold_execution.iteration_chunks &&
+                cold_execution.execution_region_failures == 0,
+            "CUDA KS device chunks bypassed the shared compiled-execution lifecycle");
+  } else {
     require(cold_execution.iteration_synchronizations == cold_execution.iterations,
             "ordinary CUDA KS baseline changed its host-fence cadence");
+    require(cold_execution.execution_region_bindings == 0 &&
+                cold_execution.execution_region_executions == 0,
+            "ordinary CUDA KS unexpectedly bound a compiled execution region");
+  }
   require(cold_execution.submitted_iterations >= cold_execution.iterations &&
               cold_execution.submitted_iterations <=
                   cold_execution.iterations + cold_execution.iteration_chunks,
@@ -420,6 +428,12 @@ void run_case(unsigned atoms, bool restricted, bool functional) {
     const auto recovered = plan.run();
     require(recovered.converged && std::abs(recovered.energy - result.energy) < 1e-11,
             "failed CUDA item replaced its last-good warm state");
+    if (restricted && expect_iteration_chunking()) {
+      const auto recovered_execution = plan.transfers();
+      require(recovered_execution.execution_region_failures >= 1 &&
+                  recovered_execution.execution_region_recoveries >= 1,
+              "CUDA KS device region did not record failure/recovery ownership");
+    }
     const auto moved = hydrogens(atoms, restricted, 0.2);
     const scf::PreparedFockPlan new_gpu(moved, nullptr,
                                         strategy(restricted, scf::FockBackend::Cuda), 0);

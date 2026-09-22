@@ -4,6 +4,18 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_exchange_schedule_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_exchange_schedule.py"
+    OUTPUTS "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_exchange_schedule.py"
+    ARGS --output "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    COMMENT "Generating compiler-owned DF source-reuse schedule")
+
   # The native host policy is built even when CUDA execution is disabled.
   # Generate its CUDA-independent constants once for both build variants.
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
@@ -511,6 +523,15 @@ macro(vibeqc_register_cuda_generated_sources target)
 
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
+  # The r2SCAN minority-spin derivative is sensitive to contraction of 1-zeta
+  # near the work-density floor. Match the compiler XC FP64 policy and the
+  # independent Libxc boundary qualification; do not introduce FMA. CuMetal's
+  # nvcc-compatible driver delegates to Clang and requires its native spelling.
+  if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+    set(_vibeqc_grid_fp_contract_option -ffp-contract=off)
+  else()
+    set(_vibeqc_grid_fp_contract_option --fmad=false)
+  endif()
   vibeqc_register_generated_sources(
     TARGET ${target}
     ADD_TO_TARGET
@@ -519,6 +540,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    COMPILE_OPTIONS "${_vibeqc_grid_fp_contract_option}"
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 
   set(VIBEQC_XC_GRADIENT_SOURCE

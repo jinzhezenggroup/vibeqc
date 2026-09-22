@@ -366,7 +366,7 @@ def main() -> None:
             "allocated_bytes": max(allocations, default=0),
             "peak_bytes": max(peaks),
             "reason": None,
-            "scope": "numeric buffers including transient old/replacement overlap; docs/dft_grid.md",
+            "scope": "numeric buffers including transient old/replacement overlap; docs/developer/dft_grid.md",
         }
         record["performance"] = outcome(
             "not-run", "initial interface evidence; no default schedule replacement"

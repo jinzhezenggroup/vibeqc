@@ -59,6 +59,9 @@ int main(int argc, char** argv) {
   current.electrons[0] = current.electrons[1] = 1.0;
   if (mode == 1 || mode == 3) current.residual = 0.1;
   if (mode == 2) current.failure = 1;
+  // A small RMS cannot publish a state rejected by the AO maximum-norm gate.
+  if (mode == 6) current.maximum_residual = 2e-10;
+  const bool continuing = mode == 1 || mode == 6;
   Control control{1.0, 1U, mode == 4 ? 0 : 1, 0, 0};
   std::uint8_t enabled = control.active, spin_enabled = control.active;
   std::barrier fence(static_cast<std::ptrdiff_t>(blockDim.x));
@@ -78,7 +81,7 @@ int main(int argc, char** argv) {
   for (unsigned i = 1; i < blockDim.x; ++i) threads.emplace_back(worker, i);
   for (auto& thread : threads) thread.join();
   for (std::size_t i = 0; i < size; ++i) {
-    const double expected_density = 1.0 + i + (mode == 1 ? 1.0 : 0.0);
+    const double expected_density = 1.0 + i + (continuing ? 1.0 : 0.0);
     const double expected_warm = mode == 0 ? 1.0 + i : -99.0;
     if (density[i] != expected_density || warm[i] != expected_warm) {
       std::cerr << "incomplete publication at " << i << " density=" << density[i]
@@ -88,7 +91,7 @@ int main(int argc, char** argv) {
   }
   if (mode == 4 && control.iterations != 1) return 2;
   if (mode != 4 && control.iterations != 2) return 3;
-  if (control.active != (mode == 1) || enabled != (mode == 1)) return 4;
+  if (control.active != continuing || enabled != continuing) return 4;
   if (control.converged != (mode == 0 || mode == 5)) return 5;
   if (control.failed != (mode == 2)) return 6;
   return 0;
@@ -123,7 +126,7 @@ def control_executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.mark.parametrize(
     "mode",
-    range(6),
+    range(7),
     ids=(
         "converged-warm-copy",
         "continue-density-copy",
@@ -131,6 +134,7 @@ def control_executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "iteration-limit",
         "inactive",
         "converged-no-warm",
+        "maximum-residual-prevents-warm-publication",
     ),
 )
 def test_late_threads_keep_control_publication(

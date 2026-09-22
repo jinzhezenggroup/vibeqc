@@ -60,6 +60,7 @@ __global__ void diagnostic_kernel(std::size_t matrix, unsigned spins, const doub
       result.hartree += 0.5 * d * coulomb[i];
       electrons += d * overlap[i];
       error2 += residual[offset + i] * residual[offset + i];
+      result.maximum_residual = fmax(result.maximum_residual, fabs(residual[offset + i]));
       change2 += change * change;
     }
     if (!isfinite(error2) || !isfinite(change2) || !isfinite(electrons)) result.failure |= 8;
@@ -113,7 +114,8 @@ __global__ void advance_kernel(std::size_t matrix, unsigned spins, double nuclea
     } else {
       const bool converged = iteration > 1 && change < energy_tolerance &&
                              current->density_change < density_tolerance &&
-                             current->residual < fmin(1e-9, density_tolerance);
+                             current->residual < fmin(1e-9, density_tolerance) &&
+                             current->maximum_residual < fmin(1e-9, density_tolerance);
       control->converged = converged ? 1 : 0;
       control->active = (!converged && iteration < max_iterations) ? 1 : 0;
       copy_density = control->active;

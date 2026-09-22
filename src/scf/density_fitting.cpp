@@ -12,6 +12,7 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 #include "scf/df_streamed_k_policy.hpp"
 #include "tensor/cpu_linalg.hpp"
 #include "tensor/symmetric_matrix_function.hpp"
@@ -1166,8 +1167,8 @@ static DensityFittingTilePlan plan_density_fitting_tiles_impl(
   return plan;
 }
 
-/** Automatic factors are optional: never shrink a dense plan solely to charge
- * storage that the resulting streamed/partial path cannot consume. */
+/** Automatic factors are optional: retain dense residency when it fits, and
+ * reserve streamed factors only when the compiler predicts less raw work. */
 DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t nbf,
                                                   std::size_t naux, std::size_t occupied,
                                                   std::size_t budget, std::size_t fixed,
@@ -1187,6 +1188,26 @@ DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t
           plan.auxiliary_tile == naux) {
         plan.automatic_rhf_rank = automatic_rhf_rank;
         return plan;
+      }
+      if (generated_source && !plan.stores_full_three_center) {
+        const auto dense = plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget,
+                                                           fixed, generated_source, false);
+        // Optional factor storage must not turn a retained dense tensor into
+        // regeneration or increase the fallback's source passes when a mixed
+        // seed cannot be factored exactly.
+        const auto capacity = (plan.ao_pair_tile / nbf) * nbf * plan.auxiliary_tile;
+        const auto dense_capacity = (dense.ao_pair_tile / nbf) * nbf * dense.auxiliary_tile;
+        const auto fallback = df_streamed_k_panel(nbf, naux, capacity);
+        const auto original = df_streamed_k_panel(nbf, naux, dense_capacity);
+        if (!dense.stores_full_three_center &&
+            static_cast<long double>(fallback.row_tiles) * fallback.output_tiles <=
+                static_cast<long double>(original.row_tiles) * original.output_tiles &&
+            df_projected_exchange_schedule(nbf, naux, automatic_rhf_rank, capacity,
+                                           df_triangular_exchange_requested())
+                .rows) {
+          plan.automatic_rhf_rank = automatic_rhf_rank;
+          return plan;
+        }
       }
     } catch (const DensityFittingBudgetError&) {
       // Retry the original dense budget before reporting an infeasible job.

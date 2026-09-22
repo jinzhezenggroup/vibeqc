@@ -87,3 +87,19 @@ before any SCF measurement started. Issue #1099 tracks the now-isolated serial
 native reference-grid construction (25.375 s at 24 atoms). Keep 48/96 complete
 endpoint qualification pending; do not misattribute that preparation bottleneck
 to generated J or silently omit it from the endpoint.
+
+## Current integration and 48-atom evidence
+
+Master 41834864 merges without changing the pure-J schedule. All 50 integral
+contract tests (including frozen artifact bytes), the independent scatter
+consumer test, and compiler/SCF/CUDA ownership checks pass. This merge does
+not claim a newly built standalone GPU endpoint.
+
+The retained v10 integration, after the separate grid/setup/XC repairs
+(#1100/#1104/#1106), completes PBE direct48: preparation 0.952830119 s, cold
+SCF 83.546013499 s (21 iterations), warm 11.924645068/11.970010264 s. All four
+native/GPU4PySCF energy pairs satisfy the unchanged 1e-8 gate; maximum error
+7.1623e-11 Eh. Slurm 11384, v10 binary SHA-256
+`36b15fc1e9aba3f76c710132195978da1d8eaefc2c48829c782303b440a32873`.
+Those repairs are required to interpret the complete endpoint; this is no
+isolated pure-J speedup claim. Full96 acceptance remains pending.

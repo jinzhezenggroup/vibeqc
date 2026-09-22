@@ -208,7 +208,9 @@ class FunctionalSpec:
             expression_source = "wb97mv_maple.py"
         else:
             manifest = "rsh-manifest.json" if special else "manifest.json"
-            expression_source = "rsh_expressions.py" if special else "expressions.py"
+            expression_source = (
+                "rsh_expressions.py" if special else "semilocal_family.py"
+            )
         sources = tuple(
             record
             for record in (

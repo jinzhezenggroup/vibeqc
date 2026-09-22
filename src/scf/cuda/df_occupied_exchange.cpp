@@ -10,6 +10,7 @@
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -148,24 +149,14 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
 
   if (plan.integral_source && plan.streamed && plan.metric_full_rank[system] &&
       rank <= static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux) {
-    // Raw AO input and all-Q occupied projections use separate buffers with
-    // the same charged capacity. Require both to fit at least one complete
-    // AO row, and select this order only when it reduces logical source work.
-    const auto rows = std::min(
-        {plan.nbf, plan.panel_capacity / (plan.naux * rank), plan.panel_capacity / plan.nbf});
-    const auto legacy = df_streamed_k_panel(plan.nbf, plan.naux, plan.panel_capacity);
-    if (rows) {
-      const auto blocks = (plan.nbf + rows - 1) / rows;
-      const auto last = plan.nbf - (blocks - 1) * rows;
-      const long double generated_rows =
-          plan.triangular_exchange
-              ? static_cast<long double>(rows) * (blocks - 1) * (blocks + 2) / 2 + last
-              : static_cast<long double>(plan.nbf) * blocks;
-      if (generated_rows <
-          static_cast<long double>(plan.nbf) * legacy.row_tiles * legacy.output_tiles)
-        return build_streamed_projected_exchange(plan, system, coefficients, rank, column_major,
-                                                 weight, rows, exchange, detail);
-    }
+    // Allocation, automatic SCF qualification and execution share this compiler
+    // schedule. Balanced row blocks avoid repeatedly generating an oversized
+    // prefix when the last triangular block is short.
+    const auto schedule = df_projected_exchange_schedule(
+        plan.nbf, plan.naux, rank, plan.panel_capacity, plan.triangular_exchange);
+    if (schedule.rows)
+      return build_streamed_projected_exchange(plan, system, coefficients, rank, column_major,
+                                               weight, schedule.rows, exchange, detail);
   }
 
   const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;
