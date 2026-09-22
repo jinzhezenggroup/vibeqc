@@ -24,9 +24,9 @@ GridSpec cosx_grid_spec(const scf::ResolvedFockBuild& strategy) {
   scf::validate_resolved_fock_build(strategy);
   require(strategy.backend == scf::FockBackend::Cuda &&
               strategy.schedule == scf::FockSchedule::CudaIndependent &&
-              strategy.spec.derivative_order == 0 && strategy.spec.exchange.present &&
+              strategy.spec.derivative_order <= 1 && strategy.spec.exchange.present &&
               strategy.spec.exchange.approximation == scf::FockApproximation::SeminumericalCosx,
-          "prepared COSX Fock requires an energy-only CUDA COSX exchange strategy");
+          "prepared COSX Fock requires a value/first-derivative CUDA COSX exchange strategy");
   scf::require_fock_provider_executable(scf::FockApproximation::SeminumericalCosx,
                                         scf::FockBackend::Cuda);
   const auto& source = strategy.spec.exchange.cosx;
@@ -44,7 +44,6 @@ GridSpec cosx_grid_spec(const scf::ResolvedFockBuild& strategy) {
 
 scf::ResolvedFockBuild coulomb_strategy(const scf::ResolvedFockBuild& strategy) {
   auto spec = strategy.spec;
-  spec.derivative_order = 0;
   spec.exchange.present = false;
   return scf::resolve_fock_build(spec, scf::FockBackend::Cuda, strategy.screening_tolerance,
                                  strategy.metric_relative_threshold);
@@ -72,18 +71,26 @@ struct PreparedCosxFockPlan::Impl {
   std::unique_ptr<scf::PreparedFockPlan> coulomb;
   std::unique_ptr<CudaCosxStagingPlan> exchange;
   CosxFockPreparationDiagnostic diagnostic;
+  int device_id{};
 
   Impl(const core::System& system, const core::System* auxiliary, scf::ResolvedFockBuild resolved,
        std::size_t tile_points, int device, std::size_t requested_budget)
       : orbital(system),
         strategy(std::move(resolved)),
-        cosx_grid(orbital, cosx_grid_spec(strategy)) {
+        cosx_grid(orbital, cosx_grid_spec(strategy)),
+        device_id(device) {
     require(device >= 0 && tile_points > 0, "invalid prepared COSX device or tile size");
     const auto available = requested_budget ? requested_budget : kDefaultDeviceBudget;
     const auto cosx_resources =
         cuda_cosx_staging_diagnostic(orbital, cosx_grid.point_count(), tile_points);
-    if (cosx_resources.device_bytes >= available) throw std::bad_alloc();
-    const auto j_budget = available - cosx_resources.device_bytes;
+    CudaCosxMolecularDerivativeDiagnostic derivative_resources{};
+    std::size_t exchange_peak = cosx_resources.device_bytes;
+    if (strategy.spec.derivative_order == 1) {
+      derivative_resources = cuda_cosx_molecular_derivative_diagnostic(cosx_grid, tile_points);
+      exchange_peak = add_size(exchange_peak, derivative_resources.device_bytes);
+    }
+    if (exchange_peak >= available) throw std::bad_alloc();
+    const auto j_budget = available - exchange_peak;
 
     const auto j_strategy = coulomb_strategy(strategy);
     coulomb =
@@ -95,12 +102,18 @@ struct PreparedCosxFockPlan::Impl {
     diagnostic.strategy = strategy;
     diagnostic.coulomb = coulomb->diagnostic();
     diagnostic.exchange = exchange->diagnostic();
+    diagnostic.derivative = derivative_resources;
     diagnostic.device_bytes =
         add_size(diagnostic.coulomb.device_bytes, diagnostic.exchange.device_bytes);
+    diagnostic.derivative_peak_device_bytes =
+        strategy.spec.derivative_order == 1
+            ? add_size(diagnostic.device_bytes, diagnostic.derivative.device_bytes)
+            : diagnostic.device_bytes;
     diagnostic.device_budget_bytes = available;
     diagnostic.tile_points = diagnostic.exchange.tile_points;
-    if (diagnostic.device_bytes > available)
-      throw std::runtime_error("prepared COSX providers exceed admitted device budget");
+    if (diagnostic.device_bytes > available || diagnostic.derivative_peak_device_bytes > available)
+      throw std::runtime_error(
+          "prepared COSX providers exceed admitted value/derivative device budget");
   }
 
   scf::DirectJkMatrices build(const std::vector<double>& density, const std::vector<double>& beta) {
@@ -132,6 +145,39 @@ struct PreparedCosxFockPlan::Impl {
     }
     return result;
   }
+
+  std::vector<double> energy_derivative(const std::vector<double>& density,
+                                        const std::vector<double>& beta) {
+    require(strategy.spec.derivative_order == 1, "COSX Fock derivatives were not requested");
+    const auto n = coulomb->one_electron().nbf;
+    validate_density(strategy, n, density, beta);
+    std::vector<double> result(3 * orbital.atoms.size(), 0.0);
+    if (strategy.spec.coulomb.present) {
+      result = coulomb->energy_derivative(density, beta);
+      if (result.size() != 3 * orbital.atoms.size())
+        throw std::runtime_error(
+            "prepared Coulomb derivative returned an invalid coordinate count");
+    }
+
+    const double standard_exchange = strategy.spec.spin == scf::FockSpin::Restricted ? -0.5 : -1.0;
+    const double exchange_scale = strategy.spec.exchange.coefficient / standard_exchange;
+    if (strategy.spec.spin == scf::FockSpin::Restricted) {
+      const auto response = cuda_cosx_molecular_energy_derivative(
+          cosx_grid, density, CosxDensityConvention::rhf_spin_summed, diagnostic.tile_points,
+          device_id);
+      for (std::size_t coordinate = 0; coordinate < result.size(); ++coordinate)
+        result[coordinate] += exchange_scale * response[coordinate];
+    } else {
+      const auto alpha = cuda_cosx_molecular_energy_derivative(cosx_grid, density,
+                                                               CosxDensityConvention::spin_resolved,
+                                                               diagnostic.tile_points, device_id);
+      const auto beta_response = cuda_cosx_molecular_energy_derivative(
+          cosx_grid, beta, CosxDensityConvention::spin_resolved, diagnostic.tile_points, device_id);
+      for (std::size_t coordinate = 0; coordinate < result.size(); ++coordinate)
+        result[coordinate] += exchange_scale * (alpha[coordinate] + beta_response[coordinate]);
+    }
+    return result;
+  }
 };
 
 PreparedCosxFockPlan::PreparedCosxFockPlan(const core::System& orbital,
@@ -156,6 +202,10 @@ const CosxFockPreparationDiagnostic& PreparedCosxFockPlan::diagnostic() const no
 scf::DirectJkMatrices PreparedCosxFockPlan::build(const std::vector<double>& density,
                                                   const std::vector<double>& beta) {
   return impl_->build(density, beta);
+}
+std::vector<double> PreparedCosxFockPlan::energy_derivative(const std::vector<double>& density,
+                                                            const std::vector<double>& beta) {
+  return impl_->energy_derivative(density, beta);
 }
 
 }  // namespace vibeqc::dft

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include "core/types.hpp"
@@ -45,6 +46,11 @@ class MolecularGrid {
    * Reconstruct only quadrature rules, not Becke weights, on request; energy
    * execution retains no additional point-sized array. */
   std::vector<double> atomic_weights() const;
+  /** Contract dE/dw(point) directly with the analytic nuclear response of
+   * the exact materialized Becke weights. Grid points translate with their
+   * owner atoms; this routine differentiates only the partition weights, not
+   * point coordinates or the element/radial/angular atomic measure. */
+  std::vector<double> contract_weight_derivative(std::span<const double> weight_sensitivity) const;
 
  private:
   core::System system_;

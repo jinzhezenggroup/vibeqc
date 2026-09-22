@@ -1440,6 +1440,67 @@ EspProbeDerivativeData build_esp_integrals_with_probe_derivatives(
   return build_esp_integrals_impl(system, points_xyz, true);
 }
 
+EspContractedGeometryDerivative contract_weighted_esp_geometry_derivative(
+    const core::System& system, std::span<const double> point_xyz,
+    std::span<const double> matrix_weights) {
+  if (point_xyz.size() != 3 || !std::all_of(point_xyz.begin(), point_xyz.end(),
+                                            [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("contracted ESP derivative requires one finite xyz probe");
+
+  const auto cartesian_aos = expand_cartesian_aos(system);
+  const auto public_aos = public_ao_expansions(system);
+  const std::size_t cartesian_nbf = cartesian_aos.size();
+  const std::size_t nbf = public_aos.size();
+  if (cartesian_nbf == 0 || nbf == 0 || matrix_weights.size() != checked_product(nbf, nbf) ||
+      !std::all_of(matrix_weights.begin(), matrix_weights.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::invalid_argument("contracted ESP derivative weights do not match the AO basis");
+
+  const auto cartesian_weights = pullback_matrix_weights(matrix_weights, cartesian_nbf, public_aos);
+  const std::size_t ncoord = checked_product(system.atoms.size(), std::size_t{3});
+  const std::size_t derivative_count = checked_sum(ncoord, std::size_t{3});
+  std::vector<Vec3> centers(system.atoms.size());
+  for (std::size_t atom = 0; atom < system.atoms.size(); ++atom)
+    for (unsigned axis = 0; axis < 3; ++axis)
+      centers[atom][axis] =
+          Jet::variable(system.atoms[atom].position[axis], derivative_count, 3 * atom + axis);
+  Vec3 probe;
+  for (unsigned axis = 0; axis < 3; ++axis)
+    probe[axis] = Jet::variable(point_xyz[axis], derivative_count, ncoord + axis);
+
+  Jet contracted(0.0, derivative_count);
+  for (std::size_t i = 0; i < cartesian_nbf; ++i) {
+    const auto& first = cartesian_aos[i];
+    const auto& first_center = centers[first.shell->atom_index];
+    for (std::size_t j = 0; j < cartesian_nbf; ++j) {
+      const double external = cartesian_weights[matrix_index(i, j, cartesian_nbf)];
+      if (external == 0.0) continue;
+      const auto& second = cartesian_aos[j];
+      const auto& second_center = centers[second.shell->atom_index];
+      const double angular_normalization =
+          first.component_normalization * second.component_normalization;
+      for (const auto& p : first.shell->primitives)
+        for (const auto& q : second.shell->primitives)
+          contracted = contracted + external * angular_normalization * p.coefficient *
+                                        q.coefficient *
+                                        primitive_coulomb_potential_cartesian(
+                                            p.exponent, first_center, first.angular, q.exponent,
+                                            second_center, second.angular, probe);
+    }
+  }
+  if (!std::isfinite(contracted.value) ||
+      !std::all_of(contracted.derivative.begin(), contracted.derivative.end(),
+                   [](double value) { return std::isfinite(value); }))
+    throw std::runtime_error("contracted ESP geometry derivative is nonfinite");
+
+  EspContractedGeometryDerivative result;
+  result.nuclear_derivative.assign(contracted.derivative.begin(),
+                                   contracted.derivative.begin() + ncoord);
+  for (unsigned axis = 0; axis < 3; ++axis)
+    result.probe_derivative[axis] = contracted.derivative[ncoord + axis];
+  return result;
+}
+
 IntegralData transform_integrals(const IntegralData& cartesian, const core::System& system) {
   const std::size_t cartesian_nbf = molecule::cartesian_ao_count(system);
   const std::size_t ncoord = system.atoms.size() * 3;
