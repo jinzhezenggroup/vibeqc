@@ -60,9 +60,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cpu-v2-${{ matrix.compiler }}-
             ccache-cpu-${{ matrix.compiler }}-
+      - name: Reset ccache statistics
+        run: ccache --zero-stats
       - name: Configure
         env:
           CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
@@ -177,8 +180,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cuda-v2-12.9-sm120-
             ccache-cuda-12.9-sm120-
       - name: Reset ccache statistics
         run: ccache --zero-stats
@@ -240,10 +244,24 @@ jobs:
           python3 tools/validate_xc.py --tier cuda-compile
           --functionals PBE --nvcc "$CUDACXX"
           --cache build/xc-cache --output build/xc-compile
+      - name: Restore stationary CUDA compile cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/stationary-cuda-compile
+          key: stationary-cuda-12.9-sm120-${{ hashFiles('python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/integral/**', 'python/vibeqc_compiler/method/**', 'python/vibeqc_compiler/tensor/**', 'tools/validate_stationary_cuda_compile.py') }}
+          restore-keys: |
+            stationary-cuda-12.9-sm120-
       - name: Compile generated r2SCAN stationary CUDA consumer
         run: >-
           python3 tools/validate_stationary_cuda_compile.py
           --nvcc "$CUDACXX" --cache build/stationary-cuda-compile
+      - name: Restore TensorIR CUDA compile cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/tensor-static-cuda-compile
+          key: tensor-static-cuda-12.9-sm120-${{ hashFiles('python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/tensor/**', 'tools/validate_tensor_cuda_compile.py') }}
+          restore-keys: |
+            tensor-static-cuda-12.9-sm120-
       - name: Compile generated TensorIR static-data artifacts
         run: >-
           PYTHONPATH=python python3 tools/validate_tensor_cuda_compile.py
@@ -309,9 +327,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-python-v2-
             ccache-python-
+      - name: Reset ccache statistics
+        run: ccache --zero-stats
       - name: Prepare GFN2 CPU linear algebra runtime
         run: |
           uv venv --python 3.11 .venv-gfn2-build
@@ -673,9 +694,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-benchmark-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**') }}
+          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cpu-benchmark-v2-
             ccache-cpu-benchmark-
+      - name: Reset CPU benchmark ccache statistics
+        run: ccache --zero-stats
       - name: Build CPU benchmark library
         run: |
           cmake -S . -B build-benchmark -G Ninja \
@@ -684,6 +708,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build-benchmark --target vibeqc --parallel
+      - name: Show CPU benchmark ccache statistics
+        run: ccache --show-stats
       - name: Install benchmark dependencies
         run: |
           uv venv --python 3.11
