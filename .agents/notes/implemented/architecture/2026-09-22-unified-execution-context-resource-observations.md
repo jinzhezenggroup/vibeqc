@@ -100,3 +100,17 @@ and compiler-generated execution plans.
 - Branch: `chatgpt/agent-f-runtime-context`
 - Agent: Agent F (ChatGPT)
 - Model: GPT-5.6 Sol
+
+## Recovery scope and review qualification (2026-09-23)
+
+The recovered PR #1057 includes execution identity for HF and resource adapters
+for RCCSD/RCCSD(T). The DFT, VV10, and D4 adapters described in the original
+migration above are **not** part of this recovered patch; their observations
+remain unreported through this interface. The original validation list is
+historical evidence, not a claim that the recovered head reran those gates.
+
+Review found that the new tracker test used assertions removed by Release builds.
+The recovered test now uses always-on checks and exercises real prepared HF,
+RCCSD, and RCCSD(T) CPU owners across replay. CC snapshots take the same owner
+mutex as execution so concurrent readers cannot observe a data race. Resource
+categories remain non-additive high-water observations, not an endpoint budget.

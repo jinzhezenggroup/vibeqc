@@ -16,7 +16,8 @@ enum class ExecutionMemorySpace : std::uint8_t { Host = 0, Device = 1 };
  *
  * Numeric capacity and scratch workspace are deliberately separate: retained
  * method state must never be relabelled as transient workspace merely to make
- * accounting look uniform.
+ * accounting look uniform. These observations can overlap and must not be
+ * summed into a total. Zero without an observation means unknown, not free.
  */
 struct ExecutionResourceSnapshot {
   std::size_t host_numeric_peak_bytes{};

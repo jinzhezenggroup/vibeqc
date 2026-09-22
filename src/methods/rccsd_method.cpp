@@ -386,6 +386,8 @@ class RccsdPrepared final : public PreparedCalculation {
   std::size_t atom_count() const noexcept override { return system_.atoms.size(); }
   const Capabilities& capabilities() const noexcept override { return capabilities_; }
   runtime::ExecutionResourceSnapshot execution_resources() const noexcept override {
+    // Execution updates the same tracker under this owner's mutex.
+    std::lock_guard<std::mutex> lock(mutex_);
     return execution_.resources();
   }
   std::optional<vibeqc_correlation_diagnostic> correlation_diagnostic() const override {

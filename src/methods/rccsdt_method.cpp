@@ -84,6 +84,8 @@ class RccsdtPrepared final : public PreparedCalculation {
   std::size_t atom_count() const noexcept override { return system_.atoms.size(); }
   const Capabilities& capabilities() const noexcept override { return capabilities_; }
   runtime::ExecutionResourceSnapshot execution_resources() const noexcept override {
+    // Publish a coherent snapshot while another caller may execute the owner.
+    std::lock_guard<std::mutex> lock(mutex_);
     return execution_.resources();
   }
 
