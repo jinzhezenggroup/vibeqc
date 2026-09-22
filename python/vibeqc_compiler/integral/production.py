@@ -33,6 +33,7 @@ load_production_manifest = _production_profile.load_production_manifest
 resolve_production_profile = _production_profile.resolve_production_profile
 _profile_identifier = _production_profile._profile_identifier
 _as_selection = _production_selection._as_selection
+_selection_integral = _production_selection._selection_integral
 _stable_selection_order = _production_registry._stable_selection_order
 emit_registry_header = _production_registry.emit_registry_header
 emit_registry_source = _production_registry.emit_registry_source
