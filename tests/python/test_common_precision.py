@@ -9,6 +9,7 @@ from vibeqc_compiler.common.precision import (
 )
 from vibeqc_compiler.dft.xc_schedule import (
     DEVICE_FUSED,
+    GridXcCandidateAssessment,
     GridXcCandidateLimits,
     GridXcCandidateShape,
     GridXcScientificIdentity,
@@ -52,7 +53,7 @@ def _dft_scientific() -> GridXcScientificIdentity:
 
 def _dft_assessment(
     precision: ExecutionPrecisionSchedule | None = None,
-):
+) -> GridXcCandidateAssessment:
     return assess_grid_xc_schedule(
         DEVICE_FUSED,
         GridXcCandidateShape(
