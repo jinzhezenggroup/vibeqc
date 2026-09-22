@@ -474,6 +474,45 @@ void verify_one_electron_provider_policy() {
   }
 }
 
+void verify_direct_tile_validation_policy() {
+  using vibeqc::scf::cuda_policy::direct_tile_validation_requested;
+  using vibeqc::scf::cuda_policy::resolve_direct_tile_validation_policy;
+
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", nullptr);
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(!policy.requested && policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
+            "ordinary CUDA execution keeps its numerical endpoint");
+    require(!direct_tile_validation_requested(),
+            "absent tile-validation diagnostic remains disabled");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(policy.requested && !policy.produces_numerical_endpoint,
+            "tile validation is explicitly structural-only");
+    require(policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "structural validation cannot report a successful numerical endpoint");
+    require(direct_tile_validation_requested(),
+            "the compatibility selector follows the explicit validation policy");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "1");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(policy.requested && !policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "legacy truthy tile-validation selector preserves diagnostic semantics");
+  }
+  {
+    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "unexpected");
+    const auto policy = resolve_direct_tile_validation_policy();
+    require(!policy.requested && policy.produces_numerical_endpoint &&
+                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
+            "unknown tile-validation spellings do not silently enter diagnostic mode");
+  }
+}
+
 void verify_cpu_provenance() {
   const vibeqc::scf::ScfResult fp64 =
       run_cpu_rhf(std::optional<vibeqc_precision_mode>(VIBEQC_PRECISION_FP64));
@@ -520,6 +559,7 @@ int main() {
     verify_aot_shell_class_selection_override();
     verify_converged_fock_reuse_rms();
     verify_one_electron_provider_policy();
+    verify_direct_tile_validation_policy();
     verify_cpu_provenance();
     std::cout << "validated precision policy controller and CPU provenance\n";
     return EXIT_SUCCESS;

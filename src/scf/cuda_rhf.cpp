@@ -574,7 +574,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const bool bounded_direct_aot_only_diagnostic = bounded_direct_aot_only_diagnostic_requested();
   const bool bounded_direct_fock_only_diagnostic = bounded_direct_fock_only_diagnostic_requested();
   const bool bounded_fock_class_timing = bounded_fock_class_timing_requested();
-  const bool direct_tile_validation = direct_tile_validation_requested();
+  const auto direct_tile_validation_policy = cuda_policy::resolve_direct_tile_validation_policy();
+  const bool direct_tile_validation = direct_tile_validation_policy.requested;
   // Read this per execution so one prepared topology can compare the new
   // route with the complete ordinary ppps queue in the same binary.
   const bool resident_ppps_bra = resident_ppps_bra_requested();
@@ -3034,6 +3035,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         std::fflush(stderr);
       }
     }
+  }
+  if (cuda_error == cudaSuccess && direct_tile_validation) {
+    // This mode validates descriptor structure only.  The Fock consumer was
+    // intentionally skipped above, so returning a numerical SCF endpoint here
+    // would turn a structural diagnostic into misleading scientific evidence.
+    std::fprintf(stderr,
+                 "direct-tile-validation mode=structural-only numerical-endpoint=disabled\n");
+    std::fflush(stderr);
+    fill_global_failure(outputs, direct_tile_validation_policy.endpoint_status);
+    return outputs;
   }
   if (cuda_error == cudaSuccess && bounded_direct_count_diagnostic && bounded_direct_streaming) {
     cuda_error = cudaStreamSynchronize(resources.stream_);

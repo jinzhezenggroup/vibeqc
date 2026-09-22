@@ -287,8 +287,17 @@ bool aot_shell_class_selection_override_requested() noexcept {
   return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
 }
 
+DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept {
+  const bool requested = selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+  return {
+      .requested = requested,
+      .produces_numerical_endpoint = !requested,
+      .endpoint_status = requested ? VIBEQC_STATUS_NOT_IMPLEMENTED : VIBEQC_STATUS_SUCCESS,
+  };
+}
+
 bool direct_tile_validation_requested() noexcept {
-  return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
+  return resolve_direct_tile_validation_policy().requested;
 }
 
 double converged_fock_reuse_density_rms(double density_tolerance) noexcept {
