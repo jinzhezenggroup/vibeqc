@@ -41,13 +41,13 @@ void reset(FailurePoint point) {
 }  // namespace fault_injection
 
 extern "C" cudaError_t __real_cudaMemcpyAsync(void*, const void*, std::size_t, cudaMemcpyKind,
-                                               cudaStream_t);
+                                              cudaStream_t);
 extern "C" cudaError_t __real_cudaMemsetAsync(void*, int, std::size_t, cudaStream_t);
 extern "C" cudaError_t __real_cudaGetLastError();
 extern "C" cudaError_t __real_cudaStreamSynchronize(cudaStream_t);
 
 extern "C" cudaError_t __wrap_cudaMemcpyAsync(void* out, const void* in, std::size_t bytes,
-                                               cudaMemcpyKind kind, cudaStream_t stream) {
+                                              cudaMemcpyKind kind, cudaStream_t stream) {
   using namespace fault_injection;
   if (kind == cudaMemcpyHostToDevice) {
     ++h2d_calls;
@@ -72,7 +72,7 @@ extern "C" cudaError_t __wrap_cudaMemcpyAsync(void* out, const void* in, std::si
 }
 
 extern "C" cudaError_t __wrap_cudaMemsetAsync(void* out, int value, std::size_t bytes,
-                                               cudaStream_t stream) {
+                                              cudaStream_t stream) {
   using namespace fault_injection;
   ++memsets;
   if (failure == FailurePoint::gradient_clear && memsets == 1) {
@@ -106,12 +106,12 @@ extern "C" cudaError_t __wrap_cudaStreamSynchronize(cudaStream_t stream) {
 
 namespace {
 
+using vibeqc::dft::dispersion::create_d3_cuda_owner;
 using vibeqc::dft::dispersion::D3CudaOwner;
 using vibeqc::dft::dispersion::D3ModelParameters;
 using vibeqc::dft::dispersion::D3Parameters;
 using vibeqc::dft::dispersion::D3ResourceUsage;
 using vibeqc::dft::dispersion::D3Status;
-using vibeqc::dft::dispersion::create_d3_cuda_owner;
 using vibeqc::dft::dispersion::destroy_d3_cuda_owner;
 using vibeqc::dft::dispersion::execute_d3_cuda;
 
@@ -204,4 +204,3 @@ int main() {
     return EXIT_FAILURE;
   }
 }
-
