@@ -285,7 +285,7 @@ def test_uks_rejects_invalid_spin_occupations(
 @pytest.mark.parametrize(
     "kwargs",
     (
-        {"density_fitting": "cpu"},
+        {"density_fitting": "cpu", "precision": "auto"},
         {"precision": "auto"},
     ),
 )

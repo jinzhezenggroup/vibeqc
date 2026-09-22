@@ -597,10 +597,22 @@ int main() {
             "r2SCAN force rejection omitted its #164 capability boundary");
     vibeqc_calculation_destroy(calculation);
 
+    method = lda_method();
     method.density_fitting_mode = VIBEQC_DENSITY_FITTING_CPU_REFERENCE;
+    calculation = nullptr;
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                VIBEQC_STATUS_NOT_IMPLEMENTED,
-            "LDA RKS accepted density fitting");
+                VIBEQC_STATUS_SUCCESS,
+            "LDA RKS density-fitting preparation failed");
+    result.forces = nullptr;
+    result.force_count = 0;
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+                result.converged == 1 && std::isfinite(result.energy),
+            "LDA RKS density-fitted energy failed");
+    result.forces = forces.data();
+    result.force_count = static_cast<uint32_t>(forces.size());
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "DFT density fitting exposed an incomplete force consumer");
+    vibeqc_calculation_destroy(calculation);
 
     method = lda_method();
     method.density_fitting_mode = static_cast<vibeqc_density_fitting_mode>(99);
