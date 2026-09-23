@@ -174,10 +174,10 @@ class RccsdtPrepared final : public PreparedCalculation {
       diagnostic.ccsd_t_triples_energy = triples_energy;
       diagnostic.ccsd_t_virtual_triples = triples_virtual_count;
       diagnostic.ccsd_t_workspace_bytes = triples_workspace_bytes;
-      execution_.observe_workspace_peak(
-          execution_.cuda_requested() ? runtime::ExecutionMemorySpace::Device
-                                      : runtime::ExecutionMemorySpace::Host,
-          triples_workspace_bytes);
+      execution_.observe_workspace_peak(execution_.cuda_requested()
+                                            ? runtime::ExecutionMemorySpace::Device
+                                            : runtime::ExecutionMemorySpace::Host,
+                                        triples_workspace_bytes);
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
