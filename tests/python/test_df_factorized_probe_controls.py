@@ -36,7 +36,8 @@ def probe() -> dict[str, typing.Any]:
     assert len(selected) == 4
     namespace = {"os": os, "typing": typing, "contextmanager": contextmanager}
     code = compile(ast.Module(body=selected, type_ignores=[]), str(path), "exec")
-    exec(code, namespace)
+    # Only selected AST nodes from the trusted repository fixture run here.
+    exec(code, namespace)  # noqa: S102
     return namespace
 
 
