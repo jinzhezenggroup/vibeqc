@@ -14,6 +14,25 @@ def _payload() -> dict[str, object]:
     return json.loads(ledger.LEDGER.read_text(encoding="utf-8"))
 
 
+def _qualify_one_cell(payload: dict[str, object]) -> dict[str, object]:
+    original = payload["groups"][0]["adoption"][0]
+
+    qualified = copy.deepcopy(original)
+    qualified["methods"] = ["HF"]
+    qualified["backends"] = ["cpu"]
+    qualified["status"] = "benchmark-qualified"
+
+    hf_cuda = copy.deepcopy(original)
+    hf_cuda["methods"] = ["HF"]
+    hf_cuda["backends"] = ["cuda"]
+
+    other_methods = copy.deepcopy(original)
+    other_methods["methods"] = ["DFT", "MP2", "CCSD(T)"]
+
+    payload["groups"][0]["adoption"] = [qualified, hf_cuda, other_methods]
+    return qualified
+
+
 def test_repository_ledger_is_complete() -> None:
     assert ledger.validate(_payload()) == {
         "groups": 8,
@@ -84,17 +103,23 @@ def test_represented_adoption_requires_issue_reference() -> None:
         ledger.validate(payload)
 
 
-def test_benchmark_qualified_requires_retained_evidence() -> None:
+def test_benchmark_qualified_requires_one_concrete_cell() -> None:
     payload = _payload()
     payload["groups"][0]["adoption"][0]["status"] = "benchmark-qualified"
+    with pytest.raises(ledger.LedgerError, match="exactly one method/backend cell"):
+        ledger.validate(payload)
+
+
+def test_benchmark_qualified_requires_retained_evidence() -> None:
+    payload = _payload()
+    row = _qualify_one_cell(payload)
     with pytest.raises(ledger.LedgerError, match=r"adoption\[0\]\.evidence"):
         ledger.validate(payload)
 
 
 def test_benchmark_qualified_requires_positive_regression_budget() -> None:
     payload = _payload()
-    row = payload["groups"][0]["adoption"][0]
-    row["status"] = "benchmark-qualified"
+    row = _qualify_one_cell(payload)
     row["evidence"] = ["benchmarks/results/cuda-ownership/df/README.md"]
     row["max_regression_percent"] = 0.0
     with pytest.raises(ledger.LedgerError, match="max_regression_percent"):
@@ -103,11 +128,10 @@ def test_benchmark_qualified_requires_positive_regression_budget() -> None:
 
 def test_benchmark_qualified_cells_are_counted() -> None:
     payload = _payload()
-    row = payload["groups"][0]["adoption"][0]
-    row["status"] = "benchmark-qualified"
+    row = _qualify_one_cell(payload)
     row["evidence"] = ["benchmarks/results/cuda-ownership/df/README.md"]
     row["max_regression_percent"] = 2.0
-    assert ledger.validate(payload)["benchmark_qualified"] == 8
+    assert ledger.validate(payload)["benchmark_qualified"] == 1
 
 
 def test_negative_evidence_requires_promotion_rule() -> None:
