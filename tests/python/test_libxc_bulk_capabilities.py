@@ -75,11 +75,10 @@ def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
             "graph-imported",
             "pointwise-validated",
         )
-        assert capability.ready_stages == (
-            "compiled-cpu",
-            "compiled-cuda",
-            "production-domain",
-        )
+        expected_ready = ["compiled-cpu", "compiled-cuda"]
+        if capability.production_domain_profile.eligible:
+            expected_ready.append("production-domain")
+        assert capability.ready_stages == tuple(expected_ready)
         assert capability.public_dft is False
         assert "molecular-scf" in capability.unqualified_stages
         assert "forces" in capability.unqualified_stages
