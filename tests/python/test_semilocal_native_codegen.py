@@ -119,7 +119,9 @@ def test_bulk_imports_reach_shared_native_pointwise_lowerer_without_admission(
         )
 
 
-def test_bulk_tau_mgga_stays_explicitly_blocked_until_feature_projection_lands() -> None:
+def test_bulk_tau_mgga_stays_explicitly_blocked_until_feature_projection_lands() -> (
+    None
+):
     spec = functional("MGGA_X_R2SCAN01", spin="polarized")
     assert "MGGA_X_R2SCAN01" in AUTO_BULK_COMPONENTS
     with pytest.raises(UnsupportedXC, match="tau/laplacian projection"):
