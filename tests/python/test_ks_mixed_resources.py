@@ -13,7 +13,7 @@ H2 = [(1, (0.0, 0.0, -0.7)), (1, (0.0, 0.0, 0.7))]
 def _inventory_library(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     library = SimpleNamespace(
         vibeqc_ks_resource_inventory_version_v1=lambda: 1,
-        vibeqc_ks_options_version=lambda: 3,
+        vibeqc_ks_options_version=lambda: 1,
     )
     monkeypatch.setattr(resources_ks, "_cuda_library_identity", lambda _: {})
     monkeypatch.setattr(
@@ -65,10 +65,11 @@ def test_cuda_retained_force_owner_coexists_with_next_setup(
         [request], ResourceBudget(device_bytes=(320 + 512) * mib)
     ).require_feasible()
     assert plan.peak_bytes["device"] == (320 + 512) * mib
-    names = {estimate.name for estimate in plan.estimates}
-    assert "serialized KS transient device phase peak" in names
-    assert "KS one-electron setup excess over retired owner" not in names
-    assert "retained generated KS force device staging cap" in names
+    by_name = {estimate.name: estimate for estimate in plan.estimates}
+    assert "serialized KS transient device phase peak" in by_name
+    assert "KS one-electron setup excess over retired owner" not in by_name
+    force = by_name["serialized generated KS force device staging cap"]
+    assert force.bytes == 512 * mib and force.kind == "persistent"
 
 
 def test_calculator_forwards_mixed_policy_to_ks_capacity_planner(
@@ -131,7 +132,7 @@ def test_estimate_resources_materializes_one_shot_charge_spin_inputs(
     calculator._ks_options = resolve_ks_options("pbe-rks")
     calculator._device_name = "cuda"
     calculator._precision_mode = _native.PRECISION_FP64
-    calculator._ks_options_version = 3
+    calculator._ks_options_version = 1
     calculator._resource_budget = None
     calculator._library = SimpleNamespace()
     captured: dict[str, typing.Any] = {}
@@ -190,5 +191,5 @@ def test_cuda_retained_force_host_arena_is_not_merged_into_scf_workspace(
     plan = plan_resources([request], ResourceBudget()).require_feasible()
     by_name = {estimate.name: estimate for estimate in plan.estimates}
     assert by_name["serialized KS transient host phase peak"].bytes == 320 * mib
-    force = by_name["retained generated KS force host staging cap"]
+    force = by_name["serialized generated KS force host staging cap"]
     assert force.bytes == 256 * mib and force.kind == "persistent"
