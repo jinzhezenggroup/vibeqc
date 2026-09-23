@@ -262,7 +262,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_eri_symmetry.cuh",
             "cuda/direct_fock_accumulation.cuh",
             "cuda/direct_fock_quartet.cuh",
-            "cuda/direct_fock_psss.cuh",
             "cuda/direct_fock_order2.cuh",
             "cuda/direct_force_density.cuh",
             "cuda/direct_force_low_order.cuh",
