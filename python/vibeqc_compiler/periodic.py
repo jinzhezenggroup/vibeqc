@@ -21,7 +21,7 @@ def _vector3(value: typing.Any, *, label: str) -> tuple[float, float, float]:
     array = np.asarray(value, dtype=np.float64)
     if array.shape != (3,) or not np.all(np.isfinite(array)):
         raise ValueError(f"{label} must be a finite length-3 vector")
-    return tuple(float(item) for item in array)
+    return (float(array[0]), float(array[1]), float(array[2]))
 
 
 def _matrix3(
@@ -30,7 +30,11 @@ def _matrix3(
     array = np.asarray(value, dtype=np.float64)
     if array.shape != (3, 3) or not np.all(np.isfinite(array)):
         raise ValueError(f"{label} must be a finite 3x3 matrix")
-    return tuple(tuple(float(item) for item in row) for row in array)
+    return (
+        (float(array[0, 0]), float(array[0, 1]), float(array[0, 2])),
+        (float(array[1, 0]), float(array[1, 1]), float(array[1, 2])),
+        (float(array[2, 0]), float(array[2, 1]), float(array[2, 2])),
+    )
 
 
 @dataclass(frozen=True)
