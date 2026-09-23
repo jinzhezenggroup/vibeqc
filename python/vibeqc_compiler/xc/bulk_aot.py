@@ -11,13 +11,13 @@ import hashlib
 import math
 import re
 import shutil
-import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from vibeqc_compiler.common.compiler_process import run_compiler
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
 if TYPE_CHECKING:
@@ -270,18 +270,22 @@ def compile_probe(
         return {"status": "unavailable", "reason": "compiler-not-found"}
     path = Path(executable).resolve()
     try:
-        version = subprocess.run(
+        version = run_compiler(
             [str(path), "--version"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=timeout,
+            timeout,
+            label="XC census compiler identification",
         )
+        if version.timed_out or version.returncode != 0:
+            return {
+                "status": "timed-out" if version.timed_out else "failed",
+                "reason": "compiler-identification",
+                "diagnostic": version.stdout + version.stderr,
+            }
         compiler_identity = {
             "executable_sha256": file_hash(path),
             "version": (version.stdout + version.stderr).strip(),
         }
-    except (OSError, subprocess.SubprocessError) as error:
+    except OSError as error:
         return {
             "status": "failed",
             "reason": "compiler-identification",
@@ -311,18 +315,17 @@ def compile_probe(
         input_path = root / ("point.cu" if cuda else "point.c")
         output_path = root / "point.o"
         input_path.write_text(source, encoding="utf-8")
-        start = time.perf_counter()
         try:
-            result = subprocess.run(
+            result = run_compiler(
                 [str(path), *flags, "-c", str(input_path), "-o", str(output_path)],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                check=False,
+                timeout,
+                label="XC census probe",
             )
-            evidence["compile_seconds"] = time.perf_counter() - start
+            evidence["compile_seconds"] = result.duration_seconds
             log = (result.stdout + result.stderr).replace(str(root), "<build>")
             evidence.update(returncode=result.returncode, diagnostic=log)
+            if result.timed_out:
+                return {**evidence, "status": "timed-out"}
             if result.returncode != 0 or not output_path.is_file():
                 return {**evidence, "status": "failed", "reason": "object-compilation"}
             evidence.update(
@@ -330,10 +333,6 @@ def compile_probe(
                 object_bytes=output_path.stat().st_size,
                 object_sha256=file_hash(output_path),
                 resources=ptxas_resources(log) if cuda else None,
-            )
-        except subprocess.TimeoutExpired:
-            evidence.update(
-                status="timed-out", compile_seconds=time.perf_counter() - start
             )
         except OSError as error:
             evidence.update(
