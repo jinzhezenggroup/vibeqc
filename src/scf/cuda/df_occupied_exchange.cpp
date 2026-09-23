@@ -68,17 +68,18 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
     });
     if (blas != CUBLAS_STATUS_SUCCESS)
       return blas_failure(blas, "whiten streamed occupied DF factors", detail);
-    launch_scale_metric_projection(plan.stream, a, count * rank,
-                                   plan.metric_eigenvalues + system * a, true, transformed);
-    auto error = cudaPeekAtLastError();
-    if (error == cudaSuccess)
-      error = cudaMemcpyAsync(target, transformed, count * ar * sizeof(double),
-                              cudaMemcpyDeviceToDevice, plan.stream);
+    // The scale pass already touches every transformed element once. Store the
+    // divided value straight into the retained slot instead of launching a
+    // second device-to-device copy over the same projection payload.
+    launch_scale_metric_projection_to(plan.stream, a, count * rank,
+                                      plan.metric_eigenvalues + system * a, true, transformed,
+                                      target);
+    const auto error = cudaPeekAtLastError();
     if (error != cudaSuccess)
-      return cuda_failure(error, "retain streamed occupied DF factors", detail);
+      return cuda_failure(error, "scale and retain streamed occupied DF factors", detail);
     trace_counter("streamed_whitening_factor_gemms", 1);
     trace_counter("streamed_whitening_factor_flops", 2 * a * a * count * rank);
-    trace_counter("streamed_occupied_projection_copy_bytes", count * ar * sizeof(double));
+    trace_counter("streamed_occupied_projection_copy_bytes_avoided", count * ar * sizeof(double));
     return VIBEQC_STATUS_SUCCESS;
   };
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
