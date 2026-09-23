@@ -286,7 +286,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     read_status(true);  // Reject singular S before attempting a core solve.
 
     multiply(hcore, false, x, tmp1);
-    multiply(x, false, tmp1, tmp2);
+    multiply(x, true, tmp1, tmp2);
     solve();
     multiply(x, false, tmp2, tmp1);
     if (spins == 2) {
