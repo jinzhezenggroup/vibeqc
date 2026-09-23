@@ -58,14 +58,22 @@ export PYTHONPATH="$source_dir/python:$source_dir"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 expected_iterations=${VIBEQC_EXPECTED_ITERATIONS:?declare current-source SCF update count}
 run_label=${VIBEQC_RUN_LABEL:?unique output label required}
-[[ "$expected_iterations" =~ ^[1-9][0-9]*$ && "$run_label" =~ ^[a-z0-9-]+$ ]]
+repeats=${VIBEQC_REPEATS:-1}
+[[ "$expected_iterations" =~ ^[1-9][0-9]*$ && "$repeats" =~ ^[1-9][0-9]*$ && "$run_label" =~ ^[a-z0-9-]+$ ]]
+diagnostic_args=()
+if [[ "${VIBEQC_COMPONENTS_AFTER:-0}" = 1 ]]; then
+    diagnostic_args=(--components-after)
+else
+    [[ "${VIBEQC_COMPONENTS_AFTER:-0}" = 0 ]]
+fi
 checkpoint_args=(--warm-checkpoint-out "$run_dir/frozen-warm-$run_label.checkpoint")
 if [[ -n "${VIBEQC_WARM_CHECKPOINT_IN:-}" ]]; then
     [[ "$VIBEQC_WARM_CHECKPOINT_IN" = /* && -f "$VIBEQC_WARM_CHECKPOINT_IN" ]]
     checkpoint_args=(--skip-cold --warm-checkpoint-in "$VIBEQC_WARM_CHECKPOINT_IN")
 fi
 python3 benchmarks/results/issue949-matched-768-20260923/reuse_cpu_oracle.py \
-    --aos 768 --repeats 1 --cpu-reference --expected-iterations "$expected_iterations" \
+    --aos 768 --repeats "$repeats" --cpu-reference --expected-iterations "$expected_iterations" \
     --control VIBEQC_DF_RESPONSE_ALGEBRA --policies blas scalar \
     --cold-control VIBEQC_DF_RESPONSE_ALGEBRA=blas \
-    "${checkpoint_args[@]}" --output "$run_dir/matched-768-$run_label.json"
+    "${diagnostic_args[@]}" "${checkpoint_args[@]}" \
+    --output "$run_dir/matched-768-$run_label.json"

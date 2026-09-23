@@ -19,6 +19,8 @@ sets absolute `VIBEQC_SOURCE_DIR` and `VIBEQC_RUN_DIR`, exact
 `VIBEQC_SOURCE_SHA`, and its actual Job name as
 `VIBEQC_BENCHMARK_ALLOCATION`. A measurement also declares
 `VIBEQC_EXPECTED_ITERATIONS` and a unique `VIBEQC_RUN_LABEL`. Its optional
+`VIBEQC_REPEATS` and `VIBEQC_COMPONENTS_AFTER=1` request interleaved clean
+pairs followed by separate intrusive counters. Its optional
 `VIBEQC_WARM_CHECKPOINT_IN` selects a previously saved, native-validated warm
 density checkpoint and a full untimed checkpoint replay. Measurement also
 checks `VIBEQC_BUILD_SOURCE_SHA` against the runner source for unchanged
