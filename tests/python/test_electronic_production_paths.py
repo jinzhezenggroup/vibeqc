@@ -205,10 +205,14 @@ def test_missing_evidence_state_requires_reason_and_no_evidence(tmp_path: Path) 
     }
     errors = validate_production_path_ledger(payload, root=tmp_path)
     assert errors == [
-        "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be empty "
-        "when state is 'missing'",
-        "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must explain "
-        "state 'missing'",
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be empty "
+            "when state is 'missing'"
+        ),
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must explain "
+            "state 'missing'"
+        ),
     ]
 
 
@@ -237,8 +241,10 @@ def test_production_backend_compile_evidence_cannot_be_silently_missing(
     }
     errors = validate_production_path_ledger(payload, root=tmp_path)
     assert errors == [
-        "hf-energy-cpu-direct.evidence_levels.compiled-cpu must be present "
-        "for a production row"
+        (
+            "hf-energy-cpu-direct.evidence_levels.compiled-cpu must be present "
+            "for a production row"
+        )
     ]
 
 
@@ -255,10 +261,14 @@ def test_present_evidence_requires_anchor_and_rejects_stale_reason(
     }
     errors = validate_production_path_ledger(payload, root=tmp_path)
     assert errors == [
-        "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be non-empty "
-        "when state is 'present'",
-        "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must be empty "
-        "when evidence is present",
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be non-empty "
+            "when state is 'present'"
+        ),
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must be empty "
+            "when evidence is present"
+        ),
     ]
 
 
