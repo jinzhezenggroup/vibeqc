@@ -143,6 +143,79 @@
       "selector": "python/vibeqc/ks.py",
       "state_owner": "src/dft/cuda_ks.hpp",
       "status": "production"
+    },
+    {
+      "artifact": "generated RCCSD CPU iteration/replay evaluator consumed by the native solver",
+      "backend": "cpu",
+      "blocker": null,
+      "domain": "canonical-rccsd",
+      "evidence": [
+        "tests/python/test_rccsd_native_hamiltonian_codegen.py",
+        "tests/python/test_rccsd_public.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/python/test_rccsd_native_hamiltonian_codegen.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU production path; CUDA RCCSD is tracked separately.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "The public RCCSD endpoint exposes energy only; analytic forces are not implemented.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "tools/generate_rccsd_native.py"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/methods/rccsd_method.cpp",
+      "id": "cc-energy-cpu-rccsd",
+      "method_family": "cc",
+      "product": "energy",
+      "provider_owner": "src/posthf/native_provider.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/cc/solver.cpp",
+      "scientific_owner": "tools/generate_rccsd_native.py",
+      "selector": "src/methods/registry.cpp",
+      "state_owner": "src/cc/solver.hpp",
+      "status": "production"
     }
   ],
   "schema": "vibeqc.electronic-production-paths.v2"
