@@ -124,11 +124,13 @@ std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(const HostBatch&
   // KS owner must not rely on an earlier HF call having raised the CUDA limit.
   plan->worker_blocks = static_cast<unsigned>(properties.multiProcessorCount) *
                         schedule.persistent_quartet_warps_per_sm;
-  std::size_t stack_limit = 0;
-  check(cudaDeviceGetLimit(&stack_limit, cudaLimitStackSize));
-  if (stack_limit < schedule.cuda_stack_limit_bytes)
-    check(cudaDeviceSetLimit(cudaLimitStackSize, schedule.cuda_stack_limit_bytes));
   try {
+    // Growing the optional recurrence stack can reserve device memory too.
+    // Keep that failure on the same bounded fallback path as explicit buffers.
+    std::size_t stack_limit = 0;
+    check(cudaDeviceGetLimit(&stack_limit, cudaLimitStackSize));
+    if (stack_limit < schedule.cuda_stack_limit_bytes)
+      check(cudaDeviceSetLimit(cudaLimitStackSize, schedule.cuda_stack_limit_bytes));
     auto allocate = [&](std::size_t count, std::size_t width, const void* values = nullptr) {
       void* pointer{};
       const auto bytes = product(count, width);
