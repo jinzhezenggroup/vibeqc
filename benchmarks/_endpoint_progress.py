@@ -115,17 +115,22 @@ class EndpointProgress:
         print(json.dumps(entry, allow_nan=False), flush=True)
         return entry
 
+    def _reset_diagnostic_summary(self, endpoint: str) -> None:
+        """Begin a new observation interval, even when its display label is reused."""
+        self._diagnostic_summary = {
+            "endpoint": endpoint,
+            "scf_cycles_observed": 0,
+            "get_veff_completed": 0,
+            "de_sign_changes": 0,
+        }
+        self._last_de_sign = None
+        self.record["diagnostic_summary"] = dict(self._diagnostic_summary)
+
     def _update_diagnostic_summary(self, entry: dict[str, Any]) -> None:
         """Retain objective convergence signals without inventing a solver verdict."""
         endpoint = str(entry["endpoint"])
         if self._diagnostic_summary.get("endpoint") != endpoint:
-            self._diagnostic_summary = {
-                "endpoint": endpoint,
-                "scf_cycles_observed": 0,
-                "get_veff_completed": 0,
-                "de_sign_changes": 0,
-            }
-            self._last_de_sign = None
+            self._reset_diagnostic_summary(endpoint)
 
         summary = self._diagnostic_summary
         event = entry["event"]
@@ -203,6 +208,10 @@ class EndpointProgress:
     def measure(self, endpoint: str) -> Iterator[None]:
         """Arm outside the solve timer and retain earlier successful samples."""
         self.endpoint, self.started = endpoint, time.monotonic()
+        # A setup timeout may occur before any diagnostic callback. Publish the
+        # new empty interval before spawning its watchdog, not on first callback.
+        self._reset_diagnostic_summary(endpoint)
+        self.record.pop("diagnostic_progress", None)
         self.record.update(status="running", active_endpoint=endpoint)
         save_record(self.output, self.record)
         context = mp.get_context("spawn")
