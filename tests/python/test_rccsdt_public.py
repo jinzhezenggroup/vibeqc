@@ -75,7 +75,9 @@ def test_public_native_rccsdt_matches_pinned_standard_triples(
     energy_device: str, case: str
 ) -> None:
     atoms, reference, triples = _reference_case(case)
-    result = _calculator(device=energy_device).singlepoint(atoms, properties=("energy",))
+    result = _calculator(device=energy_device).singlepoint(
+        atoms, properties=("energy",)
+    )
     diag = result.correlation
     assert result.converged and result.forces is None
     assert result.executed_backend == (
@@ -148,12 +150,12 @@ def test_public_native_rccsdt_force_matches_three_step_energy_finite_difference(
     assert errors[-1] < 2.0e-6, errors
 
 
-def test_public_native_rccsdt_rejects_unpromoted_cuda_force_df_and_frozen_core() -> None:
+def test_public_native_rccsdt_rejects_unpromoted_cuda_force_df_and_frozen_core() -> (
+    None
+):
     atoms, _, _ = _reference_case("h2")
     with pytest.raises(ValueError, match=r"does not support.*forces"):
-        _calculator(device="cuda").singlepoint(
-            atoms, properties=("energy", "forces")
-        )
+        _calculator(device="cuda").singlepoint(atoms, properties=("energy", "forces"))
     with pytest.raises(NotImplementedError, match=r"density fitting"):
         _calculator(density_fitting="cpu")
     with pytest.raises(NotImplementedError, match=r"frozen-core"):
