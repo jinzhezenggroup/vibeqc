@@ -18,7 +18,9 @@ def stack_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     end = source.index("cudaError_t enqueue_generated_coulomb(", begin)
     preparation = source[begin:end]
     get_limit = "*n=100000; return cudaSuccess;"
-    set_limit = "cudaError_t cudaDeviceSetLimit(int,std::size_t) { return cudaSuccess; }"
+    set_limit = (
+        "cudaError_t cudaDeviceSetLimit(int,std::size_t) { return cudaSuccess; }"
+    )
     assert STUBS.count(get_limit) == STUBS.count(set_limit) == 1
     stubs = STUBS.replace(get_limit, "*n=0; return cudaSuccess;")
     stubs = stubs.replace(
