@@ -12,7 +12,9 @@ def _digest(label: str) -> str:
     return canonical_hash({"label": label})
 
 
-def _closure(*, target: str = "x86_64", complete: bool = True):
+def _closure(
+    *, target: str = "x86_64", complete: bool = True
+) -> bulk_aot_cache.CacheClosure:
     recipe = {
         "emission_identity": _digest("emission"),
         "translation_unit_sha256": _digest("source"),
