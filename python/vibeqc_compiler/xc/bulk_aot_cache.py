@@ -41,7 +41,9 @@ class CacheDependency:
             not isinstance(value, str) or not value.strip()
             for value in (self.role, self.identity)
         ):
-            raise ValueError("cache dependency role and identity must be nonempty strings")
+            raise ValueError(
+                "cache dependency role and identity must be nonempty strings"
+            )
         _sha256(self.content_sha256, "content_sha256")
 
     def to_payload(self) -> dict[str, str]:
