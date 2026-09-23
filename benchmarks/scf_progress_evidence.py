@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +30,7 @@ def read_progress_journal(path: Path) -> list[dict[str, Any]]:
                 f"{path}:{line_number}: invalid progress JSON: {error.msg}"
             ) from error
         if not isinstance(event, dict):
-            raise ValueError(f"{path}:{line_number}: progress event must be an object")
+            raise TypeError(f"{path}:{line_number}: progress event must be an object")
         events.append(event)
     return events
 
@@ -58,7 +59,7 @@ def _residual_summary(values: list[tuple[int | float | None, float]]) -> dict[st
     non_improving = 0
     longest_non_improving = 0
     current_non_improving = 0
-    for (_, previous), (_, current) in zip(values, values[1:], strict=False):
+    for (_, previous), (_, current) in pairwise(values):
         if current < previous:
             improving += 1
             current_non_improving = 0
@@ -103,7 +104,7 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
         ]
         cycle_intervals = [
             current - previous
-            for previous, current in zip(cycle_times, cycle_times[1:], strict=False)
+            for previous, current in pairwise(cycle_times)
             if current >= previous
         ]
         first_veff = next(
@@ -123,10 +124,7 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
             if (de := _finite_number(event.get("de"))) is not None and de != 0.0
         ]
         signs = [1 if value > 0.0 else -1 for value in de_values]
-        de_sign_changes = sum(
-            current != previous
-            for previous, current in zip(signs, signs[1:], strict=False)
-        )
+        de_sign_changes = sum(current != previous for previous, current in pairwise(signs))
 
         residuals: dict[str, Any] = {}
         for name in ("norm_gorb", "norm_ddm"):
