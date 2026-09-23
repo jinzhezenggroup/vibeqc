@@ -106,9 +106,9 @@ def _validate_evidence_levels(
         )
 
     for level in EVIDENCE_LEVELS:
-        raw = levels.get(level)
-        if raw is None:
+        if level not in levels:
             continue
+        raw = levels[level]
         if not isinstance(raw, dict):
             errors.append(f"{row_id}.evidence_levels.{level} must be an object")
             continue
