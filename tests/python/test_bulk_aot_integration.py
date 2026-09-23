@@ -13,7 +13,10 @@ def test_census_reuses_existing_real_emitters(name: str) -> None:
     program = libxc_bulk.build_bulk_program(name, spin="unpolarized")
     for backend in bulk_aot.BACKENDS:
         item = bulk_aot.inspect_program(
-            program, 0, backend, domain=libxc_bulk.BULK_SEMANTICS,
+            program,
+            0,
+            backend,
+            domain=libxc_bulk.BULK_SEMANTICS,
         )
         assert item.source == program.emit_source(0, cuda=backend == "cuda")
         assert item.energy_nodes > 0
@@ -29,7 +32,9 @@ def test_census_reuses_existing_real_emitters(name: str) -> None:
 def test_real_catalog_selection_records_emission_without_compilation() -> None:
     plan = bulk_aot.census_catalog(
         names=["LDA_C_VWN_4", "GGA_X_PBE_SOL", "MGGA_X_R2SCAN01"],
-        spins=["unpolarized"], derivative_orders=[0], backends=["cpu"],
+        spins=["unpolarized"],
+        derivative_orders=[0],
+        backends=["cpu"],
         budget=bulk_aot.PackageBudget(max_artifacts=2),
     )
     assert plan["summary"]["registration_variants"] == 3

@@ -66,7 +66,11 @@ class SourceVariant:
     def __post_init__(self) -> None:
         if self.backend not in BACKENDS:
             raise ValueError("backend must be cpu or cuda")
-        if type(self.derivative_order) is not int or self.derivative_order not in (0, 1, 2):
+        if type(self.derivative_order) is not int or self.derivative_order not in (
+            0,
+            1,
+            2,
+        ):
             raise ValueError("derivative_order must be 0, 1 or 2")
         if not self.source or not self.features or not self.domain:
             raise ValueError("source, features and domain must be nonempty")
@@ -148,7 +152,12 @@ def plan_package(
     groups: dict[str, list[dict[str, Any]]] = {}
     registrations: set[tuple[str, str, int, str]] = set()
     for variant in variants:
-        registration = (variant.name, variant.spin, variant.derivative_order, variant.backend)
+        registration = (
+            variant.name,
+            variant.spin,
+            variant.derivative_order,
+            variant.backend,
+        )
         if registration in registrations:
             raise ValueError(f"duplicate census variant: {registration}")
         registrations.add(registration)
@@ -207,12 +216,15 @@ def cuda_probe_source(source: str) -> str:
     A device function alone can be eliminated from an object. This entry point
     makes its outputs observable; its resources are *probe*, not KS resources.
     """
-    return source + '''
+    return (
+        source
+        + """
 extern "C" __global__ void bulk_xc_census_probe(
     const double *features, double *outputs) {
   if (blockIdx.x == 0 && threadIdx.x == 0) bulk_xc_point(features, outputs);
 }
-'''
+"""
+    )
 
 
 def ptxas_resources(log: str) -> dict[str, int | None]:
@@ -248,13 +260,18 @@ def compile_probe(
         raise ValueError("timeout must be positive and finite")
     if not re.fullmatch(r"sm_[0-9]{2,3}[af]?", cuda_arch):
         raise ValueError("cuda_arch must be a concrete sm_XX target")
-    executable = shutil.which(compiler or ("nvcc" if variant.backend == "cuda" else "cc"))
+    executable = shutil.which(
+        compiler or ("nvcc" if variant.backend == "cuda" else "cc")
+    )
     if executable is None:
         return {"status": "unavailable", "reason": "compiler-not-found"}
     path = Path(executable).resolve()
     try:
         version = subprocess.run(
-            [str(path), "--version"], capture_output=True, text=True, check=True,
+            [str(path), "--version"],
+            capture_output=True,
+            text=True,
+            check=True,
             timeout=timeout,
         )
         compiler_identity = {
@@ -262,10 +279,18 @@ def compile_probe(
             "version": (version.stdout + version.stderr).strip(),
         }
     except (OSError, subprocess.SubprocessError) as error:
-        return {"status": "failed", "reason": "compiler-identification", "diagnostic": str(error)}
+        return {
+            "status": "failed",
+            "reason": "compiler-identification",
+            "diagnostic": str(error),
+        }
     cuda = variant.backend == "cuda"
     source = cuda_probe_source(variant.source) if cuda else variant.source
-    flags = ["-O1", "-arch=" + cuda_arch, "-Xptxas=-v"] if cuda else ["-std=c99", "-O1", "-fPIC"]
+    flags = (
+        ["-O1", "-arch=" + cuda_arch, "-Xptxas=-v"]
+        if cuda
+        else ["-std=c99", "-O1", "-fPIC"]
+    )
     recipe = {
         "emission_identity": variant.emission_identity,
         "translation_unit_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
@@ -287,7 +312,10 @@ def compile_probe(
         try:
             result = subprocess.run(
                 [str(path), *flags, "-c", str(input_path), "-o", str(output_path)],
-                capture_output=True, text=True, timeout=timeout, check=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
             )
             evidence["compile_seconds"] = time.perf_counter() - start
             log = (result.stdout + result.stderr).replace(str(root), "<build>")
@@ -295,22 +323,29 @@ def compile_probe(
             if result.returncode != 0 or not output_path.is_file():
                 return {**evidence, "status": "failed", "reason": "object-compilation"}
             evidence.update(
-                status="compiled", object_bytes=output_path.stat().st_size,
+                status="compiled",
+                object_bytes=output_path.stat().st_size,
                 object_sha256=file_hash(output_path),
                 resources=ptxas_resources(log) if cuda else None,
             )
         except subprocess.TimeoutExpired:
-            evidence.update(status="timed-out", compile_seconds=time.perf_counter() - start)
+            evidence.update(
+                status="timed-out", compile_seconds=time.perf_counter() - start
+            )
         except OSError as error:
-            evidence.update(status="failed", reason="compiler-io", diagnostic=str(error))
+            evidence.update(
+                status="failed", reason="compiler-io", diagnostic=str(error)
+            )
     return evidence
 
 
 def measure_plan(
     plan: dict[str, Any],
-    load_variant: Callable[[dict[str, Any]], SourceVariant], *,
+    load_variant: Callable[[dict[str, Any]], SourceVariant],
+    *,
     compilers: dict[str, str | None] | None = None,
-    timeout: float = 60, cuda_arch: str = "sm_80",
+    timeout: float = 60,
+    cuda_arch: str = "sm_80",
 ) -> dict[str, Any]:
     """Rebuild and compile only selected groups, one source at a time.
 
@@ -322,19 +357,26 @@ def measure_plan(
     for artifact in plan["artifacts"]:
         identity = artifact["emission_identity"]
         if not artifact["selected"]:
-            measurements[identity] = {"status": "not-selected", "reason": artifact["blocker"]}
+            measurements[identity] = {
+                "status": "not-selected",
+                "reason": artifact["blocker"],
+            }
             continue
         record = artifact["registrations"][0]
         start = time.perf_counter()
         variant = load_variant(record)
         reemit_seconds = time.perf_counter() - start
-        if (variant.emission_identity != identity
-                or variant.import_identity != record["import_identity"]):
+        if (
+            variant.emission_identity != identity
+            or variant.import_identity != record["import_identity"]
+        ):
             raise ValueError("source or import identity changed after the census")
         measurements[identity] = {
             **compile_probe(
-                variant, compiler=(compilers or {}).get(variant.backend),
-                timeout=timeout, cuda_arch=cuda_arch,
+                variant,
+                compiler=(compilers or {}).get(variant.backend),
+                timeout=timeout,
+                cuda_arch=cuda_arch,
             ),
             "reemit_seconds": reemit_seconds,
         }
@@ -342,7 +384,8 @@ def measure_plan(
 
 
 def census_catalog(
-    *, names: Sequence[str] | None = None,
+    *,
+    names: Sequence[str] | None = None,
     spins: Sequence[str] = ("polarized", "unpolarized"),
     derivative_orders: Sequence[int] = (1,),
     backends: Sequence[str] = BACKENDS,
@@ -358,7 +401,8 @@ def census_catalog(
     are retained as explicit observations; they do not become support claims.
     """
     from vibeqc_compiler.common.compiler_work import (
-        CompilerWorkLimit, compiler_work_budget,
+        CompilerWorkLimit,
+        compiler_work_budget,
     )
     from vibeqc_compiler.common.paths import asset_path
 
@@ -371,7 +415,11 @@ def census_catalog(
         (backends, BACKENDS, "backends"),
         (derivative_orders, (0, 1, 2), "derivative_orders"),
     ):
-        if not values or len(set(values)) != len(values) or any(value not in allowed for value in values):
+        if (
+            not values
+            or len(set(values)) != len(values)
+            or any(value not in allowed for value in values)
+        ):
             raise ValueError(f"invalid or duplicate {label}")
     if any(type(order) is not int for order in derivative_orders):
         raise ValueError("derivative_orders must contain integers")
@@ -380,11 +428,16 @@ def census_catalog(
     requested = sorted(records if names is None else {name.upper() for name in names})
     if not requested or any(name not in records for name in requested):
         raise ValueError("empty selection or unknown Libxc registration")
-    root = asset_path(libxc_bulk.SOURCE_ASSET) if source_root is None else Path(source_root)
+    root = (
+        asset_path(libxc_bulk.SOURCE_ASSET)
+        if source_root is None
+        else Path(source_root)
+    )
     observations: list[dict[str, Any]] = []
     blocked = [
         {"name": name, "reason": records[name].get("reason", "graph-not-imported")}
-        for name in requested if records[name]["graph_status"] != "imported"
+        for name in requested
+        if records[name]["graph_status"] != "imported"
     ]
 
     def variants() -> Iterable[SourceVariant]:
@@ -397,8 +450,10 @@ def census_catalog(
                     # requested backend ordering or another emitter's work.
                     for backend in sorted(backends):
                         observation: dict[str, Any] = {
-                            "name": name, "spin": spin,
-                            "derivative_order": order, "backend": backend,
+                            "name": name,
+                            "spin": spin,
+                            "derivative_order": order,
+                            "backend": backend,
                         }
                         start = time.perf_counter()
                         variant: SourceVariant | None = None
@@ -406,16 +461,34 @@ def census_catalog(
                             with compiler_work_budget(work_limit) as counter:
                                 assert counter is not None
                                 program = libxc_bulk.build_record(
-                                    records[name], catalog["source_files"], root, spin=spin,
+                                    records[name],
+                                    catalog["source_files"],
+                                    root,
+                                    spin=spin,
                                 )
                                 variant = inspect_program(
-                                    program, order, backend, domain=libxc_bulk.BULK_SEMANTICS,
+                                    program,
+                                    order,
+                                    backend,
+                                    domain=libxc_bulk.BULK_SEMANTICS,
                                 )
-                            observation.update(status="emitted", symbolic_work=counter.used)
+                            observation.update(
+                                status="emitted", symbolic_work=counter.used
+                            )
                         except CompilerWorkLimit as error:
-                            observation.update(status="work-budget-exhausted", reason=str(error))
-                        except (MapleImportError, ValueError, ArithmeticError, RecursionError) as error:
-                            observation.update(status="generation-failed", reason=f"{type(error).__name__}: {error}")
+                            observation.update(
+                                status="work-budget-exhausted", reason=str(error)
+                            )
+                        except (
+                            MapleImportError,
+                            ValueError,
+                            ArithmeticError,
+                            RecursionError,
+                        ) as error:
+                            observation.update(
+                                status="generation-failed",
+                                reason=f"{type(error).__name__}: {error}",
+                            )
                         observation["generation_seconds"] = time.perf_counter() - start
                         observations.append(observation)
                         if variant is not None:
@@ -425,9 +498,11 @@ def census_catalog(
     plan.update(
         catalog_sha256=canonical_hash(catalog),
         request={
-            "names": requested, "spins": sorted(spins),
+            "names": requested,
+            "spins": sorted(spins),
             "derivative_orders": sorted(derivative_orders),
-            "backends": sorted(backends), "work_limit": work_limit,
+            "backends": sorted(backends),
+            "work_limit": work_limit,
         },
         blocked_imports=blocked,
         observations=observations,

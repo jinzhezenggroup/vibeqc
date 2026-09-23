@@ -24,11 +24,17 @@ if TYPE_CHECKING:
 def variant(**changes: Any) -> bulk_aot.SourceVariant:
     return replace(
         bulk_aot.SourceVariant(
-            name="ALIAS_A", family="lda", spin="unpolarized",
-            import_identity="source-owner-A", domain="interior-test/v1",
-            features=("rho",), derivative_order=1, backend="cpu",
+            name="ALIAS_A",
+            family="lda",
+            spin="unpolarized",
+            import_identity="source-owner-A",
+            domain="interior-test/v1",
+            features=("rho",),
+            derivative_order=1,
+            backend="cpu",
             source="void bulk_xc_point(const double *x, double *y) { y[0] = x[0] * x[0]; y[1] = 2 * x[0]; }\n",
-            energy_nodes=2, ssa={"root_count": 2, "reachable_node_count": 4},
+            energy_nodes=2,
+            ssa={"root_count": 2, "reachable_node_count": 4},
         ),
         **changes,
     )
@@ -41,25 +47,41 @@ def test_exact_alias_reuses_build_not_provenance() -> None:
     plan = bulk_aot.plan_package([first, second], bulk_aot.PackageBudget(1, 10000))
     assert plan["summary"]["reused_build_tasks"] == 1
     assert plan["summary"]["selected_artifacts"] == 1
-    assert {row["import_identity"] for row in plan["artifacts"][0]["registrations"]} == {
-        "source-owner-A", "source-owner-B",
+    assert {
+        row["import_identity"] for row in plan["artifacts"][0]["registrations"]
+    } == {
+        "source-owner-A",
+        "source-owner-B",
     }
     assert plan["capability_claims"] == []
 
 
-@pytest.mark.parametrize("change", [
-    {"source": "void bulk_xc_point(const double *x, double *y) { y[0] = 0; }"},
-    {"features": ("rho_a",)}, {"spin": "polarized"},
-    {"derivative_order": 2}, {"domain": "another-domain/v1"}, {"backend": "cuda"},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"source": "void bulk_xc_point(const double *x, double *y) { y[0] = 0; }"},
+        {"features": ("rho_a",)},
+        {"spin": "polarized"},
+        {"derivative_order": 2},
+        {"domain": "another-domain/v1"},
+        {"backend": "cuda"},
+    ],
+)
 def test_emission_identity_invalidates_on_code_or_abi(change: dict) -> None:
     assert variant().emission_identity != variant(**change).emission_identity
 
 
-@pytest.mark.parametrize("change", [
-    {"derivative_order": True}, {"derivative_order": 3}, {"backend": "metal"},
-    {"source": ""}, {"features": ()}, {"domain": ""},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"derivative_order": True},
+        {"derivative_order": 3},
+        {"backend": "metal"},
+        {"source": ""},
+        {"features": ()},
+        {"domain": ""},
+    ],
+)
 def test_invalid_variant_is_rejected(change: dict) -> None:
     with pytest.raises(ValueError):
         variant(**change)
@@ -76,14 +98,18 @@ def test_positive_package_limits(bad: int) -> None:
 def test_plan_is_order_independent_and_has_hard_byte_and_count_bounds() -> None:
     sources = [variant(), variant(name="B", source=variant().source + "\n")]
     budget = bulk_aot.PackageBudget(1, 10000)
-    assert bulk_aot.plan_package(sources, budget) == bulk_aot.plan_package(reversed(sources), budget)
+    assert bulk_aot.plan_package(sources, budget) == bulk_aot.plan_package(
+        reversed(sources), budget
+    )
     plan = bulk_aot.plan_package(sources, budget)
     assert plan["summary"]["selected_artifacts"] == 1
     assert [a["blocker"] for a in plan["artifacts"]].count("artifact-count-budget") == 1
     tiny = bulk_aot.plan_package(sources, bulk_aot.PackageBudget(2, 1))
     assert tiny["summary"]["selected_source_bytes"] == 0
     assert all(a["blocker"] == "source-byte-budget" for a in tiny["artifacts"])
-    exact = bulk_aot.plan_package([sources[0]], bulk_aot.PackageBudget(1, len(sources[0].source.encode())))
+    exact = bulk_aot.plan_package(
+        [sources[0]], bulk_aot.PackageBudget(1, len(sources[0].source.encode()))
+    )
     assert exact["summary"]["selected_artifacts"] == 1
 
 
@@ -124,7 +150,10 @@ def test_compile_probe_uses_real_cc_without_runtime_execution() -> None:
 
 
 def test_missing_compiler_and_unknown_resources_are_not_success() -> None:
-    assert bulk_aot.compile_probe(variant(), compiler="/missing/xc-compiler")["status"] == "unavailable"
+    assert (
+        bulk_aot.compile_probe(variant(), compiler="/missing/xc-compiler")["status"]
+        == "unavailable"
+    )
     assert all(value is None for value in bulk_aot.ptxas_resources("").values())
 
 
@@ -145,8 +174,14 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
         "24 bytes stack frame, 0 bytes spill stores, 8 bytes spill loads\n"
         "ptxas info : Used 60 registers\n"
     )
-    assert resources == {"registers": 60, "shared_bytes": 16, "stack_bytes": 24,
-                         "spill_store_bytes": 0, "spill_load_bytes": 8, "local_bytes": None}
+    assert resources == {
+        "registers": 60,
+        "shared_bytes": 16,
+        "stack_bytes": 24,
+        "spill_store_bytes": 0,
+        "spill_load_bytes": 8,
+        "local_bytes": None,
+    }
     with pytest.raises(ValueError, match="cuda_arch"):
         bulk_aot.compile_probe(variant(), cuda_arch="native")
 
@@ -166,7 +201,9 @@ def test_compilation_timeout_is_explicit(monkeypatch: pytest.MonkeyPatch) -> Non
     assert bulk_aot.compile_probe(variant())["status"] == "timed-out"
 
 
-def test_measurement_rebuilds_once_per_selected_group(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_measurement_rebuilds_once_per_selected_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     first = variant()
     alias = variant(name="ALIAS_B", import_identity="B")
     plan = bulk_aot.plan_package([first, alias], bulk_aot.PackageBudget(1, 10000))
@@ -188,7 +225,9 @@ def test_measurement_rebuilds_once_per_selected_group(monkeypatch: pytest.Monkey
     with pytest.raises(ValueError, match="identity changed"):
         bulk_aot.measure_plan(plan, lambda _: replace(first, import_identity="changed"))
     with pytest.raises(ValueError, match="identity changed"):
-        bulk_aot.measure_plan(plan, lambda _: replace(first, source=first.source + "\n"))
+        bulk_aot.measure_plan(
+            plan, lambda _: replace(first, source=first.source + "\n")
+        )
 
 
 def test_deferred_groups_are_never_loaded() -> None:
@@ -197,18 +236,29 @@ def test_deferred_groups_are_never_loaded() -> None:
     def forbidden(record: dict) -> bulk_aot.SourceVariant:
         raise AssertionError("unselected source was rebuilt")
 
-    assert next(iter(bulk_aot.measure_plan(plan, forbidden).values()))["status"] == "not-selected"
+    assert (
+        next(iter(bulk_aot.measure_plan(plan, forbidden).values()))["status"]
+        == "not-selected"
+    )
 
 
 @pytest.fixture
 def synthetic_catalog(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict:
     """Control importer inputs; no alternative scientific formula implementation."""
-    import vibeqc_compiler.xc as xc
+    from vibeqc_compiler import xc
 
-    catalog = {"registrations": [
-        {"name": "A", "family": "lda", "graph_status": "imported"},
-        {"name": "B", "family": "gga", "graph_status": "blocked", "reason": "unsupported-test-input"},
-    ], "source_files": {}}
+    catalog = {
+        "registrations": [
+            {"name": "A", "family": "lda", "graph_status": "imported"},
+            {
+                "name": "B",
+                "family": "gga",
+                "graph_status": "blocked",
+                "reason": "unsupported-test-input",
+            },
+        ],
+        "source_files": {},
+    }
     fake = ModuleType("vibeqc_compiler.xc.libxc_bulk")
     fake.CATALOG_PATH = tmp_path / "catalog.json"
     fake.BULK_SEMANTICS = "interior-test/v1"
@@ -219,8 +269,16 @@ def synthetic_catalog(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict:
         charge_symbolic_intern()
         return SimpleNamespace(name=record["name"], spin=spin)
 
-    def inspect(program: SimpleNamespace, order: int, backend: str, *, domain: str) -> bulk_aot.SourceVariant:
-        return variant(name=program.name, spin=program.spin, derivative_order=order, backend=backend, domain=domain)
+    def inspect(
+        program: SimpleNamespace, order: int, backend: str, *, domain: str
+    ) -> bulk_aot.SourceVariant:
+        return variant(
+            name=program.name,
+            spin=program.spin,
+            derivative_order=order,
+            backend=backend,
+            domain=domain,
+        )
 
     fake.build_record = build
     maple = ModuleType("vibeqc_compiler.xc.libxc_maple")
@@ -239,22 +297,35 @@ def test_census_has_no_eager_derivative_product(synthetic_catalog: dict) -> None
     plan = bulk_aot.census_catalog()
     assert len(plan["observations"]) == 4  # 1 imported x 2 spins x 2 backends
     assert plan["request"]["derivative_orders"] == [1]
-    assert plan["blocked_imports"] == [{"name": "B", "reason": "unsupported-test-input"}]
+    assert plan["blocked_imports"] == [
+        {"name": "B", "reason": "unsupported-test-input"}
+    ]
     assert all(row["symbolic_work"] == 1 for row in plan["observations"])
     assert "measurements" not in plan
 
 
-@pytest.mark.parametrize("options", [
-    {"names": []}, {"names": ["UNKNOWN"]}, {"spins": []}, {"spins": ["wrong"]},
-    {"spins": ["polarized", "polarized"]}, {"backends": ["gpu"]},
-    {"derivative_orders": [True]}, {"derivative_orders": [1, 1]}, {"work_limit": 0},
-])
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"names": []},
+        {"names": ["UNKNOWN"]},
+        {"spins": []},
+        {"spins": ["wrong"]},
+        {"spins": ["polarized", "polarized"]},
+        {"backends": ["gpu"]},
+        {"derivative_orders": [True]},
+        {"derivative_orders": [1, 1]},
+        {"work_limit": 0},
+    ],
+)
 def test_invalid_census_selection(synthetic_catalog: dict, options: dict) -> None:
     with pytest.raises(ValueError):
         bulk_aot.census_catalog(**options)
 
 
-def test_work_limit_is_recorded_without_source_or_admission(synthetic_catalog: dict, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_work_limit_is_recorded_without_source_or_admission(
+    synthetic_catalog: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
     def expensive(*args: Any, **kwargs: Any) -> bulk_aot.SourceVariant:
         charge_symbolic_intern()
         raise AssertionError("work limit must stop before reaching here")
