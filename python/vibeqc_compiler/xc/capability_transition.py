@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from vibeqc_compiler.common.provenance import canonical_hash
+
 from .capability_catalog import capability_changes
 from .libxc_bulk_capabilities import CAPABILITY_STAGES
 
@@ -25,14 +27,31 @@ class CapabilityRegression:
 
     kind: RegressionKind
     functional: str
+    transition_identity: str
     stage: str | None = None
 
     @property
     def token(self) -> str:
-        """Return a stable acknowledgement token suitable for CI configuration."""
-        if self.stage is None:
-            return f"{self.kind}:{self.functional}"
-        return f"{self.kind}:{self.stage}:{self.functional}"
+        """Bind a readable CI token to this functional's exact transition."""
+        prefix = (
+            f"{self.kind}:{self.functional}"
+            if self.stage is None
+            else f"{self.kind}:{self.stage}:{self.functional}"
+        )
+        return f"{prefix}:{self.transition_identity}"
+
+
+def _transition_record(record: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """Normalize validated stage sets without binding unrelated catalog entries."""
+    if record is None:
+        return None
+    return {
+        "identity": record["identity"],
+        "qualified_stages": sorted(record["qualified_stages"]),
+        "ready_stages": sorted(record["ready_stages"]),
+        "blocked_stages": dict(record["blocked_stages"]),
+        "public_dft": record["public_dft"],
+    }
 
 
 def capability_regressions(
@@ -46,17 +65,31 @@ def capability_regressions(
     claims across revisions.
     """
     changes = capability_changes(previous, current)
+
+    def regression(
+        kind: RegressionKind, name: str, stage: str | None = None
+    ) -> CapabilityRegression:
+        identity = canonical_hash(
+            {
+                "schema": "vibeqc.libxc-capability-transition.v1",
+                "functional": name,
+                "previous": _transition_record(previous["functionals"].get(name)),
+                "current": _transition_record(current["functionals"].get(name)),
+            }
+        )
+        return CapabilityRegression(kind, name, identity, stage)
+
     regressions = [
-        CapabilityRegression("removed-functional", name)
+        regression("removed-functional", name)
         for name in changes["removed_functionals"]
     ]
     regressions.extend(
-        CapabilityRegression("identity-change", name)
+        regression("identity-change", name)
         for name in changes["identity_changes"]
     )
     for stage in CAPABILITY_STAGES:
         regressions.extend(
-            CapabilityRegression("stage-demotion", name, stage)
+            regression("stage-demotion", name, stage)
             for name in changes["demotions"].get(stage, ())
         )
     return tuple(regressions)
@@ -70,7 +103,9 @@ def require_acknowledged_capability_regressions(
 ) -> tuple[CapabilityRegression, ...]:
     """Reject unacknowledged capability regressions and stale acknowledgements.
 
-    Acknowledgements are exact tokens from :attr:`CapabilityRegression.token`.
+    Acknowledgements are exact tokens from :attr:`CapabilityRegression.token`,
+    bound to the functional's previous/current identity and qualification state.
+    A token for one revision transition cannot acknowledge a later transition.
     Unknown or duplicate tokens are rejected so a broad/stale CI exception
     cannot silently survive after the underlying transition changes.
     """
