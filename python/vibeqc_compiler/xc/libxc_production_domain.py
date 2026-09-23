@@ -144,7 +144,7 @@ def validate_qualification(
 ) -> None:
     """Require evidence to cover exactly the current versioned boundary profile."""
     if not isinstance(value, Mapping):
-        raise ValueError("production-domain pass requires qualification profile")
+        raise TypeError("production-domain pass requires qualification profile")
     canonical = expected.to_payload()
     if value.get("schema") != SCHEMA or value.get("profile") != PROFILE:
         raise ValueError(
