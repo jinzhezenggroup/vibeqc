@@ -29,8 +29,8 @@ enum class ExecutionResourceKind : std::uint8_t {
   ProviderRetained,
   Staging,
   CaptureRetained,
-  Count,
 };
+inline constexpr std::size_t kExecutionResourceKindCount = 6;
 
 struct ExecutionResourceObservation {
   std::size_t host_peak_bytes{};
@@ -53,8 +53,7 @@ struct ExecutionResourceSnapshot {
   std::size_t device_workspace_peak_bytes{};
   std::uint64_t numeric_observations{};
   std::uint64_t workspace_observations{};
-  std::array<ExecutionResourceObservation, static_cast<std::size_t>(ExecutionResourceKind::Count)>
-      by_kind{};
+  std::array<ExecutionResourceObservation, kExecutionResourceKindCount> by_kind{};
 
   [[nodiscard]] const ExecutionResourceObservation& observation(ExecutionResourceKind kind) const
       noexcept {
