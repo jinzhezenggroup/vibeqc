@@ -293,6 +293,11 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
               cold_execution.submitted_iterations <=
                   cold_execution.iterations + cold_execution.iteration_chunks,
           "CUDA KS speculative work escaped the bounded chunk contract");
+  if (cold_execution.iteration_synchronizations == cold_execution.iterations &&
+      result.iterations > 1) {
+    require(cold_execution.warm_orbital_frames_retained + 1 == result.iterations,
+            "ordinary CUDA KS did not retain one orbital frame per continuing iteration");
+  }
   if (!result.converged || plan.failed()) {
     std::cerr << "failed atoms=" << atoms << " restricted=" << restricted
               << " functional=" << functional << " iter=" << result.iterations
