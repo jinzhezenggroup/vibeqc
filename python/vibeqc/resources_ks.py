@@ -263,7 +263,7 @@ def ks_resource_request(
     """Resolve one complete energy-only KS request for the shared global planner."""
     if method not in _METHODS or backend not in ("cpu", "cuda"):
         raise NotImplementedError(
-            "KS planning supports native CPU LDA/PBE/PBE0 and CUDA LDA/PBE RKS/UKS energies"
+            "KS planning supports native CPU LDA/PBE/global hybrids and CUDA LDA/PBE/PBE0 RKS/UKS energies"
         )
     precision = str(precision).lower()
     if precision not in ("fp64", "auto"):
@@ -276,9 +276,22 @@ def ks_resource_request(
             "self-consistent nonlocal correlation currently requires CPU"
         )
     if backend == "cuda" and model.has_nondefault_composition:
-        raise NotImplementedError(
-            "CUDA KS planning does not claim scaled/global-hybrid execution"
+        plan = model.execution_plan
+        components = dict(plan.semilocal.functional.components)
+        direct_pbe_family = (
+            set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}
+            and not model.has_range_exchange
+            and not model.has_nonlocal_correlation
+            and all(term.operator == "full-range" for term in plan.exchange)
         )
+        if not direct_pbe_family:
+            raise NotImplementedError(
+                "CUDA KS planning supports nondefault composition only for direct PBE-family global hybrids"
+            )
+        if precision != "fp64":
+            raise NotImplementedError(
+                "CUDA PBE-family global-hybrid planning currently requires precision='fp64'"
+            )
     systems = tuple(tuple(Atom.from_value(a) for a in atoms) for atoms in systems)
     if not systems or any(not atoms for atoms in systems):
         raise ValueError("KS resource planning requires nonempty systems")
