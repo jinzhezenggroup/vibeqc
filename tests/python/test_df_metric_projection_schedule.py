@@ -26,7 +26,9 @@ def _scheduled_pairs(pairs: int, groups: int) -> list[int]:
 
 def _streamed_projection_section() -> str:
     text = OCCUPIED_SOURCE.read_text()
-    return text.split("const auto project =", 1)[1].split("vibeqc_status status =", 1)[0]
+    return text.split("const auto project =", 1)[1].split("vibeqc_status status =", 1)[
+        0
+    ]
 
 
 def test_metric_projection_pair_stripes_cover_each_pair_once() -> None:
