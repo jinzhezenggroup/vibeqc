@@ -63,7 +63,7 @@ class StationaryKsIdentity:
     def __post_init__(self) -> None:
         if self.method not in _METHODS:
             raise ValueError(
-                "stationary derivatives require a qualified native RKS/UKS method"
+                "stationary derivatives support LDA/PBE/r2SCAN/global-hybrid RKS/UKS only"
             )
         for name in (
             "model_identity",
