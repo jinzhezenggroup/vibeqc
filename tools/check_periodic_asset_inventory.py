@@ -77,11 +77,17 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         _require_string_list(payload.get("classifications"), "classifications")
     )
     if declared_classifications != EXPECTED_CLASSIFICATIONS:
-        raise InventoryError("classifications must contain the canonical four-way ownership split")
+        raise InventoryError(
+            "classifications must contain the canonical four-way ownership split"
+        )
 
-    declared_states = set(_require_string_list(payload.get("backend_states"), "backend_states"))
+    declared_states = set(
+        _require_string_list(payload.get("backend_states"), "backend_states")
+    )
     if declared_states != EXPECTED_BACKEND_STATES:
-        raise InventoryError("backend_states must contain the canonical coverage vocabulary")
+        raise InventoryError(
+            "backend_states must contain the canonical coverage vocabulary"
+        )
 
     assets = payload.get("assets")
     if not isinstance(assets, list) or not assets:
@@ -102,7 +108,9 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         if not actual_path.is_file():
             raise InventoryError(f"retained periodic asset is missing: {path}")
 
-        classification = _require_string(asset.get("classification"), f"{where}.classification")
+        classification = _require_string(
+            asset.get("classification"), f"{where}.classification"
+        )
         if classification not in EXPECTED_CLASSIFICATIONS:
             raise InventoryError(f"unknown classification for {path}: {classification}")
         seen_classifications.add(classification)
@@ -115,39 +123,56 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
             if state not in EXPECTED_BACKEND_STATES:
                 raise InventoryError(f"unknown {backend} state for {path}: {state}")
 
-        for evidence in _require_string_list(asset.get("evidence"), f"{where}.evidence"):
+        for evidence in _require_string_list(
+            asset.get("evidence"), f"{where}.evidence"
+        ):
             if not (root / evidence).is_file():
                 raise InventoryError(f"periodic evidence path is missing: {evidence}")
 
     missing_classifications = EXPECTED_CLASSIFICATIONS - seen_classifications
     if missing_classifications:
         joined = ", ".join(sorted(missing_classifications))
-        raise InventoryError(f"periodic ownership inventory is missing classifications: {joined}")
+        raise InventoryError(
+            f"periodic ownership inventory is missing classifications: {joined}"
+        )
 
     retired_paths = set(
-        _require_string_list(payload.get("retired_native_pbc_paths"), "retired_native_pbc_paths")
+        _require_string_list(
+            payload.get("retired_native_pbc_paths"), "retired_native_pbc_paths"
+        )
     )
     if retired_paths != EXPECTED_RETIRED_PATHS:
-        raise InventoryError("retired_native_pbc_paths must retain the canonical retired owner set")
+        raise InventoryError(
+            "retired_native_pbc_paths must retain the canonical retired owner set"
+        )
     for retired in sorted(retired_paths):
         if (root / retired).exists():
-            raise InventoryError(f"retired native-PBC owner reappeared without inventory update: {retired}")
+            raise InventoryError(
+                f"retired native-PBC owner reappeared without inventory update: {retired}"
+            )
 
     derivative = payload.get("strain_derivative")
     if not isinstance(derivative, dict):
         raise InventoryError("strain_derivative must be an object")
     if derivative.get("state") != "plumbing-only":
-        raise InventoryError("strain_derivative.state must remain explicit and fail closed")
+        raise InventoryError(
+            "strain_derivative.state must remain explicit and fail closed"
+        )
     _require_string(derivative.get("reason"), "strain_derivative.reason")
-    for evidence in _require_string_list(derivative.get("evidence"), "strain_derivative.evidence"):
+    for evidence in _require_string_list(
+        derivative.get("evidence"), "strain_derivative.evidence"
+    ):
         if not (root / evidence).is_file():
-            raise InventoryError(f"strain-derivative evidence path is missing: {evidence}")
+            raise InventoryError(
+                f"strain-derivative evidence path is missing: {evidence}"
+            )
 
     policy = payload.get("generic_dependency_policy")
     if not isinstance(policy, dict):
         raise InventoryError("generic_dependency_policy must be an object")
     fragments = _require_string_list(
-        policy.get("forbidden_fragments"), "generic_dependency_policy.forbidden_fragments"
+        policy.get("forbidden_fragments"),
+        "generic_dependency_policy.forbidden_fragments",
     )
     _require_string(policy.get("reason"), "generic_dependency_policy.reason")
     for generic_path in generic_paths:
@@ -166,21 +191,33 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
     if not (root / notice).is_file():
         raise InventoryError(f"periodic provenance notice is missing: {notice}")
     _require_string(
-        provenance.get("current_native_sources_license"), "provenance.current_native_sources_license"
+        provenance.get("current_native_sources_license"),
+        "provenance.current_native_sources_license",
     )
-    _require_string(provenance.get("upstream_reference_project"), "provenance.upstream_reference_project")
-    _require_string(provenance.get("upstream_reference_license"), "provenance.upstream_reference_license")
+    _require_string(
+        provenance.get("upstream_reference_project"),
+        "provenance.upstream_reference_project",
+    )
+    _require_string(
+        provenance.get("upstream_reference_license"),
+        "provenance.upstream_reference_license",
+    )
     revision = _require_string(
         provenance.get("upstream_periodic_reference_revision"),
         "provenance.upstream_periodic_reference_revision",
     )
     if HEX40.fullmatch(revision) is None:
-        raise InventoryError("upstream_periodic_reference_revision must be a lowercase 40-hex commit")
+        raise InventoryError(
+            "upstream_periodic_reference_revision must be a lowercase 40-hex commit"
+        )
     manifest = _require_string(
-        provenance.get("historical_periodic_manifest"), "provenance.historical_periodic_manifest"
+        provenance.get("historical_periodic_manifest"),
+        "provenance.historical_periodic_manifest",
     )
     if provenance.get("historical_periodic_manifest_state") != "missing-current-tree":
-        raise InventoryError("historical_periodic_manifest_state must explicitly describe the current tree")
+        raise InventoryError(
+            "historical_periodic_manifest_state must explicitly describe the current tree"
+        )
     if (root / manifest).exists():
         raise InventoryError(
             "historical periodic manifest reappeared; update its inventory state before claiming coverage"
@@ -193,7 +230,9 @@ def check_repository(root: Path, inventory_path: Path | None = None) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate retained periodic/PBC asset ownership evidence")
+    parser = argparse.ArgumentParser(
+        description="Validate retained periodic/PBC asset ownership evidence"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--inventory", type=Path)
     args = parser.parse_args()

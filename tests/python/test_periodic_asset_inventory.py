@@ -14,7 +14,11 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
-from check_periodic_asset_inventory import InventoryError, load_inventory, validate_inventory  # noqa: E402
+from check_periodic_asset_inventory import (
+    InventoryError,
+    load_inventory,
+    validate_inventory,
+)
 
 INVENTORY = ROOT / "docs/periodic_asset_inventory.json"
 
@@ -46,9 +50,13 @@ def test_repository_periodic_asset_inventory_is_valid() -> None:
 def test_generic_periodic_owner_cannot_depend_on_gfn2(tmp_path: Path) -> None:
     root, payload = _fixture_repo(tmp_path)
     generic = next(
-        asset for asset in payload["assets"] if asset["classification"] == "generic-lattice"
+        asset
+        for asset in payload["assets"]
+        if asset["classification"] == "generic-lattice"
     )
-    (root / generic["path"]).write_text("from model.gfn2.periodic import Cell\n", encoding="utf-8")
+    (root / generic["path"]).write_text(
+        "from model.gfn2.periodic import Cell\n", encoding="utf-8"
+    )
 
     with pytest.raises(InventoryError, match="depends on GFN2-specific internals"):
         validate_inventory(root, payload)
@@ -73,7 +81,9 @@ def test_backend_coverage_vocabulary_is_fail_closed(tmp_path: Path) -> None:
         validate_inventory(root, broken)
 
 
-def test_strain_derivative_cannot_be_promoted_without_inventory_update(tmp_path: Path) -> None:
+def test_strain_derivative_cannot_be_promoted_without_inventory_update(
+    tmp_path: Path,
+) -> None:
     root, payload = _fixture_repo(tmp_path)
     broken = copy.deepcopy(payload)
     broken["strain_derivative"]["state"] = "implemented"
@@ -82,7 +92,9 @@ def test_strain_derivative_cannot_be_promoted_without_inventory_update(tmp_path:
         validate_inventory(root, broken)
 
 
-def test_historical_periodic_manifest_reappearance_requires_inventory_update(tmp_path: Path) -> None:
+def test_historical_periodic_manifest_reappearance_requires_inventory_update(
+    tmp_path: Path,
+) -> None:
     root, payload = _fixture_repo(tmp_path)
     manifest = root / payload["provenance"]["historical_periodic_manifest"]
     manifest.parent.mkdir(parents=True, exist_ok=True)
