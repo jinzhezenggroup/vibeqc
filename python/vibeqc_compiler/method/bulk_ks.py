@@ -8,7 +8,6 @@ has qualified the exact CPU molecular-SCF product requested here.
 from __future__ import annotations
 
 import typing
-from collections.abc import Mapping
 from dataclasses import dataclass
 
 from vibeqc_compiler.xc.capability_resolution import (
@@ -58,7 +57,7 @@ def resolve_bulk_ks(
     *,
     spin: str = "unpolarized",
     backend: str = "cpu",
-    evidence: Mapping[str, typing.Any] | None = None,
+    evidence: typing.Mapping[str, typing.Any] | None = None,
     identifier: str | None = None,
 ) -> BulkKsResolution:
     """Resolve one qualified automatic Libxc registration into a pure KS plan.
