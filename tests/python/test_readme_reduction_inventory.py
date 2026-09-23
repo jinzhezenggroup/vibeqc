@@ -25,7 +25,10 @@ def renderer() -> ModuleType:
     matplotlib.use = lambda *args: None
     with patch.dict(
         sys.modules,
-        {"matplotlib": matplotlib, "matplotlib.pyplot": ModuleType("matplotlib.pyplot")},
+        {
+            "matplotlib": matplotlib,
+            "matplotlib.pyplot": ModuleType("matplotlib.pyplot"),
+        },
     ):
         spec.loader.exec_module(module)
     return module
@@ -91,9 +94,10 @@ def test_hf_energy_and_force_records_are_both_retained(
     assert len(rows) == 2
     for row in rows:
         assert row["status"] == ("measured" if passed else "failed")
-        assert row["raw_sha256"] == hashlib.sha256(
-            (root / row["raw_file"]).read_bytes()
-        ).hexdigest()
+        assert (
+            row["raw_sha256"]
+            == hashlib.sha256((root / row["raw_file"]).read_bytes()).hexdigest()
+        )
         assert row["engines"]["VibeQC"]["samples"][0]["ms"] == 250
     assert {row["endpoint"] for row in rows} == {
         "SCF energy",
