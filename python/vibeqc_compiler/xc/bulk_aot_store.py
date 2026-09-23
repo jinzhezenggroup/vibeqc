@@ -144,7 +144,9 @@ def store_artifact(root: Path, closure: CacheClosure, object_path: Path) -> Cach
         raise ValueError("cache closure is not reusable")
     entry = _entry(Path(root), key)
     entry.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".pending-entry-", dir=entry.parent) as name:
+    with tempfile.TemporaryDirectory(
+        prefix=".pending-entry-", dir=entry.parent
+    ) as name:
         staged = Path(name)
         artifact_path = staged / _OBJECT_NAME
         _atomic_copy(source, artifact_path)
