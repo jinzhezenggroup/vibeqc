@@ -128,12 +128,12 @@ def render_production_domain_summary(summary: Mapping[str, Any]) -> str:
     for label, field in (("family", "by_family"), ("ingredients", "by_ingredients")):
         groups = summary.get(field)
         if not isinstance(groups, Mapping):
-            raise ValueError(f"production-domain summary has invalid {field}")
+            raise TypeError(f"production-domain summary has invalid {field}")
         lines.append(f"{label}:")
         for name in sorted(groups):
             group = groups[name]
             if not isinstance(group, Mapping):
-                raise ValueError(f"production-domain summary has invalid {field} row")
+                raise TypeError(f"production-domain summary has invalid {field} row")
             group_counts = group.get("status_counts")
             group_total = group.get("total")
             if (
@@ -154,7 +154,7 @@ def render_production_domain_summary(summary: Mapping[str, Any]) -> str:
 
     blockers = summary.get("blocker_reasons")
     if not isinstance(blockers, Mapping):
-        raise ValueError("production-domain summary has invalid blocker inventory")
+        raise TypeError("production-domain summary has invalid blocker inventory")
     if blockers:
         lines.append("blockers:")
         for reason in sorted(blockers):
