@@ -84,7 +84,7 @@ assert 'np.lexsort' in driver
 """
     subprocess.run(
         [sys.executable, "-c", script],
-        env={**os.environ, "PYTHONPATH": ".:python"},
+        env={**os.environ, "PYTHONPATH": os.pathsep.join((".", "python"))},
         check=True,
         timeout=30,
     )

@@ -1046,7 +1046,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     Scalar-ECP v5 adds generated CUDA local/nonlocal derivatives and effective
     charges (nine sources). Its small dense export is separately budgeted and
     preserves the checked native two-grid gate. The public wrapper restricts ECP
-    force capability to Cartesian/real-spherical s/p records.
+    force capability to Cartesian/real-spherical s/p/d records.
     """
     timeline = _ExclusiveWallTimeline()
     contract = StationaryDerivativeContract(state.identity)
