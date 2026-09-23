@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_direct_jk.hpp"
@@ -272,6 +273,69 @@ void direct_providers(bool through_f_response) {
                         "unrequested direct derivatives executed");
             }
           }
+      // Value-only SR/LR exact exchange uses the same public AO and resident
+      // device contracts as full-range K. Compare both radial operators against
+      // the independent CPU range-ERI tensor on the ordinary s/p CI tier.
+      if (angular <= 1U) {
+        constexpr double omega = 0.37;
+        for (const auto op : {FockOperator::ShortRange, FockOperator::LongRange}) {
+          const auto radial = op == FockOperator::ShortRange
+                                  ? vibeqc::integrals::CoulombRange::Short
+                                  : vibeqc::integrals::CoulombRange::Long;
+          const auto first_range = vibeqc::integrals::build_range_eri(first, radial, omega);
+          const auto second_range = vibeqc::integrals::build_range_eri(second, radial, omega);
+          for (const bool uhf : {false, true}) {
+            auto spec = make_hf_fock_spec(uhf ? FockSpin::Unrestricted : FockSpin::Restricted);
+            spec.derivative_order = 0;
+            spec.coulomb.present = false;
+            spec.exchange.op = op;
+            spec.exchange.omega = omega;
+            spec.exchange.coefficient = -0.23;
+            const auto cpu = resolve_fock_build(spec, FockBackend::Cpu, 0.0);
+            const auto cuda = resolve_fock_build(spec, FockBackend::Cuda, 0.0);
+            require(cuda.spec.exchange.op == op && cuda.spec.exchange.omega == omega,
+                    "CUDA range-exchange capability lost operator identity");
+            std::vector<double> expected_a, expected_b;
+            for (const auto* eri : {&first_range, &second_range}) {
+              const auto expected =
+                  build_exact_direct_jk(cpu, n, *eri, a, uhf ? b : std::vector<double>{});
+              expected_a.insert(expected_a.end(), expected.exchange_alpha.begin(),
+                                expected.exchange_alpha.end());
+              expected_b.insert(expected_b.end(), expected.exchange_beta.begin(),
+                                expected.exchange_beta.end());
+            }
+            std::vector<double> actual_j, actual_a, actual_b;
+            require(execute_cuda_direct_jk(plan.get(), spec, packed_a,
+                                           uhf ? packed_b : std::vector<double>{}, actual_j,
+                                           actual_a, actual_b, detail) == VIBEQC_STATUS_SUCCESS,
+                    detail.c_str());
+            require(actual_j.empty(), "range exchange unexpectedly produced Coulomb output");
+            require(actual_a.size() == expected_a.size() && actual_b.size() == expected_b.size(),
+                    "range exchange output shape mismatch");
+            for (std::size_t i = 0; i < actual_a.size(); ++i)
+              require(std::isfinite(actual_a[i]) &&
+                          std::abs(actual_a[i] - expected_a[i]) < 2e-10,
+                      "CUDA range alpha exchange differs from CPU range ERI");
+            for (std::size_t i = 0; i < actual_b.size(); ++i)
+              require(std::isfinite(actual_b[i]) &&
+                          std::abs(actual_b[i] - expected_b[i]) < 2e-10,
+                      "CUDA range beta exchange differs from CPU range ERI");
+            direct_device(plan.get(), spec, packed_a, packed_b, {}, expected_a, expected_b);
+          }
+        }
+
+        auto derivative = make_hf_fock_spec(FockSpin::Restricted);
+        derivative.exchange.op = FockOperator::LongRange;
+        derivative.exchange.omega = omega;
+        bool rejected = false;
+        try {
+          (void)resolve_fock_build(derivative, FockBackend::Cuda, 0.0);
+        } catch (const std::invalid_argument&) {
+          rejected = true;
+        }
+        require(rejected, "CUDA range exchange accidentally advertised derivative support");
+      }
+
       auto fitted = make_hf_fock_spec(FockSpin::Restricted, FockApproximation::DensityFitted);
       std::vector<double> j{123.0}, ka, kb;
       require(execute_cuda_direct_jk(plan.get(), fitted, packed_a, {}, j, ka, kb, detail) ==
@@ -331,7 +395,7 @@ int main(int argc, char** argv) {
     const bool through_f_response = argc == 2;
     device_selection();
     direct_providers(through_f_response);
-    std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "
+    std::cout << "CUDA independent J/K: DF layouts/selection, SR/LR exact values and direct through-f values, "
               << (through_f_response ? "through-f" : "s/p") << " derivatives PASS\n";
     return 0;
   } catch (const std::exception& error) {
