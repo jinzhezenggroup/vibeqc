@@ -90,14 +90,30 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
 }
 
 // One triangle is authoritative, including on diagonal and partial blocks.
-// Both cross-product legs are accumulated in the same lane before mirroring.
+// A compact linear block domain enumerates only tile_mu <= tile_nu instead of
+// launching the unused lower half of a square grid. One lane decodes the tile
+// pair; all 256 lanes then execute the unchanged symmetric contraction.
 __global__ void tiled_potential(const double* ao, const double* work, I n, I count,
                                 I work_jets, double* potential, int* error) {
-  if (blockIdx.x > blockIdx.y) return;
+  __shared__ I tile_mu, tile_nu;
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    const I pair = blockIdx.x;
+    I low = 0, high = (n+15)/16;
+    while (low+1 < high) {
+      const I mid = (low+high)/2;
+      if (mid*(mid+1)/2 <= pair)
+        low = mid;
+      else
+        high = mid;
+    }
+    tile_nu = low;
+    tile_mu = pair-low*(low+1)/2;
+  }
+  __syncthreads();
   __shared__ double am[16][17], an[16][17], wm[16][17], wn[16][17];
   const I x = threadIdx.x, y = threadIdx.y;
-  const I mu = I(blockIdx.x)*16+x, nu = I(blockIdx.y)*16+y;
-  const I nu_load = I(blockIdx.y)*16+x, spin = blockIdx.z, panel = count*n;
+  const I mu = tile_mu*16+x, nu = tile_nu*16+y;
+  const I nu_load = tile_nu*16+x, spin = blockIdx.z, panel = count*n;
   double value = 0.0;
   for (I jet = 0; jet < work_jets; ++jet) {
     const double* a = ao+jet*panel;
@@ -144,7 +160,8 @@ inline void scheduled_potential(cudaStream_t stream, const double* ao,
     compact_potential_panels<<<vibeqc_tensor::blocks(spins*count*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,work_jets,work,error);
     vibeqc_tensor::cuda_check(cudaGetLastError());
-    tiled_potential<<<dim3((n+15)/16,(n+15)/16,spins),dim3(16,16),0,stream>>>(
+    const I tiles = (n+15)/16, tile_pairs = tiles*(tiles+1)/2;
+    tiled_potential<<<dim3(tile_pairs,1,spins),dim3(16,16),0,stream>>>(
         ao,work,n,count,work_jets,potential,error);
   } else {
     assemble_potential<<<vibeqc_tensor::blocks(spins*n*n,128),128,0,stream>>>(
