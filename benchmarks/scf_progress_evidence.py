@@ -9,6 +9,11 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
+
 
 def _finite_number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -204,8 +209,10 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("journal", type=Path)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
+    if args.output is not None and args.output.resolve() == args.journal.resolve():
+        parser.error("output must not replace the input progress journal")
     report = {
         "schema": "vibeqc.scf-diagnostic-evidence.v1",
         "source": str(args.journal),
@@ -215,7 +222,9 @@ def main() -> None:
     if args.output is None:
         print(rendered, end="")
     else:
-        args.output.write_text(rendered, encoding="utf-8")
+        destination = raw_output_path(args.output)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(rendered, encoding="utf-8")
 
 
 if __name__ == "__main__":
