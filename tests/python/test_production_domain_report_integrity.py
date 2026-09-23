@@ -35,7 +35,9 @@ def summary(monkeypatch: pytest.MonkeyPatch) -> dict:
             stage_evidence=(),
         ),
     )
-    monkeypatch.setattr(catalog, "available_capabilities", lambda evidence: capabilities)
+    monkeypatch.setattr(
+        catalog, "available_capabilities", lambda evidence: capabilities
+    )
     return catalog.production_domain_summary()
 
 
@@ -110,6 +112,8 @@ def test_valid_render_preserves_rows_and_is_order_independent(summary: dict) -> 
 
 def test_empty_generated_inventory_is_valid(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(catalog, "available_capabilities", lambda evidence: ())
-    report = catalog.render_production_domain_summary(catalog.production_domain_summary())
+    report = catalog.render_production_domain_summary(
+        catalog.production_domain_summary()
+    )
     assert report.startswith("Libxc production-domain summary (0 functionals)")
     assert report.endswith("blockers: none")
