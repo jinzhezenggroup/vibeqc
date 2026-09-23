@@ -20,12 +20,19 @@ def test_metric_eigenvector_scaling_uses_column_stripes() -> None:
     assert "const std::size_t column = static_cast<std::size_t>(blockIdx.x);" in kernel
     assert "const std::size_t system = static_cast<std::size_t>(blockIdx.y);" in kernel
     assert "__shared__ double column_scale;" in kernel
-    assert "if (threadIdx.x == 0) column_scale = scales[system * dimension + column];" in kernel
+    assert (
+        "if (threadIdx.x == 0) column_scale = scales[system * dimension + column];"
+        in kernel
+    )
     assert "row += blockDim.x" in kernel
-    assert "scaled_eigenvectors[element] = eigenvectors[element] * column_scale;" in kernel
+    assert (
+        "scaled_eigenvectors[element] = eigenvectors[element] * column_scale;" in kernel
+    )
     assert "element %" not in kernel
     assert "element /" not in kernel
-    assert "scale_eigenvectors_flat_kernel<<<grid, block, shared_bytes, stream>>>" in text
+    assert (
+        "scale_eigenvectors_flat_kernel<<<grid, block, shared_bytes, stream>>>" in text
+    )
 
 
 @pytest.mark.parametrize(

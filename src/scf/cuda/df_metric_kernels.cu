@@ -66,8 +66,7 @@ __global__ void scale_eigenvectors_flat_kernel(std::size_t matrix_elements, std:
  * one block can own a column, load its scale once, and let adjacent lanes walk
  * contiguous rows. The elementwise FP64 multiply and layout are unchanged.
  */
-__global__ void scale_eigenvectors_column_kernel(std::size_t dimension,
-                                                 const double* eigenvectors,
+__global__ void scale_eigenvectors_column_kernel(std::size_t dimension, const double* eigenvectors,
                                                  const double* scales,
                                                  double* scaled_eigenvectors) {
   const std::size_t column = static_cast<std::size_t>(blockIdx.x);
@@ -129,9 +128,10 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
       dimension <= static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) && block.x != 0 &&
       block.y == 1 && block.z == 1;
   if (column_schedule) {
-    scale_eigenvectors_column_kernel<<<
-        dim3(static_cast<unsigned>(dimension), static_cast<unsigned>(systems)), block, shared_bytes,
-        stream>>>(dimension, eigenvectors, scales, scaled_eigenvectors);
+    scale_eigenvectors_column_kernel<<<dim3(static_cast<unsigned>(dimension),
+                                            static_cast<unsigned>(systems)),
+                                       block, shared_bytes, stream>>>(dimension, eigenvectors,
+                                                                      scales, scaled_eigenvectors);
     return;
   }
   scale_eigenvectors_flat_kernel<<<grid, block, shared_bytes, stream>>>(
