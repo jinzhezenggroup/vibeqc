@@ -64,9 +64,12 @@ def test_bulk_opt_in_stays_distinct_and_cannot_claim_production(name: str) -> No
     cuda = emit_polarized_semilocal(
         spec, function_qualifier="__device__ inline", **options
     )
-    assert cpu.replace(
-        "inline BulkValue bulk_point", "__device__ inline BulkValue bulk_point"
-    ) == cuda
+    assert (
+        cpu.replace(
+            "inline BulkValue bulk_point", "__device__ inline BulkValue bulk_point"
+        )
+        == cuda
+    )
     with pytest.raises(ValueError, match="cannot claim production"):
         emit_polarized_semilocal(spec, production=True, **options)
     with pytest.raises(UnsupportedXC, match="not production-domain admitted"):
