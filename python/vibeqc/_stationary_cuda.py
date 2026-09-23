@@ -180,7 +180,12 @@ def _layout(basis: typing.Any) -> typing.Any:
         for row in aos
     )
     domain = tuple(sorted({label for expansion in expansions for label, _ in expansion}))
-    extended = any(int(r[3]) > 1 for r in aos)
+    # Cartesian d records have one term per AO, just like s/p records.  The
+    # component label itself is therefore part of the domain decision; using
+    # only the expansion count silently routes xx/xy/... through the s/p AOT.
+    extended = any(len(label) > 1 for label in domain) or any(
+        int(r[3]) > 1 for r in aos
+    )
     requests = derivative_requests(domain) if extended else qualified_sp_requests()
     return primitives, aos, expansions, requests, extended, (domain if extended else None)
 
@@ -1130,7 +1135,9 @@ def _complete_rks_cuda_gradient_diagnostic(
         grid_plan.host_bytes
         + 8
         * (
-            34 * primitive_tile
+            # Each task-page slot owns 26 float64 record values plus a
+            # 12-entry int64 axis map: 38 eight-byte entries in total.
+            38 * primitive_tile
             + 4 * plan.spin_blocks * n * n
             + 120 * na
             + 26 * integral_terms

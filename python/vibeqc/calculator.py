@@ -961,15 +961,6 @@ class Calculator:
         if (
             self._capabilities.family == "density_functional"
             and (semilocal_force or named_cpu_all_electron_force)
-            and not (
-                self._device_name == "cuda"
-                and basis_has_ecp
-                and any(
-                    shell.angular_momentum > 1
-                    for element in self._basis.elements
-                    for shell in element.shells
-                )
-            )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner

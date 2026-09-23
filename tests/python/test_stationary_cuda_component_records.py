@@ -6,7 +6,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc._stationary_cuda import _CudaSources
-from vibeqc_compiler.integral.first_derivative_schedule import derivative_binding
+from vibeqc_compiler.integral.first_derivative_schedule import (
+    derivative_binding,
+    derivative_dispatch_id,
+)
+from vibeqc_compiler.method.stationary_cuda import _emit_stationary_dispatch
 
 
 @pytest.mark.parametrize(
@@ -19,43 +23,68 @@ from vibeqc_compiler.integral.first_derivative_schedule import derivative_bindin
         ("overlap", ("", "")),
     ],
 )
-def test_cuda_records_permute_input_coordinates_with_output_axes(
+def test_cuda_tasks_preserve_component_dispatch_and_primitive_work(
     operator: str, components: tuple[str, ...]
 ) -> None:
-    """Distinct centers/axes make a missed input rotation observable without CUDA."""
+    """The task ABI carries ordered components; the wrapper owns permutations."""
     count = len(components)
     binding = derivative_binding(operator, components)
     owner = object.__new__(_CudaSources)
-    owner.centers = np.array(
-        [[0.2, -0.4, 0.7], [1.2, 0.8, -0.5], [-0.6, 1.7, 2.1], [2.3, -1.1, 0.9]]
-    )
     owner.primitives = np.array([[0.3, 1.1], [0.7, -0.9], [1.2, 0.6], [1.8, 1.3]])
     owner.aos = np.zeros((count, 16))
     owner.aos[:, 0] = range(count)
     owner.aos[:, 1] = range(count)
     owner.aos[:, 2] = 1
     owner.expansions = tuple(((c, (-0.5) ** i),) for i, c in enumerate(components))
+    owner.extended = True
     owner.kinds = {binding.request: 0}
-    owner.pending = (0, 0)
-    owner.buffer = np.ones((4, 26))
-    owner.maps = np.full((4, 12), -1, dtype=np.int64)
+    owner.tasks = np.full((4, 9), -1, dtype=np.int64)
+    owner.charges = np.ones(4)
     owner.used = 0
     nucleus = 2 if operator == "nuclear_attraction" else None
-    owner.integral(0, operator, tuple(range(count)), 0.25, nucleus=nucleus, charge=2.0)
+    owner.integral(
+        0, operator, tuple(range(count)), nucleus=nucleus, charge=0.25
+    )
     assert owner.used == 1
-    centers = list(range(count)) + ([2] if nucleus is not None else [])
-    expected = owner.centers[centers][np.ix_(binding.centers, binding.axes)]
-    np.testing.assert_array_equal(
-        owner.buffer[0, 4 : 4 + expected.size], expected.ravel()
+    task = owner.tasks[0]
+    assert tuple(task[:4]) == (
+        derivative_dispatch_id(operator, components),
+        0,
+        count,
+        -1 if nucleus is None else nucleus,
     )
-    np.testing.assert_array_equal(
-        owner.maps[0, : expected.size],
-        [3 * centers[c] + axis for c in binding.centers for axis in binding.axes],
+    assert tuple(task[4 : 4 + count]) == tuple(range(count))
+    assert task[8] == np.prod([int(row[2]) for row in owner.aos])
+    coefficient = np.prod([(-0.5) ** i for i in range(count)])
+    assert owner.charges[0] == 0.25 * coefficient
+
+
+@pytest.mark.parametrize(
+    "operator,components",
+    [
+        ("overlap", ("y", "")),
+        ("kinetic", ("zz", "y")),
+        ("nuclear_attraction", ("xz", "y")),
+        ("four_center_eri", ("yz", "x", "zz", "")),
+    ],
+)
+def test_cuda_dispatch_adapter_preserves_input_and_output_permutations(
+    operator: str, components: tuple[str, ...]
+) -> None:
+    """The emitted task adapter applies binding axes in both directions."""
+    binding = derivative_binding(operator, components)
+    source = _emit_stationary_dispatch(
+        [
+            (
+                derivative_dispatch_id(operator, components),
+                7,
+                binding.centers,
+                binding.axes,
+            )
+        ]
     )
-    np.testing.assert_array_equal(
-        owner.buffer[0, :count], owner.primitives[list(binding.centers[:count]), 0]
-    )
-    assert owner.buffer[0, 24] == 0.25 * np.prod([(-0.5) ** i for i in range(count)])
+    assert "cc[3 * i + a] = c[3 * d.centers[i] + d.axes[a]]" in source
+    assert "out[3 * d.centers[i] + d.axes[a]] = vc[3 * i + a]" in source
 
 
 def test_cuda_host_bound_covers_record_and_axis_map_growth() -> None:
@@ -66,7 +95,7 @@ def test_cuda_host_bound_covers_record_and_axis_map_growth() -> None:
         node
         for node in tree.body
         if isinstance(node, ast.FunctionDef)
-        and node.name == "complete_rks_cuda_gradient_diagnostic"
+        and node.name == "_complete_rks_cuda_gradient_diagnostic"
     )
     assignment = next(
         node
