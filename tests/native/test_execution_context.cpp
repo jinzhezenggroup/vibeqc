@@ -23,12 +23,14 @@ void verify_tracker() {
   require(execution.device_id() == 7, "execution.device_id() == 7");
 
   const auto initial = execution.resources();
-  require(!initial.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
-                                       vibeqc::runtime::ExecutionMemorySpace::Host)
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Host)
                .has_value(),
           "unobserved host pinned memory was reported as measured");
-  require(!initial.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
-                                       vibeqc::runtime::ExecutionMemorySpace::Device)
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
                .has_value(),
           "unobserved device pinned memory was reported as measured");
 
@@ -78,8 +80,9 @@ void verify_tracker() {
           "pinned observation lost explicit memory-space identity");
   const auto measured_pinned_host = resources.measured_peak_bytes(
       vibeqc::runtime::ExecutionResourceKind::Pinned, vibeqc::runtime::ExecutionMemorySpace::Host);
-  const auto measured_pinned_device = resources.measured_peak_bytes(
-      vibeqc::runtime::ExecutionResourceKind::Pinned, vibeqc::runtime::ExecutionMemorySpace::Device);
+  const auto measured_pinned_device =
+      resources.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device);
   require(measured_pinned_host.has_value() && *measured_pinned_host == 48,
           "measured host pinned peak was not published");
   require(measured_pinned_device.has_value() && *measured_pinned_device == 0,
@@ -115,8 +118,9 @@ void verify_tracker() {
   require(reset.observation(vibeqc::runtime::ExecutionResourceKind::CaptureRetained)
                   .device_observations == 0,
           "reset retained a capture observation");
-  require(!reset.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
-                                     vibeqc::runtime::ExecutionMemorySpace::Device)
+  require(!reset
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
                .has_value(),
           "reset retained measured-state identity for pinned device memory");
 }
