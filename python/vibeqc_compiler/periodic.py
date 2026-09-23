@@ -1,4 +1,4 @@
-"""Backend-neutral periodic cell identity and coordinate transforms.
+"""Backend-neutral periodic cell identity, transforms, and lattice images.
 
 This module is intentionally internal. It defines the scientific cell contract
 needed to share periodic topology across GFN and future Gaussian methods; it does
@@ -7,6 +7,7 @@ not admit any public periodic calculation capability by itself.
 
 from __future__ import annotations
 
+import math
 import typing
 from dataclasses import dataclass
 
@@ -15,6 +16,7 @@ import numpy as np
 from vibeqc_compiler.common.provenance import canonical_hash
 
 CELL_SCHEMA = "vibeqc.periodic-cell.v1"
+DEFAULT_MAX_IMAGE_CANDIDATES = 1_000_000
 
 
 def _vector3(value: typing.Any, *, label: str) -> tuple[float, float, float]:
@@ -39,6 +41,21 @@ def _matrix3(
         (float(array[1, 0]), float(array[1, 1]), float(array[1, 2])),
         (float(array[2, 0]), float(array[2, 1]), float(array[2, 2])),
     )
+
+
+def _nonnegative_scalar(value: typing.Any, *, label: str) -> float:
+    if isinstance(value, (str, bytes)) or np.iscomplexobj(value):
+        raise TypeError(f"{label} must be a real scalar")
+    array = np.asarray(value)
+    if array.shape != ():
+        raise TypeError(f"{label} must be a real scalar")
+    try:
+        scalar = float(array)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise TypeError(f"{label} must be a real scalar") from error
+    if not math.isfinite(scalar) or scalar < 0.0:
+        raise ValueError(f"{label} must be finite and nonnegative")
+    return scalar
 
 
 @dataclass(frozen=True)
@@ -122,3 +139,59 @@ class PeriodicCell:
         return self.fractional_to_cartesian(
             self.wrap_fractional(self.cartesian_to_fractional(value))
         )
+
+    def lattice_image_offsets(
+        self,
+        cutoff_bohr: typing.Any,
+        *,
+        max_candidates: int = DEFAULT_MAX_IMAGE_CANDIDATES,
+    ) -> tuple[tuple[int, int, int], ...]:
+        """Enumerate lattice translations whose Cartesian norm is within ``cutoff_bohr``.
+
+        The returned offsets are integer coefficients ``n`` for translations
+        ``n @ lattice`` and are ordered lexicographically. The origin is included.
+        Reciprocal-lattice norms provide a complete finite integer search box:
+        ``|n_i| <= |T| |b_i| / (2*pi)``. The box is conservatively rounded
+        outward, then every candidate is filtered by its exact Cartesian norm.
+
+        ``max_candidates`` bounds the search box before allocation or iteration.
+        This is a safety bound, not a scientific cutoff, and prevents a
+        near-singular-but-valid cell plus a large radius from creating unbounded
+        host work. No atom is wrapped or otherwise mutated by this operation.
+        """
+
+        cutoff = _nonnegative_scalar(cutoff_bohr, label="image cutoff")
+        if type(max_candidates) is not int or max_candidates <= 0:
+            raise ValueError("max_candidates must be a positive integer")
+
+        reciprocal = np.asarray(self.reciprocal_lattice, dtype=np.float64)
+        scaled_bounds = cutoff * np.linalg.norm(reciprocal, axis=1) / (2.0 * math.pi)
+        if not np.all(np.isfinite(scaled_bounds)):
+            raise ValueError("periodic image enumeration bounds overflow")
+
+        bounds = tuple(int(math.ceil(float(bound))) for bound in scaled_bounds)
+        candidate_count = math.prod(2 * bound + 1 for bound in bounds)
+        if candidate_count > max_candidates:
+            raise ValueError(
+                "periodic image candidate bound "
+                f"{candidate_count} exceeds max_candidates={max_candidates}"
+            )
+
+        direct = np.asarray(self.lattice, dtype=np.float64)
+        inclusive_cutoff = math.nextafter(cutoff, math.inf)
+        offsets: list[tuple[int, int, int]] = []
+        for first in range(-bounds[0], bounds[0] + 1):
+            for second in range(-bounds[1], bounds[1] + 1):
+                for third in range(-bounds[2], bounds[2] + 1):
+                    offset = (first, second, third)
+                    translation = np.asarray(offset, dtype=np.float64) @ direct
+                    if (
+                        math.hypot(
+                            float(translation[0]),
+                            float(translation[1]),
+                            float(translation[2]),
+                        )
+                        <= inclusive_cutoff
+                    ):
+                        offsets.append(offset)
+        return tuple(offsets)
