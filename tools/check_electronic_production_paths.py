@@ -101,7 +101,9 @@ def _validate_evidence_levels(
     if missing:
         errors.append(f"{row_id}.evidence_levels missing levels: {', '.join(missing)}")
     if extra:
-        errors.append(f"{row_id}.evidence_levels has unknown levels: {', '.join(extra)}")
+        errors.append(
+            f"{row_id}.evidence_levels has unknown levels: {', '.join(extra)}"
+        )
 
     for level in EVIDENCE_LEVELS:
         raw = levels.get(level)
@@ -158,8 +160,7 @@ def _validate_evidence_levels(
                 )
         elif not _is_nonempty_string(reason):
             errors.append(
-                f"{row_id}.evidence_levels.{level}.reason must explain "
-                f"state {state!r}"
+                f"{row_id}.evidence_levels.{level}.reason must explain state {state!r}"
             )
 
         for evidence_index, evidence_path in enumerate(evidence):

@@ -242,7 +242,9 @@ def test_production_backend_compile_evidence_cannot_be_silently_missing(
     ]
 
 
-def test_present_evidence_requires_anchor_and_rejects_stale_reason(tmp_path: Path) -> None:
+def test_present_evidence_requires_anchor_and_rejects_stale_reason(
+    tmp_path: Path,
+) -> None:
     payload = _fixture()
     row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
     levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
