@@ -18,6 +18,7 @@ bool finite(const auto& values) {
 bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
+  const bool pbe = model.functional == 1U;
   const bool b3lyp = model.functional == 3U;
   const bool wb97mv = model.functional == 4U;
   if (model.version != 1 || model.functional > 4U ||
@@ -39,9 +40,11 @@ bool valid_model(const KsFinalStateIdentity& identity) {
         (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
          fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
-      (!b3lyp && !wb97mv && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
+      (!pbe && !b3lyp && !wb97mv &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
         fock.spec.exchange.present)) ||
+      (pbe && fock.backend == scf::FockBackend::Cuda && fock.spec.exchange.present &&
+       fock.spec.exchange.approximation != scf::FockApproximation::Exact) ||
       (b3lyp && (fock.backend != scf::FockBackend::Cpu || model.semilocal_exchange_scale != 1 ||
                  model.semilocal_correlation_scale != 1 || !fock.spec.exchange.present ||
                  fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2))))
