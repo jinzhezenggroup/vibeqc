@@ -13,8 +13,24 @@ from typing import Any
 def _finite_number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    number = float(value)
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
     return number if math.isfinite(number) else None
+
+
+def _nonnegative_number(value: Any) -> float | None:
+    number = _finite_number(value)
+    return number if number is not None and number >= 0.0 else None
+
+
+def _nonnegative_mean(values: list[float]) -> float:
+    """Average finite nonnegative samples without overflowing their sum."""
+    scale = max(values)
+    if scale == 0.0:
+        return 0.0
+    return scale * (math.fsum(value / scale for value in values) / len(values))
 
 
 def read_progress_journal(path: Path) -> list[dict[str, Any]]:
@@ -97,15 +113,16 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
             and seconds >= 0.0
         ]
         cycle_events = [event for event in segment if event.get("event") == "scf_cycle"]
-        cycle_times = [
-            elapsed
-            for event in cycle_events
-            if (elapsed := _finite_number(event.get("elapsed_seconds"))) is not None
+        # Preserve event adjacency: deleting a missing timestamp would turn a
+        # multi-cycle gap into an apparently measured single-cycle interval.
+        cycle_samples = [
+            _nonnegative_number(event.get("elapsed_seconds")) for event in cycle_events
         ]
+        cycle_times = [elapsed for elapsed in cycle_samples if elapsed is not None]
         cycle_intervals = [
             current - previous
-            for previous, current in pairwise(cycle_times)
-            if current >= previous
+            for previous, current in pairwise(cycle_samples)
+            if previous is not None and current is not None and current >= previous
         ]
         first_veff = next(
             (
@@ -132,7 +149,7 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
         for name in ("norm_gorb", "norm_ddm"):
             values: list[tuple[int | float | None, float]] = []
             for event in cycle_events:
-                value = _finite_number(event.get(name))
+                value = _nonnegative_number(event.get(name))
                 if value is None:
                     continue
                 cycle = _finite_number(event.get("cycle"))
@@ -169,13 +186,15 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
             result["first_cycle_elapsed_seconds"] = cycle_times[0]
             result["last_cycle_elapsed_seconds"] = cycle_times[-1]
         if veff_seconds:
-            result["get_veff_total_seconds"] = sum(veff_seconds)
-            result["get_veff_mean_seconds"] = sum(veff_seconds) / len(veff_seconds)
+            total = sum(veff_seconds)
+            if math.isfinite(total):
+                result["get_veff_total_seconds"] = total
+            else:
+                result["get_veff_total_overflow"] = True
+            result["get_veff_mean_seconds"] = _nonnegative_mean(veff_seconds)
             result["get_veff_max_seconds"] = max(veff_seconds)
         if cycle_intervals:
-            result["cycle_interval_mean_seconds"] = sum(cycle_intervals) / len(
-                cycle_intervals
-            )
+            result["cycle_interval_mean_seconds"] = _nonnegative_mean(cycle_intervals)
             result["cycle_interval_min_seconds"] = min(cycle_intervals)
             result["cycle_interval_max_seconds"] = max(cycle_intervals)
         results.append(result)
