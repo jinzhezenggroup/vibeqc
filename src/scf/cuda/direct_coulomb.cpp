@@ -38,7 +38,7 @@ std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(const HostBatch&
                                                                 DeviceBatch borrowed,
                                                                 cudaStream_t stream, int device,
                                                                 double screening,
-                                                                std::size_t budget) {
+                                                                std::size_t budget) try {
   cudaDeviceProp properties{};
   check(cudaGetDeviceProperties(&properties, device));
   generated::select_profile_for_device(device, properties.major, properties.minor);
@@ -234,6 +234,9 @@ std::unique_ptr<GeneratedCoulombPlan> prepare_generated_coulomb(const HostBatch&
   } catch (const std::bad_alloc&) {
     return {};
   }
+} catch (const std::bad_alloc&) {
+  // Host topology, transform and owner allocations are optional too.
+  return {};
 }
 
 cudaError_t enqueue_generated_coulomb(GeneratedCoulombPlan& p, const double* density,
