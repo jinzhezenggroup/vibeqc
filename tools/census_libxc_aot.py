@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Offline Libxc compiler census; compile probes only with explicit --compile.
 
 Examples (from an uninstalled checkout)::
