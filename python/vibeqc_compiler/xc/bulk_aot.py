@@ -410,6 +410,7 @@ def census_catalog(
     from vibeqc_compiler.common.paths import asset_path
 
     from . import libxc_bulk
+
     if budget is None:
         budget = PackageBudget()
     from .libxc_maple import MapleImportError
