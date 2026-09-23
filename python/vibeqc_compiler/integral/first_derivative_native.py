@@ -56,20 +56,33 @@ def emit_first_derivative_cpu(requests: typing.Any) -> typing.Any:
 
 
 @lru_cache(maxsize=4)
-def emit_first_derivative_cuda(requests: typing.Any) -> typing.Any:
+def emit_first_derivative_cuda(
+    requests: typing.Any, *, symbol: str = "first_derivative"
+) -> typing.Any:
     """Lower the identical primitive graphs to a device-only dispatcher.
 
     Allocation, primitive records, weighting and atom reduction belong to a
     bounded native consumer. No host primitive implementation is emitted.
     """
-    return _emit_first_derivative(requests, backend="cuda")
+    return _emit_first_derivative(requests, backend="cuda", symbol=symbol)
 
 
-def _emit_first_derivative(requests: typing.Any, *, backend: typing.Any) -> typing.Any:
+def _emit_first_derivative(
+    requests: typing.Any, *, backend: typing.Any, symbol: str = "first_derivative"
+) -> typing.Any:
     requests = tuple(requests)
     if not requests or len(requests) != len(set(requests)):
         raise ValueError("first derivative kernels require unique nonempty requests")
+    if backend == "cuda" and (
+        type(symbol) is not str
+        or not symbol
+        or not symbol.isascii()
+        or not (symbol[0].isalpha() or symbol[0] == "_")
+        or any(not (character.isalnum() or character == "_") for character in symbol)
+    ):
+        raise ValueError("CUDA first derivative dispatcher requires a C identifier")
     qualifier = "static" if backend == "cpu" else "__device__ __noinline__"
+    primitive_prefix = "" if symbol == "first_derivative" else f"{symbol}_"
     parts = [
         (
             '#include "integrals/first_derivative_runtime.hpp"'
@@ -80,7 +93,7 @@ def _emit_first_derivative(requests: typing.Any, *, backend: typing.Any) -> typi
     ]
     eri = []
     for i, (operator, components) in enumerate(requests):
-        name = f"primitive_{i}"
+        name = f"{primitive_prefix}primitive_{i}"
         if operator == "four_center_eri":
             if len(components) != 4:
                 raise ValueError("four-center ERI requires four component labels")
@@ -155,10 +168,10 @@ def _emit_first_derivative(requests: typing.Any, *, backend: typing.Any) -> typi
 }}""")
     if backend == "cuda":
         parts += [
-            "__device__ bool first_derivative(unsigned kind, const double* e, const double* c, double* out) {",
+            f"__device__ bool {symbol}(unsigned kind, const double* e, const double* c, double* out) {{",
             "switch (kind) {",
             *(
-                f"case {i}: return primitive_{i}(e, c, out);"
+                f"case {i}: return {primitive_prefix}primitive_{i}(e, c, out);"
                 for i in range(len(requests))
             ),
             "default: return false;",

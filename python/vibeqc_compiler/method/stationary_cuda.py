@@ -12,6 +12,7 @@ import json
 import os
 import typing
 from functools import lru_cache
+from itertools import permutations
 from pathlib import Path
 
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
@@ -677,6 +678,131 @@ extern __device__ bool first_derivative(
 """
 
 
+_DERIVATIVE_AXIS_BITS = 3
+_DERIVATIVE_CENTER_BITS = 8
+_DERIVATIVE_NUCLEUS_BIT = 11
+_DERIVATIVE_RANK4_BIT = 12
+_DERIVATIVE_KIND_SHIFT = 13
+_DERIVATIVE_AXES = tuple(permutations(range(3)))
+
+
+def encode_stationary_derivative_kind(
+    kind: int,
+    binding: typing.Any,
+    *,
+    rank: int,
+    has_nucleus: bool,
+) -> int:
+    """Pack canonical derivative binding metadata into the existing task kind."""
+
+    if type(kind) is not int or kind < 0:
+        raise ValueError("stationary derivative kind must be a nonnegative integer")
+    if rank not in (2, 4) or type(has_nucleus) is not bool:
+        raise ValueError("stationary derivative binding requires rank two or four")
+    owners = rank + int(has_nucleus)
+    centers = tuple(binding.centers)
+    axes = tuple(binding.axes)
+    if (
+        len(centers) != owners
+        or sorted(centers) != list(range(owners))
+        or axes not in _DERIVATIVE_AXES
+    ):
+        raise ValueError(
+            "stationary derivative binding is not a center/axis permutation"
+        )
+    center_code = sum(center << (2 * slot) for slot, center in enumerate(centers))
+    return (
+        (kind << _DERIVATIVE_KIND_SHIFT)
+        | ((rank == 4) << _DERIVATIVE_RANK4_BIT)
+        | (has_nucleus << _DERIVATIVE_NUCLEUS_BIT)
+        | (center_code << _DERIVATIVE_AXIS_BITS)
+        | _DERIVATIVE_AXES.index(axes)
+    )
+
+
+def _sharded_first_derivative_adapter(shards: int, shard_width: int) -> str:
+    """Dispatch bounded derivative objects while restoring public center/axis order."""
+
+    if (
+        type(shards) is not int
+        or shards < 1
+        or type(shard_width) is not int
+        or shard_width < 1
+    ):
+        raise ValueError("stationary CUDA derivative shard dimensions must be positive")
+    declarations = [
+        "#include <cuda_runtime.h>",
+        *(
+            f"extern __device__ bool first_derivative_shard_{unit}("
+            "unsigned kind, const double* e, const double* c, double* out);"
+            for unit in range(shards)
+        ),
+    ]
+    dispatch = [
+        "  bool ok = false;",
+        f"  switch (kind / {shard_width}u) {{",
+        *(
+            f"    case {unit}: ok = first_derivative_shard_{unit}("
+            f"kind % {shard_width}u, exponents, centers, canonical); break;"
+            for unit in range(shards)
+        ),
+        "    default: return false;",
+        "  }",
+        "  if (!ok) return false;",
+    ]
+    return "\n".join(
+        [
+            *declarations,
+            (
+                "__device__ bool first_derivative(unsigned encoded, const double* e, "
+                "const double* c, double* out) {"
+            ),
+            f"  const unsigned axis_index = encoded & {(1 << _DERIVATIVE_AXIS_BITS) - 1}u;",
+            (
+                f"  const unsigned center_code = (encoded >> {_DERIVATIVE_AXIS_BITS}) & "
+                f"{(1 << _DERIVATIVE_CENTER_BITS) - 1}u;"
+            ),
+            f"  const bool has_nucleus = ((encoded >> {_DERIVATIVE_NUCLEUS_BIT}) & 1u) != 0;",
+            f"  const unsigned rank = ((encoded >> {_DERIVATIVE_RANK4_BIT}) & 1u) ? 4u : 2u;",
+            f"  const unsigned kind = encoded >> {_DERIVATIVE_KIND_SHIFT};",
+            "  unsigned axes[3]{};",
+            "  switch (axis_index) {",
+            "    case 0: axes[0]=0; axes[1]=1; axes[2]=2; break;",
+            "    case 1: axes[0]=0; axes[1]=2; axes[2]=1; break;",
+            "    case 2: axes[0]=1; axes[1]=0; axes[2]=2; break;",
+            "    case 3: axes[0]=1; axes[1]=2; axes[2]=0; break;",
+            "    case 4: axes[0]=2; axes[1]=0; axes[2]=1; break;",
+            "    case 5: axes[0]=2; axes[1]=1; axes[2]=0; break;",
+            "    default: return false;",
+            "  }",
+            "  const unsigned owners = rank + unsigned(has_nucleus);",
+            "  double exponents[4]{1.0,1.0,1.0,1.0};",
+            "  double centers[12]{};",
+            "  double canonical[12]{};",
+            "  for (unsigned center = 0; center < owners; ++center) {",
+            "    const unsigned original = (center_code >> (2 * center)) & 3u;",
+            "    if (original >= owners) return false;",
+            "    if (center < rank) {",
+            "      if (original >= rank) return false;",
+            "      exponents[center] = e[original];",
+            "    }",
+            "    for (unsigned axis = 0; axis < 3; ++axis)",
+            "      centers[3 * center + axis] = c[3 * original + axes[axis]];",
+            "  }",
+            *dispatch,
+            "  for (unsigned j = 0; j < 12; ++j) out[j] = 0.0;",
+            "  for (unsigned center = 0; center < owners; ++center) {",
+            "    const unsigned original = (center_code >> (2 * center)) & 3u;",
+            "    for (unsigned axis = 0; axis < 3; ++axis)",
+            "      out[3 * original + axes[axis]] = canonical[3 * center + axis];",
+            "  }",
+            "  return true;",
+            "}",
+            "",
+        ]
+    )
+
+
 def emit_stationary_wrapper_cuda(
     *,
     functional: typing.Any = None,
@@ -684,13 +810,23 @@ def emit_stationary_wrapper_cuda(
     plan: typing.Any,
     iterations: typing.Any = 3,
     declare_primitive: bool = True,
+    primitive_shards: int | None = None,
+    primitive_shard_width: int | None = None,
 ) -> typing.Any:
     """Emit the small method-specific TU linked against cached primitive code."""
 
     if not isinstance(plan, StationaryGradientPlan):
         raise TypeError("stationary CUDA requires StationaryGradientPlan")
+    if (primitive_shards is None) != (primitive_shard_width is None):
+        raise ValueError("sharded stationary primitive metadata must be complete")
+    if primitive_shards is not None and not declare_primitive:
+        raise ValueError("sharded stationary primitive adapter owns its declaration")
     return (
-        (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
+        (
+            _sharded_first_derivative_adapter(primitive_shards, primitive_shard_width)
+            if primitive_shards is not None
+            else (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
+        )
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
@@ -735,6 +871,7 @@ def compile_stationary_cuda(
     iterations: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
+    primitive_shard_width: int | None = None,
 ) -> typing.Any:
     """Compile strict-FP64 primitive and wrapper objects, then device-link them."""
 
@@ -743,17 +880,27 @@ def compile_stationary_cuda(
     if os.environ.get("NVCC_PREPEND_FLAGS") or os.environ.get("NVCC_APPEND_FLAGS"):
         raise ValueError("stationary strict CUDA rejects NVCC flag overrides")
 
+    sharded = not isinstance(primitive_source, str)
+    primitive_sources = (
+        tuple(primitive_source) if sharded else (typing.cast("str", primitive_source),)
+    )
+    if not primitive_sources or any(
+        not isinstance(source, str) or not source for source in primitive_sources
+    ):
+        raise ValueError("stationary CUDA requires nonempty primitive source")
+    if sharded != (primitive_shard_width is not None):
+        raise ValueError("stationary CUDA shard width must match primitive sources")
     wrapper_source = emit_stationary_wrapper_cuda(
         functional=functional,
         pbe=pbe,
         plan=plan,
         iterations=iterations,
+        primitive_shards=len(primitive_sources) if sharded else None,
+        primitive_shard_width=primitive_shard_width,
     )
     cache = Path(cache)
     cache.mkdir(parents=True, exist_ok=True)
-    primitive_path = cache / (canonical_hash(primitive_source) + ".primitive.cu")
     wrapper_path = cache / (canonical_hash(wrapper_source) + ".stationary.cu")
-    cache_source(primitive_path, primitive_source)
     cache_source(wrapper_path, wrapper_source)
 
     header = asset_path("src/dft/stationary_gradient_cuda.cuh")
@@ -781,18 +928,24 @@ def compile_stationary_cuda(
             "src/runtime/allocation_measurement.hpp",
         )
     )
-    primitive = compile_cuda_object(
-        compiler,
-        cache,
-        primitive_path,
-        headers=primitive_headers,
-        options=(
-            "--fmad=false",
-            "--expt-relaxed-constexpr",
-            include,
-            *_split_compile_options(),
-        ),
-    )
+    primitives = []
+    for source in primitive_sources:
+        primitive_path = cache / (canonical_hash(source) + ".primitive.cu")
+        cache_source(primitive_path, source)
+        primitives.append(
+            compile_cuda_object(
+                compiler,
+                cache,
+                primitive_path,
+                headers=primitive_headers,
+                options=(
+                    "--fmad=false",
+                    "--expt-relaxed-constexpr",
+                    include,
+                    *_split_compile_options(),
+                ),
+            )
+        )
     wrapper = compile_cuda_object(
         compiler,
         cache,
@@ -803,6 +956,6 @@ def compile_stationary_cuda(
     return link_cuda_objects(
         compiler,
         cache,
-        (primitive, wrapper),
+        (*primitives, wrapper),
         libraries=("cublas",),
     )

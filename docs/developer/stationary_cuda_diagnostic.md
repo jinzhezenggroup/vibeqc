@@ -4,16 +4,17 @@
 `StationaryGradientPlan` sources on CUDA: one-electron, Coulomb, XC AO motion,
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
 The result is an energy gradient in Eh/bohr; force is its negative. The public
-Python C2 endpoint reuses this consumer for qualified CUDA LDA/PBE RKS/UKS
-forces, including Cartesian and real-spherical s/p scalar ECP records. Public ECP scope and
+Python C2 endpoint reuses this consumer for qualified CUDA LDA/PBE/r2SCAN RKS/UKS
+forces. All-electron execution admits Cartesian and real-spherical s/p/d public
+AOs; scalar ECP execution remains s/p. Public ECP scope and
 resource/work limits are described in [ecp.md](../user/ecp.md#public-cuda-semilocal-ecp-forces).
 The native C and CPU DFT force capabilities are unchanged.
 
 The admitted domain is direct, all-electron, real FP64 integer RKS/UKS with canonical
-LDA/PBE, s/p single-component AOs and the native unpruned version-one grid.
+LDA/PBE/r2SCAN, s/p/d public AOs and the native unpruned version-one grid.
 Distinct nuclei and no point/center collisions are required, including at zero
-weights. Density fitting, hybrids, meta-GGAs, higher angular momentum,
-Hessians and public production resource qualification are outside this contract.
+weights. Density fitting, hybrids, angular momentum above d and Hessians are
+outside this contract.
 Ordinary stationary first derivatives require no CPKS/Hessian solve.
 
 ## Execution and ownership
@@ -63,12 +64,13 @@ See the [preparation decision](../../.agents/notes/implemented/numerics/2026-09-
 
 Preparation admits at most 32 atoms, 128 AOs, 4096 points per tile, 4096 primitive
 records per tile, and 128 source-weight terms. Defaults cap total primitive work
-at 2,000,000 records, grid points at 1,000,000 and grid pair visits at 100,000,000.
+at 16,000,000 records, grid points at 1,000,000 and grid pair visits at 100,000,000.
 For `A` atoms, `N` AOs, point capacity `P` and primitive capacity `R`, the new
 source arena owns exactly `8*(42*R + 600*A + 3*P + N) + 256` bytes. The Becke
 scratch has 32 atom-sized worker slices; there is no coordinate/grid/AO tensor.
-Ordered primitive work is `K**4 + (A+2)*K**2 + A*(A-1)/2`, where `K` sums primitive
-counts over public AOs. Pair visits are `(1+2*grid_points)*A*(A-1)/2`.
+Ordered primitive work is `K**4 + (A+2)*K**2 + A*(A-1)/2`, where `K` sums each
+public AO's primitive count once per normalized Cartesian expansion term. Pair
+visits are `(1+2*grid_points)*A*(A-1)/2`.
 
 All TensorIR programs and the grid/source capacities are admitted before device
 allocation. Default additional-device and host-numeric bounds are 512 MiB and
@@ -105,9 +107,9 @@ must not be presented as the endpoint total. No speedup is claimed.
 
 ## Example and qualification
 
-Run GPU commands through the existing Slurm execution profile. For this machine,
-build with the full CUDA 12.9 toolkit and `sm_120`; the launcher selects
-`main`/`gpu:5090:1`, a finite time, and preserves Slurm device visibility.
+Run GPU commands through an explicit real-device allocation. Build with the full
+qualified CUDA toolkit and select the architecture reported by the allocated
+device; for example H100 uses `sm_90`, while RTX 4090 uses `sm_89`.
 
 ```python
 from pathlib import Path
@@ -173,8 +175,16 @@ retained as an explicit `unsupported` row rather than silently omitted.
 Slurm profile environment selects partition and GPU request. CPU regression
 runs locally without reserving a GPU.
 
+The r2SCAN-3c closure gate in `tests/python/test_r2scan3c_execution.py` adds the
+exact spherical H-Ar def2-mTZVPP contract. Its water case exercises the full
+s/p/d component domain, checks total force against reconverged directional finite
+differences, records bounded semantic work, and checks HF/water ragged
+changed-geometry replay against fresh public execution.
+
 The [decision record](../../.agents/notes/implemented/architecture/2026-09-19-stationary-cuda-diagnostic.md)
 preserves shared-science choices, measured evidence and remaining qualification.
+The [s/p/d shard decision](../../.agents/notes/implemented/architecture/2026-09-22-stationary-cuda-spd-derivative-shards.md)
+records the multicomponent lowering, compiler boundary and resource caps.
 
 ## Strict compilation environment
 

@@ -1,0 +1,165 @@
+{
+  "schema": "vibeqc.issue172.r2scan3c_complete_endpoint.v1",
+  "allocation": "issue-0172-endpoint-ohdiag-h100-0e6350ac-20260923",
+  "source_tree": "0e6350acbf193cde487c6772c2f783baf9cd86f2",
+  "library_sha256": "9d8931fca4004b4945280b405e96733f95b0da211bd6a74ddff43511e2bfefca",
+  "basis_identity": "11c25a32851c1fd54ca318162d46a1c436280c53c75df931e51b2520153a2c2f",
+  "grid": "production default KsOptions",
+  "energy_tolerance": 1e-12,
+  "density_tolerance": 1e-10,
+  "properties": [
+    "energy",
+    "forces"
+  ],
+  "case_filter": [
+    "oh-uks-spd"
+  ],
+  "cases": [
+    {
+      "name": "oh-uks-spd",
+      "atom_count": 2,
+      "charge": 0,
+      "multiplicity": 2,
+      "phases": [
+        {
+          "phase": "cold",
+          "complete_energy_force_seconds": 118.84623508807272,
+          "energy_eh": -75.72709068346445,
+          "forces_eh_per_bohr": [
+            [
+              1.0099741652192808e-14,
+              -1.4982903475097508e-14,
+              -0.022264224077211913
+            ],
+            [
+              -1.0554620188409219e-14,
+              1.539250774061627e-14,
+              0.022264224077207472
+            ]
+          ],
+          "iterations": 44,
+          "physical_residual_rms": 2.639941511538635e-12,
+          "correction_backend": "cuda+cpu",
+          "d4_energy_eh": -3.487033588538005e-05,
+          "gcp_energy_eh": 0.0006052415006645781,
+          "resource_diagnostics": null
+        },
+        {
+          "phase": "warm-1",
+          "complete_energy_force_seconds": 24.61480052024126,
+          "energy_eh": -75.7270906834644,
+          "forces_eh_per_bohr": [
+            [
+              2.3852324178339835e-14,
+              -2.627980559436554e-14,
+              -0.02226422407715818
+            ],
+            [
+              -2.3464363755350967e-14,
+              2.7904742625456624e-14,
+              0.02226422407716706
+            ]
+          ],
+          "iterations": 3,
+          "physical_residual_rms": 2.0379176964788194e-14,
+          "correction_backend": "cuda+cpu",
+          "d4_energy_eh": -3.487033588538005e-05,
+          "gcp_energy_eh": 0.0006052415006645781,
+          "resource_diagnostics": null
+        },
+        {
+          "phase": "warm-2",
+          "complete_energy_force_seconds": 24.55677902791649,
+          "energy_eh": -75.7270906834644,
+          "forces_eh_per_bohr": [
+            [
+              2.3852324178339835e-14,
+              -2.627980559436554e-14,
+              -0.02226422407715818
+            ],
+            [
+              -2.3464363755350967e-14,
+              2.7904742625456624e-14,
+              0.02226422407716706
+            ]
+          ],
+          "iterations": 3,
+          "physical_residual_rms": 2.0379176964788194e-14,
+          "correction_backend": "cuda+cpu",
+          "d4_energy_eh": -3.487033588538005e-05,
+          "gcp_energy_eh": 0.0006052415006645781,
+          "resource_diagnostics": null
+        },
+        {
+          "phase": "warm-3",
+          "complete_energy_force_seconds": 24.672701784875244,
+          "energy_eh": -75.7270906834644,
+          "forces_eh_per_bohr": [
+            [
+              2.3852324178339835e-14,
+              -2.627980559436554e-14,
+              -0.02226422407715818
+            ],
+            [
+              -2.3464363755350967e-14,
+              2.7904742625456624e-14,
+              0.02226422407716706
+            ]
+          ],
+          "iterations": 3,
+          "physical_residual_rms": 2.0379176964788194e-14,
+          "correction_backend": "cuda+cpu",
+          "d4_energy_eh": -3.487033588538005e-05,
+          "gcp_energy_eh": 0.0006052415006645781,
+          "resource_diagnostics": null
+        },
+        {
+          "phase": "changed",
+          "complete_energy_force_seconds": 50.81452534394339,
+          "energy_eh": -75.72715487759841,
+          "forces_eh_per_bohr": [
+            [
+              -2.206381872370961e-05,
+              1.1252594305687353e-05,
+              -0.020515926845499775
+            ],
+            [
+              2.206381872239035e-05,
+              -1.1252594305781028e-05,
+              0.020515926845515762
+            ]
+          ],
+          "iterations": 52,
+          "physical_residual_rms": 3.972317983263747e-12,
+          "correction_backend": "cuda+cpu",
+          "d4_energy_eh": -3.487987408475003e-05,
+          "gcp_energy_eh": 0.0006088052773020447,
+          "resource_diagnostics": null
+        }
+      ],
+      "prepare_seconds": 0.21451375307515264,
+      "fresh_complete_energy_force_seconds": 47.891692214179784,
+      "fresh_energy_eh": -75.72715487733727,
+      "fresh_forces_eh_per_bohr": [
+        [
+          -2.2031086708441692e-05,
+          1.0795113928260783e-05,
+          -0.020515934673789347
+        ],
+        [
+          2.2031086706804113e-05,
+          -1.0795113931761021e-05,
+          0.02051593467380267
+        ]
+      ],
+      "fresh_iterations": 45,
+      "fresh_physical_residual_rms": 4.277062526367984e-12,
+      "changed_fresh_energy_error_eh": 2.61138666246552e-10,
+      "changed_fresh_force_max_error_eh_per_bohr": 4.574803774265706e-07,
+      "warm_energy_max_error_eh": 5.684341886080802e-14,
+      "warm_force_max_error_eh_per_bohr": 5.3734794391857577e-14,
+      "passed": false
+    }
+  ],
+  "passed": false
+}

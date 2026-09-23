@@ -17,6 +17,8 @@ def test_public_aot_force_does_not_probe_nvcc(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, missing_artifact: bool
 ) -> None:
     class Basis:
+        shells = ()
+
         def __enter__(self) -> object:
             return self
 
@@ -62,4 +64,56 @@ def test_public_aot_force_does_not_probe_nvcc(
         force, work = PreparedBatch._public_dft_cuda_force(batch, 0, ())
         np.testing.assert_array_equal(force, -np.ones((2, 3)))
         assert work["tensor_executions"] == 0
+    source.close.assert_called_once()
+
+
+def test_public_d_shell_force_uses_jit_instead_of_sp_aot(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    class Basis:
+        shells = (SimpleNamespace(angular_momentum=2),)
+
+        def __enter__(self) -> object:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+    monkeypatch.setattr(dft, "NativeAO", lambda *args, **kwargs: Basis())
+    source = SimpleNamespace(backend="cuda", hamiltonian="all-electron", close=Mock())
+    state = SimpleNamespace(_source=source)
+    monkeypatch.setattr(
+        _dft_gradient.StationaryKsState, "from_native", lambda *args, **kwargs: state
+    )
+    target = cuda_target_info("sm_120")
+    compiler = object()
+
+    def calculate(*args: object, **kwargs: object) -> SimpleNamespace:
+        assert kwargs["compiler"] is compiler
+        assert kwargs["target"] is target
+        assert kwargs["aot_directory"] is None
+        assert kwargs["native_grid_library"] == tmp_path / "libvibeqc.so"
+        return SimpleNamespace(gradient=np.ones((2, 3)), work={"tensor_executions": 0})
+
+    monkeypatch.setattr(
+        _stationary_cuda, "complete_rks_cuda_gradient_diagnostic", calculate
+    )
+    batch = SimpleNamespace(
+        _calculator=SimpleNamespace(
+            _basis=object(),
+            _representation_name="spherical",
+            _capabilities=SimpleNamespace(supported_properties={"energy", "forces"}),
+        ),
+        _stationary_cuda_execution=object(),
+        _charges=[0],
+        _multiplicities=[1],
+        _library=SimpleNamespace(_name=str(tmp_path / "libvibeqc.so")),
+        _stationary_cuda_compiler=lambda: compiler,
+        _stationary_cuda_target=lambda: target,
+    )
+
+    force, work = PreparedBatch._public_dft_cuda_force(batch, 0, ())
+
+    np.testing.assert_array_equal(force, -np.ones((2, 3)))
+    assert work["tensor_executions"] == 0
     source.close.assert_called_once()

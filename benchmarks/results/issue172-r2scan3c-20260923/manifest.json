@@ -1,0 +1,88 @@
+{
+  "schema": "vibeqc.issue172.h100_snapshot.v1",
+  "source_git_tree": "0e6350acbf193cde487c6772c2f783baf9cd86f2",
+  "source_tar_sha256": "535e5ce826a6f32caf099aa3c77cc145f8106cc9d799383c91a6f0ad30dd963e",
+  "native_library_sha256": "9d8931fca4004b4945280b405e96733f95b0da211bd6a74ddff43511e2bfefca",
+  "final_unit_and_gpu_job": "issue-0172-final-h100-0e6350ac-20260923",
+  "bounded_endpoint_job": "issue-0172-endpoint-bounded-h100-0e6350ac-20260923",
+  "final_gpu_cases_passed": 10,
+  "bounded_endpoint_cases_passed": 5,
+  "oh_changed_fresh_case_passed": false,
+  "files": [
+    {
+      "path": "endpoint-bounded-h100.json",
+      "sha256": "e4c9a751d151ef286c0777ae88dc2c1830bf2cb81c48701c8a4b885b4966ddc9",
+      "bytes": 27941
+    },
+    {
+      "path": "endpoint-h100-matrix.json",
+      "sha256": "00621935c5e92c31c299bd4d3a4ad4990b249b3dec6c0ae40669a1da1a132f6d",
+      "bytes": 24542
+    },
+    {
+      "path": "endpoint-ohdiag-h100.json",
+      "sha256": "a1ad1a645f58393ea917fc97ff3da08011797298aadbc8953f9a84c041ed87d6",
+      "bytes": 5295
+    },
+    {
+      "path": "evidence-final-h100/charged-ragged-failure-isolation.json",
+      "sha256": "3c82c09e957766b8557ce95c300357544695cd2444af53ddf388d359a8289c7c",
+      "bytes": 284
+    },
+    {
+      "path": "evidence-final-h100/composition-2-atoms.json",
+      "sha256": "faa8f4b529c7c1f102434f446f663071792a1f24aae95857ca2bcd1bf13f925e",
+      "bytes": 334
+    },
+    {
+      "path": "evidence-final-h100/composition-3-atoms.json",
+      "sha256": "5641a06bea3c9d1dc107260f8137b9804eb965a21ae6930b1266e6d982076c03",
+      "bytes": 343
+    },
+    {
+      "path": "evidence-final-h100/ragged-force-changed-geometry.json",
+      "sha256": "e079e626f60bf790c61d7697b5a81a8bb20a7f543fb21b877fe8aa87e31e2bee",
+      "bytes": 188
+    },
+    {
+      "path": "evidence-final-h100/rks-3-charge-0-production-grid-independent-oracle.json",
+      "sha256": "4a3272176bed870ff089cd4402f589d1e488661e28590918809dd0931ee7585c",
+      "bytes": 630
+    },
+    {
+      "path": "evidence-final-h100/rks-4-charge-0-production-grid-independent-oracle.json",
+      "sha256": "b225042f216d5d124d817624b7dc57b37cf14be78096b94f3900eab3b46c0fa7",
+      "bytes": 657
+    },
+    {
+      "path": "evidence-final-h100/uks-2-charge-0-production-grid-independent-oracle.json",
+      "sha256": "0a03aa35f7215314d4a3bd8a46fbaab68a2ced594b80e480b2e0be4c317b4dd8",
+      "bytes": 658
+    },
+    {
+      "path": "evidence-final-h100/uks-3-charge-1-production-grid-independent-oracle.json",
+      "sha256": "e141c2d22a4dc18a91cbe10599021dc3fae06a519fb2903e46872e175a1c8017",
+      "bytes": 632
+    },
+    {
+      "path": "evidence-final-h100/water-spd-resource-work.json",
+      "sha256": "9bb0c8feaea56053a7551b65220aa4f92d39dc40afd962a7bbfda56e40a89d4f",
+      "bytes": 5773
+    },
+    {
+      "path": "evidence-final-h100/water-total-force-directional-fd.json",
+      "sha256": "4e65a274e057e512d419dfe779286a898f05cec096aae18c7a8ac0a89a4d7511",
+      "bytes": 299
+    },
+    {
+      "path": "oh-density-h100.json",
+      "sha256": "d07c53b3a09ef3920e1beaa6605c803163ded381e9918ec41bd814746a9a4c98",
+      "bytes": 2522
+    }
+  ],
+  "external_raw_bundle": {
+    "path": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0172-closure/0e6350ac/issue172-h100-evidence-20260923.tar.gz",
+    "sha256": "6f2edd2e9e74c7f8882575a10ee4cf50bee18d84c2fc2247c1a668efda431843",
+    "bytes": 13353
+  }
+}
