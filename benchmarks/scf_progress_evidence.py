@@ -124,7 +124,9 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
             if (de := _finite_number(event.get("de"))) is not None and de != 0.0
         ]
         signs = [1 if value > 0.0 else -1 for value in de_values]
-        de_sign_changes = sum(current != previous for previous, current in pairwise(signs))
+        de_sign_changes = sum(
+            current != previous for previous, current in pairwise(signs)
+        )
 
         residuals: dict[str, Any] = {}
         for name in ("norm_gorb", "norm_ddm"):

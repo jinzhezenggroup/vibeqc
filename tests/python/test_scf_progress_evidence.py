@@ -117,7 +117,9 @@ def test_reader_rejects_non_object_event(tmp_path: Path) -> None:
     journal = tmp_path / "progress.jsonl"
     journal.write_text("[]\n", encoding="utf-8")
 
-    with pytest.raises(TypeError, match=r"progress\.jsonl:1: progress event must be an object"):
+    with pytest.raises(
+        TypeError, match=r"progress\.jsonl:1: progress event must be an object"
+    ):
         read_progress_journal(journal)
 
 
