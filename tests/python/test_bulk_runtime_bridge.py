@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-
 from vibeqc_compiler.xc import build_bulk_runtime_program
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
 from vibeqc_compiler.xc.libxc_bulk import build_bulk_program
@@ -30,9 +29,7 @@ def test_bulk_runtime_bridge_matches_independent_pointwise_fixture(
 ) -> None:
     runtime = build_bulk_runtime_program(name, spin=spin, order=1)
     full = build_bulk_program(name, spin=spin)
-    case = next(
-        case for case in CASES if case["name"] == name and case["spin"] == spin
-    )
+    case = next(case for case in CASES if case["name"] == name and case["spin"] == spin)
     full_features = np.asarray(case["features"], dtype=np.float64).T
     feature_rows = dict(zip(full.features, full_features, strict=True))
     compact = np.stack([feature_rows[name] for name in runtime.spec.features])
@@ -51,9 +48,7 @@ def test_bulk_runtime_bridge_matches_independent_pointwise_fixture(
 
 def test_tau_mgga_runtime_contract_drops_dead_laplacian_inputs() -> None:
     full = build_bulk_program("MGGA_X_R2SCAN01", spin="polarized")
-    runtime = build_bulk_runtime_program(
-        "MGGA_X_R2SCAN01", spin="polarized", order=1
-    )
+    runtime = build_bulk_runtime_program("MGGA_X_R2SCAN01", spin="polarized", order=1)
     assert ("lapl_a", "lapl_b") == tuple(
         feature for feature in full.features if feature.startswith("lapl_")
     )

@@ -133,9 +133,7 @@ class BulkRuntimeProgram:
     def validate_features(
         self, features: typing.Any, *, copy: typing.Any = True
     ) -> tuple[np.ndarray, np.ndarray]:
-        return self.spec.validate_features(
-            features, order=self.order, copy=copy
-        )
+        return self.spec.validate_features(features, order=self.order, copy=copy)
 
     def evaluate(self, features: typing.Any) -> np.ndarray:
         """Interpret the exact generated Graph without a runtime Libxc call."""
@@ -159,15 +157,10 @@ class BulkRuntimeProgram:
         if all((i,) in rows for i in range(size)):
             answer["gradient"] = np.stack([rows[(i,)] for i in range(size)])
         if all(
-            (i, j) in rows
-            for i, j in combinations_with_replacement(range(size), 2)
+            (i, j) in rows for i, j in combinations_with_replacement(range(size), 2)
         ):
             answer["hessian"] = np.stack(
-                [
-                    rows[(min(i, j), max(i, j))]
-                    for i in range(size)
-                    for j in range(size)
-                ]
+                [rows[(min(i, j), max(i, j))] for i in range(size) for j in range(size)]
             ).reshape(size, size, result.shape[1])
         return answer
 
