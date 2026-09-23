@@ -53,16 +53,19 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points, bool response,
                                   CudaXcAoPrecision ao_precision) {
+  const bool supported_functional =
+      functional == 0U || functional == 1U || functional == 2U || functional == 4U;
+  const bool meta_gga = functional == 2U || functional == 4U;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
-      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
+      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
   if (response && functional > 1U)
     throw std::invalid_argument("CUDA XC response supports LDA/PBE only");
   if (ao_precision != CudaXcAoPrecision::Fp64 &&
       ao_precision != CudaXcAoPrecision::Fp32ComputeFp64Storage)
     throw std::invalid_argument("unknown CUDA XC AO precision");
-  if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && functional > 1U)
-    throw std::invalid_argument("r2SCAN currently requires strict FP64 AO evaluation");
+  if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && meta_gga)
+    throw std::invalid_argument("meta-GGA CUDA XC currently requires strict FP64 AO evaluation");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && response)
     throw std::invalid_argument("CUDA XC response currently requires strict FP64 AO evaluation");
   constexpr auto overflow = "CUDA XC storage overflow";
@@ -70,7 +73,7 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
   const auto ao_jets = functional == 0U ? 1U : 4U;
-  const auto work_jets = functional == 2U ? 4U : 1U;
+  const auto work_jets = meta_gga ? 4U : 1U;
   const auto feature_terms = functional == 0U ? 1U : (functional == 1U ? 4U : 5U);
   CudaXcLayout out{atoms,
                    primitives,
