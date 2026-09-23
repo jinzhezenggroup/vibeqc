@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 import typing
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LEDGER = ROOT / "docs" / "electronic_structure_production_paths.json"
@@ -47,6 +47,30 @@ def _is_nonempty_string(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
+def _path_diagnostic(value: str, *, root: Path, check_exists: bool) -> str | None:
+    """Require portable checkout-local anchors, including resolved symlink targets."""
+    relative = PurePosixPath(value)
+    if (
+        relative.is_absolute()
+        or PureWindowsPath(value).drive
+        or "\\" in value
+        or "\x00" in value
+        or ".." in relative.parts
+        or not relative.parts
+    ):
+        return f"path must be repository-relative without traversal: {value}"
+    try:
+        checkout = root.resolve()
+        path = (checkout / value).resolve()
+        if not path.is_relative_to(checkout):
+            return f"path resolves outside repository: {value}"
+        if check_exists and not path.is_file():
+            return f"path does not exist: {value}"
+    except (OSError, RuntimeError, ValueError):
+        return f"path cannot be resolved within repository: {value}"
+    return None
+
+
 def validate_production_path_ledger(
     payload: object,
     *,
@@ -60,7 +84,10 @@ def validate_production_path_ledger(
 
     if payload.get("schema") != SCHEMA:
         errors.append(f"schema must be {SCHEMA!r}")
-    if payload.get("coverage") not in {"pilot", "complete"}:
+    if not isinstance(payload.get("coverage"), str) or payload["coverage"] not in {
+        "pilot",
+        "complete",
+    }:
         errors.append("coverage must be either 'pilot' or 'complete'")
 
     rows = payload.get("rows")
@@ -99,12 +126,12 @@ def validate_production_path_ledger(
                 errors.append(f"{row_id_text}.{field} must be a non-empty string")
 
         backend = row["backend"]
-        if backend not in BACKENDS:
+        if not isinstance(backend, str) or backend not in BACKENDS:
             errors.append(
                 f"{row_id_text}.backend must be one of {sorted(BACKENDS)}, got {backend!r}"
             )
         status = row["status"]
-        if status not in STATUSES:
+        if not isinstance(status, str) or status not in STATUSES:
             errors.append(
                 f"{row_id_text}.status must be one of {sorted(STATUSES)}, got {status!r}"
             )
@@ -126,9 +153,11 @@ def validate_production_path_ledger(
                         f"{row_id_text}.{field} must be set for a production row"
                     )
                 continue
-            path = root / typing.cast("str", value)
-            if full_checkout and not path.is_file():
-                errors.append(f"{row_id_text}.{field} path does not exist: {value}")
+            diagnostic = _path_diagnostic(
+                typing.cast("str", value), root=root, check_exists=full_checkout
+            )
+            if diagnostic is not None:
+                errors.append(f"{row_id_text}.{field} {diagnostic}")
 
         evidence = row["evidence"]
         if not isinstance(evidence, list) or not evidence:
@@ -143,9 +172,12 @@ def validate_production_path_ledger(
                         f"{row_id_text}.evidence[{evidence_index}] must be a non-empty path"
                     )
                     continue
-                if full_checkout and not (root / typing.cast("str", value)).is_file():
+                diagnostic = _path_diagnostic(
+                    typing.cast("str", value), root=root, check_exists=full_checkout
+                )
+                if diagnostic is not None:
                     errors.append(
-                        f"{row_id_text}.evidence[{evidence_index}] path does not exist: {value}"
+                        f"{row_id_text}.evidence[{evidence_index}] {diagnostic}"
                     )
 
         blocker = row["blocker"]
@@ -171,7 +203,7 @@ def load_and_validate(
 
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         return {}, [f"cannot load production-path ledger {path}: {exc}"]
     if not isinstance(payload, dict):
         return {}, ["ledger must be a JSON object"]
