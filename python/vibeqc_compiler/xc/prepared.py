@@ -15,6 +15,10 @@ from time import perf_counter
 import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
+from vibeqc_compiler.common.program_storage import (
+    CallDonationBinding,
+    ProgramStoragePlan,
+)
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.resources import (
     MAX_BYTES,
@@ -333,6 +337,31 @@ class PreparedXCContractions:
         self._tile_program_identity = (
             None if self.tile_program is None else self.tile_program.identity
         )
+        self._tile_storage_plan = None
+        self._tile_storage_baseline = None
+        self._tile_coefficient_donation = False
+        if self.tile_program is not None:
+            baseline = ProgramStoragePlan(self.tile_program)
+            donations = ()
+            if self._packed_feature_layout:
+                sizes = {
+                    buffer.name: buffer.bytes for buffer in self.tile_program.buffers
+                }
+                packed_coefficients = program.metadata.get("packed_layouts", {}).get(
+                    "coefficients"
+                )
+                if (
+                    packed_coefficients is not None
+                    and packed_coefficients["outputs"]
+                    == packed_coefficients["feature_rows"] + 1
+                    and sizes.get("xc_rows") == sizes.get("coefficients")
+                ):
+                    donations = (CallDonationBinding("vxc", "xc_rows", "coefficients"),)
+            self._tile_storage_baseline = baseline
+            self._tile_storage_plan = ProgramStoragePlan(
+                self.tile_program, donations=donations
+            )
+            self._tile_coefficient_donation = bool(donations)
         terminal = "vxc" if self._packed_feature_layout else "xc"
         self._tile_releases = (
             ()
@@ -348,6 +377,11 @@ class PreparedXCContractions:
     def tile_program(self) -> typing.Any:
         """Immutable boundary-only ProgramIR, or None for unqualified routes."""
         return self._tile_program
+
+    @property
+    def tile_storage_plan(self) -> typing.Any:
+        """Physical storage overlay for the qualified synchronous CPU tile."""
+        return self._tile_storage_plan
 
     def tuning_workload(
         self,
@@ -710,7 +744,10 @@ class PreparedXCContractions:
                     )
                     packed = density_feature_block(jets, local, ingredients=requested)
                     packed_features = packed.features()
-                    rows = self.program.scalar_values_packed(packed.scalar)
+                    rows = self.program.scalar_values_packed(
+                        packed.scalar,
+                        donate_coefficients=self._tile_coefficient_donation,
+                    )
                     values = self.program.potential_from_rows(
                         jets, packed_features, quadrature, rows
                     )
@@ -781,6 +818,23 @@ class PreparedXCContractions:
                     buffer.name: buffer.layout.to_payload()
                     for buffer in self.tile_program.buffers
                     if buffer.layout is not None
+                }
+                storage_plan = self.tile_storage_plan
+                storage_baseline = self._tile_storage_baseline
+                if storage_plan is None or storage_baseline is None:
+                    raise AssertionError("ProgramIR tile storage plan is unavailable")
+                storage = storage_plan.storage_analysis()
+                baseline_storage = storage_baseline.storage_analysis()
+                self.statistics["tile_storage_plan_identity"] = storage_plan.identity
+                self.statistics["tile_storage_donations"] = storage.donations
+                self.statistics["tile_storage_peak_bytes"] = storage.peak_by_space
+                self.statistics["tile_storage_baseline_peak_bytes"] = (
+                    baseline_storage.peak_by_space
+                )
+                self.statistics["tile_storage_reused_bytes"] = {
+                    space: baseline_storage.peak_by_space.get(space, 0)
+                    - storage.peak_by_space.get(space, 0)
+                    for space in baseline_storage.peak_by_space
                 }
             # Count logical matrix products in the actual nonempty tile
             # schedule, including feature reductions and geometric D*AO jets.

@@ -125,6 +125,21 @@
         "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "960d368f1117421a9471696af1db9874467b7c133437f96cf37d7f908947b568"
       }
     },
+    "libxc-method-metadata": {
+      "canonical_inputs": {
+        "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19",
+        "tools/libxc_method_metadata.py": "74617e950ab38dea5487566a4757f819c9442d35512b07bcbc09f252c0468b99"
+      },
+      "generator": "tools/generate_libxc_methods.py",
+      "generator_sha256": "df7d2a5b43708285ab915b9d45e148e41428c478cb1843cf8919d6d73dc19384",
+      "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
+      "inputs": [
+        "libxc-7.0.0"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/method/_generated_libxc_methods.py": "5865e441c7be6500cb0ac3636cc8771138ded3f48f5da06745ef1cfb623327d2"
+      }
+    },
     "libxc-xc-admission": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "db1d270221b644941824968adc2e5178c457bd4fedc8a9dc13d4177c7e6ff15d",
@@ -136,7 +151,7 @@
         "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
         "python/vibeqc_compiler/xc/rsh_expressions.py": "640d749a6b7ec8002dbfc2e8f8a6f793eb8a2db6f219d19d1810e7446df6ed75",
         "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
-        "python/vibeqc_compiler/xc/scan_maple.py": "8d5cf605925c86cc82cbaa3b817415a561d43541cf312fcc9c3bc993a640ee93",
+        "python/vibeqc_compiler/xc/scan_maple.py": "faffe4e1c949cd861b44a699b6a1bebc5b22361a8494965c7a0a2bfa62ce2219",
         "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
         "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
         "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"

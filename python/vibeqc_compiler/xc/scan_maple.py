@@ -252,6 +252,16 @@ def scan_correlation(
     module = _correlation_module(component)
     function_name = _CORRELATION_SPECS[component][4]
     epsilon = module.call(graph, function_name, rs, zeta, xt, 0, 0, ts_a, ts_b)
+    if spec.spin == "polarized":
+        # Form minority fractions directly. Subtracting a rounded zeta from
+        # one discards the work-density floor and makes v_rho change under a
+        # one-ulp majority-density perturbation. The identities hold for the
+        # admitted nonnegative spin densities with positive total density.
+        # Apply before AD so both backends differentiate the stable coordinates.
+        (epsilon,) = graph.replace_subexpressions(
+            (epsilon,),
+            {1 + zeta: 2 * rho_a / density, 1 - zeta: 2 * rho_b / density},
+        )
     return density * epsilon
 
 
@@ -297,6 +307,7 @@ def scan_maple_provenance(
     return {
         "kind": "libxc-maple",
         "importer_semantics": IMPORTER_SEMANTICS,
+        "spin_coordinate_semantics": "direct-spin-fractions/v1",
         "adapter_sha256": file_hash(Path(__file__)),
         "importer_sha256": file_hash(Path(libxc_maple.__file__)),
         "runtime_policy_sha256": {

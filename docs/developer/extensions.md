@@ -6,7 +6,7 @@ writing backend-specific CUDA or C++.
 
 The architectural rule is that built-in and user-defined methods share the same
 scientific specs and canonical IR. Built-ins may be AOT-compiled for release;
-advanced extensions may later opt into JIT, but AOT/JIT must not change the
+advanced extensions may explicitly opt into JIT, but AOT/JIT must not change the
 method's scientific identity.
 
 VibeQC uses a **single-wheel** model. The compiler may ship with the normal
@@ -44,14 +44,23 @@ available.
 
 `vibeqc.extensions.tensor` exposes a curated backend-neutral TensorIR subset:
 typed indices/tensors, immutable programs, serialization, optimization, AD and
-the interpreter. CUDA scheduling, source emission, compiler processes and
-artifact loading remain compiler APIs until a separately versioned JIT contract
-is defined.
+the interpreter. Advanced users may explicitly request the first public native
+compilation slice with `tensor.compile(program, target="cpu", mode="jit")`.
+This path is CPU-only today and activates the host compiler only after the
+request has passed TensorIR and resource admission.
+
+Use `tensor.compile_capabilities(...)` to inspect the same lowering without
+probing or invoking a local compiler. A successful report distinguishes
+representation/lowering from independent scientific validation and production
+promotion, returns bounded resource requirements, and exposes the exact
+compiler-owned source/program `identity` that an equivalent explicit CPU JIT
+request will use. Unsupported target/mode/IR requests return no compile identity.
+The compiled artifact then adds toolchain-specific cache and binary provenance.
 
 ## Current boundary
 
-This first API increment supports composition of already-audited primitives.
-It intentionally does not expose arbitrary Python callbacks, an XC expression
-decorator, a third-party plugin loader, or a public JIT compiler ABI. Those
-features require separate versioned contracts rather than leaking current
-compiler internals.
+The public API supports composition of already-audited XC/method primitives and
+a documented TensorIR subset with explicit CPU JIT. It intentionally does not
+expose arbitrary Python callbacks, an XC expression decorator, a third-party
+plugin loader, CUDA JIT, or a custom-primitive device ABI. Those features require
+separate versioned contracts rather than leaking current compiler internals.

@@ -4,6 +4,19 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_QUADRATURE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_quadrature.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_quadrature_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_quadrature_cuda.py"
+    OUTPUTS "${VIBEQC_QUADRATURE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/quadrature_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response_ir.py"
+    ARGS --output "${VIBEQC_QUADRATURE_HEADER}"
+    COMMENT "Generating bounded CUDA molecular quadrature")
   set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
   vibeqc_register_generated_sources(
@@ -307,6 +320,19 @@ macro(vibeqc_register_host_generated_sources target)
 endmacro()
 
 macro(vibeqc_register_cuda_generated_sources target)
+  set(VIBEQC_MEAN_FIELD_SETUP_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_mean_field_setup.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_mean_field_setup_cuda.py"
+    OUTPUTS "${VIBEQC_MEAN_FIELD_SETUP_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_array_native.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/mean_field_setup_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scf.py"
+    ARGS --output "${VIBEQC_MEAN_FIELD_SETUP_HEADER}"
+    COMMENT "Generating shared CUDA mean-field setup projectors")
 
   set(VIBEQC_MATRIX_FUNCTION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_symmetric_matrix_function.cuh")

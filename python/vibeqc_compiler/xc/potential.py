@@ -6,7 +6,7 @@ import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
 
-from .coefficients import coefficient_program
+from .coefficients import PackedCoefficientViews, coefficient_program
 
 
 def potential_coefficients(
@@ -137,7 +137,27 @@ def assemble_coefficients(
     jets, weights = immutable(jets), immutable(weights)
     if jets.ndim != 3 or jets.shape[0] not in (1, 4, 10, 20):
         raise ValueError("invalid AO jet domain for compact assembly")
-    rho = immutable(coefficients["rho"])
+    borrowed = isinstance(coefficients, PackedCoefficientViews)
+
+    def coefficient_array(value: typing.Any, shape: typing.Any = None) -> np.ndarray:
+        if not borrowed:
+            return immutable(value, shape=shape)
+        array = np.asarray(value)
+        owner = coefficients.owner
+        if (
+            not isinstance(owner, np.ndarray)
+            or owner.dtype != np.float64
+            or owner.flags.writeable
+            or array.dtype != np.float64
+            or array.flags.writeable
+            or (shape is not None and array.shape != shape)
+            or (array.size != 0 and not np.shares_memory(array, owner))
+            or not np.isfinite(array).all()
+        ):
+            raise ValueError("invalid borrowed XC coefficient layout")
+        return array
+
+    rho = coefficient_array(coefficients["rho"])
     if (
         rho.ndim != 2
         or rho.shape[0] not in (1, 2)
@@ -150,9 +170,9 @@ def assemble_coefficients(
     spatial = coefficients.get("gradient")
     kinetic = coefficients.get("tau")
     if spatial is not None:
-        spatial = immutable(spatial, shape=(*rho.shape, 3))
+        spatial = coefficient_array(spatial, shape=(*rho.shape, 3))
     if kinetic is not None:
-        kinetic = immutable(kinetic, shape=rho.shape)
+        kinetic = coefficient_array(kinetic, shape=rho.shape)
     if (spatial is not None or kinetic is not None) and jets.shape[0] < 4:
         raise ValueError("gradient/kinetic assembly requires first AO derivatives")
     phi, derivatives = jets[0], jets[1:4]

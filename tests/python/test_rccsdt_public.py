@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from vibeqc import Calculator, method_capabilities
 
+from tools.validate_ccsd_t_gradient import analytic_oracle
 from tools.vibeqc_cc.triples import INVENTORY_HASH
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -45,12 +46,12 @@ def _calculator(**kwargs: object) -> Calculator:
     return Calculator(**options)
 
 
-def test_native_rccsdt_capability_is_energy_only_batch() -> None:
+def test_native_rccsdt_capability_is_energy_forces_batch() -> None:
     caps = method_capabilities("rccsd(t)")
     alias = method_capabilities("ccsd(t)")
     assert caps.available and caps.supports_batch
     assert caps.family == "coupled_cluster"
-    assert caps.supported_properties == frozenset({"energy"})
+    assert caps.supported_properties == frozenset({"energy", "forces"})
     assert alias.available and alias.supported_properties == caps.supported_properties
 
 
@@ -74,12 +75,56 @@ def test_public_native_rccsdt_matches_pinned_standard_triples(case: str) -> None
     assert diag.ccsd_replay_doubles_residual_max <= 1e-11
 
 
-def test_public_native_rccsdt_rejects_unpromoted_force_cuda_df_and_frozen_core() -> (
+@pytest.mark.parametrize("case", ("h2o", "nh3"))
+def test_public_native_rccsdt_force_matches_pyscf_analytic_gradient(case: str) -> None:
+    pytest.importorskip(
+        "pyscf", reason="independent RCCSD(T) gradient reference requires PySCF"
+    )
+    pytest.importorskip("threadpoolctl")
+    atoms, _, _ = _reference_case(case)
+    expected = np.asarray(
+        analytic_oracle(case)["analytic"]["gradient"], dtype=np.float64
+    )
+    result = _calculator().singlepoint(atoms, properties=("energy", "forces"))
+    assert result.converged
+    assert result.forces is not None
+    np.testing.assert_allclose(result.forces, -expected, atol=1.0e-6, rtol=0)
+    diag = result.correlation
+    assert diag is not None
+    assert diag.response_absolute_residual <= 1.0e-9
+    assert diag.response_iterations > 0
+    assert diag.force_provenance_flags & 0x1
+
+
+def test_public_native_rccsdt_force_matches_three_step_energy_finite_difference() -> (
     None
 ):
-    atoms, _, _ = _reference_case("h2")
-    with pytest.raises(ValueError, match=r"does not support.*forces"):
-        _calculator().singlepoint(atoms, properties=("energy", "forces"))
+    atoms, _, _ = _reference_case("h2o")
+    rng = np.random.default_rng(15521)
+    direction = rng.normal(size=(len(atoms), 3))
+    direction -= direction.mean(axis=0, keepdims=True)
+    direction /= np.linalg.norm(direction)
+
+    calc = _calculator()
+    center = calc.singlepoint(atoms, properties=("energy", "forces"))
+    assert center.forces is not None
+    analytic = -float(np.vdot(np.asarray(center.forces), direction))
+    errors: list[float] = []
+    for step in (1.0e-3, 3.0e-4, 1.0e-4):
+        energies: list[float] = []
+        for sign in (-1.0, 1.0):
+            displaced = [
+                (z, (np.asarray(xyz) + sign * step * delta).tolist())
+                for (z, xyz), delta in zip(atoms, direction, strict=True)
+            ]
+            energies.append(calc.singlepoint(displaced, properties=("energy",)).energy)
+        finite = (energies[1] - energies[0]) / (2.0 * step)
+        errors.append(abs(finite - analytic))
+    assert min(errors[1:]) < 1.0e-6, errors
+    assert errors[-1] < 2.0e-6, errors
+
+
+def test_public_native_rccsdt_rejects_unpromoted_cuda_df_and_frozen_core() -> None:
     with pytest.raises(NotImplementedError, match=r"CUDA owner"):
         _calculator(device="cuda")
     with pytest.raises(NotImplementedError, match=r"density fitting"):
@@ -110,10 +155,29 @@ def test_public_native_rccsdt_homogeneous_batch_repeats_and_moves_geometry() -> 
             and item.correlation.ccsd_t_equation_hash == INVENTORY_HASH
             for item in first.items
         )
+        forced = prepared.execute(properties=("energy", "forces"), strict=True)
+        assert all(item.forces is not None for item in forced.items)
         repeated = prepared.execute(strict=True)
         np.testing.assert_allclose(
             [item.energy for item in repeated.items],
             [item.energy for item in first.items],
             atol=2e-10,
             rtol=0,
+        )
+
+
+def test_public_force_admits_reported_endpoint_budget() -> None:
+    """The reported total includes preparation and retained response lifetimes."""
+    atoms, _, _ = _reference_case("h2o")
+    reference = _calculator().singlepoint(atoms, properties=("energy", "forces"))
+    peak = reference.correlation.planned_endpoint_peak_bytes
+    assert peak > 0
+    exact = _calculator(correlation_memory_budget_bytes=peak).singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    assert exact.correlation.numeric_capacity_bytes <= peak
+    np.testing.assert_allclose(exact.forces, reference.forces, rtol=0, atol=1e-12)
+    with pytest.raises(RuntimeError, match="error 7|host budget|memory budget"):
+        _calculator(correlation_memory_budget_bytes=peak - 1).singlepoint(
+            atoms, properties=("energy", "forces")
         )

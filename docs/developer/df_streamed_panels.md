@@ -12,13 +12,18 @@ Two raw passes remain because retaining the entire raw tensor would exceed
 the resolved capacity. The full metric factor, including discarded directions,
 is unchanged, so the existing metric-rank policy still defines the operator.
 
-For K, the existing capacity is rebalanced into full AO panels with a smaller
+For dense fallback K, the existing capacity is rebalanced into full AO panels with a smaller
 auxiliary width whenever one AO matrix fits. Each transformed panel then feeds
 both exchange GEMMs before eviction. If even one matrix cannot fit, the bounded
 row traversal consumes its own diagonal column first, retaining that one cache
 hit; other column panels still repeat across row blocks. Disjoint output blocks
 keep their ascending auxiliary accumulation order despite the changed visitation
 order. Dense nonsymmetric input densities retain their established orientation.
+
+Qualified occupied K instead projects raw AO rows before whitening. Its
+[compiler-owned traversal](df_occupied_cuda.md) retains the preceding output-row
+projection in a second slot, avoiding adjacent-row regeneration in triangular
+K. It uses the same four buffers and grants no force-response projection lease.
 
 Panels wider than four auxiliary directions stage raw blocks and apply the
 metric factor with GEMM. Skinny panels retain the fused recurrence/transform

@@ -45,6 +45,17 @@ evidence; bulk queries hash the source inventory once and do not lower all graph
 failed, malformed, cross-functional, or out-of-order evidence never promotes a
 stage.
 
+A `production-domain` pass has one additional hard requirement. It must attach
+the exact `vibeqc.libxc-production-domain-profile.v1` qualification payload
+computed from the registration family and required ingredients. The current
+`semilocal-boundary-matrix/v1` profile requires both spin layouts, energy/vxc/fxc,
+and named density/spin/gradient/tau/control boundary groups as applicable. The
+profile has its own identity, so dropping a case, changing the matrix version, or
+changing an ingredient invalidates the admission proof. Registrations requiring
+ingredients outside the current generic `rho/sigma/tau` domain (for example,
+Laplacian-dependent meta-GGAs) carry an explicit structural blocker and do not
+appear as `production-domain` ready.
+
 ## Query
 
 ```python
@@ -122,12 +133,16 @@ kernel.
 Boundary admission is intentionally split into two facts:
 
 1. the generated expression stays finite at the probe;
-2. energy and first physical-feature derivatives agree with the independent
-   Libxc oracle.
+2. energy and physical-feature derivatives agree with the independent oracle
+   over the exact versioned production-domain profile.
 
-Only the second fact may eventually satisfy the `production-domain` stage.
-A finite value by itself is not a correctness claim.  Oracle-nonfinite points
-remain unqualified instead of being coerced into a pass.
+Only a retained evidence record covering the **entire required profile** may
+satisfy the `production-domain` stage. A finite value by itself is not a
+correctness claim. Oracle-nonfinite points remain unqualified instead of being
+coerced into a pass. The existing probe/oracle machinery is the numerical
+producer; the profile introduced for #1120 is the admission contract. Expanding
+that producer to every v1 matrix case is tracked as subsequent #1120 work and
+does not grant any new production capability in this slice.
 
 The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
 machine-readable status `pass` for the compiled CPU FP64 production entry point,

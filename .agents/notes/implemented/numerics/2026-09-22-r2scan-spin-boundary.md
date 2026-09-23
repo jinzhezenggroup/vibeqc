@@ -3,6 +3,11 @@
 Status: implemented
 Date: 2026-09-22
 
+The later [stable spin-fraction decision](2026-09-23-scan-stable-spin-fractions.md)
+supersedes the rounded double reference assumption below: disabling FMA did
+not remove sensitivity to AO-contraction roundoff at the complete endpoint.
+It preserves the thresholds and derivative conventions recorded here.
+
 ## Decision
 
 Use scalar domains and boundary continuations to keep generated r2SCAN value and first derivatives finite when a minority-spin density vanishes. CPU and CUDA emitters consume the same expression policy.

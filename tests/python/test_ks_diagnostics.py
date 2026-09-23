@@ -1,4 +1,8 @@
-"""Physical KS histories, independent components and additive ABI state gates."""
+"""Energy-only KS histories, physical components and additive ABI state gates.
+
+Select energy explicitly: optional force consumers have separate state/lifetime
+gates and must not add transfers or change these SCF diagnostics.
+"""
 
 import ctypes
 import json
@@ -84,7 +88,9 @@ def test_physical_components_and_history_match_independent_state(
         0.5 * np.einsum("ij,ji", total, reference.get_j(dm=total)),
         potential.exc,
     )
-    native = calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
+    native = calculator.singlepoint(
+        atoms, charge=charge, multiplicity=multiplicity, properties=("energy",)
+    )
     diagnostic = native.ks_diagnostic
     assert native.converged and isinstance(diagnostic, KsDiagnostic)
     assert native.executed_backend == ("cuda" if device == "cuda" else "cpu_reference")
@@ -151,9 +157,9 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(
         )
         assert bytes(summary) == original
         assert query(batch._batch, 2, None, None, 0) == _native.STATUS_INVALID_ARGUMENT
-        cold = batch.execute(strict=True)
+        cold = batch.execute(properties=("energy",), strict=True)
         saved = cold.items[0].ks_diagnostic.to_payload()
-        replay = batch.execute(strict=True)
+        replay = batch.execute(properties=("energy",), strict=True)
         assert replay.items[0].ks_diagnostic.initial_density_used
         assert replay.items[0].ks_diagnostic.history[0].energy_change is None
         assert cold.items[0].ks_diagnostic.to_payload() == saved
@@ -187,13 +193,13 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(
             == _native.STATUS_SUCCESS
         )
         assert bytes(rows[-1]) == canary
-        failed = batch.execute([np.full((3, 3), np.nan), None])
+        failed = batch.execute([np.full((3, 3), np.nan), None], properties=("energy",))
         assert failed.failure_indices == (0,)
         assert failed.items[0].ks_diagnostic is None
         assert failed.items[1].ks_diagnostic is not None
         assert query(batch._batch, 0, None, None, 0) == _native.STATUS_NOT_IMPLEMENTED
         assert cold.items[0].ks_diagnostic.to_payload() == saved
-        batch.execute(strict=True)
+        batch.execute(properties=("energy",), strict=True)
         outputs = (_native.BatchItemResultDescriptor * 1)()
         assert (
             batch._library.vibeqc_batch_execute(batch._batch, None, 0, outputs, 1)
@@ -201,7 +207,10 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(
         )
         assert query(batch._batch, 1, None, None, 0) == _native.STATUS_NOT_IMPLEMENTED
         monkeypatch.setattr(batch._library, "vibeqc_batch_get_ks_diagnostic", None)
-        assert batch.execute(strict=True).items[0].ks_diagnostic is None
+        assert (
+            batch.execute(properties=("energy",), strict=True).items[0].ks_diagnostic
+            is None
+        )
 
 
 def test_valid_iteration_limit_keeps_its_actual_history(
@@ -209,7 +218,7 @@ def test_valid_iteration_limit_keeps_its_actual_history(
 ) -> None:
     calculator = Calculator(method="pbe-uks", device=device, max_iterations=1)
     with calculator.prepare_batch([H3], multiplicities=[2]) as batch:
-        result = batch.execute().items[0]
+        result = batch.execute(properties=("energy",)).items[0]
         assert result.status == _native.STATUS_NOT_CONVERGED
         diagnostic = result.ks_diagnostic
         assert len(diagnostic.history) == 1
@@ -225,7 +234,10 @@ def test_hf_has_no_ks_snapshot() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     assert calculator.singlepoint(atoms, properties=("energy",)).ks_diagnostic is None
     with calculator.prepare_batch([atoms]) as batch:
-        assert batch.execute(strict=True).items[0].ks_diagnostic is None
+        assert (
+            batch.execute(properties=("energy",), strict=True).items[0].ks_diagnostic
+            is None
+        )
         assert (
             batch._library.vibeqc_batch_get_ks_diagnostic(
                 batch._batch, 0, None, None, 0
@@ -239,7 +251,10 @@ def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
 ) -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calculator = Calculator(method="lda-rks", device="cpu")
-    assert calculator.singlepoint(atoms).ks_transport_diagnostic is None
+    assert (
+        calculator.singlepoint(atoms, properties=("energy",)).ks_transport_diagnostic
+        is None
+    )
     with calculator.prepare_batch([atoms]) as batch:
         assert batch.ks_transport_diagnostics == (None,)
         query = batch._library.vibeqc_batch_get_ks_transport_diagnostic
@@ -279,19 +294,20 @@ def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(
         setup = batch.ks_transport_diagnostics[0]
         assert isinstance(setup, KsTransportDiagnostic)
         assert setup.setup_h2d_bytes > 0
-        assert setup.density_h2d_bytes == setup.scalar_d2h_bytes == 0
+        assert setup.density_h2d_bytes == 0
+        assert setup.scalar_d2h_bytes > 0  # Device spectrum and metric admission.
         assert setup.matrix_d2h_bytes == setup.iterations == 0
 
-        cold_result = batch.execute(strict=True).items[0]
+        cold_result = batch.execute(properties=("energy",), strict=True).items[0]
         cold = batch.ks_transport_diagnostics[0]
         assert cold.setup_h2d_bytes == setup.setup_h2d_bytes
-        assert cold.density_h2d_bytes > 0
+        assert cold.density_h2d_bytes == 0  # Cold seed remains device-resident.
         assert cold.scalar_d2h_bytes > 0
         assert cold.matrix_d2h_bytes == 0
         assert cold.iterations == cold_result.iterations
         assert cold.synchronizations > setup.synchronizations
 
-        warm_result = batch.execute(strict=True).items[0]
+        warm_result = batch.execute(properties=("energy",), strict=True).items[0]
         warm = batch.ks_transport_diagnostics[0]
         assert warm.setup_h2d_bytes == cold.setup_h2d_bytes
         assert warm.density_h2d_bytes == cold.density_h2d_bytes
@@ -299,7 +315,9 @@ def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(
         assert warm.iterations == cold.iterations + warm_result.iterations
         assert warm.scalar_d2h_bytes > cold.scalar_d2h_bytes
 
-        changed_result = batch.execute([changed], strict=True).items[0]
+        changed_result = batch.execute(
+            [changed], properties=("energy",), strict=True
+        ).items[0]
         rebuilt = batch.ks_transport_diagnostics[0]
         assert changed_result.warm_start_used
         assert rebuilt.setup_h2d_bytes > warm.setup_h2d_bytes
@@ -322,7 +340,7 @@ def test_cold_retry_replaces_the_failed_warm_attempt_history(
     calculator = Calculator(method="pbe-rks", device=device, max_iterations=2)
     overlap = cross_overlap(calculator, calculator, atoms)
     with calculator.prepare_batch([atoms]) as batch:
-        cold = batch.execute(strict=True).items[0]
+        cold = batch.execute(properties=("energy",), strict=True).items[0]
         state = _native.HfWarmState(
             ctypes.sizeof(_native.HfWarmState), _native.ABI_VERSION
         )
@@ -343,7 +361,7 @@ def test_cold_retry_replaces_the_failed_warm_attempt_history(
             batch._library,
             batch._library.vibeqc_batch_restore_hf_warm_states(batch._batch, states, 1),
         )
-        retried = batch.execute(strict=True).items[0]
+        retried = batch.execute(properties=("energy",), strict=True).items[0]
         assert retried.warm_start_used and retried.warm_start_fallback
         assert retried.energy == pytest.approx(cold.energy, abs=1e-9)
         diagnostic = retried.ks_diagnostic

@@ -25,6 +25,7 @@ def schedule_query(tmp_path_factory: typing.Any) -> typing.Any:
     source.write_text(
         r"""
 #include <iostream>
+#include <vector>
 #include "scf/df_projected_exchange_schedule.hpp"
 int main() {
   std::size_t n, a, rank, capacity;
@@ -32,8 +33,48 @@ int main() {
   while (std::cin >> n >> a >> rank >> capacity >> triangular) {
     const auto dense = vibeqc::scf::df_streamed_k_panel(n, a, capacity);
     const auto p = vibeqc::scf::df_projected_exchange_schedule(n, a, rank, capacity, triangular);
+    std::size_t loaded = 0;
+    if (p.rows) {
+      // Independent storage simulator: a contraction must read precisely the
+      // rows currently resident in each slot, and write every required AO pair
+      // exactly once. This catches an invalid lifetime even if census matches.
+      std::size_t begins[2] = {n, n}, counts[2] = {0, 0};
+      std::vector<int> coverage(n * n, 0);
+      const bool ok = vibeqc::scf::generated::visit_projected_exchange(
+          n, p.rows, triangular,
+          [&](std::size_t begin, std::size_t count, std::size_t slot) {
+            if (slot >= 2 || !count || begin + count > n ||
+                count * a * rank > capacity || count * n > capacity) return false;
+            begins[slot] = begin;
+            counts[slot] = count;
+            loaded += count;
+            return true;
+          },
+          [&](std::size_t r, std::size_t nr, std::size_t c, std::size_t nc,
+              std::size_t left, std::size_t right, bool) {
+            if (left >= 2 || right >= 2 || begins[left] != r || counts[left] != nr ||
+                begins[right] != c || counts[right] != nc) return false;
+            for (auto i = r; i < r + nr; ++i)
+              for (auto j = c; j < c + nc; ++j) {
+                if (++coverage[i * n + j] != 1) return false;
+                if (triangular && r != c && ++coverage[j * n + i] != 1) return false;
+              }
+            return true;
+          });
+      if (!ok || std::any_of(coverage.begin(), coverage.end(), [](auto v) { return v != 1; }))
+        return 2;
+      // Both callback failures must stop immediately, before subsequent work.
+      for (bool fail_projection : {false, true}) {
+        int calls = 0;
+        const auto aborted = vibeqc::scf::generated::visit_projected_exchange(
+            n, p.rows, triangular,
+            [&](auto...) { ++calls; return !fail_projection; },
+            [&](auto...) { ++calls; return false; });
+        if (aborted || calls != (fail_projection ? 1 : 2)) return 3;
+      }
+    }
     std::cout << p.rows << ' ' << p.blocks << ' ' << p.generated_rows << ' '
-              << dense.row_tiles << ' ' << dense.output_tiles << '\n';
+              << dense.row_tiles << ' ' << dense.output_tiles << ' ' << loaded << '\n';
   }
 }
 """
@@ -67,12 +108,12 @@ int main() {
 
 
 def generated_rows(n: int, rows: int, triangular: bool) -> int:
-    """Count actual row/column visits, including reuse of the diagonal panel."""
+    """Count required loads, allowing diagonal and adjacent triangular reuse."""
     result = 0
     for begin in range(0, n, rows):
         result += min(rows, n - begin)
         for column in range(0, begin + 1 if triangular else n, rows):
-            if column != begin:
+            if column != begin and not (triangular and column + rows == begin):
                 result += min(rows, n - column)
     return result
 
@@ -88,7 +129,8 @@ def test_emitted_schedule_minimizes_raw_work(schedule_query: typing.Any) -> None
     ]
     for shape, result in zip(shapes, schedule_query(shapes), strict=True):
         n, a, rank, capacity, triangular = shape
-        rows, blocks, count, dense_rows, dense_q = result
+        rows, blocks, count, dense_rows, dense_q, actual_count = result
+        assert count == actual_count
         # Python and emitted native policy share the contract, while this
         # independent census qualifies its optimum against every legal width.
         expected = projected_exchange_schedule(
@@ -96,23 +138,26 @@ def test_emitted_schedule_minimizes_raw_work(schedule_query: typing.Any) -> None
         )
         assert (rows, blocks, count) == dataclasses.astuple(expected)
         choices = [
-            (generated_rows(n, r, triangular), r)
+            (generated_rows(n, r, triangular), (n + r - 1) // r, r)
             for r in range(1, n + 1)
             if r * a * rank <= capacity and r * n <= capacity
         ]
         if not choices or min(choices)[0] >= n * dense_rows * dense_q:
             assert rows == 0
         else:
-            assert (count, rows) == min(choices)
+            # One and two retained blocks both need one tensor pass. Prefer
+            # fewer products at equal work, then the smallest balanced width.
+            assert (count, blocks, rows) == min(choices)
             assert blocks == len(range(0, n, rows))
 
 
 def test_practical_96_atom_capacity_and_rejection(schedule_query: typing.Any) -> None:
     # Exact observed n/naux/rank with the original four Q=580 buffers.
     shape = (768, 3712, 160, 768 * 768 * 580, 1)
-    rows, blocks, count, dense_rows, dense_q = schedule_query([shape])[0]
-    assert (rows, blocks, count, dense_rows, dense_q) == (384, 2, 1152, 1, 7)
-    assert count * 768 * 3712 == 3_284_140_032
+    rows, blocks, count, dense_rows, dense_q, actual_count = schedule_query([shape])[0]
+    assert (rows, blocks, count, dense_rows, dense_q) == (384, 2, 768, 1, 7)
+    assert count == actual_count
+    assert count * 768 * 3712 == 2_189_426_688
     invalid = [
         (0, 3, 1, 10, 1),
         (8, 0, 1, 64, 1),

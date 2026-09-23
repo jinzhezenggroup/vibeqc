@@ -158,18 +158,25 @@ estimates does not by itself establish a measured whole-process peak reduction.
 Generated values are the default. For transformed bounded-source outputs,
 the compiler assigns four lanes to each primitive product partition and eight
 auxiliary source terms to the warp; every lane reaches the final output sum,
-including ragged source tails. Raw source tiles keep a full primitive-reduction
-warp. The bulk compatibility builder retains one thread per output. The
+including ragged source tails. Raw source tiles have only one auxiliary source
+per output and use one thread per output with contiguous auxiliary writes.
+The compiler resolves these schedules separately and the native source freezes
+both mappings at creation. The bulk compatibility builder retains its own
+one-thread-per-output schedule. The original transformed-source
 promotion evidence is in
 [`benchmarks/results/generated-df-values-142`](../../benchmarks/results/generated-df-values-142/README.md).
 `VIBEQC_DF_VALUES` is retired. Reproducing that historical Hermite evaluator
 requires its recorded checkout. The separate [DF tuning](df_tuning.md) harness
 offers newly generated specialized polynomial/Rys candidates; these remain
 diagnostic after cold endpoint regressions and do not change the default.
-`VIBEQC_DF_VALUE_MAPPING=auxiliary|component|primitive` compares contiguous
+`VIBEQC_DF_VALUE_MAPPING=auto|auxiliary|component|primitive` compares contiguous
 auxiliary writes, contiguous AO-pair work, and one primitive-reduction warp per
-output. Auxiliary/component mappings remain diagnostic overrides; the component
-mapping was rejected for automatic selection after its endpoint regression.
+output. `auto` (also the unset default) selects the consumer-specific compiler
+schedule; explicit mappings override both consumers for reproducible comparison.
+Global component selection remains rejected after its transformed-source
+endpoint regression. The raw/transformed distinction and remaining qualification
+gates are recorded in the
+[raw source schedule note](../../.agents/notes/implemented/performance/2026-09-23-df-raw-source-schedule.md).
 These source choices are frozen at source creation. Coordinate derivatives
 instantiate the shared generated center policy; weighted HF derivatives use
 their independently generated four-lane schedule. The mappings share scientific

@@ -187,23 +187,24 @@ def run_dft(args: argparse.Namespace, record: dict) -> None:
         record["native_not_measured"] = "reference-only run requested"
     else:
         try:
-            started = time.perf_counter()
-            calculator = Calculator(
-                method=method,
-                basis="def2-svp",
-                basis_representation="spherical",
-                device="cuda",
-                ks_options=options,
-                density_fitting="cuda" if args.mode == "df" else "none",
-                auxiliary_basis=native_aux,
-                max_iterations=100,
-                energy_tolerance=1e-10,
-                density_tolerance=1e-9,
-                screening_tolerance=1e-12,
-            )
-            batch = calculator.prepare_batch([case.atoms], warm_start=True)
-            record["native_prepare_seconds"] = time.perf_counter() - started
-            record["native_build"].update(native_build_metadata(calculator))
+            with progress.measure("native/prepare"):
+                started = time.perf_counter()
+                calculator = Calculator(
+                    method=method,
+                    basis="def2-svp",
+                    basis_representation="spherical",
+                    device="cuda",
+                    ks_options=options,
+                    density_fitting="cuda" if args.mode == "df" else "none",
+                    auxiliary_basis=native_aux,
+                    max_iterations=100,
+                    energy_tolerance=1e-10,
+                    density_tolerance=1e-9,
+                    screening_tolerance=1e-12,
+                )
+                batch = calculator.prepare_batch([case.atoms], warm_start=True)
+                record["native_prepare_seconds"] = time.perf_counter() - started
+                record["native_build"].update(native_build_metadata(calculator))
         except (NotImplementedError, RuntimeError) as error:
             hybrid_rejection = (
                 args.method == "pbe0"
@@ -467,7 +468,7 @@ def main() -> None:
         "--endpoint-seconds",
         type=float,
         default=120,
-        help="Hard per-solve deadline, independent of the Slurm whole-job limit",
+        help="Hard per-prepare/solve deadline, independent of the Slurm whole-job limit",
     )
     parser.add_argument(
         "--trace-scf",

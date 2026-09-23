@@ -85,7 +85,7 @@ def cpu_force_inventory(
         else 0
     )
     nonlocal_force = (
-        8 * (32 * grid_points + n * n + 3 * a) if nonlocal_correlation else 0
+        8 * (40 * grid_points + n * n + 3 * a) if nonlocal_correlation else 0
     )
 
     # The generated range-ERI owner caches one PreparedWeightedEri per

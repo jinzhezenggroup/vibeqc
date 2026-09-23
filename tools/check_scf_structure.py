@@ -368,7 +368,6 @@ CUDA_MODULES["cuda_direct_contractions"] = (
     "direct_eri_symmetry",
     "direct_fock_accumulation",
     "direct_fock_quartet",
-    "direct_fock_psss",
     "direct_fock_order2",
     "direct_force_density",
     "direct_force_low_order",
