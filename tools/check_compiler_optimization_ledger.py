@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 from pathlib import Path
 from typing import Any
@@ -136,7 +135,19 @@ def _validate_contract(payload: dict[str, Any]) -> Path:
         raise LedgerError(
             "adoption_contract.benchmark_evidence_root must be 'benchmarks/results'"
         )
-    return (ROOT / evidence_root_text).resolve()
+    # The root itself may be a symlink; checking only leaf containment would
+    # admit files retained outside the checkout when the whole root escapes.
+    try:
+        repository_root = ROOT.resolve(strict=True)
+        evidence_root = (repository_root / evidence_root_text).resolve(strict=True)
+        evidence_root.relative_to(repository_root)
+        if not evidence_root.is_dir():
+            raise ValueError("evidence root is not a directory")
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise LedgerError(
+            "benchmark evidence root must be a directory inside the repository"
+        ) from exc
+    return evidence_root
 
 
 def _validate_evidence_paths(value: Any, label: str, evidence_root: Path) -> None:
@@ -145,7 +156,10 @@ def _validate_evidence_paths(value: Any, label: str, evidence_root: Path) -> Non
         relative = Path(raw)
         if relative.is_absolute() or ".." in relative.parts:
             raise LedgerError(f"{label} contains unsafe evidence path {raw!r}")
-        candidate = (ROOT / relative).resolve()
+        try:
+            candidate = (ROOT / relative).resolve(strict=True)
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise LedgerError(f"{label} has an invalid evidence path {raw!r}") from exc
         try:
             candidate.relative_to(evidence_root)
         except ValueError as exc:
@@ -211,9 +225,9 @@ def _validate_adoption(
             if (
                 isinstance(budget, bool)
                 or not isinstance(budget, (int, float))
-                or not math.isfinite(float(budget))
-                or float(budget) <= 0.0
-                or float(budget) > 100.0
+                # Compare before any float conversion: JSON integers are
+                # unbounded. This also rejects NaN and both infinities.
+                or not 0 < budget <= 100
             ):
                 raise LedgerError(
                     f"{row_label}.max_regression_percent must be finite and in (0, 100]"
