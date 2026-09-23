@@ -84,8 +84,7 @@ def capability_regressions(
         for name in changes["removed_functionals"]
     ]
     regressions.extend(
-        regression("identity-change", name)
-        for name in changes["identity_changes"]
+        regression("identity-change", name) for name in changes["identity_changes"]
     )
     for stage in CAPABILITY_STAGES:
         regressions.extend(
