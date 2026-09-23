@@ -57,7 +57,7 @@ five-entry domain would add preparation and cache complexity unnecessarily.
 
 ## Evidence
 
-Qualification is in progress. Baseline source is master `6dbffc10`; Slurm 11441
+Baseline source is master `6dbffc10`; Slurm 11441
 passes the original native LDA/PBE/r²SCAN RKS/UKS E/V and state suite. Artifacts
 are retained in ignored `.artifacts/xc-point-consumers/`. Promotion requires
 production GPU numerical and endpoint checks; compile-only results are not a
@@ -130,13 +130,47 @@ are within 9.10e-12 Eh (direct) / 4.17e-11 Eh (DF); the independently serialized
 cold-energy differences are 9.10e-12 / 3.02e-11 Eh. Preparation is
 0.390062403 / 0.608762536 seconds. These timings do not include forces.
 
-Broader public tests on the old composed tree are **not an accepted gate**:
-Slurm 11447 reports 26 failures, 8 passes and 1 skip across selected direct/DF
-SCF and replay tests. Slurm 11448 reproduces the minimal direct H2/PBE failure
-with both the pre-change v12 and specialized v13/v15 libraries, so at least
-that failure predates this repair. Latest-master standalone endpoint gates are
-required to isolate this integration limitation; do not weaken the tests or
-use the passing PBE24 results to assert all small endpoints pass.
+### Public endpoint qualification and the missing-force-artifact trap
+
+Slurm 11447 initially reports 26 failures, 8 passes and 1 skip across selected
+public SCF/replay tests on the old composed tree. Slurm 11448 reproduces the
+minimal H2/PBE failure with both pre-change v12 and specialized v13/v15;
+standalone latest-master Slurm 11449 also reports generic numerical failures.
+These reports initially looked like an unresolved SCF integration gap.
+
+The minimal standalone probe in Slurm 11453 resolves that diagnosis: the
+Calculator defaults to energy **and forces**, but building the main `vibeqc`
+target alone does not build the separate stationary force AOT libraries and
+manifests. Explicit energy-only H2/PBE converges in two iterations to
+-1.1520643735484999 Eh. Calling the force consumer directly exposes
+`FileNotFoundError: missing packaged stationary CUDA artifact for pbe_rks`.
+The public batch wrapper catches that `OSError` and discards its message,
+reporting a generic numerical failure. Issue #1131 tracks this misleading
+error boundary separately from point-kernel optimization.
+
+Before investigating XC/SCF numerics from such a report, inspect the requested
+properties, verify all relevant stationary manifest targets were built, and
+retain the original force exception. Do not relax convergence or oracle gates.
+The independent SCF test now explicitly requests energy; the complete endpoint
+suite owns the default energy-plus-force behavior. All 18 selected CUDA SCF
+oracle cases pass in Slurm 11454 (56.59 s); standalone Slurm 11449 also passes
+9 DF oracle cases. Final native Slurm 11450 additionally passes exact-vacuum,
+zero-tangent response replay and stale-coefficient rejection.
+
+After building all six stationary AOT manifest targets, Slurm 11455 passes all
+13 selected complete CUDA tests in 168.23 seconds: public default energy/force
+for LDA/PBE/r²SCAN RKS/UKS against independent gradients, retained force replay,
+changed geometry and failed-neighbor isolation, LDA/PBE production-grid energy
+and force, independent r²SCAN RKS/UKS analytic gradients, and reconverged
+r²SCAN directional finite differences at two steps. The original numerical
+and convergence tolerances are unchanged. These standalone small-system gates
+close the public endpoint qualification gap; they do not qualify full96 SCF.
+
+The final standalone library SHA256 is
+`2369d9b62c9425170cec3f756c7d4f6b1c52f30ec6b00902ef9021df619d4252`.
+Retained local logs include `vacuum-native.log`, `energy-gates.log`, and
+`complete-endpoints.log`; `complete-evidence/` records independent analytic
+and finite-difference comparisons from the last suite.
 
 The final composed v15 library/archive hashes are
 `1cb7c035e2f37ba23ff1f28edd0a0b32e06eb3910c777d2dd8efd91e2a8e2d3b` /
@@ -154,3 +188,4 @@ canonical equations and boundary qualification.
 - #1113: point consumer specialization and separate scheduling qualification.
 - #1102: complete CUDA XC/SCF pipeline performance and 96-atom endpoints.
 - #1108/#1114: independent r²SCAN boundary qualification.
+- #1131: preserve missing force artifact errors at the public batch boundary.

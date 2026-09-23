@@ -393,6 +393,15 @@ void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsig
       response.canary();
       for (double& value : direction) value *= -0.4;
     }
+    // Exact vacuum with zero tangent has an independently known zero response.
+    // Reusing the same captured entry also catches stale point coefficients.
+    check(cudaMemsetAsync(response.density, 0, d.size() * sizeof(double), response.stream));
+    check(cudaMemsetAsync(device_direction.get(), 0, d.size() * sizeof(double), response.stream));
+    check(cudaGraphLaunch(executable, response.stream));
+    require(response.scalars().error == 0, "vacuum matrix response was rejected");
+    for (double value : response.potential())
+      require(value == 0.0, "vacuum matrix response retained a stale coefficient");
+    response.canary();
   } catch (...) {
     if (executable) cudaGraphExecDestroy(executable);
     if (graph) cudaGraphDestroy(graph);
