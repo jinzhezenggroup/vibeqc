@@ -97,8 +97,12 @@ def validate(payload: Any) -> dict[str, int]:
             raise LedgerError(f"duplicate group id {group_id!r}")
         seen.add(group_id)
         _require_text(group.get("name"), f"{label}.name")
-        _validate_commits(group.get("historical_commits"), f"{label}.historical_commits")
-        mechanisms = _require_string_list(group.get("mechanisms"), f"{label}.mechanisms")
+        _validate_commits(
+            group.get("historical_commits"), f"{label}.historical_commits"
+        )
+        mechanisms = _require_string_list(
+            group.get("mechanisms"), f"{label}.mechanisms"
+        )
         mechanism_count += len(mechanisms)
         owners = group.get("current_owners")
         if not isinstance(owners, list) or not owners:
