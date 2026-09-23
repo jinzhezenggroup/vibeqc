@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate the historical compiler optimization ownership ledger."""
 
 from __future__ import annotations
