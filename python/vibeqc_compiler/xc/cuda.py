@@ -192,7 +192,7 @@ class CudaXC:
             raw = np.asarray(features)
             if raw.ndim != 2 or raw.shape[1] > self.plan.tile_points:
                 raise ValueError("features exceed XC prepared tile shape")
-            x, _ = validate_features(self.program.spec, raw, order=self.program.order)
+            validator = getattr(self.program, "validate_features", None)\n            if validator is None:\n                x, _ = validate_features(\n                    self.program.spec, raw, order=self.program.order\n                )\n            else:\n                x, _ = validator(raw)
             result = np.empty((len(self.program.outputs), x.shape[1]))
             self._call(
                 "xc_run_v1",
