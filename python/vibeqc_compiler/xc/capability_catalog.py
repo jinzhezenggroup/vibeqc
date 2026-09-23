@@ -12,6 +12,7 @@ from typing import Any
 
 from .libxc_bulk_capabilities import (
     CAPABILITY_STAGES,
+    STAGE_REQUIREMENTS,
     BulkFunctionalCapability,
     available_capabilities,
 )
@@ -131,6 +132,19 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
                 f"{label} capability summary has qualified/ready overlap for {name}"
             )
 
+        # Counts can agree while a snapshot still skips qualification gates.
+        # Reuse the canonical AND/OR DAG; ready evidence is not a passed gate.
+        qualified_set = set(qualified)
+        for stage in (*qualified, *ready):
+            if not all(
+                any(required in qualified_set for required in alternatives)
+                for alternatives in STAGE_REQUIREMENTS[stage]
+            ):
+                raise ValueError(
+                    f"{label} capability summary has unmet prerequisites for "
+                    f"{name}: {stage}"
+                )
+
     # Persisted summaries are redundant: every counter must agree with the
     # detailed inventory. Do not accept an internally contradictory snapshot.
     for field, inventory in (
@@ -200,3 +214,68 @@ def capability_changes(
         "promotions": promotions,
         "demotions": demotions,
     }
+
+
+def render_capability_summary(summary: Mapping[str, Any]) -> str:
+    """Render one validated snapshot as a concise deterministic text table.
+
+    The renderer is intentionally descriptive: ``ready`` remains a distinct
+    observation and is never displayed as if it were a qualified stage.
+    """
+    _validate_summary(summary, label="rendered")
+    stage_width = max(len("stage"), *(len(stage) for stage in CAPABILITY_STAGES))
+    lines = [
+        f"Libxc capability summary ({summary['total_functionals']} functionals)",
+        f"{'stage':<{stage_width}}  qualified  ready  blocked",
+    ]
+    for stage in CAPABILITY_STAGES:
+        lines.append(
+            f"{stage:<{stage_width}}  "
+            f"{summary['qualified_counts'][stage]:>9}  "
+            f"{summary['ready_counts'][stage]:>5}  "
+            f"{summary['blocked_counts'][stage]:>7}"
+        )
+
+    functionals = summary["functionals"]
+    public_count = sum(record["public_dft"] for record in functionals.values())
+    blocker_functionals = sum(
+        bool(record["blocked_stages"]) for record in functionals.values()
+    )
+    blocker_count = sum(
+        len(record["blocked_stages"]) for record in functionals.values()
+    )
+    lines.extend(
+        [
+            f"public DFT: {public_count}/{summary['total_functionals']}",
+            f"explicit blockers: {blocker_count} across {blocker_functionals} functionals",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _render_names(names: list[str]) -> str:
+    return ", ".join(names) if names else "none"
+
+
+def render_capability_changes(
+    previous: Mapping[str, Any], current: Mapping[str, Any]
+) -> str:
+    """Render exact snapshot changes without treating the report as evidence."""
+    changes = capability_changes(previous, current)
+    lines = [
+        "Libxc capability changes",
+        f"added functionals: {_render_names(changes['added_functionals'])}",
+        f"removed functionals: {_render_names(changes['removed_functionals'])}",
+        f"identity changes: {_render_names(changes['identity_changes'])}",
+    ]
+    for label, key in (("promotions", "promotions"), ("demotions", "demotions")):
+        stage_changes = changes[key]
+        if not stage_changes:
+            lines.append(f"{label}: none")
+            continue
+        lines.append(f"{label}:")
+        for stage in CAPABILITY_STAGES:
+            names = stage_changes.get(stage)
+            if names:
+                lines.append(f"  {stage}: {', '.join(names)}")
+    return "\n".join(lines)

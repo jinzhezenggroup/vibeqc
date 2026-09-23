@@ -102,3 +102,54 @@ def test_capability_changes_rejects_stale_or_malformed_snapshot() -> None:
     unknown_stage["functionals"][name]["ready_stages"].append("invented-stage")
     with pytest.raises(ValueError, match="unknown stage"):
         capability_catalog.capability_changes(unknown_stage, current)
+
+
+def test_render_capability_summary_is_concise_and_deterministic() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    summary = capability_catalog.capability_summary(
+        {base.name: {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}}
+    )
+
+    report = capability_catalog.render_capability_summary(summary)
+    lines = report.splitlines()
+    stages = libxc_bulk_capabilities.CAPABILITY_STAGES
+
+    assert lines[0] == (
+        f"Libxc capability summary ({summary['total_functionals']} functionals)"
+    )
+    assert len(lines) == len(stages) + 4
+    assert [line.split()[0] for line in lines[2 : 2 + len(stages)]] == list(stages)
+    cpu_line = lines[2 + list(stages).index("compiled-cpu")].split()
+    assert cpu_line == [
+        "compiled-cpu",
+        str(summary["qualified_counts"]["compiled-cpu"]),
+        str(summary["ready_counts"]["compiled-cpu"]),
+        str(summary["blocked_counts"]["compiled-cpu"]),
+    ]
+    assert lines[-2].startswith("public DFT: ")
+    assert lines[-1].startswith("explicit blockers: ")
+    assert report == capability_catalog.render_capability_summary(summary)
+
+
+def test_render_capability_changes_keeps_promotions_and_demotions_explicit() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    initial = capability_catalog.capability_summary()
+    promoted = capability_catalog.capability_summary(
+        {base.name: {"compiled-cpu": _stage_evidence(base, "compiled-cpu")}}
+    )
+
+    forward = capability_catalog.render_capability_changes(initial, promoted)
+    assert "promotions:\n  compiled-cpu: GGA_X_PBE_SOL" in forward
+    assert forward.endswith("demotions: none")
+
+    reverse = capability_catalog.render_capability_changes(promoted, initial)
+    assert "promotions: none" in reverse
+    assert reverse.endswith("demotions:\n  compiled-cpu: GGA_X_PBE_SOL")
+
+
+def test_render_capability_summary_rejects_inconsistent_snapshot() -> None:
+    malformed = capability_catalog.capability_summary()
+    malformed["total_functionals"] += 1
+
+    with pytest.raises(ValueError, match="total does not match inventory"):
+        capability_catalog.render_capability_summary(malformed)
