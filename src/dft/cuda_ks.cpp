@@ -301,7 +301,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         options(control),
         grid_spec(grid.spec()),
         functional(functional) {
-    if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
+    if (functional != 0U && functional != 1U && functional != 2U && functional != 4U)
+      throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
     fock_binding = scf::prepared_cuda_fock_binding(provider);
@@ -322,7 +323,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
     if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
     if (mixed_j && functional > 1U)
-      throw std::invalid_argument("r2SCAN currently requires strict FP64");
+      throw std::invalid_argument("meta-GGA CUDA KS currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
         !std::isfinite(options.density_tolerance) || options.energy_tolerance <= 0.0 ||
         options.density_tolerance <= 0.0 || options.diis_history > 64)
@@ -732,8 +733,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
         value = integrate_lda_xc_pw_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       else if (functional == 1U)
         value = integrate_pbe_rks_with_tail(basis, grid, host_xc_density, xc_layout.tile_points);
-      else
+      else if (functional == 2U)
         value = integrate_r2scan_rks(basis, grid, host_xc_density, xc_layout.tile_points);
+      else if (functional == 4U)
+        value = integrate_wb97mv_rks(basis, grid, host_xc_density, xc_layout.tile_points);
+      else
+        throw std::logic_error("unsupported host-unfused CUDA KS semilocal functional");
       if (value.potential.size() != matrix)
         throw std::runtime_error("host-unfused RKS XC potential size changed");
       std::copy(value.potential.begin(), value.potential.end(), host_xc_potential.begin());
@@ -747,9 +752,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                         xc_layout.tile_points);
       else if (functional == 1U)
         value = integrate_pbe_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
-      else
+      else if (functional == 2U)
         value =
             integrate_r2scan_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+      else if (functional == 4U)
+        value =
+            integrate_wb97mv_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+      else
+        throw std::logic_error("unsupported host-unfused CUDA KS semilocal functional");
       if (value.potential[0].size() != matrix || value.potential[1].size() != matrix)
         throw std::runtime_error("host-unfused UKS XC potential size changed");
       std::copy(value.potential[0].begin(), value.potential[0].end(), host_xc_potential.begin());
