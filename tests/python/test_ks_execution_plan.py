@@ -166,9 +166,10 @@ def test_wb97mv_internal_projection_preserves_all_primitives_and_domain(
     assert native.nonlocal_variant == 1
     assert native.nonlocal_b == pytest.approx(6.0)
     assert native.nonlocal_c == pytest.approx(0.01)
-    # Internal transport is not permission to activate a public method selector.
-    with pytest.raises(ValueError, match="supported native"):
-        resolve_ks_method("wb97m-v")
+    # The public promotion binds the canonical selector to the same complete model.
+    public_method, public_functional = resolve_ks_method("wb97m-v")
+    assert public_method.semantic_payload() == graph.semantic_payload()
+    assert public_functional.spin == spin
 
 
 def test_wb97mv_internal_projection_rejects_missing_or_changed_contributions() -> None:
