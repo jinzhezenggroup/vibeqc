@@ -139,9 +139,20 @@ off/on cold solves take 25/35 iterations and the warm solves take 7/9. Neither
 this pair nor the original-tolerance pair establishes an iteration-matched
 endpoint speedup.
 
-Pending: an admitted, iteration-matched clean endpoint ablation and an
-allocator high-water measurement if required for resource promotion. Keep
-the bounded fallback and default-off control unless those missing gates pass.
+At 384 MiB, Slurm 11485 and interleaved repeat job 11486 provide **three
+separate clean cold energy-only endpoints per arm** at 192/928, all with 16
+native SCF iterations and at most 4.55e-13 Eh error against independent
+GPU4PySCF. The independent/shared cold medians are 13.654839/10.739714 s,
+a 21.35% reduction for this complete prepared-batch energy execution, not a
+cross-engine speedup. Separately traced job 11487 confirms two K row blocks,
+192 generated K rows and 192 shared charge rows: each uncached J/K requests
+102,629,376 values on the independent route versus 68,419,584 with the
+candidate. The warm arms still take two versus three SCF iterations, so the
+384-MiB warm timings do not support a matched-work speed claim.
+
+Pending: matched-work warm endpoint profitability and an allocator high-water
+measurement if required for resource promotion. Keep the bounded fallback and
+default-off control until the broader acceptance gates pass.
 
 ## Revisit when
 
