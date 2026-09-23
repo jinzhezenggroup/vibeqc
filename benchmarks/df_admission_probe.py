@@ -39,13 +39,16 @@ CONTROLS = (
     "SHELL_SCHEDULE",
     "PRIMITIVE_BUCKETS",
     "RESPONSE_FUSION",
+    "RESPONSE_SPACE",
 )
 VARIANTS = {
-    "auto": (None, None, None, None, None),
-    "shell": ("shell", "symmetric", "compact", "off", None),
-    "packet": ("shell", "symmetric", "compact", "packet", None),
-    "packed": ("shell", "packed", "compact", "packet", "off"),
-    "factorized": ("shell", "packed", "compact", "packet", "factorized"),
+    "auto": (None, None, None, None, None, None),
+    "shell": ("shell", "symmetric", "compact", "off", None, None),
+    "packet": ("shell", "symmetric", "compact", "packet", None, None),
+    # Both arms require the same validated occupied producer, independently
+    # of automatic profitability selection. Native owner/capacity gates remain.
+    "packed": ("shell", "packed", "compact", "packet", "off", "occupied"),
+    "factorized": ("shell", "packed", "compact", "packet", "factorized", "occupied"),
 }
 TRACE_CONTROLS = ("TRACE", "HOST_TRACE", "PROGRESS_TRACE", "SHELL_COUNTERS")
 
