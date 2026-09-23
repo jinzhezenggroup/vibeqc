@@ -112,7 +112,7 @@ def test_benchmark_qualified_requires_one_concrete_cell() -> None:
 
 def test_benchmark_qualified_requires_retained_evidence() -> None:
     payload = _payload()
-    row = _qualify_one_cell(payload)
+    _qualify_one_cell(payload)
     with pytest.raises(ledger.LedgerError, match=r"adoption\[0\]\.evidence"):
         ledger.validate(payload)
 
