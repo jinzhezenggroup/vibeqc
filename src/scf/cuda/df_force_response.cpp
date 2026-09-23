@@ -190,8 +190,7 @@ vibeqc_status select_corrected_occupied_response_factor(
                                             {1, plan.nbf, plan.naux, true, true, system});
   const auto bytes = plan.matrix_elements * sizeof(double);
   auto error = cudaSetDevice(plan.device_id);
-  if (error != cudaSuccess)
-    return cuda_failure(error, "select corrected response device", detail);
+  if (error != cudaSuccess) return cuda_failure(error, "select corrected response device", detail);
   // A later enqueue, eigensolver or host allocation may fail after the H2D
   // upload borrows terms[0].density. Drain before returning/rethrowing so the
   // caller can release its density even when no response bridge is entered.
