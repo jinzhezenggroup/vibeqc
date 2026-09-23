@@ -1,5 +1,6 @@
 """Device-free closure gates for d-shell stationary CUDA task lowering."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -39,6 +40,30 @@ def test_stationary_cuda_d_shell_layout_uses_canonical_component_inventory() -> 
     assert requests == derivative_requests(("", "xx", "yy"))
 
 
+def test_stationary_cuda_d_shell_layout_rejects_unsupported_records() -> None:
+    from vibeqc._stationary_cuda import _component_domain, _layout
+
+    basis = _d_shell_basis()
+    high_l = SimpleNamespace(
+        **{
+            **vars(basis),
+            "shells": (SimpleNamespace(angular_momentum=3),),
+        }
+    )
+    with pytest.raises(NotImplementedError, match="s/p/d"):
+        _layout(high_l)
+
+    packed = basis.packed.copy()
+    ao_start = 3 * basis.natom + 2 * basis.nprimitive
+    packed[ao_start + 3] = 4
+    invalid_components = SimpleNamespace(**{**vars(basis), "packed": packed})
+    with pytest.raises(ValueError, match="one to three"):
+        _layout(invalid_components)
+
+    with pytest.raises(ValueError, match="exceeds s/p/d"):
+        _component_domain(((("xxx", 1.0),),))
+
+
 def test_stationary_cuda_component_tasks_preserve_public_ao_indices_and_weights() -> (
     None
 ):
@@ -75,6 +100,32 @@ def test_stationary_cuda_component_tasks_preserve_public_ao_indices_and_weights(
             )
         )
     np.testing.assert_array_equal(owner.tasks[:2, 0], expected)
+
+
+def test_stationary_cuda_component_nuclear_task_encodes_binding() -> None:
+    from vibeqc._stationary_cuda import _CudaSources
+    from vibeqc_compiler.integral.first_derivative_schedule import derivative_binding
+    from vibeqc_compiler.method.stationary_cuda import encode_stationary_derivative_kind
+
+    calls = []
+    owner = object.__new__(_CudaSources)
+    owner.used = 0
+    owner.component_mode = True
+    owner.kinds = {("nuclear", ()): 7}
+    owner.handle = None
+    owner._call = lambda *args: calls.append(args)
+
+    owner.nuclear(0, 1, np.asarray([1.0, 2.0]))
+
+    expected = encode_stationary_derivative_kind(
+        7,
+        derivative_binding("nuclear", ()),
+        rank=2,
+        has_nucleus=False,
+    )
+    assert len(calls) == 1
+    assert calls[0][0] == "stationary_nuclear"
+    assert calls[0][2:] == (expected, 0, 1, 1.0, 2.0)
 
 
 def test_stationary_cuda_derivative_shards_are_bounded_and_uniquely_named() -> None:
@@ -133,3 +184,70 @@ def test_stationary_cuda_d_shell_work_cap_is_explicit() -> None:
         .default
         == 16_000_000
     )
+
+
+def test_prepared_d_shell_execution_selects_sharded_jit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from vibeqc import _stationary_cuda
+    from vibeqc._stationary_cuda import PreparedStationaryCudaExecution
+    from vibeqc_compiler.integral.first_derivative_schedule import (
+        CUDA_REQUESTS_PER_UNIT,
+    )
+
+    class StopAfterStationaryCompile(Exception):
+        pass
+
+    captured = {}
+    owner = PreparedStationaryCudaExecution()
+    monkeypatch.setattr(owner, "_request", lambda **kwargs: object())
+    monkeypatch.setattr(
+        _stationary_cuda,
+        "derivative_cuda_sources",
+        lambda domain: (((), "shard-0"), ((), "shard-1")),
+    )
+
+    def compile_stationary(primitive_source: object, **kwargs: object) -> object:
+        captured["primitive_source"] = primitive_source
+        captured["shard_width"] = kwargs["primitive_shard_width"]
+        return object()
+
+    monkeypatch.setattr(_stationary_cuda, "compile_stationary_cuda", compile_stationary)
+
+    def stop(*args: object, **kwargs: object) -> None:
+        raise StopAfterStationaryCompile
+
+    monkeypatch.setattr(_stationary_cuda, "compile_grid", stop)
+    target = SimpleNamespace(architecture="sm_90")
+
+    with pytest.raises(StopAfterStationaryCompile):
+        owner.ensure(
+            state=object(),
+            basis=_d_shell_basis(),
+            contract=object(),
+            plan=SimpleNamespace(spin_blocks=1),
+            tensor_plans={},
+            compiler=object(),
+            cache=tmp_path,
+            aot_directory=tmp_path,
+            target=target,
+            requests=(),
+            functional=0,
+            ecp=False,
+            device=0,
+            spec=SimpleNamespace(partition_iterations=3),
+            grid_plan=SimpleNamespace(peak_bytes=0),
+            source_bytes=0,
+            tile_points=1,
+            primitive_tile=1,
+            integral_terms=1,
+            work_budget=1,
+            max_device_bytes=1,
+            max_host_bytes=1,
+            host_bound=0,
+        )
+
+    assert captured == {
+        "primitive_source": ("shard-0", "shard-1"),
+        "shard_width": CUDA_REQUESTS_PER_UNIT,
+    }
