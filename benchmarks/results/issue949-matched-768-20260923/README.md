@@ -18,7 +18,8 @@ energy/force values against the original `1e-9 Eh` and `1e-8 Eh/Bohr` gates.
 sets absolute `VIBEQC_SOURCE_DIR` and `VIBEQC_RUN_DIR`, exact
 `VIBEQC_SOURCE_SHA`, and its actual Job name as
 `VIBEQC_BENCHMARK_ALLOCATION`. The clean, pinned source is built with Release
-settings for `sm_90`; the binary SHA-256 is printed and the build exit is
+settings for `sm_90` with the explicitly supported `portable_cuda` AOT profile;
+the binary SHA-256 is printed and the build exit is
 retained in the run directory. `measure` refuses a missing or failed build.
 Its runner stores a phase marker before each prime and timed endpoint so that
 an external time limit leaves a named incomplete stage and a lower bound,

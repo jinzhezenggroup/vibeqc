@@ -40,7 +40,7 @@ if [[ "$phase" = build ]]; then
         -DCMAKE_BUILD_TYPE=Release -DVIBEQC_ENABLE_CUDA=ON \
         -DVIBEQC_CUDA_ARCHITECTURES=90 -DVIBEQC_CUDA_FAST_COMPILE=OFF \
         -DVIBEQC_CUDA_SEPARABLE_COMPILATION=OFF \
-        -DVIBEQC_AOT_UNIT_MODE=stable-shards -DVIBEQC_AOT_PROFILE=auto
+        -DVIBEQC_AOT_UNIT_MODE=stable-shards -DVIBEQC_AOT_PROFILE=portable_cuda
     cmake --build "$build_dir" --target vibeqc --parallel 4
     sha256sum "$build_dir/libvibeqc.so"
     exit 0
