@@ -9,6 +9,11 @@ sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 
 from vibeqc_compiler.method.spec import SemilocalXCPrimitive, resolve_method
 from vibeqc_compiler.xc.semilocal_codegen import emit_polarized_semilocal
+from vibeqc_compiler.xc.wb97mv_maple import (
+    DENSITY_THRESHOLD,
+    SIGMA_THRESHOLD,
+    TAU_THRESHOLD,
+)
 
 
 def emit_wb97mv_device() -> str:
@@ -27,6 +32,11 @@ def emit_wb97mv_device() -> str:
         identity_constant="kWb97mvDeviceExpressionIdentity",
         production=True,
         function_qualifier="__device__ inline",
+        declarations=(
+            f"inline constexpr double kWb97mvDeviceDensityThreshold = {DENSITY_THRESHOLD.hex()};",
+            f"inline constexpr double kWb97mvDeviceSigmaThreshold = {SIGMA_THRESHOLD.hex()};",
+            f"inline constexpr double kWb97mvDeviceTauThreshold = {TAU_THRESHOLD.hex()};",
+        ),
     )
     return "\n".join(
         [
