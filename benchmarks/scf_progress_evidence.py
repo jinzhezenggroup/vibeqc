@@ -111,7 +111,8 @@ def analyze_progress_events(events: list[dict[str, Any]]) -> list[dict[str, Any]
                 elapsed
                 for event in segment
                 if event.get("event") == "get_veff_begin"
-                and (elapsed := _finite_number(event.get("elapsed_seconds"))) is not None
+                and (elapsed := _finite_number(event.get("elapsed_seconds")))
+                is not None
                 and elapsed >= 0.0
             ),
             None,
