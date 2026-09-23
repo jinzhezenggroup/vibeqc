@@ -23,7 +23,7 @@ def test_runner_deadline_and_outcome(tmp_path: Path, mode: str) -> None:
     helper.write_text(
         f"#!{bash}\n"
         "trap '' TERM\n"
-        "printf '%s\\n' \"$$\" > \"$PROBE_PID\"\n"
+        'printf \'%s\\n\' "$$" > "$PROBE_PID"\n'
         "printf 'probe started\\n'\n"
         + ("while :; do sleep 60; done\n" if mode == "ignore-term" else "exit 0\n")
     )
