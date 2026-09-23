@@ -101,11 +101,32 @@ for cold/warm/changed energy plus analytic forces; explicit corrected
 (23.85%). Maximum independent errors remain below 5.23e-11 Eh and
 1.51e-10 Eh/Bohr. The repeated traced and untraced directions establish
 a case-specific matched endpoint gain, not an automatic-selection or
-cross-workload speed claim. Whole-endpoint memory sampling and a non-water
-streamed holdout remain open.
+cross-workload speed claim.
+
+In a separate full-endpoint replay (Slurm 11513,
+`/tmp/qc-1117-memory-pending.log`), `nvidia-smi` sampled allocated-device
+usage every 100 ms while the same binaries completed all three phases.
+The baseline's 21,251 samples reach 19,403 MiB during changed geometry;
+the corrected candidate's 16,172 samples reach 13,915 MiB during cold SCF.
+The observed high-water difference is 5,488 MiB, with both below the
+32,607-MiB reported device capacity. This is *sampled device-wide used
+memory*, including driver overhead, and a lower bound on any transient
+peak: it is neither an exact allocator high-water mark nor a clean timing
+run. Do not infer a general memory guarantee from the response-only scratch
+counter or this one sampled replay.
+
+The separate ammonia-trimer non-water gate is **not qualified**: Slurm 11512
+selected a resident value plan at 24 MiB; Slurm 11514 streamed values at
+16 MiB and passed independent PySCF energy/force checks, but explicit
+`occupied` produced no `corrected_response_factor` and retained 174 dense
+AO products in the cold response. The assertion in
+`tests/python/test_df_corrected_response_cuda.py` fails rather than counting
+this bounded dense fallback as an occupied success. The selection prerequisite
+that rejected this streamed case has not yet been isolated; rerun a structurally
+different streamed, corrected holdout before treating the route as qualified.
 
 Before automatic selection or a general production speed claim, collect
-additional untraced matched Release A/B samples, whole-endpoint peak memory,
+additional untraced matched Release A/B samples, allocator-level peak memory,
 and a structurally different *streamed* holdout. DFT qualification under #1117 is
 separate; this HF-DF result cannot close the tracker.
 
