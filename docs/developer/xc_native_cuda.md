@@ -64,8 +64,9 @@ key to an emitted launcher during preparation. Spin layout remains an argument;
 AO precision does not change the FP64 point algebra. The selected consumer calls
 the same canonical point implementation with constant functional/consumer facts,
 so CUDA compilation can remove unrelated algebra before register allocation.
-The point launch remains 128 threads with the existing point tile. Native code
-binds its buffers to the retained launcher; graph replay retains that entry.
+Physical PBE uses a compiler-selected 32-thread point block; the other consumers
+retain 128 threads. The point tile and arena remain unchanged. Native code binds
+its buffers to the retained launcher; graph replay retains that entry.
 Unsupported functional/response pairs fail during preparation. See the
 [consumer specialization decision](../../.agents/notes/implemented/performance/2026-09-23-xc-point-consumers.md).
 

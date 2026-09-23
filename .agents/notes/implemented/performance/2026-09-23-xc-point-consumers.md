@@ -21,8 +21,10 @@ consumer templates. There are exactly five launchers. The plan resolves one
 launcher during preparation and keeps it for its lifetime; execution and graph
 capture bind the same validated buffers to that entry. Spin remains a layout
 argument. AO precision remains a separate producer policy, and every point
-consumer still uses FP64. No point-tile or launch-width change is combined with
-this repair.
+consumer still uses FP64. Consumer pruning is measured first at the unchanged
+128-thread launch width. A separate ablation qualifies a 32-thread block only
+for physical PBE; other consumers retain 128 threads. Point tiles and device
+workspace do not change.
 
 Specialization calls the existing scaled LDA/PBE point source and generated
 r²SCAN source with constant facts. It adds no alternate equation or AD system.
@@ -94,6 +96,51 @@ its composed source archive SHA256 is
 `f4b73948f9b2067ae448304bf3460981031d434c7842d81fdf67845537d56467`.
 This older composed tree supplies PBE performance evidence only; standalone
 latest-master gates own r²SCAN qualification.
+
+### Separate point scheduling ablation
+
+Slurm 11445 retains the same PBE96 semantic work and tile size but uses eight
+32-thread point blocks. Point time falls to 2.014273851 seconds and complete
+profiled two-step execution is 21.206064242 seconds (preparation 4.061018431 s).
+This is a modest improvement: density/potential contractions still dominate.
+The diagnostic remains unconverged and does not qualify full96 endpoints.
+
+Complete PBE24 direct/DF energy endpoints use identical 16 cold/2 warm native
+iterations and pass all four measured GPU4PySCF energy pairs at the unchanged
+1e-8 Eh gate (Slurm 11444/11445). These are clean endpoint timings, separate
+from the profiles above:
+
+| Variant | Direct cold / warm seconds | DF cold / warm seconds |
+| --- | --- | --- |
+| Generic v12 | 20.0591 / 2.5211, 2.5454 | 10.5160 / 1.3731, 1.3681 |
+| Specialized v13, 128 threads | 20.0195 / 2.5268, 2.5665 | 10.4515 / 1.3590, 1.3877 |
+| Specialized PBE, 32 threads | 19.6856 / 2.4838, 2.5031 | 10.1142 / 1.3177, 1.3483 |
+
+The experimental v14 library uses 32 threads for all consumers, but **only PBE
+was performance-tested**. The production schedule therefore selects 32 only
+for physical PBE and retains the prior width elsewhere. Its PBE specialization
+is the same measured program. No spin/precision Cartesian product is emitted.
+The experiment's library/archive SHA256 values are respectively
+`0f049dc22ea0ec387573755fb883215b7d97426ec7863b468a575bdce69e7a08` and
+`c1cb650a6e22ccc80086d07a9922894f99e83a9125d1049ebb27c452d0e883e5`.
+
+The final PBE-only schedule passes the expanded standalone native suite and
+compute-sanitizer memcheck with zero errors (Slurm 11446). All final PBE24 pairs
+are within 9.10e-12 Eh (direct) / 4.17e-11 Eh (DF); the independently serialized
+cold-energy differences are 9.10e-12 / 3.02e-11 Eh. Preparation is
+0.390062403 / 0.608762536 seconds. These timings do not include forces.
+
+Broader public tests on the old composed tree are **not an accepted gate**:
+Slurm 11447 reports 26 failures, 8 passes and 1 skip across selected direct/DF
+SCF and replay tests. Slurm 11448 reproduces the minimal direct H2/PBE failure
+with both the pre-change v12 and specialized v13/v15 libraries, so at least
+that failure predates this repair. Latest-master standalone endpoint gates are
+required to isolate this integration limitation; do not weaken the tests or
+use the passing PBE24 results to assert all small endpoints pass.
+
+The final composed v15 library/archive hashes are
+`1cb7c035e2f37ba23ff1f28edd0a0b32e06eb3910c777d2dd8efd91e2a8e2d3b` /
+`48e600e431270edf982aa737e5f87a40bd827baddf6e464e7140384adbea04e1`.
 
 ## Revisit when
 

@@ -430,13 +430,15 @@ __global__ void evaluate_points(const double* features, const double* weights, I
   }
 }
 
-// Preserve the original point work, tile and launch width. Consumer pruning
-// and point-launch scheduling need separate endpoint qualification.
+// The qualified physical PBE schedule spreads a bounded tile over more SMs.
+// Other consumers retain their original launch width until separately measured;
+// no extra kernel variant, point work or device workspace is introduced.
 template <I functional, bool response>
 void launch_points(cudaStream_t stream, const double* features, const double* weights,
                     std::size_t count, std::size_t spins, double* coefficients,
                     double* point_totals, int* error, const double* delta) {
-  evaluate_points<functional, response><<<vibeqc_tensor::blocks(count, 128), 128, 0, stream>>>(
+  constexpr I threads = functional == 1 && !response ? 32 : 128;
+  evaluate_points<functional, response><<<vibeqc_tensor::blocks(count, threads), threads, 0, stream>>>(
       features, weights, count, spins, coefficients, point_totals, error, delta);
 }
 
