@@ -9,15 +9,10 @@ from vibeqc_compiler.xc.capability_resolution import (
     CapabilityNotQualified,
     CapabilityResolution,
 )
-from vibeqc_compiler.xc.libxc_bulk_capabilities import (
-    BulkFunctionalCapability,
-    functional_capability,
-)
+from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
 
 
-def _qualified_resolution(
-    name: str,
-) -> tuple[BulkFunctionalCapability, CapabilityResolution]:
+def _qualified_resolution(name: str) -> tuple[object, CapabilityResolution]:
     capability = functional_capability(name)
     qualified = CapabilityResolution(
         name=capability.name,
@@ -48,16 +43,27 @@ def test_bulk_ks_fails_closed_without_molecular_evidence() -> None:
     assert "molecular-scf" in exc.value.missing_stages
 
 
-def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(monkeypatch) -> None:
+def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     capability, qualified = _qualified_resolution("GGA_X_PBE_SOL")
-    requests = []
+    requests: list[tuple[object, ...]] = []
     evidence = {"compiled-cpu": {"sentinel": True}}
 
-    def fake_capability(name, *, evidence=None):
+    def fake_capability(
+        name: str,
+        *,
+        evidence: dict[str, object] | None = None,
+    ) -> object:
         requests.append(("capability", name, evidence))
         return capability
 
-    def fake_resolve(name, *, required_stages, evidence=None):
+    def fake_resolve(
+        name: str,
+        *,
+        required_stages: tuple[str, ...],
+        evidence: dict[str, object] | None = None,
+    ) -> CapabilityResolution:
         requests.append(("resolve", name, tuple(required_stages), evidence))
         return qualified
 
@@ -92,7 +98,7 @@ def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(monkeypatch) -> 
 
 
 def test_bulk_ks_descriptive_identifier_does_not_change_semantic_plan(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     capability, qualified = _qualified_resolution("LDA_C_VWN_4")
     monkeypatch.setattr(
@@ -108,7 +114,9 @@ def test_bulk_ks_descriptive_identifier_does_not_change_semantic_plan(
     assert first.capability.identity == second.capability.identity
 
 
-def test_bulk_ks_rejects_non_cpu_backend_before_promotion(monkeypatch) -> None:
+def test_bulk_ks_rejects_non_cpu_backend_before_promotion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         bulk_ks,
         "functional_capability",
@@ -120,7 +128,7 @@ def test_bulk_ks_rejects_non_cpu_backend_before_promotion(monkeypatch) -> None:
 
 
 def test_bulk_ks_rejects_unsupported_ingredient_before_stage_resolution(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base = functional_capability("GGA_X_PBE_SOL")
     capability = SimpleNamespace(
@@ -141,7 +149,9 @@ def test_bulk_ks_rejects_unsupported_ingredient_before_stage_resolution(
         bulk_ks.resolve_bulk_ks(base.name)
 
 
-def test_bulk_ks_detects_capability_identity_drift(monkeypatch) -> None:
+def test_bulk_ks_detects_capability_identity_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     capability, qualified = _qualified_resolution("GGA_X_PBE_SOL")
     drifted = CapabilityResolution(
         name=qualified.name,
