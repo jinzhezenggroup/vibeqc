@@ -6,6 +6,8 @@ from collections.abc import Iterable, Mapping
 from fractions import Fraction
 from typing import Any
 
+from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
+from vibeqc_compiler.xc.libxc_maple import MapleImportError
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec, UnsupportedXC
 from vibeqc_compiler.xc.spec import functional as _functional
 
@@ -97,11 +99,6 @@ def capability(
     one. Custom compositions therefore do not acquire production support merely
     by choosing an identifier that resembles a built-in name.
     """
-    # Capability inspection is itself an explicit extension action. Keep the
-    # evidence registry and Maple importer dormant for ordinary XC composition.
-    from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
-    from vibeqc_compiler.xc.libxc_maple import MapleImportError
-
     if not isinstance(identifier, str) or not identifier.strip():
         raise TypeError("XC capability queries require a non-empty identifier")
     try:
