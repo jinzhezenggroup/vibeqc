@@ -201,34 +201,23 @@ def build_record(
     source_root: Path,
     *,
     spin: str = "polarized",
-    compact_features: bool = False,
 ) -> BulkProgram:
-    """Lower a bound registration into physical density/gradient/laplacian/tau IR.
-
-    compact_features removes MGGA feature families that the pinned Libxc
-    registration does not declare as required. Missing upstream worker
-    arguments are supplied as zero constants, so the imported mathematical
-    source remains unchanged while runtime consumers avoid dead inputs.
-    """
+    """Lower a bound registration into physical density/gradient/laplacian/tau IR."""
     if spin not in ("polarized", "unpolarized"):
         raise ValueError("bulk spin must be polarized or unpolarized")
     polarized = spin == "polarized"
     family = record["family"]
     if family not in ("lda", "gga", "mgga"):
         raise MapleImportError("bulk Graph construction requires an energy family")
-    needs_laplacian = "XC_FLAGS_NEEDS_LAPLACIAN" in record["flags"]
-    needs_tau = "XC_FLAGS_NEEDS_TAU" in record["flags"]
     names = ["rho_a", "rho_b"] if polarized else ["rho"]
     if family != "lda":
         names += ["sigma_aa", "sigma_ab", "sigma_bb"] if polarized else ["sigma"]
     if family == "mgga":
-        if not compact_features or needs_laplacian:
-            names += ["lapl_a", "lapl_b"] if polarized else ["lapl"]
-        if not compact_features or needs_tau:
-            names += ["tau_a", "tau_b"] if polarized else ["tau"]
+        names += (
+            ["lapl_a", "lapl_b", "tau_a", "tau_b"] if polarized else ["lapl", "tau"]
+        )
     graph = Graph()
     variables = tuple(graph.variable(name) for name in names)
-    by_name = dict(zip(names, variables, strict=True))
     rho_a, rho_b = variables[:2] if polarized else (variables[0] / 2,) * 2
     density = rho_a + rho_b
     zeta = (rho_a - rho_b) / density if polarized else graph.constant(0)
@@ -245,17 +234,16 @@ def build_record(
         xs_b = sigma_bb.pow(0.5) * rho_b.pow(-4 / 3)
         arguments.extend((xt, xs_a, xs_b))
     if family == "mgga":
-        zero = graph.constant(0)
-        if polarized:
-            lapl_a = by_name.get("lapl_a", zero)
-            lapl_b = by_name.get("lapl_b", zero)
-            tau_a = by_name.get("tau_a", zero)
-            tau_b = by_name.get("tau_b", zero)
-        else:
-            lapl = by_name.get("lapl", zero)
-            tau = by_name.get("tau", zero)
-            lapl_a = lapl_b = lapl / 2
-            tau_a = tau_b = tau / 2
+        lapl_a, lapl_b, tau_a, tau_b = (
+            variables[5:]
+            if polarized
+            else (
+                variables[2] / 2,
+                variables[2] / 2,
+                variables[3] / 2,
+                variables[3] / 2,
+            )
+        )
         arguments.extend(
             (
                 lapl_a * rho_a.pow(-5 / 3),
@@ -277,7 +265,6 @@ def build_record(
             },
             "spin": spin,
             "features": names,
-            **({"compact_features": True} if compact_features else {}),
             "source_manifest_sha256": canonical_hash(files),
             "transitive_sha256": module.transitive_sha256,
             "adapter_sha256": file_hash(Path(__file__)),
@@ -295,7 +282,6 @@ def build_bulk_program(
     spin: str = "polarized",
     source_root: Path | None = None,
     catalog_path: Path = CATALOG_PATH,
-    compact_features: bool = False,
 ) -> BulkProgram:
     """Build one named imported registration, never a handwritten fallback."""
     catalog = read_catalog(catalog_path)
@@ -308,10 +294,4 @@ def build_bulk_program(
             f"bulk Libxc registration is blocked: {record['reason']}"
         )
     root = asset_path(SOURCE_ASSET) if source_root is None else Path(source_root)
-    return build_record(
-        record,
-        catalog["source_files"],
-        root,
-        spin=spin,
-        compact_features=compact_features,
-    )
+    return build_record(record, catalog["source_files"], root, spin=spin)

@@ -200,14 +200,27 @@ def build_bulk_runtime_program(
     if spin not in capability.spin_layouts:
         raise UnsupportedXC(f"bulk runtime spin layout is unsupported: {spin!r}")
 
-    bulk = libxc_bulk.build_bulk_program(
-        capability.name, spin=spin, compact_features=True
-    )
+    bulk = libxc_bulk.build_bulk_program(capability.name, spin=spin)
+    # Project the runtime ABI, not the imported expression. Flags alone are not
+    # proof that an input is dead; never replace a reachable variable with zero.
+    families = {"rho": "rho", "sigma": "sigma", "lapl": "laplacian", "tau": "tau"}
+    reachable_inputs = set(bulk.graph.topological_order((bulk.energy,)))
+    selected = []
+    for feature, variable in zip(bulk.features, bulk.variables, strict=True):
+        family = families.get(feature.split("_", 1)[0])
+        if family in ingredients:
+            selected.append((feature, variable))
+        elif variable.identifier in reachable_inputs:
+            raise UnsupportedXC(
+                f"bulk runtime cannot discard reachable feature: {feature}"
+            )
+    features = tuple(feature for feature, _ in selected)
+    variables = tuple(variable for _, variable in selected)
     spec = BulkRuntimeSpec(
         identifier=capability.name,
         family=capability.family,
         spin=spin,
-        features=bulk.features,
+        features=features,
         ingredients=ingredients,
         capability_identity=capability.identity,
         source_identity=bulk.identity,
@@ -225,7 +238,7 @@ def build_bulk_runtime_program(
     if optimization not in ("none", "before", "after"):
         raise UnsupportedXC("unsupported optimization order")
 
-    graph, energy, variables = bulk.graph, bulk.energy, bulk.variables
+    graph, energy = bulk.graph, bulk.energy
     if optimization == "before":
         graph, (energy,) = graph.apply_algebra_form(
             (energy,), AlgebraForm.FACTORED_NARY
