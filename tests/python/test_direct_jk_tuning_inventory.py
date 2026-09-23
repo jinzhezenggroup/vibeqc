@@ -9,7 +9,9 @@ import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CHECKER_PATH = REPOSITORY_ROOT / "tools/check_direct_jk_tuning_inventory.py"
-SPEC = importlib.util.spec_from_file_location("check_direct_jk_tuning_inventory", CHECKER_PATH)
+SPEC = importlib.util.spec_from_file_location(
+    "check_direct_jk_tuning_inventory", CHECKER_PATH
+)
 assert SPEC is not None and SPEC.loader is not None
 CHECKER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(CHECKER)
@@ -17,7 +19,9 @@ SPEC.loader.exec_module(CHECKER)
 
 def _inventory() -> dict[str, object]:
     return json.loads(
-        (REPOSITORY_ROOT / "docs/direct_jk_tuning_inventory.json").read_text(encoding="utf-8")
+        (REPOSITORY_ROOT / "docs/direct_jk_tuning_inventory.json").read_text(
+            encoding="utf-8"
+        )
     )
 
 
@@ -31,7 +35,9 @@ def _write_fixture(root: Path, payload: dict[str, object]) -> None:
         / ".agents/notes/implemented/performance/2026-09-21-direct-jk-target-resource-policy.md"
     )
     note.parent.mkdir(parents=True, exist_ok=True)
-    note.write_text("# Direct J/K target-resource policy slice (#597)\n", encoding="utf-8")
+    note.write_text(
+        "# Direct J/K target-resource policy slice (#597)\n", encoding="utf-8"
+    )
 
     constants = root / "src/scf/cuda/direct_constants.hpp"
     constants.parent.mkdir(parents=True, exist_ok=True)

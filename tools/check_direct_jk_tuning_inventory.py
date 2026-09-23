@@ -22,7 +22,9 @@ _ALLOWED_EXCLUDED_CLASSIFICATIONS = {
 _CONSTEXPR_RE_TEMPLATE = r"\b{symbol}\s*=\s*(?P<expression>[^;]+);"
 
 
-def _safe_repository_path(root: Path, value: object, field: str, errors: list[str]) -> Path | None:
+def _safe_repository_path(
+    root: Path, value: object, field: str, errors: list[str]
+) -> Path | None:
     if not isinstance(value, str) or not value.strip():
         errors.append(f"{field} must be a non-empty repository-relative path")
         return None
@@ -74,7 +76,9 @@ def _require_constexpr(
     if not isinstance(symbol, str) or not symbol:
         errors.append(f"{section} entry requires a non-empty symbol")
         return
-    source = _safe_repository_path(root, entry.get("source"), f"{section}.{symbol}.source", errors)
+    source = _safe_repository_path(
+        root, entry.get("source"), f"{section}.{symbol}.source", errors
+    )
     expected = entry.get("expected_expression")
     if not isinstance(expected, str) or not expected.strip():
         errors.append(f"{section}.{symbol}.expected_expression must be non-empty")
@@ -122,12 +126,16 @@ def _require_tokens(
         return
     for token in tokens_value:
         if token not in text:
-            errors.append(f"{field}: required token {token!r} missing from {source_value}")
+            errors.append(
+                f"{field}: required token {token!r} missing from {source_value}"
+            )
 
 
 def validate_repository(root: Path) -> list[str]:
     errors: list[str] = []
-    inventory = _safe_repository_path(root, INVENTORY_PATH.as_posix(), "inventory", errors)
+    inventory = _safe_repository_path(
+        root, INVENTORY_PATH.as_posix(), "inventory", errors
+    )
     if inventory is None:
         return errors
     payload = _load_json(inventory, errors)
@@ -139,7 +147,9 @@ def validate_repository(root: Path) -> list[str]:
     if type(payload.get("issue")) is not int or payload["issue"] != 597:
         errors.append("issue must be integer 597")
 
-    note = _safe_repository_path(root, payload.get("source_note"), "source_note", errors)
+    note = _safe_repository_path(
+        root, payload.get("source_note"), "source_note", errors
+    )
     if note is not None:
         note_text = _read_text(note, "source_note", errors)
         if note_text is not None and "#597" not in note_text:
@@ -172,7 +182,9 @@ def validate_repository(root: Path) -> list[str]:
             seen_symbols.add(symbol)
         classification = entry.get("classification")
         if classification not in _ALLOWED_REMAINING_CLASSIFICATIONS:
-            errors.append(f"{field}.classification is not recognized: {classification!r}")
+            errors.append(
+                f"{field}.classification is not recognized: {classification!r}"
+            )
         state = entry.get("state")
         if state not in _ALLOWED_REMAINING_STATES:
             errors.append(f"{field}.state is not recognized: {state!r}")
@@ -202,11 +214,18 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(f"duplicate migrated setting {name!r}")
         else:
             migrated_names.add(name)
-        if not isinstance(raw_entry.get("owner"), str) or not raw_entry["owner"].strip():
+        if (
+            not isinstance(raw_entry.get("owner"), str)
+            or not raw_entry["owner"].strip()
+        ):
             errors.append(f"{field}.owner must be non-empty")
         token_field = f"{field}({name})" if isinstance(name, str) and name else field
         _require_tokens(
-            root, raw_entry.get("source"), raw_entry.get("required_tokens"), token_field, errors
+            root,
+            raw_entry.get("source"),
+            raw_entry.get("required_tokens"),
+            token_field,
+            errors,
         )
 
     for index, raw_entry in enumerate(excluded):
@@ -221,8 +240,13 @@ def validate_repository(root: Path) -> list[str]:
             seen_symbols.add(symbol)
         classification = raw_entry.get("classification")
         if classification not in _ALLOWED_EXCLUDED_CLASSIFICATIONS:
-            errors.append(f"{field}.classification is not recognized: {classification!r}")
-        if not isinstance(raw_entry.get("reason"), str) or not raw_entry["reason"].strip():
+            errors.append(
+                f"{field}.classification is not recognized: {classification!r}"
+            )
+        if (
+            not isinstance(raw_entry.get("reason"), str)
+            or not raw_entry["reason"].strip()
+        ):
             errors.append(f"{field}.reason must be non-empty")
         _require_constexpr(root, raw_entry, field, errors)
 
@@ -231,7 +255,9 @@ def validate_repository(root: Path) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument(
+        "--root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
     args = parser.parse_args()
     errors = validate_repository(args.root)
     if errors:
