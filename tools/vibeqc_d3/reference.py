@@ -18,19 +18,40 @@ from pathlib import Path
 import numpy as np
 from vibeqc_compiler.method.dispersion import D3Spec
 
+from tools import source_registry
+
 _ROOT = Path(__file__).resolve().parents[2]
-_UPSTREAM = _ROOT / "upstream" / "xtbloom" / "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+_SOURCE_ID = "xtbloom-gfn1-d3"
+_REQUIRED_SOURCE_FILES = frozenset({"gfn1_d3.json", "gfn1.json"})
 _MANIFEST = _ROOT / "manifests" / "xtbloom-d3.json"
 _POINTER = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
+
+
+def _registered_source_texts() -> dict[str, str]:
+    """Load exact D3/GFN1 source texts through the common source registry."""
+    registry = source_registry._load(source_registry.REGISTRY)
+    source = registry["sources"].get(_SOURCE_ID)
+    if not isinstance(source, dict):
+        raise source_registry.SourceRegistryError(
+            f"source registry is missing {_SOURCE_ID!r}"
+        )
+    texts = source_registry.read_source_texts(_SOURCE_ID, source)
+    missing = _REQUIRED_SOURCE_FILES - texts.keys()
+    if missing:
+        raise source_registry.SourceRegistryError(
+            f"{_SOURCE_ID!r} is missing required files: {sorted(missing)}"
+        )
+    return {name: texts[name] for name in sorted(_REQUIRED_SOURCE_FILES)}
 
 
 @lru_cache(maxsize=1)
 def _tables() -> typing.Any:
     manifest = json.loads(_MANIFEST.read_text())
-    table_raw = (_UPSTREAM / "gfn1_d3.json").read_bytes()
+    source_texts = _registered_source_texts()
+    table_raw = source_texts["gfn1_d3.json"].encode("utf-8")
     if hashlib.sha256(table_raw).hexdigest() != manifest["data"]["gfn1_d3.json"]:
         raise ValueError("D3 source data digest mismatch: gfn1_d3.json")
-    model_raw = (_UPSTREAM / "gfn1.json").read_bytes()
+    model_raw = source_texts["gfn1.json"].encode("utf-8")
     expected_model = manifest["sources"]["data/parameters/gfn1.json"]["sha256"]
     if hashlib.sha256(model_raw).hexdigest() != expected_model:
         raise ValueError("D3 source data digest mismatch: gfn1.json")
