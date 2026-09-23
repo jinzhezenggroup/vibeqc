@@ -7,12 +7,14 @@ be acknowledged explicitly before a CI/update workflow can accept them.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from .capability_catalog import capability_changes
 from .libxc_bulk_capabilities import CAPABILITY_STAGES
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 RegressionKind = Literal["removed-functional", "identity-change", "stage-demotion"]
 
