@@ -68,6 +68,10 @@ def test_cuda_error_adapter_preserves_oom_and_other_diagnostics(
     adapter: Path, status: int, expected: int
 ) -> None:
     result = subprocess.run(
-        [str(adapter), str(status)], capture_output=True, text=True, timeout=10
+        [str(adapter), str(status)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert result.returncode == expected, result.stderr
