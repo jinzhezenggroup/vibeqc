@@ -12,7 +12,7 @@ from vibeqc_compiler.xc.semilocal_codegen import (
     emit_polarized_semilocal,
     polarized_feature_count,
 )
-from vibeqc_compiler.xc.spec import functional
+from vibeqc_compiler.xc.spec import AUTO_BULK_COMPONENTS, UnsupportedXC, functional
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -77,6 +77,59 @@ def test_shared_semilocal_lowerer_derives_native_feature_width(
     )
     assert f"double feature_derivative[{features}];" in source
     assert "__device__ inline TestValue test_point(" in source
+
+
+@pytest.mark.parametrize(
+    ("name", "features"),
+    (("LDA_C_VWN_4", 2), ("GGA_X_PBE_SOL", 5)),
+)
+def test_bulk_imports_reach_shared_native_pointwise_lowerer_without_admission(
+    name: str, features: int
+) -> None:
+    assert name in AUTO_BULK_COMPONENTS
+    spec = functional(name, spin="polarized")
+    assert polarized_feature_count(spec) == features
+
+    cpu = emit_polarized_semilocal(
+        spec,
+        value_type="BulkValue",
+        function_name="bulk_point",
+        identity_constant="kBulkIdentity",
+        pointwise_bulk=True,
+    )
+    cuda = emit_polarized_semilocal(
+        spec,
+        value_type="BulkValue",
+        function_name="bulk_point",
+        identity_constant="kBulkIdentity",
+        function_qualifier="__device__ inline",
+        pointwise_bulk=True,
+    )
+    assert _identity(cpu, "kBulkIdentity") == _identity(cuda, "kBulkIdentity")
+    assert f"double feature_derivative[{features}];" in cpu
+    assert "inline BulkValue bulk_point(" in cpu
+    assert "__device__ inline BulkValue bulk_point(" in cuda
+
+    with pytest.raises(UnsupportedXC, match="not production-domain admitted"):
+        emit_polarized_semilocal(
+            spec,
+            value_type="BulkValue",
+            function_name="bulk_point",
+            identity_constant="kBulkIdentity",
+        )
+
+
+def test_bulk_tau_mgga_stays_explicitly_blocked_until_feature_projection_lands() -> None:
+    spec = functional("MGGA_X_R2SCAN01", spin="polarized")
+    assert "MGGA_X_R2SCAN01" in AUTO_BULK_COMPONENTS
+    with pytest.raises(UnsupportedXC, match="tau/laplacian projection"):
+        emit_polarized_semilocal(
+            spec,
+            value_type="BulkMggaValue",
+            function_name="bulk_mgga_point",
+            identity_constant="kBulkMggaIdentity",
+            pointwise_bulk=True,
+        )
 
 
 def test_generator_tools_do_not_reown_semilocal_differentiation() -> None:

@@ -14,7 +14,10 @@ from vibeqc_compiler.integral.expr import AlgebraForm, ScalarDomain
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .domain import feature_domains
-from .expression_dispatch import build_energy_expression
+from .expression_dispatch import (
+    build_energy_expression,
+    build_pointwise_energy_expression,
+)
 from .scan_maple import scan_runtime_policy
 from .spec import FunctionalSpec
 
@@ -25,10 +28,18 @@ def build_roots(
     *,
     production: bool = False,
     variable_domains: dict[str, ScalarDomain] | None = None,
+    pointwise_bulk: bool = False,
 ) -> tuple[typing.Any, typing.Any, str]:
     """Build requested derivative roots and their canonical expression identity."""
 
-    graph, energy, variables = build_energy_expression(spec, production=production)
+    if type(pointwise_bulk) is not bool:
+        raise TypeError("pointwise_bulk must be bool")
+    if pointwise_bulk and production:
+        raise ValueError("pointwise bulk lowering cannot claim production semantics")
+    if pointwise_bulk:
+        graph, energy, variables = build_pointwise_energy_expression(spec)
+    else:
+        graph, energy, variables = build_energy_expression(spec, production=production)
     derivatives = {(): energy}
     for output in outputs:
         for depth in range(1, len(output) + 1):
@@ -55,6 +66,7 @@ def build_roots(
     payload = {
         "spec": spec.to_payload(),
         "outputs": outputs,
+        "representation": "pointwise-bulk" if pointwise_bulk else "admitted",
         "optimization": "domain-preserving-raw" if violations else "after",
         **(
             {
@@ -84,12 +96,14 @@ def polarized_feature_count(spec: typing.Any) -> int:
 
     if spec.spin != "polarized":
         raise ValueError("native semilocal lowering requires polarized FunctionalSpec")
+    if spec.ingredients == ("rho",):
+        return 2
     if spec.ingredients == ("rho", "sigma"):
         return 5
     if spec.ingredients == ("rho", "sigma", "tau"):
         return 7
     raise ValueError(
-        "native semilocal lowering requires rho/sigma or rho/sigma/tau FunctionalSpec"
+        "native semilocal lowering requires rho, rho/sigma or rho/sigma/tau FunctionalSpec"
     )
 
 
@@ -102,8 +116,9 @@ def emit_polarized_semilocal(
     production: bool = False,
     declarations: tuple[str, ...] = (),
     function_qualifier: str = "inline",
+    pointwise_bulk: bool = False,
 ) -> str:
-    """Emit polarized GGA/MGGA E/vxc from the canonical scalar Graph.
+    """Emit polarized LDA/GGA/MGGA E/vxc from the canonical scalar Graph.
 
     function_qualifier is a backend ABI choice such as inline on the host or
     __device__ inline for CUDA. It does not participate in the mathematical
@@ -111,7 +126,19 @@ def emit_polarized_semilocal(
     """
 
     feature_count = polarized_feature_count(spec)
-    if feature_count == 5:
+    if feature_count == 2:
+        signature = (
+            f"{function_qualifier} {value_type} {function_name}(",
+            "    double rho_a, double rho_b) {",
+        )
+        prelude = (
+            "  const double sigma_aa = 0.0;",
+            "  const double sigma_ab = 0.0;",
+            "  const double sigma_bb = 0.0;",
+            "  const double tau_a = 0.0;",
+            "  const double tau_b = 0.0;",
+        )
+    elif feature_count == 5:
         signature = (
             f"{function_qualifier} {value_type} {function_name}(",
             "    double rho_a, double rho_b, double sigma_aa, double sigma_ab, double sigma_bb) {",
@@ -129,7 +156,12 @@ def emit_polarized_semilocal(
         prelude = ()
 
     outputs = ((), *((i,) for i in range(feature_count)))
-    graph, roots, expression_hash = build_roots(spec, outputs, production=production)
+    graph, roots, expression_hash = build_roots(
+        spec,
+        outputs,
+        production=production,
+        pointwise_bulk=pointwise_bulk,
+    )
     emitter = ScalarCEmitter(graph, {name: name for name in spec.features})
     emitter.emit(roots)
     references = [emitter.reference(root) for root in roots]
