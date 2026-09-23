@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
@@ -46,6 +47,20 @@ def _calculator(**kwargs: object) -> Calculator:
     return Calculator(**options)
 
 
+@pytest.fixture(params=("cpu", "cuda"))
+def energy_device(request: pytest.FixtureRequest) -> str:
+    if request.param == "cuda" and os.environ.get("VIBEQC_RCCSDT_CUDA_TEST") != "1":
+        pytest.skip("requires explicitly allocated CUDA native library")
+    return request.param
+
+
+@pytest.fixture
+def cuda_device() -> str:
+    if os.environ.get("VIBEQC_RCCSDT_CUDA_TEST") != "1":
+        pytest.skip("requires explicitly allocated CUDA native library")
+    return "cuda"
+
+
 def test_native_rccsdt_capability_is_energy_forces_batch() -> None:
     caps = method_capabilities("rccsd(t)")
     alias = method_capabilities("ccsd(t)")
@@ -55,13 +70,17 @@ def test_native_rccsdt_capability_is_energy_forces_batch() -> None:
     assert alias.available and alias.supported_properties == caps.supported_properties
 
 
-@pytest.mark.parametrize("case", ("h2", "h2o"))
-def test_public_native_rccsdt_matches_pinned_standard_triples(case: str) -> None:
+@pytest.mark.parametrize("case", ("h2", "h2o", "nh3"))
+def test_public_native_rccsdt_matches_pinned_standard_triples(
+    energy_device: str, case: str
+) -> None:
     atoms, reference, triples = _reference_case(case)
-    result = _calculator().singlepoint(atoms, properties=("energy",))
+    result = _calculator(device=energy_device).singlepoint(atoms, properties=("energy",))
     diag = result.correlation
     assert result.converged and result.forces is None
-    assert result.executed_backend == "cpu_reference"
+    assert result.executed_backend == (
+        "cuda" if energy_device == "cuda" else "cpu_reference"
+    )
     assert diag is not None
     assert diag.ccsd_t_triples_energy == pytest.approx(triples, abs=2e-9)
     assert result.energy == pytest.approx(reference["total_energy"] + triples, abs=3e-9)
@@ -73,6 +92,11 @@ def test_public_native_rccsdt_matches_pinned_standard_triples(case: str) -> None
     assert diag.ccsd_t_workspace_bytes > 0
     assert diag.ccsd_replay_singles_residual_max <= 1e-11
     assert diag.ccsd_replay_doubles_residual_max <= 1e-11
+    if energy_device == "cuda":
+        assert diag.correlation_owned_device_bytes >= diag.ccsd_t_workspace_bytes
+        assert diag.ccsd_setup_h2d_bytes > 0
+        assert diag.ccsd_amplitude_d2h_bytes > 0
+        assert diag.mo_host_staging
 
 
 @pytest.mark.parametrize("case", ("h2o", "nh3"))
@@ -124,18 +148,23 @@ def test_public_native_rccsdt_force_matches_three_step_energy_finite_difference(
     assert errors[-1] < 2.0e-6, errors
 
 
-def test_public_native_rccsdt_rejects_unpromoted_cuda_df_and_frozen_core() -> None:
-    with pytest.raises(NotImplementedError, match=r"CUDA owner"):
-        _calculator(device="cuda")
+def test_public_native_rccsdt_rejects_unpromoted_cuda_force_df_and_frozen_core() -> None:
+    atoms, _, _ = _reference_case("h2")
+    with pytest.raises(ValueError, match=r"does not support.*forces"):
+        _calculator(device="cuda").singlepoint(
+            atoms, properties=("energy", "forces")
+        )
     with pytest.raises(NotImplementedError, match=r"density fitting"):
         _calculator(density_fitting="cpu")
     with pytest.raises(NotImplementedError, match=r"frozen-core"):
         _calculator(ccsd_frozen_core=1)
 
 
-def test_public_native_rccsdt_nonconvergence_never_publishes_triples() -> None:
+def test_public_native_rccsdt_nonconvergence_never_publishes_triples(
+    energy_device: str,
+) -> None:
     atoms, _, _ = _reference_case("h2o")
-    calc = _calculator(ccsd_max_iterations=1)
+    calc = _calculator(device=energy_device, ccsd_max_iterations=1)
     with pytest.raises(RuntimeError, match=r"maximum RCCSD iterations|conver"):
         calc.singlepoint(atoms, properties=("energy",))
 
@@ -164,6 +193,28 @@ def test_public_native_rccsdt_homogeneous_batch_repeats_and_moves_geometry() -> 
             atol=2e-10,
             rtol=0,
         )
+
+
+def test_public_native_rccsdt_cuda_batch_rebuild_and_failure_isolation(
+    cuda_device: str,
+) -> None:
+    atoms, _, _ = _reference_case("h2o")
+    moved = [
+        (z, [xyz[0], xyz[1], xyz[2] + (0.03 if i == 1 else 0.0)])
+        for i, (z, xyz) in enumerate(atoms)
+    ]
+    calc = _calculator(device=cuda_device)
+    expected = calc.singlepoint(moved, properties=("energy",)).energy
+    with calc.prepare_batch([atoms, atoms]) as batch:
+        first = batch.execute(strict=True)
+        assert all(item.succeeded and item.forces is None for item in first.items)
+        updated = batch.execute(
+            coordinates=[None, [xyz for _, xyz in moved]], strict=True
+        )
+        assert updated.items[1].energy == pytest.approx(expected, abs=2e-9)
+        invalid = batch.execute(coordinates=[None, [0.0]], strict=False)
+        assert invalid.items[0].succeeded and not invalid.items[1].succeeded
+        assert invalid.items[1].correlation is None
 
 
 def test_public_force_admits_reported_endpoint_budget() -> None:
