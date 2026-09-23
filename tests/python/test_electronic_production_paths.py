@@ -5,13 +5,15 @@ from __future__ import annotations
 import copy
 import json
 import typing
-from pathlib import Path
 
 from tools.check_electronic_production_paths import (
     DEFAULT_LEDGER,
     load_and_validate,
     validate_production_path_ledger,
 )
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _fixture() -> dict[str, object]:
