@@ -2,8 +2,10 @@
 
 A 16x16 shared-memory contraction reuses each density/AO load across a tile.
 Potential assembly packs the scalar/spatial coefficients into the dead density
-work panels, then evaluates a symmetric cross product. No library handle,
-provider workspace, global allocation, screening or precision change is needed.
+work panels, then evaluates a symmetric cross product. The tiled path also
+folds the deterministic three-channel point-total reduction into the potential
+launch. No library handle, provider workspace, global allocation, screening or
+precision change is needed.
 """
 
 from typing import Any
@@ -92,9 +94,13 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
 // One triangle is authoritative, including on diagonal and partial blocks.
 // A compact linear block domain enumerates only tile_mu <= tile_nu instead of
 // launching the unused lower half of a square grid. One lane decodes the tile
-// pair; all 256 lanes then execute the unchanged symmetric contraction.
+// pair; all 256 lanes then execute the unchanged symmetric contraction. The
+// first block of spin zero also performs the historical serial-per-channel
+// point-total reduction after its matrix work, preserving the exact arithmetic
+// order while avoiding a separate kernel launch for every point tile.
 __global__ void tiled_potential(const double* ao, const double* work, I n, I count,
-                                I work_jets, double* potential, int* error) {
+                                I work_jets, const double* point_totals, double* potential,
+                                double* totals, int* error) {
   __shared__ I tile_mu, tile_nu;
   if (threadIdx.x == 0 && threadIdx.y == 0) {
     const I pair = blockIdx.x;
@@ -135,6 +141,12 @@ __global__ void tiled_potential(const double* ao, const double* work, I n, I cou
     potential[index] = value;
     potential[(spin*n+nu)*n+mu] = value;
   }
+  if (blockIdx.x == 0 && blockIdx.z == 0 && threadIdx.y == 0 && threadIdx.x < 3) {
+    const I channel = threadIdx.x;
+    double sum = 0.0;
+    for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];
+    totals[channel] = finite(totals[channel]+sum,error,3);
+  }
 }
 
 // The compiler owns schedule admission; native only supplies borrowed buffers.
@@ -155,17 +167,20 @@ inline void scheduled_density_product(cudaStream_t stream, const double* density
 }
 inline void scheduled_potential(cudaStream_t stream, const double* ao,
     const double* coefficients, const double* weights, I n, I count, I spins,
-    I terms, I work_jets, double* work, double* potential, int* error) {
+    I terms, I work_jets, double* work, const double* point_totals,
+    double* potential, double* totals, int* error) {
   if (tiled_xc_admitted(n, count)) {
     compact_potential_panels<<<vibeqc_tensor::blocks(spins*count*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,work_jets,work,error);
     vibeqc_tensor::cuda_check(cudaGetLastError());
     const I tiles = (n+15)/16, tile_pairs = tiles*(tiles+1)/2;
     tiled_potential<<<dim3(tile_pairs,1,spins),dim3(16,16),0,stream>>>(
-        ao,work,n,count,work_jets,potential,error);
+        ao,work,n,count,work_jets,point_totals,potential,totals,error);
   } else {
     assemble_potential<<<vibeqc_tensor::blocks(spins*n*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,potential,error);
+    vibeqc_tensor::cuda_check(cudaGetLastError());
+    accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);
   }
 }
 """
