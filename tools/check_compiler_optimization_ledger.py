@@ -77,7 +77,8 @@ def validate(payload: Any) -> dict[str, int]:
         raise LedgerError("ledger root must be an object")
     if payload.get("schema") != _SCHEMA:
         raise LedgerError("unknown ledger schema")
-    if payload.get("schema_version") != 1:
+    version = payload.get("schema_version")
+    if type(version) is not int or version != 1:
         raise LedgerError("unsupported ledger schema_version")
     _require_text(payload.get("coverage"), "coverage")
 
