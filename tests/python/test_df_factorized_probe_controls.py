@@ -30,7 +30,8 @@ def probe() -> dict[str, typing.Any]:
                 for target in node.targets
             )
         )
-        or isinstance(node, ast.FunctionDef) and node.name == "controls"
+        or isinstance(node, ast.FunctionDef)
+        and node.name == "controls"
     ]
     assert len(selected) == 4
     namespace = {"os": os, "typing": typing, "contextmanager": contextmanager}
@@ -39,9 +40,7 @@ def probe() -> dict[str, typing.Any]:
     return namespace
 
 
-@pytest.mark.parametrize(
-    "variant", ("auto", "shell", "packet", "packed", "factorized")
-)
+@pytest.mark.parametrize("variant", ("auto", "shell", "packet", "packed", "factorized"))
 @pytest.mark.parametrize("fail", (False, True))
 def test_probe_controls_isolate_and_restore_response_space(
     probe: dict[str, typing.Any],
