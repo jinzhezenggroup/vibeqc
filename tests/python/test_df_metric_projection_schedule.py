@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src/scf/cuda/df_metric_kernels.cu"
 

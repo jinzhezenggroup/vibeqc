@@ -77,8 +77,9 @@ void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, 
                                     double* projected) {
   constexpr std::size_t kPairGroups = 32;
   const auto groups = std::min(pairs, kPairGroups);
-  scale_metric_projection_kernel<<<
-      dim3(static_cast<unsigned>((dimension + 255) / 256), static_cast<unsigned>(groups)), 256, 0,
-      stream>>>(dimension, pairs, eigenvalues, square_root, projected);
+  scale_metric_projection_kernel<<<dim3(static_cast<unsigned>((dimension + 255) / 256),
+                                        static_cast<unsigned>(groups)),
+                                   256, 0, stream>>>(dimension, pairs, eigenvalues, square_root,
+                                                     projected);
 }
 }  // namespace vibeqc::scf::cuda_df
