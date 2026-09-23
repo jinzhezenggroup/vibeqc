@@ -83,13 +83,13 @@ def validate_production_path_ledger(
             errors.append(f"{label} missing fields: {', '.join(missing)}")
             continue
 
-        row = typing.cast(dict[str, object], raw_row)
+        row = typing.cast("dict[str, object]", raw_row)
         row_id = row["id"]
         if not _is_nonempty_string(row_id):
             errors.append(f"{label}.id must be a non-empty string")
             row_id_text = label
         else:
-            row_id_text = typing.cast(str, row_id)
+            row_id_text = typing.cast("str", row_id)
             if row_id_text in seen_ids:
                 errors.append(f"duplicate row id: {row_id_text}")
             seen_ids.add(row_id_text)
@@ -111,7 +111,7 @@ def validate_production_path_ledger(
 
         key_fields = ("method_family", "product", "backend", "domain")
         if all(_is_nonempty_string(row[field]) for field in key_fields):
-            key = tuple(typing.cast(str, row[field]) for field in key_fields)
+            key = tuple(typing.cast("str", row[field]) for field in key_fields)
             if key in seen_keys:
                 errors.append(
                     f"duplicate method/product/backend/domain row: {' / '.join(key)}"
@@ -126,7 +126,7 @@ def validate_production_path_ledger(
                         f"{row_id_text}.{field} must be set for a production row"
                     )
                 continue
-            path = root / typing.cast(str, value)
+            path = root / typing.cast("str", value)
             if full_checkout and not path.is_file():
                 errors.append(f"{row_id_text}.{field} path does not exist: {value}")
 
@@ -143,7 +143,7 @@ def validate_production_path_ledger(
                         f"{row_id_text}.evidence[{evidence_index}] must be a non-empty path"
                     )
                     continue
-                if full_checkout and not (root / typing.cast(str, value)).is_file():
+                if full_checkout and not (root / typing.cast("str", value)).is_file():
                     errors.append(
                         f"{row_id_text}.evidence[{evidence_index}] path does not exist: {value}"
                     )
