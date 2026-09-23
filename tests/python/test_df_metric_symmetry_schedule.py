@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = (ROOT / "src/scf/cuda/df_metric_kernels.cu").read_text(encoding="utf-8")
 
@@ -29,7 +28,9 @@ def test_metric_symmetry_uses_compact_upper_tile_domain() -> None:
 def test_metric_symmetry_tile_decoder_covers_each_upper_tile_once() -> None:
     for tiles in (1, 2, 3, 7, 58, 232):
         actual = [_decode_tile(pair, tiles) for pair in range(tiles * (tiles + 1) // 2)]
-        expected = [(row, column) for column in range(tiles) for row in range(column + 1)]
+        expected = [
+            (row, column) for column in range(tiles) for row in range(column + 1)
+        ]
         assert actual == expected
 
 
