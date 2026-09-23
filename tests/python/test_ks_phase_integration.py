@@ -41,7 +41,7 @@ def _environment() -> dict[str, typing.Any]:
 def _load(name: str) -> typing.Any:
     namespace = _environment()
     module = ast.Module(body=[_function(name)], type_ignores=[])
-    exec(compile(module, "inventory", "exec"), namespace)
+    exec(compile(module, "inventory", "exec"), namespace)  # noqa: S102
     return namespace[name]
 
 
@@ -154,10 +154,10 @@ def test_native_semantic_abi_version_is_checked_even_for_default_model(
     module = ast.Module(body=[guard], type_ignores=[])
     code = compile(module, "inventory ABI", "exec")
     if version == 1:
-        exec(code, namespace)
+        exec(code, namespace)  # noqa: S102
     else:
         with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
-            exec(code, namespace)
+            exec(code, namespace)  # noqa: S102
 
 
 def test_request_does_not_read_retired_version_properties() -> None:
