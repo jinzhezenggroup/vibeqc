@@ -35,14 +35,18 @@ def check_legacy_codegen_test(
     if not path.is_file():
         raise OwnershipGuardError(f"legacy codegen test file is missing: {path}")
     if baseline is not None and not baseline.is_file():
-        raise OwnershipGuardError(f"legacy codegen baseline file is missing: {baseline}")
+        raise OwnershipGuardError(
+            f"legacy codegen baseline file is missing: {baseline}"
+        )
 
     try:
         if baseline is not None:
             budget = min(budget, line_count(baseline))
         lines = line_count(path)
     except (OSError, UnicodeError) as error:
-        raise OwnershipGuardError(f"cannot read legacy codegen source: {error}") from error
+        raise OwnershipGuardError(
+            f"cannot read legacy codegen source: {error}"
+        ) from error
     if lines > budget:
         raise OwnershipGuardError(
             "legacy codegen catch-all grew to "
@@ -56,7 +60,9 @@ def main() -> int:
     """Run the fixed ceiling locally or the target-branch ratchet in PR CI."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--baseline", type=Path, help="legacy source from the tested PR base")
+    parser.add_argument(
+        "--baseline", type=Path, help="legacy source from the tested PR base"
+    )
     args = parser.parse_args()
     try:
         lines = check_legacy_codegen_test(baseline=args.baseline)
