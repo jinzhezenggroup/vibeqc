@@ -51,9 +51,7 @@ def test_reset_is_persisted_before_first_callback_or_timeout(
         progress.checkpoint("get_veff_end", seconds=3.0)
         progress.checkpoint("scf_cycle", cycle=4, de=-0.5, norm_gorb=0.1)
     killed: list[int] = []
-    monkeypatch.setattr(
-        progress_module.os, "kill", lambda pid, sig: killed.append(pid)
-    )
+    monkeypatch.setattr(progress_module.os, "kill", lambda pid, sig: killed.append(pid))
     with progress.measure(endpoint):
         saved = json.loads(output.read_text())
         expected = {
@@ -67,9 +65,7 @@ def test_reset_is_persisted_before_first_callback_or_timeout(
         assert "diagnostic_progress" not in saved
         assert saved["completed_samples"] == [{"energy": -1.0}]
         if timeout:
-            connection = SimpleNamespace(
-                poll=lambda seconds: False, close=lambda: None
-            )
+            connection = SimpleNamespace(poll=lambda seconds: False, close=lambda: None)
             progress_module._watch(connection, 123456, 30, output, record)
             stopped = json.loads(output.read_text())
             assert stopped["status"] == "stopped"
