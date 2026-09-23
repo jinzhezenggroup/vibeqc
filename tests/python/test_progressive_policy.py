@@ -20,7 +20,6 @@ from vibeqc.progressive_controller import (
 )
 from vibeqc.progressive_policy import decide_refinement, rank_refinement_candidates
 
-
 TARGET_MODEL = ResolvedModel("rhf", "g" * 64, "b" * 64, 2)
 SOURCE_MODEL = ResolvedModel("rhf", "g" * 64, "s" * 64, 2)
 ACCURACY = TargetAccuracy(
