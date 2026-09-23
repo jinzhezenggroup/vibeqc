@@ -62,6 +62,9 @@ correctness/work diagnostics, not Release endpoint latency evidence.
 Composed Release sm_120 validation applies this source patch to PR #1139 and
 the final-state source patch from PR #1147. Its library SHA-256 is
 `a115a7f4990220454575c5bc35a6da4a179e74bd13b8c94f2c6910b0c259da3d`;
+the exact tested artifact is retained at
+`/tmp/qc-1117-corrected-composed-release.so`, because the #1139 build
+worktree was restored to its original sources and binary after validation.
 Slurm 11503 passes all ten independent PySCF cold/warm/changed GPU gates for
 the composed value/final/response combinations. Slurm 11504 completes the
 original 96-atom, 768-AO / 3712-auxiliary, 21,421,977,600-byte DF allowance
