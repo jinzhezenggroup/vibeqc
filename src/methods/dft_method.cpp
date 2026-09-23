@@ -85,6 +85,10 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
       return NativeKsExecutionPlan{1, kKsSemilocalB3lyp, false};
     case VIBEQC_METHOD_B3LYP_UKS:
       return NativeKsExecutionPlan{2, kKsSemilocalB3lyp, false};
+    case VIBEQC_METHOD_WB97M_V:
+      return NativeKsExecutionPlan{1, kKsSemilocalWb97mv, false};
+    case VIBEQC_METHOD_WB97M_V_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalWb97mv, false};
     case VIBEQC_METHOD_R2SCAN_RKS:
       return NativeKsExecutionPlan{1, kKsSemilocalR2scan, false};
     case VIBEQC_METHOD_R2SCAN_UKS:
@@ -1456,6 +1460,8 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
 
 void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
                             const core::System& system) {
+  if (execution_plan.semilocal_family == kKsSemilocalWb97mv && !system.ecp_terms.empty())
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "WB97M-V ECP execution is not qualified");
   if (!unrestricted(execution_plan)) {
     if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
       throw std::invalid_argument(

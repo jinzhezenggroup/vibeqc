@@ -40,9 +40,8 @@ def test_cpu_force_checks_current_item_ecp_inventory(
 
     monkeypatch.setattr(dft, "NativeAO", lambda *args, **kwargs: Basis())
     monkeypatch.setattr(_cpu_force_resources, "qualified_basis", lambda basis: True)
-    monkeypatch.setattr(
-        _cpu_force_resources, "cpu_force_inventory", lambda *args, **kwargs: {}
-    )
+    inventory = Mock(return_value={})
+    monkeypatch.setattr(_cpu_force_resources, "cpu_force_inventory", inventory)
     monkeypatch.setattr(ecp, "resolve_ecp", lambda *args: (cores, ()))
     source = SimpleNamespace(backend="cpu", hamiltonian=hamiltonian, close=Mock())
     state = SimpleNamespace(_source=source)
@@ -58,7 +57,8 @@ def test_cpu_force_checks_current_item_ecp_inventory(
         _device_name="cpu",
         _representation_name="cartesian",
         _ks_options=SimpleNamespace(
-            grid=SimpleNamespace(radial_points=1, angular_polar=1, angular_azimuth=1)
+            grid=SimpleNamespace(radial_points=1, angular_polar=1, angular_azimuth=1),
+            execution_plan=SimpleNamespace(exchange=(), nonlocal_correlation=None),
         ),
     )
     batch = SimpleNamespace(_calculator=calculator, _charges=[0], _multiplicities=[1])
@@ -72,3 +72,6 @@ def test_cpu_force_checks_current_item_ecp_inventory(
             PreparedBatch._public_dft_cpu_force(batch, 0, atoms)
         consumer.assert_not_called()
     source.close.assert_called_once()
+    inventory.assert_called_once()
+    assert inventory.call_args.kwargs["range_exchange_sources"] == 0
+    assert inventory.call_args.kwargs["nonlocal_correlation"] is False

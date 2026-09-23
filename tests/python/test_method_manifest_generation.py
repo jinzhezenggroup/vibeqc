@@ -30,6 +30,7 @@ EXPECTED_ABI_IDS = {
     "b3lyp-rks": 16,
     "b3lyp-uks": 17,
     "pbe-d4-rks": 18,
+    "wb97m-v-uks": 19,
 }
 
 
@@ -55,13 +56,14 @@ def test_public_method_abi_ids_are_explicit_and_stable() -> None:
         **EXPECTED_ABI_IDS,
         "ccsd(t)": 4,
         "gfn2": 15,
+        "wb97m-v-rks": 3,
     }
 
 
 def test_public_method_provider_sets_are_generated() -> None:
     assert _generated_methods.HF_METHOD_IDS == frozenset({1, 2})
     assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset(
-        {6, 7, 8, 9, 10, 11, 13, 14, 16, 17, 18}
+        {3, 6, 7, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19}
     )
 
 
