@@ -286,7 +286,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     read_status(true);  // Reject singular S before attempting a core solve.
 
     multiply(hcore, false, x, tmp1);
-    multiply(x, true, tmp1, tmp2);
+    multiply(x, false, tmp1, tmp2);
     solve();
     multiply(x, false, tmp2, tmp1);
     if (spins == 2) {
@@ -722,12 +722,28 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   void enqueue() {
-    if (device_chunk_mode)
-      enqueue_device();
-    else
-      enqueue_legacy();
+    try {
+      if (device_chunk_mode)
+        enqueue_device();
+      else
+        enqueue_legacy();
+    } catch (...) {
+      invalidate_warm_orbitals();
+      throw;
+    }
   }
-  bool finish() { return device_chunk_mode ? finish_device() : finish_legacy(); }
+  bool finish() {
+    // A partial density/frame copy or rejected iteration cannot lend the old
+    // intermediate frame. Preserve the independent last-good warm density.
+    try {
+      const bool active = device_chunk_mode ? finish_device() : finish_legacy();
+      if (is_failed) invalidate_warm_orbitals();
+      return active;
+    } catch (...) {
+      invalidate_warm_orbitals();
+      throw;
+    }
+  }
 
   CudaXcView stage_xc(std::uint64_t next_generation) {
     if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
