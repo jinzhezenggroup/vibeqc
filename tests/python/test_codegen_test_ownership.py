@@ -36,7 +36,9 @@ def test_legacy_codegen_guard_rejects_regrowth(tmp_path: Path) -> None:
 def test_legacy_codegen_guard_rejects_missing_file(tmp_path: Path) -> None:
     missing = tmp_path / "test_codegen.py"
 
-    with pytest.raises(OwnershipGuardError, match="legacy codegen test file is missing"):
+    with pytest.raises(
+        OwnershipGuardError, match="legacy codegen test file is missing"
+    ):
         check_legacy_codegen_test(missing, budget=3)
 
 
