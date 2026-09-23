@@ -71,9 +71,7 @@ def _projected_transport(*, virtual_scale: float = 1.0) -> StateTransport:
         coefficients=target_coefficients,
         nvir=2,
     )
-    cross = np.array(
-        [[1.0, 0.0], [0.0, virtual_scale], [0.0, 0.0]], dtype=np.float64
-    )
+    cross = np.array([[1.0, 0.0], [0.0, virtual_scale], [0.0, 0.0]], dtype=np.float64)
     transport = StateTransport.classify(
         StateTransportRequest(
             source,

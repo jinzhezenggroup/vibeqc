@@ -64,11 +64,15 @@ class ProjectedAmplitudeGuess:
             if not isinstance(value, str) or not value:
                 raise ValueError(f"{name} must be a nonempty identity")
         if self.source_reference_id == self.target_reference_id:
-            raise ValueError("projected warm starts require distinct source/target references")
+            raise ValueError(
+                "projected warm starts require distinct source/target references"
+            )
         if not isinstance(self.amplitudes, AmplitudeSnapshot):
             raise TypeError("amplitudes must be an AmplitudeSnapshot")
         if self.amplitudes.reference_id != self.target_reference_id:
-            raise ValueError("projected amplitudes must be bound to the target reference")
+            raise ValueError(
+                "projected amplitudes must be bound to the target reference"
+            )
         if not isinstance(self.diagnostics, ProjectedAmplitudeDiagnostics):
             raise TypeError("diagnostics must be ProjectedAmplitudeDiagnostics")
 
@@ -147,12 +151,8 @@ def project_amplitude_guess(
     doubles = np.einsum(
         "lj,kjab->klab", transport.occupied_map, doubles, optimize=False
     )
-    doubles = np.einsum(
-        "ca,klab->klcb", transport.virtual_map, doubles, optimize=False
-    )
-    doubles = np.einsum(
-        "db,klcb->klcd", transport.virtual_map, doubles, optimize=False
-    )
+    doubles = np.einsum("ca,klab->klcb", transport.virtual_map, doubles, optimize=False)
+    doubles = np.einsum("db,klcb->klcd", transport.virtual_map, doubles, optimize=False)
     target = AmplitudeSnapshot(
         transport.target.reference_id,
         np.ascontiguousarray(singles, dtype=np.float64),
