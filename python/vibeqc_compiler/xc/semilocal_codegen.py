@@ -66,7 +66,7 @@ def build_roots(
     payload = {
         "spec": spec.to_payload(),
         "outputs": outputs,
-        "representation": "pointwise-bulk" if pointwise_bulk else "admitted",
+        **({"representation": "pointwise-bulk"} if pointwise_bulk else {}),
         "optimization": "domain-preserving-raw" if violations else "after",
         **(
             {
