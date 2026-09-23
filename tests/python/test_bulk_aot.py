@@ -5,7 +5,6 @@ from __future__ import annotations
 import gc
 import json
 import shutil
-import subprocess
 import sys
 import weakref
 from dataclasses import replace
@@ -13,6 +12,7 @@ from types import ModuleType, SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from vibeqc_compiler.common.compiler_process import CompileResult
 from vibeqc_compiler.common.compiler_work import charge_symbolic_intern
 from vibeqc_compiler.xc import bulk_aot
 
@@ -189,16 +189,20 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
 def test_compilation_timeout_is_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = 0
 
-    def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess:
+    def run(command: list[str], timeout: float, *, label: str) -> CompileResult:
         nonlocal calls
         calls += 1
+        assert timeout == 1
+        assert label.startswith("XC census")
         if calls == 1:
-            return subprocess.CompletedProcess(command, 0, "test compiler", "")
-        raise subprocess.TimeoutExpired(command, 1)
+            assert command[-1] == "--version"
+            return CompileResult(0, False, 0.01, "test compiler", "")
+        return CompileResult(124, True, 1.0, "", "injected timeout")
 
     monkeypatch.setattr(bulk_aot.shutil, "which", lambda _: sys.executable)
-    monkeypatch.setattr(bulk_aot.subprocess, "run", run)
-    assert bulk_aot.compile_probe(variant())["status"] == "timed-out"
+    monkeypatch.setattr(bulk_aot, "run_compiler", run)
+    assert bulk_aot.compile_probe(variant(), timeout=1)["status"] == "timed-out"
+    assert calls == 2
 
 
 def test_measurement_rebuilds_once_per_selected_group(
@@ -243,6 +247,7 @@ def test_deferred_groups_are_never_loaded() -> None:
 
 
 @pytest.fixture
+
 def synthetic_catalog(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict:
     """Control importer inputs; no alternative scientific formula implementation."""
     from vibeqc_compiler import xc
