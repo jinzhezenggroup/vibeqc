@@ -163,7 +163,7 @@ def plan_package(
         registrations.add(registration)
         groups.setdefault(variant.emission_identity, []).append(variant.to_payload())
     used_bytes = selected = 0
-    artifacts = []
+    artifacts: list[dict[str, Any]] = []
     for identity, members in sorted(groups.items()):
         members.sort(key=lambda item: (item["name"], item["import_identity"]))
         representative = members[0]
