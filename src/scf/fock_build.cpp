@@ -123,6 +123,15 @@ constexpr FockProviderCapabilities cpu_exact_fock_domain() {
   return capabilities;
 }
 
+constexpr FockProviderCapabilities cuda_exact_fock_domain() {
+  auto capabilities = supported_fock_domain();
+  // SR/LR value contractions reuse the direct CUDA Hermite recurrence with
+  // range_moments. resolve_fock_build keeps SR/LR derivatives fail-closed.
+  capabilities.short_range = true;
+  capabilities.long_range = true;
+  return capabilities;
+}
+
 constexpr FockProviderCapabilities cosx_fock_domain() {
   FockProviderCapabilities capabilities;
   capabilities.restricted = true;
@@ -172,7 +181,8 @@ constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
     make_registration("cpu.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cpu,
                       runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
     make_registration("cuda.exact", FockApproximation::Exact, runtime::ProviderBackend::Cuda,
-                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
+                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp",
+                      cuda_exact_fock_domain()),
     make_registration("cuda.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cuda,
                       kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
     make_registration("cpu.cosx", FockApproximation::SeminumericalCosx,
