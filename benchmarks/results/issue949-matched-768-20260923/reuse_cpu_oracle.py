@@ -17,6 +17,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT), str(ROOT / "python")]
 from benchmarks import df_policy_endpoint as endpoint  # noqa: E402
+from vibeqc_compiler.common.provenance import atomic_json  # noqa: E402
 
 
 RECEIPT = ROOT / "benchmarks/results/acceptance-closeout-20260922/df-768-panel-ablation.json.gz"
@@ -30,6 +31,7 @@ def retained_cpu_reference(case, orbital_basis, auxiliary_basis):
     requirements = {
         "aos": source["aos"] == 768,
         "historical_source": source["git_head"] == "0d89ab6fb6219d9af6641d5cfafe0b43f8387206",
+        "oracle_version": retained.get("pyscf_version") == "2.14.0",
         "geometry": json.loads(json.dumps(case.atoms)) == settings["geometries_bohr"],
         "method": case.method == settings["method"] == "rhf",
         "charge_spin": case.charge == 0 and case.multiplicity == 1,
@@ -67,8 +69,10 @@ def retained_cpu_reference(case, orbital_basis, auxiliary_basis):
 
 
 def main():
-    endpoint.cpu_reference = retained_cpu_reference
     output = Path(sys.argv[sys.argv.index("--output") + 1])
+    if output.exists():
+        raise RuntimeError("refusing to overwrite evidence")
+    endpoint.cpu_reference = retained_cpu_reference
     try:
         endpoint.main()
     finally:
@@ -81,7 +85,7 @@ def main():
                 "historical_source": "0d89ab6fb6219d9af6641d5cfafe0b43f8387206",
                 "scope": "independent CPU numbers only; fresh native library and same-device A/B",
             }
-            output.write_text(json.dumps(payload, indent=2) + "\n")
+            atomic_json(output, payload)
 
 
 if __name__ == "__main__":
