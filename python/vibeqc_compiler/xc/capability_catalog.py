@@ -82,7 +82,10 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
     functionals = summary.get("functionals")
     if not isinstance(functionals, Mapping):
         raise TypeError(f"{label} capability summary functionals must be a mapping")
-    if summary.get("total_functionals") != len(functionals):
+    if (
+        type(summary.get("total_functionals")) is not int
+        or summary["total_functionals"] != len(functionals)
+    ):
         raise ValueError(f"{label} capability summary total does not match inventory")
 
     stages = set(CAPABILITY_STAGES)
@@ -111,10 +114,34 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
             or not set(blocked) <= stages
         ):
             raise ValueError(f"{label} capability summary has unknown stage for {name}")
+        if len(set(qualified)) != len(qualified) or len(set(ready)) != len(ready):
+            raise ValueError(f"{label} capability summary has duplicate stages for {name}")
+        if set(qualified) & set(blocked):
+            raise ValueError(
+                f"{label} capability summary has qualified/blocked overlap for {name}"
+            )
+        public = record.get("public_dft")
+        if type(public) is not bool or public != ("public-method" in qualified):
+            raise ValueError(f"{label} capability summary has invalid public flag for {name}")
         if set(qualified) & set(ready):
             raise ValueError(
                 f"{label} capability summary has qualified/ready overlap for {name}"
             )
+
+    # Persisted summaries are redundant: every counter must agree with the
+    # detailed inventory. Do not accept an internally contradictory snapshot.
+    for field, inventory in (
+        ("qualified_counts", "qualified_stages"),
+        ("ready_counts", "ready_stages"),
+        ("blocked_counts", "blocked_stages"),
+    ):
+        counts = summary.get(field)
+        if not isinstance(counts, Mapping) or set(counts) != stages:
+            raise ValueError(f"{label} capability summary has invalid {field} inventory")
+        for stage in CAPABILITY_STAGES:
+            expected = sum(stage in record[inventory] for record in functionals.values())
+            if type(counts[stage]) is not int or counts[stage] != expected:
+                raise ValueError(f"{label} capability summary has inconsistent {field}: {stage}")
 
 
 def capability_changes(
