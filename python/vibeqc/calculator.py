@@ -969,14 +969,22 @@ class Calculator:
             self._capabilities.family == "density_functional"
             and density_fitting_mode == _native.DENSITY_FITTING_NONE
             and (semilocal_force or named_cpu_all_electron_force)
+            and not (
+                self._device_name == "cuda"
+                and basis_has_ecp
+                and any(
+                    shell.angular_momentum > 2
+                    for element in self._basis.elements
+                    for shell in element.shells
+                )
+            )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):
             # Python public capability layered on the native KS prepared owner
             # plus the backend's compiled stationary gradient consumer.
             # Keep the backend-neutral C registry conservative.
-            # ECP promotion admits s/p/d on CPU and s/p on CUDA, in both layouts. The shared
-            # nine-source consumer also enforces shape, byte and work caps;
-            # higher-angular ECP domains remain energy-only.
+            # ECP promotion admits through d on CUDA and higher angular domains
+            # remain energy-only until their bounded consumer is qualified.
             self._capabilities = replace(
                 self._capabilities,
                 supported_properties=self._capabilities.supported_properties
