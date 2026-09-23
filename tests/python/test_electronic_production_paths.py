@@ -81,6 +81,20 @@ def test_production_row_requires_existing_actual_path_anchors(tmp_path: Path) ->
     ]
 
 
+def test_missing_production_anchor_diagnostics_are_stably_ordered(
+    tmp_path: Path,
+) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    row["public_entry"] = ""
+    row["selector"] = ""
+    errors = validate_production_path_ledger(payload, root=tmp_path)
+    assert errors == [
+        "hf-energy-cpu-direct.public_entry must be set for a production row",
+        "hf-energy-cpu-direct.selector must be set for a production row",
+    ]
+
+
 def test_duplicate_execution_domain_is_rejected(tmp_path: Path) -> None:
     payload = _fixture()
     duplicate = copy.deepcopy(
