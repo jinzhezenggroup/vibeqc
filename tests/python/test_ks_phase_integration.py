@@ -144,8 +144,7 @@ def test_native_semantic_abi_version_is_checked_even_for_default_model(
     guard = next(
         node
         for node in ast.walk(function)
-        if isinstance(node, ast.If)
-        and ast.unparse(node.test) == "library is not None"
+        if isinstance(node, ast.If) and ast.unparse(node.test) == "library is not None"
     )
     library = SimpleNamespace(vibeqc_ks_resource_inventory_version_v1=lambda: 1)
     if version is not None:
