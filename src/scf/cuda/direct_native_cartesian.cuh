@@ -46,10 +46,23 @@ __device__ inline __noinline__ Scalar eri_cartesian_value(
     EvaluationReal<Scalar> p, EvaluationReal<Scalar> q, EvaluationReal<Scalar> rho,
     const Vec3<Scalar>& product_p, const Vec3<Scalar>& product_q, const Angular& angular_first,
     const Angular& angular_second, const Angular& angular_third, const Angular& angular_fourth,
-    const FirstCoefficients* first_coefficients, const SecondCoefficients* second_coefficients) {
+    const FirstCoefficients* first_coefficients, const SecondCoefficients* second_coefficients,
+    vibeqc::integrals::CoulombRange range = vibeqc::integrals::CoulombRange::Full,
+    double omega = 0.0) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   CoulombAuxiliary<Scalar, MaximumAngular> auxiliary;
-  fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
+  if (range == vibeqc::integrals::CoulombRange::Full) {
+    fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
+  } else {
+    if constexpr (std::is_same_v<Scalar, double>) {
+      if (!fill_coulomb_range<MaximumAngular>(rho, product_p, product_q, range, omega, auxiliary))
+        return scalar<Scalar>(NAN);
+    } else {
+      // Coordinate derivatives of SR/LR exchange use the generated weighted
+      // derivative owner; the direct value seam never aliases that contract.
+      return scalar<Scalar>(NAN);
+    }
+  }
 
   Scalar value = scalar<Scalar>(0.0);
   for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
@@ -84,7 +97,9 @@ __device__ inline Scalar primitive_eri_cartesian(
     double alpha, const Vec3<Scalar>& first, const Angular& angular_first, double beta,
     const Vec3<Scalar>& second, const Angular& angular_second, double gamma,
     const Vec3<Scalar>& third, const Angular& angular_third, double delta,
-    const Vec3<Scalar>& fourth, const Angular& angular_fourth) {
+    const Vec3<Scalar>& fourth, const Angular& angular_fourth,
+    vibeqc::integrals::CoulombRange range = vibeqc::integrals::CoulombRange::Full,
+    double omega = 0.0) {
   const double p = alpha + beta;
   const double q = gamma + delta;
   const double rho = p * q / (p + q);
@@ -103,7 +118,7 @@ __device__ inline Scalar primitive_eri_cartesian(
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   return eri_cartesian_value<MaximumAngular>(p, q, rho, product_p, product_q, angular_first,
                                              angular_second, angular_third, angular_fourth,
-                                             first_coefficients, second_coefficients);
+                                             first_coefficients, second_coefficients, range, omega);
 }
 
 /**
