@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import signal
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -39,6 +40,37 @@ def test_timeout_kills_owner_even_if_evidence_write_fails(
     connection.close.assert_called_once()
     append.assert_called_once()
     save.assert_called_once()
+
+
+def test_timeout_preserves_newer_parent_checkpoint(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "result.json"
+    output.write_text(
+        json.dumps(
+            {
+                "active_endpoint": "reference/cold",
+                "diagnostic_progress": {"event": "scf_cycle", "cycle": 7},
+            }
+        )
+    )
+    connection = Mock()
+    connection.poll.return_value = False
+    kill = Mock()
+    monkeypatch.setattr(module.os, "kill", kill)
+
+    module._watch(
+        connection,
+        12345,
+        0.01,
+        output,
+        {"active_endpoint": "reference/cold"},
+    )
+
+    record = json.loads(output.read_text())
+    assert record["status"] == "stopped"
+    assert record["diagnostic_progress"] == {"event": "scf_cycle", "cycle": 7}
+    kill.assert_called_once_with(12345, signal.SIGKILL)
 
 
 @pytest.mark.parametrize("failure", ("begin", "start"))

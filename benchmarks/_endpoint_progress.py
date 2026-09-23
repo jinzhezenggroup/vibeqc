@@ -37,6 +37,15 @@ def _append(path: Path, event: dict) -> None:
         stream.flush()
 
 
+def _latest_record(output: Path, fallback: dict) -> dict:
+    """Read the newest parent checkpoint without trusting a stale spawn snapshot."""
+    try:
+        loaded = json.loads(output.read_text())
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return dict(fallback)
+    return loaded if isinstance(loaded, dict) else dict(fallback)
+
+
 def _watch(
     connection: Any, pid: int, seconds: float, output: Path, record: dict
 ) -> None:
@@ -49,16 +58,18 @@ def _watch(
             "endpoint": record["active_endpoint"],
             "limit_seconds": seconds,
         }
-        # Evidence writes are best-effort at the deadline: a full or unavailable
-        # filesystem must not leave a blocked CUDA endpoint running indefinitely.
+        # Checkpoint recovery and evidence writes must not bypass termination
+        # after the deadline, even if decoding or another read operation fails.
         try:
+            # Preserve progress published after the watchdog was spawned.
+            latest = _latest_record(output, record)
             try:
                 _append(output.with_suffix(".progress.jsonl"), event)
             finally:
-                record.update(
+                latest.update(
                     status="stopped", error="endpoint deadline exceeded", stop=event
                 )
-                save_record(output, record)
+                save_record(output, latest)
         finally:
             os.kill(pid, signal.SIGKILL)
     finally:
@@ -83,7 +94,7 @@ class EndpointProgress:
         self.endpoint = "setup"
         self.started = time.monotonic()
 
-    def emit(self, event: str, **values: Any) -> None:
+    def emit(self, event: str, **values: Any) -> dict[str, Any]:
         entry = {
             "event": event,
             "endpoint": self.endpoint,
@@ -92,6 +103,13 @@ class EndpointProgress:
         }
         _append(self.journal, entry)
         print(json.dumps(entry, allow_nan=False), flush=True)
+        return entry
+
+    def checkpoint(self, event: str, **values: Any) -> None:
+        """Emit a trace event and persist it in the latest result checkpoint."""
+        entry = self.emit(event, **values)
+        self.record["diagnostic_progress"] = entry
+        save_record(self.output, self.record)
 
     @contextmanager
     def measure(self, endpoint: str) -> Iterator[None]:
@@ -151,7 +169,7 @@ class EndpointProgress:
                     if value is not None:
                         scalar = float(value)
                         values[name] = scalar if math.isfinite(scalar) else str(scalar)
-                self.emit("scf_cycle", **values)
+                self.checkpoint("scf_cycle", **values)
 
             engine.callback = callback
             try:
@@ -161,11 +179,11 @@ class EndpointProgress:
 
         def get_veff(*args: Any, **kwargs: Any) -> Any:
             cupy.cuda.Stream.null.synchronize()
-            self.emit("get_veff_begin")
+            self.checkpoint("get_veff_begin")
             start = time.monotonic()
             result = original_veff(*args, **kwargs)
             cupy.cuda.Stream.null.synchronize()
-            self.emit("get_veff_end", seconds=time.monotonic() - start)
+            self.checkpoint("get_veff_end", seconds=time.monotonic() - start)
             return result
 
         engine.kernel, engine.get_veff = kernel, get_veff
