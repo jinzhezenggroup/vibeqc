@@ -35,6 +35,7 @@ EXPECTED_RETIRED_PATHS = {
     "src/xtb/native/src/model/gfn2/lattice.cpp",
     "src/xtb/native/src/model/gfn2/lattice.hpp",
 }
+REQUIRED_FORBIDDEN_FRAGMENTS = {"model/gfn2/", "gfn2_", "gfn2."}
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -60,17 +61,38 @@ def _require_string_list(value: Any, where: str) -> list[str]:
 def load_inventory(path: Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise InventoryError(f"cannot load periodic asset inventory: {exc}") from exc
     if not isinstance(payload, dict):
         raise InventoryError("periodic asset inventory root must be an object")
     return payload
 
 
+def _local_path(root: Path, raw: str) -> Path:
+    """Keep retained and intentionally missing paths inside the canonical root."""
+    relative = Path(raw)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise InventoryError(f"unsafe inventory path: {raw!r}")
+    try:
+        candidate = (root / relative).resolve()
+        candidate.relative_to(root)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise InventoryError(f"invalid repository-local path: {raw!r}") from exc
+    return candidate
+
+
 def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
-    if payload.get("schema_version") != 1:
+    if not isinstance(payload, dict):
+        raise InventoryError("periodic asset inventory root must be an object")
+    try:
+        root = root.resolve(strict=True)
+        if not root.is_dir():
+            raise ValueError("root is not a directory")
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise InventoryError("repository root must be an existing directory") from exc
+    if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
         raise InventoryError("schema_version must be 1")
-    if payload.get("issue") != 805:
+    if type(payload.get("issue")) is not int or payload["issue"] != 805:
         raise InventoryError("issue must be 805")
 
     declared_classifications = set(
@@ -104,7 +126,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         if path in paths:
             raise InventoryError(f"duplicate asset path: {path}")
         paths.add(path)
-        actual_path = root / path
+        actual_path = _local_path(root, path)
         if not actual_path.is_file():
             raise InventoryError(f"retained periodic asset is missing: {path}")
 
@@ -126,7 +148,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         for evidence in _require_string_list(
             asset.get("evidence"), f"{where}.evidence"
         ):
-            if not (root / evidence).is_file():
+            if not _local_path(root, evidence).is_file():
                 raise InventoryError(f"periodic evidence path is missing: {evidence}")
 
     missing_classifications = EXPECTED_CLASSIFICATIONS - seen_classifications
@@ -146,7 +168,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
             "retired_native_pbc_paths must retain the canonical retired owner set"
         )
     for retired in sorted(retired_paths):
-        if (root / retired).exists():
+        if _local_path(root, retired).exists() or (root / retired).is_symlink():
             raise InventoryError(
                 f"retired native-PBC owner reappeared without inventory update: {retired}"
             )
@@ -162,7 +184,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
     for evidence in _require_string_list(
         derivative.get("evidence"), "strain_derivative.evidence"
     ):
-        if not (root / evidence).is_file():
+        if not _local_path(root, evidence).is_file():
             raise InventoryError(
                 f"strain-derivative evidence path is missing: {evidence}"
             )
@@ -175,8 +197,13 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         "generic_dependency_policy.forbidden_fragments",
     )
     _require_string(policy.get("reason"), "generic_dependency_policy.reason")
+    if not REQUIRED_FORBIDDEN_FRAGMENTS <= {fragment.lower() for fragment in fragments}:
+        raise InventoryError("forbidden_fragments must retain the GFN2 dependency guard")
     for generic_path in generic_paths:
-        text = generic_path.read_text(encoding="utf-8").lower()
+        try:
+            text = generic_path.read_text(encoding="utf-8").lower()
+        except (OSError, UnicodeError) as exc:
+            raise InventoryError(f"cannot read generic periodic owner: {generic_path}") from exc
         for fragment in fragments:
             if fragment.lower() in text:
                 relative = generic_path.relative_to(root)
@@ -188,7 +215,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
     if not isinstance(provenance, dict):
         raise InventoryError("provenance must be an object")
     notice = _require_string(provenance.get("notice"), "provenance.notice")
-    if not (root / notice).is_file():
+    if not _local_path(root, notice).is_file():
         raise InventoryError(f"periodic provenance notice is missing: {notice}")
     _require_string(
         provenance.get("current_native_sources_license"),
@@ -218,7 +245,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
         raise InventoryError(
             "historical_periodic_manifest_state must explicitly describe the current tree"
         )
-    if (root / manifest).exists():
+    if _local_path(root, manifest).exists() or (root / manifest).is_symlink():
         raise InventoryError(
             "historical periodic manifest reappeared; update its inventory state before claiming coverage"
         )
@@ -237,7 +264,7 @@ def main() -> int:
     parser.add_argument("--inventory", type=Path)
     args = parser.parse_args()
     try:
-        check_repository(args.root.resolve(), args.inventory)
+        check_repository(args.root, args.inventory)
     except InventoryError as exc:
         print(f"periodic asset inventory check failed: {exc}")
         return 1
