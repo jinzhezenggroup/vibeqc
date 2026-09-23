@@ -353,7 +353,7 @@ def test_automatic_component_filters_are_fail_closed() -> None:
 
 
 def test_production_domain_profiles_are_ingredient_driven_and_versioned() -> None:
-    lda = libxc_bulk_capabilities.functional_capability("LDA_X")
+    lda = libxc_bulk_capabilities.functional_capability("LDA_C_VWN_4")
     gga = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
     mgga = libxc_bulk_capabilities.functional_capability("MGGA_X_R2SCAN01")
 
@@ -455,3 +455,32 @@ def test_blocked_ingredient_cannot_be_promoted_with_forged_profile() -> None:
         libxc_bulk_capabilities.functional_capability(
             base.name, evidence={"production-domain": evidence}
         )
+
+
+@pytest.mark.parametrize(
+    "field", ("required_ingredients", "case_ids", "spin_layouts", "outputs")
+)
+@pytest.mark.parametrize("origin", ("input", "output"))
+def test_production_qualification_is_detached_from_caller_lists(
+    field: str, origin: str
+) -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = _stage_evidence(base, "production-domain")
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence={"production-domain": evidence}
+    )
+    expected = base.production_domain_profile.to_payload()
+    stage = next(
+        item for item in capability.stage_evidence if item.stage == "production-domain"
+    )
+    exported = capability.to_payload()
+    published = next(
+        item
+        for item in exported["stage_evidence"]
+        if item["stage"] == "production-domain"
+    )
+    target = evidence if origin == "input" else published
+    target["qualification"][field].clear()
+    assert stage.qualification == expected
+    assert stage.to_payload()["qualification"] == expected
+    assert "production-domain" in capability.qualified_stages
