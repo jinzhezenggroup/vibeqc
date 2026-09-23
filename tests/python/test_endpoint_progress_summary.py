@@ -65,7 +65,9 @@ def test_diagnostic_summary_retains_cycle_cost_and_trajectory_signals(
         "norm_ddm": 0.1,
     }
     assert summary["first_get_veff_begin_elapsed_seconds"] >= 0.0
-    assert summary["last_cycle_elapsed_seconds"] >= summary["first_cycle_elapsed_seconds"]
+    assert (
+        summary["last_cycle_elapsed_seconds"] >= summary["first_cycle_elapsed_seconds"]
+    )
     assert summary["cycle_elapsed_span_seconds"] >= 0.0
     assert summary["mean_cycle_interval_seconds"] >= 0.0
 
