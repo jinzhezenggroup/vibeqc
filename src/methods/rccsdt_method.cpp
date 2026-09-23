@@ -181,8 +181,6 @@ class RccsdtPrepared final : public PreparedCalculation {
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
-      last_ = diagnostic;
-
       state.result.energy = state.solved.total_energy + triples_energy;
       if (compute_forces) {
         if (!state.reference)
