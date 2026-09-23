@@ -42,6 +42,7 @@ def _run_child(mode: str, case: str, cache: Path) -> dict[str, object]:
         lambda_solver,
         native_tensor_cpu,
         rccsd_t_force,
+        triples_complete_gradient,
         triples_lambda_response,
     )
     from tools.vibeqc_posthf.sources import NativeSource
@@ -56,6 +57,14 @@ def _run_child(mode: str, case: str, cache: Path) -> dict[str, object]:
     original_bundle = native_tensor_cpu.NativeTensorProgramBundle
     original_owner = lambda_solver.NativeCCTensorExecutor
     original_triples = triples_lambda_response.accumulate_tile_triples_vjp
+    original_export = triples_complete_gradient.export_rhf
+
+    def fixed_generation(source: object, **kwargs: object) -> object:
+        # A new generation UUID is correct for ordinary live owners, but makes
+        # cross-process response identities incomparable in this benchmark.
+        return original_export(
+            source, generation_id=f"ccsdt-cpu-bundle-{case}", **kwargs
+        )
 
     def timed(constructor: object) -> object:
         def construct(*args: object, **kwargs: object) -> object:
@@ -98,6 +107,7 @@ def _run_child(mode: str, case: str, cache: Path) -> dict[str, object]:
             native_tensor_cpu, "NativeTensorProgramBundle", timed(original_bundle)
         ),
         patch.object(lambda_solver, "NativeCCTensorExecutor", owner),
+        patch.object(triples_complete_gradient, "export_rhf", fixed_generation),
         patch.object(
             triples_lambda_response,
             "accumulate_tile_triples_vjp",

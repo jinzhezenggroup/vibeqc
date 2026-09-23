@@ -29,6 +29,8 @@ shared-library counts and sizes, peak and retained process RSS, and logical
 response reservation. It fails if the routes differ in TensorIR execution
 inventory, accepted CC/response identity, orbital response actions, or the pinned
 PySCF 2.14.0 analytic gradient gate. A warm run must compile no new artifact.
+The comparator fixes the RHF snapshot generation ID across child processes;
+ordinary endpoint calls continue to use fresh generation IDs.
 
 The [PR evidence workflow](../../.github/workflows/ccsdt-cpu-bundle-evidence.yml)
 runs H2O and NH3 with a clean cache for each route and retains the JSON reports.
