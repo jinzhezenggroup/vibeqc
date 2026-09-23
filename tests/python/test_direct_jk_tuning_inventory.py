@@ -42,37 +42,27 @@ def _write_fixture(root: Path, payload: dict[str, object]) -> None:
     constants = root / "src/scf/cuda/direct_constants.hpp"
     constants.parent.mkdir(parents=True, exist_ok=True)
     constants.write_text(
-        "\n".join(
-            [
-                "constexpr std::size_t kPersistentEriAoLimit = 16;",
-                "constexpr unsigned kSchwarzThreads = 1;",
-                "constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;",
-                "constexpr unsigned kPersistentForceAngularOrderCount = 7;",
-                "constexpr unsigned kPersistentFockAngularOrderCount = 6;",
-                "constexpr double kForceDensityProductScreeningTolerance = 1.0e-14;",
-            ]
-        )
-        + "\n",
+        "constexpr std::size_t kPersistentEriAoLimit = 16;\n"
+        "constexpr unsigned kSchwarzThreads = 1;\n"
+        "constexpr std::size_t kBoundedGeneratedTasksPerShellPair = 1024;\n"
+        "constexpr unsigned kPersistentForceAngularOrderCount = 7;\n"
+        "constexpr unsigned kPersistentFockAngularOrderCount = 6;\n"
+        "constexpr double kForceDensityProductScreeningTolerance = 1.0e-14;\n",
         encoding="utf-8",
     )
 
     policy = root / "src/scf/cuda/rhf_policy.hpp"
     policy.parent.mkdir(parents=True, exist_ok=True)
     policy.write_text(
-        "\n".join(
-            [
-                "fallback_persistent_eri_ao_limit{16}",
-                "fallback_cublas_matrix_product_ao_threshold{17}",
-                "SmallHfMatrixCalibration matrix{}",
-                "resolve_small_hf_profitability",
-                "maximum_task_capacity{8U * 1024U * 1024U}",
-                "maximum_arena_bytes{std::size_t{1} << 30}",
-                "cuda_stack_limit_bytes{std::size_t{64} << 10}",
-                "maximum_persistent_quartet_warps_per_sm{8}",
-                "resolve_direct_jk_schedule_policy",
-            ]
-        )
-        + "\n",
+        "fallback_persistent_eri_ao_limit{16}\n"
+        "fallback_cublas_matrix_product_ao_threshold{17}\n"
+        "SmallHfMatrixCalibration matrix{}\n"
+        "resolve_small_hf_profitability\n"
+        "maximum_task_capacity{8U * 1024U * 1024U}\n"
+        "maximum_arena_bytes{std::size_t{1} << 30}\n"
+        "cuda_stack_limit_bytes{std::size_t{64} << 10}\n"
+        "maximum_persistent_quartet_warps_per_sm{8}\n"
+        "resolve_direct_jk_schedule_policy\n",
         encoding="utf-8",
     )
 
