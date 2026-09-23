@@ -382,9 +382,15 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
 
   const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
                                 options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
-  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA)
+  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA &&
+      execution_plan.semilocal_family != kKsSemilocalPbe)
+    throw MethodError(
+        VIBEQC_STATUS_NOT_IMPLEMENTED,
+        "CUDA scaled/global-hybrid KS currently requires the shared PBE semilocal lowerer");
+  if (backend == VIBEQC_BACKEND_CUDA && fock.exchange.present &&
+      options.precision_mode == VIBEQC_PRECISION_AUTO)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "scaled/global-hybrid KS currently requires CPU");
+                      "CUDA global-hybrid KS currently requires strict FP64");
   if (execution_plan.nonlocal_correlation && execution_plan.semilocal_family != kKsSemilocalPbe &&
       execution_plan.semilocal_family != kKsSemilocalWb97mv)
     throw MethodError(
@@ -407,6 +413,9 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+    if (backend == VIBEQC_BACKEND_CUDA && fock.exchange.present)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "CUDA global-hybrid density fitting is not yet qualified");
     if (options.precision_mode == VIBEQC_PRECISION_AUTO || execution_plan.range_exchange ||
         execution_plan.nonlocal_correlation)
       throw MethodError(
