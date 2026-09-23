@@ -12,6 +12,7 @@ from typing import Any
 
 from .libxc_bulk_capabilities import (
     CAPABILITY_STAGES,
+    STAGE_REQUIREMENTS,
     BulkFunctionalCapability,
     available_capabilities,
 )
@@ -130,6 +131,19 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
             raise ValueError(
                 f"{label} capability summary has qualified/ready overlap for {name}"
             )
+
+        # Counts can agree while a snapshot still skips qualification gates.
+        # Reuse the canonical AND/OR DAG; ready evidence is not a passed gate.
+        qualified_set = set(qualified)
+        for stage in (*qualified, *ready):
+            if not all(
+                any(required in qualified_set for required in alternatives)
+                for alternatives in STAGE_REQUIREMENTS[stage]
+            ):
+                raise ValueError(
+                    f"{label} capability summary has unmet prerequisites for "
+                    f"{name}: {stage}"
+                )
 
     # Persisted summaries are redundant: every counter must agree with the
     # detailed inventory. Do not accept an internally contradictory snapshot.
