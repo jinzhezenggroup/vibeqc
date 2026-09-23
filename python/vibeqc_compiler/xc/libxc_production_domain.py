@@ -12,8 +12,9 @@ evidence is rejected unless it matches this exact versioned profile.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
@@ -114,7 +115,9 @@ def qualification_profile(
         or required_ingredients[0] != "rho"
         or len(set(required_ingredients)) != len(required_ingredients)
     ):
-        raise ValueError("production-domain ingredients require a unique rho-first tuple")
+        raise ValueError(
+            "production-domain ingredients require a unique rho-first tuple"
+        )
 
     ingredients = frozenset(required_ingredients)
     unsupported = tuple(sorted(ingredients - SUPPORTED_INGREDIENTS))
@@ -144,7 +147,9 @@ def validate_qualification(
         raise ValueError("production-domain pass requires qualification profile")
     canonical = expected.to_payload()
     if value.get("schema") != SCHEMA or value.get("profile") != PROFILE:
-        raise ValueError("production-domain qualification has unsupported schema/profile")
+        raise ValueError(
+            "production-domain qualification has unsupported schema/profile"
+        )
     if value.get("identity") != expected.identity:
         raise ValueError("production-domain qualification profile identity mismatch")
     if dict(value) != canonical:
