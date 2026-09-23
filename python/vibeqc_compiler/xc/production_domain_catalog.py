@@ -124,12 +124,16 @@ def _validate_inventory(summary: Mapping[str, Any]) -> None:
             not isinstance(row.get(field), str) or not row[field]
             for field in ("family", "ingredients", "profile_identity")
         ):
-            raise ValueError("production-domain summary has invalid functional identity")
+            raise ValueError(
+                "production-domain summary has invalid functional identity"
+            )
         required = row.get("required_ingredients")
         if not isinstance(required, list) or any(
             not isinstance(item, str) or not item for item in required
         ):
-            raise TypeError("production-domain summary has invalid required ingredients")
+            raise TypeError(
+                "production-domain summary has invalid required ingredients"
+            )
         if (
             not required
             or len(set(required)) != len(required)
@@ -149,10 +153,14 @@ def _validate_inventory(summary: Mapping[str, Any]) -> None:
         expected_counts[status] += 1
         rows.append(dict(row))
     if dict(summary["status_counts"]) != expected_counts:
-        raise ValueError("production-domain summary status counts disagree with inventory")
+        raise ValueError(
+            "production-domain summary status counts disagree with inventory"
+        )
     for field, key in (("by_family", "family"), ("by_ingredients", "ingredients")):
         if summary.get(field) != _group_summary(rows, key):
-            raise ValueError(f"production-domain summary {field} disagrees with inventory")
+            raise ValueError(
+                f"production-domain summary {field} disagrees with inventory"
+            )
     if summary.get("blocker_reasons") != expected_blockers:
         raise ValueError("production-domain summary blockers disagree with inventory")
 
