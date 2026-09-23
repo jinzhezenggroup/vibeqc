@@ -18,6 +18,8 @@ CELL_SCHEMA = "vibeqc.periodic-cell.v1"
 
 
 def _vector3(value: typing.Any, *, label: str) -> tuple[float, float, float]:
+    if np.iscomplexobj(value):
+        raise ValueError(f"{label} must be real")
     array = np.asarray(value, dtype=np.float64)
     if array.shape != (3,) or not np.all(np.isfinite(array)):
         raise ValueError(f"{label} must be a finite length-3 vector")
@@ -27,6 +29,8 @@ def _vector3(value: typing.Any, *, label: str) -> tuple[float, float, float]:
 def _matrix3(
     value: typing.Any, *, label: str
 ) -> tuple[tuple[float, float, float], ...]:
+    if np.iscomplexobj(value):
+        raise ValueError(f"{label} must be real")
     array = np.asarray(value, dtype=np.float64)
     if array.shape != (3, 3) or not np.all(np.isfinite(array)):
         raise ValueError(f"{label} must be a finite 3x3 matrix")
@@ -57,7 +61,7 @@ class PeriodicCell:
             raise TypeError("periodic_axes must contain exactly three booleans")
         if axes != (True, True, True):
             raise NotImplementedError("PeriodicCell v1 supports only 3-D periodicity")
-        if self.units != "Bohr":
+        if not isinstance(self.units, str) or self.units != "Bohr":
             raise ValueError("PeriodicCell v1 lattice units must be Bohr")
 
         determinant = float(np.linalg.det(np.asarray(lattice, dtype=np.float64)))
