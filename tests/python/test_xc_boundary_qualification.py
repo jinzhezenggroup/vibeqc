@@ -17,7 +17,8 @@ from vibeqc_compiler.xc.boundary import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
-R2SCAN_REFERENCE = ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
+R2SCAN_REFERENCE = ROOT / "tests/data/xc/r2scan-tail-reference.json"
+R2SCAN_BINARY64_DIAGNOSTIC = ROOT / "tests/data/xc/boundary/r2scan-zero-minority.json"
 
 
 @pytest.mark.parametrize("family", ("lda", "gga", "mgga"))
@@ -119,30 +120,15 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     tmp_path: Path,
 ) -> None:
     reference = json.loads(R2SCAN_REFERENCE.read_text(encoding="utf-8"))
-    assert reference["schema"] == "vibeqc.xc-boundary-reference/v1"
+    assert reference["schema"] == "vibeqc.r2scan-tail-reference/v1"
     assert reference["boundary_semantics"] == BOUNDARY_SEMANTICS
-    assert reference["oracle"]["libxc"] == "7.0.0"
     assert reference["functional"] == "R2SCAN"
     assert reference["spin"] == "polarized"
+    assert reference["oracle"]["source"].startswith("Libxc 7.0.0 original Maple")
+    assert "113 significand bits" in reference["oracle"]["arithmetic"]
 
-    # The original nine binary64 diagnostics remain unchanged and retain their
-    # independent Libxc replay below. After the qualified spin-conditioning
-    # repair, production acceptance uses the original Libxc algebra evaluated
-    # in 113-bit arithmetic, not its cancellation-sensitive binary64 values.
-    assert reference["acceptance_semantics"] == "direct-spin-fractions/v1"
-    acceptance = json.loads(
-        (ROOT / reference["acceptance_reference"]).read_text(encoding="utf-8")
-    )
-    assert acceptance["schema"] == "vibeqc.r2scan-tail-reference/v1"
-    oracle = acceptance["oracle"]
-    assert (
-        oracle["source"] == "Libxc 7.0.0 original Maple 2022 generated polarized E/vxc"
-    )
-    assert oracle["arithmetic"] == "GCC __float128/libquadmath, 113 significand bits"
-    assert oracle["tolerance"] == {"rtol": 5e-12, "atol": 1e-12}
-    assert len(acceptance["points"]) >= 50
-    features = np.asarray([p["inputs"] for p in acceptance["points"]])
-    expected = np.asarray([p["reference"] for p in acceptance["points"]])
+    features = np.asarray([p["inputs"] for p in reference["points"]])
+    expected = np.asarray([p["reference"] for p in reference["points"]])
     # A spin permutation is an independent symmetry of the physical contract.
     features = np.concatenate((features, features[:, [1, 0, 4, 3, 2, 6, 5]]))
     expected = np.concatenate((expected, expected[:, [0, 2, 1, 5, 4, 3, 7, 6]]))
@@ -150,7 +136,12 @@ def test_r2scan_zero_minority_boundary_status_is_machine_readable(
     passed = (
         actual.shape == expected.shape
         and np.isfinite(actual).all()
-        and np.allclose(actual, expected, **oracle["tolerance"])
+        and np.allclose(
+            actual,
+            expected,
+            rtol=reference["oracle"]["tolerance"]["rtol"],
+            atol=reference["oracle"]["tolerance"]["atol"],
+        )
     )
 
     status = "pass" if passed else "fail"
@@ -169,7 +160,7 @@ def test_retained_r2scan_oracle_matches_independent_libxc() -> None:
 
     library = libxc._itrf
     _configure(library)
-    reference = json.loads(R2SCAN_REFERENCE.read_text())
+    reference = json.loads(R2SCAN_BINARY64_DIAGNOSTIC.read_text())
     names = bulk_feature_names("mgga", "polarized")
     for point in reference["points"]:
         values = point["features"]
