@@ -393,8 +393,9 @@ static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, 
       launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
                                    plan->stream, plan->batch, 0, spec.coulomb.present,
                                    spec.exchange.present, unrestricted, mixed_j,
-                                   plan->screening_tolerance, plan->bounds, density, beta, coulomb,
-                                   alpha_exchange, beta_exchange);
+                                   plan->screening_tolerance, spec.exchange.op, spec.exchange.omega,
+                                   plan->bounds, density, beta, coulomb, alpha_exchange,
+                                   beta_exchange);
       direct_jk_check(cudaGetLastError());
       for (const auto* output : outputs)
         if (output) {
@@ -443,8 +444,9 @@ static vibeqc_status execute_cuda_direct_jk_range(
       launch_independent_jk_kernel(
           static_cast<unsigned>(density.size()), kIndependentJkThreads, 0, plan->stream,
           plan->batch, begin, spec.coulomb.present, spec.exchange.present, unrestricted, false,
-          plan->screening_tolerance, plan->bounds, plan->density, plan->beta, plan->coulomb,
-          plan->alpha_exchange, plan->beta_exchange);
+          plan->screening_tolerance, spec.exchange.op, spec.exchange.omega, plan->bounds,
+          plan->density, plan->beta, plan->coulomb, plan->alpha_exchange,
+          plan->beta_exchange);
       direct_jk_check(cudaGetLastError());
       auto download = [&](std::vector<double>& out, const double* input) {
         if (!out.empty())
