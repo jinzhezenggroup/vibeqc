@@ -41,7 +41,8 @@ def orbital_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     # Compile the actual accepted-proposal copy/exception block and entry
     # guards. Only the CUDA calls and unrelated solver stages are test doubles.
     publication = legacy[begin:end]
-    harness = r"""
+    harness = (
+        r"""
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -79,7 +80,9 @@ struct Owner {
     std::fill_n(tmp2, 8, 20.0);
     std::fill_n(warm, 8, 42.0);
   }
-""" + methods + r"""
+"""
+        + methods
+        + r"""
   void enqueue_legacy() {
     if (scenario == "enqueue") {
       is_failed = true;
@@ -101,7 +104,9 @@ struct Owner {
       return false;
     }
     if (scenario == "retry") return true;
-""" + publication + r"""
+"""
+        + publication
+        + r"""
     return is_active;
   }
 };
@@ -162,6 +167,7 @@ int main(int argc, char** argv) {
   assert(owner.movement.warm_orbital_frame_invalidations == before_clear + was_ready);
 }
 """
+    )
     directory = tmp_path_factory.mktemp("ks-orbital-failure")
     cpp, executable = directory / "probe.cpp", directory / "probe"
     cpp.write_text(harness)
