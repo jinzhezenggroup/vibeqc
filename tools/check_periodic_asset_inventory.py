@@ -198,12 +198,16 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
     )
     _require_string(policy.get("reason"), "generic_dependency_policy.reason")
     if not REQUIRED_FORBIDDEN_FRAGMENTS <= {fragment.lower() for fragment in fragments}:
-        raise InventoryError("forbidden_fragments must retain the GFN2 dependency guard")
+        raise InventoryError(
+            "forbidden_fragments must retain the GFN2 dependency guard"
+        )
     for generic_path in generic_paths:
         try:
             text = generic_path.read_text(encoding="utf-8").lower()
         except (OSError, UnicodeError) as exc:
-            raise InventoryError(f"cannot read generic periodic owner: {generic_path}") from exc
+            raise InventoryError(
+                f"cannot read generic periodic owner: {generic_path}"
+            ) from exc
         for fragment in fragments:
             if fragment.lower() in text:
                 relative = generic_path.relative_to(root)
