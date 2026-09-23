@@ -519,9 +519,12 @@ def emit_native_xc_point_dispatch() -> str:
 def emit_native_xc_contraction_kernels() -> str:
     """Emit resident XC features, point algebra, potential and scalar reductions."""
 
-    return _NATIVE_XC_CONTRACTION_KERNELS.replace(
-        "@POINT_DISPATCH@", emit_native_xc_point_dispatch()
-    ) + emit_native_xc_matrix_schedule()
+    return (
+        _NATIVE_XC_CONTRACTION_KERNELS.replace(
+            "@POINT_DISPATCH@", emit_native_xc_point_dispatch()
+        )
+        + emit_native_xc_matrix_schedule()
+    )
 
 
 def emit_grid_scientific_kernels() -> str:

@@ -435,7 +435,8 @@ void matrix_schedule_cases() {
           compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
         }
     graph_capture(large_basis, large_grid, 1U, false, 33);
-    for (unsigned functional : {0U, 1U}) matrix_response_case(large_basis, large_grid, functional, true, 19);
+    for (unsigned functional : {0U, 1U})
+      matrix_response_case(large_basis, large_grid, functional, true, 19);
     for (std::uint32_t functional : {0U, 1U, 2U})
       variational_and_state(large_basis, large_grid, functional, 17);
   }
