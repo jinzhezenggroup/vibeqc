@@ -113,6 +113,20 @@ atom, grid, pair-visit and per-tile limits.
   which branch is the physical target or qualify general OH changed/fresh
   equivalence. Preserve the failed matrix receipt; do not relax the global
   force gate to hide this case.
+- A follow-up source-pinned H100 diagnosis compared the exact orbital frames
+  and performed three-step total-energy finite differences separately from
+  each attained OH state, with the corresponding initial density held fixed.
+  The beta occupied subspaces had minimum overlap singular value 1.28e-5
+  (alpha 0.99928), although occupation counts and near-identical orbital
+  energy spectra remained unchanged. PySCF independently reconverged each
+  state from its native density and matched total forces within 2.25e-13
+  Eh/Bohr. Both branches' transverse/bond-direction smallest-step FD errors
+  were below 5e-9 Eh/Bohr, with density changes proportional to step size.
+  This supports per-state force correctness and identifies cross-state root
+  selection, consistent with #1002, as the replay comparison boundary. It
+  does not establish a unique OH branch or pass the original changed/fresh
+  gate; the full per-state receipt is
+  `benchmarks/results/issue172-r2scan3c-20260923/oh-branch-fd-h100.json`.
 - A separate five-system complete E+F matrix, explicitly excluding that OH
   branch-sensitive case, succeeded on the same H100 library for H2, H3+,
   noncovalent H2 dimer, water RKS and H2O+ UKS. Water cold/three-warm median/

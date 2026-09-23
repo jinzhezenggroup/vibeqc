@@ -75,6 +75,21 @@
       "bytes": 299
     },
     {
+      "path": "oh-branch-fd-h100.json",
+      "sha256": "2693993a920dbfd7cc3a1fbb4568a2a8fc0b29cc5ac260eafa814de1d1114e6e",
+      "bytes": 41449
+    },
+    {
+      "path": "oh-branch-fd-log.txt",
+      "sha256": "052f50801e80d5d65435a2386cc17a708d0e8e897606f1ca1cc59aff32010ff4",
+      "bytes": 633
+    },
+    {
+      "path": "oh-branch-fd-runner.py.txt",
+      "sha256": "9486f0ea66ee969778301eb07e1904884b5e49443da49fa7cbe41d67791b5ee9",
+      "bytes": 8761
+    },
+    {
       "path": "oh-density-h100.json",
       "sha256": "d07c53b3a09ef3920e1beaa6605c803163ded381e9918ec41bd814746a9a4c98",
       "bytes": 2522
@@ -84,5 +99,8 @@
     "path": "/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0172-closure/0e6350ac/issue172-h100-evidence-20260923.tar.gz",
     "sha256": "6f2edd2e9e74c7f8882575a10ee4cf50bee18d84c2fc2247c1a668efda431843",
     "bytes": 13353
-  }
+  },
+  "oh_branch_fd_job": "issue-0172-oh-branch-fd-h100-0e6350ac-20260923",
+  "oh_branch_fd_job_status": "SUCCEEDED",
+  "oh_branch_fd_runner_shell_sha256": "46e730e9edbedf0b04f7ba0a7e3d1eea4f4544571a1f0c18106e95520993e118"
 }

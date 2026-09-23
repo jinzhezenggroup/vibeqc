@@ -32,3 +32,10 @@ The first CUDA s/p/d stationary-force domain admits at most 32 atoms, 128 AOs,
 grid-pair visits. These are execution bounds, not a claim that every H-Ar
 system has a qualified total force. A resource or compiler precondition that
 fails produces an explicit item failure rather than an incomplete total.
+
+Open-shell forces are conditional on the converged spin-density state. In
+linear OH, a prepared changed-geometry run and a fresh run can converge to
+different stationary states with nearly equal energy and different transverse
+forces. The current method does not promise automatic root following across
+that case; compare the final states before interpreting a cross-run force
+difference as an error in one state's analytic force.

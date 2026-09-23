@@ -99,12 +99,41 @@ spin-density branches. Their ordering and general OH branch policy are not
 qualified here. This failed case was excluded **explicitly** from the five-row
 passing matrix, not relabeled as a pass.
 
+A further H100 run, `issue-0172-oh-branch-fd-h100-0e6350ac-20260923`,
+finished **SUCCEEDED / exit 0** and used the exact
+[diagnostic Python source](oh-branch-fd-runner.py.txt) at SHA-256
+`9486f0ea66ee969778301eb07e1904884b5e49443da49fa7cbe41d67791b5ee9`.
+It held each branch's initial density fixed while taking three central-difference
+steps (`1e-3`, `3e-4`, `1e-4 Bohr`) in both transverse H-y and bond H-z
+directions. PySCF independently reconverged and evaluated the analytic total
+for each branch using that branch's native final density only as its initial
+guess:
+
+| OH state | PySCF total energy / force error | FD H-y error at 1e-4 Bohr | FD H-z error at 1e-4 Bohr |
+| --- | ---: | ---: | ---: |
+| prepared changed geometry | 1.28e-13 Eh / 2.24e-13 Eh/Bohr | 2.00e-10 | 1.95e-9 |
+| fresh at same geometry | 2.27e-13 Eh / 1.11e-14 Eh/Bohr | 3.36e-10 | 4.78e-9 |
+
+For both states, the displaced densities changed smoothly with step size
+(`~7e-5` at `1e-3 Bohr` to `~7e-6` at `1e-4 Bohr` transverse). Both states
+kept the same integer occupation counts, but their beta occupied-subspace
+minimum overlap singular value was `1.28e-5` (alpha: `0.99928`). These checks
+support correct forces **within each attained stationary state** and a
+cross-state root-selection mismatch consistent with the separate
+[#1002](https://github.com/jinzhezenggroup/vibeqc/issues/1002) problem.
+They do not establish a unique physical OH branch or make the failed
+changed/fresh gate pass.
+
 `endpoint-bounded-h100.json` preserves every timing, energy, force, iteration,
 residual and correction backend; `endpoint-h100-matrix.json` and
 `endpoint-ohdiag-h100.json` preserve both failed OH runs.
-`oh-density-h100.json` holds the branch comparison. `evidence-final-h100/`
-contains the ten numerical/resource receipts. The ignored raw bundle at
+`oh-density-h100.json` and `oh-branch-fd-h100.json` hold the branch comparison
+and the per-state orbital/finite-difference records; `oh-branch-fd-log.txt`
+retains the stepwise run log. The exact diagnostic source is also tracked here.
+`evidence-final-h100/` contains the ten numerical/resource receipts.
+The earlier ignored raw bundle at
 `/inspire/qb-ilm/project/chemicalreaction/czxs25220150/experiments/vibeqc/issue-0172-closure/0e6350ac/issue172-h100-evidence-20260923.tar.gz`
-retains those JSON files plus test and runner logs, including failed oracle
-attempts; its SHA-256 is
+retains the original ten test receipts plus test and runner logs, including
+failed oracle attempts; the later per-state FD files above are tracked directly.
+The bundle's SHA-256 is
 `6f2edd2e9e74c7f8882575a10ee4cf50bee18d84c2fc2247c1a668efda431843`.
