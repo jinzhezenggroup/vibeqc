@@ -91,9 +91,22 @@ raw-tensor equivalents. The response's separately charged scratch falls
 from 7,736,157,200 to 1,980,523,536 bytes, but neither trace is a sampled
 whole-endpoint device-memory high-water mark.
 
+An independent **untraced** Release A/B replay (Slurm 11511,
+`/tmp/qc-1117-clean-ab-pending.log`) uses the same two exact binaries,
+GPU4PySCF references, 21,421,977,600-byte allowance, strict controls and
+23/7/13 iteration counts. The baseline takes 625.217/290.107/1206.340 s
+for cold/warm/changed energy plus analytic forces; explicit corrected
+`occupied` takes 625.777/289.868/700.038 s. Changed falls 506.302 s
+(41.97%), and the three complete phase timings together fall 505.981 s
+(23.85%). Maximum independent errors remain below 5.23e-11 Eh and
+1.51e-10 Eh/Bohr. The repeated traced and untraced directions establish
+a case-specific matched endpoint gain, not an automatic-selection or
+cross-workload speed claim. Whole-endpoint memory sampling and a non-water
+streamed holdout remain open.
+
 Before automatic selection or a general production speed claim, collect
-untraced matched Release A/B endpoints, actual whole-endpoint peak memory,
-and a structurally different holdout. DFT qualification under #1117 is
+additional untraced matched Release A/B samples, whole-endpoint peak memory,
+and a structurally different *streamed* holdout. DFT qualification under #1117 is
 separate; this HF-DF result cannot close the tracker.
 
 ## Revisit when
