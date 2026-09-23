@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 
 #include "core/types.hpp"
 
@@ -37,6 +38,25 @@ struct ExecutionResourceObservation {
   std::size_t device_peak_bytes{};
   std::uint64_t host_observations{};
   std::uint64_t device_observations{};
+
+  [[nodiscard]] std::size_t peak_bytes(ExecutionMemorySpace space) const noexcept {
+    return space == ExecutionMemorySpace::Host ? host_peak_bytes : device_peak_bytes;
+  }
+
+  [[nodiscard]] std::uint64_t observation_count(ExecutionMemorySpace space) const noexcept {
+    return space == ExecutionMemorySpace::Host ? host_observations : device_observations;
+  }
+
+  [[nodiscard]] bool observed(ExecutionMemorySpace space) const noexcept {
+    return observation_count(space) != 0;
+  }
+
+  /** Return a measured peak without conflating an unobserved value with zero. */
+  [[nodiscard]] std::optional<std::size_t> measured_peak_bytes(
+      ExecutionMemorySpace space) const noexcept {
+    if (!observed(space)) return std::nullopt;
+    return peak_bytes(space);
+  }
 };
 
 /** High-water observations supplied by execution owners.
@@ -58,6 +78,11 @@ struct ExecutionResourceSnapshot {
   [[nodiscard]] const ExecutionResourceObservation& observation(
       ExecutionResourceKind kind) const noexcept {
     return by_kind[static_cast<std::size_t>(kind)];
+  }
+
+  [[nodiscard]] std::optional<std::size_t> measured_peak_bytes(
+      ExecutionResourceKind kind, ExecutionMemorySpace space) const noexcept {
+    return observation(kind).measured_peak_bytes(space);
   }
 };
 
