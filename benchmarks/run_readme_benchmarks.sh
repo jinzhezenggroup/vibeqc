@@ -26,7 +26,8 @@ run_point() {
     local name="$1"
     local result
     shift
-    if timeout "$readme_timeout" "$readme_python" "$@" > "$readme_output/$name.log" 2>&1; then
+    # Escalate after a finite grace period if a native call ignores SIGTERM.
+    if timeout --kill-after=5 "$readme_timeout" "$readme_python" "$@" > "$readme_output/$name.log" 2>&1; then
         result=0
         printf 'PASS %s\n' "$name"
     else
