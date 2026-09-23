@@ -17,9 +17,11 @@ namespace vibeqc::scf::cuda_df {
 // Existing DF arithmetic and reduction order; host orchestration compiles separately.
 __global__ void symmetrize_metrics_kernel(std::size_t dimension, std::size_t tiles,
                                           double* metrics) {
-  // Enumerate only authoritative upper-triangle tiles. One lane decodes the
-  // compact tile pair; every lane then executes the unchanged elementwise
-  // average/mirror operation. Diagonal tiles still reject their lower half.
+  // Enumerate only authoritative upper row-major tiles. In the column-major
+  // storage consumed by cuSOLVER, `lower` below is the lower-triangle entry.
+  // Xsyevd is configured with CUBLAS_FILL_MODE_LOWER, so the mirrored upper
+  // store is dead: preserve the same FP64 average, but publish only the half
+  // that the eigensolver reads. Diagonal tiles still reject their lower half.
   __shared__ std::size_t tile_row, tile_column;
   if (threadIdx.x == 0 && threadIdx.y == 0) {
     const auto pair = static_cast<std::size_t>(blockIdx.x);
@@ -40,11 +42,10 @@ __global__ void symmetrize_metrics_kernel(std::size_t dimension, std::size_t til
   const std::size_t system = blockIdx.z;
   if (row >= dimension || column >= dimension || row > column) return;
   const std::size_t offset = system * dimension * dimension;
-  const std::size_t first = offset + row * dimension + column;
-  const std::size_t second = offset + column * dimension + row;
-  const double symmetric = 0.5 * (metrics[first] + metrics[second]);
-  metrics[first] = symmetric;
-  metrics[second] = symmetric;
+  const std::size_t lower = offset + row * dimension + column;
+  const std::size_t upper = offset + column * dimension + row;
+  const double symmetric = 0.5 * (metrics[lower] + metrics[upper]);
+  metrics[lower] = symmetric;
 }
 
 __global__ void scale_eigenvectors_flat_kernel(std::size_t matrix_elements, std::size_t dimension,
