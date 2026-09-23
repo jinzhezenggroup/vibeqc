@@ -46,6 +46,14 @@ def _latest_record(output: Path, fallback: dict) -> dict:
     return loaded if isinstance(loaded, dict) else dict(fallback)
 
 
+def _finite_scalar(value: Any) -> float | None:
+    """Return a finite diagnostic scalar without coercing strings or booleans."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    scalar = float(value)
+    return scalar if math.isfinite(scalar) else None
+
+
 def _watch(
     connection: Any, pid: int, seconds: float, output: Path, record: dict
 ) -> None:
@@ -93,6 +101,8 @@ class EndpointProgress:
         self.journal.write_text("")
         self.endpoint = "setup"
         self.started = time.monotonic()
+        self._diagnostic_summary: dict[str, Any] = {}
+        self._last_de_sign: int | None = None
 
     def emit(self, event: str, **values: Any) -> dict[str, Any]:
         entry = {
@@ -105,10 +115,88 @@ class EndpointProgress:
         print(json.dumps(entry, allow_nan=False), flush=True)
         return entry
 
+    def _update_diagnostic_summary(self, entry: dict[str, Any]) -> None:
+        """Retain objective convergence signals without inventing a solver verdict."""
+        endpoint = str(entry["endpoint"])
+        if self._diagnostic_summary.get("endpoint") != endpoint:
+            self._diagnostic_summary = {
+                "endpoint": endpoint,
+                "scf_cycles_observed": 0,
+                "get_veff_completed": 0,
+                "de_sign_changes": 0,
+            }
+            self._last_de_sign = None
+
+        summary = self._diagnostic_summary
+        event = entry["event"]
+        elapsed = _finite_scalar(entry.get("elapsed_seconds"))
+
+        if event == "get_veff_begin" and elapsed is not None:
+            summary.setdefault("first_get_veff_begin_elapsed_seconds", elapsed)
+            summary["last_get_veff_begin_elapsed_seconds"] = elapsed
+        elif event == "get_veff_end":
+            seconds = _finite_scalar(entry.get("seconds"))
+            if seconds is not None:
+                count = int(summary["get_veff_completed"]) + 1
+                total = float(summary.get("get_veff_total_seconds", 0.0)) + seconds
+                summary.update(
+                    get_veff_completed=count,
+                    get_veff_total_seconds=total,
+                    get_veff_mean_seconds=total / count,
+                    get_veff_max_seconds=max(
+                        float(summary.get("get_veff_max_seconds", 0.0)), seconds
+                    ),
+                )
+        elif event == "scf_cycle":
+            count = int(summary["scf_cycles_observed"]) + 1
+            summary["scf_cycles_observed"] = count
+            cycle = _finite_scalar(entry.get("cycle"))
+            if cycle is not None:
+                cycle_value: int | float = int(cycle) if cycle.is_integer() else cycle
+                summary.setdefault("first_cycle", cycle_value)
+                summary["last_cycle"] = cycle_value
+            if elapsed is not None:
+                summary.setdefault("first_cycle_elapsed_seconds", elapsed)
+                summary["last_cycle_elapsed_seconds"] = elapsed
+                first_elapsed = float(summary["first_cycle_elapsed_seconds"])
+                summary["cycle_elapsed_span_seconds"] = elapsed - first_elapsed
+                if count > 1:
+                    summary["mean_cycle_interval_seconds"] = (
+                        elapsed - first_elapsed
+                    ) / (count - 1)
+
+            latest: dict[str, float] = {}
+            for name in ("e_tot", "de", "norm_gorb", "norm_ddm"):
+                value = _finite_scalar(entry.get(name))
+                if value is not None:
+                    latest[name] = value
+            if latest:
+                summary["latest_cycle_values"] = latest
+
+            de = latest.get("de")
+            if de is not None and de != 0.0:
+                sign = 1 if de > 0.0 else -1
+                if self._last_de_sign is not None and sign != self._last_de_sign:
+                    summary["de_sign_changes"] = int(summary["de_sign_changes"]) + 1
+                self._last_de_sign = sign
+
+            for name in ("norm_gorb", "norm_ddm"):
+                value = latest.get(name)
+                if value is None:
+                    continue
+                summary[f"{name}_latest"] = value
+                minimum = summary.get(f"{name}_min")
+                summary[f"{name}_min"] = (
+                    value if minimum is None else min(float(minimum), value)
+                )
+
+        self.record["diagnostic_summary"] = dict(summary)
+
     def checkpoint(self, event: str, **values: Any) -> None:
         """Emit a trace event and persist it in the latest result checkpoint."""
         entry = self.emit(event, **values)
         self.record["diagnostic_progress"] = entry
+        self._update_diagnostic_summary(entry)
         save_record(self.output, self.record)
 
     @contextmanager
