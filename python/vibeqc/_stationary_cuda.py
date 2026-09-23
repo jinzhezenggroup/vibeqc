@@ -45,8 +45,8 @@ from vibeqc_compiler.dft.cuda import (
 from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
 from vibeqc_compiler.integral.first_derivative_schedule import (
-    derivative_dispatch_id,
     derivative_dispatch_entries,
+    derivative_dispatch_id,
     derivative_requests,
 )
 from vibeqc_compiler.method.stationary_cuda import (
@@ -173,15 +173,25 @@ def _layout(basis: typing.Any) -> typing.Any:
     primitives = basis.packed[start : start + 2 * basis.nprimitive].reshape(-1, 2)
     aos = basis.packed[start + 2 * basis.nprimitive :].reshape(-1, 16)
     if any(int(r[3]) not in (1, 2, 3) for r in aos):
-        raise NotImplementedError("CUDA diagnostic requires one to three Cartesian AO components")
+        raise NotImplementedError(
+            "CUDA diagnostic requires one to three Cartesian AO components"
+        )
     expansions = tuple(
         tuple(
-            ("".join(axis * int(power) for axis, power in zip("xyz", row[4 + 4 * t : 7 + 4 * t])), float(row[7 + 4 * t]))
+            (
+                "".join(
+                    axis * int(power)
+                    for axis, power in zip("xyz", row[4 + 4 * t : 7 + 4 * t])
+                ),
+                float(row[7 + 4 * t]),
+            )
             for t in range(int(row[3]))
         )
         for row in aos
     )
-    domain = tuple(sorted({label for expansion in expansions for label, _ in expansion}))
+    domain = tuple(
+        sorted({label for expansion in expansions for label, _ in expansion})
+    )
     # Cartesian d records have one term per AO, just like s/p records.  The
     # component label itself is therefore part of the domain decision; using
     # only the expansion count silently routes xx/xy/... through the s/p AOT.
@@ -189,7 +199,14 @@ def _layout(basis: typing.Any) -> typing.Any:
         int(r[3]) > 1 for r in aos
     )
     requests = derivative_requests(domain) if extended else qualified_sp_requests()
-    return primitives, aos, expansions, requests, extended, (domain if extended else None)
+    return (
+        primitives,
+        aos,
+        expansions,
+        requests,
+        extended,
+        (domain if extended else None),
+    )
 
 
 class _CudaSources:
@@ -230,11 +247,19 @@ class _CudaSources:
             basis.packed[: 3 * basis.natom].reshape(-1, 3)
         )
         self.ao_atoms = np.ascontiguousarray(_native_ao_atoms(basis), dtype=np.int64)
-        self.primitives, self.aos, self.expansions, requests, self.extended, self.dispatch_domain = _layout(basis)
+        (
+            self.primitives,
+            self.aos,
+            self.expansions,
+            requests,
+            self.extended,
+            self.dispatch_domain,
+        ) = _layout(basis)
         self.primitive_table = np.ascontiguousarray(self.primitives, dtype=np.float64)
         self.ao_ranges = np.ascontiguousarray(self.aos[:, 1:3], dtype=np.int64)
         self.ao_norms = np.ascontiguousarray(
-            np.ones(self.aos.shape[0]) if self.extended else self.aos[:, 7], dtype=np.float64
+            np.ones(self.aos.shape[0]) if self.extended else self.aos[:, 7],
+            dtype=np.float64,
         )
         self.topology_identity = _basis_topology_identity(basis)
         self.bound_basis_identity = basis.identity
@@ -800,8 +825,11 @@ class PreparedStationaryCudaExecution:
                 iterations=spec.partition_iterations,
                 compiler=compiler,
                 cache=cache,
-                dispatch_entries=(derivative_dispatch_entries(dispatch_domain, requests)
-                                  if dispatch_domain is not None else None),
+                dispatch_entries=(
+                    derivative_dispatch_entries(dispatch_domain, requests)
+                    if dispatch_domain is not None
+                    else None
+                ),
             )
             if aot_directory is None or ecp
             else load_stationary_aot_artifact(
@@ -1104,7 +1132,9 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
     _, aos, _, requests, extended, dispatch_domain = _layout(basis)
     if extended and not ecp:
-        raise NotImplementedError("all-electron CUDA gradient diagnostic admits s/p bases only")
+        raise NotImplementedError(
+            "all-electron CUDA gradient diagnostic admits s/p bases only"
+        )
     primitive_sum = sum(int(r[2]) * (int(r[3]) if extended else 1) for r in aos)
     records = primitive_sum**4 + (na + 2) * primitive_sum**2 + na * (na - 1) // 2
     pair_visits = (1 + 2 * len(state.grid.points)) * na * (na - 1) // 2
@@ -1259,8 +1289,11 @@ def _complete_rks_cuda_gradient_diagnostic(
                     iterations=spec.partition_iterations,
                     compiler=compiler,
                     cache=cache,
-                    dispatch_entries=(derivative_dispatch_entries(dispatch_domain, requests)
-                                      if dispatch_domain is not None else None),
+                    dispatch_entries=(
+                        derivative_dispatch_entries(dispatch_domain, requests)
+                        if dispatch_domain is not None
+                        else None
+                    ),
                 )
                 if aot_directory is None or ecp
                 else load_stationary_aot_artifact(

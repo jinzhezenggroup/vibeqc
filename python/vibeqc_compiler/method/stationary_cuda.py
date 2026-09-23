@@ -678,7 +678,7 @@ extern __device__ bool first_derivative(
 
 
 def _emit_stationary_dispatch(
-    entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]]
+    entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]],
 ) -> str:
     """Emit an ordered-component adapter over the canonical derivative library."""
     rows = tuple(entries)
@@ -690,7 +690,9 @@ def _emit_stationary_dispatch(
     for dispatch, kind, centers, axes in rows:
         cm = tuple(centers) + (-1,) * (4 - len(centers))
         ax = tuple(axes) + (-1,) * (3 - len(axes))
-        lines.append(f"  {{{dispatch}u,{kind}u,{len(centers)}u,{{{','.join(map(str, cm))}}},{{{','.join(map(str, ax))}}}}},")
+        lines.append(
+            f"  {{{dispatch}u,{kind}u,{len(centers)}u,{{{','.join(map(str, cm))}}},{{{','.join(map(str, ax))}}}}},"
+        )
     lines.extend(
         (
             "};",
@@ -720,7 +722,8 @@ def emit_stationary_wrapper_cuda(
     plan: typing.Any,
     iterations: typing.Any = 3,
     declare_primitive: bool = True,
-    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]] | None = None,
+    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]]
+    | None = None,
 ) -> typing.Any:
     """Emit the small method-specific TU linked against cached primitive code."""
 
@@ -752,7 +755,8 @@ def emit_stationary_cuda(
     pbe: typing.Any = None,
     plan: typing.Any,
     iterations: typing.Any = 3,
-    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]] | None = None,
+    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]]
+    | None = None,
 ) -> typing.Any:
     """Compose the legacy single-TU source for inspection and provenance tests.
 
@@ -779,7 +783,8 @@ def compile_stationary_cuda(
     iterations: typing.Any,
     compiler: typing.Any,
     cache: typing.Any,
-    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]] | None = None,
+    dispatch_entries: typing.Iterable[tuple[int, int, tuple[int, ...], tuple[int, ...]]]
+    | None = None,
 ) -> typing.Any:
     """Compile strict-FP64 primitive and wrapper objects, then device-link them."""
 

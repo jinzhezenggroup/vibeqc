@@ -253,4 +253,3 @@ def test_public_ecp_force_failure_is_transactional_and_closes_snapshot(
             item.succeeded and np.isfinite(item.forces).all()
             for item in recovered.items
         )
-

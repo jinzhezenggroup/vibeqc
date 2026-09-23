@@ -62,7 +62,7 @@ def test_source_owner_validates_spin_storage_and_packs_ao_indices(
         lambda _basis: (
             primitives,
             aos,
-            ((('', 1.0),), (('', 1.0),)),
+            ((("", 1.0),), (("", 1.0),)),
             (("four_center_eri", ("", "", "", "")),),
             False,
             None,
@@ -147,7 +147,7 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         lambda _basis: (
             np.array([[1.0, 1.0]]),
             np.array([[0, 0, 1, 1, 0, 0, 0, 1.0]], dtype=float),
-            ((('', 1.0),),),
+            ((("", 1.0),),),
             (),
             False,
             None,

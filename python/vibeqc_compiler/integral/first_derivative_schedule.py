@@ -81,7 +81,14 @@ def derivative_dispatch_entries(
                     binding.axes,
                 )
             )
-    rows.append((derivative_dispatch_id("nuclear", ()), kinds[("nuclear", ())], (0, 1), (0, 1, 2)))
+    rows.append(
+        (
+            derivative_dispatch_id("nuclear", ()),
+            kinds[("nuclear", ())],
+            (0, 1),
+            (0, 1, 2),
+        )
+    )
     return tuple(rows)
 
 

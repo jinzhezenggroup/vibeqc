@@ -42,9 +42,7 @@ def test_cuda_tasks_preserve_component_dispatch_and_primitive_work(
     owner.charges = np.ones(4)
     owner.used = 0
     nucleus = 2 if operator == "nuclear_attraction" else None
-    owner.integral(
-        0, operator, tuple(range(count)), nucleus=nucleus, charge=0.25
-    )
+    owner.integral(0, operator, tuple(range(count)), nucleus=nucleus, charge=0.25)
     assert owner.used == 1
     task = owner.tasks[0]
     assert tuple(task[:4]) == (
