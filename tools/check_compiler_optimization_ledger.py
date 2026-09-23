@@ -82,9 +82,7 @@ def _validate_commits(value: Any, label: str, *, allow_empty: bool = False) -> N
             raise LedgerError(f"{label} contains invalid commit identity {commit!r}")
 
 
-def _validate_issue_refs(
-    value: Any, label: str, *, allow_empty: bool = False
-) -> None:
+def _validate_issue_refs(value: Any, label: str, *, allow_empty: bool = False) -> None:
     refs = _require_string_list(value, label, allow_empty=allow_empty)
     for ref in refs:
         if not _ISSUE.fullmatch(ref):
@@ -180,9 +178,7 @@ def _validate_adoption(
                 f"{row_label}.methods contains unknown methods {sorted(unknown_methods)!r}"
             )
 
-        backends = _require_string_list(
-            row.get("backends"), f"{row_label}.backends"
-        )
+        backends = _require_string_list(row.get("backends"), f"{row_label}.backends")
         unknown_backends = set(backends) - set(_REQUIRED_BACKENDS)
         if unknown_backends:
             raise LedgerError(
