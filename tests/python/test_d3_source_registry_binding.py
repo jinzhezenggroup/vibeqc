@@ -18,9 +18,10 @@ def test_d3_reference_reads_exact_sources_from_common_registry() -> None:
 
     assert set(texts) == reference._REQUIRED_SOURCE_FILES
     for name, text in texts.items():
-        assert hashlib.sha256(text.encode("utf-8")).hexdigest() == source["files"][name][
-            "sha256"
-        ]
+        assert (
+            hashlib.sha256(text.encode("utf-8")).hexdigest()
+            == source["files"][name]["sha256"]
+        )
 
     implementation = Path(reference.__file__).read_text(encoding="utf-8")
     assert source["revision"] not in implementation
