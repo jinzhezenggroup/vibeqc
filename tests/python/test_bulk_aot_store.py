@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc import bulk_aot_cache, bulk_aot_store
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _digest(label: str) -> str:
