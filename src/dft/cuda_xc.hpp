@@ -27,7 +27,8 @@ enum class CudaXcAoPrecision : std::uint8_t {
  * resolved at preparation; runtime execution only binds validated device data.
  * Spin remains a layout argument and every entry uses the same FP64 contract. */
 using CudaXcPointLauncher = void (*)(cudaStream_t, const double*, const double*, std::size_t,
-                                     std::size_t, double*, double*, int*, const double*);
+                                     std::size_t, double*, double*, int*, const double*, double,
+                                     double);
 
 struct CudaXcLayout {
   std::size_t natom{}, nprimitive{}, nao{}, npoint{}, tile_points{}, spins{}, jets{};
@@ -36,19 +37,22 @@ struct CudaXcLayout {
   std::uint32_t functional{};
   bool response{};
   CudaXcAoPrecision ao_precision{CudaXcAoPrecision::Fp64};
+  double exchange_scale{1.0}, correlation_scale{1.0};
 };
 
 CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
                             std::uint32_t functional, bool unrestricted,
                             std::size_t tile_points = 256,
-                            CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64);
+                            CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+                            double exchange_scale = 1.0, double correlation_scale = 1.0);
 
 /** Metadata-only counterpart of the same layout: does not construct a grid,
  * normalize basis data, initialize CUDA or allocate any numerical buffer. */
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points = 256, bool response = false,
-                                  CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64);
+                                  CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+                                  double exchange_scale = 1.0, double correlation_scale = 1.0);
 
 struct CudaXcTransfers {
   std::uint64_t setup_h2d_bytes{}, output_d2h_bytes{}, synchronizations{}, evaluations{};
@@ -82,7 +86,8 @@ class CudaXcPlan {
  public:
   CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
              bool unrestricted, std::size_t tile_points, void* arena, std::size_t arena_bytes,
-             cudaStream_t stream, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64);
+             cudaStream_t stream, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+             double exchange_scale = 1.0, double correlation_scale = 1.0);
   /** Private explicit-source constructor for a validated native snapshot.
    * The caller proves packed basis/quadrature identity; setup copies them into
    * the same bounded arena used by SCF. No grid is regenerated for response. */
