@@ -318,6 +318,13 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
   DeviceScope scope(device);
   cudaStream_t stream = nullptr;
   unsigned char* base = nullptr;
+  // Async copies may still be pending when a later CUDA operation fails.
+  // Keep every borrowed host scalar alive through the catch-path stream drain.
+  const double zero = 0.0;
+  const double infinity = std::numeric_limits<double>::infinity();
+  const int no_error = 0;
+  CudaResult result;
+  int host_error = 0;
   try {{
     cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking),
                "cudaStreamCreateWithFlags");
@@ -335,9 +342,6 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
     auto* energy = reinterpret_cast<double*>(base + energy_offset);
     auto* minimum = reinterpret_cast<double*>(base + minimum_offset);
     auto* error = reinterpret_cast<int*>(base + error_offset);
-    const double zero = 0.0;
-    const double infinity = std::numeric_limits<double>::infinity();
-    const int no_error = 0;
     cuda_check(cudaMemcpyAsync(energy, &zero, sizeof(double), cudaMemcpyHostToDevice, stream),
                "cudaMemcpyAsync RCCSD(T) energy init");
     cuda_check(cudaMemcpyAsync(minimum, &infinity, sizeof(double),
@@ -357,8 +361,6 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
         device_inputs[7], denominator_threshold, energy, minimum, error);
     cuda_check(cudaGetLastError(), "RCCSD(T) triples kernel launch");
 
-    CudaResult result;
-    int host_error = 0;
     cuda_check(cudaMemcpyAsync(&result.energy, energy, sizeof(double),
                                cudaMemcpyDeviceToHost, stream),
                "cudaMemcpyAsync RCCSD(T) energy result");
