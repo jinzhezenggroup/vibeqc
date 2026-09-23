@@ -100,7 +100,7 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
   tests/python/test_tensor_cuda_execution.py
 ```
 
-See [the API and accounting contract](../../docs/resource_planning.md) for
+See [the API and accounting contract](../../docs/maintainer/resource_planning.md) for
 supported dimensions, lifetimes, retry boundaries and excluded overhead.
 
 Use the same CUDA installation for NVCC, the HF library and the runtime library

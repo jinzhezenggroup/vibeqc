@@ -91,6 +91,9 @@ CUDA_ALLOWED = {
         "scf/cuda/device_timer.",
         "scf/cuda/launch_geometry.",
         "scf/cuda_batch.hpp",
+        "scf/eigensolver_workspace.hpp",
+        "runtime/resource_cuda.cuh",
+        "vibeqc/vibeqc.hpp",
     ),
 }
 CUDA_ALLOWED["cuda_df_source"] = (
@@ -149,6 +152,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/cuda/final_validation_kernels.",
     "scf/cuda/scf_diis_kernels.",
     "scf/cuda_density_fitting.hpp",
+    "scf/cuda_density_fitting_device.hpp",
     "scf/cuda_df_gradient.hpp",
     "scf/cuda_density_fitting_eigen.hpp",
     "scf/cuda_density_fitting_final_state.hpp",
@@ -157,6 +161,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/density_fitting.hpp",
     "scf/df_exchange_policy.hpp",
     "scf/df_streamed_k_policy.hpp",
+    "scf/df_projected_exchange_schedule.hpp",
     "molecule/basis.hpp",
     "runtime/",
 )
@@ -349,7 +354,6 @@ CUDA_MODULES["cuda_direct_contractions"] = (
     "direct_eri_symmetry",
     "direct_fock_accumulation",
     "direct_fock_quartet",
-    "direct_fock_psss",
     "direct_fock_order2",
     "direct_force_density",
     "direct_force_low_order",

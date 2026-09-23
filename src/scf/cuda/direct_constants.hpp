@@ -21,11 +21,11 @@ namespace vibeqc::scf::cuda_execution {
 constexpr double kMixedPrecisionFloat32UnitRoundoff = 5.9604644775390625e-08;
 static_assert(kMixedPrecisionFloat32UnitRoundoff ==
               cuda_policy::kMixedPrecisionFloat32UnitRoundoff);
-// Workload thresholds still shared with bucket/topology admission. They are
-// intentionally left for the next profile-identity slice; this change first
-// removes device-resource constants whose legality can be resolved now.
+// Persistent ERI still participates in topology/layout construction before
+// runtime profitability is available. Keep only this compatibility boundary
+// here until the topology cache consumes the derived small-HF policy. Matrix
+// product routing is already owned by cuda_policy::resolve_small_hf_profitability.
 constexpr std::size_t kPersistentEriAoLimit = 16;
-constexpr std::size_t kCublasMatrixProductAoThreshold = 17;
 // Schwarz diagonal ERIs use the largest device call frame in the direct path.
 // One thread per block prevents a full warp of those frames from exhausting
 // the SM local-memory stack pool while preserving the dense AO-pair grid.
@@ -106,11 +106,12 @@ constexpr std::uint64_t kStreamingFockShellClassMask = kCanonicalSpdShellClassMa
 constexpr std::uint64_t kGeneratedStreamingFockShellClassMask =
     kStreamingFockShellClassMask & ~kDdddShellClassMask;
 constexpr std::uint64_t kNativeStreamingFockShellClassMask = kDdddShellClassMask;
-// Fixed-topology ssss/psss already have handwritten Fock consumers, while the
-// generated dddd consumer is rejected above. Keep those bits out of the fixed
-// mask so the established exact routes remain single-counted and correct.
+// Fixed-topology ssss retains its handwritten Fock consumer, while generated
+// psss now owns both fixed and bounded production Fock. The generated dddd
+// consumer is rejected above. Exclude only the retained exact routes so the
+// selected generated classes remain single-counted and correct.
 constexpr std::uint64_t kFixedTopologyGeneratedFockExclusionMask =
-    (std::uint64_t{1} << 0U) | (std::uint64_t{1} << 1U) | kDdddShellClassMask;
+    (std::uint64_t{1} << 0U) | kDdddShellClassMask;
 // The generated resident ppps consumer stages one pp primitive-pair list in
 // shared memory.  Larger lists stay on the established ordinary task path.
 constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;

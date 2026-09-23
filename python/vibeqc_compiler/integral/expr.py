@@ -195,6 +195,26 @@ class PowerLowering(str, Enum):
     SMALL_INTEGER = "small_integer"
 
 
+class ScalarDomain(str, Enum):
+    """Scalar input domains used to detect known boundary hazards."""
+
+    UNKNOWN = "unknown"
+    REAL = "real"
+    NONZERO = "nonzero"
+    NONNEGATIVE = "nonnegative"
+    POSITIVE = "positive"
+
+
+@dataclass(frozen=True, slots=True)
+class DomainViolation:
+    """One operation whose mathematical domain is not proven by assumptions."""
+
+    identifier: int
+    operation: str
+    requirement: str
+    operand_identifier: int
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationDecision:
     """Explain whether one arithmetic DAG value remains a CUDA temporary."""
@@ -691,15 +711,207 @@ class Graph:
 
         return target, tuple(visit(root.identifier) for root in normalized_roots)
 
+    def domain_violations(
+        self,
+        roots: Sequence[Expr],
+        variable_domains: Mapping[str, ScalarDomain],
+    ) -> tuple[DomainViolation, ...]:
+        """Return reachable scalar-domain requirements not proven by inputs.
+
+        The analysis distinguishes an explicit broad input domain (``REAL``)
+        from an intermediate whose range is not yet proven (``UNKNOWN``).
+        Known endpoint hazards block optimization; an unproven derived range is
+        left to the functional/source qualification contract rather than
+        pretending lightweight sign propagation is a theorem prover.
+        """
+
+        normalized_roots = tuple(roots)
+        for root in normalized_roots:
+            self._require_graph(root)
+        assumptions = dict(variable_domains)
+        if any(not isinstance(value, ScalarDomain) for value in assumptions.values()):
+            raise TypeError("variable domains must use ScalarDomain values")
+        memo: dict[int, ScalarDomain] = {}
+        violations: dict[tuple[int, str, int], DomainViolation] = {}
+
+        def satisfies(domain: ScalarDomain, requirement: str) -> bool:
+            if requirement == "nonzero":
+                return domain in (ScalarDomain.NONZERO, ScalarDomain.POSITIVE)
+            if requirement == "nonnegative":
+                return domain in (ScalarDomain.NONNEGATIVE, ScalarDomain.POSITIVE)
+            if requirement == "positive":
+                return domain == ScalarDomain.POSITIVE
+            if requirement == "greater-than-minus-one":
+                return domain in (ScalarDomain.NONNEGATIVE, ScalarDomain.POSITIVE)
+            raise ValueError(f"unsupported domain requirement {requirement!r}")
+
+        def require(identifier: int, operand: int, requirement: str) -> None:
+            operand_domain = visit(operand)
+            if operand_domain == ScalarDomain.UNKNOWN:
+                return
+            if not satisfies(operand_domain, requirement):
+                key = (identifier, requirement, operand)
+                violations[key] = DomainViolation(
+                    identifier, self.nodes[identifier].operation, requirement, operand
+                )
+
+        def constant_domain(value: Coefficient) -> ScalarDomain:
+            numeric = float(value)
+            if numeric > 0.0:
+                return ScalarDomain.POSITIVE
+            if numeric == 0.0:
+                return ScalarDomain.NONNEGATIVE
+            return ScalarDomain.NONZERO
+
+        def visit(identifier: int) -> ScalarDomain:
+            cached = memo.get(identifier)
+            if cached is not None:
+                return cached
+            node = self.nodes[identifier]
+            children = tuple(visit(item) for item in node.arguments)
+            if node.operation == "constant":
+                result = constant_domain(self._constant_value(node))
+            elif node.operation == "variable":
+                result = assumptions.get(str(node.payload), ScalarDomain.UNKNOWN)
+            elif node.operation == "add":
+                if children and all(
+                    item in (ScalarDomain.NONNEGATIVE, ScalarDomain.POSITIVE)
+                    for item in children
+                ):
+                    result = (
+                        ScalarDomain.POSITIVE
+                        if any(item == ScalarDomain.POSITIVE for item in children)
+                        else ScalarDomain.NONNEGATIVE
+                    )
+                else:
+                    result = ScalarDomain.UNKNOWN
+            elif node.operation == "multiply":
+                if children and all(item == ScalarDomain.POSITIVE for item in children):
+                    result = ScalarDomain.POSITIVE
+                elif children and all(
+                    item in (ScalarDomain.NONNEGATIVE, ScalarDomain.POSITIVE)
+                    for item in children
+                ):
+                    result = ScalarDomain.NONNEGATIVE
+                elif children and all(
+                    item in (ScalarDomain.NONZERO, ScalarDomain.POSITIVE)
+                    for item in children
+                ):
+                    result = ScalarDomain.NONZERO
+                else:
+                    result = ScalarDomain.UNKNOWN
+            elif node.operation == "reciprocal":
+                require(identifier, node.arguments[0], "nonzero")
+                source = children[0]
+                result = (
+                    ScalarDomain.POSITIVE
+                    if source == ScalarDomain.POSITIVE
+                    else (
+                        ScalarDomain.NONZERO
+                        if source == ScalarDomain.NONZERO
+                        else ScalarDomain.UNKNOWN
+                    )
+                )
+            elif node.operation == "exp":
+                result = ScalarDomain.POSITIVE
+            elif node.operation == "expm1":
+                result = ScalarDomain.UNKNOWN
+            elif node.operation == "log":
+                require(identifier, node.arguments[0], "positive")
+                result = ScalarDomain.UNKNOWN
+            elif node.operation == "log1p":
+                require(identifier, node.arguments[0], "greater-than-minus-one")
+                result = ScalarDomain.UNKNOWN
+            elif node.operation in ("atan", "asinh", "erf"):
+                result = ScalarDomain.UNKNOWN
+            elif node.operation == "select_le":
+                left_branch, right_branch = children[2], children[3]
+                if left_branch == right_branch:
+                    result = left_branch
+                elif {left_branch, right_branch} <= {
+                    ScalarDomain.NONNEGATIVE,
+                    ScalarDomain.POSITIVE,
+                }:
+                    result = ScalarDomain.NONNEGATIVE
+                else:
+                    result = ScalarDomain.UNKNOWN
+            elif node.operation == "power":
+                exponent = float(node.payload)
+                source = children[0]
+                if exponent < 0.0:
+                    requirement = "nonzero" if exponent.is_integer() else "positive"
+                    require(identifier, node.arguments[0], requirement)
+                elif not exponent.is_integer():
+                    require(identifier, node.arguments[0], "nonnegative")
+                if source == ScalarDomain.POSITIVE:
+                    result = ScalarDomain.POSITIVE
+                elif exponent > 0.0 and source == ScalarDomain.NONNEGATIVE:
+                    result = ScalarDomain.NONNEGATIVE
+                elif exponent.is_integer() and source == ScalarDomain.NONZERO:
+                    result = ScalarDomain.NONZERO
+                else:
+                    result = ScalarDomain.UNKNOWN
+            else:
+                raise ValueError(f"unsupported operation {node.operation!r}")
+            memo[identifier] = result
+            return result
+
+        for root in normalized_roots:
+            visit(root.identifier)
+        return tuple(violations[key] for key in sorted(violations))
+
+    def replace_subexpressions(
+        self, roots: Sequence[Expr], replacements: Mapping[Expr, Expr]
+    ) -> tuple[Expr, ...]:
+        """Replace exact DAG nodes without rewriting replacement subtrees.
+
+        Replacements belong to this graph and are inserted verbatim, without
+        recursively applying this map inside them. Callers own the mathematical
+        equivalence and domain proof; this operation itself makes no algebraic
+        or floating-point equivalence claim. Rebuilding preserves every node's
+        operation and payload, including piecewise branch semantics.
+        """
+        for source, target in replacements.items():
+            self._require_graph(source, target)
+        substitutions = {
+            source.identifier: target for source, target in replacements.items()
+        }
+        rebuilt: dict[int, Expr] = {}
+        for identifier in self.topological_order(roots):
+            if identifier in substitutions:
+                rebuilt[identifier] = substitutions[identifier]
+                continue
+            node = self.nodes[identifier]
+            arguments = tuple(rebuilt[child].identifier for child in node.arguments)
+            rebuilt[identifier] = self._intern(
+                Node(node.operation, arguments, node.payload)
+            )
+        return tuple(rebuilt[root.identifier] for root in roots)
+
     def apply_algebra_form(
         self,
         roots: Sequence[Expr],
         form: AlgebraForm,
         power_lowering: PowerLowering = PowerLowering.NATIVE,
+        *,
+        variable_domains: Mapping[str, ScalarDomain] | None = None,
     ) -> tuple[Graph, tuple[Expr, ...]]:
-        """Return roots in the requested power and associative representation."""
+        """Return roots in the requested representation without crossing unproven domains.
+
+        Supplying ``variable_domains`` activates conservative boundary analysis.
+        If any reachable singular operation is not proven safe, algebraic
+        optimization is skipped rather than silently changing its IEEE/domain
+        behavior. A production caller should normally sanitize physical inputs
+        first, then pass assumptions for those work variables.
+        """
 
         normalized_roots = tuple(roots)
+        if variable_domains is not None and self.domain_violations(
+            normalized_roots, variable_domains
+        ):
+            for root in normalized_roots:
+                self._require_graph(root)
+            return self, normalized_roots
         graph = self
         if power_lowering == PowerLowering.SMALL_INTEGER:
             graph, normalized_roots = self.lower_small_integer_powers(normalized_roots)

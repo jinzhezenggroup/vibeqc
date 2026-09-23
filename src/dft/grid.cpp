@@ -115,13 +115,29 @@ void validate_grid_spec(const GridSpec& spec) {
       throw std::invalid_argument("invalid DFT element radius");
 }
 
-MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
+std::pair<std::vector<double>, std::vector<double>> MolecularGrid::legendre_rule(
+    std::size_t count) {
+  return gauss_legendre(count);
+}
+
+MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec, Deferred)
     : system_(system), spec_(spec) {
   if (system_.atoms.empty()) throw std::invalid_argument("a DFT grid requires atoms");
   validate_grid_spec(spec_);
+  for (const auto& atom : system_.atoms) {
+    const auto z = atom.atomic_number;
+    if (z < 1 || z > 118) throw std::invalid_argument("invalid grid atomic number");
+    if (spec_.version >= 2 && !(spec_.element_radii[z] > 0.0))
+      throw std::invalid_argument("production DFT grid has no sourced element radius");
+    for (double coordinate : atom.position)
+      if (!std::isfinite(coordinate)) throw std::invalid_argument("nonfinite grid center");
+  }
+}
 
-  auto [polar, polar_weights] = gauss_legendre(spec_.angular_polar);
-  auto [radial_nodes, radial_weights] = gauss_legendre(spec_.radial_points);
+MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
+    : MolecularGrid(system, spec, Deferred{}) {
+  auto [polar, polar_weights] = legendre_rule(spec_.angular_polar);
+  auto [radial_nodes, radial_weights] = legendre_rule(spec_.radial_points);
   const std::size_t angular = multiply(spec_.angular_polar, spec_.angular_azimuth);
   const std::size_t per_atom = multiply(spec_.radial_points, angular);
   const std::size_t total = multiply(system_.atoms.size(), per_atom);
@@ -158,8 +174,8 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
 }
 
 std::vector<double> MolecularGrid::atomic_weights() const {
-  const auto [polar, polar_weights] = gauss_legendre(spec_.angular_polar);
-  const auto [nodes, weights] = gauss_legendre(spec_.radial_points);
+  const auto [polar, polar_weights] = legendre_rule(spec_.angular_polar);
+  const auto [nodes, weights] = legendre_rule(spec_.radial_points);
   const double azimuth_weight = 2.0 * std::numbers::pi / spec_.angular_azimuth;
   std::vector<double> result;
   result.reserve(point_count());

@@ -534,14 +534,16 @@ void streamed_general_response() {
 }
 
 /** Source-first K uses the same physical integrals for both coefficient
- * layouts and captured replays. Four AO rows, five auxiliaries and rank one
- * produce a three-row block plus a one-row tail in the new bounded schedule.
+ * layouts and captured replays. Four/five AO rows and rank one/two exercise
+ * two, three and four blocks, including a shorter last block. This detects
+ * stale or overwritten retained panels across both row visits and replays.
  * Truncation must retain the old spectral schedule and its independent oracle.
  */
-void streamed_projected_exchange() {
+void streamed_projected_exchange(bool ragged) {
   vibeqc::core::System orbital;
   orbital.atoms = {{1, {0, 0, -.7}}, {1, {0, 0, .7}}};
   orbital.shells = {{0, 0, {{1, 1}}}, {0, 0, {{.3, 1}}}, {1, 0, {{1, 1}}}, {1, 0, {{.3, 1}}}};
+  if (ragged) orbital.shells.push_back({1, 0, {{.12, 1}}});
   auto auxiliary = orbital;
   auxiliary.shells.push_back({0, 0, {{3, 1}}});
   std::string detail;
@@ -658,7 +660,7 @@ int main() {
       packed_response(true, 1, 2, cutoff, 2, 3);
       packed_response(false, 0, 2, cutoff, 2, 1);  // Insufficient rank-squared panel.
     }
-    streamed_projected_exchange();
+    for (bool ragged : {false, true}) streamed_projected_exchange(ragged);
     streamed_general_response();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
