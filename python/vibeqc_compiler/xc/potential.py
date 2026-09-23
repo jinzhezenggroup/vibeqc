@@ -6,7 +6,7 @@ import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
 
-from .coefficients import coefficient_program
+from .coefficients import PackedCoefficientViews, coefficient_program
 
 
 def potential_coefficients(
@@ -51,6 +51,79 @@ def assemble_potential(
     return assemble_coefficients(jets, coefficients, weights)
 
 
+def assemble_coefficients_directional(
+    jets: typing.Any,
+    directional_jets: typing.Any,
+    coefficients: typing.Any,
+    directional_coefficients: typing.Any,
+    weights: typing.Any,
+    directional_weights: typing.Any,
+) -> typing.Any:
+    """Differentiate the compact LDA/GGA AO matrix contraction once.
+
+    Point coefficients, AO jets and quadrature measure may all move. This is
+    the matrix-valued geometry JVP required by a stationary KS nuclear RHS; it
+    deliberately excludes tau until the meta-GGA response chain is qualified.
+    """
+    jets = immutable(jets)
+    directional_jets = immutable(directional_jets)
+    weights = immutable(weights)
+    directional_weights = immutable(directional_weights)
+    if (
+        jets.ndim != 3
+        or jets.shape[0] not in (1, 4, 10, 20)
+        or directional_jets.shape != jets.shape
+        or weights.shape != (jets.shape[1],)
+        or directional_weights.shape != weights.shape
+    ):
+        raise ValueError("invalid directional AO/weight domain")
+    if set(coefficients) - {"rho", "gradient"} or set(directional_coefficients) - {
+        "rho",
+        "gradient",
+    }:
+        raise ValueError("directional compact assembly supports LDA/GGA only")
+    rho = immutable(coefficients["rho"])
+    drho = immutable(directional_coefficients["rho"], shape=rho.shape)
+    if rho.ndim != 2 or rho.shape[0] not in (1, 2) or rho.shape[1] != jets.shape[1]:
+        raise ValueError("invalid directional coefficient point/spin layout")
+    spatial = coefficients.get("gradient")
+    directional_spatial = directional_coefficients.get("gradient")
+    if (spatial is None) != (directional_spatial is None):
+        raise ValueError("directional gradient coefficients must match the base domain")
+    if spatial is not None:
+        spatial = immutable(spatial, shape=(*rho.shape, 3))
+        directional_spatial = immutable(directional_spatial, shape=(*rho.shape, 3))
+        if jets.shape[0] < 4:
+            raise ValueError("GGA directional assembly requires first AO derivatives")
+
+    phi, dphi = jets[0], directional_jets[0]
+    derivatives, directional_derivatives = jets[1:4], directional_jets[1:4]
+    matrices = []
+    for spin in range(len(rho)):
+        base_measure = weights * rho[spin]
+        moving_measure = directional_weights * rho[spin] + weights * drho[spin]
+        matrix = (
+            dphi.T @ (base_measure[:, None] * phi)
+            + phi.T @ (base_measure[:, None] * dphi)
+            + phi.T @ (moving_measure[:, None] * phi)
+        )
+        if spatial is not None:
+            panel = sum(spatial[spin, :, k, None] * derivatives[k] for k in range(3))
+            directional_panel = sum(
+                directional_spatial[spin, :, k, None] * derivatives[k]
+                + spatial[spin, :, k, None] * directional_derivatives[k]
+                for k in range(3)
+            )
+            directional_cross = (
+                dphi.T @ (weights[:, None] * panel)
+                + phi.T @ (directional_weights[:, None] * panel)
+                + phi.T @ (weights[:, None] * directional_panel)
+            )
+            matrix += directional_cross + directional_cross.T
+        matrices.append(0.5 * (matrix + matrix.T))
+    return immutable(matrices)
+
+
 def assemble_coefficients(
     jets: typing.Any, coefficients: typing.Any, weights: typing.Any
 ) -> typing.Any:
@@ -64,7 +137,27 @@ def assemble_coefficients(
     jets, weights = immutable(jets), immutable(weights)
     if jets.ndim != 3 or jets.shape[0] not in (1, 4, 10, 20):
         raise ValueError("invalid AO jet domain for compact assembly")
-    rho = immutable(coefficients["rho"])
+    borrowed = isinstance(coefficients, PackedCoefficientViews)
+
+    def coefficient_array(value: typing.Any, shape: typing.Any = None) -> np.ndarray:
+        if not borrowed:
+            return immutable(value, shape=shape)
+        array = np.asarray(value)
+        owner = coefficients.owner
+        if (
+            not isinstance(owner, np.ndarray)
+            or owner.dtype != np.float64
+            or owner.flags.writeable
+            or array.dtype != np.float64
+            or array.flags.writeable
+            or (shape is not None and array.shape != shape)
+            or (array.size != 0 and not np.shares_memory(array, owner))
+            or not np.isfinite(array).all()
+        ):
+            raise ValueError("invalid borrowed XC coefficient layout")
+        return array
+
+    rho = coefficient_array(coefficients["rho"])
     if (
         rho.ndim != 2
         or rho.shape[0] not in (1, 2)
@@ -77,9 +170,9 @@ def assemble_coefficients(
     spatial = coefficients.get("gradient")
     kinetic = coefficients.get("tau")
     if spatial is not None:
-        spatial = immutable(spatial, shape=(*rho.shape, 3))
+        spatial = coefficient_array(spatial, shape=(*rho.shape, 3))
     if kinetic is not None:
-        kinetic = immutable(kinetic, shape=rho.shape)
+        kinetic = coefficient_array(kinetic, shape=rho.shape)
     if (spatial is not None or kinetic is not None) and jets.shape[0] < 4:
         raise ValueError("gradient/kinetic assembly requires first AO derivatives")
     phi, derivatives = jets[0], jets[1:4]

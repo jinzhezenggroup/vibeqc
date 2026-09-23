@@ -11,7 +11,6 @@
 #include "scf/cuda/direct_bounded_fallback.hpp"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_fock_order2.cuh"
-#include "scf/cuda/direct_fock_psss.cuh"
 #include "scf/cuda/direct_fock_quartet.cuh"
 #include "scf/cuda/direct_force_low_order.cuh"
 #include "scf/cuda/direct_force_order2.cuh"
@@ -134,10 +133,11 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
       }
       __syncthreads();
 
-      // Low-order shell tasks fit in one scalar lane. Drain up to 256 of
-      // them concurrently before assigning the larger classes one warp each;
-      // the former generic path spent 31 idle lanes on every ssss/psss/order2
-      // task and dominates molecular systems built from s/p/d basis shells.
+      // Retained low-order specialized tasks fit in one scalar lane. Drain
+      // ssss/order2 Fock and order-zero-through-three force tasks concurrently before
+      // assigning generic fallback classes one warp each. psss Fock is
+      // compiler-owned; if that generated class is unavailable, order one
+      // deliberately falls through to the generic full-warp oracle/fallback.
       for (std::uint32_t slot = threadIdx.x; slot < queue_count; slot += blockDim.x) {
         const ActiveShellQuartetTile task = queue[slot];
         const std::int32_t first_shell = batch.shell_pair_first[task.first_pair];
@@ -170,9 +170,6 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
             contract_fock_direct_quartet_subtile<Unrestricted, 0U>(
                 batch, &queue_count, queue + slot, screening_tolerance, schwarz_bounds, density,
                 active, output, nullptr, 0U, 0U);
-          } else if (angular_order == 1U) {
-            contract_fock_direct_psss_task<Unrestricted>(batch, task, screening_tolerance,
-                                                         schwarz_bounds, density, active, output);
           } else if (angular_order == 2U) {
             contract_fock_direct_order2_task<Unrestricted>(
                 batch, task, screening_tolerance, schwarz_bounds, density, active, output, nullptr);
@@ -191,7 +188,15 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
         const unsigned angular_order =
             batch.shell_angular[first_shell] + batch.shell_angular[second_shell] +
             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
-        if (angular_order <= 3U) continue;
+        if constexpr (Force) {
+          // The generated scalar force adapter also covers order three.
+          if (angular_order <= 3U) continue;
+        } else {
+          // Fock order one has no psss-specific handwritten fallback anymore.
+          // When generated psss is unavailable, evaluate it through the shared
+          // generic order-one contraction below.
+          if (angular_order == 0U || angular_order == 2U) continue;
+        }
         const std::size_t first_ao_count = shell_ao_pair_count(batch, base.first_pair);
         const std::size_t second_ao_count = shell_ao_pair_count(batch, base.second_pair);
         const std::size_t ao_quartets = base.first_pair == base.second_pair
@@ -263,6 +268,32 @@ void launch_bounded_direct_shell_quartet_kernel(
               enabled_mask_pointer, enabled_mask, bounded_generated_overflow, schwarz_bounds,
               density, active, output, global_cursor, profile);
     }
+  }
+}
+
+void launch_bounded_direct_fock_shell_quartet_kernel(
+    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
+    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
+    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
+    const double* shell_pair_block_bounds, const double* system_density_bounds,
+    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
+    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
+    const double* density, const std::uint8_t* active, double* fock,
+    unsigned long long* global_cursor) {
+  if (unrestricted) {
+    bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
+  } else {
+    bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>
+        <<<grid, block, shared_bytes, stream>>>(
+            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
+            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
+            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
+            global_cursor, nullptr);
   }
 }
 

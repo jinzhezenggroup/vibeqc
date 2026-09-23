@@ -18,6 +18,12 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
+from ._generated_libxc_methods import (
+    LIBXC_METHODS,
+)
+from ._generated_libxc_methods import (
+    METHOD_METADATA_SEMANTICS as LIBXC_METHOD_METADATA_SEMANTICS,
+)
 from .basis_binding import BasisBinding, r2scan3c_def2_mtzvpp_h_ar
 from .dispersion import (
     D3Spec,
@@ -521,6 +527,108 @@ class MethodIR:
         return canonical_hash(self.to_payload())
 
 
+def _generated_fraction(value: object, field: str) -> Fraction:
+    if not isinstance(value, str):
+        raise UnsupportedMethod(f"generated Libxc {field} must be an exact string")
+    try:
+        return Fraction(value)
+    except (ValueError, ZeroDivisionError) as error:
+        raise UnsupportedMethod(
+            f"generated Libxc {field} is not an exact fraction"
+        ) from error
+
+
+def _generated_components(
+    record: typing.Mapping[str, object],
+) -> tuple[tuple[str, Fraction], ...]:
+    raw = record["components"]
+    if not isinstance(raw, (list, tuple)):
+        raise UnsupportedMethod("generated Libxc components must be a sequence")
+    result: list[tuple[str, Fraction]] = []
+    for item in raw:
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise UnsupportedMethod(
+                "generated Libxc component must be a name/coefficient pair"
+            )
+        name, coefficient = item
+        if not isinstance(name, str):
+            raise UnsupportedMethod("generated Libxc component name must be a string")
+        result.append((name, _generated_fraction(coefficient, "component coefficient")))
+    return tuple(result)
+
+
+def _generated_libxc_method_specs() -> dict[str, MethodSpec]:
+    """Materialize representable pinned-Libxc hybrids as backend-neutral specs.
+
+    This is representation admission only. Native/public capability remains owned
+    by execution-plan and Calculator qualification gates. Unsupported component
+    families stay in the generated metadata inventory without entering MethodIR.
+    """
+    result: dict[str, MethodSpec] = {}
+    for identifier, record in LIBXC_METHODS.items():
+        semantics = record["metadata_semantics"]
+        if (
+            not isinstance(semantics, str)
+            or semantics != LIBXC_METHOD_METADATA_SEMANTICS
+        ):
+            raise UnsupportedMethod(
+                "generated Libxc method metadata needs regeneration"
+            )
+        components = _generated_components(record)
+        direct_stem = record["direct_semilocal_stem"]
+        if direct_stem is not None:
+            if not isinstance(direct_stem, str):
+                raise UnsupportedMethod(
+                    "generated Libxc direct semilocal stem must be a string"
+                )
+            family_value = record["family"]
+            if not isinstance(family_value, str):
+                raise UnsupportedMethod("generated Libxc family must be a string")
+            family = {"hyb_gga": "GGA", "hyb_mgga": "MGGA"}.get(family_value)
+            if family is None:
+                continue
+            components = (
+                (f"{family}_X_{direct_stem}", Fraction(1)),
+                (f"{family}_C_{direct_stem}", Fraction(1)),
+            )
+        if not components or any(name not in COMPONENTS for name, _ in components):
+            continue
+        nonlocal_correlation = None
+        variant = record["nonlocal_variant"]
+        if variant is not None:
+            if not isinstance(variant, str):
+                raise UnsupportedMethod(
+                    "generated Libxc nonlocal variant must be a string"
+                )
+            b, c = record["nlc_b"], record["nlc_c"]
+            if variant != "vv10" or b is None or c is None:
+                continue
+            nonlocal_correlation = NonlocalCorrelationSpec(
+                variant,
+                _generated_fraction(b, "VV10 b"),
+                _generated_fraction(c, "VV10 c"),
+            )
+        result[identifier] = MethodSpec(
+            identifier,
+            components,
+            exact_exchange=_generated_fraction(
+                record["exact_exchange"], "exact exchange"
+            ),
+            short_range_exchange=_generated_fraction(
+                record["short_range_exchange"], "short-range exchange"
+            ),
+            long_range_exchange=_generated_fraction(
+                record["long_range_exchange"], "long-range exchange"
+            ),
+            range_omega=_generated_fraction(record["range_omega"], "range omega"),
+            nonlocal_correlation=nonlocal_correlation,
+        )
+    return result
+
+
+_GENERATED_LIBXC_METHOD_SPECS = MappingProxyType(_generated_libxc_method_specs())
+
+
 METHOD_CATALOG = MappingProxyType(
     {
         "LDA_XC_PW": MethodSpec(
@@ -588,16 +696,6 @@ METHOD_CATALOG = MappingProxyType(
             "BP86",
             (("GGA_X_B88", Fraction(1)), ("GGA_C_P86", Fraction(1))),
         ),
-        "B3P86": MethodSpec(
-            "B3P86",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_VWN_RPA", Fraction(19, 100)),
-                ("GGA_C_P86", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
         "B3P86V5": MethodSpec(
             "B3P86V5",
             (
@@ -605,38 +703,6 @@ METHOD_CATALOG = MappingProxyType(
                 ("GGA_X_B88", Fraction(18, 25)),
                 ("LDA_C_VWN", Fraction(19, 100)),
                 ("GGA_C_P86", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
-        "B3LYP": MethodSpec(
-            "B3LYP",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_VWN_RPA", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
-        # Keep the VWN5 variant explicit: it is a distinct Libxc/PySCF
-        # composition from the Gaussian-compatible VWN-RPA B3LYP above.
-        "B3LYP5": MethodSpec(
-            "B3LYP5",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_VWN", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 5),
-        ),
-        "B3PW91": MethodSpec(
-            "B3PW91",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(18, 25)),
-                ("LDA_C_PW", Fraction(19, 100)),
-                ("GGA_C_PW91", Fraction(81, 100)),
             ),
             exact_exchange=Fraction(1, 5),
         ),
@@ -661,16 +727,6 @@ METHOD_CATALOG = MappingProxyType(
                 ("GGA_C_LYP", Fraction(871, 1000)),
             ),
             exact_exchange=Fraction(109, 500),
-        ),
-        "B5050LYP": MethodSpec(
-            "B5050LYP",
-            (
-                ("LDA_X", Fraction(2, 25)),
-                ("GGA_X_B88", Fraction(21, 50)),
-                ("LDA_C_VWN", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            exact_exchange=Fraction(1, 2),
         ),
         "BHANDH": MethodSpec(
             "BHANDH",
@@ -714,43 +770,7 @@ METHOD_CATALOG = MappingProxyType(
             exact_exchange=Fraction(1, 4),
             dispersion=pbe0_d3_zero_spec(),
         ),
-        "WB97M-V": MethodSpec(
-            "WB97M-V",
-            (
-                ("MGGA_X_WB97M_V", Fraction(1)),
-                ("MGGA_C_WB97M_V", Fraction(1)),
-            ),
-            short_range_exchange=Fraction(3, 20),
-            long_range_exchange=Fraction(1),
-            range_omega=Fraction(3, 10),
-            nonlocal_correlation=NonlocalCorrelationSpec(
-                "vv10", Fraction(6), Fraction(1, 100)
-            ),
-        ),
-        "CAM-B3LYP": MethodSpec(
-            "CAM-B3LYP",
-            (
-                ("GGA_X_B88", Fraction(35, 100)),
-                ("GGA_X_ITYH", Fraction(46, 100)),
-                ("LDA_C_VWN", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            short_range_exchange=Fraction(19, 100),
-            long_range_exchange=Fraction(65, 100),
-            range_omega=Fraction(33, 100),
-        ),
-        "CAMH-B3LYP": MethodSpec(
-            "CAMH-B3LYP",
-            (
-                ("GGA_X_B88", Fraction(50, 100)),
-                ("GGA_X_ITYH", Fraction(31, 100)),
-                ("LDA_C_VWN", Fraction(19, 100)),
-                ("GGA_C_LYP", Fraction(81, 100)),
-            ),
-            short_range_exchange=Fraction(19, 100),
-            long_range_exchange=Fraction(50, 100),
-            range_omega=Fraction(33, 100),
-        ),
+        **_GENERATED_LIBXC_METHOD_SPECS,
     }
 )
 

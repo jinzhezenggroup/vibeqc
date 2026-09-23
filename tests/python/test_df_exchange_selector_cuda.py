@@ -95,6 +95,21 @@ int main() {
   p.row_tile=384; check(false); p.row_tile=768;
   p.auxiliary_tile=384; check(false); p.auxiliary_tile=768;
   p.streamed=true; check(false); p.streamed=false;
+  // Streamed value eligibility is separate from resident final/response
+  // borrowing. A full-rank source, four buffers and profitable work are needed.
+  p.streamed=true;
+  p.integral_source=reinterpret_cast<CudaDensityFittingIntegralSource*>(1);
+  p.exchange_intermediate=p.exchange_contributions=p.exchange_tile_output=
+      reinterpret_cast<double*>(1);
+  p.metric_full_rank={1}; p.panel_capacity=768ULL*768*128;
+  check(true);
+  if (cuda_df::qualified_resident_rhf_exchange(p,160))
+    throw std::runtime_error("streamed value factor authorized resident response");
+  p.metric_full_rank={0}; check(false); p.metric_full_rank={1};
+  p.exchange_tile_output=nullptr; check(false);
+  p.exchange_tile_output=reinterpret_cast<double*>(1);
+  p.panel_capacity=1; check(false);
+  p.streamed=false; p.integral_source=nullptr;
   p.integral_source=reinterpret_cast<CudaDensityFittingIntegralSource*>(1);
   check(false); p.integral_source=nullptr;
   p.occupied_scf_reserved=false; check(false); p.occupied_scf_reserved=true;

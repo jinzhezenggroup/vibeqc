@@ -10,6 +10,7 @@
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_plan_internal.hpp"
 #include "scf/cuda/df_runtime.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -28,8 +29,7 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
   const auto n = plan.nbf, a = plan.naux, capacity = plan.panel_capacity;
   const auto ar = a * rank;
   const double one = 1, zero = 0;
-  auto* left = plan.auxiliary_tile_values;
-  auto* right = plan.exchange_contributions;
+  double* projections[] = {plan.auxiliary_tile_values, plan.exchange_contributions};
   auto* raw = plan.exchange_intermediate;
   auto* transformed = plan.exchange_tile_output;
   auto* output = exchange + system * plan.matrix_elements;
@@ -81,33 +81,39 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
     trace_counter("streamed_occupied_projection_copy_bytes", count * ar * sizeof(double));
     return VIBEQC_STATUS_SUCCESS;
   };
-  for (std::size_t r = 0; r < n; r += rows) {
-    const auto nr = std::min(rows, n - r);
-    auto status = project(r, nr, left);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
-    for (std::size_t c = 0; c < (plan.triangular_exchange ? r + 1 : n); c += rows) {
-      const auto nc = std::min(rows, n - c);
-      const auto* column = left;
-      if (c != r) {
-        status = project(c, nc, right);
-        if (status != VIBEQC_STATUS_SUCCESS) return status;
-        column = right;
-      } else {
-        trace_counter("occupied_panel_cache_hits", 1);
-      }
-      // Columns of each (a*rank,rows) panel are output AO rows. Every matrix
-      // block is produced exactly once, including partial row/column tails.
-      const auto blas = trace_call("streamed_occupied_exchange_gemm", plan.stream, [&] {
-        return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(nr),
-                           static_cast<int>(nc), static_cast<int>(ar), &weight, left,
-                           static_cast<int>(ar), column, static_cast<int>(ar), &zero,
-                           output + r + c * n, static_cast<int>(n));
+  vibeqc_status status = VIBEQC_STATUS_SUCCESS;
+  // The compiler owns visit order and the two-slot lifetime. Raw input and
+  // metric scratch remain disjoint from both retained projections; native
+  // callbacks bind the existing buffers and enqueue all work on plan.stream.
+  const auto completed = generated::visit_projected_exchange(
+      n, rows, plan.triangular_exchange,
+      [&](std::size_t begin, std::size_t count, std::size_t slot) {
+        status = project(begin, count, projections[slot]);
+        return status == VIBEQC_STATUS_SUCCESS;
+      },
+      [&](std::size_t r, std::size_t nr, std::size_t c, std::size_t nc, std::size_t left,
+          std::size_t right, bool retained) {
+        if (retained) trace_counter("occupied_panel_cache_hits", 1);
+        // Columns of each (a*rank,rows) panel are output AO rows. Every matrix
+        // block is produced exactly once, including partial row/column tails.
+        const auto blas = trace_call("streamed_occupied_exchange_gemm", plan.stream, [&] {
+          return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(nr),
+                             static_cast<int>(nc), static_cast<int>(ar), &weight, projections[left],
+                             static_cast<int>(ar), projections[right], static_cast<int>(ar), &zero,
+                             output + r + c * n, static_cast<int>(n));
+        });
+        if (blas != CUBLAS_STATUS_SUCCESS) {
+          status = blas_failure(blas, "contract streamed occupied DF factors", detail);
+          return false;
+        }
+        trace_counter("occupied_exchange_products", 1);
+        trace_counter("occupied_exchange_flops", 2 * nr * nc * ar);
+        return true;
       });
-      if (blas != CUBLAS_STATUS_SUCCESS)
-        return blas_failure(blas, "contract streamed occupied DF factors", detail);
-      trace_counter("occupied_exchange_products", 1);
-      trace_counter("occupied_exchange_flops", 2 * nr * nc * ar);
-    }
+  if (!completed) {
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    detail = "invalid compiler projected exchange traversal";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (plan.triangular_exchange) {
     launch_mirror_exchange_triangle(blocks_for(plan.matrix_elements), kThreads, plan.stream, n,
@@ -148,24 +154,14 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
 
   if (plan.integral_source && plan.streamed && plan.metric_full_rank[system] &&
       rank <= static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux) {
-    // Raw AO input and all-Q occupied projections use separate buffers with
-    // the same charged capacity. Require both to fit at least one complete
-    // AO row, and select this order only when it reduces logical source work.
-    const auto rows = std::min(
-        {plan.nbf, plan.panel_capacity / (plan.naux * rank), plan.panel_capacity / plan.nbf});
-    const auto legacy = df_streamed_k_panel(plan.nbf, plan.naux, plan.panel_capacity);
-    if (rows) {
-      const auto blocks = (plan.nbf + rows - 1) / rows;
-      const auto last = plan.nbf - (blocks - 1) * rows;
-      const long double generated_rows =
-          plan.triangular_exchange
-              ? static_cast<long double>(rows) * (blocks - 1) * (blocks + 2) / 2 + last
-              : static_cast<long double>(plan.nbf) * blocks;
-      if (generated_rows <
-          static_cast<long double>(plan.nbf) * legacy.row_tiles * legacy.output_tiles)
-        return build_streamed_projected_exchange(plan, system, coefficients, rank, column_major,
-                                                 weight, rows, exchange, detail);
-    }
+    // Allocation, automatic SCF qualification and execution share this compiler
+    // schedule. Balanced row blocks avoid repeatedly generating an oversized
+    // prefix when the last triangular block is short.
+    const auto schedule = df_projected_exchange_schedule(
+        plan.nbf, plan.naux, rank, plan.panel_capacity, plan.triangular_exchange);
+    if (schedule.rows)
+      return build_streamed_projected_exchange(plan, system, coefficients, rank, column_major,
+                                               weight, schedule.rows, exchange, detail);
   }
 
   const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower;

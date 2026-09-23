@@ -8,6 +8,7 @@
 #include <string>
 
 #include "allocation_measurement.hpp"
+#include "compiled_execution_region.hpp"
 
 namespace vibeqc::runtime {
 struct GraphMetrics {
@@ -17,19 +18,9 @@ struct GraphMetrics {
   int32_t mode = 0;  // ordinary, warmup, captured, replay, fallback, profiling
 };
 
-// A binding is owner-local, never an on-disk graph-cache key. The qualification
-// digest covers compiler/artifact/schedule/specialization/runtime identities.
-struct GraphBinding {
-  std::string qualification;
-  int device = 0;
-  cudaStream_t stream = nullptr;
-  const void* arena = nullptr;
-  const void* library = nullptr;
-  bool operator==(const GraphBinding& other) const {
-    return qualification == other.qualification && device == other.device &&
-           stream == other.stream && arena == other.arena && library == other.library;
-  }
-};
+// Compatibility name for the TensorIR adapter. The lifecycle and binding
+// semantics are shared with every compiled CUDA execution-region consumer.
+using GraphBinding = CompiledExecutionBinding;
 
 class CudaGraphRegion {
  public:
@@ -49,7 +40,7 @@ class CudaGraphRegion {
   }
   void invalidate() {
     release();
-    bound_ = warmed_ = failed_ = false;
+    lifecycle_.invalidate();
     ++metrics.invalidations;
     reason = "invalidated; ordinary warmup required";
   }
@@ -57,32 +48,48 @@ class CudaGraphRegion {
   template <class F>
   void submit(const GraphBinding& binding, bool enabled, bool profile, F operation) {
     const auto started = Clock::now();
-    if (!bound_ || !(binding_ == binding)) {
-      if (bound_) invalidate();
-      binding_ = binding;
-      bound_ = true;
+    // An unconfigured owner reaches this entry for explicit diagnostics and
+    // ineligible graph fallbacks. It has no compiled-region qualification and
+    // must stay ordinary instead of binding a synthetic empty identity.
+    if (!enabled && binding.qualification.empty()) {
+      // Losing qualification also loses the old binding. Release its graph
+      // before ordinary work can replace the referenced buffers or code.
+      if (lifecycle_.bound()) invalidate();
+      metrics.mode = profile ? 5 : 0;
+      operation();
+      metrics.submission_ms = elapsed(started);
+      return;
     }
+    if (!lifecycle_.matches(binding)) {
+      if (lifecycle_.bound()) {
+        release();
+        ++metrics.invalidations;
+      }
+      lifecycle_.bind(binding);
+    }
+    const auto stream = static_cast<cudaStream_t>(binding.stream);
     if (!enabled || profile) {
       metrics.mode = profile ? 5 : 0;
       operation();
-    } else if (failed_) {
+    } else if (lifecycle_.failed()) {
       metrics.mode = 4;
       ++metrics.fallbacks;
       operation();
-    } else if (!warmed_) {
+    } else if (!lifecycle_.warmed()) {
       // Execute exactly once: do not secretly repeat a stateful region to warm
       // it up. Inputs may be refreshed before the next call/capture attempt.
       operation();
-      warmed_ = true;
+      lifecycle_.mark_success();
       metrics.mode = 1;
       reason = "ordinary warmup completed";
     } else {
       const bool cached = executable_ != nullptr;
-      if (!cached) capture(binding.stream, operation);
+      if (!cached) capture(stream, operation);
       if (executable_) {
         // A launch/async execution error is NOT a capture-eligibility failure.
         // Never retry a possibly submitted scientific operation twice.
-        check(cudaGraphLaunch(executable_, binding.stream));
+        check(cudaGraphLaunch(executable_, stream));
+        lifecycle_.mark_success();
         ++metrics.replays;
         metrics.mode = cached ? 3 : 2;
         reason = "captured device region";
@@ -98,8 +105,7 @@ class CudaGraphRegion {
  private:
   using Clock = std::chrono::steady_clock;
   cudaGraphExec_t executable_ = nullptr;
-  GraphBinding binding_;
-  bool bound_ = false, warmed_ = false, failed_ = false;
+  CompiledExecutionRegion lifecycle_;
   static double elapsed(Clock::time_point start) {
     return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
   }
@@ -114,7 +120,7 @@ class CudaGraphRegion {
            status == cudaErrorMemoryAllocation;
   }
   void fail(const char* text) {
-    failed_ = true;
+    lifecycle_.mark_failure(text);
     reason = text;
   }
   template <class F>

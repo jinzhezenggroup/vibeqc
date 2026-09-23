@@ -23,10 +23,11 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
 
 }  // namespace
 
-void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, const double* points,
-             const double* weights, const double* density, double* ao, double* work,
-             double* features, double* coefficients, double* point_totals, double* potential,
-             double* totals, int* error, const double* direction, double* delta_features) {
+void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStream_t stream,
+             const double* basis, const double* points, const double* weights,
+             const double* density, double* ao, double* work, double* features,
+             double* coefficients, double* point_totals, double* potential, double* totals,
+             int* error, const double* direction, double* delta_features) {
   const I matrices = l.spins * l.nao * l.nao;
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
   cuda_check(cudaMemsetAsync(totals, 0, 3 * sizeof(double), stream));
@@ -39,9 +40,16 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
   }
   for (std::size_t begin = 0; begin < l.npoint; begin += l.tile_points) {
     const I count = std::min(l.tile_points, l.npoint - begin);
-    // The existing through-f AO kernel is compiled earlier in this same TU.
-    ao_kernel<<<blocks(l.jets * count * l.nao, 128), 128, 0, stream>>>(
-        basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error, nullptr);
+    // Route B changes only AO arithmetic. The AO panel and all downstream
+    // density/XC reductions stay FP64 so this is a clean precision ablation.
+    if (l.ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage)
+      ao_kernel_fp32<<<blocks(l.jets * count * l.nao, 128), 128, 0, stream>>>(
+          basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error,
+          nullptr);
+    else
+      ao_kernel<<<blocks(l.jets * count * l.nao, 128), 128, 0, stream>>>(
+          basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error,
+          nullptr);
     cuda_check(cudaGetLastError());
     density_product<<<blocks(l.spins * l.work_jets * count * l.nao, 128), 128, 0, stream>>>(
         density, ao, l.nao, count, l.spins, l.work_jets, work, error);
@@ -61,9 +69,8 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
           delta_features, error);
       cuda_check(cudaGetLastError());
     }
-    evaluate_points<<<blocks(count, 128), 128, 0, stream>>>(
-        features, weights + begin, count, l.spins, l.feature_terms, l.functional, coefficients,
-        point_totals, error, delta_features);
+    point_launcher(stream, features, weights + begin, count, l.spins, coefficients, point_totals,
+                   error, delta_features);
     cuda_check(cudaGetLastError());
     assemble_potential<<<blocks(matrices, 128), 128, 0, stream>>>(
         ao, coefficients, weights + begin, l.nao, count, l.spins, l.feature_terms, potential,

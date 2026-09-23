@@ -16,6 +16,10 @@ from vibeqc_compiler.common.provenance import canonical_hash
 from .ao import NativeAO, jet_indices
 from .features import spin_densities
 from .grid import ExplicitGrid, MolecularGrid, checked_int
+from .nonlocal_policy import (
+    MOLECULAR_VV10_DENSITY_POLICY,
+    MOLECULAR_VV10_DENSITY_THRESHOLD,
+)
 from .nonlocal_reference import (
     nonlocal_energy_reference,
     nonlocal_explicit_geometry_derivatives_reference,
@@ -42,6 +46,7 @@ class NonlocalGeometry:
     device_workspace_bytes: int = 0
     pair_evaluations: int = 0
     provider_identity: str | None = None
+    density_policy: str | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.coefficient, Fraction) or self.coefficient <= 0:
@@ -87,6 +92,7 @@ class NonlocalGeometry:
         *,
         spec: NonlocalCorrelationSpec,
         coefficient: Fraction,
+        density_policy: str | None = None,
     ) -> ExplicitGrid:
         """Revalidate the current kernel, coefficient, basis, density and grid."""
         if not isinstance(spec, NonlocalCorrelationSpec):
@@ -97,6 +103,8 @@ class NonlocalGeometry:
             raise ValueError("nonlocal geometry/specification identity mismatch")
         if coefficient != self.coefficient:
             raise ValueError("nonlocal geometry/coefficient identity mismatch")
+        if density_policy != self.density_policy:
+            raise ValueError("nonlocal geometry/density-policy identity mismatch")
         if not isinstance(basis, NativeAO):
             raise TypeError("nonlocal geometry replay requires NativeAO")
         if basis.identity != self.basis_identity:
@@ -137,6 +145,7 @@ class NonlocalIntegral:
     device_workspace_bytes: int = 0
     pair_evaluations: int = 0
     provider_identity: str | None = None
+    density_policy: str | None = None
 
 
 def _density_identity(spin_density: np.ndarray, separate: bool, nao: int) -> str:
@@ -177,6 +186,7 @@ class FixedDensityNonlocalCorrelation:
         coefficient: typing.Any = Fraction(1),
         max_points: typing.Any = 4096,
         pair_provider: typing.Any = None,
+        density_policy: str | None = None,
     ) -> None:
         if not isinstance(spec, NonlocalCorrelationSpec):
             raise TypeError("expected NonlocalCorrelationSpec")
@@ -187,6 +197,37 @@ class FixedDensityNonlocalCorrelation:
         self.coefficient = coefficient
         self.max_points = max_points
         self.pair_provider = pair_provider
+        if density_policy not in (None, MOLECULAR_VV10_DENSITY_POLICY):
+            raise ValueError("unknown nonlocal density policy")
+        self.density_policy = density_policy
+
+    def _density_domain(
+        self, weights: np.ndarray, rho: np.ndarray, gradient: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
+        """Select BOTH pair domains without changing active physical features.
+
+        The derivative is the local, fixed-active-set derivative. Inactive
+        quadrature weights and their pullbacks are zero, including the beta term.
+        Finite dummy features protect strict raw providers from unused vacuum
+        arithmetic; negative/nonfinite physical inputs never enter that branch.
+        """
+        if self.density_policy is None:
+            return weights, rho, gradient, None
+        if (
+            not np.isfinite(rho).all()
+            or not np.isfinite(gradient).all()
+            or np.any(rho < 0)
+        ):
+            raise ValueError(
+                "molecular nonlocal density/gradient must be finite and density nonnegative"
+            )
+        active = rho >= float(MOLECULAR_VV10_DENSITY_THRESHOLD)
+        return (
+            np.where(active, weights, 0.0),
+            np.where(active, rho, 1.0),
+            np.where(active[:, None], gradient, 0.0),
+            active,
+        )
 
     def _validate_grid(
         self, basis: typing.Any, grid: typing.Any
@@ -269,6 +310,12 @@ class FixedDensityNonlocalCorrelation:
                 jets, total_density
             )
             tiles += 1
+        weights, rho, gradient, active = self._density_domain(weights, rho, gradient)
+        domain_bytes = (
+            0
+            if active is None
+            else weights.nbytes + rho.nbytes + gradient.nbytes + active.nbytes
+        )
         native = None
         if self.pair_provider is None:
             coefficient = float(self.coefficient)
@@ -316,6 +363,14 @@ class FixedDensityNonlocalCorrelation:
             "spec_identity": self.spec.identity,
             "coefficient": str(self.coefficient),
             "density_identity": density_identity,
+            **(
+                {
+                    "density_policy": self.density_policy,
+                    "active_sha256": sha256(active.tobytes()).hexdigest(),
+                }
+                if active is not None
+                else {}
+            ),
             "max_points": self.max_points,
         }
         backend = "cpu-reference"
@@ -343,12 +398,14 @@ class FixedDensityNonlocalCorrelation:
             points=ngrid,
             tiles=tiles,
             backend=backend,
-            host_workspace_bytes=0 if native is None else native.host_workspace_bytes,
+            host_workspace_bytes=domain_bytes
+            + (0 if native is None else native.host_workspace_bytes),
             device_workspace_bytes=0
             if native is None
             else native.device_workspace_bytes,
             pair_evaluations=0 if native is None else native.pair_evaluations,
             provider_identity=None if native is None else native.provider_identity,
+            density_policy=self.density_policy,
         )
 
     def geometry(
@@ -383,6 +440,12 @@ class FixedDensityNonlocalCorrelation:
                 jets, total_density
             )
 
+        weights, rho, gradient, active = self._density_domain(weights, rho, gradient)
+        domain_bytes = (
+            0
+            if active is None
+            else weights.nbytes + rho.nbytes + gradient.nbytes + active.nbytes
+        )
         native = None
         if self.pair_provider is None:
             vrho, vsigma = nonlocal_feature_derivatives_reference(
@@ -413,6 +476,11 @@ class FixedDensityNonlocalCorrelation:
             vsigma = np.asarray(native.vsigma)
             point_partials = np.array(native.point_derivative, copy=True)
             weight_partials = np.array(native.weight_derivative, copy=True)
+        if active is not None:
+            vrho = np.where(active, vrho, 0.0)
+            vsigma = np.where(active, vsigma, 0.0)
+            point_partials[~active] = 0.0
+            weight_partials[~active] = 0.0
         center_partials = np.zeros((basis.natom, 3), dtype=np.float64)
         ao_atoms = _ao_atoms(basis)
         lookup = {axis: i for i, axis in enumerate(jet_indices(2))}
@@ -489,6 +557,14 @@ class FixedDensityNonlocalCorrelation:
             "spec_identity": self.spec.identity,
             "coefficient": str(self.coefficient),
             "density_identity": density_identity,
+            **(
+                {
+                    "density_policy": self.density_policy,
+                    "active_sha256": sha256(active.tobytes()).hexdigest(),
+                }
+                if active is not None
+                else {}
+            ),
             "sources": ("nonlocal_ao", "nonlocal_grid", "nonlocal_weight"),
         }
         backend = "cpu-reference"
@@ -516,10 +592,12 @@ class FixedDensityNonlocalCorrelation:
             density_identity=density_identity,
             coefficient=self.coefficient,
             backend=backend,
-            host_workspace_bytes=0 if native is None else native.host_workspace_bytes,
+            host_workspace_bytes=domain_bytes
+            + (0 if native is None else native.host_workspace_bytes),
             device_workspace_bytes=0
             if native is None
             else native.device_workspace_bytes,
             pair_evaluations=0 if native is None else native.pair_evaluations,
             provider_identity=None if native is None else native.provider_identity,
+            density_policy=self.density_policy,
         )

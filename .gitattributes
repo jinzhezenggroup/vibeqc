@@ -37,7 +37,8 @@ src/dft/dispersion/*_data.hpp linguist-generated=true
 python/vibeqc_compiler/integral/rys*_data.py linguist-generated=true
 src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp linguist-generated=true
 python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
-src/xtb/gfn2_runtime/data/parameters/gfn1.hpp linguist-generated=true
+python/vibeqc_compiler/method/_generated_libxc_methods.py linguist-generated=true
+src/xtb/native/data/parameters/gfn1.hpp linguist-generated=true
 upstream/xtbloom/** -whitespace linguist-vendored=true
 python/vibeqc_compiler/geometry/_gfn1_data.py text eol=lf linguist-generated=true
 

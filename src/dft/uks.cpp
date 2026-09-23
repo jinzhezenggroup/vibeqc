@@ -173,8 +173,9 @@ ScfResult run_uks_impl(
       strategy.spec.coulomb.coefficient != 1.0 ||
       (strategy.spec.exchange.present &&
        (strategy.spec.exchange.op != FockOperator::FullRange ||
-        strategy.spec.exchange.approximation != FockApproximation::Exact)))
-    throw std::invalid_argument("UKS requires a CPU full-range exact J/K Fock strategy");
+        (strategy.spec.exchange.approximation != FockApproximation::Exact &&
+         strategy.spec.exchange.approximation != FockApproximation::DensityFitted))))
+    throw std::invalid_argument("UKS requires a CPU full-range exact or fitted J/K Fock strategy");
   if (long_range_correction) {
     const auto& correction = long_range_correction->strategy();
     validate_resolved_fock_build(correction);
@@ -198,8 +199,9 @@ ScfResult run_uks_impl(
   const std::size_t n = ints.nbf;
   if (basis.nao != n || basis.natom != system.atoms.size() || grid.point_count() == 0)
     throw std::invalid_argument("UKS grid/basis binding is inconsistent");
-  if (!plan.matches(grid.system(), nullptr, strategy, -1, 0) ||
-      basis.packed != dft::AoBasis(system).packed)
+  // The source already owns its auxiliary basis. Comparing against a null
+  // auxiliary request would incorrectly replace it with the orbital basis.
+  if (!plan.matches_system(grid.system()) || basis.packed != dft::AoBasis(system).packed)
     throw std::invalid_argument("UKS refuses a stale geometry, basis, charge or spin binding");
   if (long_range_correction &&
       (!long_range_correction->matches(system, nullptr, long_range_correction->strategy(), -1, 0) ||
@@ -451,9 +453,14 @@ ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis
 ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
                         const std::vector<double>* initial_density) {
-  const auto expected = resolve_fock_build(
-      make_global_hybrid_fock_spec(FockSpin::Unrestricted, dft::generated::kB3lypExactExchange),
-      FockBackend::Cpu);
+  auto spec =
+      make_global_hybrid_fock_spec(FockSpin::Unrestricted, dft::generated::kB3lypExactExchange);
+  if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+    spec.coulomb.approximation = FockApproximation::DensityFitted;
+    spec.exchange.approximation = FockApproximation::DensityFitted;
+  }
+  const auto expected = resolve_fock_build(spec, FockBackend::Cpu, options.screening_tolerance,
+                                           options.density_fitting_relative_threshold);
   if (plan.strategy() != expected)
     throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_b3lyp_xc_uks, "B3LYP",

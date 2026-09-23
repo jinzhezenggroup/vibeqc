@@ -35,6 +35,17 @@ int main(){
  bool rejected=false;tracking=true;
  try{(void)solve_lambda_cpu(p,cc,lo);}catch(const std::length_error&){rejected=true;}
  tracking=false;if(!rejected || allocations){std::cerr<<"Lambda allocated before budget: "<<allocations;return 1;}
+ // Corrected Lambda retains the projected energy RHS during both residual
+ // evaluations. Its exact admission includes that extra live vector.
+ lo.max_bytes=64ULL<<20;
+ const auto corrected_capacity=lambda_cpu_numeric_capacity(p,cc,lo,true);
+ lo.max_bytes=corrected_capacity-1;allocations=0;rejected=false;tracking=true;
+ try{(void)solve_lambda_cpu_with_energy_source(p,cc,cc.t1,cc.t2,lo);}
+ catch(const std::length_error&){rejected=true;}
+ tracking=false;if(!rejected || allocations)return 5;
+ lo.max_bytes=corrected_capacity;
+ const auto corrected=solve_lambda_cpu_with_energy_source(p,cc,cc.t1,cc.t2,lo);
+ if(corrected.diagnostic.numeric_capacity_bytes!=corrected_capacity)return 6;
  std::vector<double> eo(2,-1.),ev(3,1.);TriplesResponseOptions to;to.max_bytes=1;
  allocations=0;rejected=false;tracking=true;
  try{(void)triples_response_cpu(p,cc,eo,ev,to);}catch(const std::length_error&){rejected=true;}
