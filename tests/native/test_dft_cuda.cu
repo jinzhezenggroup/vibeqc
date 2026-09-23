@@ -122,7 +122,8 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
-    const auto ref = l.functional == 2U   ? integrate_r2scan_rks(basis, grid, d, 17)
+    const auto ref = l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
+                     : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
                      : l.functional == 1U ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
                                           : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
@@ -132,7 +133,8 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   } else {
     const auto elements = l.nao * l.nao;
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-    const auto ref = l.functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b, 17)
+    const auto ref = l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
+                     : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
                      : l.functional == 1U ? integrate_pbe_uks(basis, grid, a, b, 17)
                                           : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
@@ -272,7 +274,8 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   require(bad.scalars().error == 0, "device-produced density was rejected");
   for (auto& x : d) x *= 0.5;
   const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-  const auto ref = functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b)
+  const auto ref = functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b)
+                   : functional == 2U ? integrate_r2scan_uks(basis, grid, a, b)
                    : functional == 1U ? integrate_pbe_uks(basis, grid, a, b)
                                       : integrate_lda_xc_pw_uks(basis, grid, a, b);
   close(bad.scalars().energy, ref.energy, "XC ignored the current device density");
@@ -379,13 +382,13 @@ int main() {
       }
       require(response_rejected, "unqualified response FP32-compute AO candidate was accepted");
     }
-    for (std::uint32_t functional : {0U, 1U, 2U}) {
+    for (std::uint32_t functional : {0U, 1U, 2U, 4U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
           Fixture test(basis, grid, functional, uks, tile);
           require(test.layout.jets == (functional == 0U ? 1U : 4U),
                   "unused AO jets were allocated");
-          require(test.layout.work_jets == (functional == 2U ? 4U : 1U),
+          require(test.layout.work_jets == ((functional == 2U || functional == 4U) ? 4U : 1U),
                   "unused density-work jets were allocated");
           require(
               test.layout.feature_terms == (functional == 0U ? 1U : (functional == 1U ? 4U : 5U)),
@@ -462,7 +465,7 @@ int main() {
       stale = true;
     }
     require(stale, "same-shape stale grid identity was accepted");
-    std::cout << "Native device-buffer LDA/PBE/r2SCAN RKS/UKS E/V and state gates passed\n";
+    std::cout << "Native device-buffer LDA/PBE/r2SCAN/WB97M-V RKS/UKS E/V and state gates passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
