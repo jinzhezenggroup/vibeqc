@@ -275,7 +275,9 @@ def main() -> None:
         or args.df_budget < 0
         or (args.expected_iterations is not None and args.expected_iterations < 1)
     ):
-        parser.error("requires a declared GPU allocation, positive repeats and a nonnegative DF budget")
+        parser.error(
+            "requires a declared GPU allocation, positive repeats and a nonnegative DF budget"
+        )
     if args.shell_work and not args.components_after:
         parser.error("--shell-work requires --components-after")
     if args.screening_features and not args.shell_work:
