@@ -1,6 +1,6 @@
 {
   "coverage": "pilot",
-  "description": "G1 pilot inventory for issue #934. Rows are actual-path anchors, not capability promotion claims; coverage remains explicitly pilot until the method/product/backend/domain matrix is complete.",
+  "description": "G1 pilot inventory for issue #934. Rows are actual-path anchors, not capability promotion claims; coverage remains explicitly pilot until the method/product/backend/domain matrix is complete. Evidence levels record only retained anchors: missing, failed, skipped, and not-applicable stages stay explicit rather than being inferred from production status.",
   "rows": [
     {
       "artifact": "native CPU SCF/Fock executable",
@@ -11,6 +11,58 @@
         "tests/native/test_rhf.cpp",
         "tests/python/test_calculator.py"
       ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU production path.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This pilot row covers energy only.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_calculator.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "src/scf/solver/mean_field_driver.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
       "execution_owner": "src/scf/fock_execution.cpp",
       "id": "hf-energy-cpu-direct-rhf",
       "method_family": "hf",
@@ -32,6 +84,54 @@
         "tests/native/test_dft.cpp",
         "tests/python/test_calculator.py"
       ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [],
+          "reason": "This ledger row describes the CUDA production path.",
+          "state": "not-applicable"
+        },
+        "compiled-cuda": {
+          "evidence": [
+            "tests/native/test_dft.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This pilot row covers energy only.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "The pilot ledger has no retained real-device execution receipt for this row.",
+          "state": "missing"
+        },
+        "domain-qualified": {
+          "evidence": [],
+          "reason": "The pilot ledger has no source-bound CUDA domain-qualification receipt for this row.",
+          "state": "missing"
+        },
+        "molecular": {
+          "evidence": [],
+          "reason": "The pilot ledger does not yet retain molecular CUDA endpoint evidence separately from the public-path anchor.",
+          "state": "missing"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_calculator.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "python/vibeqc_compiler/method/spec.py"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
       "execution_owner": "src/dft/cuda_ks.cpp",
       "id": "dft-energy-cuda-rks",
       "method_family": "dft",
@@ -45,5 +145,5 @@
       "status": "production"
     }
   ],
-  "schema": "vibeqc.electronic-production-paths.v1"
+  "schema": "vibeqc.electronic-production-paths.v2"
 }
