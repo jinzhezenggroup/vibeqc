@@ -53,12 +53,12 @@ def device(request: pytest.FixtureRequest) -> str:
     return request.param
 
 
-def test_native_rccsdt_capability_is_energy_only_batch() -> None:
+def test_native_rccsdt_capability_is_energy_forces_batch() -> None:
     caps = method_capabilities("rccsd(t)")
     alias = method_capabilities("ccsd(t)")
     assert caps.available and caps.supports_batch
     assert caps.family == "coupled_cluster"
-    assert caps.supported_properties == frozenset({"energy"})
+    assert caps.supported_properties == frozenset({"energy", "forces"})
     assert alias.available and alias.supported_properties == caps.supported_properties
 
 
@@ -91,10 +91,20 @@ def test_public_native_rccsdt_matches_pinned_standard_triples(
         assert diag.correlation_owned_device_bytes == 0
 
 
-def test_public_native_rccsdt_rejects_unpromoted_force_df_and_frozen_core() -> None:
-    atoms, _, _ = _reference_case("h2")
-    with pytest.raises(ValueError, match=r"does not support.*forces"):
-        _calculator().singlepoint(atoms, properties=("energy", "forces"))
+def test_public_native_rccsdt_preserves_promoted_cpu_forces() -> None:
+    # Two-electron H2 has no triples correction, so its retained independent
+    # CCSD gradient also checks this CPU force-routing regression. It does not
+    # replace the nontrivial complete RCCSD(T) force qualification suite.
+    atoms, reference, _ = _reference_case("h2")
+    result = _calculator().singlepoint(atoms, properties=("energy", "forces"))
+    assert result.converged and result.forces is not None
+    assert result.executed_backend == "cpu_reference"
+    np.testing.assert_allclose(
+        result.forces, -np.asarray(reference["gradient"]), atol=1e-6, rtol=0
+    )
+
+
+def test_public_native_rccsdt_rejects_unpromoted_df_and_frozen_core() -> None:
     with pytest.raises(NotImplementedError, match=r"density fitting"):
         _calculator(density_fitting="cpu")
     with pytest.raises(NotImplementedError, match=r"frozen-core"):
