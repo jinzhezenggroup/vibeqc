@@ -28,7 +28,7 @@ def adapter(tmp_path_factory: pytest.TempPathFactory) -> Path:
         "constexpr int cudaSuccess = 0, cudaErrorMemoryAllocation = 2;\n"
         'const char* cudaGetErrorString(int) { return "injected CUDA error"; }\n'
         + body
-        + r'''
+        + r"""
 int main(int argc, char** argv) {
   if (argc != 2) return 99;
   try {
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
         "triples allocation: injected CUDA error" ? 2 : 3;
   }
 }
-''',
+""",
         encoding="utf-8",
     )
     subprocess.run(
