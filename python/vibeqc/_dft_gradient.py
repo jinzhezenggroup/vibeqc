@@ -32,6 +32,9 @@ _METHODS = (
     "pbe0-uks",
     "b3lyp-rks",
     "b3lyp-uks",
+    "wb97m-v",
+    "wb97m-v-rks",
+    "wb97m-v-uks",
 )
 _ARRAY_TOLERANCE = 1e-8  # Match the absolute canonicality cap of the #162 handoff.
 _RESIDUAL_TOLERANCE = 1e-8

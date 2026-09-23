@@ -106,11 +106,12 @@ constexpr std::uint64_t kStreamingFockShellClassMask = kCanonicalSpdShellClassMa
 constexpr std::uint64_t kGeneratedStreamingFockShellClassMask =
     kStreamingFockShellClassMask & ~kDdddShellClassMask;
 constexpr std::uint64_t kNativeStreamingFockShellClassMask = kDdddShellClassMask;
-// Fixed-topology ssss/psss already have handwritten Fock consumers, while the
-// generated dddd consumer is rejected above. Keep those bits out of the fixed
-// mask so the established exact routes remain single-counted and correct.
+// Fixed-topology ssss retains its handwritten Fock consumer, while generated
+// psss now owns both fixed and bounded production Fock. The generated dddd
+// consumer is rejected above. Exclude only the retained exact routes so the
+// selected generated classes remain single-counted and correct.
 constexpr std::uint64_t kFixedTopologyGeneratedFockExclusionMask =
-    (std::uint64_t{1} << 0U) | (std::uint64_t{1} << 1U) | kDdddShellClassMask;
+    (std::uint64_t{1} << 0U) | kDdddShellClassMask;
 // The generated resident ppps consumer stages one pp primitive-pair list in
 // shared memory.  Larger lists stay on the established ordinary task path.
 constexpr unsigned kGeneratedPppsResidentMaximumBraPrimitivePairs = 64;

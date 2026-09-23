@@ -1,5 +1,12 @@
 # Published GPU benchmark artifacts
 
+The [2026-09-22 endpoint investigation](readme-20260922/README.md) retains
+matched GPU HF, partial DFT and internal CCSD(T) measurements from master
+`572fbd6d`. It is diagnostic evidence, **not qualified for README publication**:
+large-system correctness, completeness and capability blockers remain open under
+[#1117](https://github.com/jinzhezenggroup/vibeqc/issues/1117). Its stopped
+and unsupported paths have no inferred native timings.
+
 ## Adding and maintaining evidence
 
 Keep a short, reviewable summary of scope, acceptance thresholds, observed

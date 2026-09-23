@@ -1,0 +1,1368 @@
+{
+  "schema": "vibeqc.readme-benchmarks.v1",
+  "timing": "warm endpoint latency; stable-branch median with min/max; x marks unpooled unstable samples",
+  "comparison": "normal convergence, no cross-engine speedup claim; work counts retained per repeat",
+  "samples": [
+    {
+      "path": "hf.json",
+      "records": 12,
+      "bytes": 93566,
+      "sha256": "e6f860440dd69f9daa7185a8b8a99ac5e3df61f3d46b8728dbd131773905df2a"
+    },
+    {
+      "path": "dft-pbe.json",
+      "records": 14,
+      "bytes": 63579,
+      "sha256": "36ab75500844d306229937e2a74b0e832640c381c744af11b478d02b47f7f2b5"
+    },
+    {
+      "path": "dft-r2scan.json",
+      "records": 6,
+      "bytes": 24436,
+      "sha256": "6d6cd2bff61d8840e2f7d3fb3c5e1f350dde5b230636654098a03dcba8e82c5b"
+    },
+    {
+      "path": "dft-pbe0.json",
+      "records": 1,
+      "bytes": 3843,
+      "sha256": "23d152398483b384c8b6e63f424b7d1611c1104cbeefb401c881b25f2606b8b6"
+    },
+    {
+      "path": "ccsd-t.json",
+      "records": 3,
+      "bytes": 74312,
+      "sha256": "8a5db405a42f212800838b67f7b4f4fa1cac62458ca116046a801b375ca68690"
+    }
+  ],
+  "provenance": {
+    "d5200ab3a94ef8eb214da1c6723a6103ec457ffe026c0cb6035b7dfcefa11daa": {
+      "environment": {
+        "accelerator": {
+          "backend": "cuda",
+          "clock_rate_khz": 2407000,
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_id": 0,
+          "driver_version": 13000,
+          "multiprocessor_count": 170,
+          "name": "NVIDIA GeForce RTX 5090",
+          "runtime_version": 12090,
+          "total_global_memory_bytes": 33666498560
+        },
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "machine": "x86_64",
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "processor": "x86_64"
+        },
+        "packages": {
+          "cupy": "14.2.0",
+          "gpu4pyscf": "1.8.1",
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0"
+        },
+        "python": {
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python",
+          "version": "3.11.14"
+        },
+        "runtime": {
+          "cuda_visible_devices": "0",
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so"
+        },
+        "toolchain": {
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          },
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          }
+        }
+      },
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900"
+        }
+      }
+    },
+    "419b117bc0dd7ebe6cd90d3c3b89ec45ea5ce5ad0ef6ebbeccaf2cbfba6366cf": {
+      "environment": {
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": {
+          "version": "3.11.14",
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python"
+        },
+        "packages": {
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0",
+          "gpu4pyscf": "1.8.1",
+          "cupy": "14.2.0"
+        },
+        "runtime": {
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so",
+          "cuda_visible_devices": "0"
+        },
+        "toolchain": {
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "accelerator": {
+          "backend": "cuda",
+          "device_id": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "compute_capability": [
+            12,
+            0
+          ],
+          "total_global_memory_bytes": 33666498560,
+          "multiprocessor_count": 170,
+          "clock_rate_khz": 2407000,
+          "driver_version": 13000,
+          "runtime_version": 12090
+        }
+      },
+      "native_build": {
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900"
+      },
+      "grid": {
+        "radial_points": 54,
+        "angular_polar": 16,
+        "angular_azimuth": 32,
+        "element_radii": [
+          [
+            1,
+            0.8062831465047213
+          ],
+          [
+            2,
+            1.1590320231005369
+          ],
+          [
+            3,
+            3.0235617993927044
+          ],
+          [
+            4,
+            2.368456742857618
+          ],
+          [
+            5,
+            1.9401188212769855
+          ],
+          [
+            6,
+            1.8897261246204402
+          ],
+          [
+            7,
+            1.7889407313073502
+          ],
+          [
+            8,
+            1.5873699446811698
+          ],
+          [
+            9,
+            1.6125662930094427
+          ],
+          [
+            10,
+            1.6881553379942602
+          ],
+          [
+            11,
+            3.5274887659581555
+          ],
+          [
+            12,
+            3.1495435410340673
+          ],
+          [
+            13,
+            2.8471873610947966
+          ],
+          [
+            14,
+            2.620420226140344
+          ],
+          [
+            15,
+            2.771598316109979
+          ],
+          [
+            16,
+            2.5700275294837986
+          ],
+          [
+            17,
+            2.494438484498981
+          ],
+          [
+            18,
+            2.4188494395141635
+          ],
+          [
+            19,
+            4.434557305775966
+          ],
+          [
+            20,
+            3.880237642553971
+          ],
+          [
+            21,
+            3.3511143276602473
+          ],
+          [
+            22,
+            3.0739544960492493
+          ],
+          [
+            23,
+            3.048758147720977
+          ],
+          [
+            24,
+            2.771598316109979
+          ],
+          [
+            25,
+            2.696009271125162
+          ],
+          [
+            26,
+            2.620420226140344
+          ],
+          [
+            27,
+            2.5196348328272538
+          ],
+          [
+            28,
+            2.494438484498981
+          ],
+          [
+            29,
+            2.5448311811555264
+          ],
+          [
+            30,
+            2.746401967781707
+          ],
+          [
+            31,
+            2.8219910127665244
+          ],
+          [
+            32,
+            2.746401967781707
+          ],
+          [
+            33,
+            2.8975800577513415
+          ],
+          [
+            34,
+            2.771598316109979
+          ],
+          [
+            35,
+            2.8723837094230693
+          ],
+          [
+            36,
+            2.9479727544078864
+          ],
+          [
+            37,
+            4.7621098340435095
+          ],
+          [
+            38,
+            4.2077901708215135
+          ],
+          [
+            39,
+            3.7038632042560633
+          ],
+          [
+            40,
+            3.5022924176298824
+          ],
+          [
+            41,
+            3.325917979331975
+          ],
+          [
+            42,
+            3.1243471927057946
+          ],
+          [
+            43,
+            2.8975800577513415
+          ],
+          [
+            44,
+            2.8471873610947966
+          ],
+          [
+            45,
+            2.8471873610947966
+          ],
+          [
+            46,
+            2.721205619453434
+          ],
+          [
+            47,
+            2.8975800577513415
+          ],
+          [
+            48,
+            3.0991508443775224
+          ],
+          [
+            49,
+            3.2251325860188853
+          ],
+          [
+            50,
+            3.1747398893623395
+          ],
+          [
+            51,
+            3.1747398893623395
+          ],
+          [
+            52,
+            3.0991508443775224
+          ],
+          [
+            53,
+            3.325917979331975
+          ],
+          [
+            54,
+            3.3007216310037024
+          ],
+          [
+            55,
+            5.26603680060896
+          ],
+          [
+            56,
+            4.434557305775966
+          ],
+          [
+            57,
+            4.0818084291801515
+          ],
+          [
+            58,
+            3.7038632042560633
+          ],
+          [
+            59,
+            3.9810230358670613
+          ],
+          [
+            60,
+            3.9558266875387886
+          ],
+          [
+            61,
+            3.9306303392105164
+          ],
+          [
+            62,
+            3.9054339908822433
+          ],
+          [
+            63,
+            3.8046485975691535
+          ],
+          [
+            64,
+            3.8298449458974257
+          ],
+          [
+            65,
+            3.8046485975691535
+          ],
+          [
+            66,
+            3.7794522492408804
+          ],
+          [
+            67,
+            3.754255900912608
+          ],
+          [
+            68,
+            3.754255900912608
+          ],
+          [
+            69,
+            3.7290595525843355
+          ],
+          [
+            70,
+            3.8550412942256984
+          ],
+          [
+            71,
+            3.6786668559277906
+          ],
+          [
+            72,
+            3.451899720973338
+          ],
+          [
+            73,
+            3.3007216310037024
+          ],
+          [
+            74,
+            3.0991508443775224
+          ],
+          [
+            75,
+            2.9731691027361595
+          ],
+          [
+            76,
+            2.922776406079614
+          ],
+          [
+            77,
+            2.796794664438252
+          ],
+          [
+            78,
+            2.8219910127665244
+          ],
+          [
+            79,
+            2.8471873610947966
+          ],
+          [
+            80,
+            3.325917979331975
+          ],
+          [
+            81,
+            3.27552528267543
+          ],
+          [
+            82,
+            3.27552528267543
+          ],
+          [
+            83,
+            3.4267033726450653
+          ],
+          [
+            84,
+            3.3007216310037024
+          ],
+          [
+            85,
+            3.4770960693016097
+          ],
+          [
+            86,
+            3.5778814626147004
+          ]
+        ],
+        "partition_iterations": 3,
+        "coincident_tolerance": 1e-12,
+        "version": 2,
+        "radial_rule": "rational-legendre",
+        "angular_rule": "legendre-trapezoid",
+        "partition": "becke-equal-radius",
+        "pruning": "none",
+        "units": "Bohr",
+        "ordering": "atom-radial-polar-azimuth"
+      }
+    },
+    "7141387e450080ba0ad1e4235e4f328e19d66a76d534dca15e3a84552cff7222": {
+      "environment": {
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": {
+          "version": "3.11.14",
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python"
+        },
+        "packages": {
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0",
+          "gpu4pyscf": "1.8.1",
+          "cupy": "14.2.0"
+        },
+        "runtime": {
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so",
+          "cuda_visible_devices": "0"
+        },
+        "toolchain": {
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "accelerator": {
+          "backend": "cuda",
+          "device_id": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "compute_capability": [
+            12,
+            0
+          ],
+          "total_global_memory_bytes": 33666498560,
+          "multiprocessor_count": 170,
+          "clock_rate_khz": 2407000,
+          "driver_version": 13000,
+          "runtime_version": 12090
+        }
+      },
+      "native_build": {
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900"
+      },
+      "grid": {
+        "radial_points": 48,
+        "angular_polar": 16,
+        "angular_azimuth": 32,
+        "element_radii": [],
+        "partition_iterations": 3,
+        "coincident_tolerance": 1e-12,
+        "version": 1,
+        "radial_rule": "rational-legendre",
+        "angular_rule": "legendre-trapezoid",
+        "partition": "becke-equal-radius",
+        "pruning": "none",
+        "units": "Bohr",
+        "ordering": "atom-radial-polar-azimuth"
+      }
+    },
+    "536a224c9c3d30bb702c0184f2edb056a6576cb7492a1bfece339f28e815c2eb": {
+      "environment": {
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": {
+          "version": "3.11.14",
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python"
+        },
+        "packages": {
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0",
+          "gpu4pyscf": "1.8.1",
+          "cupy": "14.2.0"
+        },
+        "runtime": {
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so",
+          "cuda_visible_devices": "0"
+        },
+        "toolchain": {
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "accelerator": {
+          "backend": "cuda",
+          "device_id": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "compute_capability": [
+            12,
+            0
+          ],
+          "total_global_memory_bytes": 33666498560,
+          "multiprocessor_count": 170,
+          "clock_rate_khz": 2407000,
+          "driver_version": 13000,
+          "runtime_version": 12090
+        }
+      },
+      "native_build": {
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+        "probe": {
+          "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+          "native_abi": 0,
+          "schema": 1,
+          "policy": {
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ],
+            "consumers": [
+              "fock",
+              "force"
+            ]
+          },
+          "host": {
+            "system": "Linux",
+            "machine": "x86_64",
+            "libc": [
+              "glibc",
+              "2.35"
+            ]
+          },
+          "device": {
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "major": 12,
+            "minor": 0,
+            "warp_size": 32,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "maximum_blocks_per_sm": 24,
+            "registers_per_sm": 65536,
+            "maximum_registers_per_thread": 255,
+            "sm_count": 170,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "toolkit_version": 12090,
+            "release_build": 1,
+            "fast_compile": 0,
+            "portable": 0
+          }
+        }
+      },
+      "grid": {
+        "radial_points": 54,
+        "angular_polar": 16,
+        "angular_azimuth": 32,
+        "element_radii": [
+          [
+            1,
+            0.8062831465047213
+          ],
+          [
+            2,
+            1.1590320231005369
+          ],
+          [
+            3,
+            3.0235617993927044
+          ],
+          [
+            4,
+            2.368456742857618
+          ],
+          [
+            5,
+            1.9401188212769855
+          ],
+          [
+            6,
+            1.8897261246204402
+          ],
+          [
+            7,
+            1.7889407313073502
+          ],
+          [
+            8,
+            1.5873699446811698
+          ],
+          [
+            9,
+            1.6125662930094427
+          ],
+          [
+            10,
+            1.6881553379942602
+          ],
+          [
+            11,
+            3.5274887659581555
+          ],
+          [
+            12,
+            3.1495435410340673
+          ],
+          [
+            13,
+            2.8471873610947966
+          ],
+          [
+            14,
+            2.620420226140344
+          ],
+          [
+            15,
+            2.771598316109979
+          ],
+          [
+            16,
+            2.5700275294837986
+          ],
+          [
+            17,
+            2.494438484498981
+          ],
+          [
+            18,
+            2.4188494395141635
+          ],
+          [
+            19,
+            4.434557305775966
+          ],
+          [
+            20,
+            3.880237642553971
+          ],
+          [
+            21,
+            3.3511143276602473
+          ],
+          [
+            22,
+            3.0739544960492493
+          ],
+          [
+            23,
+            3.048758147720977
+          ],
+          [
+            24,
+            2.771598316109979
+          ],
+          [
+            25,
+            2.696009271125162
+          ],
+          [
+            26,
+            2.620420226140344
+          ],
+          [
+            27,
+            2.5196348328272538
+          ],
+          [
+            28,
+            2.494438484498981
+          ],
+          [
+            29,
+            2.5448311811555264
+          ],
+          [
+            30,
+            2.746401967781707
+          ],
+          [
+            31,
+            2.8219910127665244
+          ],
+          [
+            32,
+            2.746401967781707
+          ],
+          [
+            33,
+            2.8975800577513415
+          ],
+          [
+            34,
+            2.771598316109979
+          ],
+          [
+            35,
+            2.8723837094230693
+          ],
+          [
+            36,
+            2.9479727544078864
+          ],
+          [
+            37,
+            4.7621098340435095
+          ],
+          [
+            38,
+            4.2077901708215135
+          ],
+          [
+            39,
+            3.7038632042560633
+          ],
+          [
+            40,
+            3.5022924176298824
+          ],
+          [
+            41,
+            3.325917979331975
+          ],
+          [
+            42,
+            3.1243471927057946
+          ],
+          [
+            43,
+            2.8975800577513415
+          ],
+          [
+            44,
+            2.8471873610947966
+          ],
+          [
+            45,
+            2.8471873610947966
+          ],
+          [
+            46,
+            2.721205619453434
+          ],
+          [
+            47,
+            2.8975800577513415
+          ],
+          [
+            48,
+            3.0991508443775224
+          ],
+          [
+            49,
+            3.2251325860188853
+          ],
+          [
+            50,
+            3.1747398893623395
+          ],
+          [
+            51,
+            3.1747398893623395
+          ],
+          [
+            52,
+            3.0991508443775224
+          ],
+          [
+            53,
+            3.325917979331975
+          ],
+          [
+            54,
+            3.3007216310037024
+          ],
+          [
+            55,
+            5.26603680060896
+          ],
+          [
+            56,
+            4.434557305775966
+          ],
+          [
+            57,
+            4.0818084291801515
+          ],
+          [
+            58,
+            3.7038632042560633
+          ],
+          [
+            59,
+            3.9810230358670613
+          ],
+          [
+            60,
+            3.9558266875387886
+          ],
+          [
+            61,
+            3.9306303392105164
+          ],
+          [
+            62,
+            3.9054339908822433
+          ],
+          [
+            63,
+            3.8046485975691535
+          ],
+          [
+            64,
+            3.8298449458974257
+          ],
+          [
+            65,
+            3.8046485975691535
+          ],
+          [
+            66,
+            3.7794522492408804
+          ],
+          [
+            67,
+            3.754255900912608
+          ],
+          [
+            68,
+            3.754255900912608
+          ],
+          [
+            69,
+            3.7290595525843355
+          ],
+          [
+            70,
+            3.8550412942256984
+          ],
+          [
+            71,
+            3.6786668559277906
+          ],
+          [
+            72,
+            3.451899720973338
+          ],
+          [
+            73,
+            3.3007216310037024
+          ],
+          [
+            74,
+            3.0991508443775224
+          ],
+          [
+            75,
+            2.9731691027361595
+          ],
+          [
+            76,
+            2.922776406079614
+          ],
+          [
+            77,
+            2.796794664438252
+          ],
+          [
+            78,
+            2.8219910127665244
+          ],
+          [
+            79,
+            2.8471873610947966
+          ],
+          [
+            80,
+            3.325917979331975
+          ],
+          [
+            81,
+            3.27552528267543
+          ],
+          [
+            82,
+            3.27552528267543
+          ],
+          [
+            83,
+            3.4267033726450653
+          ],
+          [
+            84,
+            3.3007216310037024
+          ],
+          [
+            85,
+            3.4770960693016097
+          ],
+          [
+            86,
+            3.5778814626147004
+          ]
+        ],
+        "partition_iterations": 3,
+        "coincident_tolerance": 1e-12,
+        "version": 2,
+        "radial_rule": "rational-legendre",
+        "angular_rule": "legendre-trapezoid",
+        "partition": "becke-equal-radius",
+        "pruning": "none",
+        "units": "Bohr",
+        "ordering": "atom-radial-polar-azimuth"
+      }
+    },
+    "b62ac8ede6f4f508d999c4d5c487cb412c973bbe55c0a1ac10bfc5c4bb276411": {
+      "environment": {
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": {
+          "version": "3.11.14",
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python"
+        },
+        "packages": {
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0",
+          "gpu4pyscf": "1.8.1",
+          "cupy": "14.2.0"
+        },
+        "runtime": {
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so",
+          "cuda_visible_devices": "0"
+        },
+        "toolchain": {
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "accelerator": {
+          "backend": "cuda",
+          "device_id": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "compute_capability": [
+            12,
+            0
+          ],
+          "total_global_memory_bytes": 33666498560,
+          "multiprocessor_count": 170,
+          "clock_rate_khz": 2407000,
+          "driver_version": 13000,
+          "runtime_version": 12090
+        }
+      },
+      "native_build": {
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+        "probe": {
+          "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+          "native_abi": 0,
+          "schema": 1,
+          "policy": {
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ],
+            "consumers": [
+              "fock",
+              "force"
+            ]
+          },
+          "host": {
+            "system": "Linux",
+            "machine": "x86_64",
+            "libc": [
+              "glibc",
+              "2.35"
+            ]
+          },
+          "device": {
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "major": 12,
+            "minor": 0,
+            "warp_size": 32,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "maximum_blocks_per_sm": 24,
+            "registers_per_sm": 65536,
+            "maximum_registers_per_thread": 255,
+            "sm_count": 170,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "toolkit_version": 12090,
+            "release_build": 1,
+            "fast_compile": 0,
+            "portable": 0
+          }
+        }
+      },
+      "grid": {
+        "radial_points": 48,
+        "angular_polar": 16,
+        "angular_azimuth": 32,
+        "element_radii": [],
+        "partition_iterations": 3,
+        "coincident_tolerance": 1e-12,
+        "version": 1,
+        "radial_rule": "rational-legendre",
+        "angular_rule": "legendre-trapezoid",
+        "partition": "becke-equal-radius",
+        "pruning": "none",
+        "units": "Bohr",
+        "ordering": "atom-radial-polar-azimuth"
+      }
+    },
+    "0970b13a66e13d152737604487acef7bf66964cda3f502591e75b931a0c2180e": {
+      "environment": {
+        "git": {
+          "commit": "572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12",
+          "dirty": true,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "machine": "x86_64",
+          "processor": "x86_64"
+        },
+        "python": {
+          "version": "3.11.14",
+          "executable": "/home/jzzeng/codes/qc/build/gpu4pyscf-venv/bin/python"
+        },
+        "packages": {
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0",
+          "gpu4pyscf": "1.8.1",
+          "cupy": "14.2.0"
+        },
+        "runtime": {
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so",
+          "cuda_visible_devices": "0"
+        },
+        "toolchain": {
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          }
+        },
+        "accelerator": {
+          "backend": "cuda",
+          "device_id": 0,
+          "name": "NVIDIA GeForce RTX 5090",
+          "compute_capability": [
+            12,
+            0
+          ],
+          "total_global_memory_bytes": 33666498560,
+          "multiprocessor_count": 170,
+          "clock_rate_khz": 2407000,
+          "driver_version": 13000,
+          "runtime_version": 12090
+        }
+      },
+      "native_build": {
+        "library_sha256": "78d01e579cff2ad2832e1b18effce007f27ecb1ac9bdc3e2806fea2268bd54e6",
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+        "probe": {
+          "source_identity": "ccf24c1bd7ee8d3893f25a89af06bed62f5ec5ee9e8cad34d12357b5e12d7900",
+          "native_abi": 0,
+          "schema": 1,
+          "policy": {
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ],
+            "consumers": [
+              "fock",
+              "force"
+            ]
+          },
+          "host": {
+            "system": "Linux",
+            "machine": "x86_64",
+            "libc": [
+              "glibc",
+              "2.35"
+            ]
+          },
+          "device": {
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "major": 12,
+            "minor": 0,
+            "warp_size": 32,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "maximum_blocks_per_sm": 24,
+            "registers_per_sm": 65536,
+            "maximum_registers_per_thread": 255,
+            "sm_count": 170,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "runtime_version": 12090,
+            "driver_version": 13000,
+            "toolkit_version": 12090,
+            "release_build": 1,
+            "fast_compile": 0,
+            "portable": 0
+          }
+        }
+      }
+    }
+  }
+}

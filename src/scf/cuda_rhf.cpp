@@ -373,8 +373,15 @@ cudaError_t launch_generated_shell_class_focks(
       generated::selected_fock_shell_kernels(kernel_count);
   for (std::size_t kernel_index = 0; kernel_index < kernel_count; ++kernel_index) {
     const generated::ShellKernelMetadata& kernel = kernels[kernel_index];
+    // The capacity is a task bound, whereas packed Fock workers claim a warp
+    // of tasks at once. Keep the compiler's claim width in the grid bound so
+    // small topologies do not enqueue thousands of empty persistent CTAs.
+    const std::size_t task_capacity = capacities[kernel.angular_order];
+    const std::size_t claim_width = kernel.fock_tasks_per_claim;
+    const std::size_t capacity_workers =
+        task_capacity / claim_width + (task_capacity % claim_width != 0U);
     const unsigned worker_blocks =
-        std::min(static_cast<unsigned>(capacities[kernel.angular_order]), persistent_worker_blocks);
+        std::min(static_cast<unsigned>(capacity_workers), persistent_worker_blocks);
     error = generated::launch_shell_class_fock(
         kernel.shell_class, stream, unrestricted, worker_blocks, generated_tasks,
         generated_task_offsets + kernel.shell_class, batch.shell_pair_primitive_offsets,
