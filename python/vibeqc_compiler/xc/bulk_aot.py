@@ -141,7 +141,7 @@ def inspect_program(
 
 
 def plan_package(
-    variants: Iterable[SourceVariant], budget: PackageBudget = PackageBudget()
+    variants: Iterable[SourceVariant], budget: PackageBudget | None = None
 ) -> dict[str, Any]:
     """Select exact-source groups in a stable order within explicit bounds.
 
@@ -149,6 +149,8 @@ def plan_package(
     Unselected groups retain a precise budget blocker. The budget is applied
     after deduplication so aliases never consume multiple slots or byte quotas.
     """
+    if budget is None:
+        budget = PackageBudget()
     groups: dict[str, list[dict[str, Any]]] = {}
     registrations: set[tuple[str, str, int, str]] = set()
     for variant in variants:
@@ -391,7 +393,7 @@ def census_catalog(
     derivative_orders: Sequence[int] = (1,),
     backends: Sequence[str] = BACKENDS,
     work_limit: int = 1_000_000,
-    budget: PackageBudget = PackageBudget(),
+    budget: PackageBudget | None = None,
     source_root: Path | None = None,
     catalog_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -408,6 +410,8 @@ def census_catalog(
     from vibeqc_compiler.common.paths import asset_path
 
     from . import libxc_bulk
+    if budget is None:
+        budget = PackageBudget()
     from .libxc_maple import MapleImportError
 
     _positive_int(work_limit, "work_limit")
