@@ -31,6 +31,9 @@ inventory, accepted CC/response identity, orbital response actions, or the pinne
 PySCF 2.14.0 analytic gradient gate. A warm run must compile no new artifact.
 The comparator fixes the RHF snapshot generation ID across child processes;
 ordinary endpoint calls continue to use fresh generation IDs.
+After each child completes, the JSON report is atomically checkpointed. If a
+later child or the final qualification gate fails, the report retains completed
+measurements with `qualified=false` and the failing phase and diagnostics.
 
 The [PR evidence workflow](../../.github/workflows/ccsdt-cpu-bundle-evidence.yml)
 runs H2O and NH3 with a clean cache for each route and retains the JSON reports.

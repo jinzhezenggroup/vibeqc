@@ -16,6 +16,7 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -23,6 +24,52 @@ from unittest.mock import patch
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _checkpoint(path: Path, report: dict[str, object]) -> None:
+    """Keep each completed child record even if a later process fails."""
+
+    content = json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+        delete=False,
+    ) as stream:
+        temporary = Path(stream.name)
+        stream.write(content)
+        stream.flush()
+        os.fsync(stream.fileno())
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _failure(
+    error: BaseException,
+    *,
+    phase: str,
+    mode: str | None = None,
+    stdout: str = "",
+    stderr: str = "",
+) -> dict[str, str]:
+    result = {
+        "phase": phase,
+        "exception": type(error).__name__,
+        "message": str(error),
+        "stdout_tail": stdout[-4096:],
+        "stderr_tail": stderr[-16384:],
+    }
+    if mode is not None:
+        result["mode"] = mode
+    return result
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"nonfinite child JSON constant: {value}")
 
 
 def _rss() -> dict[str, int]:
@@ -236,11 +283,26 @@ def main() -> None:
     if args.cache_root.exists() or args.output.exists():
         parser.error("cache root and output must not already exist")
     args.cache_root.mkdir(parents=True)
-    records = {}
+    records = {"separate": {}, "bundled": {}}
+    report = {
+        "schema": "vibeqc.ccsdt.cpu_bundle_endpoint/1",
+        "source_sha": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip(),
+        "case": args.case,
+        "vir_chunk_size": 1,
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "platform": platform.platform(),
+        "measurements": records,
+        "oracle": "pinned PySCF 2.14.0 analytic RCCSD(T) gradient",
+        "qualified": False,
+    }
+    _checkpoint(args.output, report)
     for mode in ("separate", "bundled"):
-        records[mode] = {}
         cache = args.cache_root / mode
         for phase in ("cold", "warm"):
+            completed = None
             try:
                 completed = subprocess.run(
                     [
@@ -260,37 +322,46 @@ def main() -> None:
                     capture_output=True,
                     text=True,
                 )
-            except subprocess.CalledProcessError as error:
-                print(error.stdout, file=sys.stderr)
-                print(error.stderr, file=sys.stderr)
-                raise RuntimeError(f"{mode} {phase} endpoint failed") from error
-            records[mode][phase] = json.loads(completed.stdout)
+                records[mode][phase] = json.loads(
+                    completed.stdout, parse_constant=_reject_constant
+                )
+                _checkpoint(args.output, report)
+            except BaseException as error:
+                stdout = (
+                    completed.stdout
+                    if completed is not None
+                    else getattr(error, "stdout", "")
+                )
+                stderr = (
+                    completed.stderr
+                    if completed is not None
+                    else getattr(error, "stderr", "")
+                )
+                report["failure"] = _failure(
+                    error,
+                    mode=mode,
+                    phase=phase,
+                    stdout=stdout or "",
+                    stderr=stderr or "",
+                )
+                _checkpoint(args.output, report)
+                if isinstance(error, subprocess.CalledProcessError):
+                    print(stdout, file=sys.stderr)
+                    print(stderr, file=sys.stderr)
+                raise
             print(
                 f"{mode} {phase}: {records[mode][phase]['wall_seconds']:.3f}s, "
                 f"{records[mode][phase]['artifact_count']} artifacts",
                 file=sys.stderr,
             )
-    report = {
-        "schema": "vibeqc.ccsdt.cpu_bundle_endpoint/1",
-        "source_sha": subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-        ).strip(),
-        "case": args.case,
-        "vir_chunk_size": 1,
-        "python": platform.python_version(),
-        "numpy": np.__version__,
-        "platform": platform.platform(),
-        "measurements": records,
-        "oracle": "pinned PySCF 2.14.0 analytic RCCSD(T) gradient",
-    }
     try:
         _compare(records, args.case)
-    except Exception:
-        report["qualified"] = False
-        args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    except BaseException as error:
+        report["failure"] = _failure(error, phase="qualification")
+        _checkpoint(args.output, report)
         raise
     report["qualified"] = True
-    args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    _checkpoint(args.output, report)
 
 
 if __name__ == "__main__":
