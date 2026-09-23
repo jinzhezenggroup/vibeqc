@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_native_psss.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Retained native direct numerical family extracted from cuda_rhf.cu, preserving original arithmetic, templates, workspace layout and scientific classification. Existing generated/exception selectors are unchanged.",
+  "reason": "Native Direct-HF psss force scheduling/geometry adapter whose derivative algebra is compiler-generated through generated_weighted_eri::psss_force; the former handwritten psss value/Fock body is retired.",
   "regions": []
 }

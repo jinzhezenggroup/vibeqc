@@ -36,6 +36,7 @@ from .spec import (
     RangeSeparatedExchangePrimitive,
     SemilocalXCPrimitive,
     UnsupportedMethod,
+    resolve_method,
 )
 from .typecheck import BackendCapability, verify_method_ir
 
@@ -75,7 +76,11 @@ class StationaryMeanField:
     dtype: str = "float64"
 
     def __post_init__(self) -> None:
-        if self.point_model not in ("interior-v1", SCF_POINT_MODEL):
+        if self.point_model not in (
+            "interior-v1",
+            SCF_POINT_MODEL,
+            "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16",
+        ):
             raise UnsupportedMethod("unsupported XC point-model contract")
         if self.hamiltonian not in ("all-electron", "scalar-semilocal-ecp"):
             raise UnsupportedMethod("unsupported stationary hamiltonian contract")
@@ -234,7 +239,14 @@ class StationaryGradientPlan:
             )
         # Preserve independently qualified exchange and nonlocal envelopes
         # without silently promoting a combined hybrid/nonlocal execution domain.
-        if (exchange or ranges) and nonlocal_primitives:
+        if (
+            (exchange or ranges)
+            and nonlocal_primitives
+            and (
+                self.method.semantic_payload()
+                != resolve_method("WB97M-V", spin=self.method.spin).semantic_payload()
+            )
+        ):
             raise UnsupportedMethod(
                 "combined hybrid/nonlocal stationary gradients are not qualified"
             )

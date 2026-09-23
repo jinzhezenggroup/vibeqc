@@ -333,11 +333,18 @@ def test_runtime_indexed_graph_size_does_not_scale_with_virtual_triple_count() -
     assert sum(node.op == "runtime_indexed_select" for node in large.live_nodes) > 0
 
 
-def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates() -> None:
+@pytest.mark.parametrize("nocc,nvir,capacity", [(4, 8, 120), (8, 16, 816)])
+def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates(
+    nocc: int, nvir: int, capacity: int
+) -> None:
     from vibeqc_compiler.common.cuda_target import cuda_target_info
-    from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+    from vibeqc_compiler.tensor.cuda_plan import (
+        TensorSchedule,
+        estimated_cuda_launches,
+        plan_cuda,
+    )
 
-    program = build_runtime_tile_triples_program(4, 8, capacity=120)
+    program = build_runtime_tile_triples_program(nocc, nvir, capacity=capacity)
     target = cuda_target_info("sm_120")
     baseline = plan_cuda(program, target, max_bytes=2 << 30)
     streamed = plan_cuda(
@@ -346,12 +353,27 @@ def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates() -> 
         max_bytes=2 << 30,
         schedule=TensorSchedule(stream_reductions=True),
     )
+    generated = plan_cuda(
+        program,
+        target,
+        max_bytes=2 << 30,
+        schedule=TensorSchedule(stream_reductions=True, streamed_gemm_reduction=True),
+    )
 
     assert streamed.identity != baseline.identity
     assert streamed.arena_bytes * 20 < baseline.arena_bytes
     assert sum(step.virtual for step in streamed.steps) > 150
     assert sum(step.gemm != "none" for step in streamed.steps) < sum(
         step.gemm != "none" for step in baseline.steps
+    )
+    assert generated.identity != streamed.identity
+    assert generated.peak_bytes < streamed.peak_bytes
+    assert estimated_cuda_launches(generated) < estimated_cuda_launches(streamed)
+    assert all(
+        step.gemm == "none"
+        for step in generated.steps
+        if step.node.op == "einsum"
+        and any(generated.steps[child].virtual for child in step.inputs)
     )
 
     q_domain = (

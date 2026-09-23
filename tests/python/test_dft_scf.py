@@ -155,7 +155,11 @@ def test_native_matches_independent_scf(
         charge=charge,
         multiplicity=multiplicity,
     ).explicit()
-    native = calculator.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
+    # This gate compares independently converged SCF energies. Force defaults
+    # and separately packaged stationary kernels have their own endpoint gates.
+    native = calculator.singlepoint(
+        atoms, charge=charge, multiplicity=multiplicity, properties=("energy",)
+    )
     assert native.converged and native.density_rms < 1e-9
     assert native.physical_residual_rms is not None
     assert native.physical_residual_rms < 1e-9
