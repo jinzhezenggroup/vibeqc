@@ -191,7 +191,8 @@ def reduce_point(path: Path, root: Path) -> tuple[dict, dict]:
                     }
         else:
             record.update(
-                family="dft", atoms=raw.get("atoms", raw["arguments"]["atoms"])
+                family="dft",
+                atoms=raw["atoms"] if "atoms" in raw else raw["arguments"]["atoms"],
             )
             for engine, label in (("native", "VibeQC"), ("reference", "GPU4PySCF")):
                 rows = raw.get(engine + "_samples", [])
@@ -471,10 +472,9 @@ def main() -> None:
         records.extend(json.loads(stops.read_text()))
     if not records:
         parser.error("no actual measurements found")
-    args.destination.mkdir(parents=True, exist_ok=True)
     # Keep each method family in a readable companion below the repository's
     # evidence size limits. The index binds all samples and shared provenance.
-    parts = []
+    grouped = []
     for family, method, filename in (
         ("hf", None, "hf.json"),
         ("dft", "pbe-rks", "dft-pbe.json"),
@@ -485,9 +485,18 @@ def main() -> None:
         selected = [
             record
             for record in records
-            if record["family"] == family
+            if (
+                record["family"] == family
+                or (family == "hf" and record["family"] == "hf_energy")
+            )
             and (method is None or record["method"] == method)
         ]
+        grouped.append((filename, selected))
+    if sum(len(selected) for _, selected in grouped) != len(records):
+        raise ValueError("unassigned benchmark records; refusing incomplete reduction")
+    args.destination.mkdir(parents=True, exist_ok=True)
+    parts = []
+    for filename, selected in grouped:
         payload = (json.dumps(selected, indent=2, allow_nan=False) + "\n").encode()
         (args.destination / filename).write_bytes(payload)
         parts.append(
