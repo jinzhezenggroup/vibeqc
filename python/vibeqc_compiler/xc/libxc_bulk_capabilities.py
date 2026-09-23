@@ -12,6 +12,7 @@ public-method claim is inferred from an earlier stage.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
@@ -80,7 +81,7 @@ class StageEvidence:
             "reason": self.reason,
         }
         if self.qualification is not None:
-            payload["qualification"] = dict(self.qualification)
+            payload["qualification"] = deepcopy(self.qualification)
         return payload
 
 
@@ -299,7 +300,9 @@ def _normalize_stage_evidence(
                 evidence=evidence_ref,
                 reason=payload.get("reason"),
                 qualification=(
-                    dict(qualification) if isinstance(qualification, Mapping) else None
+                    deepcopy(dict(qualification))
+                    if isinstance(qualification, Mapping)
+                    else None
                 ),
             )
         )
