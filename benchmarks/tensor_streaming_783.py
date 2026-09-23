@@ -15,7 +15,11 @@ from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import Program, execute
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
-from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+from vibeqc_compiler.tensor.cuda_plan import (
+    TensorSchedule,
+    estimated_cuda_launches,
+    plan_cuda,
+)
 
 from benchmarks._support import raw_output_path, write_result
 from tools.vibeqc_cc.triples_tiles import (
@@ -23,6 +27,7 @@ from tools.vibeqc_cc.triples_tiles import (
     build_runtime_tile_triples_program,
     runtime_tile_controls,
     runtime_tile_static_feeds,
+    tile_triples_energy,
 )
 
 
@@ -55,44 +60,81 @@ def _variant(
     label: str,
     program: Program,
     feeds: dict[str, np.ndarray],
+    changed_feeds: dict[str, np.ndarray],
     expected: float,
+    changed_expected: float,
     compiler: CudaCompilerAdapter,
     schedule: TensorSchedule,
     repeats: int,
     max_bytes: int,
 ) -> dict:
+    plan_start = time.perf_counter()
     plan = plan_cuda(
         program,
         compiler.target,
         schedule=schedule,
         max_bytes=max_bytes,
     )
+    plan_seconds = time.perf_counter() - plan_start
     with tempfile.TemporaryDirectory(prefix=f"vibeqc-783-{label}-") as directory:
         start = time.perf_counter()
         artifact = compile_cuda(plan, compiler, Path(directory))
         compile_seconds = time.perf_counter() - start
         with PreparedCuda(plan, artifact) as prepared:
+            start = time.perf_counter()
             prepared.execute(feeds)
+            cold_run_seconds = time.perf_counter() - start
             samples = []
+            device_samples = []
             actual = None
             for _ in range(repeats):
                 start = time.perf_counter()
-                actual = float(prepared.execute(feeds).outputs["triples_energy"])
+                execution = prepared.execute(feeds)
+                actual = float(execution.outputs["triples_energy"])
                 samples.append(time.perf_counter() - start)
+                device_samples.append(execution.metrics["device_ms"])
+            changed = float(prepared.execute(changed_feeds).outputs["triples_energy"])
+            invalid = dict(changed_feeds)
+            invalid["a_map"] = changed_feeds["a_map"].copy()
+            invalid["a_map"][0] = feeds["eps_v"].size
+            try:
+                prepared.execute(invalid)
+            except RuntimeError as error:
+                invalid_diagnostic = str(error)
+            else:
+                raise AssertionError("out-of-bounds runtime map was accepted")
+            replay = float(prepared.execute(feeds).outputs["triples_energy"])
     assert actual is not None
+    if not np.isclose(changed, changed_expected, atol=1e-10, rtol=1e-10):
+        raise AssertionError("changed runtime tile disagrees with CPU tile oracle")
+    if not np.isclose(replay, expected, atol=1e-10, rtol=1e-10):
+        raise AssertionError("replay after runtime map failure disagrees with oracle")
     return {
         "label": label,
         "schedule": plan.to_payload()["schedule"],
         "plan_identity": plan.identity,
+        "artifact_key": artifact.metadata["key"],
+        "artifact_binary_sha256": artifact.metadata["binary_sha256"],
         "arena_bytes": plan.arena_bytes,
         "peak_bytes": plan.peak_bytes,
         "provider_bytes": plan.provider_bytes,
         "virtual_steps": sum(step.virtual for step in plan.steps),
         "gemm_steps": sum(step.gemm != "none" for step in plan.steps),
+        "estimated_launches": estimated_cuda_launches(plan),
+        "estimated_flops": plan.estimated_flops,
+        "semantic_traffic": plan.semantic_traffic,
+        "plan_seconds": plan_seconds,
         "compile_seconds": compile_seconds,
+        "cold_run_seconds": cold_run_seconds,
         "run_seconds": samples,
+        "device_ms": device_samples,
         "median_run_seconds": statistics.median(samples),
+        "median_device_ms": statistics.median(device_samples),
         "energy": actual,
+        "changed_tile_energy": changed,
+        "changed_tile_absolute_error": abs(changed - changed_expected),
+        "replayed_energy_after_invalid_map": replay,
+        "invalid_map_diagnostic": invalid_diagnostic,
         "absolute_error": abs(actual - expected),
         "relative_error": abs(actual - expected) / max(abs(expected), 1.0),
     }
@@ -131,6 +173,11 @@ def main() -> None:
         **runtime_tile_static_feeds(arrays),
         **runtime_tile_controls(TileSpec(0, args.nvir, args.nvir), capacity),
     }
+    changed_tile = TileSpec(0, max(1, args.nvir // 2), args.nvir)
+    changed_feeds = {
+        **runtime_tile_static_feeds(arrays),
+        **runtime_tile_controls(changed_tile, capacity),
+    }
     expected = float(
         execute(
             program,
@@ -138,6 +185,22 @@ def main() -> None:
             max_bytes=args.reference_max_bytes_mib << 20,
         ).outputs["triples_energy"]
     )
+    independent_energy = tile_triples_energy(
+        TileSpec(0, args.nvir, args.nvir),
+        args.nocc,
+        *(arrays[name] for name in (
+            "ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"
+        )),
+    )
+    changed_independent_energy = tile_triples_energy(
+        changed_tile,
+        args.nocc,
+        *(arrays[name] for name in (
+            "ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"
+        )),
+    )
+    if not np.isclose(expected, independent_energy, atol=1e-10, rtol=1e-10):
+        raise AssertionError("TensorIR reference differs from the independent CPU tile oracle")
     compiler = CudaCompilerAdapter(
         args.nvcc,
         cuda_target_info(args.architecture),
@@ -148,7 +211,9 @@ def main() -> None:
             "baseline",
             program,
             feeds,
-            expected,
+            changed_feeds,
+            independent_energy,
+            changed_independent_energy,
             compiler,
             TensorSchedule(),
             args.repeats,
@@ -158,9 +223,27 @@ def main() -> None:
             "streaming_frontier",
             program,
             feeds,
-            expected,
+            changed_feeds,
+            independent_energy,
+            changed_independent_energy,
             compiler,
             TensorSchedule(views=True, stream_reductions=True),
+            args.repeats,
+            max_bytes,
+        ),
+        _variant(
+            "streamed_generated_reduction",
+            program,
+            feeds,
+            changed_feeds,
+            independent_energy,
+            changed_independent_energy,
+            compiler,
+            TensorSchedule(
+                views=True,
+                stream_reductions=True,
+                streamed_gemm_reduction=True,
+            ),
             args.repeats,
             max_bytes,
         ),
@@ -188,6 +271,8 @@ def main() -> None:
         "seed": args.seed,
         "repeats": args.repeats,
         "reference_energy": expected,
+        "independent_tile_energy": independent_energy,
+        "changed_tile_independent_energy": changed_independent_energy,
         "graph_nodes": len(program.live_nodes),
         "variants": variants,
         "conclusion": (
