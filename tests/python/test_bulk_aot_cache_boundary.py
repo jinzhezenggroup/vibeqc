@@ -75,7 +75,9 @@ def test_valid_closure_identity_and_export_stay_unchanged() -> None:
     original = closure()
     expected = canonical_hash(original.to_payload())
     # Recorded from the pre-repair implementation for this exact valid payload.
-    assert expected == "00afd67f85ac9f713797487b0dce3369fca5489a414b1eadc23cb20b4ce9359d"
+    assert (
+        expected == "00afd67f85ac9f713797487b0dce3369fca5489a414b1eadc23cb20b4ce9359d"
+    )
     assert original.cache_key == expected
     exported = original.to_payload()
     exported["dependencies"][0]["content_sha256"] = "e" * 64
