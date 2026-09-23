@@ -130,7 +130,7 @@ void verify_prepared_resources() {
       require(snapshot.device_numeric_peak_bytes == 0 && snapshot.device_workspace_peak_bytes == 0,
               "CPU endpoint fabricated device observations");
       require(snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Numeric)
-                      .device_observations == 0 &&
+                          .device_observations == 0 &&
                   snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Scratch)
                           .device_observations == 0,
               "CPU endpoint fabricated device resource observations");
@@ -144,9 +144,10 @@ void verify_prepared_resources() {
       require(snapshot.numeric_observations == replay && snapshot.host_numeric_peak_bytes > 0 &&
                   snapshot.host_numeric_peak_bytes == diagnostic->numeric_capacity_bytes,
               "CC numeric observation lost the method diagnostic or replay count");
-      require(snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Numeric)
-                      .host_observations == replay,
-              "CC numeric observation lost per-space accounting");
+      require(
+          snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Numeric).host_observations ==
+              replay,
+          "CC numeric observation lost per-space accounting");
       if (method == VIBEQC_METHOD_RCCSD_T) {
         require(snapshot.workspace_observations == replay &&
                     snapshot.host_workspace_peak_bytes == diagnostic->ccsd_t_workspace_bytes,

@@ -55,8 +55,8 @@ struct ExecutionResourceSnapshot {
   std::uint64_t workspace_observations{};
   std::array<ExecutionResourceObservation, kExecutionResourceKindCount> by_kind{};
 
-  [[nodiscard]] const ExecutionResourceObservation& observation(ExecutionResourceKind kind) const
-      noexcept {
+  [[nodiscard]] const ExecutionResourceObservation& observation(
+      ExecutionResourceKind kind) const noexcept {
     return by_kind[static_cast<std::size_t>(kind)];
   }
 };
