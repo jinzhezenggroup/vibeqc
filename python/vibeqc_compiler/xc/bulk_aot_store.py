@@ -51,7 +51,7 @@ def _atomic_copy(source: Path, destination: Path) -> None:
     )
     temporary_path = Path(temporary)
     try:
-        with source.open("rb") as input_stream, os.fdopen(descriptor, "wb") as output:
+        with os.fdopen(descriptor, "wb") as output, source.open("rb") as input_stream:
             shutil.copyfileobj(input_stream, output, length=1024 * 1024)
             output.flush()
             os.fsync(output.fileno())
@@ -125,7 +125,9 @@ def store_artifact(root: Path, closure: CacheClosure, object_path: Path) -> Cach
 
     Existing verified entries win. Corrupt entries are never silently replaced;
     callers must quarantine/remove them explicitly so corruption remains visible.
-    The manifest is published last, making interrupted first writes ordinary misses.
+    A private staging directory holds both files until a single directory rename.
+    Concurrent writers keep the first complete entry; they never replace its
+    object separately from its manifest. Interrupted first writes remain misses.
     """
     current = lookup_artifact(root, closure)
     if current.status == "rejected":
@@ -137,27 +139,42 @@ def store_artifact(root: Path, closure: CacheClosure, object_path: Path) -> Cach
     source = Path(object_path)
     if not source.is_file():
         raise ValueError("object_path must identify a compiled object file")
-    size = source.stat().st_size
-    if size <= 0:
-        raise ValueError("compiled object must be nonempty")
-    digest = file_hash(source)
     key = closure.cache_key
     if key is None:  # Kept local so a future CacheClosure change still fails closed.
         raise ValueError("cache closure is not reusable")
     entry = _entry(Path(root), key)
-    artifact_path = entry / _OBJECT_NAME
-    _atomic_copy(source, artifact_path)
-    manifest = {
-        "schema": STORE_SCHEMA,
-        "cache_key": key,
-        "closure": closure.to_payload(),
-        "object": {
-            "filename": _OBJECT_NAME,
-            "sha256": digest,
-            "bytes": size,
-        },
-    }
-    atomic_json(entry / _MANIFEST_NAME, manifest)
+    entry.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".pending-entry-", dir=entry.parent) as name:
+        staged = Path(name)
+        artifact_path = staged / _OBJECT_NAME
+        _atomic_copy(source, artifact_path)
+        # Hash the private copy, not a source that may change between reads.
+        size = artifact_path.stat().st_size
+        if size <= 0:
+            raise ValueError("compiled object must be nonempty")
+        manifest = {
+            "schema": STORE_SCHEMA,
+            "cache_key": key,
+            "closure": closure.to_payload(),
+            "object": {
+                "filename": _OBJECT_NAME,
+                "sha256": file_hash(artifact_path),
+                "bytes": size,
+            },
+        }
+        atomic_json(staged / _MANIFEST_NAME, manifest)
+        try:
+            # A committed entry is nonempty: rename cannot overwrite it.
+            os.rename(staged, entry)
+        except OSError:
+            winner = lookup_artifact(root, closure)
+            if winner.status == "hit":
+                return winner
+            if winner.status == "corrupt":
+                raise ValueError(
+                    f"refusing to overwrite corrupt cache entry: {winner.reason}"
+                ) from None
+            raise
     result = lookup_artifact(root, closure)
     if result.status != "hit":
         raise RuntimeError(
