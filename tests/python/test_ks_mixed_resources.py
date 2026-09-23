@@ -5,9 +5,10 @@ import typing
 from types import SimpleNamespace
 
 import pytest
-from vibeqc import Calculator, KsOptions, _native, resources_ks
+from vibeqc import Calculator, GridSpec, KsOptions, _native, resources_ks
 
 H2 = [(1, (0.0, 0.0, -0.7)), (1, (0.0, 0.0, 0.7))]
+HYBRID_GRID = GridSpec(radial_points=3, angular_polar=2, angular_azimuth=4)
 
 
 def _inventory_library(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
@@ -41,6 +42,35 @@ def test_cuda_auto_history_and_resource_identity_include_refinement(
         decisions = dict(request.candidates[0].decisions)
         inventory = json.loads(decisions["item_host_inventory"])
         assert inventory[0]["history"] == 256 * expected
+
+
+@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
+def test_cuda_pbe0_resource_plan_reuses_common_direct_jk_inventory(
+    monkeypatch: pytest.MonkeyPatch, method: str
+) -> None:
+    library = _inventory_library(monkeypatch)
+    request = resources_ks.ks_resource_request(
+        [H2],
+        method=method,
+        backend="cuda",
+        precision="fp64",
+        library=library,
+        ks_options=KsOptions(grid=HYBRID_GRID),
+    )
+    decisions = dict(request.candidates[0].decisions)
+    device = json.loads(decisions["item_device_inventory"])[0]
+    assert device["coulomb"] == 8
+    assert request.identity.method == method
+
+    with pytest.raises(NotImplementedError, match="requires precision='fp64'"):
+        resources_ks.ks_resource_request(
+            [H2],
+            method=method,
+            backend="cuda",
+            precision="auto",
+            library=library,
+            ks_options=KsOptions(grid=HYBRID_GRID),
+        )
 
 
 def test_calculator_forwards_mixed_policy_to_ks_capacity_planner(
