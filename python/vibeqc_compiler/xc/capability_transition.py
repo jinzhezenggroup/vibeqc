@@ -93,7 +93,5 @@ def require_acknowledged_capability_regressions(
 
     missing = sorted(expected - supplied)
     if missing:
-        raise ValueError(
-            "unacknowledged capability regression: " + ", ".join(missing)
-        )
+        raise ValueError("unacknowledged capability regression: " + ", ".join(missing))
     return regressions

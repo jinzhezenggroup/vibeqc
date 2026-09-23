@@ -50,9 +50,10 @@ def test_promotion_only_transition_needs_no_acknowledgement() -> None:
     )
 
     assert capability_transition.capability_regressions(before, after) == ()
-    assert capability_transition.require_acknowledged_capability_regressions(
-        before, after
-    ) == ()
+    assert (
+        capability_transition.require_acknowledged_capability_regressions(before, after)
+        == ()
+    )
 
 
 def test_stage_demotion_requires_exact_acknowledgement() -> None:
@@ -62,16 +63,17 @@ def test_stage_demotion_requires_exact_acknowledgement() -> None:
     after = _snapshot()
 
     regressions = capability_transition.capability_regressions(before, after)
-    assert [item.token for item in regressions] == [
-        "stage-demotion:compiled-cpu:TEST"
-    ]
+    assert [item.token for item in regressions] == ["stage-demotion:compiled-cpu:TEST"]
     with pytest.raises(ValueError, match="unacknowledged capability regression"):
         capability_transition.require_acknowledged_capability_regressions(before, after)
-    assert capability_transition.require_acknowledged_capability_regressions(
-        before,
-        after,
-        acknowledged=("stage-demotion:compiled-cpu:TEST",),
-    ) == regressions
+    assert (
+        capability_transition.require_acknowledged_capability_regressions(
+            before,
+            after,
+            acknowledged=("stage-demotion:compiled-cpu:TEST",),
+        )
+        == regressions
+    )
 
 
 def test_identity_change_and_removal_are_independent_regressions() -> None:
