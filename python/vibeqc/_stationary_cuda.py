@@ -859,17 +859,18 @@ class PreparedStationaryCudaExecution:
         cache = Path(cache)
         _, _, expansions, _ = _layout(basis)
         component_mode = _component_mode(expansions)
-        primitive_source = (
-            tuple(
-                source
-                for _, source in derivative_cuda_sources(_component_domain(expansions))
-            )
-            if component_mode
-            else emit_first_derivative_cuda(requests)
-        )
         stationary_artifact = (
             compile_stationary_cuda(
-                primitive_source,
+                (
+                    tuple(
+                        source
+                        for _, source in derivative_cuda_sources(
+                            _component_domain(expansions)
+                        )
+                    )
+                    if component_mode
+                    else emit_first_derivative_cuda(requests)
+                ),
                 functional=functional,
                 plan=plan,
                 iterations=spec.partition_iterations,
@@ -1333,19 +1334,18 @@ def _complete_rks_cuda_gradient_diagnostic(
     spec = state._source.grid_spec
     if prepared is None:
         with timeline.phase("artifact_lookup_compile"):
-            primitive_source = (
-                tuple(
-                    source
-                    for _, source in derivative_cuda_sources(
-                        _component_domain(expansions)
-                    )
-                )
-                if component_mode
-                else emit_first_derivative_cuda(requests)
-            )
             artifact = (
                 compile_stationary_cuda(
-                    primitive_source,
+                    (
+                        tuple(
+                            source
+                            for _, source in derivative_cuda_sources(
+                                _component_domain(expansions)
+                            )
+                        )
+                        if component_mode
+                        else emit_first_derivative_cuda(requests)
+                    ),
                     functional=functional,
                     plan=plan,
                     iterations=spec.partition_iterations,

@@ -1,5 +1,6 @@
 """A packaged all-electron force request must not discover an NVCC compiler."""
 
+import ast
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -10,6 +11,113 @@ from vibeqc import _dft_gradient, _stationary_cuda
 from vibeqc.batch import PreparedBatch
 from vibeqc_compiler import dft
 from vibeqc_compiler.common.cuda_target import cuda_target_info
+
+
+def _evaluate_selector(node: ast.expr, values: dict[str, object]) -> object:
+    if isinstance(node, ast.Name):
+        return values[node.id]
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or):
+        return any(bool(_evaluate_selector(value, values)) for value in node.values)
+    if (
+        isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.Is)
+        and len(node.comparators) == 1
+    ):
+        return _evaluate_selector(node.left, values) is _evaluate_selector(
+            node.comparators[0], values
+        )
+    raise AssertionError(f"unsupported selector expression: {ast.dump(node)}")
+
+
+def _artifact_selector(function_name: str, artifact_name: str) -> ast.IfExp:
+    source = Path(__file__).resolve().parents[2] / "python/vibeqc/_stationary_cuda.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    functions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name == function_name
+    ]
+    assert len(functions) == 1
+    function = functions[0]
+    eager_sources = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "primitive_source"
+            for target in node.targets
+        )
+    ]
+    assert eager_sources == []
+    assignments = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.IfExp)
+        and any(
+            isinstance(target, ast.Name) and target.id == artifact_name
+            for target in node.targets
+        )
+    ]
+    assert len(assignments) == 1
+    selector = assignments[0].value
+    assert isinstance(selector, ast.IfExp)
+    assert isinstance(selector.body, ast.Call)
+    assert isinstance(selector.body.func, ast.Name)
+    assert selector.body.func.id == "compile_stationary_cuda"
+    assert isinstance(selector.orelse, ast.Call)
+    assert isinstance(selector.orelse.func, ast.Name)
+    assert selector.orelse.func.id == "load_stationary_aot_artifact"
+    source_calls = {
+        node.func.id
+        for node in ast.walk(selector.body.args[0])
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+    assert {"derivative_cuda_sources", "emit_first_derivative_cuda"} <= source_calls
+    assert not {
+        node.func.id
+        for node in ast.walk(selector.orelse)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    } & {"derivative_cuda_sources", "emit_first_derivative_cuda"}
+    return selector
+
+
+@pytest.mark.parametrize(
+    ("function_name", "artifact_name"),
+    [
+        ("ensure", "stationary_artifact"),
+        ("_complete_rks_cuda_gradient_diagnostic", "artifact"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("aot_present", "ecp", "component_mode", "expected_jit"),
+    [
+        (True, False, False, False),
+        (False, False, False, True),
+        (True, True, False, True),
+        (True, False, True, True),
+        (False, True, True, True),
+    ],
+    ids=("sp-aot", "missing-aot", "ecp-jit", "component-jit", "combined-jit"),
+)
+def test_stationary_artifact_selector_keeps_source_emission_in_jit_branch(
+    function_name: str,
+    artifact_name: str,
+    aot_present: bool,
+    ecp: bool,
+    component_mode: bool,
+    expected_jit: bool,
+) -> None:
+    selector = _artifact_selector(function_name, artifact_name)
+    values = {
+        "aot_directory": object() if aot_present else None,
+        "ecp": ecp,
+        "component_mode": component_mode,
+    }
+    assert bool(_evaluate_selector(selector.test, values)) is expected_jit
 
 
 @pytest.mark.parametrize("missing_artifact", (False, True))
