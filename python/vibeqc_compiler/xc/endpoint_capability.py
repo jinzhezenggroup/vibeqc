@@ -160,8 +160,7 @@ def _endpoint_coverage_reason(
     ):
         return None
     return (
-        "pass evidence does not cover "
-        f"backend={backend} spin={spin} product={product}"
+        f"pass evidence does not cover backend={backend} spin={spin} product={product}"
     )
 
 
