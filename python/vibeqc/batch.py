@@ -658,6 +658,8 @@ class PreparedBatch:
         Output selection does not change the prepared model or warm snapshot;
         a later force replay rebuilds response caches when necessary. Resource
         plans retain their conservative energy-plus-force capacity allowance.
+        Generated force failures retain the original exception type and detail
+        in the failed item's ``status_message``, including in strict mode.
         """
         self._ensure_open()
         if properties is None:
@@ -914,6 +916,7 @@ class PreparedBatch:
                 succeeded = False
                 dispersion_failure_message = f"external correction failed ({dispersion.status}): {dispersion.message}"
             public_force = None
+            force_failure_message = None
             if succeeded and public_dft_forces:
                 atoms = self._systems[index]
                 if coordinates is not None and coordinates[index] is not None:
@@ -935,17 +938,31 @@ class PreparedBatch:
                         self.resource_diagnostics["generated_force"].append(
                             {"index": index, "work": force_work}
                         )
-                except NotImplementedError:
-                    output.status = _native.STATUS_NOT_IMPLEMENTED
-                    succeeded = False
-                except MemoryError:
-                    output.status = _native.STATUS_OUT_OF_MEMORY
-                    succeeded = False
-                except (TypeError, ValueError):
-                    output.status = _native.STATUS_INVALID_ARGUMENT
-                    succeeded = False
-                except (RuntimeError, OSError, ArithmeticError):
-                    output.status = _native.STATUS_NUMERICAL_FAILURE
+                except (
+                    RuntimeError,
+                    OSError,
+                    ArithmeticError,
+                    MemoryError,
+                    TypeError,
+                    ValueError,
+                ) as error:
+                    # A missing library or loader failure is an execution
+                    # problem, not evidence that the converged SCF is invalid.
+                    # Keep the cause per item so strict mode and failed-neighbor
+                    # isolation expose the same actionable diagnostic.
+                    if isinstance(error, NotImplementedError):
+                        output.status = _native.STATUS_NOT_IMPLEMENTED
+                    elif isinstance(error, MemoryError):
+                        output.status = _native.STATUS_OUT_OF_MEMORY
+                    elif isinstance(error, (TypeError, ValueError)):
+                        output.status = _native.STATUS_INVALID_ARGUMENT
+                    elif isinstance(error, OSError):
+                        output.status = _native.STATUS_INTERNAL_ERROR
+                    else:
+                        output.status = _native.STATUS_NUMERICAL_FAILURE
+                    force_failure_message = (
+                        f"generated force failed ({type(error).__name__}): {error}"
+                    )
                     succeeded = False
             physical_residual_rms = None
             scf_getter = getattr(self._library, "vibeqc_batch_get_scf_diagnostic", None)
@@ -977,6 +994,8 @@ class PreparedBatch:
             message = (
                 dispersion_failure_message
                 if dispersion_failure_message is not None
+                else force_failure_message
+                if force_failure_message is not None
                 else self._library.vibeqc_status_message(output.status).decode("utf-8")
             )
             total_energy = output.energy
