@@ -190,9 +190,20 @@ vibeqc_status select_corrected_occupied_response_factor(
                                             {1, plan.nbf, plan.naux, true, true, system});
   const auto bytes = plan.matrix_elements * sizeof(double);
   auto error = cudaSetDevice(plan.device_id);
-  if (error == cudaSuccess)
-    error = cudaMemcpyAsync(plan.primary_density, terms[0].density.data(), bytes,
-                            cudaMemcpyHostToDevice, plan.stream);
+  if (error != cudaSuccess)
+    return cuda_failure(error, "select corrected response device", detail);
+  // A later enqueue, eigensolver or host allocation may fail after the H2D
+  // upload borrows terms[0].density. Drain before returning/rethrowing so the
+  // caller can release its density even when no response bridge is entered.
+  struct UploadDrain {
+    cudaStream_t stream;
+    bool active{true};
+    ~UploadDrain() {
+      if (active) (void)cudaStreamSynchronize(stream);
+    }
+  } upload_drain{plan.stream};
+  error = cudaMemcpyAsync(plan.primary_density, terms[0].density.data(), bytes,
+                          cudaMemcpyHostToDevice, plan.stream);
   if (error == cudaSuccess)
     error =
         cudaMemsetAsync(state->d_alpha_factor_generation, 0, sizeof(std::uint32_t), plan.stream);
@@ -208,6 +219,9 @@ vibeqc_status select_corrected_occupied_response_factor(
     runtime::cuda_trace::trace_counter("reconstruction_rejected", 1);
     return VIBEQC_STATUS_SUCCESS;
   }
+  // Accepted reconstruction has already drained its spectrum and full-density
+  // checks. Do not add a synchronization to the successful occupied path.
+  upload_drain.active = false;
   view.factors[0] = {state->d_alpha_factor, rank, 1.0};
   view.nbf = plan.nbf;
   view.naux = plan.naux;
