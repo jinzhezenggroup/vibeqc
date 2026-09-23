@@ -1,7 +1,8 @@
-"""Fail closed when the legacy codegen test catch-all grows again."""
+"""Bound the legacy codegen catch-all and ratchet PRs against their tested base."""
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -15,24 +16,33 @@ class OwnershipGuardError(RuntimeError):
 
 
 def line_count(path: Path) -> int:
-    """Return physical text lines without normalizing the source first."""
+    """Count physical lines; form feeds and Unicode separators are not newlines."""
 
-    return len(path.read_text(encoding="utf-8").splitlines())
+    with path.open(encoding="utf-8") as source:
+        return sum(1 for _ in source)
 
 
 def check_legacy_codegen_test(
     path: Path = LEGACY_CODEGEN_TEST,
     *,
     budget: int = LEGACY_LINE_BUDGET,
+    baseline: Path | None = None,
 ) -> int:
-    """Require the legacy catch-all to shrink monotonically from its baseline."""
+    """Enforce the ceiling and, when supplied, the target-branch line count."""
 
-    if budget < 0:
-        raise ValueError("line budget must be non-negative")
+    if type(budget) is not int or budget < 0:
+        raise ValueError("line budget must be non-negative and an integer")
     if not path.is_file():
         raise OwnershipGuardError(f"legacy codegen test file is missing: {path}")
+    if baseline is not None and not baseline.is_file():
+        raise OwnershipGuardError(f"legacy codegen baseline file is missing: {baseline}")
 
-    lines = line_count(path)
+    try:
+        if baseline is not None:
+            budget = min(budget, line_count(baseline))
+        lines = line_count(path)
+    except (OSError, UnicodeError) as error:
+        raise OwnershipGuardError(f"cannot read legacy codegen source: {error}") from error
     if lines > budget:
         raise OwnershipGuardError(
             "legacy codegen catch-all grew to "
@@ -43,16 +53,20 @@ def check_legacy_codegen_test(
 
 
 def main() -> int:
-    """Run the repository guard as a standalone CI-friendly command."""
+    """Run the fixed ceiling locally or the target-branch ratchet in PR CI."""
 
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--baseline", type=Path, help="legacy source from the tested PR base")
+    args = parser.parse_args()
     try:
-        lines = check_legacy_codegen_test()
+        lines = check_legacy_codegen_test(baseline=args.baseline)
     except OwnershipGuardError as error:
         print(f"codegen test ownership guard: {error}", file=sys.stderr)
         return 1
+    suffix = "; tested-base ratchet passed" if args.baseline is not None else ""
     print(
         "codegen test ownership guard: "
-        f"{lines}/{LEGACY_LINE_BUDGET} legacy lines retained"
+        f"{lines}/{LEGACY_LINE_BUDGET} legacy lines retained{suffix}"
     )
     return 0
 
