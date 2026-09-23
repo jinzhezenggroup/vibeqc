@@ -24,4 +24,12 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
 void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
                                     const double* eigenvalues, bool square_root, double* projected);
 
+/** Scale column-major [eigendirection,pair] projections into disjoint storage.
+ * This preserves the same elementwise division while allowing callers to fuse
+ * a required retention copy into the scaling pass.
+ */
+void launch_scale_metric_projection_to(cudaStream_t stream, std::size_t dimension,
+                                       std::size_t pairs, const double* eigenvalues,
+                                       bool square_root, const double* projected, double* scaled);
+
 }  // namespace vibeqc::scf::cuda_df
