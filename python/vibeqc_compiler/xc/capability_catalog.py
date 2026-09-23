@@ -88,17 +88,23 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
     stages = set(CAPABILITY_STAGES)
     for name, record in functionals.items():
         if not isinstance(name, str) or not name or not isinstance(record, Mapping):
-            raise TypeError(f"{label} capability summary has malformed functional record")
+            raise TypeError(
+                f"{label} capability summary has malformed functional record"
+            )
         identity = record.get("identity")
         qualified = record.get("qualified_stages")
         ready = record.get("ready_stages")
         blocked = record.get("blocked_stages")
         if not isinstance(identity, str) or not identity:
-            raise ValueError(f"{label} capability summary has invalid identity for {name}")
+            raise ValueError(
+                f"{label} capability summary has invalid identity for {name}"
+            )
         if not isinstance(qualified, list) or not isinstance(ready, list):
             raise TypeError(f"{label} capability summary has invalid stages for {name}")
         if not isinstance(blocked, Mapping):
-            raise TypeError(f"{label} capability summary has invalid blockers for {name}")
+            raise TypeError(
+                f"{label} capability summary has invalid blockers for {name}"
+            )
         if (
             not set(qualified) <= stages
             or not set(ready) <= stages
@@ -106,7 +112,9 @@ def _validate_summary(summary: Mapping[str, Any], *, label: str) -> None:
         ):
             raise ValueError(f"{label} capability summary has unknown stage for {name}")
         if set(qualified) & set(ready):
-            raise ValueError(f"{label} capability summary has qualified/ready overlap for {name}")
+            raise ValueError(
+                f"{label} capability summary has qualified/ready overlap for {name}"
+            )
 
 
 def capability_changes(
