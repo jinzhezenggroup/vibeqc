@@ -821,12 +821,18 @@ def emit_stationary_wrapper_cuda(
         raise ValueError("sharded stationary primitive metadata must be complete")
     if primitive_shards is not None and not declare_primitive:
         raise ValueError("sharded stationary primitive adapter owns its declaration")
-    return (
-        (
-            _sharded_first_derivative_adapter(primitive_shards, primitive_shard_width)
-            if primitive_shards is not None
-            else (_FIRST_DERIVATIVE_DECLARATION if declare_primitive else "")
+    if primitive_shards is not None:
+        if primitive_shard_width is None:
+            raise ValueError("sharded stationary primitive metadata must be complete")
+        primitive_declaration = _sharded_first_derivative_adapter(
+            primitive_shards, primitive_shard_width
         )
+    else:
+        primitive_declaration = (
+            _FIRST_DERIVATIVE_DECLARATION if declare_primitive else ""
+        )
+    return (
+        primitive_declaration
         + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
