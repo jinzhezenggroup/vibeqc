@@ -100,7 +100,9 @@ def resolve_bulk_ks(
         evidence=evidence,
     )
     if qualified.identity != capability.identity:
-        raise RuntimeError("bulk Libxc capability identity changed during KS resolution")
+        raise RuntimeError(
+            "bulk Libxc capability identity changed during KS resolution"
+        )
 
     functional_spec = functional(capability.name, spin=spin)
     method = MethodIR(
@@ -112,7 +114,9 @@ def resolve_bulk_ks(
     )
     plan = compile_ks_execution_plan(method)
     if plan.exchange or plan.nonlocal_correlation is not None or plan.post_scf:
-        raise RuntimeError("pure semilocal bulk KS resolution produced extra primitives")
+        raise RuntimeError(
+            "pure semilocal bulk KS resolution produced extra primitives"
+        )
 
     return BulkKsResolution(
         capability=qualified,

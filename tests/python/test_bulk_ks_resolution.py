@@ -3,8 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
-import vibeqc_compiler.method.bulk_ks as bulk_ks
+from vibeqc_compiler.method import bulk_ks
 from vibeqc_compiler.method.spec import UnsupportedMethod
 from vibeqc_compiler.xc.capability_resolution import (
     CapabilityNotQualified,
@@ -92,9 +91,13 @@ def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(monkeypatch) -> 
     assert not result.to_payload()["public_dft"]
 
 
-def test_bulk_ks_descriptive_identifier_does_not_change_semantic_plan(monkeypatch) -> None:
+def test_bulk_ks_descriptive_identifier_does_not_change_semantic_plan(
+    monkeypatch,
+) -> None:
     capability, qualified = _qualified_resolution("LDA_C_VWN_4")
-    monkeypatch.setattr(bulk_ks, "resolve_capability", lambda *args, **kwargs: qualified)
+    monkeypatch.setattr(
+        bulk_ks, "resolve_capability", lambda *args, **kwargs: qualified
+    )
 
     first = bulk_ks.resolve_bulk_ks(capability.name, identifier="candidate-a")
     second = bulk_ks.resolve_bulk_ks(capability.name, identifier="candidate-b")
@@ -125,7 +128,9 @@ def test_bulk_ks_rejects_unsupported_ingredient_before_stage_resolution(
         identity=base.identity,
         required_ingredients=("rho", "sigma", "laplacian"),
     )
-    monkeypatch.setattr(bulk_ks, "functional_capability", lambda *args, **kwargs: capability)
+    monkeypatch.setattr(
+        bulk_ks, "functional_capability", lambda *args, **kwargs: capability
+    )
     monkeypatch.setattr(
         bulk_ks,
         "resolve_capability",
