@@ -33,8 +33,8 @@ def _scf_xc_points(
     """Evaluate the exact native semilocal SCF point model."""
     if type(functional) is bool:
         functional = int(functional)
-    if type(functional) is not int or functional not in (0, 1, 2, 3):
-        raise TypeError("SCF point evaluator requires functional code 0, 1, 2, or 3")
+    if type(functional) is not int or functional not in (0, 1, 2, 3, 4):
+        raise TypeError("SCF point evaluator requires functional code 0, 1, 2, 3, or 4")
     raw_rho, raw_gradient = np.asarray(rho), np.asarray(gradient)
     if (
         np.iscomplexobj(raw_rho)
@@ -48,8 +48,8 @@ def _scf_xc_points(
     rho = np.ascontiguousarray(raw_rho, dtype=np.float64)
     gradient = np.ascontiguousarray(raw_gradient, dtype=np.float64)
     if tau is None:
-        if functional == 2:
-            raise ValueError("r2SCAN point evaluation requires tau[2,n]")
+        if functional in (2, 4):
+            raise ValueError("meta-GGA point evaluation requires tau[2,n]")
         tau = np.zeros_like(rho)
     raw_tau = np.asarray(tau)
     if np.iscomplexobj(raw_tau) or raw_tau.shape != rho.shape:
@@ -127,6 +127,8 @@ class NativeKsSnapshot:
         "hamiltonian",
         "metadata",
         "method_ir",
+        "model_terms",
+        "nonlocal_density_policy",
         "values",
     )
     _fixed = frozenset(__slots__)
@@ -187,7 +189,9 @@ class NativeKsSnapshot:
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
             method_name = self._batch._calculator._method_name
-            expected_domain_version = 2 if method_name.startswith("b3lyp-") else 1
+            expected_domain_version = {3: 2, 4: 3}.get(
+                native_xc_functional_code(method_name), 1
+            )
             if (
                 metadata[0] not in (1, 2, 3, 4, 5, 6, 7)
                 or metadata[7] != expected_domain_version
@@ -386,6 +390,52 @@ class NativeKsSnapshot:
         else:
             self.method_ir = full_method_ir
         self.functional = options.functional
+        self.model_terms = ()
+        self.nonlocal_density_policy = None
+        if functional == 4:
+            from vibeqc_compiler.dft.nonlocal_policy import (
+                MOLECULAR_VV10_DENSITY_POLICY,
+            )
+
+            from .ks import ks_range_exchange_parameters
+
+            try:
+                read_model = self._library.vibeqc_ks_snapshot_wb97mv_model_v1
+            except AttributeError as error:
+                raise NotImplementedError(
+                    "native library lacks complete WB97M-V snapshot provenance"
+                ) from error
+            read_model.argtypes = [
+                ct.c_void_p,
+                ct.c_void_p,
+                ct.POINTER(ct.c_double),
+                ct.c_size_t,
+            ]
+            read_model.restype = ct.c_int
+            proof = (ct.c_double * 9)()
+            _native.check(
+                self._library, read_model(self._batch._batch, self._handle, proof, 9)
+            )
+            nlc = options.execution_plan.nonlocal_correlation
+            if nlc is None:
+                raise ValueError("WB97M-V snapshot lost its nonlocal primitive")
+            expected = (
+                *ks_range_exchange_parameters(self.method_ir),
+                1.0,
+                float(nlc.spec.b),
+                float(nlc.spec.c),
+                float(nlc.coefficient),
+                1.0,
+                self._batch._calculator._screening_tolerance,
+            )
+            if tuple(proof) != expected:
+                raise ValueError(
+                    "WB97M-V snapshot complete native model disagrees with MethodIR"
+                )
+            object.__setattr__(self, "model_terms", tuple(proof))
+            object.__setattr__(
+                self, "nonlocal_density_policy", MOLECULAR_VV10_DENSITY_POLICY
+            )
         if offset != len(self.values):
             raise ValueError("native KS snapshot wire length mismatch")
         if self.hamiltonian != "unbound" and not np.isclose(
@@ -424,7 +474,18 @@ class NativeKsSnapshot:
         self.grid = grid
         spec = self.functional
         composition_identity = (
-            {"method_ir": self.method_ir.identity, "coefficients": self.coefficients}
+            {
+                "method_ir": self.method_ir.identity,
+                "coefficients": self.coefficients,
+                **(
+                    {
+                        "native_model_terms": self.model_terms,
+                        "nonlocal_density_policy": self.nonlocal_density_policy,
+                    }
+                    if self.model_terms
+                    else {}
+                ),
+            }
             if self.coefficients != (1.0, 1.0, 0.0)
             else {}
         )

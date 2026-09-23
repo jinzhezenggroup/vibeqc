@@ -6,7 +6,7 @@ import typing
 from dataclasses import asdict, dataclass
 
 from . import _native
-from .ks import B3LYP_SCF_DOMAIN, SCF_DOMAIN
+from .ks import B3LYP_SCF_DOMAIN, SCF_DOMAIN, WB97MV_SCF_DOMAIN
 
 
 @dataclass(frozen=True)
@@ -115,7 +115,9 @@ def read_ks_diagnostic(
     if status == _native.STATUS_NOT_IMPLEMENTED:
         return None
     _native.check(library, status)
-    if summary.scf_domain_version not in (1, 2):
+    # Domain IDs identify numerical policies, independently of method aliases.
+    domains = {1: SCF_DOMAIN, 2: B3LYP_SCF_DOMAIN, 3: WB97MV_SCF_DOMAIN}
+    if summary.scf_domain_version not in domains:
         raise RuntimeError("unsupported native KS diagnostic domain version")
     history = (_native.KsIterationDescriptor * summary.history_count)()
     for row in history:
@@ -144,7 +146,7 @@ def read_ks_diagnostic(
         grid_points=summary.grid_points,
         tile_points=summary.tile_points,
         ao_order=summary.required_ao_order,
-        scf_domain=B3LYP_SCF_DOMAIN if summary.scf_domain_version == 2 else SCF_DOMAIN,
+        scf_domain=domains[summary.scf_domain_version],
         initial_density_used=bool(summary.initial_density_used),
         fock_builds=summary.fock_builds,
         components=_components(summary),

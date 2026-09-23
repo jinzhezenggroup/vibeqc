@@ -99,6 +99,7 @@ class TensorSchedule:
     fuse: bool = False
     recompute: bool = False
     stream_reductions: bool = field(default=False, kw_only=True)
+    streamed_gemm_reduction: bool = field(default=False, kw_only=True)
     reduction_provider: str = field(default="generated", kw_only=True)
     inplace_donation: bool = field(default=False, kw_only=True)
     direct_gemm: bool = True
@@ -122,6 +123,7 @@ class TensorSchedule:
             "fuse",
             "recompute",
             "stream_reductions",
+            "streamed_gemm_reduction",
             "inplace_donation",
             "direct_gemm",
             "layouts",
@@ -130,6 +132,8 @@ class TensorSchedule:
                 raise TypeError(f"{name} must be boolean")
         if self.reduction_provider not in ("generated", "cub"):
             raise ValueError("reduction_provider must be 'generated' or 'cub'")
+        if self.streamed_gemm_reduction and not self.stream_reductions:
+            raise ValueError("streamed_gemm_reduction requires stream_reductions")
 
 
 @dataclass(frozen=True)
@@ -802,6 +806,17 @@ def plan_cuda(
         )
         virtual.append(is_virtual)
         depths.append(depth if is_virtual else 0)
+    # A packed GEMM whose operand is streamed must repack that producer for
+    # every panel. Keep the bounded streaming producer in the generated
+    # reduction instead of multiplying its work by the panel count.
+    streamed_gemm_steps = frozenset(
+        i
+        for i, (node, operands) in enumerate(nodes)
+        if schedule.streamed_gemm_reduction
+        and node.op == "einsum"
+        and any(virtual[child] for child in operands)
+    )
+    disabled_gemm_steps = mixed_accumulation_steps | streamed_gemm_steps
     reads = []
     last = [len(nodes) if i in pinned else i for i in range(len(nodes))]
     for i, (_, operands) in enumerate(nodes):
@@ -888,7 +903,7 @@ def plan_cuda(
         # The bounded layout pass assigns the final packed/direct kind below.
         kind = (
             "packed"
-            if g is not None and not virtual[i] and i not in mixed_accumulation_steps
+            if g is not None and not virtual[i] and i not in disabled_gemm_steps
             else "none"
         )
         if g:
@@ -968,7 +983,7 @@ def plan_cuda(
             pinned,
             selected,
             alignment=ALIGNMENT,
-            disabled_gemm=mixed_accumulation_steps,
+            disabled_gemm=disabled_gemm_steps,
         )
         steps = [
             replace(s, layout=layouts[i], gemm=kinds[i]) for i, s in enumerate(steps)

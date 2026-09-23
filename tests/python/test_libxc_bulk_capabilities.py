@@ -35,7 +35,7 @@ def _stage_evidence(
     status: str = "pass",
     reason: str | None = None,
 ) -> dict:
-    return {
+    payload = {
         "schema": libxc_bulk_capabilities.STAGE_EVIDENCE_SCHEMA,
         "subject_identity": capability.identity,
         "stage": stage,
@@ -43,6 +43,9 @@ def _stage_evidence(
         "reason": reason,
         "evidence": f"test://{capability.name}/{stage}" if status == "pass" else None,
     }
+    if stage == "production-domain" and status == "pass":
+        payload["qualification"] = capability.production_domain_profile.to_payload()
+    return payload
 
 
 def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
@@ -72,11 +75,10 @@ def test_bulk_capability_inventory_is_exact_imported_inventory() -> None:
             "graph-imported",
             "pointwise-validated",
         )
-        assert capability.ready_stages == (
-            "compiled-cpu",
-            "compiled-cuda",
-            "production-domain",
-        )
+        expected_ready = ["compiled-cpu", "compiled-cuda"]
+        if capability.production_domain_profile.eligible:
+            expected_ready.append("production-domain")
+        assert capability.ready_stages == tuple(expected_ready)
         assert capability.public_dft is False
         assert "molecular-scf" in capability.unqualified_stages
         assert "forces" in capability.unqualified_stages
@@ -348,3 +350,137 @@ def test_automatic_component_filters_are_fail_closed() -> None:
             libxc_bulk_capabilities.claimable_components(
                 supported_ingredients=ingredients
             )
+
+
+def test_production_domain_profiles_are_ingredient_driven_and_versioned() -> None:
+    lda = libxc_bulk_capabilities.functional_capability("LDA_C_VWN_4")
+    gga = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    mgga = libxc_bulk_capabilities.functional_capability("MGGA_X_R2SCAN01")
+
+    assert lda.production_domain_profile.eligible is True
+    assert gga.production_domain_profile.eligible is True
+    assert mgga.production_domain_profile.eligible is True
+
+    assert "sigma/zero" not in lda.production_domain_profile.case_ids
+    assert "sigma/zero" in gga.production_domain_profile.case_ids
+    assert "tau/isoorbital" not in gga.production_domain_profile.case_ids
+    assert "tau/isoorbital" in mgga.production_domain_profile.case_ids
+
+    for capability in (lda, gga, mgga):
+        profile = capability.production_domain_profile
+        payload = profile.to_payload()
+        assert payload["schema"] == "vibeqc.libxc-production-domain-profile.v1"
+        assert payload["profile"] == "semilocal-boundary-matrix/v1"
+        assert payload["identity"] == profile.identity
+        assert payload["spin_layouts"] == ["polarized", "unpolarized"]
+        assert payload["outputs"] == ["energy", "vxc", "fxc"]
+        assert "density/vacuum" in payload["case_ids"]
+        assert "spin/zero-a" in payload["case_ids"]
+        assert "control/lazy-inactive-branch" in payload["case_ids"]
+        assert "control/invalid-nonfinite" in payload["case_ids"]
+
+
+def test_laplacian_profile_is_explicitly_blocked_from_production_readiness() -> None:
+    capability = libxc_bulk_capabilities.functional_capability("MGGA_X_JK")
+    profile = capability.production_domain_profile
+
+    assert profile.eligible is False
+    assert profile.blocker == "unsupported-ingredients:laplacian"
+    assert "production-domain" not in capability.ready_stages
+    assert capability.to_payload()["production_domain_profile"]["blocker"] == (
+        "unsupported-ingredients:laplacian"
+    )
+
+
+def test_production_domain_pass_requires_exact_versioned_qualification() -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    generic = {
+        "schema": libxc_bulk_capabilities.STAGE_EVIDENCE_SCHEMA,
+        "subject_identity": base.identity,
+        "stage": "production-domain",
+        "status": "pass",
+        "reason": None,
+        "evidence": "test://generic-production-pass",
+    }
+    with pytest.raises(TypeError, match="requires qualification profile"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"production-domain": generic}
+        )
+
+    good = _stage_evidence(base, "production-domain")
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence={"production-domain": good}
+    )
+    assert "production-domain" in capability.qualified_stages
+    stage = next(
+        item for item in capability.stage_evidence if item.stage == "production-domain"
+    )
+    assert stage.qualification == base.production_domain_profile.to_payload()
+
+
+def test_production_domain_pass_rejects_partial_or_stale_boundary_matrix() -> None:
+    base = libxc_bulk_capabilities.functional_capability("MGGA_X_R2SCAN01")
+    good = _stage_evidence(base, "production-domain")
+
+    partial = {
+        **good,
+        "qualification": {
+            **good["qualification"],
+            "case_ids": good["qualification"]["case_ids"][:-1],
+        },
+    }
+    with pytest.raises(ValueError, match="does not cover exact profile"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"production-domain": partial}
+        )
+
+    stale = {
+        **good,
+        "qualification": {
+            **good["qualification"],
+            "profile": "semilocal-boundary-matrix/v0",
+        },
+    }
+    with pytest.raises(ValueError, match="unsupported schema/profile"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"production-domain": stale}
+        )
+
+
+def test_blocked_ingredient_cannot_be_promoted_with_forged_profile() -> None:
+    base = libxc_bulk_capabilities.functional_capability("MGGA_X_JK")
+    evidence = _stage_evidence(base, "production-domain")
+
+    with pytest.raises(ValueError, match="qualification is blocked"):
+        libxc_bulk_capabilities.functional_capability(
+            base.name, evidence={"production-domain": evidence}
+        )
+
+
+@pytest.mark.parametrize(
+    "field", ("required_ingredients", "case_ids", "spin_layouts", "outputs")
+)
+@pytest.mark.parametrize("origin", ("input", "output"))
+def test_production_qualification_is_detached_from_caller_lists(
+    field: str, origin: str
+) -> None:
+    base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
+    evidence = _stage_evidence(base, "production-domain")
+    capability = libxc_bulk_capabilities.functional_capability(
+        base.name, evidence={"production-domain": evidence}
+    )
+    expected = base.production_domain_profile.to_payload()
+    stage = next(
+        item for item in capability.stage_evidence if item.stage == "production-domain"
+    )
+    exported = capability.to_payload()
+    published = next(
+        item
+        for item in exported["stage_evidence"]
+        if item["stage"] == "production-domain"
+    )
+    target = evidence if origin == "input" else published
+    target["qualification"][field].clear()
+    assert stage.qualification == expected
+    assert stage.to_payload()["qualification"] == expected
+    assert "production-domain" in capability.qualified_stages
