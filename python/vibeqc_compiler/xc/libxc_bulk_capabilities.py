@@ -73,7 +73,7 @@ class StageEvidence:
     qualification: dict[str, Any] | None = None
 
     def to_payload(self) -> dict[str, Any]:
-        payload = {
+        payload: dict[str, Any] = {
             "stage": self.stage,
             "status": self.status,
             "evidence": self.evidence,
