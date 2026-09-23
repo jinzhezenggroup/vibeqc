@@ -34,10 +34,9 @@ std::size_t checked_add(std::size_t a, std::size_t b) {{
 }}
 int main() {{
   struct {{ {diagnostic_type} numeric_capacity_bytes; }} diagnostic{{}};
-  struct {{ std::size_t workspace_bytes; }} triples{{}};
+  const std::size_t triples_workspace_bytes = 31;
   for (std::uint64_t old : {{0ULL, 0x100000010ULL}})
     for (std::size_t retained : {{std::size_t(0), std::size_t(0x100000020ULL)}}) {{
-      triples.workspace_bytes=31;
       diagnostic.numeric_capacity_bytes=old;
       {statement.group(0)}
       const auto expected=old > retained+31 ? old : retained+31;
