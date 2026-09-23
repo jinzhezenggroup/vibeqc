@@ -66,6 +66,7 @@ def source() -> str:
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
 
@@ -73,6 +74,7 @@ namespace vibeqc::cc::triples {{
 namespace {{
 {_device_arrays()}
 void cuda_check(cudaError_t error, const char* what) {{
+  if (error == cudaErrorMemoryAllocation) throw std::bad_alloc();
   if (error != cudaSuccess)
     throw std::runtime_error(std::string(what) + ": " + cudaGetErrorString(error));
 }}
