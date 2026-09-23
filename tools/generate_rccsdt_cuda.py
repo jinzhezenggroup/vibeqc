@@ -216,6 +216,12 @@ __global__ void triples_kernel(
     const std::size_t triple[3] = {{a, b, c}};
     const double degeneracy = (a == c) ? 6.0 : ((a == b || b == c) ? 2.0 : 1.0);
     const double denominator = physical_denominator * degeneracy;
+    // A finite physical gap can overflow after its multiplicity is applied.
+    // Fail closed instead of dividing by infinity and publishing zero energy.
+    if (!isfinite(denominator)) {{
+      fail_once(error, 3);
+      continue;
+    }}
     double contribution = 0.0;
 
     for (int zp = 0; zp < 6; ++zp) {{
