@@ -116,6 +116,7 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
     : layout_(cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
                                    layout.functional, layout.spins == 2, layout.tile_points,
                                    layout.response, layout.ao_precision)),
+      point_launcher_(cuda_xc_detail::resolve_point_launcher(layout_.functional, layout_.response)),
       arena_(arena),
       stream_(stream) {
   if (layout.spins != 1 && layout.spins != 2)
@@ -232,9 +233,9 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
     fail_next_xc_status = cudaSuccess;
     vibeqc_tensor::cuda_check(injected);
 #endif
-    cuda_xc_detail::enqueue(layout_, stream_, basis_, points_, weights_, density, ao_, work_,
-                            features_, coefficients_, point_totals_, potential_, totals_, error_,
-                            direction, delta_features_);
+    cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
+                            ao_, work_, features_, coefficients_, point_totals_, potential_,
+                            totals_, error_, direction, delta_features_);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.
