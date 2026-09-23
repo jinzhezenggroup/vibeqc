@@ -49,7 +49,9 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     admitted = not f_shell
     assert ("forces" in calculator._capabilities.supported_properties) == admitted
     cpu = Calculator(basis=basis, method=method, device="cpu")
-    assert "forces" in cpu._capabilities.supported_properties
+    # The bounded public CPU consumer also stops at d, even though separate
+    # integral and HF routes accept f shells.
+    assert ("forces" in cpu._capabilities.supported_properties) == admitted
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("unqualified public ECP forces reached native preparation")
