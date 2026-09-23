@@ -632,6 +632,8 @@ jobs:
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
+                tests/python/test_codegen_autotune.py
+                tests/python/test_codegen_profiles.py
                 tests/python/test_d3_geometry_ir.py
                 tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py
