@@ -561,7 +561,8 @@ int main() {
       stale = true;
     }
     require(stale, "same-shape stale grid identity was accepted");
-    std::cout << "Native device-buffer LDA/PBE/r2SCAN/WB97M-V semilocal RKS/UKS E/V and state gates passed\n";
+    std::cout << "Native device-buffer LDA/PBE/r2SCAN/WB97M-V semilocal RKS/UKS E/V and state "
+                 "gates passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
