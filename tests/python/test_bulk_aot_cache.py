@@ -138,15 +138,18 @@ def test_source_target_flags_and_dependency_changes_all_invalidate() -> None:
         "dependency-content",
     )
     assert bulk_aot_cache.invalidation_reasons(base, changed_target) == ("target",)
-    assert len(
-        {
-            base.cache_key,
-            changed_source.cache_key,
-            changed_flags.cache_key,
-            changed_headers.cache_key,
-            changed_target.cache_key,
-        }
-    ) == 5
+    assert (
+        len(
+            {
+                base.cache_key,
+                changed_source.cache_key,
+                changed_flags.cache_key,
+                changed_headers.cache_key,
+                changed_target.cache_key,
+            }
+        )
+        == 5
+    )
 
 
 def test_dependency_identity_changes_are_explicit_set_invalidation() -> None:

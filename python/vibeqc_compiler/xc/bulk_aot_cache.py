@@ -112,8 +112,7 @@ class CacheClosure:
             # Flag ordering is command-line semantics and must not be normalized.
             "flags": list(self.flags),
             "dependencies": [
-                dependency.to_payload()
-                for dependency in sorted(self.dependencies)
+                dependency.to_payload() for dependency in sorted(self.dependencies)
             ],
             "closure_complete": self.complete,
         }
