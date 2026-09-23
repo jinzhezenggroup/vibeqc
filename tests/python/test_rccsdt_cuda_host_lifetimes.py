@@ -16,7 +16,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
-_CUDA_SHIM = r'''
+_CUDA_SHIM = r"""
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -65,9 +65,9 @@ void enqueue_kernel(double* e,double* m,int* err) {
   operations.emplace_back([=] {*e=-0.125;*m=1.0;*err=0;});
 }
 struct CudaResult { double energy{},minimum_absolute_denominator{}; std::size_t virtual_triples{},workspace_bytes{}; };
-'''
+"""
 
-_DRIVER = r'''
+_DRIVER = r"""
 int main(int argc,char** argv) {
   if(argc!=2) return 99;
   fail_at=std::atoi(argv[1]);
@@ -84,7 +84,7 @@ int main(int argc,char** argv) {
   if(streams || buffers || !operations.empty() || current_device!=3 || syncs<1) return 8;
   return invalid ? 1 : 0;
 }
-'''
+"""
 
 
 @pytest.fixture(scope="module")
