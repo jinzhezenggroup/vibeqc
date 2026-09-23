@@ -70,7 +70,7 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
       cuda_check(cudaGetLastError());
     }
     point_launcher(stream, features, weights + begin, count, l.spins, coefficients, point_totals,
-                   error, delta_features);
+                   error, delta_features, l.exchange_scale, l.correlation_scale);
     cuda_check(cudaGetLastError());
     assemble_potential<<<blocks(matrices, 128), 128, 0, stream>>>(
         ao, coefficients, weights + begin, l.nao, count, l.spins, l.feature_terms, potential,
