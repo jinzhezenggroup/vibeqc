@@ -197,6 +197,16 @@ def endpoint_errors(
     return differences[0], differences[1] if force is not None else None
 
 
+def require_frozen_checkpoint_geometry(manifest: typing.Any, target_hash: str) -> None:
+    """Reject changed-geometry seeds while allowing control-only warm replay."""
+    if (
+        len(manifest.items) != 1
+        or not isinstance(manifest.items[0].get("model"), dict)
+        or manifest.items[0]["model"].get("geometry_hash") != target_hash
+    ):
+        raise RuntimeError("warm checkpoint geometry differs from benchmark target")
+
+
 def main() -> None:
     """Retain each numerical result before enforcing unchanged strict gates."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -456,6 +466,15 @@ def main() -> None:
         density_tolerance=1e-10,
         max_iterations=100,
     )
+    if args.warm_checkpoint_in:
+        from vibeqc.checkpoint import inspect_checkpoint
+
+        require_frozen_checkpoint_geometry(
+            inspect_checkpoint(args.warm_checkpoint_in),
+            calculator.resolved_model(
+                case.atoms, charge=case.charge, multiplicity=case.multiplicity
+            ).geometry_hash,
+        )
     prepare_start = time.perf_counter()
     with calculator.prepare_batch([case.atoms]) as batch:
         payload["prepare_seconds"] = time.perf_counter() - prepare_start

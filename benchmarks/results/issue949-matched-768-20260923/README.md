@@ -64,6 +64,11 @@ failed receipt is retained separately. A subsequent one-pair run and the
 seven-pair run used an explicit three-update gate and the same frozen density
 checkpoint (SHA-256
 `cb2db0cee95ebebe0827cc25a0f4f2226490012d77274dd75beff26331e8c347`).
+The archived checkpoint's source geometry hash and the current 768-AO case's
+target geometry hash both equal
+`4fafd0dc13b446a8eede891ae30815e5d92b010358acbeba74a131aab2ce7378`;
+this was checked after the run from the exact checkpoint bytes. The reusable
+runner now rejects a different geometry before loading its density.
 The native runner's source patch was empty. The exact historical PySCF 2.14.0
 CPU result was reused after strict scientific-input checks; PySCF was not run
 anew in these H100 Jobs. All cold/replay, prime and measured energy/force
