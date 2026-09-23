@@ -15,11 +15,12 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from vibeqc_compiler.common.provenance import atomic_json, file_hash
 
-from .bulk_aot_cache import CacheClosure
+if TYPE_CHECKING:
+    from .bulk_aot_cache import CacheClosure
 
 STORE_SCHEMA = "vibeqc.libxc-aot-object-store/v1"
 _OBJECT_NAME = "artifact.o"
