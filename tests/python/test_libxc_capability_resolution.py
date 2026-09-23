@@ -86,7 +86,9 @@ def test_resolve_capability_surfaces_explicit_blocker_reason() -> None:
     }
 
     with pytest.raises(CapabilityNotQualified) as caught:
-        resolve_capability(base.name, required_stages=("compiled-cpu",), evidence=evidence)
+        resolve_capability(
+            base.name, required_stages=("compiled-cpu",), evidence=evidence
+        )
 
     assert caught.value.identity == base.identity
     assert caught.value.blockers == (("compiled-cpu", "compiler qualification failed"),)
