@@ -20,7 +20,10 @@ def _brute_force_offsets(
             for third in range(-extent, extent + 1):
                 offset = (first, second, third)
                 translation = np.asarray(offset, dtype=np.float64) @ lattice
-                if math.hypot(*(float(value) for value in translation)) <= inclusive_cutoff:
+                if (
+                    math.hypot(*(float(value) for value in translation))
+                    <= inclusive_cutoff
+                ):
                     accepted.add(offset)
     return accepted
 
@@ -51,7 +54,9 @@ def test_image_enumeration_preserves_inverse_pairs_and_cell_identity() -> None:
     offsets = set(cell.lattice_image_offsets(4.0))
 
     assert (0, 0, 0) in offsets
-    assert all(tuple(-component for component in offset) in offsets for offset in offsets)
+    assert all(
+        tuple(-component for component in offset) in offsets for offset in offsets
+    )
     assert cell.identity == before
 
 
@@ -77,7 +82,9 @@ def test_image_cutoff_must_be_finite_and_nonnegative(cutoff: float) -> None:
 
 
 @pytest.mark.parametrize("max_candidates", (0, -1, True, 2.5))
-def test_image_candidate_limit_must_be_a_positive_integer(max_candidates: object) -> None:
+def test_image_candidate_limit_must_be_a_positive_integer(
+    max_candidates: object,
+) -> None:
     cell = PeriodicCell(np.eye(3))
     with pytest.raises(ValueError, match="positive integer"):
         cell.lattice_image_offsets(1.0, max_candidates=max_candidates)  # type: ignore[arg-type]
