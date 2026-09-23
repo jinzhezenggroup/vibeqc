@@ -20,12 +20,11 @@ from vibeqc_compiler.method import (
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
-from .xc import Coefficient, _coefficient, _normalize_components
-
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
 API_VERSION = 1
+Coefficient = int | str | Fraction
 
 
 def compose(
@@ -40,6 +39,10 @@ def compose(
     spin: str | None = None,
 ) -> MethodIR:
     """Compose supported primitives directly into canonical scientific IR."""
+    # Selecting the method surface must not activate the XC extension. Reuse
+    # its canonical coefficient helpers only when composition is requested.
+    from .xc import _coefficient, _normalize_components
+
     if xc is not None and semilocal_components is not None:
         raise ValueError("provide xc or semilocal_components, not both")
 
