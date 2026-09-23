@@ -58,6 +58,18 @@ consumer; no separate singular sigma chain rule or CPU XC call is inserted.
 Matrix assembly applies weights once, retains both differentiated AO legs, and
 does not double the scalar term. All symmetric matrix cross terms are retained.
 
+The compiler emits five bounded point consumers: physical LDA/PBE/r²SCAN and
+signed LDA/PBE response. A plan resolves its immutable `(functional, response)`
+key to an emitted launcher during preparation. Spin layout remains an argument;
+AO precision does not change the FP64 point algebra. The selected consumer calls
+the same canonical point implementation with constant functional/consumer facts,
+so CUDA compilation can remove unrelated algebra before register allocation.
+Physical PBE uses a compiler-selected 32-thread point block; the other consumers
+retain 128 threads. The point tile and arena remain unchanged. Native code binds
+its buffers to the retained launcher; graph replay retains that entry.
+Unsupported functional/response pairs fail during preparation. See the
+[consumer specialization decision](../../.agents/notes/implemented/performance/2026-09-23-xc-point-consumers.md).
+
 The resident contraction block is currently compiler-emitted maintained CUDA
 text, not a complete typed grid/XC IR lowering. The native header's runtime-only
 ownership classification does not remove this remaining scientific-text owner.
