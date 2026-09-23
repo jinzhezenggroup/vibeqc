@@ -199,7 +199,7 @@
         },
         "represented": {
           "evidence": [
-            "tools/generate_rccsd_native.py"
+            "tools/vibeqc_cc/doubles.py"
           ],
           "reason": null,
           "state": "present"
@@ -212,7 +212,7 @@
       "provider_owner": "src/posthf/native_provider.cpp",
       "public_entry": "python/vibeqc/calculator.py",
       "resource_owner": "src/cc/solver.cpp",
-      "scientific_owner": "tools/generate_rccsd_native.py",
+      "scientific_owner": "tools/vibeqc_cc/doubles.py",
       "selector": "src/methods/registry.cpp",
       "state_owner": "src/cc/solver.hpp",
       "status": "production"
