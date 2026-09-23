@@ -17,7 +17,14 @@ energy/force values against the original `1e-9 Eh` and `1e-8 Eh/Bohr` gates.
 `run_qz.sh` takes `probe`, `build`, or `measure` as its sole argument. Every Job
 sets absolute `VIBEQC_SOURCE_DIR` and `VIBEQC_RUN_DIR`, exact
 `VIBEQC_SOURCE_SHA`, and its actual Job name as
-`VIBEQC_BENCHMARK_ALLOCATION`. The clean, pinned source is built with Release
+`VIBEQC_BENCHMARK_ALLOCATION`. A measurement also declares
+`VIBEQC_EXPECTED_ITERATIONS` and a unique `VIBEQC_RUN_LABEL`. Its optional
+`VIBEQC_WARM_CHECKPOINT_IN` selects a previously saved, native-validated warm
+density checkpoint and a full untimed checkpoint replay. Measurement also
+checks `VIBEQC_BUILD_SOURCE_SHA` against the runner source for unchanged
+`src/` and `python/`, plus `VIBEQC_LIBRARY_SHA256` against the built binary.
+The clean, pinned
+source is built with Release
 settings for `sm_90` with the explicitly supported `portable_cuda` AOT profile;
 the binary SHA-256 is printed and the build exit is
 retained in the run directory. `measure` refuses a missing or failed build.
@@ -28,7 +35,7 @@ are raw artifacts outside the reviewed `benchmarks/results/` tree.
 
 The matched arms use one prepared calculator, geometry, basis, native library,
 GPU allocation, frozen post-cold density, panel storage, FP64 native endpoint,
-thresholds, and six expected SCF updates. Each arm is primed before its clean
+thresholds, and a declared fixed SCF update count. Each arm is primed before its clean
 sample. The only requested arm control is
 `VIBEQC_DF_RESPONSE_ALGEBRA=blas|scalar`; the cold solve uses BLAS. This control
 selects response algebra beyond the charge dot as well. Any complete-endpoint

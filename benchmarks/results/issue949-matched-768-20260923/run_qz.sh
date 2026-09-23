@@ -47,13 +47,25 @@ if [[ "$phase" = build ]]; then
 fi
 
 [[ -f "$run_dir/build.exit" && "$(cat "$run_dir/build.exit")" = 0 ]]
+build_source_sha=${VIBEQC_BUILD_SOURCE_SHA:?native build source commit required}
+library_sha=${VIBEQC_LIBRARY_SHA256:?native library digest required}
+[[ "$build_source_sha" =~ ^[0-9a-f]{40}$ && "$library_sha" =~ ^[0-9a-f]{64}$ ]]
+git diff --quiet "$build_source_sha" "$source_sha" -- src python
 export VIBEQC_LIBRARY="$build_dir/libvibeqc.so"
+printf '%s  %s\n' "$library_sha" "$VIBEQC_LIBRARY" | sha256sum -c -
 export VIBEQC_DF_RESPONSE_STORAGE=panel
 export PYTHONPATH="$source_dir/python:$source_dir"
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+expected_iterations=${VIBEQC_EXPECTED_ITERATIONS:?declare current-source SCF update count}
+run_label=${VIBEQC_RUN_LABEL:?unique output label required}
+[[ "$expected_iterations" =~ ^[1-9][0-9]*$ && "$run_label" =~ ^[a-z0-9-]+$ ]]
+checkpoint_args=(--warm-checkpoint-out "$run_dir/frozen-warm-$run_label.checkpoint")
+if [[ -n "${VIBEQC_WARM_CHECKPOINT_IN:-}" ]]; then
+    [[ "$VIBEQC_WARM_CHECKPOINT_IN" = /* && -f "$VIBEQC_WARM_CHECKPOINT_IN" ]]
+    checkpoint_args=(--skip-cold --warm-checkpoint-in "$VIBEQC_WARM_CHECKPOINT_IN")
+fi
 python3 benchmarks/results/issue949-matched-768-20260923/reuse_cpu_oracle.py \
-    --aos 768 --repeats 1 --cpu-reference --expected-iterations 6 \
+    --aos 768 --repeats 1 --cpu-reference --expected-iterations "$expected_iterations" \
     --control VIBEQC_DF_RESPONSE_ALGEBRA --policies blas scalar \
     --cold-control VIBEQC_DF_RESPONSE_ALGEBRA=blas \
-    --warm-checkpoint-out "$run_dir/frozen-warm.checkpoint" \
-    --output "$run_dir/matched-768.json"
+    "${checkpoint_args[@]}" --output "$run_dir/matched-768-$run_label.json"
