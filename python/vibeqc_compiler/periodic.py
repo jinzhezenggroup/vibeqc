@@ -173,7 +173,7 @@ class PeriodicCell:
         if not np.all(np.isfinite(scaled_bounds)):
             raise ValueError("periodic image enumeration bounds overflow")
 
-        bounds = tuple(int(math.ceil(float(bound))) for bound in scaled_bounds)
+        bounds = tuple(math.ceil(float(bound)) for bound in scaled_bounds)
         candidate_count = math.prod(2 * bound + 1 for bound in bounds)
         if candidate_count > max_candidates:
             raise ValueError(
