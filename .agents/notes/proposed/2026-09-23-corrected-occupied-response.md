@@ -50,13 +50,48 @@ speedup. The baseline trace is `/tmp/qc-1117-composed-96-diagnostic.log`.
 The fast-build singleton 96-AO water-tetramer gate passes two Slurm GPU tests
 (job 11500, `/tmp/qc-1117-response-fast-gpu-gate.log`) with independent PySCF
 energy and analytic forces at 1e-9 Eh and 1e-8 Eh/Bohr acceptance thresholds,
-across cold/warm/changed prepared replay and a forced final correction. The
-The strengthened assertions repeat the two passing tests in job 11501
-(`/tmp/qc-1117-response-fast-gpu-gate-final.log`). `auto` emits zero corrected factor admissions, 192 dense AO products
+across cold/warm/changed prepared replay and a forced final correction.
+Strengthened assertions repeat the two passing tests in job 11501
+(`/tmp/qc-1117-response-fast-gpu-gate-final.log`). `auto` emits zero corrected
+factor admissions and 192 dense AO products
 per phase and zero occupied projection products. Explicit `occupied` emits one
 accepted corrected factor per phase, 192 occupied projection products, zero
 dense AO products and no reused final projection. These are fast-build
 correctness/work diagnostics, not Release endpoint latency evidence.
+
+Composed Release sm_120 validation applies this source patch to PR #1139 and
+the final-state source patch from PR #1147. Its library SHA-256 is
+`a115a7f4990220454575c5bc35a6da4a179e74bd13b8c94f2c6910b0c259da3d`;
+Slurm 11503 passes all ten independent PySCF cold/warm/changed GPU gates for
+the composed value/final/response combinations. Slurm 11504 completes the
+original 96-atom, 768-AO / 3712-auxiliary, 21,421,977,600-byte DF allowance
+and independent GPU4PySCF energy-plus-analytic-force reference in
+`/tmp/qc-1117-corrected-96-release-endpoint.log`. Cold, warm and changed
+endpoints take 625.661, 290.117 and 700.329 seconds at 23/7/13 SCF
+iterations. Maximum absolute energy and force errors are 5.23e-11 Eh and
+1.50e-10 Eh/Bohr. The previous composed Release traced job 11499 takes
+626.047/290.256/1207.797 seconds with matching 23/7/13 iterations and
+the same reference and allowance: changed endpoint work drops 507.468 s
+(42.02%); the three endpoints together drop 23.92%. Both jobs enable the
+same detailed DF trace; these are *traced* complete endpoints, not a clean
+untraced A/B timing claim.
+
+Changed-geometry response in `/tmp/qc-1117-96-11504-changed.jsonl` admits
+one rank-160 corrected factor after three tagged generations, verifies its
+full reconstructed density, and executes 7424 occupied projection products
+without using a stale final projection. It generates one full raw tensor
+(17,515,413,504 bytes) and takes 110.258 s; the job-11499 dense response
+generates 25 full tensors (437,885,337,600 raw bytes), 7424 AO products and
+takes 617.334 s. The shared J, final J and final K operation counts and raw
+bytes are unchanged; the complete changed endpoint falls from 83 to 59
+raw-tensor equivalents. The response's separately charged scratch falls
+from 7,736,157,200 to 1,980,523,536 bytes, but neither trace is a sampled
+whole-endpoint device-memory high-water mark.
+
+Before automatic selection or a general production speed claim, collect
+untraced matched Release A/B endpoints, actual whole-endpoint peak memory,
+and a structurally different holdout. DFT qualification under #1117 is
+separate; this HF-DF result cannot close the tracker.
 
 ## Revisit when
 
