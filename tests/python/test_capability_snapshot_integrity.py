@@ -30,7 +30,9 @@ def snapshot() -> dict:
     }
 
 
-@pytest.mark.parametrize("field", ("qualified_counts", "ready_counts", "blocked_counts"))
+@pytest.mark.parametrize(
+    "field", ("qualified_counts", "ready_counts", "blocked_counts")
+)
 @pytest.mark.parametrize("damage", ("value", "bool", "missing", "extra"))
 def test_inconsistent_counters_are_rejected(field: str, damage: str) -> None:
     original = snapshot()
