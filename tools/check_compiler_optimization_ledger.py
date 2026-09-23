@@ -199,6 +199,11 @@ def _validate_adoption(
             _validate_issue_refs(refs, f"{row_label}.refs", allow_empty=True)
 
         if status == "benchmark-qualified":
+            if len(methods) != 1 or len(backends) != 1:
+                raise LedgerError(
+                    f"{row_label} benchmark-qualified evidence must identify exactly "
+                    "one method/backend cell"
+                )
             _validate_evidence_paths(
                 row.get("evidence"), f"{row_label}.evidence", evidence_root
             )
