@@ -402,7 +402,7 @@ def test_production_domain_pass_requires_exact_versioned_qualification() -> None
         "reason": None,
         "evidence": "test://generic-production-pass",
     }
-    with pytest.raises(ValueError, match="requires qualification profile"):
+    with pytest.raises(TypeError, match="requires qualification profile"):
         libxc_bulk_capabilities.functional_capability(
             base.name, evidence={"production-domain": generic}
         )
