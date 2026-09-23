@@ -960,6 +960,7 @@ class Calculator:
         )
         if (
             self._capabilities.family == "density_functional"
+            and density_fitting_mode == _native.DENSITY_FITTING_NONE
             and (semilocal_force or named_cpu_all_electron_force)
             and not (
                 self._device_name == "cuda"
@@ -984,6 +985,10 @@ class Calculator:
                 | {"forces"},
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
+            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
+                raise NotImplementedError(
+                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
                     "native coupled-cluster density fitting is not implemented"
@@ -1001,9 +1006,22 @@ class Calculator:
                     "DFT automatic precision currently requires CUDA"
                 )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
-                raise NotImplementedError("DFT supports conventional Coulomb only")
-            if auxiliary_basis is not None:
-                raise ValueError("DFT does not accept an unused auxiliary basis")
+                # DF changes the Hamiltonian. Keep its backend explicit and do
+                # not advertise the conventional stationary force consumer.
+                if self._precision_mode != _native.PRECISION_FP64:
+                    raise NotImplementedError(
+                        "DFT density fitting requires precision='fp64'"
+                    )
+                if (
+                    density_fitting_mode == _native.DENSITY_FITTING_CPU_REFERENCE
+                    and device != "cpu"
+                ) or (
+                    density_fitting_mode == _native.DENSITY_FITTING_CUDA
+                    and device != "cuda"
+                ):
+                    raise ValueError(
+                        "DFT density-fitting backend must match device; use 'auto' to follow it"
+                    )
             if target_accuracy is not None:
                 raise NotImplementedError(
                     "DFT accuracy-model identities are not implemented yet"
@@ -1598,6 +1616,11 @@ class Calculator:
     ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
+            if self._density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "DFT density-fitting resource plans are not qualified; "
+                    "use density_fitting_memory_budget_bytes for the native DF provider"
+                )
             from .resources_ks import ks_resource_request
 
             return ks_resource_request(
