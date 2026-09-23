@@ -48,7 +48,8 @@
       "family": "coupled_cluster",
       "provider": "rccsdt",
       "properties": [
-        "energy"
+        "energy",
+        "forces"
       ],
       "supports_batch": true,
       "aliases": [
