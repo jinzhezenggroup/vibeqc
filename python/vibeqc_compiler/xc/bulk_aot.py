@@ -163,6 +163,7 @@ def plan_package(
         registrations.add(registration)
         groups.setdefault(variant.emission_identity, []).append(variant.to_payload())
     used_bytes = selected = 0
+    unique_source_bytes = per_registration_source_bytes = 0
     artifacts: list[dict[str, Any]] = []
     for identity, members in sorted(groups.items()):
         members.sort(key=lambda item: (item["name"], item["import_identity"]))
@@ -176,6 +177,8 @@ def plan_package(
         if reason is None:
             selected += 1
             used_bytes += size
+        unique_source_bytes += size
+        per_registration_source_bytes += size * len(members)
         artifacts.append(
             {
                 "emission_identity": identity,
@@ -201,10 +204,8 @@ def plan_package(
             "reused_build_tasks": len(registrations) - len(artifacts),
             "selected_artifacts": selected,
             "selected_source_bytes": used_bytes,
-            "unique_source_bytes": sum(item["source_bytes"] for item in artifacts),
-            "per_registration_source_bytes": sum(
-                item["source_bytes"] * len(item["registrations"]) for item in artifacts
-            ),
+            "unique_source_bytes": unique_source_bytes,
+            "per_registration_source_bytes": per_registration_source_bytes,
         },
         "artifacts": artifacts,
     }
