@@ -972,11 +972,7 @@ class Calculator:
             and not (
                 self._device_name == "cuda"
                 and basis_has_ecp
-                and any(
-                    shell.angular_momentum > 2
-                    for element in self._basis.elements
-                    for shell in element.shells
-                )
+                and not qualified_basis(self._basis)
             )
             and self._method in _method_manifest.NATIVE_DFT_METHOD_IDS
         ):

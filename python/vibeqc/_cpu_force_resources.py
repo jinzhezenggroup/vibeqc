@@ -25,7 +25,12 @@ CPU_FORCE_HOST_CAP = 256 << 20
 
 
 def qualified_basis(basis: typing.Any) -> bool:
-    """CPU promotion is specific to s/p/d ECP records, including their fragments."""
+    """Return whether the bounded ECP force consumer admits this basis.
+
+    Both the CPU fallback and the CUDA public owner use the same s/p/d
+    boundary.  Keeping the test here prevents their capability gates from
+    drifting apart as higher-angular ECP support is added.
+    """
     return (
         isinstance(basis, BasisSet)
         and any(element.ecp_core_electrons for element in basis.elements)
