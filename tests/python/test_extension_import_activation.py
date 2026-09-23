@@ -38,7 +38,9 @@ def test_extension_package_root_keeps_public_surfaces_lazy() -> None:
 
 
 @pytest.mark.parametrize("surface", ("method", "tensor", "xc"))
-def test_selecting_one_extension_surface_does_not_activate_siblings(surface: str) -> None:
+def test_selecting_one_extension_surface_does_not_activate_siblings(
+    surface: str,
+) -> None:
     _run_import_probe(
         f"""
         import importlib
