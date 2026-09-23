@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from fractions import Fraction
+from typing import Any
 
+from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
+from vibeqc_compiler.xc.libxc_maple import MapleImportError
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec, UnsupportedXC
 from vibeqc_compiler.xc.spec import functional as _functional
 
@@ -82,11 +85,60 @@ def inspect(spec: FunctionalSpec) -> dict:
     }
 
 
+def capability(
+    identifier: str,
+    *,
+    evidence: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Report evidence-backed support levels for one imported XC registration.
+
+    This is an observation-only public view over the compiler-owned Libxc
+    capability record. Representation, pointwise validation, target compilation,
+    production-domain qualification, molecular validation, derivatives, and
+    public promotion remain distinct; no later tier is inferred from an earlier
+    one. Custom compositions therefore do not acquire production support merely
+    by choosing an identifier that resembles a built-in name.
+    """
+    if not isinstance(identifier, str) or not identifier.strip():
+        raise TypeError("XC capability queries require a non-empty identifier")
+    try:
+        record = functional_capability(identifier, evidence=evidence)
+    except MapleImportError as exc:
+        raise UnsupportedXC(str(exc)) from exc
+
+    qualified = set(record.qualified_stages)
+    return {
+        "extension_api_version": API_VERSION,
+        "kind": "xc-capability",
+        "name": record.name,
+        "identity": record.identity,
+        "representable": "graph-imported" in qualified,
+        "pointwise_validated": record.claim_level in qualified,
+        "compiled_targets": {
+            "cpu": "compiled-cpu" in qualified,
+            "cuda": "compiled-cuda" in qualified,
+        },
+        "production_domain_qualified": "production-domain" in qualified,
+        "cuda_runtime_validated": "gpu-runtime" in qualified,
+        "molecular_validated": "molecular-scf" in qualified,
+        "derivative_validation": {
+            "forces": "forces" in qualified,
+            "response": "response" in qualified,
+        },
+        "production_promoted": record.public_dft,
+        "qualified_stages": list(record.qualified_stages),
+        "ready_stages": list(record.ready_stages),
+        "unqualified_stages": list(record.unqualified_stages),
+        "stage_evidence": [item.to_payload() for item in record.stage_evidence],
+    }
+
+
 __all__ = [
     "API_VERSION",
     "Coefficient",
     "FunctionalSpec",
     "UnsupportedXC",
+    "capability",
     "compose",
     "inspect",
     "named",
