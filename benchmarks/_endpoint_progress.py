@@ -41,7 +41,7 @@ def _latest_record(output: Path, fallback: dict) -> dict:
     """Read the newest parent checkpoint without trusting a stale spawn snapshot."""
     try:
         loaded = json.loads(output.read_text())
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeError, json.JSONDecodeError):
         return dict(fallback)
     return loaded if isinstance(loaded, dict) else dict(fallback)
 
@@ -58,13 +58,11 @@ def _watch(
             "endpoint": record["active_endpoint"],
             "limit_seconds": seconds,
         }
-        # The parent may have published SCF-cycle/get_veff checkpoints after
-        # this watchdog was spawned. Reload them before marking the endpoint
-        # stopped so timeout evidence never rolls progress backward.
-        latest = _latest_record(output, record)
-        # Evidence writes are best-effort at the deadline: a full or unavailable
-        # filesystem must not leave a blocked CUDA endpoint running indefinitely.
+        # Checkpoint recovery and evidence writes must not bypass termination
+        # after the deadline, even if decoding or another read operation fails.
         try:
+            # Preserve progress published after the watchdog was spawned.
+            latest = _latest_record(output, record)
             try:
                 _append(output.with_suffix(".progress.jsonl"), event)
             finally:
