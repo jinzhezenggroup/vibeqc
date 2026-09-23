@@ -32,7 +32,7 @@ REQUIRED_FIELDS = {
     "evidence",
     "blocker",
 }
-PATH_FIELDS = {
+PATH_FIELDS = (
     "public_entry",
     "selector",
     "scientific_owner",
@@ -40,7 +40,7 @@ PATH_FIELDS = {
     "execution_owner",
     "state_owner",
     "resource_owner",
-}
+)
 
 
 def _is_nonempty_string(value: object) -> bool:
