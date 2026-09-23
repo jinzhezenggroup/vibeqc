@@ -161,7 +161,11 @@ class PeriodicCell:
         """
 
         cutoff = _nonnegative_scalar(cutoff_bohr, label="image cutoff")
-        if type(max_candidates) is not int or max_candidates <= 0:
+        if (
+            isinstance(max_candidates, bool)
+            or not isinstance(max_candidates, int)
+            or max_candidates <= 0
+        ):
             raise ValueError("max_candidates must be a positive integer")
 
         reciprocal = np.asarray(self.reciprocal_lattice, dtype=np.float64)
