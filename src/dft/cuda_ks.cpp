@@ -77,7 +77,7 @@ struct KsStateStorage {
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
   int *solver_info{}, *final_solver_info{}, *jk_error{}, *staged_xc_error{};
-  double* staged_xc_totals{};
+  double *staged_xc_totals{}, *exchange_energy{};
   std::uint8_t *final_spin_enabled{}, *final_enabled{};
   cuda_ks_detail::Control* control{};
   cuda_ks_detail::Scalars* scalar_records{};
@@ -115,6 +115,7 @@ struct KsStateStorage {
     reserve(final_solver_info, spins);
     reserve(jk_error, 1);
     reserve(staged_xc_totals, 3);
+    reserve(exchange_energy, 1);
     reserve(staged_xc_error, 1);
     reserve(final_spin_enabled, spins);
     reserve(final_enabled, 1);
@@ -306,14 +307,20 @@ struct CudaKsPlan::Impl : KsStateStorage {
     scf::validate_resolved_fock_build(strategy);
     fock_binding = scf::prepared_cuda_fock_binding(provider);
     fitted = provider.cuda_fitted_source();
+    const bool exact_exchange = strategy.spec.exchange.present;
+    const bool direct_global_hybrid =
+        exact_exchange && strategy.spec.coulomb.approximation == scf::FockApproximation::Exact &&
+        strategy.spec.exchange.approximation == scf::FockApproximation::Exact &&
+        strategy.spec.exchange.op == scf::FockOperator::FullRange && fock_binding && !fitted;
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
         strategy.spec.derivative_order != 0 || !strategy.spec.coulomb.present ||
         strategy.spec.coulomb.coefficient != 1.0 ||
         (strategy.spec.coulomb.approximation != scf::FockApproximation::Exact &&
          strategy.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
-        strategy.spec.exchange.present || (!fock_binding && !fitted) || (fock_binding && fitted))
+        (exact_exchange && !direct_global_hybrid) ||
+        (!exact_exchange && ((!fock_binding && !fitted) || (fock_binding && fitted))))
       throw std::invalid_argument(
-          "CUDA KS requires a prepared exact or fitted Coulomb-only strategy");
+          "CUDA KS requires a prepared Coulomb plan or direct full-range exact J/K strategy");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
         (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
@@ -321,6 +328,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
     if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
+    if (mixed_j && exact_exchange)
+      throw std::invalid_argument("CUDA hybrid KS automatic precision is not yet qualified");
     if (mixed_j && functional > 1U)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
@@ -355,7 +364,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
     stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
-    xc_layout = cuda_xc_layout(basis, grid, functional, spins == 2, tile);
+    xc_layout = cuda_xc_layout(basis, grid, functional, spins == 2, tile,
+                               CudaXcAoPrecision::Fp64, options.semilocal_exchange_scale,
+                               options.semilocal_correlation_scale);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
     if (host_unfused) {
@@ -402,8 +413,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(final_enabled, &host_one, sizeof(host_one));
       if (!host_unfused) {
         // Device-fused XC setup drains this same stream.
-        xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
-                                          resource.xc_device_bytes, stream);
+        xc = std::make_unique<CudaXcPlan>(
+            basis, grid, functional, spins == 2, tile, xc_arena, resource.xc_device_bytes, stream,
+            CudaXcAoPrecision::Fp64, options.semilocal_exchange_scale,
+            options.semilocal_correlation_scale);
       }
       // This owner uses ordinary stream execution. Reuse the common provider
       // instead of forcing the graph-safe maximum-pivot fallback at every size.
@@ -481,8 +494,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
-        configured_chunk_width() == kCudaKsChunkCapacity;
+        !fitted && !mixed_j && !provider.strategy().spec.exchange.present && spins == 1 &&
+        provider.system().ecp_terms.empty() && configured_chunk_width() == kCudaKsChunkCapacity;
     if (device_chunk_mode) {
       const auto binding = device_chunk_binding();
       if (!device_chunk_region.matches(binding))
@@ -571,7 +584,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     pending_generations[slot] = generation;
     ++movement.submitted_iterations;
     const auto potential = xc->view(generation);
-    cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
+    cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, nullptr, 0.0,
+                                  potential.potential, enabled, fock);
     check(cudaGetLastError());
     const auto blocks = static_cast<unsigned>((elements + 127) / 128);
     const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
@@ -600,8 +614,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     check(cudaGetLastError());
     auto* record = scalar_records + slot;
     cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
-                                potential.totals, potential.error, jk_error, solver_info, enabled,
-                                record);
+                                potential.totals, nullptr, potential.error, jk_error, solver_info,
+                                enabled, record);
     check(cudaGetLastError());
     cuda_ks_detail::advance(stream, n, spins, provider.one_electron().nuclear_repulsion,
                             static_cast<int>(occupations[0]), static_cast<int>(occupations[1]),
@@ -731,7 +745,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
       if (functional == 0U)
         value = integrate_lda_xc_pw_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       else if (functional == 1U)
-        value = integrate_pbe_rks_with_tail(basis, grid, host_xc_density, xc_layout.tile_points);
+        value = integrate_pbe_rks_with_tail_scaled(
+            basis, grid, host_xc_density, xc_layout.tile_points, {},
+            options.semilocal_exchange_scale, options.semilocal_correlation_scale);
       else
         value = integrate_r2scan_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       if (value.potential.size() != matrix)
@@ -746,7 +762,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
         value = integrate_lda_xc_pw_uks(basis, grid, host_xc_alpha, host_xc_beta,
                                         xc_layout.tile_points);
       else if (functional == 1U)
-        value = integrate_pbe_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+        value = integrate_pbe_uks_scaled(basis, grid, host_xc_alpha, host_xc_beta,
+                                         xc_layout.tile_points, options.semilocal_exchange_scale,
+                                         options.semilocal_correlation_scale);
       else
         value =
             integrate_r2scan_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
@@ -780,6 +798,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       // seam supports fitted providers. Both routes use their owner's stream;
       // the exact route never exposes its concrete Direct-J/K handle here.
       if (fitted) check(cudaMemsetAsync(jk_error, 0, sizeof(*jk_error), stream));
+      const auto& strategy = provider.strategy();
+      const bool exact_exchange = strategy.spec.exchange.present;
+      double* exchange_alpha = exact_exchange ? tmp2 : nullptr;
+      double* exchange_beta = exact_exchange && spins == 2 ? tmp2 + matrix : nullptr;
       const auto jk_status =
           fitted ? (spins == 2 ? scf::execute_cuda_density_fitting_uhf_jk_device(
                                      fitted, density, density + matrix, j, nullptr, nullptr, detail,
@@ -789,14 +811,20 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                      scf::FockMatrixLayout::RowMajor))
                  : scf::enqueue_prepared_cuda_fock(
                        provider, density, spins == 2 ? density + matrix : nullptr, matrix, j,
-                       nullptr, nullptr, jk_error, pending_mixed_j, detail);
+                       exchange_alpha, exchange_beta, jk_error, pending_mixed_j, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
       const auto potential = stage_xc(++generation);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
       pending_iterations = 1;
-      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
+      const double exchange_coefficient =
+          exact_exchange ? strategy.spec.exchange.coefficient : 0.0;
+      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, exchange_alpha,
+                                    exchange_coefficient, potential.potential, enabled, fock);
+      check(cudaGetLastError());
+      cuda_ks_detail::contract_exchange_energy(stream, n, spins, density, exchange_alpha,
+                                               exchange_coefficient, enabled, exchange_energy);
       check(cudaGetLastError());
       const auto blocks = static_cast<unsigned>((elements + 127) / 128);
       const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
@@ -848,8 +876,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                          enabled, proposal);
       check(cudaGetLastError());
       cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
-                                  potential.totals, potential.error, jk_error, solver_info, enabled,
-                                  scalar_records);
+                                  potential.totals, exchange_energy, potential.error, jk_error,
+                                  solver_info, enabled, scalar_records);
       check(cudaGetLastError());
     } catch (...) {
       cudaStreamSynchronize(stream);
@@ -892,7 +920,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.precision.refinement_iterations = refinement_iterations;
     auto& diagnostic = output.dft_diagnostic;
     diagnostic.components = {provider.one_electron().nuclear_repulsion, physical.one_electron,
-                             physical.hartree, physical.xc};
+                             physical.hartree, physical.xc, physical.exact_exchange};
     diagnostic.physical_residual = physical.residual;
     diagnostic.electrons = {physical.electrons[0], physical.electrons[1]};
     diagnostic.density_change = physical.density_change;
@@ -1010,7 +1038,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {1, 1, grid_spec, xc_layout.tile_points, functional, spins, device, owner};
+    identity.model = {1,
+                      1,
+                      grid_spec,
+                      xc_layout.tile_points,
+                      functional,
+                      spins,
+                      device,
+                      owner,
+                      options.semilocal_exchange_scale,
+                      options.semilocal_correlation_scale};
     return identity;
   }
 
