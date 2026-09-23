@@ -2,6 +2,7 @@
 
 #include <cuda_runtime.h>
 
+#include "integrals/range_moments.hpp"
 #include "scf/cuda/boys_table.cuh"
 #include "scf/cuda/gaussian_geometry.cuh"
 
@@ -51,15 +52,12 @@ static_assert(CoulombAuxiliary<double, 6>::kStateCount == 210);
 static_assert(CoulombAuxiliary<double, 12>::kStateCount == 1820);
 
 template <unsigned MaximumAngular, typename Scalar>
-__device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<Scalar>& product,
-                                    const Vec3<Scalar>& center,
-                                    CoulombAuxiliary<Scalar, MaximumAngular>& auxiliary) {
+__device__ inline void fill_coulomb_from_moments(
+    EvaluationReal<Scalar> exponent, const Vec3<Scalar>& pc, const Scalar* boys,
+    CoulombAuxiliary<Scalar, MaximumAngular>& auxiliary) {
   for (unsigned item = 0; item < CoulombAuxiliary<Scalar, MaximumAngular>::kStateCount; ++item) {
     auxiliary.data[item] = scalar<Scalar>(0.0);
   }
-  const Vec3<Scalar> pc{product.x - center.x, product.y - center.y, product.z - center.z};
-  Scalar boys[MaximumAngular + 1];
-  boys_values<MaximumAngular>(exponent * distance_squared(product, center), boys);
   EvaluationReal<Scalar> factor{1.0};
   for (unsigned n = 0; n <= MaximumAngular; ++n) {
     auxiliary.at(n, 0, 0, 0) = factor * boys[n];
@@ -99,6 +97,34 @@ __device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<
       }
     }
   }
+}
+
+template <unsigned MaximumAngular, typename Scalar>
+__device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<Scalar>& product,
+                                    const Vec3<Scalar>& center,
+                                    CoulombAuxiliary<Scalar, MaximumAngular>& auxiliary) {
+  const Vec3<Scalar> pc{product.x - center.x, product.y - center.y, product.z - center.z};
+  Scalar boys[MaximumAngular + 1];
+  boys_values<MaximumAngular>(exponent * distance_squared(product, center), boys);
+  fill_coulomb_from_moments<MaximumAngular>(exponent, pc, boys, auxiliary);
+}
+
+/** Range-separated direct exchange reuses the same Hermite recurrence as the
+ * full-Coulomb path. Only the radial moment source changes, through the common
+ * CPU/CUDA range_moments primitive. */
+template <unsigned MaximumAngular>
+__device__ inline bool fill_coulomb_range(
+    double exponent, const Vec3<double>& product, const Vec3<double>& center,
+    vibeqc::integrals::CoulombRange range, double omega,
+    CoulombAuxiliary<double, MaximumAngular>& auxiliary) {
+  double boys[MaximumAngular + 1];
+  const double argument = exponent * distance_squared(product, center);
+  if (!vibeqc::integrals::bounded_range_moments<MaximumAngular>(
+          MaximumAngular, argument, exponent, range, omega, boys))
+    return false;
+  const Vec3<double> pc{product.x - center.x, product.y - center.y, product.z - center.z};
+  fill_coulomb_from_moments<MaximumAngular>(exponent, pc, boys, auxiliary);
+  return true;
 }
 
 }  // namespace vibeqc::scf::cuda_execution
