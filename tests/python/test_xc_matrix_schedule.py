@@ -60,11 +60,16 @@ def test_tiled_potential_fuses_point_total_reduction() -> None:
     assert "I work_jets, const double* point_totals, double* potential," in source
     assert "blockIdx.x == 0 && blockIdx.z == 0" in source
     assert "threadIdx.y == 0 && threadIdx.x < 3" in source
-    assert "for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];" in source
+    assert (
+        "for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];" in source
+    )
     assert "totals[channel] = finite(totals[channel]+sum,error,3);" in source
     # Tiny/out-of-domain shapes keep the historical reducer rather than changing
     # their arithmetic or launch contract merely to share the production path.
-    assert "accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);" in source
+    assert (
+        "accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);"
+        in source
+    )
 
 
 @pytest.mark.parametrize(
