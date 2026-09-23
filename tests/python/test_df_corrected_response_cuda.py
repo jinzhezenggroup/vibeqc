@@ -17,14 +17,23 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("response_space", ["auto", "occupied"])
+@pytest.mark.parametrize("case_name", ["water-tetramer", "ammonia-trimer"])
 def test_corrected_streamed_response_preserves_force_oracle(
-    monkeypatch: typing.Any, tmp_path: typing.Any, response_space: str
+    monkeypatch: typing.Any, tmp_path: typing.Any, response_space: str, case_name: str
 ) -> None:
-    """Force a tagged correction, then check reconstruction, replay and rebuild."""
+    """Gate corrected factor replay on streamed water and non-water workloads."""
     from pyscf import gto, scf
 
     assert os.environ.get("SLURM_JOB_ID")
-    atoms = benchmark_cases()["water-tetramer-def2-svp-spherical"].atoms
+    if case_name == "water-tetramer":
+        atoms = benchmark_cases()["water-tetramer-def2-svp-spherical"].atoms
+    else:
+        ammonia = benchmark_cases()["ammonia-def2-svp-spherical"].atoms
+        atoms = tuple(
+            (symbol, tuple(np.asarray(position) + offset))
+            for offset in ((0, 0, 0), (8, 0, 0), (0, 8, 0))
+            for symbol, position in ammonia
+        )
     moved = [
         (
             symbol,
@@ -55,7 +64,10 @@ def test_corrected_streamed_response_preserves_force_oracle(
         basis_representation="spherical",
         device="cuda",
         density_fitting="cuda",
-        density_fitting_memory_budget_bytes=24 << 20,
+        density_fitting_memory_budget_bytes=(
+            24 if case_name == "water-tetramer" else 16
+        )
+        << 20,
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
         max_iterations=100,
@@ -74,6 +86,10 @@ def test_corrected_streamed_response_preserves_force_oracle(
             assert abs(result.energy - reference[0]) < 1e-9
             assert float(np.max(np.abs(result.forces - reference[1]))) < 1e-8
             records = [json.loads(line) for line in trace.read_text().splitlines()]
+            assert any(
+                record["operation"] == "ri_j" and record["streamed"]
+                for record in records
+            )
             assert (
                 sum(
                     record["operation"] == "final_state_physical_fock"
