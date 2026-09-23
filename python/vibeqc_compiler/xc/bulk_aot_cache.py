@@ -37,8 +37,11 @@ class CacheDependency:
     content_sha256: str
 
     def __post_init__(self) -> None:
-        if not self.role or not self.identity:
-            raise ValueError("cache dependency role and identity must be nonempty")
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in (self.role, self.identity)
+        ):
+            raise ValueError("cache dependency role and identity must be nonempty strings")
         _sha256(self.content_sha256, "content_sha256")
 
     def to_payload(self) -> dict[str, str]:
@@ -72,14 +75,19 @@ class CacheClosure:
         _sha256(self.translation_unit_sha256, "translation_unit_sha256")
         if self.backend not in BACKENDS:
             raise ValueError("backend must be cpu or cuda")
-        if not self.target:
-            raise ValueError("target must be nonempty")
+        if not isinstance(self.target, str) or not self.target.strip():
+            raise ValueError("target must be a nonempty string")
         if not isinstance(self.flags, tuple) or any(
             not isinstance(flag, str) or not flag for flag in self.flags
         ):
             raise ValueError("flags must be a tuple of nonempty strings")
         if type(self.complete) is not bool:
             raise ValueError("complete must be bool")
+        if not isinstance(self.dependencies, tuple) or any(
+            not isinstance(dependency, CacheDependency)
+            for dependency in self.dependencies
+        ):
+            raise ValueError("dependencies must be a tuple of CacheDependency records")
         keys = [
             (dependency.role, dependency.identity) for dependency in self.dependencies
         ]
