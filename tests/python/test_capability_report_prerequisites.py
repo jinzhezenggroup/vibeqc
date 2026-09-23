@@ -88,4 +88,6 @@ def test_explicit_failure_may_remain_ready_for_new_evidence() -> None:
     valid = snapshot(("graph-imported", "pointwise-validated"), ("compiled-cpu",))
     valid["functionals"]["TEST"]["blocked_stages"] = {"compiled-cpu": "compiler failed"}
     valid["blocked_counts"]["compiled-cpu"] = 1
-    assert "explicit blockers: 1 across 1 functionals" in render_capability_summary(valid)
+    assert "explicit blockers: 1 across 1 functionals" in render_capability_summary(
+        valid
+    )
