@@ -188,19 +188,23 @@ def main() -> None:
     independent_energy = tile_triples_energy(
         TileSpec(0, args.nvir, args.nvir),
         args.nocc,
-        *(arrays[name] for name in (
-            "ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"
-        )),
+        *(
+            arrays[name]
+            for name in ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
+        ),
     )
     changed_independent_energy = tile_triples_energy(
         changed_tile,
         args.nocc,
-        *(arrays[name] for name in (
-            "ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"
-        )),
+        *(
+            arrays[name]
+            for name in ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v")
+        ),
     )
     if not np.isclose(expected, independent_energy, atol=1e-10, rtol=1e-10):
-        raise AssertionError("TensorIR reference differs from the independent CPU tile oracle")
+        raise AssertionError(
+            "TensorIR reference differs from the independent CPU tile oracle"
+        )
     compiler = CudaCompilerAdapter(
         args.nvcc,
         cuda_target_info(args.architecture),

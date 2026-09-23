@@ -357,9 +357,7 @@ def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates(
         program,
         target,
         max_bytes=2 << 30,
-        schedule=TensorSchedule(
-            stream_reductions=True, streamed_gemm_reduction=True
-        ),
+        schedule=TensorSchedule(stream_reductions=True, streamed_gemm_reduction=True),
     )
 
     assert streamed.identity != baseline.identity
