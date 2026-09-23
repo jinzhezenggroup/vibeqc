@@ -247,7 +247,6 @@ def test_deferred_groups_are_never_loaded() -> None:
 
 
 @pytest.fixture
-
 def synthetic_catalog(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict:
     """Control importer inputs; no alternative scientific formula implementation."""
     from vibeqc_compiler import xc
