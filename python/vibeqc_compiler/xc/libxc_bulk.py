@@ -277,7 +277,7 @@ def build_record(
             },
             "spin": spin,
             "features": names,
-            "compact_features": compact_features,
+            **({"compact_features": True} if compact_features else {}),
             "source_manifest_sha256": canonical_hash(files),
             "transitive_sha256": module.transitive_sha256,
             "adapter_sha256": file_hash(Path(__file__)),
