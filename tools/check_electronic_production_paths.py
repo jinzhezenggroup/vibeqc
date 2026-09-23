@@ -10,9 +10,20 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LEDGER = ROOT / "docs" / "electronic_structure_production_paths.json"
-SCHEMA = "vibeqc.electronic-production-paths.v1"
+SCHEMA = "vibeqc.electronic-production-paths.v2"
 STATUSES = {"production", "qualification-only", "reference", "unsupported"}
 BACKENDS = {"cpu", "cuda"}
+EVIDENCE_LEVELS = (
+    "represented",
+    "compiled-cpu",
+    "compiled-cuda",
+    "device-executed",
+    "domain-qualified",
+    "molecular",
+    "derivative",
+    "public",
+)
+EVIDENCE_STATES = {"present", "missing", "failed", "skipped", "not-applicable"}
 
 REQUIRED_FIELDS = {
     "id",
@@ -30,6 +41,7 @@ REQUIRED_FIELDS = {
     "state_owner",
     "resource_owner",
     "evidence",
+    "evidence_levels",
     "blocker",
 }
 PATH_FIELDS = (
@@ -69,6 +81,105 @@ def _path_diagnostic(value: str, *, root: Path, check_exists: bool) -> str | Non
     except (OSError, RuntimeError, ValueError):
         return f"path cannot be resolved within repository: {value}"
     return None
+
+
+def _validate_evidence_levels(
+    value: object,
+    *,
+    row_id: str,
+    root: Path,
+    check_exists: bool,
+) -> list[str]:
+    errors: list[str] = []
+    if not isinstance(value, dict):
+        return [f"{row_id}.evidence_levels must be an object"]
+
+    levels = typing.cast("dict[str, object]", value)
+    expected = set(EVIDENCE_LEVELS)
+    missing = sorted(expected - levels.keys())
+    extra = sorted(levels.keys() - expected)
+    if missing:
+        errors.append(f"{row_id}.evidence_levels missing levels: {', '.join(missing)}")
+    if extra:
+        errors.append(f"{row_id}.evidence_levels has unknown levels: {', '.join(extra)}")
+
+    for level in EVIDENCE_LEVELS:
+        raw = levels.get(level)
+        if raw is None:
+            continue
+        if not isinstance(raw, dict):
+            errors.append(f"{row_id}.evidence_levels.{level} must be an object")
+            continue
+        item = typing.cast("dict[str, object]", raw)
+        required = {"state", "evidence", "reason"}
+        missing_fields = sorted(required - item.keys())
+        extra_fields = sorted(item.keys() - required)
+        if missing_fields:
+            errors.append(
+                f"{row_id}.evidence_levels.{level} missing fields: "
+                + ", ".join(missing_fields)
+            )
+            continue
+        if extra_fields:
+            errors.append(
+                f"{row_id}.evidence_levels.{level} has unknown fields: "
+                + ", ".join(extra_fields)
+            )
+
+        state = item["state"]
+        evidence = item["evidence"]
+        reason = item["reason"]
+        if not isinstance(state, str) or state not in EVIDENCE_STATES:
+            errors.append(
+                f"{row_id}.evidence_levels.{level}.state must be one of "
+                f"{sorted(EVIDENCE_STATES)}, got {state!r}"
+            )
+            continue
+        if not isinstance(evidence, list):
+            errors.append(f"{row_id}.evidence_levels.{level}.evidence must be a list")
+            continue
+
+        if state in {"present", "failed"} and not evidence:
+            errors.append(
+                f"{row_id}.evidence_levels.{level}.evidence must be non-empty "
+                f"when state is {state!r}"
+            )
+        if state in {"missing", "skipped", "not-applicable"} and evidence:
+            errors.append(
+                f"{row_id}.evidence_levels.{level}.evidence must be empty "
+                f"when state is {state!r}"
+            )
+
+        if state == "present":
+            if reason not in (None, ""):
+                errors.append(
+                    f"{row_id}.evidence_levels.{level}.reason must be empty "
+                    "when evidence is present"
+                )
+        elif not _is_nonempty_string(reason):
+            errors.append(
+                f"{row_id}.evidence_levels.{level}.reason must explain "
+                f"state {state!r}"
+            )
+
+        for evidence_index, evidence_path in enumerate(evidence):
+            if not _is_nonempty_string(evidence_path):
+                errors.append(
+                    f"{row_id}.evidence_levels.{level}.evidence[{evidence_index}] "
+                    "must be a non-empty path"
+                )
+                continue
+            diagnostic = _path_diagnostic(
+                typing.cast("str", evidence_path),
+                root=root,
+                check_exists=check_exists,
+            )
+            if diagnostic is not None:
+                errors.append(
+                    f"{row_id}.evidence_levels.{level}.evidence[{evidence_index}] "
+                    f"{diagnostic}"
+                )
+    return errors
 
 
 def validate_production_path_ledger(
@@ -178,6 +289,26 @@ def validate_production_path_ledger(
                 if diagnostic is not None:
                     errors.append(
                         f"{row_id_text}.evidence[{evidence_index}] {diagnostic}"
+                    )
+
+        errors.extend(
+            _validate_evidence_levels(
+                row["evidence_levels"],
+                row_id=row_id_text,
+                root=root,
+                check_exists=full_checkout,
+            )
+        )
+
+        if status == "production" and isinstance(backend, str) and backend in BACKENDS:
+            levels = row["evidence_levels"]
+            if isinstance(levels, dict):
+                required_level = f"compiled-{backend}"
+                compiled = levels.get(required_level)
+                if not isinstance(compiled, dict) or compiled.get("state") != "present":
+                    errors.append(
+                        f"{row_id_text}.evidence_levels.{required_level} "
+                        "must be present for a production row"
                     )
 
         blocker = row["blocker"]
