@@ -6,7 +6,6 @@ import math
 
 import numpy as np
 import pytest
-
 from vibeqc_compiler.periodic import CELL_SCHEMA, PeriodicCell
 
 
