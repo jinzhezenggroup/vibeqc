@@ -13,7 +13,8 @@ for measured phases, work counts and the relationship to PR #1076.
 These measurements use master `572fbd6d4cfc3dd0db03fb0d1abaac4add0b9f12`.
 The benchmark drivers and plotting tool are included in this change; production
 methods are unchanged. [summary.json](summary.json) binds the
-[HF](hf.json), [DFT](dft.json) and [CCSD(T)](ccsd-t.json) sample records by
+[HF](hf.json), DFT ([PBE](dft-pbe.json), [r²SCAN](dft-r2scan.json),
+[PBE0](dft-pbe0.json)) and [CCSD(T)](ccsd-t.json) sample records by
 checksum, retaining every measured latency, convergence branch, error gate,
 binary hash and raw-file checksum.
 
