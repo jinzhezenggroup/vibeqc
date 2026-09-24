@@ -132,6 +132,7 @@ def test_tiled_total_reduction_launch_census(
     # After this slice: zero standalone reduction launches in the admitted tiled path.
     assert expected_two_step_launches > 0
 
+
 def test_xc_matrix_candidates_are_resource_qualified() -> None:
     candidates = qualified_xc_matrix_schedules(384, 256, spins=2, work_jets=4)
     assert tuple(schedule.tile for schedule in candidates) == (8, 16, 32)
