@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SOLVER_DENSE_LINEAR_HPP
 #define VIBEQC_SOLVER_DENSE_LINEAR_HPP
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <limits>
