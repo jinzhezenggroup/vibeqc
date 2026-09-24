@@ -73,7 +73,9 @@ def _compatible_spaces(source: PairSpace, target: PairSpace) -> None:
     if source.localization_id != target.localization_id:
         raise ValueError("pair transfer cannot cross localized occupied frames")
     if source.columns.shape[0] != target.columns.shape[0]:
-        raise ValueError("pair transfer requires one canonical virtual coordinate space")
+        raise ValueError(
+            "pair transfer requires one canonical virtual coordinate space"
+        )
 
 
 def pair_transfer(source: PairSpace, target: PairSpace) -> PairTransfer:
