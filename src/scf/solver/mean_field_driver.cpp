@@ -380,9 +380,9 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
     double residual_rms{};
   };
 
-  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                    options.density_tolerance, options.density_tolerance,
-                                    require_residual};
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance,
+      options.density_tolerance, require_residual};
   auto outcome = ::vibeqc::solver::run_self_consistent(
       UhfState{std::move(alpha_density), std::move(beta_density)}, policy,
       [&](const UhfState& state, unsigned) {

@@ -699,8 +699,8 @@ ScfResult run_rks(
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
       const ::vibeqc::solver::SelfConsistentPolicy stage_policy{
-          iteration_budget, options.energy_tolerance, options.density_tolerance,
-          residual_tolerance, true};
+          iteration_budget, options.energy_tolerance, options.density_tolerance, residual_tolerance,
+          true};
       return ::vibeqc::solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {

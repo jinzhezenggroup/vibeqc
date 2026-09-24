@@ -17,8 +17,9 @@ import typing
 from dataclasses import asdict, dataclass
 from itertools import product
 
-from .cuda_gemm import direct_gemm_kind, gemm_contract
 from vibeqc_compiler.common.layout import DenseLayout
+
+from .cuda_gemm import direct_gemm_kind, gemm_contract
 
 MAX_LAYOUT_TRIALS = 256
 MAX_LAYOUT_SWEEPS = 4

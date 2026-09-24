@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from vibeqc_compiler.common.layout import DenseLayout
 from vibeqc_compiler.tensor.cuda_gemm import direct_gemm_kind, gemm_contract
 from vibeqc_compiler.tensor.ir import einsum, input_tensor
-from vibeqc_compiler.common.layout import DenseLayout
 from vibeqc_compiler.tensor.types import Index, IndexSpace, TensorSpec
 
 from .df_hf_response_contract import (

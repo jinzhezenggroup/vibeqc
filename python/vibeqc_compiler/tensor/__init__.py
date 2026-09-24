@@ -9,6 +9,8 @@ complete solver.
 from importlib import import_module
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.layout import DenseLayout
+
 from .ad_program import (
     GENERATION_VERSION,
     JVPProgram,
@@ -49,7 +51,6 @@ from .ir import (
     sqrt,
     transpose,
 )
-from vibeqc_compiler.common.layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .precision import (
     CastBoundary,
