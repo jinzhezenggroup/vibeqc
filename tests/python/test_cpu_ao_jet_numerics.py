@@ -166,8 +166,19 @@ int main(int argc,char** argv) {
     cpp, executable = directory / "probe.cpp", directory / "probe"
     cpp.write_text(harness, encoding="utf-8")
     subprocess.run(
-        [compiler, "-std=c++20", "-O3", "-ffp-contract=off", str(cpp), "-o", str(executable)],
-        check=True, capture_output=True, text=True, timeout=30,
+        [
+            compiler,
+            "-std=c++20",
+            "-O3",
+            "-ffp-contract=off",
+            str(cpp),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     return executable
 
@@ -178,7 +189,11 @@ int main(int argc,char** argv) {
 def test_ao_jets_match_independent_leibniz(
     ao_probe: Path, order: int, expanded: bool, mode: int
 ) -> None:
-    subprocess.run([str(ao_probe), str(order), str(int(expanded)), str(mode)], check=True, timeout=10)
+    subprocess.run(
+        [str(ao_probe), str(order), str(int(expanded)), str(mode)],
+        check=True,
+        timeout=10,
+    )
 
 
 @pytest.mark.parametrize("mode", [2, 3, 4, 5])
