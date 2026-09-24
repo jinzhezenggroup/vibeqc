@@ -33,11 +33,13 @@ Accordingly, XtbMethodIR may require an SCC fixed point and a generalized
 eigensolution, but it does not contain iteration counts, tolerances, Broyden or
 DIIS history, or an eigensolver implementation choice.
 
-Runtime fixed-point control is shared with mean-field SCF through
-`src/solver/self_consistent.hpp` (#581). A GFN runtime adapter owns its
-electronic state, occupations, Hamiltonian construction and mixing policy while
-reusing that method-neutral convergence driver; this compiler IR still owns
-none of those policies.
+Host-controlled fixed-point execution shares the method-neutral solver services
+under `src/solver/` (#581, #1240). HF/KS consume `self_consistent.hpp`;
+the production GFN2 CPU SCC endpoint consumes the same bounded iteration
+controller while retaining GFN-owned electronic state, occupations, Hamiltonian
+construction, mixing and convergence semantics. The resident CUDA SCC
+device-tail remains method-owned and does not add host polling. This compiler IR
+still owns none of those runtime policies.
 
 ## Canonical GFN2 graph
 
