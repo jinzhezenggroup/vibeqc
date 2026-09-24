@@ -22,6 +22,22 @@ void verify_tracker() {
   require(execution.cuda_requested(), "execution.cuda_requested()");
   require(execution.device_id() == 7, "execution.device_id() == 7");
 
+  const auto initial = execution.resources();
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Host)
+               .has_value(),
+          "unobserved host pinned memory was reported as measured");
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
+               .has_value(),
+          "unobserved device pinned memory was reported as measured");
+
+  // A measured zero is real evidence and must remain distinguishable from an
+  // unobserved zero-valued storage field.
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                  vibeqc::runtime::ExecutionMemorySpace::Device, 0);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Host, 64);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Host, 32);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Device, 96);
@@ -60,8 +76,17 @@ void verify_tracker() {
           "scratch resource detail lost per-space observation counts");
   const auto& pinned = resources.observation(vibeqc::runtime::ExecutionResourceKind::Pinned);
   require(pinned.host_peak_bytes == 48 && pinned.host_observations == 1 &&
-              pinned.device_observations == 0,
+              pinned.device_peak_bytes == 0 && pinned.device_observations == 1,
           "pinned observation lost explicit memory-space identity");
+  const auto measured_pinned_host = resources.measured_peak_bytes(
+      vibeqc::runtime::ExecutionResourceKind::Pinned, vibeqc::runtime::ExecutionMemorySpace::Host);
+  const auto measured_pinned_device =
+      resources.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device);
+  require(measured_pinned_host.has_value() && *measured_pinned_host == 48,
+          "measured host pinned peak was not published");
+  require(measured_pinned_device.has_value() && *measured_pinned_device == 0,
+          "measured zero device pinned peak was conflated with unknown");
   const auto& provider =
       resources.observation(vibeqc::runtime::ExecutionResourceKind::ProviderRetained);
   require(provider.device_peak_bytes == 144 && provider.device_observations == 2 &&
@@ -93,6 +118,11 @@ void verify_tracker() {
   require(reset.observation(vibeqc::runtime::ExecutionResourceKind::CaptureRetained)
                   .device_observations == 0,
           "reset retained a capture observation");
+  require(!reset
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
+               .has_value(),
+          "reset retained measured-state identity for pinned device memory");
 }
 
 // Exercise the actual prepared owners so a disconnected telemetry adapter
