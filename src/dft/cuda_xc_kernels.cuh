@@ -51,9 +51,8 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     cuda_check(cudaGetLastError());
     scheduled_density_product(stream, density, ao, l.nao, count, l.spins, l.work_jets, work, error);
     cuda_check(cudaGetLastError());
-    density_features<<<blocks(l.spins * count, 128), 128, 0, stream>>>(
-        ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms, l.functional,
-        features, error);
+    scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
+                               l.feature_terms, l.functional, features, error);
     cuda_check(cudaGetLastError());
     if (direction) {
       // AO panels are shared; work is scratch and can be reused after the
@@ -61,9 +60,8 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
       scheduled_density_product(stream, direction, ao, l.nao, count, l.spins, l.work_jets, work,
                                 error);
       cuda_check(cudaGetLastError());
-      density_features<<<blocks(l.spins * count, 128), 128, 0, stream>>>(
-          ao, work, l.nao, count, l.spins, l.jets, l.work_jets, l.feature_terms, l.functional,
-          delta_features, error);
+      scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
+                                 l.feature_terms, l.functional, delta_features, error);
       cuda_check(cudaGetLastError());
     }
     point_launcher(stream, features, weights + begin, count, l.spins, coefficients, point_totals,

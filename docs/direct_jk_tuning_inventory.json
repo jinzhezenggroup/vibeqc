@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "issue": 597,
+  "source_note": ".agents/notes/implemented/performance/2026-09-21-direct-jk-target-resource-policy.md",
+  "remaining_constants": [
+    {
+      "symbol": "kPersistentEriAoLimit",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "16",
+      "classification": "workload-profile-choice",
+      "state": "migration-pending",
+      "current_owner": "fixed-topology admission and topology layout",
+      "intended_owner": "scf::cuda_policy::resolve_small_hf_profitability plus topology/cache identity",
+      "retirement_condition": "Topology construction and cache identity consume the resolved persistent-ERI policy, with no-profile compatibility and matched endpoint/resource qualification retained.",
+      "policy_source": "src/scf/cuda/rhf_policy.hpp",
+      "required_policy_tokens": [
+        "fallback_persistent_eri_ao_limit{16}",
+        "resolve_small_hf_profitability"
+      ]
+    },
+    {
+      "symbol": "kBoundedGeneratedTasksPerShellPair",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "1024",
+      "classification": "bounded-schedule-choice",
+      "state": "retained-explicit",
+      "current_owner": "generated descriptor staging cache",
+      "intended_owner": "compiler/profile policy if this staging bound becomes target- or workload-dependent",
+      "retirement_condition": "Move only after a compiler/profile owner can reproduce the bounded staging contract without increasing endpoint memory or work."
+    },
+    {
+      "symbol": "kPersistentForceAngularOrderCount",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "7",
+      "classification": "measured-schedule-choice",
+      "state": "migration-pending",
+      "current_owner": "native Direct-force queue admission",
+      "intended_owner": "compiler schedule/profile selection",
+      "retirement_condition": "A compiler-owned schedule/profile represents the persistent-force order domain and passes unchanged force correctness plus complete endpoint profitability gates."
+    },
+    {
+      "symbol": "kPersistentFockAngularOrderCount",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "6",
+      "classification": "measured-schedule-choice",
+      "state": "migration-pending",
+      "current_owner": "native Direct-Fock queue admission",
+      "intended_owner": "compiler schedule/profile selection",
+      "retirement_condition": "A compiler-owned schedule/profile represents the persistent-Fock order domain and passes unchanged J/K correctness plus complete endpoint profitability gates."
+    }
+  ],
+  "migrated_settings": [
+    {
+      "name": "cublas-matrix-product-fallback-threshold",
+      "source": "src/scf/cuda/rhf_policy.hpp",
+      "owner": "SmallHfProfitabilityProfile / resolve_small_hf_profitability",
+      "required_tokens": [
+        "fallback_cublas_matrix_product_ao_threshold{17}",
+        "SmallHfMatrixCalibration matrix{}"
+      ]
+    },
+    {
+      "name": "generated-task-capacity-ceiling",
+      "source": "src/scf/cuda/rhf_policy.hpp",
+      "owner": "DirectJkBoundedStreamingTaskProfile",
+      "required_tokens": [
+        "maximum_task_capacity{8U * 1024U * 1024U}"
+      ]
+    },
+    {
+      "name": "fixed-topology-arena-ceiling",
+      "source": "src/scf/cuda/rhf_policy.hpp",
+      "owner": "DirectJkFixedTopologyTaskProfile / target resource policy",
+      "required_tokens": [
+        "maximum_arena_bytes{std::size_t{1} << 30}"
+      ]
+    },
+    {
+      "name": "cuda-stack-limit",
+      "source": "src/scf/cuda/rhf_policy.hpp",
+      "owner": "DirectJkTuningProfile",
+      "required_tokens": [
+        "cuda_stack_limit_bytes{std::size_t{64} << 10}"
+      ]
+    },
+    {
+      "name": "persistent-quartet-workers-per-sm",
+      "source": "src/scf/cuda/rhf_policy.hpp",
+      "owner": "DirectJkTuningProfile / resolve_direct_jk_schedule_policy",
+      "required_tokens": [
+        "maximum_persistent_quartet_warps_per_sm{8}",
+        "resolve_direct_jk_schedule_policy"
+      ]
+    },
+    {
+      "name": "resident-psss-schedule",
+      "source": "python/vibeqc_compiler/integral/direct_resident_schedule.py",
+      "owner": "compiler ScheduleIR profile",
+      "required_tokens": [
+        "block_threads=128",
+        "minimum_blocks_per_sm=4",
+        "maximum_bra_primitive_pairs=64"
+      ]
+    }
+  ],
+  "excluded_from_tuning": [
+    {
+      "symbol": "kSchwarzThreads",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "1",
+      "classification": "resource-safety-constraint",
+      "reason": "The current Schwarz kernel call frame requires one thread per block to remain inside the retained local-memory stack safety contract."
+    },
+    {
+      "symbol": "kForceDensityProductScreeningTolerance",
+      "source": "src/scf/cuda/direct_constants.hpp",
+      "expected_expression": "1.0e-14",
+      "classification": "scientific-numerical-policy",
+      "reason": "This force screening cap protects finite-difference consistency and is scientific policy rather than a performance tuning parameter."
+    }
+  ]
+}

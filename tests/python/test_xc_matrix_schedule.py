@@ -67,10 +67,7 @@ def test_tiled_potential_fuses_point_total_reduction() -> None:
     assert (
         "for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];" in source
     )
-    assert (
-        "totals[channel] = finite((accumulate ? totals[channel] : 0.0)+sum,error,3);"
-        in source
-    )
+    assert "totals[channel] = finite((accumulate ? totals[channel] : 0.0)+sum,error,3);" in source
     # Tiny/out-of-domain shapes keep the historical reducer rather than changing
     # their arithmetic or launch contract merely to share the production path.
     assert (

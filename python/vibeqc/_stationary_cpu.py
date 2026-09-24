@@ -40,7 +40,9 @@ from vibeqc_compiler.method.stationary_gradient import (
 )
 from vibeqc_compiler.tensor import execute
 from vibeqc_compiler.tensor.cpu import NativeTensorProgram
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import (
+    ExternalPointContraction,
+)
 from vibeqc_compiler.xc.grid_native import NativeGridContraction
 from vibeqc_compiler.xc.grid_response import partition_response
 from vibeqc_compiler.xc.native import NativeContractionProgram
@@ -51,7 +53,6 @@ from ._dft_gradient import (
     native_ao_geometry_identity,
 )
 from ._stationary_rsh_cpu import RangeExchangeExecutor
-from .ks import native_xc_functional_code
 from .nonlocal_runtime import NativeNonlocalPairProvider
 
 
@@ -625,7 +626,7 @@ def complete_rks_gradient_diagnostic(
     program = (
         NativeContractionProgram(functional, "geometry", compiler=compiler, cache=cache)
         if execution == "native"
-        else ContractionProgram(functional, "geometry")
+        else ExternalPointContraction(functional, "geometry")
     )
     grid, spec = state.grid, state._source.grid_spec
     grid_consumer = (
@@ -636,7 +637,6 @@ def complete_rks_gradient_diagnostic(
         else None
     )
     ao_atoms = _native_ao_atoms(basis)
-    functional_code = native_xc_functional_code(state.identity.method)
     for begin in range(0, len(grid.points), tile_points):
         end = min(begin + tile_points, len(grid.points))
         points, weights, atoms = (
@@ -647,7 +647,7 @@ def complete_rks_gradient_diagnostic(
         jets = basis.evaluate(points, program.contract.ao_order)
         features = program.features(jets, density)
         coefficients = state._source.evaluate_xc_points(
-            functional_code,
+            functional,
             features["rho"],
             features.get("gradient", np.zeros((2, end - begin, 3))),
             features.get("tau"),

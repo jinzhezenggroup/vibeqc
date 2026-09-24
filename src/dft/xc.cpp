@@ -385,8 +385,7 @@ B3GgaPointValue map_gga_point(const Raw& raw, const double (&gradient)[2][3], co
   return out;
 }
 
-using SemilocalEvaluator = SemilocalPointValue (*)(const double[2], const double (&)[2][3],
-                                                   const double[2]);
+using SemilocalEvaluator = SemilocalPointEvaluator;
 
 XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density, std::size_t tile_points,
@@ -509,6 +508,36 @@ SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid
 }
 
 }  // namespace
+
+void validate_semilocal_point_program(const SemilocalPointProgram& program) {
+  if (!program.identifier || !*program.identifier || !program.expression_identity ||
+      !*program.expression_identity || !program.evaluate)
+    throw std::invalid_argument("semilocal point program requires complete identity and evaluator");
+  if (program.ingredient_mask != 1U && program.ingredient_mask != 7U &&
+      program.ingredient_mask != 15U)
+    throw std::invalid_argument("semilocal point program has unsupported ingredient mask");
+  if (program.domain_version == 0U)
+    throw std::invalid_argument("semilocal point program requires a domain version");
+}
+
+XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density,
+                                   const SemilocalPointProgram& program, std::size_t tile_points,
+                                   XcDensitySource source) {
+  validate_semilocal_point_program(program);
+  return integrate_semilocal_rks(basis, grid, density, tile_points, source, program.ingredient_mask,
+                                 program.evaluate, program.identifier);
+}
+
+SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       const SemilocalPointProgram& program,
+                                       std::size_t tile_points) {
+  validate_semilocal_point_program(program);
+  return integrate_semilocal_uks(basis, grid, alpha_density, beta_density, tile_points,
+                                 program.ingredient_mask, program.evaluate, program.identifier);
+}
 
 B3lypPointValue evaluate_b3lyp_point(const double rho[2], const double (&gradient)[2][3]) {
   const auto sigma = validate_b3lyp_production_point(rho, gradient);

@@ -420,26 +420,34 @@ void matrix_schedule_cases() {
   // Cross the generated matrix-tile boundary with two distinct f shells.
   // Cartesian/spherical shapes and partial point tiles exercise both matrix
   // tails and the final scalar fallback, using the independent CPU integrator.
-  for (bool spherical : {false, true}) {
-    auto large = system(3, spherical);
-    large.shells.push_back({0, 3, {{0.51, 1.0}}});
-    large.shells.push_back({0, 0, {{0.22, 1.0}}});
-    const AoBasis large_basis(large);
-    require(large_basis.nao >= 16 && large_basis.nao % 16 != 0,
-            "matrix schedule fixture must have a partial AO block");
-    const MolecularGrid large_grid(large, {1, 3, 3, 4, 3, 1e-12});
-    for (std::uint32_t functional : {0U, 1U, 2U})
-      for (bool uks : {false, true})
-        for (std::size_t tile : {17U, 31U, 64U}) {
-          Fixture test(large_basis, large_grid, functional, uks, tile);
-          compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
-        }
-    graph_capture(large_basis, large_grid, 1U, false, 33);
-    for (unsigned functional : {0U, 1U})
-      matrix_response_case(large_basis, large_grid, functional, true, 19);
-    for (std::uint32_t functional : {0U, 1U, 2U})
-      variational_and_state(large_basis, large_grid, functional, 17);
-  }
+  for (bool cooperative : {false, true})
+    for (bool spherical : {false, true}) {
+      auto large = system(3, spherical);
+      large.shells.push_back({0, 3, {{0.51, 1.0}}});
+      large.shells.push_back({0, 0, {{0.22, 1.0}}});
+      if (cooperative) {
+        // Cross the warp-reduction boundary with partial final AO groups.
+        large.shells.push_back({0, 3, {{0.39, 1.0}}});
+        large.shells.push_back({1, 3, {{0.32, 1.0}}});
+        large.shells.push_back({1, 2, {{0.27, 1.0}}});
+      }
+      const AoBasis large_basis(large);
+      require(!cooperative || large_basis.nao > 32, "cooperative fixture must span a warp");
+      require(large_basis.nao >= 16 && large_basis.nao % 16 != 0,
+              "matrix schedule fixture must have a partial AO block");
+      const MolecularGrid large_grid(large, {1, 3, 3, 4, 3, 1e-12});
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        for (bool uks : {false, true})
+          for (std::size_t tile : {17U, 31U, 64U}) {
+            Fixture test(large_basis, large_grid, functional, uks, tile);
+            compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+          }
+      graph_capture(large_basis, large_grid, 1U, false, 33);
+      for (unsigned functional : {0U, 1U})
+        matrix_response_case(large_basis, large_grid, functional, true, 19);
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        variational_and_state(large_basis, large_grid, functional, 17);
+    }
 }
 }  // namespace
 

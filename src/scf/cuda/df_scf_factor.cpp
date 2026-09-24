@@ -273,18 +273,49 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
       if (status != VIBEQC_STATUS_SUCCESS) return status;
     }
   }
+  const std::size_t joint_rank = seed ? seed_rank
+                                 : ready && !beta && !state.factor_alpha_ranks.empty()
+                                     ? state.factor_alpha_ranks[0]
+                                     : 0;
+  const auto joint_schedule = joint_rank && plan.streamed && plan.triangular_exchange
+                                  ? df_projected_exchange_schedule(plan.nbf, plan.naux, joint_rank,
+                                                                   plan.panel_capacity, true)
+                                  : generated::ProjectedExchangeSchedule{};
+  const auto* shared_policy = std::getenv("VIBEQC_DF_JK_SHARED_SOURCE");
+  if (shared_policy && std::strcmp(shared_policy, "auto") != 0 &&
+      std::strcmp(shared_policy, "0") != 0 && std::strcmp(shared_policy, "1") != 0) {
+    detail = "VIBEQC_DF_JK_SHARED_SOURCE must be auto, 0 or 1";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const bool shared_requested = !shared_policy || std::strcmp(shared_policy, "auto") == 0 ||
+                                std::strcmp(shared_policy, "1") == 0;
+  const bool shared = shared_requested && !beta && (seed || ready) && joint_rank &&
+                      qualified_value_rhf_exchange(plan, joint_rank) && plan.triangular_exchange &&
+                      joint_schedule.blocks >= 1 && joint_schedule.blocks <= 2 &&
+                      plan.row_tile * plan.nbf * plan.auxiliary_tile >= plan.naux;
+  if (shared && ready)
+    launch_validate_device_occupied_kernel(
+        blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
   const JkTermSelection terms{true, !ready && !seed};
-  auto status = beta ? execute_cuda_density_fitting_uhf_jk_device(&plan, alpha, beta, plan.coulomb,
-                                                                  plan.alpha_exchange,
-                                                                  plan.beta_exchange, detail, terms)
-                     : execute_cuda_density_fitting_rhf_jk_device(
-                           &plan, alpha, plan.coulomb, plan.alpha_exchange, detail, terms);
+  vibeqc_status status = VIBEQC_STATUS_SUCCESS;
+  if (shared) {
+    status = build_shared_coulomb_occupied_exchange(plan, alpha, state.d_alpha_factor, joint_rank,
+                                                    seed ? 1 : 2, detail);
+  } else if (beta) {
+    status = execute_cuda_density_fitting_uhf_jk_device(
+        &plan, alpha, beta, plan.coulomb, plan.alpha_exchange, plan.beta_exchange, detail, terms);
+  } else {
+    status = execute_cuda_density_fitting_rhf_jk_device(&plan, alpha, plan.coulomb,
+                                                        plan.alpha_exchange, detail, terms);
+  }
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   if (seed) {
     state.density_seed_used = true;
     state.density_seed_rank = seed_rank;
-    status = build_occupied_exchange(plan, 0, state.d_alpha_factor, seed_rank, true, 1,
-                                     plan.alpha_exchange, detail);
+    if (!shared)
+      status = build_occupied_exchange(plan, 0, state.d_alpha_factor, seed_rank, true, 1,
+                                       plan.alpha_exchange, detail);
     const char* verify = std::getenv("VIBEQC_DF_SEED_VERIFY");
     if (status != VIBEQC_STATUS_SUCCESS || !verify || std::string(verify) != "1") return status;
     // Intrusive qualification only: compute both K matrices for the identical
@@ -325,9 +356,11 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
                                 : cuda_failure(error, "restore candidate seed K", detail);
   }
   if (!ready) return status;
-  launch_validate_device_occupied_kernel(
-      blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
-      state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+  if (!shared)
+    launch_validate_device_occupied_kernel(
+        blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+  if (shared) return status;
   for (std::size_t item = 0; item < plan.batch_size; ++item) {
     status = build_occupied_exchange(
         plan, item,

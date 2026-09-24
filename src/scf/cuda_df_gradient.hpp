@@ -47,10 +47,12 @@ struct CudaDfOccupiedResponseFactor {
   std::size_t rank{};
   double density_scale{};
 };
-/** Canonical factors borrowed independently of mutable J/K tensor storage.
- * The owner applies the same exact density, final-token and device-generation
- * checks as resident occupied response. All coefficients remain immutable on
- * the owner's stream. The bridge owns and budgets its projected-factor scratch.
+/** Factors borrowed independently of mutable J/K tensor storage.
+ * Retained canonical C requires exact density, final-token and device-generation
+ * checks. An explicit corrected-density request may instead borrow a separately
+ * reconstructed algebraic factor after revoking the previous SCF generation.
+ * Coefficients remain immutable through this serialized response and the bridge
+ * owns and budgets its projected-factor scratch.
  */
 struct CudaDfOccupiedResponseView {
   std::array<CudaDfOccupiedResponseFactor, 3> factors{};

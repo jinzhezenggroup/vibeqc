@@ -13,6 +13,7 @@
 #include "scf/cuda/metadata_upload.hpp"
 #include "scf/cuda/topology.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
+#include "scf/direct_task_layout.hpp"
 
 namespace vibeqc::scf {
 
@@ -23,6 +24,7 @@ using namespace cuda_execution;
 CudaDirectJkPlan::~CudaDirectJkPlan() {
   if (device_id >= 0) (void)cudaSetDevice(device_id);
   if (stream) (void)cudaStreamSynchronize(stream);
+  generated_coulomb.reset();  // Release the borrower before its stream/metadata.
   for (void* pointer : allocations) (void)runtime::resource_cuda_free(pointer);
   if (stream) (void)cudaStreamDestroy(stream);
 }
@@ -81,6 +83,10 @@ vibeqc_status direct_jk_guard(CudaDirectJkPlan* plan, std::string& detail, Funct
     if (plan && plan->stream) (void)cudaStreamSynchronize(plan->stream);
     detail = "direct J/K allocation exceeds available capacity";
     return VIBEQC_STATUS_OUT_OF_MEMORY;
+  } catch (cudaError_t error) {
+    if (plan && plan->stream) (void)cudaStreamSynchronize(plan->stream);
+    detail = cudaGetErrorString(error);
+    return source_cuda_status(error);
   } catch (const std::exception& error) {
     if (plan && plan->stream) (void)cudaStreamSynchronize(plan->stream);
     detail = error.what();
@@ -151,6 +157,32 @@ std::size_t cuda_direct_jk_device_bytes(std::size_t batch, std::size_t nao, std:
   add(primitives, 2 * sizeof(double));
   add(matrices, 6 * sizeof(double));
   if (derivative_order) add(atoms, 3 * sizeof(double));
+  return bytes;
+}
+
+std::size_t cuda_direct_coulomb_device_bytes(std::size_t batch, std::size_t nao, std::size_t atoms,
+                                             std::size_t shells, std::size_t primitives) {
+  auto bytes = cuda_direct_jk_device_bytes(batch, nao, atoms, shells, primitives, 0);
+  const auto add = [&](std::size_t n, std::size_t width) {
+    bytes = runtime::size_add(bytes, runtime::size_mul(n, width));
+  };
+  // Shape-only upper bound for the optional spd Cartesian source. The public
+  // spherical-to-Cartesian ratio is at most 6/5; 2 keeps integer admission
+  // conservative without needing angular metadata or a geometry upload.
+  const auto cart = runtime::size_mul(nao, 2);
+  const auto public_elements = runtime::size_mul(batch, runtime::size_mul(nao, nao));
+  const auto cart_elements = runtime::size_mul(batch, runtime::size_mul(cart, cart));
+  add(cart_elements, 3 * sizeof(double));
+  add(public_elements, 6 * sizeof(double));  // Two rectangular and two public matrices.
+  add(runtime::size_mul(batch, cart), sizeof(std::int32_t) + 3 + sizeof(double));
+  add(runtime::size_mul(shells, shells),
+      3 * sizeof(std::int32_t) + sizeof(std::int64_t) + sizeof(std::uint32_t) + sizeof(double));
+  add(runtime::size_mul(primitives, primitives), sizeof(cuda_execution::PrimitivePairData));
+  add(shells, sizeof(std::int64_t));
+  add(batch + 1, 2 * sizeof(std::int64_t) + 10 * sizeof(std::uint32_t));
+  add(batch, sizeof(std::uint8_t));
+  add(1, sizeof(cuda_execution::GeneratedShellPairStream) + 2 * sizeof(std::int64_t) +
+             detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t));
   return bytes;
 }
 
@@ -294,6 +326,9 @@ vibeqc_status create_cuda_direct_jk_plan(int device_id, const std::vector<core::
     direct_jk_check(cudaStreamSynchronize(plan->stream));
     if (numerical_failure)
       throw DirectJkFailure{VIBEQC_STATUS_NUMERICAL_FAILURE, "nonfinite direct J/K Schwarz bound"};
+    if (derivative_order == 0 && budget > required)
+      plan->generated_coulomb = prepare_generated_coulomb(
+          host, plan->batch, plan->stream, device_id, screening_tolerance, budget - required);
     auto& info = plan->diagnostic;
     info.batch_size = systems.size();
     info.nbf = host.nbf;
@@ -316,6 +351,13 @@ vibeqc_status create_cuda_direct_jk_plan(int device_id, const std::vector<core::
             host.ao_term_coefficients, host.direct_ao_shells, host.direct_ao_angular,
             host.direct_ao_coefficients, host.ao_to_direct_transform, host.primitive_exponents,
             host.primitive_coefficients, host.occupied, host.warm_mask, host.warm_density);
+    if (plan->generated_coulomb) {
+      info.device_bytes += plan->generated_coulomb->device_bytes;
+      info.host_bytes += sizeof(GeneratedCoulombPlan) +
+                         runtime::vector_bytes(plan->generated_coulomb->allocations);
+      info.host_preparation_bytes += plan->generated_coulomb->host_preparation_bytes;
+      info.schedule = "generated-shell-coulomb/generic-jk-fallback";
+    }
     info.derivative_order = derivative_order;
     info.screening_tolerance = screening_tolerance;
     diagnostic = info;
@@ -390,11 +432,16 @@ static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, 
         direct_jk_check(cudaGetLastError());
       }
     if (spec.coulomb.present || spec.exchange.present) {
-      launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
-                                   plan->stream, plan->batch, 0, spec.coulomb.present,
-                                   spec.exchange.present, unrestricted, mixed_j,
-                                   plan->screening_tolerance, plan->bounds, density, beta, coulomb,
-                                   alpha_exchange, beta_exchange);
+      if (plan->generated_coulomb && spec.coulomb.present && !spec.exchange.present && !mixed_j) {
+        direct_jk_check(
+            enqueue_generated_coulomb(*plan->generated_coulomb, density, beta, coulomb));
+      } else {
+        launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
+                                     plan->stream, plan->batch, 0, spec.coulomb.present,
+                                     spec.exchange.present, unrestricted, mixed_j,
+                                     plan->screening_tolerance, plan->bounds, density, beta,
+                                     coulomb, alpha_exchange, beta_exchange);
+      }
       direct_jk_check(cudaGetLastError());
       for (const auto* output : outputs)
         if (output) {
