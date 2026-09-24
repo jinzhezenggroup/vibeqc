@@ -34,6 +34,27 @@ def test_codegen_has_no_runtime_or_numpy_dependency(tmp_path: Path) -> None:
     )
 
 
+def test_emitted_cuda_uses_atom_major_2d_schedule() -> None:
+    """Keep hot point-center kernels free of flattened runtime div/mod decode."""
+    source = emit_quadrature_cuda()
+    assert source.count("for (size_t a = blockIdx.y; a < na; a += gridDim.y)") == 2
+    assert source.count("point += size_t(blockDim.x) * gridDim.x)") == 2
+    assert "const size_t a = i / count, point = i % count;" not in source
+    assert "partition_kernel<1><<<atom_point_grid(count, na), 128" in source
+
+    root = Path(__file__).resolve().parents[2]
+    native = (root / "src/dft/cuda_quadrature.cu").read_text()
+    assert "q::distances_kernel<<<q::atom_point_grid(count, l.atoms), 128" in native
+
+    # Production PBE endpoint shapes retained in the performance record. The
+    # old distance + partition kernels each decoded atom/point with / and %.
+    for atoms, points, decoded in (
+        (48, 1_327_104, 254_803_968),
+        (96, 2_654_208, 1_019_215_872),
+    ):
+        assert 4 * atoms * points == decoded
+
+
 def test_emitted_layout_counts_actual_buffer_shapes_without_cuda(
     tmp_path: Path,
 ) -> None:
