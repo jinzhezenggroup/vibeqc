@@ -7,6 +7,7 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 from test_cc_complete_gradient import _direct_fields, _source
+from test_cc_native_tensor_cuda import _fake_executor
 from vibeqc_compiler.tensor import Program, execute
 
 from tools.cc_gradient_fixtures import inputs
@@ -30,7 +31,9 @@ from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 
 @contextmanager
-def _prepared_ccsdt(name: str = "h2o") -> typing.Any:
+def _prepared_ccsdt(
+    name: str = "h2o", *, parameter_executor: typing.Any = None
+) -> typing.Any:
     options = CCSDGradientOptions()
     with _source(inputs(name)) as source:
         reference, _ = export_rhf(
@@ -65,6 +68,7 @@ def _prepared_ccsdt(name: str = "h2o") -> typing.Any:
                 baseline,
                 corrected,
                 vir_chunk_size=1,
+                parameter_executor=parameter_executor,
             )
             yield response, provider, options
 
@@ -177,6 +181,58 @@ def test_total_ccsdt_orbital_rhs_and_raw_weights_decompose(
     assert state.orbital_stationarity <= state.options.stationarity_tolerance
     assert state.z_residual <= state.options.orbital_residual_tolerance
     assert state.minimum_orbital_curvature > state.options.minimum_orbital_curvature
+
+
+def test_cuda_tensor_owner_covers_hamiltonian_response_without_bound_cpu_replay(
+    water_state: BoundCCSDTOrbitalResponse,
+    monkeypatch: typing.Any,
+    tmp_path: typing.Any,
+) -> None:
+    executor, budgets, compiled = _fake_executor(tmp_path / "cc-response")
+    with _prepared_ccsdt(parameter_executor=executor) as (
+        response,
+        provider,
+        options,
+    ):
+
+        def reject_bound_tensor_execution(
+            *args: object, **kwargs: object
+        ) -> typing.NoReturn:
+            del args, kwargs
+            raise AssertionError("bound CPU Hamiltonian/parameter TensorIR replayed")
+
+        monkeypatch.setattr(
+            BoundCCSDLambda,
+            "_tensor_execute",
+            reject_bound_tensor_execution,
+        )
+        actual = BoundCCSDTOrbitalResponse(response, provider, options=options)
+
+    assert actual.baseline.tensor_backend == executor.backend
+    assert actual.response_identity == water_state.response_identity
+    for field in (
+        "hcore",
+        "eri",
+        "overlap",
+        "rotation_gradient",
+        "stationarity",
+        "orbital_rhs",
+    ):
+        np.testing.assert_allclose(
+            actual.weights[field],
+            water_state.weights[field],
+            atol=2e-11,
+            rtol=2e-11,
+        )
+    np.testing.assert_allclose(
+        actual.z_result.solution,
+        water_state.z_result.solution,
+        atol=2e-11,
+        rtol=2e-11,
+    )
+    assert budgets and set(budgets) == {64 << 20}
+    assert compiled
+    assert executor.compiled_program_count == len(set(compiled))
 
 
 def test_real_denominator_sources_chain_through_canonical_fock(
