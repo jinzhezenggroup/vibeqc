@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
-from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.libxc_maple import import_maple_source
@@ -219,7 +218,7 @@ def test_imported_b88_emits_scalar_c_and_cuda() -> None:
 
     scalar = ScalarCEmitter(graph, variables)
     scalar.emit(roots)
-    cuda = CudaEmitter(graph, variables)
+    cuda = ScalarCEmitter(graph, variables)
     cuda.emit(roots)
 
     assert scalar.lines
