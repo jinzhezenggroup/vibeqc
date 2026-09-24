@@ -81,11 +81,7 @@ def test_scientific_family_cannot_claim_independent_oracle_status() -> None:
 def test_order2_pair_gradient_owner_is_retired() -> None:
     """Keep compiler-owned order-two force algebra out of native CUDA."""
 
-    assert not (
-        ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh"
-    ).exists()
-    source = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(
-        encoding="utf-8"
-    )
+    assert not (ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh").exists()
+    source = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(encoding="utf-8")
     for name in ("psps", "ppss", "dsss"):
         assert f"generated_weighted_eri::{name}_force" in source
