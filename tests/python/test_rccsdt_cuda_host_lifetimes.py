@@ -61,8 +61,11 @@ int cudaStreamSynchronize(cudaStream_t) {
   operations.clear();
   return 0;
 }
-void enqueue_kernel(double* e,double* m,int* err) {
-  operations.emplace_back([=] {*e=-0.125;*m=1.0;*err=0;});
+void enqueue_kernel(double* partials,double* m,int* err) {
+  operations.emplace_back([=] {*partials=-0.125;*m=1.0;*err=0;});
+}
+void enqueue_reduction(const double* partials,std::size_t,double* energy) {
+  operations.emplace_back([=] {*energy=*partials;});
 }
 struct CudaResult { double energy{},minimum_absolute_denominator{}; std::size_t virtual_triples{},workspace_bytes{}; };
 """
@@ -102,10 +105,20 @@ def lifetime_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     owner = source[begin:end].replace("{{", "{").replace("}}", "}")
     owner, replacements = re.subn(
         r"triples_kernel<<<blocks, threads, 0, stream>>>\([\s\S]*?\);",
-        "(void)blocks; enqueue_kernel(energy, minimum, error);",
+        "enqueue_kernel(partials, minimum, error);",
         owner,
     )
     assert replacements == 1
+    # The production owner now submits a separate deterministic reduction.
+    # Model both queued actions; leaving its CUDA launch syntax in a host-only
+    # translation unit would prevent the sanitizer checks from executing.
+    owner, reductions = re.subn(
+        r"reduce_energy<<<1, threads, 0, stream>>>\(partials, blocks, energy\);",
+        "enqueue_reduction(partials, blocks, energy);",
+        owner,
+    )
+    assert reductions == 1
+    assert "<<<" not in owner
     directory = tmp_path_factory.mktemp("triples-host-lifetimes")
     unit, executable = directory / "lifetime.cpp", directory / "lifetime"
     unit.write_text(_CUDA_SHIM + helpers + owner + _DRIVER, encoding="utf-8")
