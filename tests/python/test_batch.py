@@ -55,7 +55,9 @@ def test_batch_precision_provenance_availability_abi_and_failed_replay() -> None
         assert bytes(record) == original
 
         record.struct_size = ctypes.sizeof(record)
-        assert getter(prepared._batch, 0, ctypes.byref(record)) == _native.STATUS_SUCCESS
+        assert (
+            getter(prepared._batch, 0, ctypes.byref(record)) == _native.STATUS_SUCCESS
+        )
         assert record.struct_size == ctypes.sizeof(record)
         assert record.mixed_stage_fock_builds != 4242
 
