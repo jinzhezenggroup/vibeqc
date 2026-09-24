@@ -43,14 +43,14 @@ def test_component_trace_cannot_depend_on_scf_provider(
     assert "forbidden cuda_component_trace dependency" in report["errors"][0]
 
 
-@pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
+@pytest.mark.parametrize("include", ['"scf/fleet.hpp"', '"../fleet.hpp"', "<scf/fleet.hpp>"])
 @pytest.mark.parametrize("owner", ["reference", "solver", "gradient"])
 def test_method_dependency_cannot_hide_behind_include_spelling(
     tmp_path: typing.Any, include: typing.Any, owner: typing.Any
 ) -> None:
     source = tmp_path / "src/scf"
     (source / owner).mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / owner / "implementation.cpp").write_text(f"#include {include}\n")
     report = audit_scf_structure(tmp_path)
     assert len(report["errors"]) == 1
@@ -90,10 +90,10 @@ def test_documented_forbidden_example_is_not_an_include(
 ) -> None:
     source = tmp_path / "src/scf"
     (source / "reference").mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / "reference/linalg.cpp").write_text(
-        '/* Forbidden example:\n#include "scf/rhf.hpp"\n*/\n'
-        '// #include "scf/rhf.hpp"\n#include <vector>\n'
+        '/* Forbidden example:\n#include "scf/fleet.hpp"\n*/\n'
+        '// #include "scf/fleet.hpp"\n#include <vector>\n'
     )
     assert not audit_scf_structure(tmp_path)["errors"]
 
@@ -112,13 +112,13 @@ def test_documented_forbidden_example_is_not_an_include(
         ("rhf_graph.cpp", "cuda_hf_graph"),
     ],
 )
-@pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
+@pytest.mark.parametrize("include", ['"scf/fleet.hpp"', '"../fleet.hpp"', "<scf/fleet.hpp>"])
 def test_cuda_runtime_cannot_depend_on_method_driver(
     tmp_path: typing.Any, name: typing.Any, owner: typing.Any, include: typing.Any
 ) -> None:
     source = tmp_path / "src/scf"
     (source / "cuda").mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / "cuda" / name).write_text(f"#include {include}\n")
     errors = audit_scf_structure(tmp_path)["errors"]
     assert len(errors) == 1
