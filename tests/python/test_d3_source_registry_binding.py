@@ -69,9 +69,7 @@ def test_d3_reference_propagates_registered_integrity_failure(
         if source_id == failed_owner:
             raise source_registry.SourceRegistryError("injected digest mismatch")
         return {
-            name: "{}"
-            for name, owner in _SOURCE_OWNERS.items()
-            if owner == source_id
+            name: "{}" for name, owner in _SOURCE_OWNERS.items() if owner == source_id
         }
 
     monkeypatch.setattr(source_registry, "read_source_texts", read)
