@@ -55,6 +55,42 @@ def test_emitted_cuda_uses_atom_major_2d_schedule() -> None:
         assert 4 * atoms * points == decoded
 
 
+def test_points_reuse_angular_factors() -> None:
+    """Move angular special functions out of every molecular-point worker."""
+    source = emit_quadrature_cuda()
+    assert "__global__ void polar_kernel" in source
+    assert "__global__ void azimuth_kernel" in source
+    points = source.split("__global__ void points_kernel", 1)[1].split(
+        "// Atom-major 2-D launch", 1
+    )[0]
+    assert "sqrt(" not in points
+    assert "cos(" not in points
+    assert "sin(" not in points
+    assert "r * pz[0] * pp[0]" in points
+    assert "wr * pz[2] * pp[2]" in points
+
+    root = Path(__file__).resolve().parents[2]
+    native = (root / "src/dft/cuda_quadrature.cu").read_text()
+    polar_launch = native.index("q::polar_kernel<<<")
+    azimuth_launch = native.index("q::azimuth_kernel<<<")
+    point_loop = native.index("for (std::size_t begin = 0; begin < l.points")
+    assert polar_launch < point_loop
+    assert azimuth_launch < point_loop
+    assert "std::vector<double> input(l.polar, 0.0);" in native
+
+    # The production standard PBE grid is 54 radial x 16 polar x 32 azimuth.
+    # Before this change every point evaluates sqrt + cos + sin; after it, the
+    # whole grid evaluates 16 sqrt and 32 each of cos/sin exactly once.
+    setup_special_functions = 16 + 2 * 32
+    assert setup_special_functions == 80
+    for atoms, point_count in ((48, 1_327_104), (96, 2_654_208)):
+        assert atoms * 54 * 16 * 32 == point_count
+        assert 3 * point_count > setup_special_functions
+
+    # Fixed maximum cache: 3 doubles per polar/azimuth entry.
+    assert 8 * (3 * 256 + 3 * 1024) == 30_720
+
+
 def test_emitted_layout_counts_actual_buffer_shapes_without_cuda(
     tmp_path: Path,
 ) -> None:
@@ -78,10 +114,12 @@ int main() {
       const auto l = layout(atoms, points);
       const size_t tile = std::min(points, size_t{4096});
       // Enumerate owned arrays independently of generated offsets.
-      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + atoms*atoms
-                           + tile*atoms + tile*atoms + 3*tile + tile;
+      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + 3*256 + 3*1024
+                           + atoms*atoms + tile*atoms + tile*atoms + 3*tile + tile;
       if (l.device_bytes != doubles*sizeof(double) + sizeof(int)) return 1;
       if (l.weights + tile != l.doubles) return 2;
+      if (l.azimuth != l.polar + 3*256) return 3;
+      if (l.geometry != l.azimuth + 3*1024) return 4;
     }
   unsigned rejected = 0;
   try { (void)layout(0, 1); } catch (const std::invalid_argument&) { ++rejected; }
@@ -90,7 +128,7 @@ int main() {
   try { (void)layout(UINT32_MAX, 1); } catch (const std::overflow_error&) { ++rejected; }
   try { (void)layout(size_t{UINT32_MAX}+1, 1); }
       catch (const std::invalid_argument&) { ++rejected; }
-  return rejected == 5 ? 0 : 3;
+  return rejected == 5 ? 0 : 5;
 }
 """
     )
