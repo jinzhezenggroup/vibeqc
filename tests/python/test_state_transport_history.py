@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -18,6 +18,9 @@ from tools.vibeqc_cc.state_transport import (
     StateTransportRequest,
     TransportCompatibility,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _frame_hash(value: np.ndarray) -> str:
