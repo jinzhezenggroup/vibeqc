@@ -54,7 +54,7 @@ def test_method_dependency_cannot_hide_behind_include_spelling(
     (source / owner / "implementation.cpp").write_text(f"#include {include}\n")
     report = audit_scf_structure(tmp_path)
     assert len(report["errors"]) == 1
-    assert f"forbidden {owner} dependency on scf/rhf.hpp" in report["errors"][0]
+    assert f"forbidden {owner} dependency on scf/fleet.hpp" in report["errors"][0]
 
 
 def test_gradient_assembly_cannot_depend_on_solver_state(
@@ -122,7 +122,7 @@ def test_cuda_runtime_cannot_depend_on_method_driver(
     (source / "cuda" / name).write_text(f"#include {include}\n")
     errors = audit_scf_structure(tmp_path)["errors"]
     assert len(errors) == 1
-    assert f"forbidden {owner} dependency on scf/rhf.hpp" in errors[0]
+    assert f"forbidden {owner} dependency on scf/fleet.hpp" in errors[0]
 
 
 def test_eigensolver_cannot_acquire_direct_queue_policy(
