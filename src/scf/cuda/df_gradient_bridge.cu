@@ -868,21 +868,22 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Only the trusted occupied producer supplies folded packed AO weights.
     // Unsupported/corrected states retain the dense response, folding its two
     // ordered adjoints when a generated shell consumer is available.
-    const bool packed_pairs = pair_policy == "packed" && shell_execution && full_shell_domain &&
-                              borrowed && borrowed->occupied_response;
+    const bool packed_request =
+        pair_policy == "packed" && shell_execution && full_shell_domain;
+    bool packed_pairs = packed_request && borrowed && borrowed->occupied_response;
     const char* fusion_control = std::getenv("VIBEQC_DF_RESPONSE_FUSION");
     const std::string_view fusion_policy = fusion_control ? fusion_control : "off";
     if (fusion_policy != "off" && fusion_policy != "factorized")
       throw std::invalid_argument("unknown DF response fusion (use off or factorized)");
-    if (fusion_policy == "factorized" && (!packed_pairs || terms.size() != 1))
+    if (fusion_policy == "factorized" && (!packed_request || terms.size() != 1))
       throw std::invalid_argument(
           "factorized DF response fusion requires a packed one-term occupied response");
     const bool factorized_exchange = fusion_policy == "factorized";
-    const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
-                                  : pair_policy == "symmetric" || pair_policy == "packed" ||
-                                          (pair_policy == "auto" && promoted_default)
-                                      ? DfDerivativePairs::symmetric
-                                      : DfDerivativePairs::full;
+    auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
+                            : pair_policy == "symmetric" || pair_policy == "packed" ||
+                                    (pair_policy == "auto" && promoted_default)
+                                ? DfDerivativePairs::symmetric
+                                : DfDerivativePairs::full;
     const char* screening_feature_control = std::getenv("VIBEQC_DF_SCREENING_FEATURES");
     const std::string_view screening_feature_policy =
         screening_feature_control ? screening_feature_control : "off";
@@ -895,7 +896,6 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (screening_features && factorized_exchange)
       throw std::invalid_argument(
           "DF screening feature diagnostic does not support factorized response fusion");
-    const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
     const char* block_control = std::getenv("VIBEQC_DF_PACKED_AO_BLOCK_ROWS");
     // The 64-row experiment halved weight storage but paid for many small
     // GEMMs. 256 rows recover the complete endpoint while still skipping all
@@ -1039,8 +1039,6 @@ vibeqc_status execute_cuda_df_hf_gradient(
         arena.stats.host_bytes += bytes;
         runtime::cuda_trace::trace_counter("shell_work_diagnostic_bytes", bytes);
         runtime::cuda_trace::trace_counter("shell_work_diagnostics_enabled", 1);
-        runtime::cuda_trace::trace_counter("shell_work_pair_mode",
-                                           static_cast<unsigned>(derivative_pairs));
       }
     }
     const auto* r = arena.upload(positions);
@@ -1083,6 +1081,21 @@ vibeqc_status execute_cuda_df_hf_gradient(
           (!requested_algebra || std::string_view(requested_algebra) == "blas") &&
           (!requested_dot || std::string_view(requested_dot) != "1") &&
           (!requested_scatter || !*requested_scatter);
+      // A streamed value plan owns no mutable J/K lease, but its validated
+      // canonical factors can still back bridge-owned packed response scratch.
+      // Upgrade the requested pair contract only after the exact local capacity
+      // gate succeeds; otherwise the established symmetric fallback is retained.
+      if (packed_request && !packed_pairs && owned_occupied) {
+        packed_pairs = true;
+        derivative_pairs = DfDerivativePairs::packed;
+      }
+      if (factorized_exchange && !packed_pairs)
+        throw std::invalid_argument(
+            "factorized DF response fusion requires an admitted packed occupied response owner");
+      const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
+      if (shell_diagnostics)
+        runtime::cuda_trace::trace_counter("shell_work_pair_mode",
+                                           static_cast<unsigned>(derivative_pairs));
       // If two complete tensors do not fit, a streamed owner can still supply
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source

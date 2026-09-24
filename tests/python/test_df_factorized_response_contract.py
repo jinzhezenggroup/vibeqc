@@ -34,5 +34,12 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     assert 'fusion_policy != "off" && fusion_policy != "factorized"' in bridge
     assert "factorized_exchange && packed_pairs && terms.size() == 1" in producer
     assert "response_factorized_exchange_panels" in producer
+    assert "packed_request && !packed_pairs && owned_occupied" in bridge
+    streamed = producer.split("if (streamed_occupied) {", 1)[1].split(
+        "if (single_fitted_tensor)", 1
+    )[0]
+    assert "read_fitted || packed_pairs" not in streamed
+    assert "consume, packed_pairs, auxiliary_shell_offsets" in streamed
+    assert "read_values,\n        factorized_exchange" in streamed
     assert "factorized.coefficients[lo + k * o.nbf]" in consumer
     assert "factorized.projected + panel * o.nbf * factorized.rank" in consumer

@@ -95,6 +95,9 @@ std::size_t cuda_df_response_workspace_elements(std::size_t n, std::size_t a, st
  * spin projections in one pass. Its raw buffer holds one AO matrix, staging
  * holds sum(rank^2)*a, and exchange holds max(max(rank^2)*a,tile*n*n).
  * It requires full rank and excludes borrowed tensors and fitted-panel reads.
+ * Once the bridge-owned capacity gate admits that owner, packed_pairs uses the
+ * same shell offsets/block bound as resident occupied response; factorized
+ * exchange additionally requires the one-term packed contract.
  */
 cudaError_t contract_cuda_df_response_weights(
     std::size_t n, std::size_t a, std::span<const DensityFittingDensityResponse> terms,

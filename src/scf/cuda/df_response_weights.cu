@@ -1031,12 +1031,14 @@ cudaError_t contract_cuda_df_response_weights(
     bool single_fitted_tensor, const CudaDfResponseBuffers* streamed_occupied,
     bool factorized_exchange) {
   if (streamed_occupied) {
-    if (!metric.full_rank || borrowed || read_fitted || packed_pairs || single_fitted_tensor ||
-        !read_values || !streamed_occupied->occupied_response)
+    if (!metric.full_rank || borrowed || read_fitted || single_fitted_tensor || !read_values ||
+        !streamed_occupied->occupied_response || (packed_pairs && !packed_block_rows) ||
+        (factorized_exchange && (!packed_pairs || terms.size() != 1)))
       return cudaErrorInvalidValue;
-    return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
-                                      *streamed_occupied, {}, consume, false, {}, packed_block_rows,
-                                      read_values, false);
+    return contract_occupied_response(
+        n, a, terms, densities, metric, tile, workspace, stream, blas, *streamed_occupied, {},
+        consume, packed_pairs, auxiliary_shell_offsets, packed_block_rows, read_values,
+        factorized_exchange);
   }
   if (single_fitted_tensor) {
     if (!metric.full_rank || borrowed || read_fitted || packed_pairs) return cudaErrorInvalidValue;
