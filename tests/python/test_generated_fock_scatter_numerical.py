@@ -45,17 +45,18 @@ int main() {
     std::vector<double> eri(n*n*n*n), density(100);
     for(auto a:orbit) eri[index(a[0],a[1],a[2],a[3])]=value;
     for(size_t p=0;p<n;++p) for(size_t q=0;q<n;++q) {
-      density[off+p+q*n]=((p+q)%3==0 ? 0.0 : .03*(p+q+1));
-      density[spin+p+q*n]=.04*(p+q+1);
-      density[spin+m+p+q*n]=-.01*(p+q+2);
+      density[off+p+q*n]=((p+q)%3==0 ? 0.0 : .03*(p+2*q+1));
+      density[spin+p+q*n]=.04*(p+2*q+1);
+      density[spin+m+p+q*n]=-.01*(2*p+q+2);
     }
-    for(bool unrestricted : {false,true}) {
+    for(bool unrestricted : {false,true}) for(bool coulomb_only : {false,true}) {
       std::vector<double> actual(100), expected(100);
-      if(unrestricted) accumulate_direct_fock_integral<true>(n,off,spin,density.data(),actual.data(),i,j,k,l,value);
-      else accumulate_direct_fock_integral<false>(n,off,spin,density.data(),actual.data(),i,j,k,l,value);
+      if(unrestricted) accumulate_direct_fock_integral<true>(n,off,spin,density.data(),actual.data(),i,j,k,l,value,coulomb_only);
+      else accumulate_direct_fock_integral<false>(n,off,spin,density.data(),actual.data(),i,j,k,l,value,coulomb_only);
       for(size_t p=0;p<n;++p) for(size_t q=0;q<n;++q)
       for(size_t r=0;r<n;++r) for(size_t s=0;s<n;++s) {
         double J=eri[index(p,q,r,s)], K=eri[index(p,r,q,s)];
+        if(coulomb_only) K=0;
         if(unrestricted) {
           double a=density[spin+r+s*n], b=density[spin+m+r+s*n];
           expected[spin+p+q*n]+=(a+b)*J-a*K;
@@ -66,7 +67,7 @@ int main() {
       ++cases;
     }
   }
-  if(cases!=110) return 2;
+  if(cases!=220) return 2;
   std::cout<<cases<<" independent dense RHF/UHF scatter comparisons passed\n";
 }
 """

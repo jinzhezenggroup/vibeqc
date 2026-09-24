@@ -189,7 +189,9 @@ __global__ void triples_kernel(
     std::size_t o, std::size_t v, std::size_t o3, std::size_t work_items,
     const double* ovvv, const double* ovoo, const double* ovov, const double* fov,
     const double* t1, const double* t2, const double* eps_o, const double* eps_v,
-    double denominator_threshold, double* energy, double* minimum, int* error) {{
+    double denominator_threshold, double* partials, double* minimum, int* error) {{
+  // Fixed work assignment and reduction order make repeated evaluations reproducible.
+  double accumulated = 0.0;
   for (std::size_t work = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x;
        work < work_items; work += std::size_t(blockDim.x) * gridDim.x) {{
     const std::size_t virtual_ordinal = work / o3;
@@ -273,8 +275,29 @@ __global__ void triples_kernel(
       fail_once(error, 3);
       continue;
     }}
-    atomicAdd(energy, 2.0 * contribution);
+    accumulated += 2.0 * contribution;
   }}
+  __shared__ double sums[128];
+  sums[threadIdx.x] = accumulated;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride; stride /= 2) {{
+    if (threadIdx.x < stride) sums[threadIdx.x] += sums[threadIdx.x + stride];
+    __syncthreads();
+  }}
+  if (threadIdx.x == 0) partials[blockIdx.x] = sums[0];
+}}
+
+__global__ void reduce_energy(const double* partials, std::size_t count, double* energy) {{
+  __shared__ double sums[128];
+  double value = 0.0;
+  for (std::size_t i = threadIdx.x; i < count; i += blockDim.x) value += partials[i];
+  sums[threadIdx.x] = value;
+  __syncthreads();
+  for (unsigned stride = blockDim.x / 2; stride; stride /= 2) {{
+    if (threadIdx.x < stride) sums[threadIdx.x] += sums[threadIdx.x + stride];
+    __syncthreads();
+  }}
+  if (threadIdx.x == 0) *energy = sums[0];
 }}
 
 }}  // namespace
@@ -303,10 +326,21 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
   }};
   const double* host[8] = {{ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v}};
 
+  // Reject every nonfinite input, including elements whose coefficient vanishes.
+  for (int x = 0; x < 8; ++x) {{
+    if (!host[x]) throw std::invalid_argument("null RCCSD(T) CUDA triples input");
+    for (std::size_t i = 0; i < sizes[x]; ++i)
+      if (!std::isfinite(host[x][i]))
+        throw std::invalid_argument("nonfinite RCCSD(T) CUDA triples input");
+  }}
+  constexpr int threads = 128;
+  const auto needed_blocks = 1 + (work_items - 1) / threads;
+  const int blocks = static_cast<int>(std::min<std::size_t>(needed_blocks, 65535));
   std::size_t cursor = 0;
   std::size_t offsets[8]{{}};
   for (int x = 0; x < 8; ++x)
     offsets[x] = reserve(cursor, checked_mul(sizes[x], sizeof(double)));
+  const auto partials_offset = reserve(cursor, checked_mul(blocks, sizeof(double)));
   const auto energy_offset = reserve(cursor, sizeof(double));
   const auto minimum_offset = reserve(cursor, sizeof(double));
   const auto error_offset = reserve(cursor, sizeof(int));
@@ -351,15 +385,14 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
                                cudaMemcpyHostToDevice, stream),
                "cudaMemcpyAsync RCCSD(T) status init");
 
-    const int threads = 128;
-    const auto needed_blocks = (work_items + threads - 1) / threads;
-    const int blocks = static_cast<int>(
-        std::max<std::size_t>(1, std::min<std::size_t>(needed_blocks, 65535)));
+    auto* partials = reinterpret_cast<double*>(base + partials_offset);
     triples_kernel<<<blocks, threads, 0, stream>>>(
         o, v, o3, work_items, device_inputs[0], device_inputs[1], device_inputs[2],
         device_inputs[3], device_inputs[4], device_inputs[5], device_inputs[6],
-        device_inputs[7], denominator_threshold, energy, minimum, error);
+        device_inputs[7], denominator_threshold, partials, minimum, error);
     cuda_check(cudaGetLastError(), "RCCSD(T) triples kernel launch");
+    reduce_energy<<<1, threads, 0, stream>>>(partials, blocks, energy);
+    cuda_check(cudaGetLastError(), "RCCSD(T) triples reduction launch");
 
     cuda_check(cudaMemcpyAsync(&result.energy, energy, sizeof(double),
                                cudaMemcpyDeviceToHost, stream),

@@ -11,6 +11,10 @@ struct CudaResult {
   std::size_t workspace_bytes{};
 };
 
+/** Evaluate the audited triangular (T) inventory on the selected device.
+ * Inputs are finite host arrays in the canonical RCCSD layout. The owner stages
+ * them once, reserves bounded reduction scratch, and enforces max_bytes before
+ * allocation. No CPU triples evaluator or full T3 tensor is used. */
 #if VIBEQC_HAS_CUDA
 CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv, const double* ovoo,
                          const double* ovov, const double* fov, const double* t1, const double* t2,

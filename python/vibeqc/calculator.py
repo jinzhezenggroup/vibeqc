@@ -992,8 +992,12 @@ class Calculator:
                 | {"forces"},
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
-            # The native RCCSD(T) owner admits explicit CUDA energy evaluation.
-            # CUDA analytic forces remain fail-closed at its property boundary.
+            if self._method == _native.METHOD_RCCSD_T and device == "cuda":
+                self._capabilities = replace(
+                    self._capabilities,
+                    supported_properties=self._capabilities.supported_properties
+                    - {"forces"},
+                )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
                     "native coupled-cluster density fitting is not implemented"

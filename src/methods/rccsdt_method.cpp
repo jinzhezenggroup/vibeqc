@@ -168,16 +168,18 @@ class RccsdtPrepared final : public PreparedCalculation {
           std::min(diagnostic.minimum_absolute_denominator, triples_minimum_denominator);
       diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
           diagnostic.numeric_capacity_bytes, checked_add(retained, triples_workspace_bytes));
-      if (execution_.cuda_requested())
-        diagnostic.correlation_owned_device_bytes = std::max<std::uint64_t>(
-            diagnostic.correlation_owned_device_bytes, triples_workspace_bytes);
       diagnostic.ccsd_t_triples_energy = triples_energy;
       diagnostic.ccsd_t_virtual_triples = triples_virtual_count;
       diagnostic.ccsd_t_workspace_bytes = triples_workspace_bytes;
-      execution_.observe_workspace_peak(execution_.cuda_requested()
-                                            ? runtime::ExecutionMemorySpace::Device
-                                            : runtime::ExecutionMemorySpace::Host,
-                                        triples_workspace_bytes);
+      if (execution_.cuda_requested()) {
+        diagnostic.correlation_owned_device_bytes = std::max<std::uint64_t>(
+            diagnostic.correlation_owned_device_bytes, triples_workspace_bytes);
+        execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Device,
+                                          triples_workspace_bytes);
+      } else {
+        execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Host,
+                                          triples_workspace_bytes);
+      }
       std::copy_n(cc::triples::generated::inventory_hash,
                   std::min<std::size_t>(64, std::strlen(cc::triples::generated::inventory_hash)),
                   diagnostic.ccsd_t_equation_hash);
@@ -357,7 +359,7 @@ std::unique_ptr<PreparedCalculation> prepare_rccsdt_calculation(
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "RCCSD(T) requires an explicit CPU or CUDA backend");
 #if !VIBEQC_HAS_CUDA
-  if (execution.backend() == VIBEQC_BACKEND_CUDA)
+  if (execution.cuda_requested())
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "native RCCSD(T) CUDA owner is not compiled in this library");
 #endif
