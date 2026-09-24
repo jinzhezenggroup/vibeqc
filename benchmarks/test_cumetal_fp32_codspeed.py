@@ -13,11 +13,22 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 _T = TypeVar("_T")
-_NEW_WORKLOADS = ("memory", "gather", "mixed")
+_FULL_PROXY_WORKLOADS = ("memory", "gather", "mixed")
 
 
 class _BenchmarkFixture(Protocol):
     def __call__(self, target: Callable[[], _T]) -> _T: ...
+
+
+def _proxy_workloads() -> tuple[str, ...]:
+    tier = os.environ.get("VIBEQC_CUMETAL_CODSPEED_TIER", "full")
+    if tier == "full":
+        return _FULL_PROXY_WORKLOADS
+    if tier == "pr":
+        # Keep one bandwidth-oriented proxy beside the original compute case.
+        # The real D4 production benchmark runs in both tiers separately.
+        return ("memory",)
+    raise RuntimeError(f"unknown VIBEQC_CUMETAL_CODSPEED_TIER={tier!r}")
 
 
 class _CuMetalServer:
@@ -94,7 +105,7 @@ def test_cumetal_fp32_contract_walltime(
     assert device_ms > 0.0
 
 
-@pytest.mark.parametrize("workload", _NEW_WORKLOADS)
+@pytest.mark.parametrize("workload", _proxy_workloads())
 def test_cumetal_fp32_proxy_walltime(
     benchmark: _BenchmarkFixture,
     cumetal_fp32_server: _CuMetalServer,
