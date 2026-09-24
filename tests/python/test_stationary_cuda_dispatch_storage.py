@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from vibeqc_compiler.integral.first_derivative_schedule import (
@@ -13,6 +13,9 @@ from vibeqc_compiler.integral.first_derivative_schedule import (
     derivative_dispatch_entries,
 )
 from vibeqc_compiler.method.stationary_cuda import _emit_stationary_dispatch
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(scope="module")
@@ -43,15 +46,10 @@ def test_every_dispatch_preserves_kind_and_permutations(
     expected = []
     for identifier, kind, centers, axes in rows:
         center_values = (*centers, *([-1] * (4 - len(centers))))
+        center_text = ",".join(map(str, center_values))
+        axes_text = ",".join(map(str, axes))
         expected.append(
-            "{%d,%d,%d,{%s},{%s}}"
-            % (
-                identifier,
-                kind,
-                len(centers),
-                ",".join(map(str, center_values)),
-                ",".join(map(str, axes)),
-            )
+            f"{{{identifier},{kind},{len(centers)},{{{center_text}}},{{{axes_text}}}}}"
         )
     prefix = r"""
 #include <algorithm>
