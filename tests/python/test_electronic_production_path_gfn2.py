@@ -1,4 +1,4 @@
-"""GFN2-xTB CPU path coverage for the production ledger."""
+"""GFN2-xTB production-path coverage for the ownership ledger."""
 
 from __future__ import annotations
 
@@ -7,17 +7,17 @@ import typing
 from tools.check_electronic_production_paths import DEFAULT_LEDGER, load_and_validate
 
 
-def _gfn2_row() -> dict[str, object]:
+def _gfn2_row(row_id: str) -> dict[str, object]:
     payload, errors = load_and_validate(DEFAULT_LEDGER)
     assert errors == []
     rows = typing.cast("list[dict[str, object]]", payload["rows"])
-    matches = [row for row in rows if row["id"] == "gfn2-energy-cpu-scc"]
+    matches = [row for row in rows if row["id"] == row_id]
     assert len(matches) == 1
     return matches[0]
 
 
 def test_gfn2_cpu_actual_path_is_explicit() -> None:
-    row = _gfn2_row()
+    row = _gfn2_row("gfn2-energy-cpu-scc")
     assert row["method_family"] == "gfn"
     assert row["product"] == "energy"
     assert row["backend"] == "cpu"
@@ -31,7 +31,7 @@ def test_gfn2_cpu_actual_path_is_explicit() -> None:
 
 
 def test_gfn2_cpu_evidence_stays_scoped() -> None:
-    row = _gfn2_row()
+    row = _gfn2_row("gfn2-energy-cpu-scc")
     levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
 
     for level in (
@@ -48,4 +48,39 @@ def test_gfn2_cpu_evidence_stays_scoped() -> None:
 
     evidence = typing.cast("list[str]", row["evidence"])
     assert "tests/python/test_gfn2_runtime_bridge_boundary.py" in evidence
+    assert "tests/python/test_gfn2_xtb.py" in evidence
+
+
+def test_gfn2_cuda_actual_path_is_explicit() -> None:
+    row = _gfn2_row("gfn2-energy-cuda-scc")
+    assert row["method_family"] == "gfn"
+    assert row["product"] == "energy"
+    assert row["backend"] == "cuda"
+    assert row["domain"] == "gfn2-xtb-restricted-scc"
+    assert row["status"] == "production"
+    assert row["public_entry"] == "python/vibeqc/calculator.py"
+    assert row["selector"] == "src/methods/xtb_method.cpp"
+    assert row["scientific_owner"] == "src/xtb/native/src/model/gfn2/scc_driver.cpp"
+    assert row["execution_owner"] == "src/xtb/native/src/runtime/gfn2_cuda_execution.cu"
+    assert row["state_owner"] == "src/xtb/native/src/runtime/gfn2_cuda_execution.hpp"
+
+
+def test_gfn2_cuda_evidence_does_not_overclaim_execution_receipts() -> None:
+    row = _gfn2_row("gfn2-energy-cuda-scc")
+    levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
+
+    assert levels["represented"]["state"] == "present"
+    assert levels["compiled-cuda"]["state"] == "present"
+    assert levels["public"]["state"] == "present"
+    assert levels["compiled-cpu"]["state"] == "not-applicable"
+    assert levels["derivative"]["state"] == "not-applicable"
+
+    for level in ("device-executed", "domain-qualified", "molecular"):
+        assert levels[level]["state"] == "missing"
+        assert levels[level]["evidence"] == []
+        assert levels[level]["reason"]
+
+    evidence = typing.cast("list[str]", row["evidence"])
+    assert "cmake/VibeQCGfn2Runtime.cmake" in evidence
+    assert "src/methods/gfn2_runtime_bridge.cpp" in evidence
     assert "tests/python/test_gfn2_xtb.py" in evidence

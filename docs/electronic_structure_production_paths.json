@@ -362,6 +362,76 @@
       "selector": "src/methods/xtb_method.cpp",
       "state_owner": "src/xtb/native/src/model/gfn2/scc_driver.hpp",
       "status": "production"
+    },
+    {
+      "artifact": "native CUDA GFN2-xTB SCC energy executable",
+      "backend": "cuda",
+      "blocker": null,
+      "domain": "gfn2-xtb-restricted-scc",
+      "evidence": [
+        "cmake/VibeQCGfn2Runtime.cmake",
+        "src/methods/gfn2_runtime_bridge.cpp",
+        "tests/python/test_gfn2_xtb.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [],
+          "reason": "This ledger row describes the CUDA GFN2-xTB production path.",
+          "state": "not-applicable"
+        },
+        "compiled-cuda": {
+          "evidence": [
+            "cmake/VibeQCGfn2Runtime.cmake"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This row inventories the GFN2-xTB energy product only; analytic forces require a separate product row.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "The repository contains an opt-in real-device qualification test, but this ledger row does not yet retain a source-bound execution receipt.",
+          "state": "missing"
+        },
+        "domain-qualified": {
+          "evidence": [],
+          "reason": "The CUDA qualification test defines the domain gate, but no retained exact-source qualification receipt is bound to this ledger row yet.",
+          "state": "missing"
+        },
+        "molecular": {
+          "evidence": [],
+          "reason": "The molecular CUDA endpoint is exercised by an opt-in qualification test, but this ledger row does not yet retain the corresponding execution receipt.",
+          "state": "missing"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "src/methods/gfn2_runtime_bridge.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "id": "gfn2-energy-cuda-scc",
+      "method_family": "gfn",
+      "product": "energy",
+      "provider_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "scientific_owner": "src/xtb/native/src/model/gfn2/scc_driver.cpp",
+      "selector": "src/methods/xtb_method.cpp",
+      "state_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.hpp",
+      "status": "production"
     }
   ],
   "schema": "vibeqc.electronic-production-paths.v2"
