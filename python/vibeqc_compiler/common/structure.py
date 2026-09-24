@@ -46,7 +46,6 @@ SCALAR_CLIENTS = {
     "dft.feature_policy": {
         "vibeqc_compiler.integral.expr",
         "vibeqc_compiler.integral.scalar_c",
-        "vibeqc_compiler.integral.scalar_c",
     },
 }
 
