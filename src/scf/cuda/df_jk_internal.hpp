@@ -8,7 +8,7 @@ namespace vibeqc::scf::cuda_df {
  * The same interfaces implement resident, host-backed and source-backed tiles.
  */
 vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* density,
-                            std::string& detail);
+                            std::string& detail, bool raw_charge_ready = false);
 
 vibeqc_status build_exchange(CudaDensityFittingJkPlan& plan, const double* density,
                              double* exchange, std::string& detail,
@@ -24,5 +24,14 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
                                       const double* coefficients, std::size_t rank,
                                       bool column_major, double weight, double* exchange,
                                       std::string& detail);
+
+/** Use the same exact raw traversal for a qualified RHF charge and occupied K.
+ * The supplied factor must already be an admitted witness for density; this
+ * function neither creates a final-projection lease nor changes J/K resources.
+ */
+vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& plan,
+                                                     const double* density,
+                                                     const double* coefficients, std::size_t rank,
+                                                     double weight, std::string& detail);
 
 }  // namespace vibeqc::scf::cuda_df

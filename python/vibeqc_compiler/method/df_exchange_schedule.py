@@ -120,5 +120,24 @@ bool visit_projected_exchange(std::size_t n, std::size_t rows, bool triangular,
   }
   return true;
 }
+
+// Share the first raw traversal with Coulomb charge accumulation. Only a
+// triangular occupied traversal visits each new outer row before any earlier
+// prefix; the callback flag remains false on regenerated prefix panels.
+template <class Project, class Contract>
+bool visit_shared_projected_exchange(std::size_t n, std::size_t rows, bool triangular,
+                                     Project&& project, Contract&& contract) {
+  if (!triangular) return false;
+  std::size_t next_charge_row = 0;
+  const bool completed = visit_projected_exchange(
+      n, rows, triangular,
+      [&](std::size_t begin, std::size_t count, std::size_t slot) {
+        const bool charge = begin == next_charge_row;
+        if (charge) next_charge_row += count;
+        return project(begin, count, slot, charge);
+      },
+      contract);
+  return completed && next_charge_row == n;
+}
 }  // namespace vibeqc::scf::generated
 """
