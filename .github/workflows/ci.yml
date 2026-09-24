@@ -674,9 +674,10 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    # Correctness gates already run on every PR. Keep CodSpeed on master/manual
-    # qualification so performance telemetry does not consume PR runner slots.
-    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
+    # PRs run only the bounded representative tier; master/manual runs the full
+    # endpoint set. Scheduled qualification already has expensive numerical
+    # coverage and does not need duplicate performance instrumentation.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -685,6 +686,7 @@ jobs:
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       NUMEXPR_NUM_THREADS: 1
+      VIBEQC_CODSPEED_TIER: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -738,6 +740,8 @@ jobs:
         with:
           # Hosted GitHub runners are noisy for wall-clock gating; simulation
           # provides the stable PR/master regression signal without Macro Runner quota.
+          # VIBEQC_CODSPEED_TIER keeps PR instrumentation to two representative
+          # endpoints while master/manual records the broader trend set.
           mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
