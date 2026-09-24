@@ -4,7 +4,8 @@ import json
 import typing
 
 import pytest
-from vibeqc.resources import (
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -12,7 +13,6 @@ from vibeqc.resources import (
     ResourceRequest,
     plan_resources,
 )
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,

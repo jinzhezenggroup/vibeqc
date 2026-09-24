@@ -4,6 +4,31 @@ include_guard(GLOBAL)
 # live in VibeQCGenerated.cmake; this file owns generator inputs/outputs and the
 # target(s) that consume each generated family.
 macro(vibeqc_register_host_generated_sources target)
+  set(VIBEQC_QUADRATURE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_quadrature.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_quadrature_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_quadrature_cuda.py"
+    OUTPUTS "${VIBEQC_QUADRATURE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/quadrature_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/grid_response_ir.py"
+    ARGS --output "${VIBEQC_QUADRATURE_HEADER}"
+    COMMENT "Generating bounded CUDA molecular quadrature")
+  set(VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_df_exchange_schedule.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_df_exchange_schedule_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_df_exchange_schedule.py"
+    OUTPUTS "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_exchange_schedule.py"
+    ARGS --output "${VIBEQC_DF_EXCHANGE_SCHEDULE_HEADER}"
+    COMMENT "Generating compiler-owned DF source-reuse schedule")
+
   # The native host policy is built even when CUDA execution is disabled.
   # Generate its CUDA-independent constants once for both build variants.
   set(VIBEQC_ONE_ELECTRON_DERIVATIVE_POLICY_HEADER
@@ -54,9 +79,9 @@ macro(vibeqc_register_host_generated_sources target)
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_d3/generate_native_data.py"
     OUTPUTS "${VIBEQC_D3_DATA_HEADER}"
     DEPENDS
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/gfn1_d3.json"
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/covalent_radii.json"
-      "${CMAKE_CURRENT_SOURCE_DIR}/external/xtbloom-d3/manifest.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/manifests/xtbloom-d3.json"
     ARGS --output "${VIBEQC_D3_DATA_HEADER}"
     COMMENT "Generating pinned compact D3(BJ) tables")
   set(VIBEQC_ONE_ELECTRON_ST_CPU_HEADER
@@ -105,6 +130,8 @@ macro(vibeqc_register_host_generated_sources target)
     TARGET ${target}
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_cpu.py"
     OUTPUTS "${VIBEQC_XC_CPU_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_XC_CPU_HEADER}")
 
   set(VIBEQC_SCF_ARRAY_CPU_HEADER
@@ -158,6 +185,40 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
     ARGS --output "${VIBEQC_GFN2_ES2_NATIVE_HEADER}"
     COMMENT "Generating compiler-owned GFN2 ES2 scalar kernels")
+
+  set(VIBEQC_GFN2_H0_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_h0_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_h0_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_h0_native.py"
+    OUTPUTS "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_H0_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA H0 values and adjoints")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_h0_native_codegen)
+  endif()
+
+  set(VIBEQC_GFN2_SPIN_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_spin_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_spin_native_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_spin_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_spin_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ad_program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_SPIN_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 CPU/CUDA spin energy/potential")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_spin_native_codegen)
+  endif()
 
   set(VIBEQC_GFN2_ES3_NATIVE_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_es3_native.cuh")
@@ -259,6 +320,20 @@ macro(vibeqc_register_host_generated_sources target)
 endmacro()
 
 macro(vibeqc_register_cuda_generated_sources target)
+  set(VIBEQC_MEAN_FIELD_SETUP_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_mean_field_setup.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_mean_field_setup_cuda.py"
+    OUTPUTS "${VIBEQC_MEAN_FIELD_SETUP_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_array_native.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/mean_field_setup_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scf.py"
+    ARGS --output "${VIBEQC_MEAN_FIELD_SETUP_HEADER}"
+    COMMENT "Generating shared CUDA mean-field setup projectors")
+
   set(VIBEQC_MATRIX_FUNCTION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_symmetric_matrix_function.cuh")
   vibeqc_register_generated_sources(
@@ -395,6 +470,21 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
+  set(VIBEQC_GFN2_SDQ_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_sdq_cuda.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_sdq_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_sdq_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SDQ_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/gfn2_sdq_cpu.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_values.py"
+    ARGS --cuda-output "${VIBEQC_GFN2_SDQ_CUDA_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 S/D/Q CUDA primitive kernels")
+
   set(VIBEQC_DIRECT_FOCK_ACCUMULATION_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_direct_fock_accumulation.cuh")
   vibeqc_register_generated_sources(
@@ -453,10 +543,21 @@ macro(vibeqc_register_cuda_generated_sources target)
     ADD_TO_TARGET
     GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_r2scan_cuda.py"
     OUTPUTS "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
     ARGS --output "${VIBEQC_R2SCAN_CUDA_HEADER}")
 
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
+  # The r2SCAN minority-spin derivative is sensitive to contraction of 1-zeta
+  # near the work-density floor. Match the compiler XC FP64 policy and the
+  # independent Libxc boundary qualification; do not introduce FMA. CuMetal's
+  # nvcc-compatible driver delegates to Clang and requires its native spelling.
+  if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
+    set(_vibeqc_grid_fp_contract_option -ffp-contract=off)
+  else()
+    set(_vibeqc_grid_fp_contract_option --fmad=false)
+  endif()
   vibeqc_register_generated_sources(
     TARGET ${target}
     ADD_TO_TARGET
@@ -465,6 +566,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/cuda_xc_kernels.cuh"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
+    COMPILE_OPTIONS "${_vibeqc_grid_fp_contract_option}"
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 
   set(VIBEQC_XC_GRADIENT_SOURCE
@@ -487,6 +589,21 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS ${VIBEQC_RCCSD_GENERATOR_INPUTS}
     ARGS --cuda-source "${VIBEQC_RCCSD_CUDA_SOURCE}")
 
+  set(VIBEQC_RCCSDT_CUDA_SOURCE
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_rccsdt_cuda.cu")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_rccsdt_cuda_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_cuda.py"
+    OUTPUTS "${VIBEQC_RCCSDT_CUDA_SOURCE}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_rccsdt_native.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_cc/triples.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src/cc/triples_cuda.hpp"
+    ARGS --output "${VIBEQC_RCCSDT_CUDA_SOURCE}")
+
   set(VIBEQC_MP2_GENERATED_DIRECTORY
       "${CMAKE_CURRENT_BINARY_DIR}/generated/mp2")
   set(VIBEQC_MP2_GENERATED_SOURCES
@@ -504,7 +621,8 @@ macro(vibeqc_register_cuda_generated_sources target)
     endforeach()
   endforeach()
   file(GLOB VIBEQC_MP2_GENERATOR_INPUTS CONFIGURE_DEPENDS
-       "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_tensor/*.py"
+       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/*.py"
+       "python/vibeqc_compiler/common/cuda_target.py"
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_mp2/*.py"
        "${CMAKE_CURRENT_SOURCE_DIR}/tools/vibeqc_posthf/*.py")
   vibeqc_register_generated_sources(

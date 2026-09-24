@@ -179,6 +179,12 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
     psps = build_weighted_eri_kernel(build_weighted_eri_ir((1, 0, 1, 0)))
     ppss = build_weighted_eri_kernel(build_weighted_eri_ir((1, 1, 0, 0)))
     dsss = build_weighted_eri_kernel(build_weighted_eri_ir((2, 0, 0, 0)))
+    order3 = (
+        (build_weighted_eri_kernel(build_weighted_eri_ir((1, 1, 1, 0))), "ppps_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((2, 0, 1, 0))), "dsps_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((2, 1, 0, 0))), "dpss_force"),
+        (build_weighted_eri_kernel(build_weighted_eri_ir((3, 0, 0, 0))), "fsss_force"),
+    )
     full = emit_weighted_eri_header(
         ((psss, "psss"),),
         inline_single_use=inline_single_use,
@@ -223,11 +229,24 @@ def emit_low_order_weighted_header(*, inline_single_use: typing.Any = False) -> 
             (dsss, "dsss_force"),
         )
     )
+    order3_force = "".join(
+        emit_weighted_eri_function(
+            kernel,
+            name,
+            inline_single_use=inline_single_use,
+            include_value=False,
+            gradient_centers=(0, 1, 2),
+            result_type="IndependentGradient",
+            ordering=AlgebraOrdering.PRESSURE_AWARE,
+        )
+        for kernel, name in order3
+    )
     return (
         full[: -len(marker)]
         + specialized_result
         + psss_force
         + ssss_force
         + order2_force
+        + order3_force
         + marker
     )

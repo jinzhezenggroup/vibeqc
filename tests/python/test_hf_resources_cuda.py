@@ -145,7 +145,7 @@ def test_cuda_df_common_ledger_preserves_factor_differential(
     monkeypatch: typing.Any, mode: typing.Any, old_peak: typing.Any
 ) -> None:
     """Charge ordinary eigen and final snapshots to both exchange policies."""
-    from vibeqc.resources import ResourcePlan, plan_resources
+    from vibeqc_compiler.common.resources import ResourcePlan, plan_resources
 
     calculator = Calculator(device="cuda", density_fitting="cuda")
     monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
@@ -224,7 +224,7 @@ def test_native_ledger_rejects_unplanned_arena_and_releases_failed_state(
 def test_cuda_df_global_candidates_bind_execution_and_respect_host_device_caps(
     mode: typing.Any, method: typing.Any
 ) -> None:
-    from vibeqc.resources import ResourcePlan, plan_resources
+    from vibeqc_compiler.common.resources import ResourcePlan, plan_resources
 
     systems = [H2, WATER, H2]
     options = {
@@ -328,7 +328,7 @@ def test_cuda_df_distinct_auxiliary_basis_and_open_shell_inventory(
     mode: typing.Any,
 ) -> None:
     """Orbital dimensions cannot substitute for auxiliary or spin dimensions."""
-    from vibeqc.resources import ResourcePlan
+    from vibeqc_compiler.common.resources import ResourcePlan
 
     options = {
         "method": "uhf",

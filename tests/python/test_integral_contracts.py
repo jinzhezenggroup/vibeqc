@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.blocks import (
     BlockRequest,
     BlockStatus,
@@ -26,7 +27,6 @@ from vibeqc_compiler.integral.blocks import (
 from vibeqc_compiler.integral.cache import integral_cache_key
 from vibeqc_compiler.integral.capabilities import query_integral_capability
 from vibeqc_compiler.integral.cuda_schedule import CudaKernelIR, schedule_candidates
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.ir import (
     ContractionOutput,
     IntegralIR,

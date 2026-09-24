@@ -5,6 +5,9 @@
 
 namespace vibeqc::scf::detail {
 
+/** Value consumer identity; integral recurrence and quartet symmetry are shared. */
+enum class GeneratedFockConsumer : std::uint32_t { HartreeFock = 0, Coulomb = 1 };
+
 /** Stable geometry-cache ABI shared by handwritten and generated kernels. */
 struct GeneratedPrimitivePairData {
   double exponent_sum;
@@ -41,6 +44,7 @@ struct GeneratedShellTask {
   std::uint32_t reversed_shell_pair_mask;
   std::uint32_t shell[4];
   std::uint32_t atom[4];
+  GeneratedFockConsumer fock_consumer;
 };
 
 /**
@@ -81,6 +85,8 @@ struct GeneratedShellPairStream {
   // keeps the ordinary direct-streaming path unconditional.
   const std::uint32_t* generated_overflow;
   const std::uint8_t* active;
+  // Appending keeps aggregate-initialized HF streams on the zero-valued consumer.
+  GeneratedFockConsumer fock_consumer;
 };
 
 /**

@@ -15,6 +15,7 @@ from hashlib import sha256
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.common.solver_region import SolverRegion
 from vibeqc_compiler.tensor import execute
 
@@ -30,7 +31,6 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import GMRESOptions, _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .equations import amplitude_layouts
 from .lambda_equations import build_lambda_programs
@@ -328,6 +328,16 @@ class BoundCCSDLambda:
                 }
             ),
         )
+        if self.tensor_executor is not None:
+            self.tensor_executor.prewarm(
+                (
+                    independent.primal,
+                    programs.energy_vjp.program,
+                    programs.residual_vjp.program,
+                    independent.energy_vjp.program,
+                    independent.residual_vjp.program,
+                )
+            )
         out = self._run(independent.primal)
         for value in (cc_result.correlation_energy, cc_result.total_energy):
             if value is None or not np.isfinite(value):

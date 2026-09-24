@@ -1,6 +1,7 @@
 #include "dft/grid.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <numbers>
@@ -114,13 +115,29 @@ void validate_grid_spec(const GridSpec& spec) {
       throw std::invalid_argument("invalid DFT element radius");
 }
 
-MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
+std::pair<std::vector<double>, std::vector<double>> MolecularGrid::legendre_rule(
+    std::size_t count) {
+  return gauss_legendre(count);
+}
+
+MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec, Deferred)
     : system_(system), spec_(spec) {
   if (system_.atoms.empty()) throw std::invalid_argument("a DFT grid requires atoms");
   validate_grid_spec(spec_);
+  for (const auto& atom : system_.atoms) {
+    const auto z = atom.atomic_number;
+    if (z < 1 || z > 118) throw std::invalid_argument("invalid grid atomic number");
+    if (spec_.version >= 2 && !(spec_.element_radii[z] > 0.0))
+      throw std::invalid_argument("production DFT grid has no sourced element radius");
+    for (double coordinate : atom.position)
+      if (!std::isfinite(coordinate)) throw std::invalid_argument("nonfinite grid center");
+  }
+}
 
-  auto [polar, polar_weights] = gauss_legendre(spec_.angular_polar);
-  auto [radial_nodes, radial_weights] = gauss_legendre(spec_.radial_points);
+MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
+    : MolecularGrid(system, spec, Deferred{}) {
+  auto [polar, polar_weights] = legendre_rule(spec_.angular_polar);
+  auto [radial_nodes, radial_weights] = legendre_rule(spec_.radial_points);
   const std::size_t angular = multiply(spec_.angular_polar, spec_.angular_azimuth);
   const std::size_t per_atom = multiply(spec_.radial_points, angular);
   const std::size_t total = multiply(system_.atoms.size(), per_atom);
@@ -157,8 +174,8 @@ MolecularGrid::MolecularGrid(const core::System& system, GridSpec spec)
 }
 
 std::vector<double> MolecularGrid::atomic_weights() const {
-  const auto [polar, polar_weights] = gauss_legendre(spec_.angular_polar);
-  const auto [nodes, weights] = gauss_legendre(spec_.radial_points);
+  const auto [polar, polar_weights] = legendre_rule(spec_.angular_polar);
+  const auto [nodes, weights] = legendre_rule(spec_.radial_points);
   const double azimuth_weight = 2.0 * std::numbers::pi / spec_.angular_azimuth;
   std::vector<double> result;
   result.reserve(point_count());
@@ -173,6 +190,120 @@ std::vector<double> MolecularGrid::atomic_weights() const {
           result.push_back(radial_measure(radius, nodes[radial], weights[radial]) * polar_weight *
                            azimuth_weight);
   }
+  return result;
+}
+
+std::vector<double> MolecularGrid::contract_weight_derivative(
+    std::span<const double> weight_sensitivity) const {
+  if (weight_sensitivity.size() != point_count())
+    throw std::invalid_argument("DFT grid weight sensitivity count mismatch");
+  for (double value : weight_sensitivity)
+    if (!std::isfinite(value)) throw std::invalid_argument("nonfinite DFT grid weight sensitivity");
+
+  const std::size_t atoms = system_.atoms.size();
+  const std::size_t ncoord = multiply(atoms, std::size_t{3});
+  std::vector<double> result(ncoord, 0.0);
+  if (atoms == 1) return result;
+
+  std::vector<double> logs(atoms), partition(atoms), log_derivative(multiply(atoms, ncoord));
+  std::vector<double> average(ncoord);
+  for (std::size_t point_index = 0; point_index < point_count(); ++point_index) {
+    std::fill(logs.begin(), logs.end(), 0.0);
+    std::fill(log_derivative.begin(), log_derivative.end(), 0.0);
+    const double* point = points_.data() + 3 * point_index;
+    const std::size_t owner = owners_[point_index];
+    if (owner >= atoms) throw std::logic_error("DFT grid owner is out of range");
+
+    for (std::size_t a = 0; a < atoms; ++a) {
+      for (std::size_t b = 0; b < a; ++b) {
+        const auto& ra_center = system_.atoms[a].position;
+        const auto& rb_center = system_.atoms[b].position;
+        double separation_vector[3]{}, point_a[3]{}, point_b[3]{};
+        double separation2 = 0.0, distance_a2 = 0.0, distance_b2 = 0.0;
+        for (unsigned axis = 0; axis < 3; ++axis) {
+          separation_vector[axis] = ra_center[axis] - rb_center[axis];
+          point_a[axis] = point[axis] - ra_center[axis];
+          point_b[axis] = point[axis] - rb_center[axis];
+          separation2 += separation_vector[axis] * separation_vector[axis];
+          distance_a2 += point_a[axis] * point_a[axis];
+          distance_b2 += point_b[axis] * point_b[axis];
+        }
+        const double separation = std::sqrt(separation2);
+        const double distance_a = std::sqrt(distance_a2);
+        const double distance_b = std::sqrt(distance_b2);
+        double mu = 0.0;
+        std::array<std::size_t, 3> pair_atoms{owner, 0, 0};
+        std::array<std::array<double, 3>, 3> pair_derivative{};
+        std::size_t pair_atom_count = 1;
+        const auto pair_block = [&](std::size_t atom) {
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            if (pair_atoms[block] == atom) return block;
+          pair_atoms[pair_atom_count] = atom;
+          return pair_atom_count++;
+        };
+        const std::size_t a_block = pair_block(a);
+        const std::size_t b_block = pair_block(b);
+        if (separation > spec_.coincident_tolerance) {
+          const double numerator = distance_a - distance_b;
+          const double raw_mu = numerator / separation;
+          mu = std::clamp(raw_mu, -1.0, 1.0);
+          if (raw_mu > -1.0 && raw_mu < 1.0) {
+            for (unsigned axis = 0; axis < 3; ++axis) {
+              const double unit_a = distance_a > 0.0 ? point_a[axis] / distance_a : 0.0;
+              const double unit_b = distance_b > 0.0 ? point_b[axis] / distance_b : 0.0;
+              const double unit_ab = separation_vector[axis] / separation;
+              const double numerator_owner = unit_a - unit_b;
+              pair_derivative[0][axis] += numerator_owner / separation;
+              pair_derivative[a_block][axis] +=
+                  -unit_a / separation - numerator * unit_ab / separation2;
+              pair_derivative[b_block][axis] +=
+                  unit_b / separation + numerator * unit_ab / separation2;
+            }
+          }
+        }
+        for (unsigned iteration = 0; iteration < spec_.partition_iterations; ++iteration) {
+          const double slope = 1.5 * (1.0 - mu * mu);
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            for (double& derivative : pair_derivative[block]) derivative *= slope;
+          mu = 0.5 * mu * (3.0 - mu * mu);
+        }
+        const double pair = std::clamp(0.5 * (1.0 - mu), 0.0, 1.0);
+        logs[a] += std::log(pair);
+        logs[b] += std::log1p(-pair);
+        if (pair > 0.0 && pair < 1.0) {
+          for (std::size_t block = 0; block < pair_atom_count; ++block)
+            for (unsigned axis = 0; axis < 3; ++axis) {
+              const std::size_t coordinate = 3 * pair_atoms[block] + axis;
+              const double pair_response = -0.5 * pair_derivative[block][axis];
+              log_derivative[a * ncoord + coordinate] += pair_response / pair;
+              log_derivative[b * ncoord + coordinate] -= pair_response / (1.0 - pair);
+            }
+        }
+      }
+    }
+
+    const double maximum = *std::max_element(logs.begin(), logs.end());
+    double normalization = 0.0;
+    for (std::size_t atom = 0; atom < atoms; ++atom) {
+      partition[atom] = std::exp(logs[atom] - maximum);
+      normalization += partition[atom];
+    }
+    if (!(normalization > 0.0) || !std::isfinite(normalization))
+      throw std::runtime_error("invalid differentiated Becke partition normalization");
+    for (double& value : partition) value /= normalization;
+    std::fill(average.begin(), average.end(), 0.0);
+    for (std::size_t atom = 0; atom < atoms; ++atom)
+      for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate)
+        average[coordinate] += partition[atom] * log_derivative[atom * ncoord + coordinate];
+
+    const double scale = weight_sensitivity[point_index] * weights_[point_index];
+    for (std::size_t coordinate = 0; coordinate < ncoord; ++coordinate) {
+      result[coordinate] +=
+          scale * (log_derivative[owner * ncoord + coordinate] - average[coordinate]);
+    }
+  }
+  if (!std::all_of(result.begin(), result.end(), [](double value) { return std::isfinite(value); }))
+    throw std::runtime_error("nonfinite contracted DFT grid weight derivative");
   return result;
 }
 

@@ -1,9 +1,9 @@
 {
   "current_default": "AOT class registry where promoted; bounded native fallback and explicit schedule exceptions",
   "evidence": [
-    "docs/shell_codegen.md",
-    "docs/weighted_eri.md",
-    "docs/second_integral_derivatives.md",
+    "docs/developer/shell_codegen.md",
+    "docs/developer/weighted_eri.md",
+    "docs/developer/second_integral_derivatives.md",
     "python/vibeqc_compiler/integral/production_shell_classes.json",
     "benchmarks/results/weighted-eri-144/README.md",
     "benchmarks/results/issue356-psss-retirement/README.md"

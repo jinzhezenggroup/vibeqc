@@ -30,6 +30,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 from vibeqc_compiler.integral.blocks import (
     BlockRequest,
     ShellTile,
@@ -54,7 +55,6 @@ from tools.vibeqc_validation.f_shell_numerics import (
     _normalized_primitives,
     numerical_error,
 )
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 CENTERS = np.array(
     [

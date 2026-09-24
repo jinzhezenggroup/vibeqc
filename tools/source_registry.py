@@ -55,6 +55,16 @@ def _sha256(path: Path) -> str:
     return _sha256_bytes(path.read_bytes())
 
 
+def _repository_text_sha256(path: Path) -> str:
+    """Hash the LF-normalized repository text represented by a checkout file."""
+    return _sha256_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
+
+
+def _git_blob_sha1(data: bytes) -> str:
+    header = f"blob {len(data)}\0".encode()
+    return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+
+
 def _check_digest(value: Any, *, label: str) -> str:
     if not isinstance(value, str) or len(value) != 64:
         raise SourceRegistryError(f"{label} must be a SHA-256 hex digest")
@@ -121,16 +131,20 @@ def _source_identity(source: dict[str, Any]) -> dict[str, Any]:
             "upstream_path": item.get("upstream_path", name),
             "sha256": item["sha256"],
         }
-        for optional in ("upstream_sha256", "normalization"):
+        for optional in ("upstream_sha256", "normalization", "git_blob"):
             if optional in item:
                 record[optional] = item[optional]
         files[name] = record
-    return {
+    identity = {
         "repository": source["repository"],
         "revision": source["revision"],
         "license": source["license"],
         "files": files,
     }
+    for optional in ("git_tree", "collections"):
+        if optional in source:
+            identity[optional] = source[optional]
+    return identity
 
 
 def _product_input_identity(sources: dict[str, Any], source_ids: list[str]) -> str:
@@ -176,7 +190,24 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
             _check_digest(
                 item["upstream_sha256"], label=f"{source_id}.{name}.upstream_sha256"
             )
+        if "git_blob" in item and (
+            not isinstance(item["git_blob"], str)
+            or not re.fullmatch(r"[0-9a-f]{40}", item["git_blob"])
+        ):
+            raise SourceRegistryError(
+                f"{source_id!r} file {name!r} has invalid Git blob identity"
+            )
+        if "size" in item and (type(item["size"]) is not int or item["size"] < 0):
+            raise SourceRegistryError(
+                f"{source_id!r} file {name!r} has invalid byte size"
+            )
         _normalize(b"", item.get("normalization"))
+
+    git_tree = source.get("git_tree")
+    if git_tree is not None and (
+        not isinstance(git_tree, str) or not re.fullmatch(r"[0-9a-f]{40}", git_tree)
+    ):
+        raise SourceRegistryError(f"source {source_id!r} has invalid Git tree identity")
 
     admission = source.get("admission")
     if admission is not None:
@@ -196,8 +227,127 @@ def _validate_source_metadata(source_id: str, source: Any) -> None:
             admission.get("importer_sha256"),
             label=f"{source_id}.admission.importer_sha256",
         )
-        if _sha256(importer) != expected:
+        if _repository_text_sha256(importer) != expected:
             raise SourceRegistryError(f"source importer digest mismatch: {importer}")
+
+
+def load_product_sources(
+    product_id: str,
+    *,
+    generator: Path,
+    expected_inputs: tuple[str, ...],
+    expected_canonical_inputs: tuple[str, ...],
+    registry_path: Path = REGISTRY,
+) -> dict[str, dict[str, Any]]:
+    """Bind a domain generator to its exact registered scientific inputs."""
+    registry = _load(registry_path)
+    product = registry["products"].get(product_id)
+    if not isinstance(product, dict):
+        raise SourceRegistryError(f"unknown generated product {product_id!r}")
+    registered_generator = _repository_path(
+        product.get("generator"), label=f"{product_id}.generator"
+    )
+    if registered_generator.resolve() != generator.resolve():
+        raise SourceRegistryError(
+            f"product {product_id!r} is bound to generator "
+            f"{registered_generator.relative_to(ROOT)!s}"
+        )
+    inputs = product.get("inputs")
+    if inputs != list(expected_inputs):
+        raise SourceRegistryError(
+            f"product {product_id!r} source inputs do not match its generator contract"
+        )
+    sources = registry["sources"]
+    if any(source_id not in sources for source_id in inputs):
+        raise SourceRegistryError(f"product {product_id!r} has unknown source inputs")
+    bound = {source_id: sources[source_id] for source_id in inputs}
+    for source_id, source in bound.items():
+        _validate_source_metadata(source_id, source)
+    expected_identity = _check_digest(
+        product.get("input_identity_sha256"),
+        label=f"{product_id}.input_identity_sha256",
+    )
+    if _product_input_identity(sources, inputs) != expected_identity:
+        raise SourceRegistryError(f"product source inputs are stale: {product_id}")
+    if not registered_generator.is_file():
+        raise FileNotFoundError(registered_generator)
+    expected_generator = _check_digest(
+        product.get("generator_sha256"), label=f"{product_id}.generator_sha256"
+    )
+    if _repository_text_sha256(registered_generator) != expected_generator:
+        raise SourceRegistryError(f"generator digest mismatch: {registered_generator}")
+    canonical_inputs = product.get("canonical_inputs", {})
+    if not isinstance(canonical_inputs, dict):
+        raise TypeError(f"product {product_id!r} canonical_inputs must be an object")
+    if tuple(canonical_inputs) != expected_canonical_inputs:
+        raise SourceRegistryError(
+            f"product {product_id!r} canonical inputs do not match its generator contract"
+        )
+    for relative, digest in canonical_inputs.items():
+        path = _repository_path(relative, label=f"{product_id}.canonical_inputs")
+        if not path.is_file():
+            raise FileNotFoundError(path)
+        expected = _check_digest(digest, label=f"{product_id}.{relative}")
+        if _repository_text_sha256(path) != expected:
+            raise SourceRegistryError(f"canonical input digest mismatch: {path}")
+    return bound
+
+
+def _validate_source_bytes(
+    source_id: str,
+    name: str,
+    item: dict[str, Any],
+    data: bytes,
+    path: Path,
+) -> None:
+    expected = _check_digest(item["sha256"], label=f"{source_id}.{name}.sha256")
+    if _sha256_bytes(data) != expected:
+        raise SourceRegistryError(f"registered source digest mismatch: {path}")
+    if "size" in item and len(data) != item["size"]:
+        raise SourceRegistryError(f"registered source size mismatch: {path}")
+    if (
+        "git_blob" in item
+        and item.get("normalization") is None
+        and _git_blob_sha1(data) != item["git_blob"]
+    ):
+        raise SourceRegistryError(f"registered source Git blob mismatch: {path}")
+
+
+def read_source_texts(
+    source_id: str,
+    source: dict[str, Any],
+    *,
+    cache_root: Path = DEFAULT_CACHE,
+    collection: str | None = None,
+) -> dict[str, str]:
+    """Read registered UTF-8 source bytes only after exact digest validation."""
+    _validate_source_metadata(source_id, source)
+    if collection is None:
+        names = list(source["files"])
+    else:
+        names = source.get("collections", {}).get(collection)
+        if not isinstance(names, list) or not names or len(names) != len(set(names)):
+            raise SourceRegistryError(
+                f"invalid source collection {source_id}:{collection}"
+            )
+        missing = set(names) - set(source["files"])
+        if missing:
+            raise SourceRegistryError(
+                f"source collection {source_id}:{collection} has unknown files {sorted(missing)}"
+            )
+    texts: dict[str, str] = {}
+    for name in names:
+        item = source["files"][name]
+        path = _source_file_destination(source_id, source, name, cache_root)
+        if not path.is_file():
+            raise FileNotFoundError(
+                f"registered source is unavailable locally: {path}; "
+                f"run source_registry.py sync {source_id} explicitly"
+            )
+        data = path.read_bytes()
+        _validate_source_bytes(source_id, name, item, data, path)
+        texts[name] = data.decode("utf-8")
+    return texts
 
 
 def _render_libxc_collection(
@@ -281,21 +431,18 @@ def verify(
     for source_id, source in sources.items():
         _validate_source_metadata(source_id, source)
         for name, item in source["files"].items():
-            expected = _check_digest(item["sha256"], label=f"{source_id}.{name}.sha256")
             destination = _source_file_destination(source_id, source, name, cache_root)
             if "local_root" in source:
                 if not destination.is_file():
                     raise FileNotFoundError(destination)
-                if _sha256(destination) != expected:
-                    raise SourceRegistryError(
-                        f"pinned source digest mismatch: {destination}"
-                    )
+                _validate_source_bytes(
+                    source_id, name, item, destination.read_bytes(), destination
+                )
                 local_files += 1
             elif destination.exists():
-                if _sha256(destination) != expected:
-                    raise SourceRegistryError(
-                        f"cached source digest mismatch: {destination}"
-                    )
+                _validate_source_bytes(
+                    source_id, name, item, destination.read_bytes(), destination
+                )
                 cached_files += 1
         collections = source.get("collections", {})
         if collections:
@@ -340,7 +487,7 @@ def verify(
         expected_generator = _check_digest(
             product.get("generator_sha256"), label=f"{product_id}.generator_sha256"
         )
-        if _sha256(generator) != expected_generator:
+        if _repository_text_sha256(generator) != expected_generator:
             raise SourceRegistryError(f"generator digest mismatch: {generator}")
         for group in ("canonical_inputs", "outputs"):
             values = product.get(group, {})
@@ -350,7 +497,7 @@ def verify(
                 path = _repository_path(relative, label=f"{product_id}.{group}")
                 if not path.is_file():
                     raise FileNotFoundError(path)
-                if _sha256(path) != _check_digest(
+                if _repository_text_sha256(path) != _check_digest(
                     digest, label=f"{product_id}.{relative}"
                 ):
                     raise SourceRegistryError(f"product digest mismatch: {path}")
@@ -450,6 +597,7 @@ def update_source(
     registry_path: Path = REGISTRY,
     *,
     cache_root: Path = DEFAULT_CACHE,
+    git_tree: str | None = None,
 ) -> list[Path]:
     """Move one existing allowlisted source set to an explicit new revision."""
     revision = _checked_revision(revision)
@@ -458,6 +606,16 @@ def update_source(
     if source is None:
         raise SourceRegistryError(f"unknown scientific source {source_id!r}")
     _validate_source_metadata(source_id, source)
+    if git_tree is not None and (
+        not isinstance(git_tree, str) or not re.fullmatch(r"[0-9a-f]{40}", git_tree)
+    ):
+        raise SourceRegistryError(
+            "updated Git tree identity must be 40 lowercase hex digits"
+        )
+    if "git_tree" in source and git_tree is None:
+        raise SourceRegistryError(
+            f"source {source_id!r} update requires its new Git tree identity"
+        )
     if revision == source["revision"]:
         raise SourceRegistryError(
             f"source {source_id!r} is already pinned to {revision}"
@@ -482,21 +640,52 @@ def update_source(
         if "size" in item:
             item["size"] = len(upstream)
         if "git_blob" in item:
-            header = f"blob {len(upstream)}\0".encode()
-            item["git_blob"] = hashlib.sha1(
-                header + upstream, usedforsecurity=False
-            ).hexdigest()
+            item["git_blob"] = _git_blob_sha1(upstream)
         destination = _source_file_destination(source_id, source, name, cache_root)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(data)
         written.append(destination)
     source["revision"] = revision
+    if git_tree is not None:
+        source["git_tree"] = git_tree
     registry_path.write_text(
         json.dumps(registry, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
         newline="\n",
     )
     return written
+
+
+def stage_product_inputs(product_id: str, registry_path: Path = REGISTRY) -> Path:
+    """Accept current pinned source identities before explicit regeneration."""
+    registry = _load(registry_path)
+    product = registry["products"].get(product_id)
+    if not isinstance(product, dict):
+        raise SourceRegistryError(f"unknown generated product {product_id!r}")
+    inputs = product.get("inputs")
+    sources = registry["sources"]
+    if not isinstance(inputs, list) or any(
+        source_id not in sources for source_id in inputs
+    ):
+        raise SourceRegistryError(f"product {product_id!r} has unknown source inputs")
+    for source_id in inputs:
+        _validate_source_metadata(source_id, sources[source_id])
+    staged = _product_input_identity(sources, inputs)
+    previous = _check_digest(
+        product.get("input_identity_sha256"),
+        label=f"{product_id}.input_identity_sha256",
+    )
+    if staged == previous:
+        raise SourceRegistryError(
+            f"product {product_id!r} source inputs are already current"
+        )
+    product["input_identity_sha256"] = staged
+    registry_path.write_text(
+        json.dumps(registry, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return registry_path
 
 
 def main() -> int:
@@ -520,7 +709,13 @@ def main() -> int:
     )
     update_parser.add_argument("source")
     update_parser.add_argument("--revision", required=True)
+    update_parser.add_argument("--git-tree")
     update_parser.add_argument("--cache-root", type=Path, default=DEFAULT_CACHE)
+    stage_parser = subparsers.add_parser(
+        "stage-product-inputs",
+        help="accept current pinned inputs before explicit product regeneration",
+    )
+    stage_parser.add_argument("product")
     args = parser.parse_args()
     if args.command == "verify":
         summary = verify(args.registry, cache_root=args.cache_root)
@@ -531,11 +726,18 @@ def main() -> int:
     elif args.command == "sync":
         for path in sync_source(args.source, args.registry, cache_root=args.cache_root):
             print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
-    else:
+    elif args.command == "update":
         for path in update_source(
-            args.source, args.revision, args.registry, cache_root=args.cache_root
+            args.source,
+            args.revision,
+            args.registry,
+            cache_root=args.cache_root,
+            git_tree=args.git_tree,
         ):
             print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
+    else:
+        path = stage_product_inputs(args.product, args.registry)
+        print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
     return 0
 
 

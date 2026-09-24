@@ -26,10 +26,10 @@ the `geometry -> {geometry,tensor,common}` ownership boundary.
 The compiler reuses the pinned xTBloom-derived source assets rather than carrying a
 second table copy. The accepted identities are:
 
-- `external/xtbloom-d3/gfn1_d3.json`:
+- `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json`:
   `9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e`;
-- `external/xtbloom-d3/covalent_radii.json`:
-  `92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111`.
+- `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json#elements[].covalent_radius_bohr`:
+  derived-table SHA-256 `92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111`.
 
 For a fixed geometry state, `D3PairTopology` records the canonical `i < j` union
 of every pair needed by either coordination-number response or pair energy, plus an

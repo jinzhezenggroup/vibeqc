@@ -1,7 +1,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 # Preserve exact upstream bytes for vendored source trees with provenance manifests.
-exclude: ^(upstream/|external/libxc-7\.0\.0/|src/xtb/gfn2_runtime/|cmake/3rdparty/implib/)
+exclude: ^(upstream/|src/xtb/native/|cmake/3rdparty/implib/)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

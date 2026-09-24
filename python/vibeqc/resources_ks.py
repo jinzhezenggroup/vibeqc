@@ -16,13 +16,7 @@ import os
 import typing
 from dataclasses import asdict, replace
 
-from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
-from .basis import BasisSet
-from .basis_capabilities import require_basis
-from .calculator import Atom, _snapshot_basis
-from .elements import electron_state
-from .ks import resolve_ks_options
-from .resources import (
+from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
     ResourceEstimate,
@@ -32,6 +26,13 @@ from .resources import (
     checked_bytes,
     plan_resources,
 )
+
+from ._cpu_force_resources import CPU_FORCE_HOST_CAP, qualified_basis
+from .basis import BasisSet
+from .basis_capabilities import require_basis
+from .calculator import Atom, _snapshot_basis
+from .elements import electron_state
+from .ks import resolve_ks_options
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
 _METHODS = (
@@ -82,7 +83,17 @@ def _item_host_inventory(
     provider = byte_product(8, 2 * n2 + (n2 * n2 if backend == "cpu" else 0))
     # The provider retains S/H; do not count those again as a second owner.
     retained = metadata + grid + basis + warm_and_matrices + history + provider
+    # Ordinary KS reuses one serialized Xsyevd workspace across spins. Match
+    # the shared native admission bound; actual provider queries are checked
+    # before either allocation. Small native solves need no provider workspace.
+    solver_host = (
+        1024 * 1024 + byte_product(16, 8, n2) if backend == "cuda" and n > 16 else 0
+    )
+    retained += solver_host
     quadrature = 16 * (model.grid.radial_points + model.grid.angular_polar) + 8 * a
+    if backend == "cuda":
+        # Shared rule/center/radius upload coexists with the small rule vectors.
+        quadrature += 8 * (4 * a + 2 * (512 + 256))
     matrix_work = byte_product(8, spins, n2, 128 + 2 * (diis_history + 1))
     matrix_work += byte_product(16, diis_history + 1, diis_history + 1)
     host_unfused = backend == "cuda" and model.xc_schedule == "host_unfused"
@@ -100,7 +111,7 @@ def _item_host_inventory(
     )
     nonlocal_provider = 0
     nonlocal_work = 0
-    if model.requires_nonlocal_v5:
+    if model.has_nonlocal_correlation:
         # Vv10Plan retains omega/kappa/weighted-density and three local
         # derivatives: six FP64 arrays. The AO bridge separately owns rho,
         # grad-rho, vrho/vsigma, one first-derivative AO tile and V_nlc.
@@ -142,6 +153,7 @@ def _item_host_inventory(
             "warm_and_matrices": warm_and_matrices,
             "history": history,
             "provider": provider,
+            "solver_host": solver_host,
             "xc_schedule_staging": xc_schedule_staging,
             "nonlocal_provider": nonlocal_provider,
             "retained": retained,
@@ -200,11 +212,29 @@ def _cuda_item_inventory(
     # This bound includes every explicit device buffer of that value-only path.
     setup = byte_product(64, 1 + a + s + p + n + pairs + n * n)
     setup = max(setup, _ecp_workspace(item, cuda=True))
+    quadrature_query = getattr(library, "vibeqc_resource_quadrature_cuda_v1", None)
+    if quadrature_query is None:
+        raise NotImplementedError(
+            "native library has no CUDA quadrature allocation inventory"
+        )
+    quadrature_query.argtypes = [
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint64),
+    ]
+    quadrature_query.restype = ctypes.c_int
+    quadrature = ctypes.c_uint64()
+    if quadrature_query(a, item["grid_points"], ctypes.byref(quadrature)):
+        raise NotImplementedError("invalid CUDA quadrature resource shape/build")
+    # Quadrature is built after the Coulomb provider, before KS/XC buffers.
+    # Count the coexistence explicitly, including changed-geometry rebuilds.
+    setup = max(setup, checked_bytes(int(output[2]) + quadrature.value))
     return {
         "state": checked_bytes(int(output[0])),
         "xc": checked_bytes(int(output[1])),
         "coulomb": checked_bytes(int(output[2])),
         "setup": checked_bytes(setup),
+        "quadrature_setup": checked_bytes(quadrature.value),
     }
 
 
@@ -241,11 +271,11 @@ def ks_resource_request(
     if precision == "auto" and backend != "cuda":
         raise NotImplementedError("KS automatic precision currently requires CUDA")
     model = resolve_ks_options(method, ks_options)
-    if backend == "cuda" and model.requires_nonlocal_v5:
+    if backend == "cuda" and model.has_nonlocal_correlation:
         raise NotImplementedError(
             "self-consistent nonlocal correlation currently requires CPU"
         )
-    if backend == "cuda" and model.requires_composition_v2:
+    if backend == "cuda" and model.has_nondefault_composition:
         raise NotImplementedError(
             "CUDA KS planning does not claim scaled/global-hybrid execution"
         )
@@ -386,6 +416,7 @@ def ks_resource_request(
         "warm_and_matrices",
         "history",
         "provider",
+        "solver_host",
         "xc_schedule_staging",
         "nonlocal_provider",
     ):
@@ -428,27 +459,13 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            if model.requires_composition_v2 or model != resolve_ks_options(method):
-                options_version = getattr(library, "vibeqc_ks_options_version", None)
-                if options_version is not None:
-                    options_version.argtypes, options_version.restype = (
-                        [],
-                        ctypes.c_uint32,
-                    )
-                version_value = 0 if options_version is None else options_version()
-                required = (
-                    5
-                    if model.requires_nonlocal_v5
-                    else 3
-                    if model.requires_schedule_v3
-                    else 2
-                    if model.requires_composition_v2
-                    else 1
+            options_version = getattr(library, "vibeqc_ks_options_version", None)
+            if options_version is not None:
+                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if options_version is None or options_version() != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
-                if version_value < required:
-                    raise NotImplementedError(
-                        f"native library does not support KS model options v{required}"
-                    )
             version = getattr(library, "vibeqc_ks_resource_inventory_version_v1", None)
             if version is not None:
                 version.argtypes, version.restype = [], ctypes.c_int
@@ -488,14 +505,15 @@ def ks_resource_request(
                     )
                 )
             # At most one owner is rebuilt at a time. Its retired allocation
-            # need not coexist with its one-electron setup temporary.
+            # need not coexist with its setup temporary. Quadrature setup
+            # already includes the new owner's live Coulomb allocation.
             extra = max(
                 max(0, x["setup"] - sum(x[k] for k in ("state", "xc", "coulomb")))
                 for x in device
             )
             estimates.append(
                 ResourceEstimate(
-                    "KS one-electron setup excess over retired owner",
+                    "KS setup excess over retired owner",
                     extra,
                     f"device:{device_id}",
                     first_phase,

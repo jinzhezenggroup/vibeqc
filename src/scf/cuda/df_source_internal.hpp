@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "molecule/basis_geometry_identity.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/df_source_kernels.hpp"
 #include "scf/cuda/metadata_upload.hpp"
@@ -28,6 +29,7 @@ struct CudaDensityFittingIntegralSourceImpl {
   int device_id{-1};
   // Freeze the generated schedule so a warm plan never mixes mapping policies.
   unsigned value_mapping{};
+  unsigned raw_value_mapping{};
   unsigned value_math{};  // Frozen with mapping; unsupported angular classes use generic Rys.
   std::size_t batch_size{};
   std::size_t public_nbf{};
@@ -41,6 +43,8 @@ struct CudaDensityFittingIntegralSourceImpl {
   // Host mirror used only to translate a public per-system derivative index;
   // the packed DeviceBatch pointer cannot be dereferenced by host code.
   std::vector<std::int64_t> host_atom_offsets;
+  std::vector<molecule::BasisGeometryIdentity> orbital_identities;
+  std::vector<molecule::BasisGeometryIdentity> auxiliary_identities;
   std::vector<void*> allocations;
   std::size_t device_bytes{};
   std::size_t host_bytes{};

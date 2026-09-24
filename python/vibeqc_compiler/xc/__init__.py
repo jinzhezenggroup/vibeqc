@@ -9,6 +9,7 @@ __all__ = [
     "FunctionalSpec",
     "UnsupportedXC",
     "XCIntegral",
+    "build_bulk_runtime_program",
     "build_program",
     "functional",
     "pack_grid_features",
@@ -21,6 +22,10 @@ def __getattr__(name: str) -> Any:
         from .integration import FixedDensityXC, XCIntegral
 
         return {"FixedDensityXC": FixedDensityXC, "XCIntegral": XCIntegral}[name]
+    if name == "build_bulk_runtime_program":
+        from .bulk_runtime import build_bulk_runtime_program
+
+        return build_bulk_runtime_program
     if name in {"build_program", "pack_grid_features", "validate_features"}:
         from .program import build_program, pack_grid_features, validate_features
 

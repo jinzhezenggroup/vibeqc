@@ -27,6 +27,8 @@ struct ShellKernelMetadata {
   unsigned block_threads;
   unsigned consumer_mask;
   unsigned component_tile;
+  /** Packed Fock queue claims per CTA; one preserves other schedules' grids. */
+  unsigned fock_tasks_per_claim{1};
 };
 
 /** Cache profile selection for a device during CUDA context initialization. */

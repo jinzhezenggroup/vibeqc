@@ -75,7 +75,7 @@ def emit_cuda(program: typing.Any, schedule: typing.Any = None) -> typing.Any:
     }
     identity = canonical_hash(contract)
     lines = [
-        "// Generated from audited MPL-2.0 expressions; see external/libxc-7.0.0/COPYING.",
+        "// Generated from audited MPL-2.0 expressions; see upstream/libxc/7.0.0/COPYING.",
         '#include "cuda_runtime.cuh"',
         "#include <cmath>",
         "using namespace vibeqc_tensor;",

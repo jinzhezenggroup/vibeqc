@@ -179,6 +179,9 @@ void direct_providers(bool through_f_response) {
       vibeqc::core::System first;
       first.atoms = {{1, {0.0, 0.1, -0.7}}, {1, {0.2, -0.1, 0.7}}};
       first.shells = {{0, 0, {{0.8, 0.7}, {0.2, 0.3}}}, {1, angular, {{0.6, 1.0}}}};
+      // Mixed p/d quartets exercise generated classes that s+d alone cannot
+      // reach. Retain unequal contraction lengths and test both AO conventions.
+      if (angular == 2) first.shells.push_back({0, 1, {{1.1, 0.6}, {0.3, 0.4}}});
       first.electron_count = 2;
       first.basis_representation = representation;
       auto second = first;
@@ -210,6 +213,39 @@ void direct_providers(bool through_f_response) {
               detail.c_str());
       std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
           raw, &destroy_cuda_direct_jk_plan);
+      // A value-only owner may use generated pure J; exact generic capacity
+      // must still be a usable fallback. Both consume nonsymmetric densities
+      // and independently formed full ERIs, including spherical d projection.
+      const auto shell_count = first.shells.size() + second.shells.size();
+      std::size_t primitive_count = 0;
+      for (const auto* system : {&first, &second})
+        for (const auto& shell : system->shells) primitive_count += shell.primitives.size();
+      const auto pure_j_capacity =
+          cuda_direct_coulomb_device_bytes(2, n, 4, shell_count, primitive_count);
+      CudaDirectJkPlan* pure_j_raw{};
+      CudaDirectJkDiagnostic pure_j_diagnostic;
+      require(create_cuda_direct_jk_plan(0, {first, second}, 0, 0.0, pure_j_capacity, &pure_j_raw,
+                                         pure_j_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
+              detail.c_str());
+      std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> pure_j_plan(
+          pure_j_raw, &destroy_cuda_direct_jk_plan);
+      require(pure_j_diagnostic.device_bytes <= pure_j_capacity,
+              "generated pure J exceeded shape-only capacity");
+      require((std::string(pure_j_diagnostic.schedule).find("generated-shell") !=
+               std::string::npos) == (angular <= 2),
+              "generated pure J admission/class fallback mismatch");
+      CudaDirectJkPlan* fallback_raw{};
+      CudaDirectJkDiagnostic fallback_diagnostic;
+      const auto fallback_capacity =
+          cuda_direct_jk_device_bytes(2, n, 4, shell_count, primitive_count, 0);
+      require(
+          create_cuda_direct_jk_plan(0, {first, second}, 0, 0.0, fallback_capacity, &fallback_raw,
+                                     fallback_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+      std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> fallback_plan(
+          fallback_raw, &destroy_cuda_direct_jk_plan);
+      require(fallback_diagnostic.device_bytes == fallback_capacity,
+              "bounded generic fallback allocation inventory changed");
       require(diagnostic.nbf == n && diagnostic.batch_size == 2 && diagnostic.device_bytes > 0 &&
                   diagnostic.coordinates_per_item == 6 &&
                   diagnostic.host_preparation_bytes >= diagnostic.host_bytes,
@@ -259,6 +295,10 @@ void direct_providers(bool through_f_response) {
             compare(dka, eka);
             compare(dkb, ekb);
             direct_device(plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
+            if (j && !k) {
+              direct_device(pure_j_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
+              direct_device(fallback_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
+            }
             std::vector<double> actual_gradient;
             if (response || !derivatives) {
               const auto status = execute_cuda_direct_energy_derivative(

@@ -15,12 +15,12 @@ from dataclasses import dataclass
 from itertools import product
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.integral.shell_spec import cartesian_components
 
 from tools.generate_validation_references import pyscf_molecule
 
 from .f_shell_numerics import _normalized_primitives
-from .schema import canonical_hash
 
 # The standalone CUDA fixture ABI is fixed little-endian FP64 with a checked
 # 144-byte host record. It carries real positive-exponent basis functions only.

@@ -2,7 +2,7 @@
 
 The review baseline was `126071574f2a05cbbeb38369e9cf685054e36247`.
 The PBE integrator now uses the energy-consistent point domain documented in
-[`xc_scf_domain.md`](../../../docs/xc_scf_domain.md). UKS returns the density
+[`xc_scf_domain.md`](../../../docs/developer/xc_scf_domain.md). UKS returns the density
 whose physical energy and residual were evaluated, on both convergence and
 iteration-budget exhaustion; it no longer advances that density after its
 convergence decision.

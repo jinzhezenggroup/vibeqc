@@ -38,8 +38,8 @@ std::vector<double> hcore_mo(const scf::PhysicalReference& reference) {
 }
 
 EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
-                             const posthf::NativeBlockProvider& provider,
-                             double denominator_threshold, bool cuda, int device_id) {
+                             const posthf::MOBlockProvider& provider, double denominator_threshold,
+                             bool cuda, int device_id) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
@@ -54,8 +54,8 @@ EnergyAdjoint energy_adjoint(const scf::PhysicalReference& reference,
 }
 
 response::LinearResponseProblem response_problem(const scf::PhysicalReference& reference,
-                                                 const posthf::NativeBlockProvider& provider,
-                                                 bool cuda, int device_id) {
+                                                 const posthf::MOBlockProvider& provider, bool cuda,
+                                                 int device_id) {
   const auto no = reference.nocc, n = reference.nbf, nv = n - no;
   const auto occupied = range(0, no);
   const auto virtuals = range(no, n);
@@ -80,7 +80,8 @@ response::LinearResponseProblem response_problem(const scf::PhysicalReference& r
                              input[j * nv + b];
                 output[i * nv + a] = value;
               }
-          }};
+          },
+          response::LinearResponseSymmetry::Symmetric};
 }
 
 ConventionalForceResult conventional_force_impl(
@@ -106,8 +107,7 @@ ConventionalForceResult conventional_force_impl(
     maximum_shell = std::max(maximum_shell, static_cast<std::size_t>(count));
   }
   const auto coordinate_count = posthf::checked_mul(source.orbital().atoms.size(), 3);
-  const auto provider_bytes =
-      posthf::checked_add(provider.source_bytes(), provider.reference_bytes());
+  const auto provider_bytes = provider.provider_bytes();
   const auto base_resources = conventional_gradient_plan(
       reference.nbf, reference.nocc, provider_bytes, plan, maximum_shell, coordinate_count,
       posthf::checked_mul(coordinate_count, sizeof(double)), budget_bytes);

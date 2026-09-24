@@ -4,6 +4,7 @@ import typing
 from dataclasses import replace
 
 import pytest
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.integral.cache import integral_cache_key
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.df_values import (
@@ -17,8 +18,6 @@ from vibeqc_compiler.integral.opencl_lowering import (
 )
 from vibeqc_compiler.integral.runtime_backend import ExecutionShape, RuntimeCapabilities
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 
 def integral_program() -> typing.Any:

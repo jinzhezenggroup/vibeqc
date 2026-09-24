@@ -27,9 +27,10 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
+
 from tools.vibeqc_validation.df_gradient import reference_df_matrices
 from tools.vibeqc_validation.f_shell_numerics import numerical_error
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 
 def fixture_systems(
@@ -246,7 +247,7 @@ def main() -> None:
         # Generated values are the sole native definition. The independent
         # Libcint/NumPy oracle above validates every mapping; historical native
         # A/B reproduction belongs to the archived promotion source checkout.
-        for mapping in ("auxiliary", "component", "primitive"):
+        for mapping in ("auto", "auxiliary", "component", "primitive"):
             for pair_tile, aux_tile in ((nbf * nbf, naux), (7, 3)):
                 name = f"{case}-{mapping}-p{pair_tile}-a{aux_tile}"
                 prefix = directory / name

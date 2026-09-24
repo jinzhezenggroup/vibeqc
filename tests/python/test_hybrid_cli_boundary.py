@@ -29,7 +29,8 @@ def test_method_catalog_is_generated_from_public_manifest() -> None:
     by_name = {row["name"]: row for row in rows}
     assert by_name["pbe0-rks"]["properties"] == ("energy",)
     assert by_name["b3lyp-uks"]["status"] == "available"
-    assert by_name["wb97m-v"]["status"] == "unavailable"
+    assert by_name["wb97m-v"]["status"] == "available"
+    assert by_name["wb97m-v"]["properties"] == ("energy",)
 
 
 def test_methods_command_is_publicly_parseable() -> None:

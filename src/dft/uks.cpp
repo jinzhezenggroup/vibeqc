@@ -66,6 +66,15 @@ dft::SpinXcIntegral evaluate_b3lyp_xc_uks(const dft::AoBasis& basis, const dft::
   return dft::integrate_b3lyp_uks(basis, grid, alpha, beta, tile);
 }
 
+dft::SpinXcIntegral evaluate_wb97mv_xc_uks(const dft::AoBasis& basis,
+                                           const dft::MolecularGrid& grid, const Matrix& alpha,
+                                           const Matrix& beta, std::size_t tile,
+                                           double exchange_scale, double correlation_scale) {
+  if (exchange_scale != 1.0 || correlation_scale != 1.0)
+    throw std::invalid_argument("scaled WB97M-V semilocal execution is not qualified");
+  return dft::integrate_wb97mv_uks(basis, grid, alpha, beta, tile);
+}
+
 dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
                                               const dft::MolecularGrid& grid, const Matrix& alpha,
                                               const Matrix& beta, std::size_t tile,
@@ -81,7 +90,8 @@ dft::SpinXcIntegral evaluate_cam_b3lyp_xc_uks(const dft::AoBasis& basis,
 SpinEvaluation evaluate(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                         const Matrix& alpha, const Matrix& beta, SpinXcEvaluator evaluate_xc,
-                        const ScfOptions& options, dft::nlc::Vv10Plan* nonlocal_correlation) {
+                        const ScfOptions& options, dft::nlc::Vv10Plan* nonlocal_correlation,
+                        dft::nlc::Vv10DensityDomain nonlocal_domain) {
   const auto& ints = plan.one_electron();
   const auto jk = plan.build(alpha, beta);
   SpinEvaluation out;
@@ -110,7 +120,7 @@ SpinEvaluation evaluate(const PreparedFockPlan& plan, const PreparedFockPlan* lo
   dft::nlc::SpinVv10Integral nonlocal;
   if (nonlocal_correlation)
     nonlocal = dft::nlc::integrate_vv10_uks(basis, grid, alpha, beta, *nonlocal_correlation,
-                                            options.xc_tile_points);
+                                            options.xc_tile_points, nonlocal_domain);
   if (xc.potential[0].size() != out.fock.alpha.size() ||
       xc.potential[1].size() != out.fock.beta.size() ||
       (nonlocal_correlation && (nonlocal.potential[0].size() != out.fock.alpha.size() ||
@@ -147,11 +157,12 @@ EigenResult stabilized_uks_orbitals(Matrix fock, const Matrix& density, const Ma
 
 }  // namespace
 
-ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
-                       const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                       const ScfOptions& options, SpinXcEvaluator evaluate_xc,
-                       const char* method_name, const std::vector<double>* initial_density,
-                       dft::nlc::Vv10Plan* nonlocal_correlation) {
+ScfResult run_uks_impl(
+    const PreparedFockPlan& plan, const PreparedFockPlan* long_range_correction,
+    const dft::AoBasis& basis, const dft::MolecularGrid& grid, const ScfOptions& options,
+    SpinXcEvaluator evaluate_xc, const char* method_name,
+    const std::vector<double>* initial_density, dft::nlc::Vv10Plan* nonlocal_correlation,
+    dft::nlc::Vv10DensityDomain nonlocal_domain = dft::nlc::Vv10DensityDomain::StrictPositive) {
   using namespace reference;
   const auto& strategy = plan.strategy();
   validate_resolved_fock_build(strategy);
@@ -162,8 +173,9 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
       strategy.spec.coulomb.coefficient != 1.0 ||
       (strategy.spec.exchange.present &&
        (strategy.spec.exchange.op != FockOperator::FullRange ||
-        strategy.spec.exchange.approximation != FockApproximation::Exact)))
-    throw std::invalid_argument("UKS requires a CPU full-range exact J/K Fock strategy");
+        (strategy.spec.exchange.approximation != FockApproximation::Exact &&
+         strategy.spec.exchange.approximation != FockApproximation::DensityFitted))))
+    throw std::invalid_argument("UKS requires a CPU full-range exact or fitted J/K Fock strategy");
   if (long_range_correction) {
     const auto& correction = long_range_correction->strategy();
     validate_resolved_fock_build(correction);
@@ -187,8 +199,9 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   const std::size_t n = ints.nbf;
   if (basis.nao != n || basis.natom != system.atoms.size() || grid.point_count() == 0)
     throw std::invalid_argument("UKS grid/basis binding is inconsistent");
-  if (!plan.matches(grid.system(), nullptr, strategy, -1, 0) ||
-      basis.packed != dft::AoBasis(system).packed)
+  // The source already owns its auxiliary basis. Comparing against a null
+  // auxiliary request would incorrectly replace it with the orbital basis.
+  if (!plan.matches_system(grid.system()) || basis.packed != dft::AoBasis(system).packed)
     throw std::invalid_argument("UKS refuses a stale geometry, basis, charge or spin binding");
   if (long_range_correction &&
       (!long_range_correction->matches(system, nullptr, long_range_correction->strategy(), -1, 0) ||
@@ -218,7 +231,9 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
   diagnostic.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
-  diagnostic.scf_domain_version = std::string_view(method_name) == "B3LYP" ? 2U : 1U;
+  diagnostic.scf_domain_version = std::string_view(method_name) == "WB97M-V"
+                                      ? 3U
+                                      : (std::string_view(method_name) == "B3LYP" ? 2U : 1U);
   const double residual_gate = std::min(1.0e-9, options.density_tolerance);
   bool stabilize_occupations = false;
 
@@ -252,7 +267,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
         auto physical = evaluate(plan, long_range_correction, basis, grid, state.alpha, state.beta,
-                                 evaluate_xc, options, nonlocal_correlation);
+                                 evaluate_xc, options, nonlocal_correlation, nonlocal_domain);
         ++result.fock_builds;
         Matrix ra = commutator_residual(physical.fock.alpha, state.alpha, ints.overlap, n);
         Matrix rb = commutator_residual(physical.fock.beta, state.beta, ints.overlap, n);
@@ -343,7 +358,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
   // never become the derivative-state proof. A small bounded fixed-point
   // correction mirrors the shared final-state policy without another SCF loop.
   auto final = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc, options,
-                        nonlocal_correlation);
+                        nonlocal_correlation, nonlocal_domain);
   ++result.fock_builds;
   double previous_physical_energy = result.energy;
   result.converged = false;
@@ -366,7 +381,7 @@ ScfResult run_uks_impl(const PreparedFockPlan& plan, const PreparedFockPlan* lon
     beta = std::move(projected_b);
 
     auto next = evaluate(plan, long_range_correction, basis, grid, alpha, beta, evaluate_xc,
-                         options, nonlocal_correlation);
+                         options, nonlocal_correlation, nonlocal_domain);
     ++result.fock_builds;
     const Matrix ra = commutator_residual(next.fock.alpha, alpha, ints.overlap, n);
     const Matrix rb = commutator_residual(next.fock.beta, beta, ints.overlap, n);
@@ -420,6 +435,15 @@ ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_pbe_xc_uks, "PBE",
                       initial_density, &nonlocal_correlation);
 }
+
+ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density,
+                          dft::nlc::Vv10Plan* nonlocal_correlation) {
+  return run_uks_impl(primary, &long_range_correction, basis, grid, options, evaluate_pbe_xc_uks,
+                      "PBE-RSH", initial_density, nonlocal_correlation);
+}
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density) {
@@ -429,13 +453,30 @@ ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis
 ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
                         const std::vector<double>* initial_density) {
-  const auto expected = resolve_fock_build(
-      make_global_hybrid_fock_spec(FockSpin::Unrestricted, dft::generated::kB3lypExactExchange),
-      FockBackend::Cpu);
+  auto spec =
+      make_global_hybrid_fock_spec(FockSpin::Unrestricted, dft::generated::kB3lypExactExchange);
+  if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
+    spec.coulomb.approximation = FockApproximation::DensityFitted;
+    spec.exchange.approximation = FockApproximation::DensityFitted;
+  }
+  const auto expected = resolve_fock_build(spec, FockBackend::Cpu, options.screening_tolerance,
+                                           options.density_fitting_relative_threshold);
   if (plan.strategy() != expected)
     throw std::invalid_argument("B3LYP plan does not match the generated MethodIR composition");
   return run_uks_impl(plan, nullptr, basis, grid, options, evaluate_b3lyp_xc_uks, "B3LYP",
                       initial_density, nullptr);
+}
+
+ScfResult run_wb97mv_uks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density) {
+  require_wb97mv_composition(primary.strategy(), correction.strategy(), nonlocal.parameters());
+  if (nonlocal.backend() != VIBEQC_BACKEND_CPU_REFERENCE ||
+      nonlocal.resources().point_count != grid.point_count())
+    throw std::invalid_argument("WB97M-V nonlocal owner is incompatible with the KS grid/backend");
+  return run_uks_impl(primary, &correction, basis, grid, options, evaluate_wb97mv_xc_uks, "WB97M-V",
+                      initial_density, &nonlocal, dft::nlc::Vv10DensityDomain::MolecularV1);
 }
 
 ScfResult run_cam_b3lyp_uks(const PreparedFockPlan& primary,

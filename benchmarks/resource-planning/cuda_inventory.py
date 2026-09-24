@@ -37,8 +37,8 @@ from vibeqc import (
 )
 from vibeqc.autotune import source_identity
 from vibeqc.profiles import file_hash, find_nvcc
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,

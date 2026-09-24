@@ -23,8 +23,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from vibeqc_compiler.common.evidence import file_hash
+
 from tools.vibeqc_validation.f_shell_numerics import numerical_error
-from tools.vibeqc_validation.schema import file_hash
 
 
 def summarize(directory: Path) -> dict:

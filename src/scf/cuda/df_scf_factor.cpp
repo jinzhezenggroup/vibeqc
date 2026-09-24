@@ -14,6 +14,7 @@
 #include "scf/cuda/df_scf_kernels.hpp"
 #include "scf/cuda/df_scf_library.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 
@@ -25,13 +26,30 @@ bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
       rank > plan.projection_capacity / plan.nbf / plan.naux)
     return false;
   // A packed source retains its full occupied projection even with a bounded
-  // Q panel. Dense generated sources do not have that storage contract.
+  // Q panel. Dense generated sources use the same contract only after the
+  // complete raw owner has been validated during setup; that owner is also
+  // required by the exact force-response borrow below.
   const bool packed_resident = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
                                plan.integral_source && plan.packed_raw &&
                                rank <= plan.value_storage.rank_capacity;
-  return packed_resident ||
-         (!plan.integral_source && plan.value_storage.pairs == DfPairStorage::Dense &&
-          plan.auxiliary_tile == plan.naux);
+  const bool dense_resident = plan.value_storage.pairs == DfPairStorage::Dense &&
+                              plan.auxiliary_tile == plan.naux &&
+                              (!plan.integral_source || plan.resident_raw_valid);
+  return packed_resident || dense_resident;
+}
+
+bool qualified_value_rhf_exchange(const CudaDensityFittingJkPlan& plan, std::size_t rank) noexcept {
+  if (qualified_resident_rhf_exchange(plan, rank)) return true;
+  // Streamed projections are private eigendirection factors: they cannot grant
+  // the symmetric-C final-state/force-response lease of the resident gate.
+  return df_occupied_exchange_preferred(plan.nbf, plan.naux, plan.batch_size, rank) &&
+         plan.occupied_scf_reserved && plan.resident_exchange_enabled && plan.streamed &&
+         plan.integral_source && plan.metric_full_rank.size() == 1 && plan.metric_full_rank[0] &&
+         plan.auxiliary_tile_values && plan.exchange_intermediate && plan.exchange_contributions &&
+         plan.exchange_tile_output &&
+         df_projected_exchange_schedule(plan.nbf, plan.naux, rank, plan.panel_capacity,
+                                        plan.triangular_exchange)
+                 .rows != 0;
 }
 
 vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
@@ -43,13 +61,18 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
       {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
   accepted = false;
   rank = 0;
-  // This first qualification uses existing singleton resident RHF workspace.
-  // Unsupported plans retain dense exchange without allocating another solver.
+  // Reuse the existing singleton RHF solver/scratch. Streamed value factors
+  // need a profitable full-rank source schedule, but never a resident lease.
   const bool packed = plan.value_storage.pairs == DfPairStorage::SymmetricLower &&
                       plan.integral_source && plan.packed_raw;
-  if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange || plan.streamed ||
-      (plan.integral_source && !packed) || plan.row_tile != plan.nbf ||
-      (!packed && plan.auxiliary_tile != plan.naux) || plan.nbf < 2) {
+  const bool source_dense_resident = plan.integral_source && !packed && plan.resident_raw_valid;
+  const bool resident = !plan.streamed &&
+                        (!plan.integral_source || packed || source_dense_resident) &&
+                        plan.row_tile == plan.nbf && (packed || plan.auxiliary_tile == plan.naux);
+  const bool streamed =
+      plan.streamed && qualified_value_rhf_exchange(plan, state.alpha_factor_rank);
+  if (state.unrestricted || plan.batch_size != 1 || !state.occupied_exchange ||
+      (!resident && !streamed) || plan.nbf < 2) {
     trace_counter("unsupported", 1);
     return VIBEQC_STATUS_SUCCESS;
   }
@@ -155,7 +178,7 @@ vibeqc_status occupied_scf_policy(const CudaDensityFittingJkPlan& plan, bool& en
   }
   if (df_occupied_exchange_auto_requested()) {
     enabled = alpha.size() == 1 && beta.empty() && alpha[0] > 0 &&
-              qualified_resident_rhf_exchange(plan, static_cast<std::size_t>(alpha[0]));
+              qualified_value_rhf_exchange(plan, static_cast<std::size_t>(alpha[0]));
   }
   if (enabled && !plan.occupied_scf_reserved) {
     detail = "CUDA DF plan did not reserve occupied SCF storage; recreate the plan";
@@ -243,25 +266,50 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
       // full reconstruction below still decide whether its factor is exact.
       selected = state.factor_alpha_ranks.size() == 1 && state.factor_beta_ranks.empty() &&
                  state.factor_alpha_ranks[0] > 0 &&
-                 qualified_resident_rhf_exchange(plan, state.factor_alpha_ranks[0]);
+                 qualified_value_rhf_exchange(plan, state.factor_alpha_ranks[0]);
     }
     if (selected) {
       const auto status = factor_density_for_exchange(plan, state, alpha, seed, seed_rank, detail);
       if (status != VIBEQC_STATUS_SUCCESS) return status;
     }
   }
+  const std::size_t joint_rank = seed ? seed_rank
+                                 : ready && !beta && !state.factor_alpha_ranks.empty()
+                                     ? state.factor_alpha_ranks[0]
+                                     : 0;
+  const auto joint_schedule = joint_rank && plan.streamed && plan.triangular_exchange
+                                  ? df_projected_exchange_schedule(plan.nbf, plan.naux, joint_rank,
+                                                                   plan.panel_capacity, true)
+                                  : generated::ProjectedExchangeSchedule{};
+  const auto* shared_policy = std::getenv("VIBEQC_DF_JK_SHARED_SOURCE");
+  const bool shared = !beta && (seed || ready) && joint_rank && shared_policy &&
+                      std::strcmp(shared_policy, "1") == 0 &&
+                      qualified_value_rhf_exchange(plan, joint_rank) && plan.triangular_exchange &&
+                      joint_schedule.blocks >= 1 && joint_schedule.blocks <= 2 &&
+                      plan.row_tile * plan.nbf * plan.auxiliary_tile >= plan.naux;
+  if (shared && ready)
+    launch_validate_device_occupied_kernel(
+        blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
   const JkTermSelection terms{true, !ready && !seed};
-  auto status = beta ? execute_cuda_density_fitting_uhf_jk_device(&plan, alpha, beta, plan.coulomb,
-                                                                  plan.alpha_exchange,
-                                                                  plan.beta_exchange, detail, terms)
-                     : execute_cuda_density_fitting_rhf_jk_device(
-                           &plan, alpha, plan.coulomb, plan.alpha_exchange, detail, terms);
+  vibeqc_status status = VIBEQC_STATUS_SUCCESS;
+  if (shared) {
+    status = build_shared_coulomb_occupied_exchange(plan, alpha, state.d_alpha_factor, joint_rank,
+                                                    seed ? 1 : 2, detail);
+  } else if (beta) {
+    status = execute_cuda_density_fitting_uhf_jk_device(
+        &plan, alpha, beta, plan.coulomb, plan.alpha_exchange, plan.beta_exchange, detail, terms);
+  } else {
+    status = execute_cuda_density_fitting_rhf_jk_device(&plan, alpha, plan.coulomb,
+                                                        plan.alpha_exchange, detail, terms);
+  }
   if (status != VIBEQC_STATUS_SUCCESS) return status;
   if (seed) {
     state.density_seed_used = true;
     state.density_seed_rank = seed_rank;
-    status = build_occupied_exchange(plan, 0, state.d_alpha_factor, seed_rank, true, 1,
-                                     plan.alpha_exchange, detail);
+    if (!shared)
+      status = build_occupied_exchange(plan, 0, state.d_alpha_factor, seed_rank, true, 1,
+                                       plan.alpha_exchange, detail);
     const char* verify = std::getenv("VIBEQC_DF_SEED_VERIFY");
     if (status != VIBEQC_STATUS_SUCCESS || !verify || std::string(verify) != "1") return status;
     // Intrusive qualification only: compute both K matrices for the identical
@@ -302,9 +350,11 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
                                 : cuda_failure(error, "restore candidate seed K", detail);
   }
   if (!ready) return status;
-  launch_validate_device_occupied_kernel(
-      blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
-      state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+  if (!shared)
+    launch_validate_device_occupied_kernel(
+        blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
+  if (shared) return status;
   for (std::size_t item = 0; item < plan.batch_size; ++item) {
     status = build_occupied_exchange(
         plan, item,

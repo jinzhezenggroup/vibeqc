@@ -17,12 +17,13 @@ from dataclasses import asdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash, outcome
 from vibeqc_compiler.integral.autotune import schedule_payload
 from vibeqc_compiler.integral.batch_benchmark import parse_ptxas_resources
 from vibeqc_compiler.integral.benchmark import emit_shell_class_resource_cuda
 from vibeqc_compiler.integral.capabilities import build_capability_report
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.ir import KernelConsumer
 from vibeqc_compiler.integral.ir_serialization import integral_to_payload
@@ -31,8 +32,6 @@ from vibeqc_compiler.integral.shell_spec import (
     FUSED_SHELL_SPEC_BY_NAME,
     FUSED_SHELL_SPECS,
 )
-
-from .schema import canonical_hash, file_hash, outcome
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "python/vibeqc_compiler/integral/production_shell_classes.json"
@@ -161,7 +160,7 @@ def catalog(
                     "records": [
                         {
                             "commit": "c0683c5b0a66b6330d16117ab8a4dd812956843b",
-                            "document": "docs/shell_codegen.md",
+                            "document": "docs/developer/shell_codegen.md",
                             "basis": "water/def2-TZVP",
                             "isolated_speedup": 2.27,
                             "endpoint_speedups": {

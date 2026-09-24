@@ -7,6 +7,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "dft/ao_grid.hpp"
@@ -24,6 +25,16 @@ extern "C" int grid_cuda_create_v1(int, int, int, const std::size_t*, const doub
 #endif
 
 namespace {
+// Canonical graph features include tau even for GGA. Lowering must preserve
+// the five-derivative GGA ABI while MGGA exposes all seven active derivatives.
+using namespace vibeqc::dft::generated;
+static_assert(std::extent_v<decltype(B3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(CamB3lypPolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(Pw91PolarizedValue::feature_derivative)> == 5);
+static_assert(std::extent_v<decltype(ScanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(R2scanPolarizedValue::feature_derivative)> == 7);
+static_assert(std::extent_v<decltype(Wb97mvPolarizedValue::feature_derivative)> == 7);
+
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
@@ -61,6 +72,55 @@ int main() {
     require(std::abs(vibeqc::dft::generated::kB3lypExactExchange - 0.2) < 1e-16,
             "B3LYP generated exact-exchange fraction disagrees with MethodIR");
 
+    const auto wb_point =
+        vibeqc::dft::generated::wb97mv_polarized(0.3, 0.2, 0.015, 0.003, 0.01, 0.08, 0.05);
+    const std::array<double, 8> wb_oracle{
+        -0.20814586702136345, -0.5948515352856814,  -0.5697576268765359, -0.01082457361721382, 0.0,
+        -0.01425699937015483, -0.05540206273456351, -0.05804981432341172};
+    require(std::abs(wb_point.energy_density - wb_oracle[0]) < 3e-12,
+            "omegaB97M-V semilocal scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 7; ++i)
+      require(std::abs(wb_point.feature_derivative[i] - wb_oracle[i + 1]) < 3e-11,
+              "omegaB97M-V semilocal derivative differs from pinned Libxc oracle");
+
+    const auto wb_tail = vibeqc::dft::generated::wb97mv_polarized(5e-11, 5e-11, 2.5e-31, 2.5e-31,
+                                                                  2.5e-31, 5e-13, 5e-13);
+    require(std::isfinite(wb_tail.energy_density),
+            "omegaB97M-V large-a production energy is nonfinite");
+    for (double derivative : wb_tail.feature_derivative)
+      require(std::isfinite(derivative), "omegaB97M-V large-a production derivative is nonfinite");
+
+    require(std::abs(vibeqc::dft::generated::kWb97mvDensityThreshold - 1.0e-13) < 1e-30 &&
+                std::abs(vibeqc::dft::generated::kWb97mvTauThreshold - 1.0e-20) < 1e-37 &&
+                std::abs(vibeqc::dft::generated::kWb97mvSmoothLrCutoff - 1.35) < 1e-15 &&
+                vibeqc::dft::generated::kWb97mvSmoothLrOrder == 16,
+            "omegaB97M-V generated work_mgga/smooth-LR policy changed");
+
+    const double wb_screened_rho[2]{4.0e-14, 5.0e-14};
+    const double wb_screened_gradient[2][3]{{1.0e-20, 0.0, 0.0}, {0.0, 1.0e-20, 0.0}};
+    const double wb_screened_tau[2]{1.0e-21, 2.0e-21};
+    const auto wb_screened =
+        vibeqc::dft::evaluate_wb97mv_point(wb_screened_rho, wb_screened_gradient, wb_screened_tau);
+    require(wb_screened.energy == 0.0 && wb_screened.rho[0] == 0.0 && wb_screened.rho[1] == 0.0,
+            "omegaB97M-V work_mgga total-density screen is not exact zero");
+
+    const double wb_minority_rho[2]{0.0, 1.0e-4};
+    const double wb_minority_gradient[2][3]{};
+    const double wb_minority_tau[2]{0.0, 1.0e-5};
+    const auto wb_minority =
+        vibeqc::dft::evaluate_wb97mv_point(wb_minority_rho, wb_minority_gradient, wb_minority_tau);
+    require(std::isfinite(wb_minority.energy) && std::isfinite(wb_minority.rho[0]) &&
+                std::isfinite(wb_minority.rho[1]),
+            "omegaB97M-V work_mgga spin-feature floors are nonfinite");
+
+    const double wb_vacuum_rho[2]{};
+    const double wb_vacuum_gradient[2][3]{};
+    const double wb_vacuum_tau[2]{};
+    const auto wb_vacuum =
+        vibeqc::dft::evaluate_wb97mv_point(wb_vacuum_rho, wb_vacuum_gradient, wb_vacuum_tau);
+    require(wb_vacuum.energy == 0.0 && wb_vacuum.rho[0] == 0.0 && wb_vacuum.rho[1] == 0.0 &&
+                wb_vacuum.kinetic[0] == 0.0 && wb_vacuum.kinetic[1] == 0.0,
+            "omegaB97M-V exact vacuum is not canonical zero");
     const auto pw91_point = vibeqc::dft::generated::pw91_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
     // Pinned independently with PySCF 2.14.0 / Libxc 7.0.0 PW91.
     const std::array<double, 6> pw91_oracle{-0.3282121838488419, -0.8954942661475697,
@@ -71,6 +131,18 @@ int main() {
     for (std::size_t i = 0; i < 5; ++i)
       require(std::abs(pw91_point.feature_derivative[i] - pw91_oracle[i + 1]) < 2e-13,
               "PW91 generic-GGA derivative differs from pinned Libxc oracle");
+
+    const auto scan_point =
+        vibeqc::dft::generated::scan_polarized(0.55, 0.25, 0.025, 0.006, 0.018, 0.3, 0.16);
+    // Sum of pinned independent Libxc 7.0.0 MGGA_X_SCAN + MGGA_C_SCAN bulk fixtures.
+    const std::array<double, 8> scan_oracle{
+        -0.6716431723099776,   -1.2121359952027473,   -0.975507137482233,  -0.00557843033514503,
+        0.0063013418044912395, -0.029931891669623255, 0.02202134320410421, 0.04542853626023215};
+    require(std::abs(scan_point.energy_density - scan_oracle[0]) < 2e-13,
+            "SCAN generic-MGGA scalar differs from pinned Libxc oracle");
+    for (std::size_t i = 0; i < 7; ++i)
+      require(std::abs(scan_point.feature_derivative[i] - scan_oracle[i + 1]) < 2e-13,
+              "SCAN generic-MGGA derivative differs from pinned Libxc oracle");
 
     std::ifstream xc_fixture(VIBEQC_SOURCE_DIR "/tests/data/xc/scf_domain.tsv");
     require(static_cast<bool>(xc_fixture), "missing independent XC SCF-domain fixture");
@@ -350,6 +422,72 @@ int main() {
         require(std::abs(pw91_uks.potential[spin][i] - pw91.potential[i]) < 2.0e-11,
                 "PW91 generic-GGA equal-spin UKS potential differs from RKS");
 
+    const auto r2scan =
+        vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, reference_density, 7);
+    require(std::isfinite(r2scan.energy) && r2scan.potential.size() == reference_density.size(),
+            "r2SCAN generic-semilo native integration is invalid on the audited grid");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      std::vector<double> plus = reference_density, minus = reference_density;
+      for (std::size_t i = 0; i < reference_density.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, plus, 7).energy -
+           vibeqc::dft::integrate_r2scan_rks(basis, cam_interior_grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i)
+        trace += r2scan.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 3.0e-6,
+              "r2SCAN generic-semilo potential violates delta E = Tr(V delta D)");
+    }
+    std::vector<double> r2scan_alpha(reference_density.size()),
+        r2scan_beta(reference_density.size());
+    for (std::size_t i = 0; i < reference_density.size(); ++i)
+      r2scan_alpha[i] = r2scan_beta[i] = 0.5 * reference_density[i];
+    const auto r2scan_uks =
+        vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, r2scan_alpha, r2scan_beta, 7);
+    require(std::abs(r2scan_uks.energy - r2scan.energy) < 2.0e-12,
+            "r2SCAN generic-semilo equal-spin UKS energy differs from RKS");
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < r2scan.potential.size(); ++i)
+        require(std::abs(r2scan_uks.potential[spin][i] - r2scan.potential[i]) < 2.0e-11,
+                "r2SCAN generic-semilo equal-spin UKS potential differs from RKS");
+    // Unequal spins exercise the independent vtau/2 channels and ragged AO tiles.
+    for (std::size_t i = 0; i < reference_density.size(); ++i) {
+      r2scan_alpha[i] = 0.7 * reference_density[i];
+      r2scan_beta[i] = 0.3 * reference_density[i];
+    }
+    const auto open_r2scan =
+        vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, r2scan_alpha, r2scan_beta, 3);
+    const auto whole_r2scan = vibeqc::dft::integrate_r2scan_uks(
+        basis, cam_interior_grid, r2scan_alpha, r2scan_beta, cam_interior_grid.point_count());
+    require(std::abs(open_r2scan.energy - whole_r2scan.energy) < 2.0e-13,
+            "r2SCAN semilocal energy depends on AO tile partition");
+    for (unsigned spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < reference_density.size(); ++i)
+        require(
+            std::abs(open_r2scan.potential[spin][i] - whole_r2scan.potential[spin][i]) < 2.0e-12,
+            "r2SCAN unequal-spin potential depends on AO tile partition");
+    for (double step : {1.0e-5, 3.0e-6}) {
+      auto ap = r2scan_alpha, am = r2scan_alpha, bp = r2scan_beta, bm = r2scan_beta;
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        ap[i] += step * direction[i];
+        am[i] -= step * direction[i];
+        bp[i] -= 0.4 * step * direction[i];
+        bm[i] += 0.4 * step * direction[i];
+        trace += (open_r2scan.potential[0][i] - 0.4 * open_r2scan.potential[1][i]) * direction[i];
+      }
+      const double difference =
+          (vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, ap, bp, 3).energy -
+           vibeqc::dft::integrate_r2scan_uks(basis, cam_interior_grid, am, bm, 3).energy) /
+          (2.0 * step);
+      require(std::isfinite(difference) && std::abs(difference - trace) < 3.0e-6,
+              "r2SCAN unequal-spin potential violates delta E = Tr(Va dDa + Vb dDb)");
+    }
+
     // A genuine unequal-spin perturbation must use both independent Vxc blocks.
     for (std::size_t i = 0; i < reference_density.size(); ++i) {
       pw91_alpha[i] = 0.7 * reference_density[i];
@@ -460,6 +598,34 @@ int main() {
       for (std::size_t i = 0; i < pbe.potential.size(); ++i)
         require(std::abs(pbe_uks.potential[spin][i] - pbe.potential[i]) < 2.0e-11,
                 "polarized PBE equal-spin potential differs from RKS");
+    const auto wb_rks = vibeqc::dft::integrate_wb97mv_rks(basis, grid, density, 7);
+    const auto wb_uks =
+        vibeqc::dft::integrate_wb97mv_uks(basis, grid, alpha_density, beta_density, 7);
+    require(std::isfinite(wb_rks.energy) && std::isfinite(wb_uks.energy) &&
+                std::abs(wb_uks.energy - wb_rks.energy) < 2.0e-11,
+            "omegaB97M-V equal-spin RKS/UKS semilocal energies disagree");
+    for (std::size_t spin = 0; spin < 2; ++spin)
+      for (std::size_t i = 0; i < wb_rks.potential.size(); ++i)
+        require(std::abs(wb_uks.potential[spin][i] - wb_rks.potential[i]) < 3.0e-10,
+                "omegaB97M-V equal-spin RKS/UKS semilocal potentials disagree");
+    {
+      constexpr double step = 3.0e-6;
+      auto plus = density, minus = density;
+      for (std::size_t i = 0; i < direction.size(); ++i) {
+        plus[i] += step * direction[i];
+        minus[i] -= step * direction[i];
+      }
+      const double finite_difference =
+          (vibeqc::dft::integrate_wb97mv_rks(basis, grid, plus, 7).energy -
+           vibeqc::dft::integrate_wb97mv_rks(basis, grid, minus, 7).energy) /
+          (2.0 * step);
+      double trace = 0.0;
+      for (std::size_t i = 0; i < direction.size(); ++i)
+        trace += wb_rks.potential[i] * direction[i];
+      require(std::abs(finite_difference - trace) < 4.0e-6,
+              "omegaB97M-V semilocal potential violates delta E = Tr(V delta D)");
+    }
+
     for (std::size_t spin = 0; spin < 2; ++spin) {
       for (double step : {1.0e-5, 3.0e-6}) {
         auto plus_alpha = alpha_density, minus_alpha = alpha_density;

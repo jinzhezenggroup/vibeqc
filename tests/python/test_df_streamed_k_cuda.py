@@ -55,6 +55,8 @@ def fixed_density_probe(tmp_path_factory: typing.Any) -> typing.Any:
     [
         (8192, 96, 2, 96, False),
         (3552, 13, 20, 24, False),
+        (5760, 13, 12, 32, False),
+        (9216, 13, 8, 48, False),
         (9216, 5, 0, 0, True),
         (9216, 1, 0, 0, True),
     ],
@@ -106,19 +108,22 @@ def test_streamed_raw_reuse_matches_independent_jk(
         assert record["streamed"] != retained
         source_elements = 96**3 * passes
         if not retained and record["operation"] == "ri_k_occupied":
-            # All-Q occupied projections need one block (96 rows) or four
-            # 24-row blocks. Full K rereads each row four times; triangular
-            # K needs 24*(4+3+2+1) generated rows, including diagonal reuse.
+            # Count output-row loads and earlier non-adjacent prefixes. The
+            # immediately preceding row stays live in the other slot. The
+            # 32-row fixture fits 39 rows, but balanced blocks read fewer values.
             blocks = 96 // occupied_rows
-            generated_rows = (
-                occupied_rows * blocks * (blocks + 1) // 2
-                if exchange == "auto"
-                else 96 * blocks
-            )
+            generated_rows = 96
+            for row in range(blocks):
+                for column in range(row if exchange == "auto" else blocks):
+                    if column != row and not (exchange == "auto" and column + 1 == row):
+                        generated_rows += occupied_rows
             source_elements = generated_rows * 96 * 96
             assert counts["streamed_occupied_source_first"] == 1
             assert counts["streamed_occupied_raw_generation_rows"] == generated_rows
             assert counts["streamed_occupied_row_blocks"] == blocks
+            assert counts["occupied_panel_cache_hits"] == (
+                2 * blocks - 1 if exchange == "auto" else blocks
+            )
             assert counts["streamed_occupied_retained_projection_capacity_bytes"] == (
                 2 * occupied_rows * 20 * 96 * 8
             )

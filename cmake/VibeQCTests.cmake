@@ -23,6 +23,10 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_mean_field_setup_cuda_tests tests/native/test_mean_field_setup_cuda.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_cuda_quadrature_tests tests/native/test_cuda_quadrature.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_xc_response_cuda_tests tests/native/test_xc_response_cuda.cu
                        NO_VIBEQC LIBRARIES CUDA::cudart SKIP_77)
     target_compile_definitions(vibeqc_xc_response_cuda_tests PRIVATE
@@ -97,6 +101,7 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_basis_contract_tests tests/native/test_basis_contract.cpp)
   vibeqc_native_test(vibeqc_grid_tests tests/native/test_grid.cpp)
   vibeqc_native_test(vibeqc_runtime_workspace_tests tests/native/test_runtime_workspace.cpp NO_VIBEQC)
+  vibeqc_native_test(vibeqc_execution_context_tests tests/native/test_execution_context.cpp)
   vibeqc_native_test(vibeqc_cpu_linalg_tests tests/native/test_cpu_linalg.cpp)
   add_executable(vibeqc_cpu_linalg_probe benchmarks/cpu_linalg_probe.cpp)
   target_link_libraries(vibeqc_cpu_linalg_probe PRIVATE vibeqc)
@@ -247,6 +252,8 @@ macro(vibeqc_add_native_tests)
     target_link_libraries(vibeqc_dft_cuda_tests PRIVATE CUDA::cudart CUDA::cublas)
     set_target_properties(vibeqc_dft_cuda_tests PROPERTIES CUDA_STANDARD 20)
     add_test(NAME vibeqc_dft_cuda_tests COMMAND vibeqc_dft_cuda_tests)
+    add_test(NAME vibeqc_dft_cuda_matrix_tests COMMAND vibeqc_dft_cuda_tests --matrix-schedule)
+    set_tests_properties(vibeqc_dft_cuda_matrix_tests PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
     vibeqc_native_test(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
@@ -293,6 +300,9 @@ macro(vibeqc_add_native_tests)
   vibeqc_native_test(vibeqc_scf_diagnostic_tests tests/native/test_scf_diagnostic.cpp)
   vibeqc_native_test(vibeqc_dft_density_source_tests tests/native/test_dft_density_source.cpp)
   vibeqc_native_test(vibeqc_uks_tests tests/native/test_uks.cpp)
+  if(NOT WIN32)
+    vibeqc_native_test(vibeqc_wb97mv_scf_tests tests/native/test_wb97mv_scf.cpp)
+  endif()
   vibeqc_native_test(vibeqc_mixed_precision_tests tests/native/test_mixed_precision.cpp)
   vibeqc_native_test(vibeqc_precision_policy_tests tests/native/test_precision_policy.cpp)
 
@@ -314,6 +324,8 @@ macro(vibeqc_add_native_tests)
     vibeqc_native_test(vibeqc_df_shell_pairs_tests tests/native/test_df_shell_pairs.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_cuda_fock_provider_tests tests/native/test_cuda_fock_provider.cpp
+                       LIBRARIES CUDA::cudart)
+    vibeqc_native_test(vibeqc_cuda_stream_eigensolver_tests tests/native/test_cuda_stream_eigensolver.cpp
                        LIBRARIES CUDA::cudart)
     vibeqc_native_test(vibeqc_ecp_cuda_error_tests tests/native/test_ecp_cuda_errors.cpp
                        LIBRARIES CUDA::cudart SKIP_77)

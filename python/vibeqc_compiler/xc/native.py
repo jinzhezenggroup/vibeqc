@@ -90,7 +90,7 @@ def _packed_scalar_layout(program: typing.Any) -> tuple[tuple[int, ...], int] | 
 def _packed_coefficient_reference(name: str) -> str:
     """Address one generated coefficient leaf in producer-owned dense buffers."""
     if name.startswith("v") and name[1:].isdigit():
-        return f"feature_gradient[{int(name[1:])} * npoint + point]"
+        return f"feature_{int(name[1:])}"
     if name.startswith("g") and "_" in name:
         spin, axis = name[1:].split("_", 1)
         if spin.isdigit() and axis.isdigit():
@@ -117,7 +117,7 @@ def emit_native(program: typing.Any) -> typing.Any:
             program.jet_pullback.roots,
         )
     lines = [
-        "// Generated XC roots; scalar functional provenance: external/libxc-7.0.0.",
+        "// Generated XC roots; scalar functional provenance: manifests/libxc/7.0.0.",
         "#include <cmath>",
         "#include <cstddef>",
         "#include <cstdint>",
@@ -197,6 +197,13 @@ def emit_native(program: typing.Any) -> typing.Any:
 
         graph, roots = program.coefficients.graph, program.coefficients.roots
         variables = _variables(graph, roots)
+        feature_indices = tuple(
+            sorted(
+                int(key[1:])
+                for key in variables
+                if key.startswith("v") and key[1:].isdigit()
+            )
+        )
         emitter = ScalarCEmitter(
             graph, {key: _packed_coefficient_reference(key) for key in variables}
         )
@@ -211,6 +218,10 @@ def emit_native(program: typing.Any) -> typing.Any:
                 "  if (!npoint) return 0;",
                 "  if (!feature_gradient || !output || (density_count && !density_gradient)) return -1;",
                 "  for (size_t point = 0; point < npoint; ++point) {",
+                *(
+                    f"    const double feature_{index} = feature_gradient[{index} * npoint + point];"
+                    for index in feature_indices
+                ),
                 *emitter.lines,
             ]
         )
@@ -304,9 +315,16 @@ class _PackedFeatureGradient(np.ndarray):
 class _NativeScalarRows(dict):
     """Logical scalar roots backed by one producer-owned physical row matrix."""
 
-    def __init__(self, values: typing.Any, feature_gradient: np.ndarray) -> None:
+    def __init__(
+        self,
+        values: typing.Any,
+        physical_rows: np.ndarray,
+        *,
+        donate_coefficients: bool,
+    ) -> None:
         super().__init__(values)
-        self.feature_gradient = feature_gradient.view(_PackedFeatureGradient)
+        self.feature_gradient = physical_rows[1:].view(_PackedFeatureGradient)
+        self.coefficient_output_owner = physical_rows if donate_coefficients else None
 
 
 class _PackedCoefficientFunction:
@@ -328,7 +346,13 @@ class _PackedCoefficientFunction:
         ]
         self.function.restype = ct.c_int
 
-    def evaluate(self, gradient: typing.Any, v: typing.Any) -> typing.Any:
+    def evaluate(
+        self,
+        gradient: typing.Any,
+        v: typing.Any,
+        *,
+        output_owner: np.ndarray | None = None,
+    ) -> typing.Any:
         if (
             not isinstance(v, _PackedFeatureGradient)
             or v.dtype != np.float64
@@ -353,7 +377,21 @@ class _PackedCoefficientFunction:
                 raise ValueError("invalid packed density-gradient owner")
         elif gradient is not None:
             raise ValueError("LDA packed coefficients do not accept density gradients")
-        output = np.empty((self.outputs, npoint))
+        if output_owner is None:
+            output = np.empty((self.outputs, npoint))
+        else:
+            output = np.asarray(output_owner)
+            if (
+                self.outputs != self.feature_rows + 1
+                or output.dtype != np.float64
+                or output.shape != (self.outputs, npoint)
+                or not output.flags.c_contiguous
+                or not output.flags.writeable
+                or (npoint != 0 and not np.shares_memory(output, v))
+                or v.ctypes.data != output.ctypes.data + output.strides[0]
+                or (density is not None and np.shares_memory(output, density))
+            ):
+                raise ValueError("invalid packed XC coefficient donation owner")
         null = ct.POINTER(ct.c_double)()
         code = self.function(
             v.ctypes.data_as(ct.POINTER(ct.c_double)),
@@ -392,6 +430,7 @@ class _NativeCoefficients:
         *,
         delta_gradient: typing.Any = None,
         delta_v: typing.Any = None,
+        output_owner: np.ndarray | None = None,
     ) -> typing.Any:
         if isinstance(v, _PackedFeatureGradient):
             if delta_gradient is not None or delta_v is not None:
@@ -400,8 +439,12 @@ class _NativeCoefficients:
                 )
             if self.packed_function is None:
                 raise ValueError("packed coefficient function is unavailable")
-            values = self.packed_function.evaluate(gradient, v)
-            return self.program.unpack(values, v.shape[1])
+            values = self.packed_function.evaluate(
+                gradient, v, output_owner=output_owner
+            )
+            return self.program.unpack_views(values, v.shape[1])
+        if output_owner is not None:
+            raise ValueError("coefficient donation requires the packed native path")
         variables, npoint = self.program.bind(
             gradient, v, delta_gradient=delta_gradient, delta_v=delta_v
         )
@@ -500,8 +543,12 @@ class NativeContractionProgram(ContractionProgram):
             result[:, active] = self._scalar.evaluate(variables, int(active.sum()))
         return dict(zip(self.program.outputs, result, strict=True))
 
-    def scalar_values_packed(self, features: typing.Any) -> typing.Any:
+    def scalar_values_packed(
+        self, features: typing.Any, *, donate_coefficients: bool = False
+    ) -> typing.Any:
         """Consume ProgramIR-owned polarized features with no hidden materialization."""
+        if type(donate_coefficients) is not bool:
+            raise TypeError("coefficient donation selection must be boolean")
         if self.spec.spin != "polarized":
             raise ValueError(
                 "packed native scalar input currently requires polarized XC"
@@ -523,4 +570,14 @@ class NativeContractionProgram(ContractionProgram):
             output: raw[row]
             for output, row in zip(self.program.outputs, root_rows, strict=True)
         }
-        return _NativeScalarRows(values, raw[1:])
+        packed_coefficients = getattr(self.coefficients, "packed_function", None)
+        donation_compatible = (
+            packed_coefficients is not None
+            and packed_coefficients.outputs == raw.shape[0]
+            and packed_coefficients.feature_rows + 1 == raw.shape[0]
+        )
+        if donate_coefficients and not donation_compatible:
+            raise ValueError(
+                "packed XC coefficient donation is incompatible with layout"
+            )
+        return _NativeScalarRows(values, raw, donate_coefficients=donate_coefficients)

@@ -1,6 +1,6 @@
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Fail-closed Libxc Maple importer for compiler-side XC experiments.
 
 This module intentionally implements only a small expression subset. It is a
@@ -34,7 +34,7 @@ class MapleImportError(ValueError):
     """The pinned Maple source uses syntax outside the qualified importer."""
 
 
-IMPORTER_SEMANTICS = "libxc-maple-graph/v10"
+IMPORTER_SEMANTICS = "libxc-maple-graph/v11"
 # Whitespace-normalized helper definitions from pinned Libxc 7.0.0 attenuation.mpl.
 _ERF_SMOOTHING_HELPERS = (
     "attenuation_erf0",
@@ -1499,6 +1499,13 @@ class _Evaluator:
             term1 = self._lda_x_spin(rs_expr, -z_expr) * self.call(
                 function.name, (self._as_expr(xs1),)
             )
+            if "p_a_dens_threshold" in self.bindings:
+                term0 = self._select_condition(
+                    self._intrinsic("screen_dens", (rs_expr, z_expr)), 0, term0
+                )
+                term1 = self._select_condition(
+                    self._intrinsic("screen_dens", (rs_expr, -z_expr)), 0, term1
+                )
             return term0 + term1
         if name == "mgga_exchange":
             if len(arguments) != 9 or not isinstance(arguments[0], _FunctionRef):
@@ -1524,6 +1531,13 @@ class _Evaluator:
                     self._as_expr(t1),
                 ),
             )
+            if "p_a_dens_threshold" in self.bindings:
+                term0 = self._select_condition(
+                    self._intrinsic("screen_dens", (rs_expr, z_expr)), 0, term0
+                )
+                term1 = self._select_condition(
+                    self._intrinsic("screen_dens", (rs_expr, -z_expr)), 0, term1
+                )
             return term0 + term1
         if len(arguments) != 1:
             raise MapleImportError(f"{name} requires one scalar argument")

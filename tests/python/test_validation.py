@@ -9,6 +9,18 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.evidence import (
+    GATES,
+    attach_artifact,
+    block_error,
+    canonical_hash,
+    finite_difference,
+    new_evidence,
+    outcome,
+    validate_evidence,
+    write_evidence,
+)
+from vibeqc_compiler.common.performance import assess_comparison, measure_interleaved
 
 from tools.vibeqc_validation.capabilities import capability_table
 from tools.vibeqc_validation.fixtures import (
@@ -21,18 +33,6 @@ from tools.vibeqc_validation.fixtures import (
     validate_fixture,
 )
 from tools.vibeqc_validation.integrals import evaluate_quartet
-from tools.vibeqc_validation.performance import assess_comparison, measure_interleaved
-from tools.vibeqc_validation.schema import (
-    GATES,
-    attach_artifact,
-    block_error,
-    canonical_hash,
-    finite_difference,
-    new_evidence,
-    outcome,
-    validate_evidence,
-    write_evidence,
-)
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = load_fixtures()

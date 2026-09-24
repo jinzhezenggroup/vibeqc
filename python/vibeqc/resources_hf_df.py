@@ -10,7 +10,12 @@ import os
 import typing
 from dataclasses import asdict
 
-from .resources import ResourceCandidate, ResourceEstimate, checked_bytes
+from vibeqc_compiler.common.resources import (
+    ResourceCandidate,
+    ResourceEstimate,
+    checked_bytes,
+)
+
 from .resources_df import (
     density_fitting_diis_bytes,
     density_fitting_source_bytes,

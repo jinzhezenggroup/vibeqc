@@ -228,46 +228,6 @@ def _identity_constant(
     return constant(values, spec)
 
 
-def _incidence_constant(
-    axis: Index,
-    bar_axis: Index,
-    positions: typing.Any,
-    dtype: str,
-    representation: str,
-    *,
-    max_elements: int,
-) -> Node:
-    """Exact gather/scatter incidence matrix for one logical axis."""
-    rows, columns = axis.extent, bar_axis.extent
-    if columns != len(positions):
-        raise ValueError("incidence columns must match the gathered/sliced extent")
-    if rows * columns > max_elements:
-        raise ValueError(
-            "demand-driven VJP incidence matrix exceeds the configured "
-            "element budget; use the CPU interpreter reference"
-        )
-    row = Index("incidence_row", axis.space, axis.start, axis.stop, axis.selection)
-    column = Index(
-        "incidence_col",
-        bar_axis.space,
-        bar_axis.start,
-        bar_axis.stop,
-        bar_axis.selection,
-    )
-    spec = TensorSpec(
-        (row, column),
-        dtype=dtype,
-        representation=representation,
-        role="constant",
-    )
-    values = tuple(
-        1 if row_index == positions[column_index] else 0
-        for row_index in range(rows)
-        for column_index in range(columns)
-    )
-    return constant(values, spec)
-
-
 def _transcendental_partial(node: Node, weight: Node) -> Node:
     """Generate weighted partials while retaining the original error boundary."""
     x = node.inputs[0]
@@ -479,39 +439,6 @@ def _vjp_einsum(
             )
         )
     return contributions
-
-
-def _embed_axis(
-    bar: Node,
-    axis: int,
-    input_axis: Index,
-    positions: typing.Any,
-    dtype: str,
-    *,
-    max_elements: int,
-) -> Node:
-    """Adjoint of one-axis gather/slice: scatter-add through incidence."""
-    incidence = _incidence_constant(
-        input_axis,
-        bar.spec.indices[axis],
-        positions,
-        dtype,
-        bar.spec.representation,
-        max_elements=max_elements,
-    )
-    bar_labels = list(range(len(bar.spec.indices)))
-    gathered_label = bar_labels[axis]
-    row_label = len(bar_labels)
-    output_labels = list(bar_labels)
-    output_labels[axis] = row_label
-    return einsum(
-        _equation(
-            [tuple(bar_labels), (row_label, gathered_label)],
-            tuple(output_labels),
-        ),
-        bar,
-        incidence,
-    )
 
 
 def _slice_vjp_node(node: Node, bar: Node, *, max_elements: int) -> Node:

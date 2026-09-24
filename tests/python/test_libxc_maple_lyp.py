@@ -19,7 +19,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 MANIFEST = json.loads((LIBXC_MANIFEST_ROOT / "rsh-manifest.json").read_text())
 FIXTURE = json.loads((ROOT / "tests/data/xc/lyp-hessian.json").read_text())
 POLARIZED_FEATURES = (

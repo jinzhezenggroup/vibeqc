@@ -1,0 +1,67 @@
+{
+  "schema": "vibeqc.issue949-matched-768.v1",
+  "scope": "same-H100 complete energy-plus-force response-algebra ablation; no charge-only causal claim",
+  "native_build_source": "fbd0601a183e02c013cc8f83e087bf7de70f486c",
+  "seven_pair_runner_source": "0719d807e679b363179dc5145da6c24d4e8668f8",
+  "native_source_identity": "f5039d1cfb22464b9bae812bb90b4d1cc55e91861c99305e3f95a93a18a22274",
+  "native_library_sha256": "fbebb4739eec1bca68213151a359c29965fac48f3d69fcf113ade0d3708ca8cd",
+  "source_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "warm_checkpoint_sha256": "cb2db0cee95ebebe0827cc25a0f4f2226490012d77274dd75beff26331e8c347",
+  "retained_cpu_oracle_receipt_sha256": "1283f06bec2a4422f1ab6b60c0c9fe8a1d291d8afb5e1ae603ca635a19ff222d",
+  "environment": {
+    "workspace": "分布式训练空间",
+    "project": "原子级化学反应基座模型2.0",
+    "compute_group": "开发区-H100-cuda13.2版本-119核",
+    "quota": "1,10,200",
+    "image": "pytorch:25.06-py3:25.06",
+    "cuda_toolkit": "12.9.86",
+    "gpu": "NVIDIA H100 80GB HBM3, compute capability 9.0",
+    "requested_priority": 4,
+    "observed_priority": 20,
+    "observed_priority_level": "NORMAL",
+    "points_per_instance_hour_at_submission": 1
+  },
+  "jobs": [
+    {
+      "name": "vibeqc-949-measure-fbd0601a-20260923",
+      "status": "FAILED",
+      "exit_code": 1,
+      "reason": "historical six-update expectation rejected the current-source three-update BLAS sample"
+    },
+    {
+      "name": "vibeqc-949-matched3-6a29cb49-20260923",
+      "status": "SUCCEEDED",
+      "exit_code": 0,
+      "scope": "one complete matched pair"
+    },
+    {
+      "name": "vibeqc-949-seven-0719d807-20260923",
+      "status": "SUCCEEDED",
+      "exit_code": 0,
+      "scope": "seven interleaved clean pairs and separate intrusive diagnostics"
+    }
+  ],
+  "archives": [
+    {
+      "path": "pilot-six-update-rejected.json.gz",
+      "bytes": 9324,
+      "sha256": "4311e576b8e80a6755fa06934cfe6b413b69884b70c85a5b32a29c751f3f20f0",
+      "decoded_bytes": 81656,
+      "decoded_sha256": "ffa223ba44a25af7cef1baf3e32c0e79a933e792149d3050fa3d060129bcae1a"
+    },
+    {
+      "path": "matched-one-pair.json.gz",
+      "bytes": 11916,
+      "sha256": "3b202c4326b3a0690bf3da801d306316fa659941c385fe1e424af7723e10d63e",
+      "decoded_bytes": 99184,
+      "decoded_sha256": "02f73a0497b7cd16919c8f0a3daa83e9055a2a3e85978d6502fb2451cfe7167d"
+    },
+    {
+      "path": "matched-seven.json.gz",
+      "bytes": 51302,
+      "sha256": "1e39dd3b1a0471c93ab5283afdf2d9038e378def46a5f27181eba66dbffc72b0",
+      "decoded_bytes": 555128,
+      "decoded_sha256": "6927684f1be2dac90d4aa185c2216df9b4131d77b81a71e834a1e071ef8bd5ed"
+    }
+  ]
+}

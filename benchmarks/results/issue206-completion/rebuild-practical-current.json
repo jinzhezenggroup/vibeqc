@@ -1,0 +1,96 @@
+{
+  "schema": "vibeqc.issue206.rebuild-practical-current",
+  "version": 1,
+  "status": "warm-pass-changed-geometry-gate-open",
+  "source_identity": "47d4c417aaa8f3ecaf61e62d96f9c0c54b5900cb20d99938abccac764d68dff3",
+  "library_sha256": "8d40c060e65dd0f3bb78209149e91de7da2b68f85ed16d349c58650b0365ad65",
+  "hardware": {
+    "name": "NVIDIA GeForce RTX 5090",
+    "official_profile": "sm_120",
+    "driver_version": 12080,
+    "toolkit_version": 12090
+  },
+  "packages": {
+    "gpu4pyscf-cuda12x": "1.8.1",
+    "pyscf": "2.14.0",
+    "cupy-cuda12x": "14.2.0",
+    "numpy": "2.5.2"
+  },
+  "protocol": {
+    "repeats": 5,
+    "warm_policy": "fixed post-cold engine-local density snapshot with one untimed original-geometry prime",
+    "changed_policy": "restore original geometry and prime outside each changed timer; time geometry reset, SCF and complete forces",
+    "endpoint_boundary": "synchronized host energies and complete host forces",
+    "force_gate_hartree_per_bohr": 3e-11
+  },
+  "cases": [
+    {
+      "case": "water-tetramer-def2-svp-spherical",
+      "method": "rhf",
+      "ao": 96,
+      "naux": 464,
+      "effective_rank": 464,
+      "condition_number": 5434793.529461506,
+      "peak_device_bytes": 195303979,
+      "peak_host_bytes": 38170638,
+      "cold_seconds": {"vibeqc": 0.5460105799138546, "gpu4pyscf": 12.862076358869672},
+      "warm": {
+        "vibeqc_samples_seconds": [0.08802142925560474, 0.08797205425798893, 0.08800910599529743, 0.0879661925137043, 0.08794862776994705],
+        "gpu4pyscf_samples_seconds": [0.25657857954502106, 0.2564900480210781, 0.25629599764943123, 0.25628370605409145, 0.2565072923898697],
+        "vibeqc_median_seconds": 0.08797205425798893,
+        "gpu4pyscf_median_seconds": 0.2564900480210781,
+        "maximum_energy_error_hartree": 2.6716406864579767e-12,
+        "maximum_force_error_hartree_per_bohr": 1.745403821473701e-11,
+        "iterations": {"vibeqc": [2, 2, 2, 2, 2], "gpu4pyscf": [1, 1, 1, 1, 1]},
+        "gate_passed": true
+      },
+      "changed": {
+        "displacement_bohr": 0.001,
+        "vibeqc_samples_seconds": [0.2905409839004278, 0.2906507570296526, 0.2910508718341589, 0.2915106527507305, 0.2921126037836075],
+        "gpu4pyscf_samples_seconds": [0.5986559446901083, 0.5990691054612398, 0.598557798191905, 0.5995259322226048, 0.5994534194469452],
+        "vibeqc_median_seconds": 0.2910508718341589,
+        "gpu4pyscf_median_seconds": 0.5990691054612398,
+        "maximum_energy_error_hartree": 3.979039320256561e-12,
+        "maximum_force_error_hartree_per_bohr": 3.0602187450767815e-11,
+        "iterations": {"vibeqc": [11, 11, 11, 11, 11], "gpu4pyscf": [39, 39, 39, 39, 39]},
+        "gate_passed": false
+      },
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-practical-r1/water-tetramer-def2-svp-spherical.json",
+      "raw_artifact_sha256": "f6d199eed707d975da40d430dc52ec2e72a4e4e19f2e8f7300db95cb9c480bd2"
+    },
+    {
+      "case": "oh-def2-svp-spherical-uhf",
+      "method": "uhf",
+      "ao": 19,
+      "naux": 93,
+      "effective_rank": 93,
+      "condition_number": 1696091.2373200064,
+      "peak_device_bytes": 5279855,
+      "peak_host_bytes": 1436878,
+      "cold_seconds": {"vibeqc": 0.24875516444444656, "gpu4pyscf": 12.758378595113754},
+      "warm": {
+        "vibeqc_samples_seconds": [0.019564945250749588, 0.019581366330385208, 0.019723517820239067, 0.019603468477725983, 0.01968510076403618],
+        "gpu4pyscf_samples_seconds": [0.1959379706531763, 0.19551061280071735, 0.19581852108240128, 0.19534831121563911, 0.1956309750676155],
+        "vibeqc_median_seconds": 0.019603468477725983,
+        "gpu4pyscf_median_seconds": 0.1956309750676155,
+        "maximum_energy_error_hartree": 8.242295734817162e-13,
+        "maximum_force_error_hartree_per_bohr": 4.419131727217973e-12,
+        "iterations": {"vibeqc": [2, 2, 2, 2, 2], "gpu4pyscf": [1, 1, 1, 1, 1]},
+        "gate_passed": true
+      },
+      "changed": {
+        "displacement_bohr": 0.001,
+        "vibeqc_samples_seconds": [0.044877395033836365, 0.0441944170743227, 0.04436829872429371, 0.044300882145762444, 0.04417495056986809],
+        "gpu4pyscf_samples_seconds": [0.5708401370793581, 0.5703646074980497, 0.5703658666461706, 0.5701758563518524, 0.5706970933824778],
+        "vibeqc_median_seconds": 0.044300882145762444,
+        "gpu4pyscf_median_seconds": 0.5703658666461706,
+        "maximum_energy_error_hartree": 1.0658141036401503e-12,
+        "maximum_force_error_hartree_per_bohr": 3.296982905723993e-11,
+        "iterations": {"vibeqc": [13, 13, 13, 13, 13], "gpu4pyscf": [64, 64, 64, 64, 64]},
+        "gate_passed": false
+      },
+      "raw_artifact": "/home/lhshen/vibeqc-206-run/.artifacts/issue206-completion/rebuild-practical-r1/oh-def2-svp-spherical-uhf.json",
+      "raw_artifact_sha256": "a63bcc208f659501acc6264f081e9f4d4966c33c8c2b913a47299e7b8d4e61c6"
+    }
+  ]
+}

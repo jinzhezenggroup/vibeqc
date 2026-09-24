@@ -60,9 +60,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cpu-v2-${{ matrix.compiler }}-
             ccache-cpu-${{ matrix.compiler }}-
+      - name: Reset ccache statistics
+        run: ccache --zero-stats
       - name: Configure
         env:
           CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
@@ -177,8 +180,9 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**') }}
+          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cuda-v2-12.9-sm120-
             ccache-cuda-12.9-sm120-
       - name: Reset ccache statistics
         run: ccache --zero-stats
@@ -240,10 +244,24 @@ jobs:
           python3 tools/validate_xc.py --tier cuda-compile
           --functionals PBE --nvcc "$CUDACXX"
           --cache build/xc-cache --output build/xc-compile
+      - name: Restore stationary CUDA compile cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/stationary-cuda-compile
+          key: stationary-cuda-12.9-sm120-${{ hashFiles('python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/integral/**', 'python/vibeqc_compiler/method/**', 'python/vibeqc_compiler/tensor/**', 'tools/validate_stationary_cuda_compile.py') }}
+          restore-keys: |
+            stationary-cuda-12.9-sm120-
       - name: Compile generated r2SCAN stationary CUDA consumer
         run: >-
           python3 tools/validate_stationary_cuda_compile.py
           --nvcc "$CUDACXX" --cache build/stationary-cuda-compile
+      - name: Restore TensorIR CUDA compile cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build/tensor-static-cuda-compile
+          key: tensor-static-cuda-12.9-sm120-${{ hashFiles('python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/tensor/**', 'tools/validate_tensor_cuda_compile.py') }}
+          restore-keys: |
+            tensor-static-cuda-12.9-sm120-
       - name: Compile generated TensorIR static-data artifacts
         run: >-
           PYTHONPATH=python python3 tools/validate_tensor_cuda_compile.py
@@ -309,9 +327,12 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml') }}
+          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-python-v2-
             ccache-python-
+      - name: Reset ccache statistics
+        run: ccache --zero-stats
       - name: Prepare GFN2 CPU linear algebra runtime
         run: |
           uv venv --python 3.11 .venv-gfn2-build
@@ -328,13 +349,13 @@ jobs:
           print(matches[0])
           PY_INNER
           )"
-          echo "XTBLOOM_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
+          echo "VIBEQC_XTB_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
       - name: Build the CPU native library
         run: |
           cmake -S . -B build -G Ninja \
             -DVIBEQC_ENABLE_CUDA=OFF \
             -DVIBEQC_BUILD_TESTS=OFF \
-            -DXTBLOOM_CPU_LINALG_LIBRARY="$XTBLOOM_CPU_LINALG_LIBRARY" \
+            -DVIBEQC_XTB_CPU_LINALG_LIBRARY="$VIBEQC_XTB_CPU_LINALG_LIBRARY" \
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build --parallel
@@ -369,6 +390,12 @@ jobs:
             extra_args+=(
               --deselect
               'tests/python/test_mp2_gradient.py::test_dense_complete_gradient_matches_fully_resolved_finite_differences[water]'
+              # The complete 55-class capability report performs bounded source
+              # emission for every recurrence/schedule combination and costs
+              # several minutes by itself. Focused capability/emitter tests stay
+              # routine; retain the exhaustive catalog sweep nightly/manual.
+              --deselect
+              'tests/python/test_codegen.py::test_codegen_capability_report_covers_catalog_and_manifest'
               --deselect
               'tests/python/test_ecp_f.py::test_f_prepared_replay_with_planned_budget[cpu]'
               --deselect
@@ -392,6 +419,12 @@ jobs:
               # finite differences and larger-molecule independent references.
               # H2/small-contract coverage stays routine; broad endpoint replay
               # belongs to scheduled/manual qualification.
+              # The NH3 complete RCCSD(T) analytic-gradient endpoint is a
+              # separate ~4.7 minute native solve on hosted runners. H2O stays
+              # routine and is shared by the component/response checks through
+              # the module cache; keep NH3 for scheduled/manual qualification.
+              --deselect
+              'tests/python/test_ccsd_t_complete_gradient.py::test_complete_ccsdt_gradient_matches_pinned_pyscf[nh3]'
               --deselect
               'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[ch4]'
               --deselect
@@ -463,13 +496,19 @@ jobs:
               'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[lda-uks-tight]'
               --deselect
               'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
-              # Full reconverged SPD ECP finite differences each cost about
-              # nine minutes on hosted runners. Keep the lighter complete
-              # ECP force contracts on every PR and the exhaustive pair nightly.
+              # Closed-shell SPD ECP reconverged finite differences are
+              # qualification-scale on hosted runners. Recent PBE cases alone
+              # take ~6.5 minutes each; LDA was already kept off the routine
+              # path for the same reason. Routine CI retains the lighter
+              # complete/budgeted ECP force contracts and UKS coverage.
               --deselect
               'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
               --deselect
               'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
@@ -497,6 +536,8 @@ jobs:
             tests/python/test_hessian_directional.py
             tests/python/test_response_operator.py
             tests/python/test_codegen.py
+            tests/python/test_codegen_autotune.py
+            tests/python/test_codegen_profiles.py
             tests/python/test_d3_geometry_ir.py
             tests/python/test_d3_generated_ragged.py
             tests/python/test_high_angular.py
@@ -593,6 +634,8 @@ jobs:
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
+                tests/python/test_codegen_autotune.py
+                tests/python/test_codegen_profiles.py
                 tests/python/test_d3_geometry_ir.py
                 tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py
@@ -631,7 +674,9 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    if: github.event_name != 'schedule'
+    # Correctness gates already run on every PR. Keep CodSpeed on master/manual
+    # qualification so performance telemetry does not consume PR runner slots.
+    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -665,9 +710,12 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-benchmark-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**') }}
+          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
           restore-keys: |
+            ccache-cpu-benchmark-v2-
             ccache-cpu-benchmark-
+      - name: Reset CPU benchmark ccache statistics
+        run: ccache --zero-stats
       - name: Build CPU benchmark library
         run: |
           cmake -S . -B build-benchmark -G Ninja \
@@ -676,6 +724,8 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVIBEQC_COMPILER_CACHE=ccache
           cmake --build build-benchmark --target vibeqc --parallel
+      - name: Show CPU benchmark ccache statistics
+        run: ccache --show-stats
       - name: Install benchmark dependencies
         run: |
           uv venv --python 3.11

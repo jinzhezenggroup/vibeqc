@@ -1,7 +1,7 @@
 {
   "current_default": "CPU SCF density, energy-weighted density, DIIS residual Gram, and DIIS Fock extrapolation use build-time generated SCF TensorIR helpers; native CPU retains history mutation, metric normalization, augmented solve/retry and solver state. CUDA RHF/UHF/DF density, J/K, energy/force contractions and resident DIIS remain native; direct J/K host adapters in cuda/direct_jk.cpp remain native after leaving the CUDA-only source census",
   "evidence": [
-    "docs/architecture.md",
+    "docs/developer/architecture.md",
     "benchmarks/results/issues388-391-df/README.md"
   ],
   "generated_capability": "TensorIR owns general contractions/AD plus SCF density, energy-weighted density, DIIS Gram, and DIIS extrapolation equations. CPU production consumes checked build-time specializations with shape-independent equation hashes and preserves historical FP64 accumulation order.",

@@ -575,7 +575,7 @@ def test_large_diagonal_problem_does_not_materialize_state_jacobian() -> None:
 
 
 def test_generated_fragments_reuse_cuda_planning_without_device_or_runtime() -> None:
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
     problem, _ = _nonsymmetric()

@@ -1,6 +1,6 @@
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Production omegaB97M-V semilocal XC lowered from pinned Libxc Maple."""
 
 from __future__ import annotations
@@ -18,6 +18,11 @@ from . import libxc_maple
 from .libxc_maple import IMPORTER_SEMANTICS, MapleModule, import_maple_file
 
 WB97MV_COMPONENTS = ("MGGA_X_WB97M_V", "MGGA_C_WB97M_V")
+DENSITY_THRESHOLD = 1.0e-13
+SIGMA_THRESHOLD = DENSITY_THRESHOLD ** (4.0 / 3.0)
+TAU_THRESHOLD = 1.0e-20
+SMOOTH_LR_CUTOFF = 1.35
+SMOOTH_LR_ORDER = 16
 _ZETA_THRESHOLD = "2.220446049250313e-16"
 _BASE_BINDINGS = {
     "p_a_zeta_threshold": _ZETA_THRESHOLD,
@@ -29,14 +34,41 @@ _BASE_BINDINGS = {
 
 
 def _libxc_root() -> typing.Any:
-    try:
-        return asset_path("upstream/libxc/7.0.0")
-    except FileNotFoundError:
-        return asset_path("external/libxc-7.0.0")
+    return asset_path("upstream/libxc/7.0.0")
+
+
+@cache
+def _validate_runtime_policy_sources() -> tuple[Path, Path, Path]:
+    "Audit the exact Libxc work-driver semantics reproduced by native XC."
+    root = _libxc_root()
+    functional = root / "hyb_mgga_xc_wb97mv.c"
+    initialization = root / "functionals.c"
+    work = root / "work_mgga_inc.c"
+    required = {
+        functional: ("XC_FLAGS_NEEDS_TAU | XC_FLAGS_VV10", "1e-13,"),
+        initialization: (
+            "func->sigma_threshold = pow(func->info->dens_threshold, 4.0/3.0);",
+            "func->tau_threshold   = 1e-20;",
+        ),
+        work: (
+            "if(dens < p->dens_threshold)",
+            "my_rho[0] = m_max(p->dens_threshold, VAR(rho, ip, 0));",
+            "my_sigma[0] = m_max(p->sigma_threshold * p->sigma_threshold, VAR(sigma, ip, 0));",
+            "my_tau[0] = m_max(p->tau_threshold, VAR(tau, ip, 0));",
+        ),
+    }
+    for path, snippets in required.items():
+        text = path.read_text()
+        if any(snippet not in text for snippet in snippets):
+            raise ValueError(
+                f"Libxc WB97M-V runtime policy source changed: {path.name}"
+            )
+    return functional, initialization, work
 
 
 @cache
 def _wb97mv_module(range_omega: typing.Any) -> MapleModule:
+    _validate_runtime_policy_sources()
     bindings = {**_BASE_BINDINGS, "p_a_cam_omega": range_omega}
     return import_maple_file(
         _libxc_root(),
@@ -111,11 +143,20 @@ def wb97mv_maple_provenance(
     if not (active & set(WB97MV_COMPONENTS)):
         return None
     module = _wb97mv_module(range_omega)
+    runtime_sources = _validate_runtime_policy_sources()
     return {
         "kind": "libxc-maple",
         "importer_semantics": IMPORTER_SEMANTICS,
         "adapter_sha256": file_hash(Path(__file__)),
         "importer_sha256": file_hash(Path(libxc_maple.__file__)),
+        "runtime_policy": {
+            "density_threshold": DENSITY_THRESHOLD,
+            "sigma_threshold": SIGMA_THRESHOLD,
+            "tau_threshold": TAU_THRESHOLD,
+            "smooth_lr_cutoff": SMOOTH_LR_CUTOFF,
+            "smooth_lr_order": SMOOTH_LR_ORDER,
+            "source_sha256": {path.name: file_hash(path) for path in runtime_sources},
+        },
         "components": {
             name: {
                 "entry": "hyb_mgga_xc_wb97mv.mpl",

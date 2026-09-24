@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -168,7 +168,7 @@ def test_runtime_indexed_cuda_replays_changed_maps_and_recovers_bounds(
     tmp_path: Path,
 ) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_resident import PreparedResident, compile_resident
 

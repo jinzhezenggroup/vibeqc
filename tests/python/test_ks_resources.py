@@ -130,7 +130,7 @@ def test_failed_preparation_keeps_evidence_and_failed_scf_keeps_samples(
     monkeypatch: typing.Any,
 ) -> None:
     from vibeqc import _native
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(method="pbe-uks", resource_budget=ResourceBudget())
     # CPU allocations have no limiter. Inject the native status at the prepare
@@ -196,8 +196,12 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
     assert output["requests"][0]["name"] == "ks"
 
 
+@pytest.mark.parametrize(
+    ("has_semantic_abi", "diagnostic"),
+    ((False, "semantic KS execution-plan ABI"), (True, "allocation inventory")),
+)
 def test_missing_inventory_and_foreign_plan_reject_before_preparation(
-    monkeypatch: typing.Any,
+    monkeypatch: typing.Any, has_semantic_abi: bool, diagnostic: str
 ) -> None:
     from types import SimpleNamespace
 
@@ -205,9 +209,20 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     foreign = estimate_ks_resources([H2], method="lda-rks")
     with pytest.raises(ValueError, match="KS inputs differ"):
         calculator.prepare_batch([H2], resource_plan=foreign)
-    monkeypatch.setattr(calculator, "_library", SimpleNamespace())
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        pytest.fail("unsupported KS library attempted native preparation")
+
+    library = SimpleNamespace(
+        vibeqc_context_create=forbidden,
+        vibeqc_calculation_prepare=forbidden,
+        vibeqc_batch_prepare=forbidden,
+    )
+    if has_semantic_abi:
+        library.vibeqc_ks_options_version = lambda: 1
+    monkeypatch.setattr(calculator, "_library", library)
     assert calculator.estimate_resources([H2]).status == "unsupported"
-    with pytest.raises(NotImplementedError, match="allocation inventory"):
+    with pytest.raises(NotImplementedError, match=diagnostic):
         calculator.prepare_batch([H2])
 
 
@@ -238,9 +253,10 @@ def test_cuda_ledger_owns_prepare_replay_rebuild_and_release(
             ledger = batch._resource_ledger
             prep = batch.resource_diagnostics["preparation"]["device_ledger"]
             assert prep["allocations"] > 0 and prep["rejected_allocations"] == 0
-            assert prep["live_bytes"] == probe.resident_bytes["device"]
+            # Provider workspace queries may use less than the shape-only bound.
+            assert 0 < prep["live_bytes"] <= probe.resident_bytes["device"]
             for replay in range(2):
-                result = batch.execute(strict=True)
+                result = batch.execute(properties=("energy",), strict=True)
                 observed = batch.resource_diagnostics["observation"]["device_ledger"]
                 assert observed["allocations"] == 0
                 assert observed["live_bytes"] == prep["live_bytes"]
@@ -248,7 +264,11 @@ def test_cuda_ledger_owns_prepare_replay_rebuild_and_release(
                 assert all(
                     item.warm_start_used == bool(replay) for item in result.items
                 )
-            batch.execute([[(0, 0, -0.8), (0, 0, 0.8)], None, None], strict=True)
+            batch.execute(
+                [[(0, 0, -0.8), (0, 0, 0.8)], None, None],
+                properties=("energy",),
+                strict=True,
+            )
             rebuilt = batch.resource_diagnostics["observation"]["device_ledger"]
             assert rebuilt["allocations"] > 0
             assert rebuilt["rejected_allocations"] == 0
@@ -288,12 +308,12 @@ def test_cuda_shape_queries_need_no_execution_context_and_cover_large_solver(
             host_bytes=probe.peak_bytes["host"], device_bytes=probe.peak_bytes["device"]
         ),
     )
-    result = calculator.singlepoint(WATER)
+    result = calculator.singlepoint(WATER, properties=("energy",))
     assert result.converged and result.executed_backend == "cuda"
     diagnostics = result.resource_diagnostics
     assert (
         diagnostics["preparation"]["device_ledger"]["live_bytes"]
-        == probe.resident_bytes["device"]
+        <= probe.resident_bytes["device"]
     )
     assert diagnostics["observation"]["device_ledger"]["allocations"] == 0
 
@@ -304,7 +324,7 @@ def test_cuda_failed_preparation_retains_ledger_rejection_and_releases_buffers(
     monkeypatch: typing.Any,
     partial: typing.Any,
 ) -> None:
-    from vibeqc.resources import ResourceAllocationError
+    from vibeqc_compiler.common.resources import ResourceAllocationError
 
     calculator = Calculator(
         method="pbe-rks", device="cuda", resource_budget=ResourceBudget()

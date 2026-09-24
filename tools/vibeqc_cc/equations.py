@@ -3,6 +3,7 @@
 import typing
 from collections import defaultdict
 
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -14,8 +15,6 @@ from vibeqc_compiler.tensor import (
     einsum,
     input_tensor,
 )
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .inventory import TERMS
 

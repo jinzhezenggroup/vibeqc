@@ -136,7 +136,7 @@ def test_b3lyp_vwn_rpa_scalar_energy_and_potential_match_pinned_oracle() -> None
 def test_rsh_libxc_source_manifest_is_pinned() -> None:
     root = Path(__file__).resolve().parents[2]
     source = root / "upstream/libxc/7.0.0"
-    manifest_root = root / "external/libxc-7.0.0"
+    manifest_root = root / "manifests/libxc/7.0.0"
     manifest = json.loads((manifest_root / "rsh-manifest.json").read_text())
     for name, item in manifest["files"].items():
         assert file_hash(source / name) == item["sha256"]

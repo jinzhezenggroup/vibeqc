@@ -66,9 +66,9 @@ def main() -> None:
         raise ValueError("CPU library and source checkout identity differ")
     artifact = None
     if args.backend == "cuda":
+        from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+        from vibeqc_compiler.common.cuda_target import cuda_target_info
         from vibeqc_compiler.dft.cuda import CudaGrid, compile_cuda
-        from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-        from vibeqc_compiler.integral.cuda_target import cuda_target_info
 
         artifact = compile_cuda(
             CudaCompilerAdapter(

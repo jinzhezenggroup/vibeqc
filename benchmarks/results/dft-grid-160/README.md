@@ -115,7 +115,7 @@ numeric metadata, density matrices, point/jet/work/output tiles, partition
 scratch and quadrature setup scratch. Object headers, allocator rounding,
 internal BLAS host workspace, CUDA context/modules/stacks and additional
 caller-retained exports/iterators are outside this scope. These are not total
-process/VRAM upper bounds. See [the interface contract](../../../docs/dft_grid.md)
+process/VRAM upper bounds. See [the interface contract](../../../docs/developer/dft_grid.md)
 for host setup and transactional replacement details.
 
 ## Reproduction

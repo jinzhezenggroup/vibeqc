@@ -131,6 +131,11 @@ bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegr
                                                   int device_id, std::size_t batch_size,
                                                   std::size_t nbf, std::size_t naux) noexcept;
 
+/** Compare immutable per-item source geometry and basis by value before response. */
+bool cuda_density_fitting_integral_source_geometry_matches(
+    const CudaDensityFittingIntegralSource* source, std::size_t system, const core::System& orbital,
+    const core::System& auxiliary) noexcept;
+
 /** Prepare a generated J/K plan; full dimensions retain B, partial ones stream. */
 vibeqc_status create_cuda_density_fitting_jk_plan_from_source(
     int device_id, CudaDensityFittingIntegralSource** source, std::size_t batch_size,

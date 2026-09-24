@@ -376,8 +376,8 @@ int main() {
                 available == 1,
             "UHF capability query failed");
     require(vibeqc_method_available(VIBEQC_METHOD_WB97M_V, &available) == VIBEQC_STATUS_SUCCESS &&
-                available == 0,
-            "wB97M-V must remain explicitly unavailable");
+                available == 1,
+            "wB97M-V public promotion must be visible to the native capability query");
 
     verify_precision_provenance_gate();
     verify_context_detail_storage();
@@ -396,9 +396,10 @@ int main() {
                     VIBEQC_STATUS_SUCCESS &&
                 capabilities.family == VIBEQC_METHOD_FAMILY_COUPLED_CLUSTER &&
                 capabilities.available == 1 &&
-                capabilities.supported_properties == VIBEQC_PROPERTY_ENERGY &&
+                capabilities.supported_properties ==
+                    (VIBEQC_PROPERTY_ENERGY | VIBEQC_PROPERTY_FORCES) &&
                 capabilities.supports_batch == 1,
-            "RCCSD(T) native energy capability is incorrect");
+            "RCCSD(T) native energy/force capability is incorrect");
 
     const Evaluation center = h2(1.4, true);
     require(std::abs(center.energy - (-1.11671432506255)) < 2.0e-9,

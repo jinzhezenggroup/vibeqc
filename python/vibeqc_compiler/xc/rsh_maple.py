@@ -1,6 +1,6 @@
 # Copyright (C) 2026 VibeQC contributors
 # This Source Code Form is subject to the terms of the Mozilla Public License,
-# v. 2.0. See external/libxc-7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
+# v. 2.0. See upstream/libxc/7.0.0/COPYING or https://mozilla.org/MPL/2.0/.
 """Production extended-GGA expressions lowered from pinned Libxc Maple sources."""
 
 from __future__ import annotations
@@ -26,10 +26,7 @@ _LYP_BINDINGS = {
 def _libxc_root() -> typing.Any:
     """Resolve packaged/repository Libxc assets lazily."""
 
-    try:
-        return asset_path("upstream/libxc/7.0.0")
-    except FileNotFoundError:
-        return asset_path("external/libxc-7.0.0")
+    return asset_path("upstream/libxc/7.0.0")
 
 
 @cache

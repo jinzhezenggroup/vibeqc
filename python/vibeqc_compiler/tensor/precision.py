@@ -265,10 +265,6 @@ def _sensitivity(op: str) -> str:
     return "ordinary"
 
 
-def _ensure_dtype(node: Node, dtype: str) -> Node:
-    return node if node.spec.dtype == dtype else cast(node, dtype)
-
-
 def _execution_bindings(
     program: Program,
 ) -> tuple[dict[str, PrecisionDirective], tuple[tuple[str, str], ...]]:

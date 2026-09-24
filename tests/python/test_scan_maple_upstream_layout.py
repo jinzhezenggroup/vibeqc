@@ -22,13 +22,13 @@ def test_canonical_upstream_directory_preserves_imported_identity(
     root = adapter._libxc_root()
     canonical = tmp_path / "upstream/libxc/7.0.0"
     shutil.copytree(root, canonical)
-    legacy = tmp_path / "external/libxc-7.0.0"
-    legacy.mkdir(parents=True)
-    monkeypatch.setattr(
-        adapter,
-        "asset_path",
-        lambda path: canonical if path == "upstream/libxc/7.0.0" else legacy,
-    )
+
+    def canonical_only(path: str) -> Path:
+        if path != "upstream/libxc/7.0.0":
+            raise AssertionError(f"unexpected legacy Libxc asset path: {path}")
+        return canonical
+
+    monkeypatch.setattr(adapter, "asset_path", canonical_only)
     for factory, _ in factories:
         factory.cache_clear()
     try:

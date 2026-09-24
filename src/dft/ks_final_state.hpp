@@ -1,11 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "core/electronic_reference.hpp"
 #include "dft/grid.hpp"
+#include "dft/nonlocal_correlation/vv10_integration.hpp"
+#include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "scf/solver/final_state.hpp"
 
@@ -19,7 +22,7 @@ struct KsModelIdentity {
   std::uint32_t scf_domain_version{1};
   GridSpec grid;
   std::size_t tile_points{};
-  /** 0=LDA, 1=PBE, 2=r2SCAN; part of immutable model provenance. */
+  /** 0=LDA, 1=PBE, 2=r2SCAN, 3=B3LYP, 4=WB97M-V; immutable provenance. */
   std::uint32_t functional{};
   unsigned spins{};
   // CPU is exactly -1; CUDA is a nonnegative visible device ordinal. The
@@ -28,6 +31,10 @@ struct KsModelIdentity {
   std::uint64_t owner{};
   double semilocal_exchange_scale{1.0};
   double semilocal_correlation_scale{1.0};
+  // The complete physical model, not only its primary Coulomb/exchange owner.
+  std::optional<scf::ResolvedFockBuild> range_correction{};
+  std::optional<nlc::Vv10Parameters> nonlocal_correlation{};
+  nlc::Vv10DensityDomain nonlocal_density_domain{nlc::Vv10DensityDomain::StrictPositive};
   bool operator==(const KsModelIdentity&) const = default;
 };
 

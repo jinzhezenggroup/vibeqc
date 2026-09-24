@@ -1,6 +1,6 @@
 """Weight-folding checks for issue #180 (the two-electron term of the graph).
 
-``docs/hessian.md`` states the frozen-density two-electron skeleton as
+``docs/developer/hessian.md`` states the frozen-density two-electron skeleton as
 ``Σ W_μνλσ ∂²(μν|λσ)`` with ``W = ½ P_μν P_λσ − ¼ P_μλ P_νσ``. Whether that
 needs another factor of the energy's own ``½`` is exactly the kind of question a
 prose dependency graph gets wrong and a consumer then propagates, so the factor

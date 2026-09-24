@@ -9,22 +9,21 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
-from vibeqc_compiler.xc.expressions import energy_expression
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.libxc_maple import (
     MapleImportError,
     import_maple_file,
     import_maple_source,
 )
+from vibeqc_compiler.xc.semilocal_family import energy_expression
 from vibeqc_compiler.xc.spec import FunctionalSpec
-
-from tools.vibeqc_validation.schema import block_error
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 PBE_X = LIBXC_ROOT / "gga_x_pbe.mpl"
 PBE_C = LIBXC_ROOT / "gga_c_pbe.mpl"
 MANIFEST = LIBXC_MANIFEST_ROOT / "manifest.json"

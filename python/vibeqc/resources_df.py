@@ -10,8 +10,7 @@ import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.layout import DenseLayout, SymmetricPairLayout
-
-from .resources import checked_bytes
+from vibeqc_compiler.common.resources import checked_bytes
 
 
 @dataclass(frozen=True)

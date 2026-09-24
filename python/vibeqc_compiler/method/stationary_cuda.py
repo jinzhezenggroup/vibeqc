@@ -11,7 +11,6 @@ Rationale: .agents/notes/implemented/architecture/2026-09-20-stationary-cuda-emi
 import json
 import os
 import typing
-from fractions import Fraction
 from functools import lru_cache
 from pathlib import Path
 
@@ -24,6 +23,11 @@ from vibeqc_compiler.common.native_runtime import (
 from vibeqc_compiler.common.paths import asset_path, source_hashes
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.common.source_cache import cache_source
+from vibeqc_compiler.tensor.cuda_inline import (
+    InlineCudaOutput,
+    exact_cuda_literal,
+    lower_inline_cuda_output,
+)
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
 from .spec import resolve_method
@@ -62,80 +66,30 @@ def _split_compile_options(
     return () if threads == 1 else (f"--split-compile={threads}",)
 
 
-def _fraction(value: typing.Any) -> Fraction:
-    if isinstance(value, Fraction):
-        return value
-    if type(value) is int:
-        return Fraction(value, 1)
-    if (
-        isinstance(value, tuple)
-        and len(value) == 2
-        and all(type(v) is int for v in value)
-    ):
-        return Fraction(*value)
-    raise TypeError("stationary CUDA weight lowering requires exact rational constants")
-
-
-def _literal(value: typing.Any) -> str:
-    value = _fraction(value)
-    if value.denominator == 1:
-        return f"{value.numerator}.0"
-    return f"({value.numerator}.0/{value.denominator}.0)"
-
-
 def _weight_expression(
     plan: StationaryGradientPlan, source: str
-) -> tuple[str, str, int]:
-    """Lower generated one-term TensorIR weight to a scalar CUDA expression."""
-    block = plan.integral_block(source, terms=1)
-    program = block.weights
-    values: dict[typing.Any, str | tuple[str, ...]] = {}
-    arity = 0
-    bindings = {
+) -> tuple[InlineCudaOutput, int]:
+    """Specialize one generated weight through the shared inline-consumer path."""
+    program = plan.integral_block(source, terms=1).weights
+    locations = {
         "density_left": ("density", 0, 1),
         "density_right": ("density", 2, 3),
         "weighted_density": ("weighted_density", 0, 1),
     }
-    for node in program.live_nodes:
-        if node.op == "input":
-            name = node.attrs["name"]
-            if name not in bindings or node.spec.shape != (plan.spin_blocks, 1):
-                raise ValueError("unsupported stationary CUDA weight input contract")
-            pointer, left, right = bindings[name]
-            arity = max(arity, left + 1, right + 1)
-            values[node] = tuple(
-                f"{pointer}[{spin} * n * n + size_t(ao[{left}]) * n + size_t(ao[{right}])]"
-                for spin in range(plan.spin_blocks)
-            )
-        elif node.op == "constant":
-            raw = node.attrs["values"]
-            if node.spec.shape or len(raw) != 1:
-                raise ValueError(
-                    "stationary CUDA weight lowering requires scalar constants"
-                )
-            values[node] = _literal(raw[0])
-        elif node.op == "reduce":
-            operand = values[node.inputs[0]]
-            if node.attrs["axes"] != (0,) or not isinstance(operand, tuple):
-                raise ValueError("unsupported stationary CUDA weight reduction")
-            values[node] = "(" + " + ".join(operand) + ")"
-        elif node.op == "einsum":
-            operands = [values[item] for item in node.inputs]
-            if node.spec.shape != (1,) or any(
-                not isinstance(item, str) for item in operands
-            ):
-                raise ValueError("unsupported stationary CUDA weight einsum")
-            coefficient = _fraction(node.attrs["coefficient"])
-            factors = [typing.cast("str", item) for item in operands]
-            if coefficient != 1:
-                factors.insert(0, _literal(coefficient))
-            values[node] = "(" + " * ".join(factors) + ")"
-        else:
-            raise ValueError(f"unsupported stationary CUDA weight op: {node.op}")
-    output = values[program.outputs["weights"]]
-    if not isinstance(output, str):
-        raise TypeError("stationary CUDA weight output did not lower to a scalar")
-    return output, program.logical_hash, arity
+    bindings = {
+        name: tuple(
+            f"{pointer}[{spin} * n * n + size_t(ao[{left}]) * n + size_t(ao[{right}])]"
+            for spin in range(plan.spin_blocks)
+        )
+        for name, (pointer, left, right) in locations.items()
+    }
+    lowered = lower_inline_cuda_output(program, output="weights", bindings=bindings)
+    required = set(lowered.required_inputs)
+    arity = max(
+        (right + 1 for name, (_, _, right) in locations.items() if name in required),
+        default=0,
+    )
+    return lowered, arity
 
 
 def emit_stationary_weight_cuda(plan: typing.Any) -> str:
@@ -151,13 +105,16 @@ def emit_stationary_weight_cuda(plan: typing.Any) -> str:
     ]
     dispatch: list[str] = []
     for source in _FUSED_WEIGHT_SOURCES:
-        expression, identity, arity = _weight_expression(plan, source)
+        lowered, arity = _weight_expression(plan, source)
         symbol = f"stationary_weight_{source}"
         functions.extend(
             (
-                f"// stationary-weight-program-{source}: {identity}",
+                f"// stationary-weight-program-{source}: {lowered.original_logical_hash}",
+                f"// stationary-weight-specialization-{source}: {lowered.specialization_logical_hash}",
+                f"// stationary-weight-lowered-{source}: {lowered.optimized_logical_hash}",
+                f"// stationary-weight-optimizer-{source}: {lowered.optimizer_identity}",
                 f"__device__ inline double {symbol}(const double* density, const double* weighted_density, size_t n, const int64_t* ao) {{",
-                f"  return {expression};",
+                f"  return {lowered.expression};",
                 "}",
             )
         )
@@ -458,7 +415,9 @@ def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
         result.inputs, result.attrs["coefficients"], strict=True
     ):
         slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(node.attrs["name"])
-        lines.append(f"  sum += {_literal(coefficient)} * input[{slot} * 3 * na + i];")
+        lines.append(
+            f"  sum += {exact_cuda_literal(coefficient)} * input[{slot} * 3 * na + i];"
+        )
     lines += ["  output[i] = finite(sum, error, 0);", "}", "}", ""]
     return "\n".join(lines)
 

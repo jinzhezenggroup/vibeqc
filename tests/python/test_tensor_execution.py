@@ -8,6 +8,7 @@ from itertools import pairwise
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.evidence import GATES, block_error
 from vibeqc_compiler.tensor import (
     PASSES,
     PRIMITIVES,
@@ -34,8 +35,6 @@ from vibeqc_compiler.tensor import (
     transpose,
 )
 from vibeqc_compiler.tensor.examples import example_cases
-
-from tools.vibeqc_validation.schema import GATES, block_error
 
 FP64 = GATES["integral_fp64"]
 

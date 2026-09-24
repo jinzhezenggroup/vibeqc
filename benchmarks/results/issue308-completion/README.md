@@ -55,7 +55,7 @@ dimension and item, with nested host phases and distinct thread CPU/wall
 durations. Its observer interface preserves reference-module dependency
 direction. The existing #206 force probe retains both host and CUDA ledgers;
 the existing #206 matrix CLI adds native cold/replay/rebuild protocol controls.
-See [the timing contract](../../../docs/df_component_trace.md).
+See [the timing contract](../../../docs/developer/df_component_trace.md).
 
 The P0 increment measured existing solves. The lazy-core increment removes the
 warm initial-guess solve and provides an eager diagnostic control for a causal

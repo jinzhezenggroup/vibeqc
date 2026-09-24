@@ -24,8 +24,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import file_hash
 from vibeqc_compiler.tensor.cuda_execute import compile_cuda, tensor_source_identity
 
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture
@@ -34,7 +35,6 @@ from tools.vibeqc_cc.gpu_solver import solve_gpu
 from tools.vibeqc_cc.gpu_state import solver_plans
 from tools.vibeqc_cc.solver import SolverOptions
 from tools.vibeqc_posthf.providers import BlockResult, ConventionalProvider
-from tools.vibeqc_validation.schema import file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 

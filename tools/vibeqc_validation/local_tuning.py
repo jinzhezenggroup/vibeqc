@@ -14,9 +14,10 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 from vibeqc_compiler.integral.autotune import schedule_payload
 from vibeqc_compiler.integral.benchmark import _CUDA_PRELUDE
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.cuda_lowering import emit_shell_class_fused_cuda
 from vibeqc_compiler.integral.fused_schedule import build_fused_shell_plan
 from vibeqc_compiler.integral.ir import KernelConsumer
@@ -30,7 +31,6 @@ from .f_shell_numerics import (
     numerical_error,
     write_fixture,
 )
-from .schema import canonical_hash, file_hash
 
 
 def validate_schedule(

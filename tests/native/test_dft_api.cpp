@@ -153,76 +153,41 @@ void ks_legacy_method_prefix_guard() {
             "short legacy batch preparation read an absent suffix");
     vibeqc_batch_destroy(batch);
   }
-  // The newly extended nested KS descriptor also accepts physically short
-  // v1-v4 allocations, not only a full object with a smaller size tag.
-  vibeqc_ks_options options{};
-  options.abi_version = VIBEQC_ABI_VERSION;
-  options.scf_domain_version = 1;
-  options.grid_version = 1;
-  options.radial_points = 3;
-  options.angular_polar = 2;
-  options.angular_azimuth = 4;
-  options.partition_iterations = 2;
-  options.coincident_tolerance = 1e-12;
-  options.tile_points = 16;
-  options.composition_version = 1;
-  options.semilocal_exchange_scale = 1.0;
-  options.semilocal_correlation_scale = 1.0;
-  options.execution_plan_version = 1;
-  options.spin_channels = 1;
-  for (const auto size :
-       {offsetof(vibeqc_ks_options, composition_version),
-        offsetof(vibeqc_ks_options, xc_execution_schedule),
-        offsetof(vibeqc_ks_options, execution_plan_version),
-        offsetof(vibeqc_ks_options, nonlocal_correlation_version), sizeof(vibeqc_ks_options)}) {
-    options.struct_size = static_cast<std::uint32_t>(size);
-    auto* legacy = reinterpret_cast<vibeqc_ks_options*>(boundary - size);
-    std::memcpy(legacy, &options, size);
-    auto method = lda_method();
-    method.ks_options = legacy;
-    vibeqc_calculation* calculation = nullptr;
-    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                VIBEQC_STATUS_SUCCESS,
-            "KS preparation read beyond its versioned prefix");
-    vibeqc_calculation_destroy(calculation);
-    vibeqc_system* systems[]{fixture.system};
-    vibeqc_batch* batch = nullptr;
-    require(vibeqc_batch_prepare(fixture.context, systems, 1, &method, 0, &batch) ==
-                VIBEQC_STATUS_SUCCESS,
-            "KS batch preparation read beyond its versioned prefix");
-    vibeqc_batch_destroy(batch);
-  }
+  // KS options intentionally use one current semantic layout; no nested legacy prefixes.
 #endif
 }
 
 void ks_option_snapshot() {
-  require(vibeqc_ks_options_version() == 5, "KS option version unavailable");
+  require(vibeqc_ks_options_version() == 1, "semantic KS option ABI unavailable");
   Fixture fixture;
   auto method = lda_method();
   std::array<double, 119> radii;
   radii.fill(1.0);
   radii[1] = 1.3;
-  vibeqc_ks_options options{sizeof(vibeqc_ks_options),
-                            VIBEQC_ABI_VERSION,
-                            1,
-                            1,
-                            32,
-                            10,
-                            20,
-                            2,
-                            1e-12,
-                            31,
-                            radii.data(),
-                            radii.size()};
-  options.execution_plan_version = 1;
+  const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"LDA_X", 1.0}, {"LDA_C_PW", 1.0}}};
+  vibeqc_ks_options options{};
+  options.struct_size = sizeof(options);
+  options.abi_version = VIBEQC_ABI_VERSION;
+  options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+  options.grid_version = 1;
+  options.radial_points = 32;
+  options.angular_polar = 10;
+  options.angular_azimuth = 20;
+  options.partition_iterations = 2;
+  options.coincident_tolerance = 1e-12;
+  options.tile_points = 31;
+  options.element_radii = radii.data();
+  options.element_radius_count = radii.size();
+  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
   options.spin_channels = 1;
-  options.semilocal_family = 0;
+  options.semilocal_components = components.data();
+  options.semilocal_component_count = components.size();
   method.ks_options = &options;
   vibeqc_calculation* calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_SUCCESS,
-          "custom KS preparation failed");
-  // Caller storage can change or die immediately after preparation.
+          "custom semantic KS preparation failed");
   options.radial_points = 0;
   radii[1] = std::numeric_limits<double>::quiet_NaN();
   vibeqc_result_descriptor result{
@@ -235,47 +200,37 @@ void ks_option_snapshot() {
               std::abs(result.energy - energy) < 1e-11,
           "KS snapshot replay changed");
   vibeqc_calculation_destroy(calculation);
-  // A new preparation validates every option again, before scientific owners.
-  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-              VIBEQC_STATUS_INVALID_ARGUMENT,
-          "invalid KS snapshot accepted");
   options.struct_size = 8;
+  calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_ABI_MISMATCH,
-          "truncated KS snapshot accepted");
+          "truncated semantic KS snapshot accepted");
   options.struct_size = sizeof(options);
-  options.scf_domain_version = 2;
+  options.scf_domain = "not-a-qualified-domain";
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_NOT_IMPLEMENTED,
           "unknown KS domain policy accepted");
-  options.scf_domain_version = 1;
-  options.semilocal_family = 1;
-  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-              VIBEQC_STATUS_INVALID_ARGUMENT,
-          "compiler-resolved KS family disagreed with the public selector but was accepted");
-  options.semilocal_family = 0;
   method.method = VIBEQC_METHOD_RHF;
+  options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
           "HF ignored a KS model option");
-  method = lda_method();
-  method.struct_size = offsetof(vibeqc_method_descriptor, ks_options);
-  method.ks_options = reinterpret_cast<const vibeqc_ks_options*>(std::uintptr_t{1});
-  require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-              VIBEQC_STATUS_SUCCESS,
-          "legacy method descriptor read its missing option");
-  require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
-              std::abs(result.energy - (-1.121017859421488)) < 2e-12,
-          "legacy KS default model changed");
-  vibeqc_calculation_destroy(calculation);
 }
 
-void ks_option_versioned_prefixes() {
+void ks_option_semantic_plan() {
   Fixture fixture;
   auto method = lda_method();
+  method.method = VIBEQC_METHOD_PBE_RKS;
+  const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"GGA_X_PBE", 1.0}, {"GGA_C_PBE", 1.0}}};
+  std::array<vibeqc_ks_exchange_term, 2> exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.2, 0.3, -0.1},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 0.8, 0.3, -0.4},
+  }};
   vibeqc_ks_options options{};
+  options.struct_size = sizeof(options);
   options.abi_version = VIBEQC_ABI_VERSION;
-  options.scf_domain_version = 1;
+  options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
   options.grid_version = 1;
   options.radial_points = 32;
   options.angular_polar = 10;
@@ -283,58 +238,43 @@ void ks_option_versioned_prefixes() {
   options.partition_iterations = 2;
   options.coincident_tolerance = 1e-12;
   options.tile_points = 31;
-  options.composition_version = 1;
-  options.semilocal_exchange_scale = 1.0;
-  options.semilocal_correlation_scale = 1.0;
   options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
-  options.execution_plan_version = 1;
   options.spin_channels = 1;
-  options.semilocal_family = 0;
+  options.semilocal_components = components.data();
+  options.semilocal_component_count = components.size();
+  options.exchange_terms = exchange.data();
+  options.exchange_term_count = exchange.size();
   method.ks_options = &options;
-  const std::array<std::size_t, 5> sizes{offsetof(vibeqc_ks_options, composition_version),
-                                         offsetof(vibeqc_ks_options, xc_execution_schedule),
-                                         offsetof(vibeqc_ks_options, execution_plan_version),
-                                         offsetof(vibeqc_ks_options, nonlocal_correlation_version),
-                                         sizeof(vibeqc_ks_options)};
-  for (const auto size : sizes) {
-    options.struct_size = static_cast<std::uint32_t>(size);
-    vibeqc_calculation* calculation = nullptr;
-    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                VIBEQC_STATUS_SUCCESS,
-            "valid KS v1/v2/v3/v4/v5 prefix was rejected");
-    vibeqc_calculation_destroy(calculation);
-  }
-  // v3 owns the schedule bytes; it must neither consume nor reinterpret v4 identity.
-  options.struct_size = static_cast<std::uint32_t>(sizes[2]);
-  options.execution_plan_version = 99;
-  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_HOST_UNFUSED;
   vibeqc_calculation* calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_SUCCESS,
-          "v3 host-unfused schedule consumed the absent v4 plan");
+          "semantic range exchange did not attach the native two-Fock consumer");
+  vibeqc_result_descriptor result{
+      sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0, nullptr, 0, 0, 0, 0, 0,
+      VIBEQC_BACKEND_CPU_REFERENCE};
+  require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+              std::isfinite(result.energy),
+          "semantic range exchange failed through the native two-Fock endpoint");
   vibeqc_calculation_destroy(calculation);
-  options.xc_execution_schedule = static_cast<vibeqc_xc_execution_schedule>(99);
+  calculation = nullptr;
+  exchange[0].fock_coefficient = -0.2;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
-          "v3 schedule validation was lost when v4 was appended");
-  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
-  options.execution_plan_version = 1;
-  for (const auto size : sizes) {
-    options.struct_size = static_cast<std::uint32_t>(size - 1);
-    require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                VIBEQC_STATUS_ABI_MISMATCH,
-            "truncated KS versioned suffix was accepted");
-  }
+          "semantic range exchange accepted an inconsistent K coefficient");
 }
 
 void pbe0_composition_snapshot() {
   Fixture fixture;
   auto method = lda_method();
   method.method = VIBEQC_METHOD_PBE0_RKS;
+  const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"GGA_C_PBE", 1.0}, {"GGA_X_PBE", 0.75}}};
+  std::array<vibeqc_ks_exchange_term, 1> exchange{
+      {{VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, -0.125}}};
   vibeqc_ks_options options{};
   options.struct_size = sizeof(options);
   options.abi_version = VIBEQC_ABI_VERSION;
-  options.scf_domain_version = 1;
+  options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
   options.grid_version = 1;
   options.radial_points = 64;
   options.angular_polar = 12;
@@ -342,33 +282,33 @@ void pbe0_composition_snapshot() {
   options.partition_iterations = 3;
   options.coincident_tolerance = 1e-12;
   options.tile_points = 256;
-  options.composition_version = 1;
-  options.semilocal_exchange_scale = 0.75;
-  options.semilocal_correlation_scale = 1.0;
-  options.fock_exchange_coefficient = -0.125;
-  options.execution_plan_version = 1;
+  options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
   options.spin_channels = 1;
-  options.semilocal_family = 1;
+  options.semilocal_components = components.data();
+  options.semilocal_component_count = components.size();
+  options.exchange_terms = exchange.data();
+  options.exchange_term_count = exchange.size();
   method.ks_options = &options;
 
   vibeqc_calculation* calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_SUCCESS,
-          "PBE0 RKS explicit composition preparation failed");
+          "PBE0 RKS semantic composition preparation failed");
   vibeqc_result_descriptor result{
       sizeof(vibeqc_result_descriptor), VIBEQC_ABI_VERSION, 0.0, nullptr, 0, 0, 0.0, 0.0, 0,
       VIBEQC_BACKEND_CPU_REFERENCE};
   require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
               result.converged && std::abs(result.energy - (-1.1543107969377155)) < 2e-12,
-          "PBE0 RKS explicit composition energy changed");
+          "PBE0 RKS semantic composition energy changed");
   vibeqc_calculation_destroy(calculation);
 
   method.ks_options = nullptr;
+  calculation = nullptr;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_NOT_IMPLEMENTED,
-          "PBE0 RKS silently inferred composition without the v2 suffix");
+          "PBE0 RKS silently inferred composition without compiler plan");
   method.ks_options = &options;
-  options.fock_exchange_coefficient = -0.25;
+  exchange[0].fock_coefficient = -0.25;
   require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
               VIBEQC_STATUS_INVALID_ARGUMENT,
           "PBE0 RKS accepted an unrestricted exchange coefficient");
@@ -487,7 +427,7 @@ int main() {
   try {
     ks_legacy_method_prefix_guard();
     ks_option_snapshot();
-    ks_option_versioned_prefixes();
+    ks_option_semantic_plan();
     pbe0_composition_snapshot();
     warm_preparation_failure(false);
     warm_preparation_failure(true);
@@ -657,10 +597,22 @@ int main() {
             "r2SCAN force rejection omitted its #164 capability boundary");
     vibeqc_calculation_destroy(calculation);
 
+    method = lda_method();
     method.density_fitting_mode = VIBEQC_DENSITY_FITTING_CPU_REFERENCE;
+    calculation = nullptr;
     require(vibeqc_calculation_prepare(fixture.context, fixture.system, &method, &calculation) ==
-                VIBEQC_STATUS_NOT_IMPLEMENTED,
-            "LDA RKS accepted density fitting");
+                VIBEQC_STATUS_SUCCESS,
+            "LDA RKS density-fitting preparation failed");
+    result.forces = nullptr;
+    result.force_count = 0;
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_SUCCESS &&
+                result.converged == 1 && std::isfinite(result.energy),
+            "LDA RKS density-fitted energy failed");
+    result.forces = forces.data();
+    result.force_count = static_cast<uint32_t>(forces.size());
+    require(vibeqc_calculation_execute(calculation, &result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "DFT density fitting exposed an incomplete force consumer");
+    vibeqc_calculation_destroy(calculation);
 
     method = lda_method();
     method.density_fitting_mode = static_cast<vibeqc_density_fitting_mode>(99);
@@ -834,13 +786,18 @@ int main() {
                                                &cuda_calculation) == VIBEQC_STATUS_SUCCESS,
                 "CPU/CUDA KS preparation failed");
         auto cpu_result = unconverged, cuda_result = unconverged;
-        require(vibeqc_calculation_execute(cpu_calculation, &cpu_result) == VIBEQC_STATUS_SUCCESS &&
-                    vibeqc_calculation_execute(cuda_calculation, &cuda_result) ==
-                        VIBEQC_STATUS_SUCCESS &&
+        const auto cpu_status = vibeqc_calculation_execute(cpu_calculation, &cpu_result);
+        const auto cuda_status = vibeqc_calculation_execute(cuda_calculation, &cuda_result);
+        const char* cuda_detail = vibeqc_context_get_last_detail(cuda_context);
+        require(cpu_status == VIBEQC_STATUS_SUCCESS && cuda_status == VIBEQC_STATUS_SUCCESS &&
                     cuda_result.executed_backend == VIBEQC_BACKEND_CUDA &&
                     cuda_result.density_rms < 1e-9 &&
                     std::abs(cuda_result.energy - cpu_result.energy) < 1e-10,
-                "public native CUDA KS energy/residual/backend differs from CPU");
+                ("public native CUDA KS energy/residual/backend differs from CPU: method=" +
+                 std::to_string(ks) + " CPU status=" + std::to_string(cpu_status) +
+                 " CUDA status=" + std::to_string(cuda_status) +
+                 " detail=" + (cuda_detail ? cuda_detail : ""))
+                    .c_str());
         const auto cold = cuda_result;
         require(
             vibeqc_calculation_execute(cuda_calculation, &cuda_result) == VIBEQC_STATUS_SUCCESS &&
@@ -851,31 +808,38 @@ int main() {
         auto auto_method = method;
         auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
         vibeqc_calculation* auto_calculation = nullptr;
-        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
-                                           &auto_calculation) == VIBEQC_STATUS_SUCCESS &&
-                    auto_calculation != nullptr,
-                "CUDA KS automatic-precision preparation failed");
-        auto auto_result = unconverged;
-        const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");
-        const std::string saved_chunk_value = saved_chunk ? saved_chunk : "";
-        require(setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
-                "cannot enable the CUDA KS chunk integration regression");
-        require(
-            vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
-                auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
-            "CUDA KS mixed-J target refinement changed the FP64 endpoint");
-        vibeqc_precision_provenance precision{sizeof(vibeqc_precision_provenance),
-                                              VIBEQC_ABI_VERSION};
-        require(vibeqc_calculation_get_precision_provenance(auto_calculation, &precision) ==
-                        VIBEQC_STATUS_SUCCESS &&
-                    precision.requested_mode == VIBEQC_PRECISION_AUTO &&
-                    precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
-                    precision.refinement_iterations >= 1U,
-                "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
-        require(saved_chunk ? setenv("VIBEQC_CUDA_KS_CHUNK", saved_chunk_value.c_str(), 1) == 0
-                            : unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
-                "cannot restore the CUDA KS chunk integration regression environment");
-        vibeqc_calculation_destroy(auto_calculation);
+        const auto auto_status =
+            vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method, &auto_calculation);
+        // LDA/PBE admit mixed-J acceleration. r2SCAN still requires FP64;
+        // its separate precision qualification must precede public promotion.
+        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS) {
+          require(auto_status == VIBEQC_STATUS_NOT_IMPLEMENTED && auto_calculation == nullptr,
+                  "r2SCAN automatic precision lost its explicit capability rejection");
+        } else {
+          require(auto_status == VIBEQC_STATUS_SUCCESS && auto_calculation != nullptr,
+                  "CUDA KS automatic-precision preparation failed");
+          auto auto_result = unconverged;
+          const char* saved_chunk = std::getenv("VIBEQC_CUDA_KS_CHUNK");
+          const std::string saved_chunk_value = saved_chunk ? saved_chunk : "";
+          require(setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
+                  "cannot enable the CUDA KS chunk integration regression");
+          require(
+              vibeqc_calculation_execute(auto_calculation, &auto_result) == VIBEQC_STATUS_SUCCESS &&
+                  auto_result.converged == 1 && std::abs(auto_result.energy - cold.energy) < 2e-8,
+              "CUDA KS mixed-J target refinement changed the FP64 endpoint");
+          vibeqc_precision_provenance precision{sizeof(vibeqc_precision_provenance),
+                                                VIBEQC_ABI_VERSION};
+          require(vibeqc_calculation_get_precision_provenance(auto_calculation, &precision) ==
+                          VIBEQC_STATUS_SUCCESS &&
+                      precision.requested_mode == VIBEQC_PRECISION_AUTO &&
+                      precision.effective_bits == 32U && precision.strict_refinement_applied == 1 &&
+                      precision.refinement_iterations >= 1U,
+                  "CUDA KS mixed-J provenance omitted actual FP32 work or FP64 refinement");
+          require(saved_chunk ? setenv("VIBEQC_CUDA_KS_CHUNK", saved_chunk_value.c_str(), 1) == 0
+                              : unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
+                  "cannot restore the CUDA KS chunk integration regression environment");
+          vibeqc_calculation_destroy(auto_calculation);
+        }
 
         if (ks == VIBEQC_METHOD_LDA_RKS) {
           // Cover both the owner and generated-XC error boundaries. Neither

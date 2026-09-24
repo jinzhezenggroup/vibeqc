@@ -80,9 +80,10 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
   if (cuda_error != cudaSuccess) return source_cuda_status(cuda_error);
   const cudaStream_t stream = reinterpret_cast<cudaStream_t>(stream_handle);
   constexpr unsigned source_threads = 128U;
-  const unsigned outputs_per_block = derivative_coordinate < 0 && source->value_mapping == 2U
-                                         ? source_threads / 32U
-                                         : source_threads;
+  const unsigned mapping =
+      apply_metric_transform ? source->value_mapping : source->raw_value_mapping;
+  const unsigned outputs_per_block =
+      derivative_coordinate < 0 && mapping == 2U ? source_threads / 32U : source_threads;
   std::size_t tile_elements = 0;
   if (!vibeqc::runtime::checked_multiply(pair_count, auxiliary_count, tile_elements)) {
     detail = "bounded DF transformed tile size overflows size_t";
@@ -120,8 +121,7 @@ vibeqc_status generate_cuda_density_fitting_transformed_tile_impl(
         source->cartesian_naux, source->public_nbf, source->public_naux, source->dummy_index,
         system, pair_begin, pair_count, auxiliary_begin, auxiliary_count,
         system_derivative_coordinate, source->orbital_to_cartesian, source->auxiliary_to_cartesian,
-        inverse_square_root, apply_metric_transform, output, source->value_mapping,
-        source->value_math);
+        inverse_square_root, apply_metric_transform, output, mapping, source->value_math);
   } else {
     launch_build_cuda_df_transformed_tile_kernel(
         true, blocks, source_threads, 0, stream, source->batch, source->cartesian_nbf,
@@ -258,6 +258,8 @@ CudaDensityFittingSourceDiagnostic cuda_density_fitting_integral_source_diagnost
   const char* mapping = implementation.value_mapping == 1U   ? "component"
                         : implementation.value_mapping == 2U ? "primitive"
                                                              : "auxiliary";
+  if (implementation.value_mapping == 2U && implementation.raw_value_mapping == 0U)
+    mapping = "raw-auxiliary/transformed-primitive";
   const char* math = implementation.value_math == 3U   ? "manifest"
                      : implementation.value_math == 1U ? "specialized_polynomial"
                      : implementation.value_math == 2U ? "specialized_rys"
@@ -326,6 +328,18 @@ bool cuda_density_fitting_integral_source_matches(const CudaDensityFittingIntegr
       static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation);
   return implementation->device_id == device_id && implementation->batch_size == batch_size &&
          implementation->public_nbf == nbf && implementation->public_naux == naux;
+}
+
+bool cuda_density_fitting_integral_source_geometry_matches(
+    const CudaDensityFittingIntegralSource* source, std::size_t system, const core::System& orbital,
+    const core::System& auxiliary) noexcept {
+  if (!source || !source->implementation) return false;
+  const auto& owner =
+      *static_cast<const CudaDensityFittingIntegralSourceImpl*>(source->implementation);
+  return system < owner.batch_size && system < owner.orbital_identities.size() &&
+         system < owner.auxiliary_identities.size() &&
+         owner.orbital_identities[system].matches(orbital) &&
+         owner.auxiliary_identities[system].matches(auxiliary);
 }
 
 vibeqc_status generate_cuda_density_fitting_transformed_tile(

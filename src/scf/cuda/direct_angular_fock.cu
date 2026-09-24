@@ -10,7 +10,6 @@
 #include "scf/cuda/direct_angular_fock.hpp"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_fock_order2.cuh"
-#include "scf/cuda/direct_fock_psss.cuh"
 #include "scf/cuda/direct_fock_quartet.cuh"
 #include "scf/cuda/direct_metadata.hpp"
 #include "scf/cuda/packed_basis.hpp"
@@ -55,33 +54,6 @@ __global__ void build_fock_direct_quartet_packed_persistent_kernel(
           batch, active_shell_quartet_tile_count, active_shell_quartet_tiles, screening_tolerance,
           schwarz_bounds, density, active, fock, nullptr, packed_item, 0U);
     }
-  }
-}
-
-/** Consume complete psss shell tasks, one independent task per lane. */
-template <bool Unrestricted>
-__global__ void build_fock_direct_psss_persistent_kernel(
-    DeviceBatch batch, const std::uint32_t* active_shell_quartet_tile_count,
-    const ActiveShellQuartetTile* active_shell_quartet_tiles, std::uint32_t* task_head,
-    double screening_tolerance, const double* schwarz_bounds, const double* density,
-    const std::uint8_t* active, double* fock) {
-  const unsigned lane = threadIdx.x;
-  const std::uint32_t work_count = *active_shell_quartet_tile_count;
-  while (true) {
-    std::uint32_t packed_begin = 0;
-    if (lane == 0) {
-      packed_begin = atomicAdd(task_head, static_cast<std::uint32_t>(warpSize));
-    }
-    packed_begin = __shfl_sync(0xffffffffU, packed_begin, 0);
-    if (packed_begin >= work_count) return;
-    const std::uint32_t packed_item = packed_begin + lane;
-    if (packed_item < work_count) {
-      contract_fock_direct_psss_task<Unrestricted>(batch, active_shell_quartet_tiles[packed_item],
-                                                   screening_tolerance, schwarz_bounds, density,
-                                                   active, fock);
-    }
-    // Tail lanes must remain live until the next warp-uniform queue exit so
-    // the full-mask shuffle above is valid on every persistent iteration.
   }
 }
 
@@ -186,15 +158,6 @@ void launch_angular_fock_quartets(
             static_cast<unsigned>((capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
                                   detail::kDirectQuartetThreads);
         build_fock_direct_quartet_packed_persistent_kernel<Unrestricted, AngularOrder>
-            <<<std::min(capacity_workers, persistent_worker_blocks), detail::kDirectQuartetThreads,
-               0, stream>>>(batch, order_tile_count, order_tiles,
-                            persistent_task_heads + AngularOrder, screening_tolerance,
-                            schwarz_bounds, density, active, fock);
-      } else if constexpr (AngularOrder == kFusedPsssAngularOrder) {
-        const unsigned capacity_workers =
-            static_cast<unsigned>((capacities[AngularOrder] + detail::kDirectQuartetThreads - 1) /
-                                  detail::kDirectQuartetThreads);
-        build_fock_direct_psss_persistent_kernel<Unrestricted>
             <<<std::min(capacity_workers, persistent_worker_blocks), detail::kDirectQuartetThreads,
                0, stream>>>(batch, order_tile_count, order_tiles,
                             persistent_task_heads + AngularOrder, screening_tolerance,

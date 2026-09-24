@@ -10,15 +10,19 @@ import numpy as np
 import pytest
 from test_cc_lambda_cuda import _cc_state, _fake_cuda_runtime
 from vibeqc.profiles import find_nvcc
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.resources import ResourceBudget
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import execute as cpu_execute
 
+import tools.vibeqc_cc.triples_lambda_response as triples_lambda_response_module
 from tools.vibeqc_cc import PreparedCUDALambda
 from tools.vibeqc_cc.lambda_solver import BoundCCSDLambda
 from tools.vibeqc_cc.triples_cuda import TriplesTileConfig
-from tools.vibeqc_cc.triples_lambda_response import solve_corrected_lambda
+from tools.vibeqc_cc.triples_lambda_response import (
+    BoundCCSDTResponse,
+    solve_corrected_lambda,
+)
 from tools.vibeqc_cc.triples_response import (
     TRIPLES_RESPONSE_INPUTS,
     accumulate_tile_triples_vjp,
@@ -288,6 +292,160 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
                 wrong_inputs,
                 reference_identity=snapshot.identity,
             )
+
+
+def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_replay(
+    monkeypatch: typing.Any, tmp_path: Path
+) -> None:
+    snapshot, cc = _cc_state("h2o")
+    compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
+
+    cpu_bound = BoundCCSDLambda(snapshot, cc)
+    cpu_baseline = cpu_bound.solve(reference_identity=snapshot.identity)
+    cpu_corrected = solve_corrected_lambda(
+        cpu_bound,
+        cpu_baseline,
+        vir_chunk_size=1,
+    )
+    cpu_response = BoundCCSDTResponse(
+        cpu_bound,
+        cpu_baseline,
+        cpu_corrected,
+        vir_chunk_size=1,
+    )
+    expected_fov = cpu_response.weight("fov", reference_identity=snapshot.identity)
+    expected_eps = cpu_response.orbital_energy_weights(
+        reference_identity=snapshot.identity
+    )
+
+    response_owner, _budgets = _fake_response_owner(
+        snapshot.nocc,
+        snapshot.nmo - snapshot.nocc,
+        compiler,
+        tmp_path / "triples",
+        chunk=1,
+    )
+    gpu_sources = response_owner.run_tiles(
+        _triples_arrays(cpu_bound),
+        inputs=TRIPLES_RESPONSE_INPUTS,
+    )
+
+    _fake_cuda_runtime(monkeypatch)
+    with PreparedCUDALambda(
+        snapshot,
+        cc,
+        compiler,
+        tmp_path / "lambda",
+        budget=ResourceBudget(host_bytes=512 << 20, device_bytes=1 << 30),
+    ) as prepared:
+        baseline = prepared.solve(reference_identity=snapshot.identity)
+        corrected = solve_corrected_lambda_cuda(
+            prepared,
+            baseline,
+            gpu_sources,
+            reference_identity=snapshot.identity,
+        )
+
+        def reject_cpu_triples_replay(
+            *args: object, **kwargs: object
+        ) -> typing.NoReturn:
+            del args, kwargs
+            raise AssertionError("CPU triples response replayed under CUDA binding")
+
+        monkeypatch.setattr(
+            triples_lambda_response_module,
+            "accumulate_tile_triples_vjp",
+            reject_cpu_triples_replay,
+        )
+        response = BoundCCSDTResponse(
+            prepared.bound,
+            baseline,
+            corrected,
+            vir_chunk_size=1,
+            triples_response=gpu_sources,
+        )
+        actual_fov = response.weight("fov", reference_identity=snapshot.identity)
+        actual_eps = response.orbital_energy_weights(
+            reference_identity=snapshot.identity
+        )
+
+    assert response.response_identity == cpu_response.response_identity
+    np.testing.assert_allclose(
+        actual_fov.values, expected_fov.values, atol=1e-12, rtol=1e-12
+    )
+    np.testing.assert_allclose(
+        actual_fov.direct_triples,
+        expected_fov.direct_triples,
+        atol=1e-12,
+        rtol=1e-12,
+    )
+    for name in ("eps_o", "eps_v"):
+        np.testing.assert_allclose(
+            actual_eps[name], expected_eps[name], atol=1e-12, rtol=1e-12
+        )
+    assert (
+        actual_fov.provenance["triples_response_backend"]
+        == "cuda-fp64-resident-triples-vjp"
+    )
+
+
+def test_bound_cuda_response_rejects_missing_source_without_cpu_fallback(
+    monkeypatch: typing.Any, tmp_path: Path
+) -> None:
+    snapshot, cc = _cc_state("h2o")
+    compiler = CudaCompilerAdapter(Path("nvcc"), cuda_target_info("sm_120"))
+    source_bound = BoundCCSDLambda(snapshot, cc)
+    response_owner, _budgets = _fake_response_owner(
+        snapshot.nocc,
+        snapshot.nmo - snapshot.nocc,
+        compiler,
+        tmp_path / "triples",
+        chunk=1,
+    )
+    gpu_sources = response_owner.run_tiles(
+        _triples_arrays(source_bound),
+        inputs=("t1", "t2"),
+    )
+
+    _fake_cuda_runtime(monkeypatch)
+    with PreparedCUDALambda(
+        snapshot,
+        cc,
+        compiler,
+        tmp_path / "lambda",
+        budget=ResourceBudget(host_bytes=512 << 20, device_bytes=1 << 30),
+    ) as prepared:
+        baseline = prepared.solve(reference_identity=snapshot.identity)
+        corrected = solve_corrected_lambda_cuda(
+            prepared,
+            baseline,
+            gpu_sources,
+            reference_identity=snapshot.identity,
+        )
+
+        def reject_cpu_triples_replay(
+            *args: object, **kwargs: object
+        ) -> typing.NoReturn:
+            del args, kwargs
+            raise AssertionError("CPU triples response fallback attempted")
+
+        monkeypatch.setattr(
+            triples_lambda_response_module,
+            "accumulate_tile_triples_vjp",
+            reject_cpu_triples_replay,
+        )
+        response = BoundCCSDTResponse(
+            prepared.bound,
+            baseline,
+            corrected,
+            vir_chunk_size=1,
+            triples_response=gpu_sources,
+        )
+        with pytest.raises(
+            ResponseCompatibilityError,
+            match="missing required source blocks",
+        ):
+            response.weight("fov", reference_identity=snapshot.identity)
 
 
 _REAL = os.environ.get("VIBEQC_CC_TRIPLES_RESPONSE_CUDA_TEST") == "1"

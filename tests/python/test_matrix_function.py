@@ -375,7 +375,7 @@ def test_composes_with_generated_objective_vjp() -> None:
 
 
 def test_response_graph_can_be_planned_for_cuda_without_a_device() -> None:
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
     program = SymmetricMatrixFunctionSpec(3, "lowering", 0.1).response_program()

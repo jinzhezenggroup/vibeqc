@@ -16,9 +16,11 @@
 #include "runtime/host_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/df_derivatives.cuh"
+#include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_metric_kernels.hpp"
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_response_weights.cuh"
+#include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_shell_derivatives.cuh"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_df_gradient.hpp"
@@ -725,10 +727,16 @@ vibeqc_status execute_cuda_df_hf_gradient(
       packed_raw->data != borrowed->staging_weights &&
       packed_raw->data != borrowed->raw_auxiliary_major &&
       packed_raw->data != borrowed->exchange_response && !borrowed->resident_raw.data;
+  // Full dense scratch can receive one source-generated raw tensor when the
+  // batch has no persistent raw owner or the reuse diagnostic disables it.
+  // Packed storage still requires its separately validated occupied lease.
+  const bool source_dense_borrow =
+      source && borrowed && !packed_raw && !borrowed->resident_packed_raw.data;
   const auto minimum_scratch = packed_borrow ? n * n : n * n * a;
   if (borrowed &&
       (!device_metric ||
-       ((source || packed_raw || borrowed->resident_packed_raw.data) && !packed_borrow) ||
+       ((source || packed_raw || borrowed->resident_packed_raw.data) && !packed_borrow &&
+        !source_dense_borrow) ||
        n * n * a > maximum / 3 || borrowed->staging_capacity() < minimum_scratch ||
        borrowed->raw_capacity() < minimum_scratch ||
        borrowed->exchange_capacity() < minimum_scratch ||
@@ -1208,14 +1216,45 @@ vibeqc_status execute_cuda_df_hf_gradient(
       const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
-      const std::string_view algebra =
-          algebra_control ? algebra_control
-                          : (borrowed || owned_occupied || promoted_default ? "blas" : "scalar");
+      // Response algebra is independent of storage/resource ownership. Production
+      // always uses the compiler-qualified BLAS contractions; scalar remains an
+      // explicit diagnostic/ablation route only.
+      const std::string_view algebra = algebra_control ? algebra_control : "blas";
       if (algebra != "scalar" && algebra != "blas")
         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
       if (borrowed && (algebra != "blas" || serial_dot || gradient_copies != 1))
         throw std::invalid_argument(
             "resident JK scratch requires BLAS response without serial/scatter probes");
+      CudaDfResponseBuffers generated_buffers;
+      const bool regenerate_raw = source_dense_borrow && !borrowed->resident_raw.data;
+      if (regenerate_raw) {
+        // Generation and transpose use only already-borrowed full buffers.
+        // The source index selects the current batch item; this temporary view
+        // is valid for this response only, not a cache shared between items.
+        const auto status = generate_cuda_density_fitting_raw_tile(
+            source, source_index, 0, n * n, 0, a, -1, stream_handle, borrowed->staging_weights,
+            detail);
+        if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+        if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+        cuda_df::launch_gather_auxiliary_tile_kernel(
+            dim3(cuda_df::blocks_for(n * n * a)), dim3(cuda_df::kThreads), 0, arena.stream, n * n,
+            a, 0, 0, a, borrowed->staging_weights, borrowed->raw_auxiliary_major);
+        check(cudaGetLastError());
+        generated_buffers = *borrowed;
+        generated_buffers.resident_raw = {borrowed->raw_auxiliary_major,
+                                          n,
+                                          a,
+                                          n * n,
+                                          n,
+                                          1,
+                                          device_metric->owner_identity,
+                                          *device_metric};
+        borrowed = &generated_buffers;
+        arena.stats.recomputed_value_bytes += n * n * a * sizeof(double);
+        arena.stats.value_slices += a;
+        runtime::cuda_trace::trace_counter("response_generated_raw_bytes",
+                                           n * n * a * sizeof(double));
+      }
       if (borrowed && !borrowed->resident_raw.data && !packed_borrow) {
         arena.stats.host_to_device_bytes += raw_a.size_bytes();
         arena.stats.tensor_host_to_device_bytes += raw_a.size_bytes();
@@ -1225,7 +1264,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
       if (borrowed && borrowed->resident_raw.data) {
         runtime::cuda_trace::trace_counter("raw_value_upload_bytes", 0);
         runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 0);
-        runtime::cuda_trace::trace_counter("raw_value_reused_bytes", n * n * a * sizeof(double));
+        runtime::cuda_trace::trace_counter("raw_value_reused_bytes",
+                                           regenerate_raw ? 0 : n * n * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity",
                                            borrowed->resident_raw.owner_identity);
       }

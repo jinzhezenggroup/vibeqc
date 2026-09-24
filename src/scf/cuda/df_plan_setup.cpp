@@ -20,6 +20,7 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 
 namespace vibeqc::scf::cuda_df {
 namespace {
@@ -62,7 +63,8 @@ vibeqc_status whiten_factor_panel(CudaDensityFittingJkPlan& plan, std::size_t sy
 /** Materialize a fixed-geometry source once, reusing bounded resident K staging.
  * Every raw (pair,P) is generated once and feeds ALL Q directly into retained
  * B. Dense storage uses bounded raw panels; packed storage writes its separate
- * immutable raw owner directly. Neither constructs a full dense raw tensor.
+ * immutable raw owner directly. A singleton with complete dense K staging
+ * preserves raw A in the existing contribution buffer for exact response.
  * The caller handles failure after the plan's stream is drained.
  */
 vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const double* inverse,
@@ -122,6 +124,15 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
   const auto capacity = plan.row_tile * plan.nbf * plan.auxiliary_tile;
   const auto pair_tile =
       std::min(plan.matrix_elements, std::max<std::size_t>(1, capacity / plan.naux));
+  const bool retain_raw =
+      plan.resident_exchange_enabled && plan.batch_size == 1 && plan.row_tile == plan.nbf &&
+      plan.auxiliary_tile == plan.naux &&
+      plan.nbf * plan.naux <= static_cast<std::size_t>(std::numeric_limits<int>::max());
+  // Under retain_raw, capacity is exactly matrix_elements*naux, so both
+  // whitening branches generate one complete pair-major tensor (system=0,
+  // pair=0, begin=0). The gather converts that layout to A[Q,mu,nu]; bounded
+  // panels must never use this full-tensor stride. Preserve discarded metric
+  // directions as well: whitening B cannot recover them for the derivative.
   for (std::size_t system = 0; system < plan.batch_size; ++system) {
     for (std::size_t pair = 0; pair < plan.matrix_elements; pair += pair_tile) {
       const auto pairs = std::min(pair_tile, plan.matrix_elements - pair);
@@ -133,6 +144,15 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
             plan.integral_source, system, pair, pairs, 0, plan.naux, -1,
             reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
         if (status != VIBEQC_STATUS_SUCCESS) return status;
+        if (retain_raw) {
+          launch_gather_auxiliary_tile_kernel(blocks_for(pairs * plan.naux), kThreads, 0,
+                                              plan.stream, plan.matrix_elements, plan.naux, system,
+                                              0, plan.naux, plan.auxiliary_tile_values,
+                                              plan.exchange_contributions);
+          const auto cuda_error = cudaGetLastError();
+          if (cuda_error != cudaSuccess)
+            return cuda_failure(cuda_error, "retain generated raw DF tensor", detail);
+        }
         status = whiten_factor_panel(
             plan, system, pairs, plan.auxiliary_tile_values,
             plan.three_center + system * plan.tensor_elements_per_system + pair * plan.naux,
@@ -148,6 +168,15 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
             plan.integral_source, system, pair, pairs, begin, count, -1,
             reinterpret_cast<void*>(plan.stream), plan.auxiliary_tile_values, detail);
         if (status != VIBEQC_STATUS_SUCCESS) return status;
+        if (retain_raw) {
+          launch_gather_auxiliary_tile_kernel(blocks_for(pairs * plan.naux), kThreads, 0,
+                                              plan.stream, plan.matrix_elements, plan.naux, system,
+                                              0, plan.naux, plan.auxiliary_tile_values,
+                                              plan.exchange_contributions);
+          const auto cuda_error = cudaGetLastError();
+          if (cuda_error != cudaSuccess)
+            return cuda_failure(cuda_error, "retain generated raw DF tensor", detail);
+        }
         const auto blas_status =
             runtime::cuda_trace::trace_call("resident_metric_transform", plan.stream, [&] {
               return cublasDgemm(
@@ -164,6 +193,11 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
       }
       runtime::cuda_trace::trace_tile(system, pair, pairs, 0, plan.naux, -1, true);
     }
+  }
+  if (retain_raw) {
+    plan.resident_raw_valid = true;
+    runtime::cuda_trace::trace_counter("resident_raw_bytes",
+                                       plan.tensor_elements_per_system * sizeof(double));
   }
   runtime::cuda_trace::trace_counter(
       "resident_transformed_bytes",
@@ -267,6 +301,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
       !retain_three_center && (auxiliary_tile < naux || ao_pair_tile < matrix_elements);
   const std::size_t staged_row_tile =
       streamed ? std::min<std::size_t>(nbf, std::max<std::size_t>(1, ao_pair_tile / nbf)) : nbf;
+  const bool complete_resident_layout =
+      !streamed && ao_pair_tile == matrix_elements && auxiliary_tile == naux;
   std::size_t staged_pair_capacity = 0;
   std::size_t auxiliary_vector_elements = 0;
   std::size_t auxiliary_vector_bytes = 0;
@@ -304,8 +340,17 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   }
 
   // Generic tensor/source callers cannot infer a reference from dimensions.
-  // Even an authorized RHF hint cannot reserve for an ineligible layout.
-  if (streamed || (integral_source && !packed) ||
+  // Even an authorized RHF hint cannot reserve for an ineligible layout. A
+  // Resident generated plans need the complete raw/scratch lease. Streamed
+  // plans may instead reserve a private source-first value projection; metric
+  // rank and exact density provenance are checked later, before execution.
+  const bool streamed_projection =
+      streamed && integral_source &&
+      df_projected_exchange_schedule(nbf, naux, automatic_rhf_rank, tile_elements,
+                                     df_triangular_exchange_requested())
+          .rows;
+  if ((streamed && !streamed_projection) ||
+      (integral_source && !packed && !complete_resident_layout && !streamed_projection) ||
       (packed && automatic_rhf_rank > storage.rank_capacity))
     automatic_rhf_rank = 0;
   const bool occupied_scf_reserved =

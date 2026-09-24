@@ -75,11 +75,16 @@ void check_convergence(unsigned spins, bool retain, bool require_physical, bool 
   Device<std::uint8_t> final_active(std::vector<std::uint8_t>{1, 1, 1, 1, 1, 0}),
       final_converged(std::vector<std::uint8_t>{1, 1, 1, 1, 1, 0});
   Device<std::uint32_t> tested(std::vector<std::uint32_t>{0});
+  // The kernel reports per-item participation separately from the aggregate
+  // counter so callers can distinguish inactive items from rejected ones.
+  Device<std::uint8_t> tested_items(std::vector<std::uint8_t>(batch, 0));
   launch_validate_force_residual_kernel(nullptr, batch, spins, n, tolerance, d_residual.data,
-                                        final_active.data, final_converged.data, tested.data);
+                                        final_active.data, final_converged.data, tested.data,
+                                        tested_items.data);
   check(cudaGetLastError());
   if (final_converged.read() != std::vector<std::uint8_t>{1, 1, 0, 0, 0, 0} ||
-      final_active.read() != std::vector<std::uint8_t>{1, 1, 0, 0, 0, 0} || tested.read()[0] != 5)
+      final_active.read() != std::vector<std::uint8_t>{1, 1, 0, 0, 0, 0} || tested.read()[0] != 5 ||
+      tested_items.read() != std::vector<std::uint8_t>{1, 1, 1, 1, 1, 0})
     throw std::runtime_error("force validation missed a bad determinant or lost rejected work");
 }
 }  // namespace

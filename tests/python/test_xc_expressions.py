@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from vibeqc.profiles import file_hash
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft.features import density_features
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph, Node
@@ -23,13 +24,11 @@ from vibeqc_compiler.xc import (
 from vibeqc_compiler.xc.capabilities import query_capability
 from vibeqc_compiler.xc.cuda import plan_tiles
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
-from vibeqc_compiler.xc.expressions import lda_xc_pw_unpolarized_tail_expression
 from vibeqc_compiler.xc.fixtures import load_fixture
 from vibeqc_compiler.xc.potential import potential_coefficients
+from vibeqc_compiler.xc.production_policy import lda_xc_pw_unpolarized_tail_expression
 from vibeqc_compiler.xc.reference import exchange_reference
 from vibeqc_compiler.xc.spec import CATALOG
-
-from tools.vibeqc_validation.schema import block_error
 
 
 def check(
@@ -142,7 +141,7 @@ def test_each_feature_derivative_against_pinned_independent_oracles(
 def test_licenses_sources_and_reference_generator_hashes() -> None:
     root = Path(__file__).resolve().parents[2]
     source = root / "upstream/libxc/7.0.0"
-    manifest_root = root / "external/libxc-7.0.0"
+    manifest_root = root / "manifests/libxc/7.0.0"
     manifest = json.loads((manifest_root / "manifest.json").read_text())
     for name, item in manifest["files"].items():
         assert file_hash(source / name) == item["sha256"]
@@ -473,9 +472,8 @@ def test_capability_cannot_relabel_cpu_or_failed_blocks_as_cuda_validation(
 ) -> None:
     from types import SimpleNamespace
 
+    from vibeqc_compiler.common.evidence import new_evidence, outcome
     from vibeqc_compiler.xc.cuda import XCArtifact
-
-    from tools.vibeqc_validation.schema import new_evidence, outcome
 
     program = build_program(functional("LDA_X"))
     _, contract, _ = emit_cuda(program)

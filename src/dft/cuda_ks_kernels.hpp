@@ -9,6 +9,8 @@ namespace vibeqc::dft::cuda_ks_detail {
 struct Scalars {
   double one_electron{}, hartree{}, xc{}, residual{}, density_change{};
   double residual_rms{}, density_rms{};
+  // Snapshot admission checks the largest AO commutator entry, not its RMS.
+  double maximum_residual{};
   double electrons[2]{}, grid_electrons[2]{};
   double energy_change{};
   int failure{};

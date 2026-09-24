@@ -30,7 +30,11 @@ sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 import numpy as np
 from vibeqc.autotune import source_identity
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
-from vibeqc_compiler.common.cuda_adapter import resolve_cuda_execution_profile
+from vibeqc_compiler.common.cuda_adapter import (
+    CudaCompilerAdapter,
+    resolve_cuda_execution_profile,
+)
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.evidence import (
     block_error,
     new_evidence,
@@ -44,8 +48,6 @@ from vibeqc_compiler.dft.cuda import CudaGrid, compile_cuda
 from vibeqc_compiler.dft.fixtures import NAMES, basis_arguments, load_fixture
 from vibeqc_compiler.dft.spatial import SpatialPolicy
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
 from vibeqc_compiler.xc import functional
 from vibeqc_compiler.xc.contractions import ContractionProgram
 from vibeqc_compiler.xc.integration_fixtures import CASES, load_integration_fixture

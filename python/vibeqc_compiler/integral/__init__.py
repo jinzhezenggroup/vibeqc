@@ -1,6 +1,6 @@
 """Build-time symbolic code generation for shell-class CUDA kernels."""
 
-from .backend import (
+from vibeqc_compiler.common.backend import (
     BenchmarkExecutor,
     CompilerAdapter,
     DeviceProbe,
@@ -10,6 +10,17 @@ from .backend import (
     TargetInfo,
     TargetScheduleShape,
 )
+from vibeqc_compiler.common.cuda_target import (
+    CUDA_TARGETS,
+    DEFAULT_CUDA_TARGET,
+    CudaArchitecture,
+    CudaTargetInfo,
+    cuda_architecture,
+    cuda_target_info,
+    normalize_cuda_architecture,
+    normalize_cuda_compile_architecture,
+)
+
 from .blocks import (
     BlockRequest,
     BlockResponse,
@@ -29,8 +40,13 @@ from .cache import NvrtcCacheSpec, integral_cache_key, nvrtc_cache_key
 from .capabilities import query_integral_capability
 from .cuda_emitter import emit_shell_class_fused_cuda
 from .cuda_lowering import (
+    DpppFusedPlan,
+    build_dppp_fused_plan,
+    dppp_components,
+    emit_dppp_fused_cuda,
     emit_ppps_1110_resident_bra_cuda,
     emit_ppps_resident_bra_rys3_cuda,
+    evaluate_dppp_fused_component,
     supports_component_lane_rys,
 )
 from .cuda_schedule import (
@@ -48,23 +64,6 @@ from .cuda_schedule import (
     default_schedule,
     schedule_candidates,
     tuning_schedule_candidates,
-)
-from .cuda_target import (
-    CUDA_TARGETS,
-    DEFAULT_CUDA_TARGET,
-    CudaArchitecture,
-    CudaTargetInfo,
-    cuda_architecture,
-    cuda_target_info,
-    normalize_cuda_architecture,
-    normalize_cuda_compile_architecture,
-)
-from .dppp_specialization import (
-    DpppFusedPlan,
-    build_dppp_fused_plan,
-    dppp_components,
-    emit_dppp_fused_cuda,
-    evaluate_dppp_fused_component,
 )
 from .expr import (
     MaterializationDecision,

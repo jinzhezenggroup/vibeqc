@@ -58,7 +58,7 @@ def test_native_rccsd_capability_is_honest_energy_only_batch() -> None:
     assert caps.supported_properties == frozenset({"energy"})
     triples = method_capabilities("ccsd(t)")
     assert triples.available and triples.supports_batch
-    assert triples.supported_properties == frozenset({"energy"})
+    assert triples.supported_properties == frozenset({"energy", "forces"})
 
 
 @pytest.mark.parametrize("case", ("h2", "h2o"))
