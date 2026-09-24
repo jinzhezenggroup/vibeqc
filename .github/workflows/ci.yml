@@ -686,7 +686,8 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    # PRs run only the bounded representative tier; master/manual runs the full
+    # PRs always run two representative endpoints and add targeted coverage when
+    # changed paths touch advanced DFT machinery; master/manual runs the full
     # endpoint set. Scheduled qualification already has expensive numerical
     # coverage and does not need duplicate performance instrumentation.
     if: github.event_name != 'schedule'
@@ -704,6 +705,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Select change-aware PR CodSpeed coverage
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          changed_files="$(
+            git diff --name-only --no-renames \
+              "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" --
+          )"
+          extra_cases=""
+          if grep -Eq \
+            '^(benchmarks/test_cpu_codspeed\.py$|\.github/workflows/ci\.yml$|src/dft/|src/scf/|src/methods/|src/integrals/|include/vibeqc([./])|python/vibeqc/|python/vibeqc_compiler/(dft|xc)/|python/vibeqc_compiler/(method|integral)/|manifests/|upstream/libxc/|tools/(generate_xc|libxc))' \
+            <<<"$changed_files"; then
+            extra_cases="wb97mv"
+          fi
+          echo "VIBEQC_CODSPEED_EXTRA_CASES=${extra_cases}" >> "$GITHUB_ENV"
       - name: Install uv and Python 3.11
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -752,8 +768,8 @@ jobs:
         with:
           # Hosted GitHub runners are noisy for wall-clock gating; simulation
           # provides the stable PR/master regression signal without Macro Runner quota.
-          # VIBEQC_CODSPEED_TIER keeps PR instrumentation to two representative
-          # endpoints while master/manual records the broader trend set.
+          # PRs keep two always-on endpoints and can add a targeted advanced-DFT
+          # endpoint through VIBEQC_CODSPEED_EXTRA_CASES.
           mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
