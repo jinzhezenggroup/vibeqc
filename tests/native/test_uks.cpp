@@ -9,6 +9,7 @@
 #include "scf/fock_prepared.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
+#include "xc_cpu_generated.hpp"
 
 namespace {
 using namespace vibeqc;
@@ -17,6 +18,16 @@ using scf::reference::Matrix;
 void require(bool passed, const char* message) {
   if (!passed) throw std::runtime_error(message);
 }
+
+dft::SemilocalPointValue pw91_program_point(const double rho[2],
+                                            const double (&gradient)[2][3],
+                                            const double[2]) {
+  return dft::evaluate_pw91_point(rho, gradient);
+}
+
+const dft::SemilocalPointProgram kPw91QualificationProgram{
+    "PW91 qualification program", dft::generated::kPw91SemilocalExpressionIdentity,
+    7U, 1U, pw91_program_point};
 
 core::System closed_shell_h2(double displacement = 0.0) {
   core::System system;
@@ -214,6 +225,63 @@ void run_b3lyp_global_case() {
   require(rejected, "B3LYP interior value slice incorrectly advertised complete forces");
 }
 
+void run_generic_semilocal_scf_case() {
+  const auto system = closed_shell_h2();
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 1, 2, 4, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.max_iterations = 150;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+
+  scf::FockBuildSpec rks_spec;
+  rks_spec.spin = scf::FockSpin::Restricted;
+  rks_spec.exchange.present = false;
+  rks_spec.derivative_order = 0;
+  const auto rks_strategy = scf::resolve_fock_build(rks_spec, scf::FockBackend::Cpu);
+  const scf::PreparedFockPlan rks_plan(system, nullptr, rks_strategy);
+  const auto rks =
+      scf::run_semilocal_rks(rks_plan, basis, grid, options, kPw91QualificationProgram);
+  require(rks.converged && std::isfinite(rks.energy) && rks.physical_residual_rms < 1e-9,
+          "generic semilocal RKS qualification path did not converge");
+  const auto rks_xc = dft::integrate_pw91_rks(basis, grid, rks.density);
+  const auto rks_jk = rks_plan.build(rks.density);
+  const auto& ints = rks_plan.one_electron();
+  const double independent =
+      ints.nuclear_repulsion + scf::reference::dot(rks.density, ints.hcore) +
+      0.5 * scf::reference::dot(rks.density, rks_jk.coulomb) + rks_xc.energy;
+  require(std::abs(independent - rks.energy) < 2e-11,
+          "generic semilocal RKS endpoint disagrees with component rebuild");
+  require(rks.dft_diagnostic.ao_order == 1 && rks.dft_diagnostic.scf_domain_version == 1,
+          "generic semilocal RKS lost program feature/domain metadata");
+
+  scf::FockBuildSpec uks_spec = rks_spec;
+  uks_spec.spin = scf::FockSpin::Unrestricted;
+  const auto uks_strategy = scf::resolve_fock_build(uks_spec, scf::FockBackend::Cpu);
+  const scf::PreparedFockPlan uks_plan(system, nullptr, uks_strategy);
+  const std::size_t n2 = basis.nao * basis.nao;
+  std::vector<double> seed(2 * n2);
+  for (std::size_t i = 0; i < n2; ++i) seed[i] = seed[n2 + i] = 0.5 * rks.density[i];
+  const auto uks =
+      scf::run_semilocal_uks(uks_plan, basis, grid, options, kPw91QualificationProgram, &seed);
+  require(uks.converged && std::isfinite(uks.energy) && uks.physical_residual_rms < 1e-9,
+          "generic semilocal UKS qualification path did not converge");
+  require(std::abs(uks.energy - rks.energy) < 2e-10,
+          "generic semilocal closed-shell RKS/UKS endpoints disagree");
+
+  auto invalid = kPw91QualificationProgram;
+  invalid.expression_identity = "";
+  bool rejected = false;
+  try {
+    (void)scf::run_semilocal_rks(rks_plan, basis, grid, options, invalid);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "generic semilocal SCF accepted an unbound program identity");
+}
+
 void run_cam_rsh_case() {
   const auto system = closed_shell_h2();
   const dft::AoBasis basis(system);
@@ -316,6 +384,7 @@ int main() {
     for (unsigned atoms : {1U, 2U, 3U})
       for (bool pbe : {false, true}) run_case(atoms, pbe);
     run_b3lyp_global_case();
+    run_generic_semilocal_scf_case();
     run_cam_rsh_case();
     std::cout << "UKS physical state, spin, warm and stale-input gates passed\n";
   } catch (const std::exception& error) {

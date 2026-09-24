@@ -118,6 +118,35 @@ struct SemilocalPointValue {
   /** Coefficient of grad(phi_mu).grad(phi_nu), i.e. vtau/2 when tau is active. */
   double kinetic[2]{};
 };
+
+using SemilocalPointEvaluator = SemilocalPointValue (*)(
+    const double rho[2], const double (&gradient)[2][3], const double tau[2]);
+
+/** One already-compiled semilocal point program. The identifier is diagnostic
+ * only; expression_identity binds the generated mathematics. ingredient_mask
+ * follows the native rho/sigma/tau feature bits (1, 7, or 15). This descriptor
+ * is executable plumbing and does not grant production capability by itself. */
+struct SemilocalPointProgram {
+  const char* identifier{};
+  const char* expression_identity{};
+  unsigned ingredient_mask{};
+  unsigned domain_version{};
+  SemilocalPointEvaluator evaluate{};
+};
+
+void validate_semilocal_point_program(const SemilocalPointProgram& program);
+
+XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density,
+                                   const SemilocalPointProgram& program,
+                                   std::size_t tile_points = 256,
+                                   XcDensitySource source = {});
+SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       const SemilocalPointProgram& program,
+                                       std::size_t tile_points = 256);
+
 using GgaPointValue = SemilocalPointValue;
 using B3GgaPointValue = SemilocalPointValue;
 using B3lypPointValue = SemilocalPointValue;
