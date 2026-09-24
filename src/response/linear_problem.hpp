@@ -39,6 +39,9 @@ class LinearResponseProblem {
         apply_transpose_(std::move(apply_transpose)) {
     if (!dimension_) throw std::invalid_argument("response problem dimension must be positive");
     if (!apply_) throw std::invalid_argument("response problem operator callback is empty");
+    if (symmetry_ == LinearResponseSymmetry::Symmetric && apply_transpose_)
+      throw std::invalid_argument(
+          "symmetric response problem cannot provide a distinct transpose operator");
   }
 
   [[nodiscard]] std::size_t dimension() const noexcept { return dimension_; }
