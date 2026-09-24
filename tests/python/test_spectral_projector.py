@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
 from vibeqc_compiler.method.matrix_function import (
     MatrixFunctionEvaluation,
     SymmetricMatrixFunctionSpec,
