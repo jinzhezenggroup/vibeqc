@@ -44,6 +44,22 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Select change-aware PR CodSpeed coverage
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          changed_files="$(
+            git diff --name-only \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}" --
+          )"
+          extra_cases=""
+          if grep -Eq \
+            '^(benchmarks/test_cpu_codspeed\.py|src/dft/|src/scf/|src/methods/|include/vibeqc/(dft|scf|methods)/|python/vibeqc_compiler/(dft|xc)/|manifests/|upstream/libxc/|tools/generate_xc)' \
+            <<<"$changed_files"; then
+            extra_cases="wb97mv"
+          fi
+          echo "VIBEQC_CODSPEED_EXTRA_CASES=${extra_cases}" >> "$GITHUB_ENV"
       - name: Install ccache 4.14
         run: |
           archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
@@ -686,7 +702,8 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    # PRs run only the bounded representative tier; master/manual runs the full
+    # PRs always run two representative endpoints and add targeted coverage when
+    # changed paths touch advanced DFT machinery; master/manual runs the full
     # endpoint set. Scheduled qualification already has expensive numerical
     # coverage and does not need duplicate performance instrumentation.
     if: github.event_name != 'schedule'
@@ -752,8 +769,8 @@ jobs:
         with:
           # Hosted GitHub runners are noisy for wall-clock gating; simulation
           # provides the stable PR/master regression signal without Macro Runner quota.
-          # VIBEQC_CODSPEED_TIER keeps PR instrumentation to two representative
-          # endpoints while master/manual records the broader trend set.
+          # PRs keep two always-on endpoints and can add a targeted advanced-DFT
+          # endpoint through VIBEQC_CODSPEED_EXTRA_CASES.
           mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
