@@ -50,6 +50,11 @@ def test_tensorir_df_virtual_correction_has_no_four_index_virtual_input():
     assert program.provenance["resident_vvvv"] is False
     assert program.provenance["auxiliary_reduction"] == "direct-in-output-einsums"
 
+    for node in program.live_nodes:
+        if node.op == "input":
+            continue
+        assert all(index.space.kind != "auxiliary" for index in node.spec.indices)
+
 
 def test_tensorir_df_virtual_correction_is_auxiliary_gauge_invariant():
     bov, bvv, t1, t2 = _problem(seed=158)
