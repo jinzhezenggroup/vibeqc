@@ -115,8 +115,7 @@ std::array<double, 5> rks_features(const double* phi,
               (derivatives[axis][mu] * phi_mu + phi_mu * derivatives[axis][mu]) * diagonal;
       if (need_tau)
         for (unsigned axis = 0; axis < 3; ++axis)
-          features[4] +=
-              0.5 * derivatives[axis][mu] * diagonal * derivatives[axis][mu];
+          features[4] += 0.5 * derivatives[axis][mu] * diagonal * derivatives[axis][mu];
 
       for (std::size_t nu = mu + 1; nu < n; ++nu) {
         const double pair_density = density[mu * n + nu] + density[nu * n + mu];
@@ -124,12 +123,10 @@ std::array<double, 5> rks_features(const double* phi,
         if (need_first)
           for (unsigned axis = 0; axis < 3; ++axis)
             features[axis + 1] +=
-                (derivatives[axis][mu] * phi[nu] + phi_mu * derivatives[axis][nu]) *
-                pair_density;
+                (derivatives[axis][mu] * phi[nu] + phi_mu * derivatives[axis][nu]) * pair_density;
         if (need_tau)
           for (unsigned axis = 0; axis < 3; ++axis)
-            features[4] +=
-                0.5 * derivatives[axis][mu] * pair_density * derivatives[axis][nu];
+            features[4] += 0.5 * derivatives[axis][mu] * pair_density * derivatives[axis][nu];
       }
     }
   }

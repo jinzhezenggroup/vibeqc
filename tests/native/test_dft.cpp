@@ -327,8 +327,7 @@ int main() {
     // The optimized triangular contraction must retain the established
     // tolerance for slightly asymmetric caller storage by consuming D_uv+D_vu,
     // rather than silently trusting only one triangle.
-    const std::vector<double> near_symmetric_density{0.8, 0.2 + 5.0e-12,
-                                                     0.2 - 5.0e-12, 0.6};
+    const std::vector<double> near_symmetric_density{0.8, 0.2 + 5.0e-12, 0.2 - 5.0e-12, 0.6};
     const auto near_symmetric =
         vibeqc::dft::integrate_pbe_rks(basis, grid, near_symmetric_density, 5);
     require(std::abs(near_symmetric.energy - pbe.energy) < 2.0e-14,
