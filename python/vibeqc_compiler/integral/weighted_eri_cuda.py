@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import typing
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
 from .range_separation import CoulombKernelFamily
 from .weighted_eri import (
@@ -86,7 +86,7 @@ def emit_weighted_eri_function(
     for packed, index in enumerate(kernel.component_indices):
         offset = packed if packed_weights else index
         variables[f"component_weight_{index}"] = f"component_weights[{offset}]"
-    emitter = CudaEmitter(graph, variables, plan)
+    emitter = ScalarCEmitter(graph, variables, plan)
     emitter.emit(roots)
     output_kind = "derivatives" if include_value else "gradient-only"
     lines = [
