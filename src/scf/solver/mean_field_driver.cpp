@@ -15,7 +15,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 
 namespace vibeqc::scf::solver {
 namespace {
@@ -264,10 +264,10 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
     double residual_rms{};
   };
 
-  const SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
                                     options.density_tolerance, options.density_tolerance,
                                     require_residual};
-  auto outcome = run_self_consistent(
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
         ++result.fock_builds;
@@ -291,7 +291,7 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
                              energy,          state_rms,           physical_residual_rms};
       },
       [&](const Matrix& current_density, RhfEvaluation evaluation,
-          const SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         Matrix next_density = std::move(evaluation.next_density);
         if (options.hooks) {
           next_density = safeguarded_update(
@@ -310,7 +310,7 @@ ScfResult run_rhf_host_plan(const core::System& system, const ScfOptions& option
         }
         return next_density;
       },
-      [&](const SelfConsistentProgress& progress, const RhfEvaluation&) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const RhfEvaluation&) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
@@ -380,10 +380,10 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
     double residual_rms{};
   };
 
-  const SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
                                     options.density_tolerance, options.density_tolerance,
                                     require_residual};
-  auto outcome = run_self_consistent(
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       UhfState{std::move(alpha_density), std::move(beta_density)}, policy,
       [&](const UhfState& state, unsigned) {
         auto fock = assemble_fock(plan.strategy(), ints.hcore,
@@ -426,7 +426,7 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
                              state_rms,
                              physical_residual_rms};
       },
-      [&](const UhfState& state, UhfEvaluation evaluation, const SelfConsistentProgress& progress) {
+      [&](const UhfState& state, UhfEvaluation evaluation, const ::vibeqc::solver::SelfConsistentProgress& progress) {
         if (!options.hooks) {
           return UhfState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
         }
@@ -449,7 +449,7 @@ ScfResult run_uhf_host_plan(const core::System& system, const ScfOptions& option
         auto [next_alpha, next_beta] = split_spin_matrices(next, n * n);
         return UhfState{std::move(next_alpha), std::move(next_beta)};
       },
-      [&](const SelfConsistentProgress& progress, const UhfEvaluation&) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const UhfEvaluation&) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
