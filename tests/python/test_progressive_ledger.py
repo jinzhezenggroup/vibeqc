@@ -21,9 +21,7 @@ def test_runtime_stage_count_is_charged() -> None:
         target_model,
         "a" * 64,
         (("orbital.mathematical_identity", "c" * 64),),
-        TargetAccuracy(
-            (ObservableTarget("energy", "absolute", "Eh", absolute=1e-8),)
-        ),
+        TargetAccuracy((ObservableTarget("energy", "absolute", "Eh", absolute=1e-8),)),
         HFConvergence(1e-10, 1e-8, 100, 1e-8),
         2,
     )

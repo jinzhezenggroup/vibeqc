@@ -45,7 +45,10 @@ def audit_runtime_ledger(
 
     if not isinstance(problem, TargetProblem):
         raise TypeError("problem must use the TargetProblem contract")
-    if not isinstance(target_stage, StagePlan) or target_stage.role is not StageRole.TARGET:
+    if (
+        not isinstance(target_stage, StagePlan)
+        or target_stage.role is not StageRole.TARGET
+    ):
         raise TypeError("target_stage must be the typed target StagePlan")
     if not isinstance(budget, ProgressiveBudget):
         raise TypeError("budget must use the ProgressiveBudget contract")
@@ -109,7 +112,9 @@ def audit_runtime_ledger(
         if target.provider_identity != problem.provider_identity:
             integrity_reasons.append("target provider differs from the TargetProblem")
         if target.status != "succeeded":
-            integrity_reasons.append("target stage did not record successful completion")
+            integrity_reasons.append(
+                "target stage did not record successful completion"
+            )
 
     if integrity_reasons:
         status = "invalid"
