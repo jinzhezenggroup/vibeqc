@@ -190,12 +190,16 @@ __global__ void normalize_kernel(size_t begin, size_t count, size_t per_atom, si
                                  const double* logs, double* weights, int* invalid) {
   for (size_t p = size_t(blockIdx.x) * blockDim.x + threadIdx.x; p < count;
        p += size_t(blockDim.x) * gridDim.x) {
+    const size_t owner = (begin + p) / per_atom;
     double maximum = -INFINITY;
     for (size_t a = 0; a < na; ++a) maximum = fmax(maximum, logs[a * count + p]);
-    double total = 0.0;
-    for (size_t a = 0; a < na; ++a) total += exp(logs[a * count + p] - maximum);
-    const size_t owner = (begin + p) / per_atom;
-    const double weight = weights[p] * (exp(logs[owner * count + p] - maximum) / total);
+    double total = 0.0, owner_term = 0.0;
+    for (size_t a = 0; a < na; ++a) {
+      const double term = exp(logs[a * count + p] - maximum);
+      total += term;
+      if (a == owner) owner_term = term;
+    }
+    const double weight = weights[p] * (owner_term / total);
     if (!(total > 0.0) || !isfinite(total) || !isfinite(weight)) atomicExch(invalid, 1);
     weights[p] = weight;
   }
