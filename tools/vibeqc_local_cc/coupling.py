@@ -1,7 +1,7 @@
 """Exact pair-space coordinate transfers for bounded local-correlation prototypes."""
 
-from dataclasses import dataclass
 import typing
+from dataclasses import dataclass
 
 import numpy as np
 
