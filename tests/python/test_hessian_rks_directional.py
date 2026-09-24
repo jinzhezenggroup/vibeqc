@@ -53,7 +53,7 @@ def case(request: typing.Any) -> typing.Iterator[typing.Any]:
 
 
 def test_real_rks_geometry_direction_solves_shared_cpks(case: typing.Any) -> None:
-    _, operator, direction, result = case
+    _, _operator, direction, result = case
     assert result.response.solve_result.converged
     assert result.response.solve_result.residual_norm < 1e-9
     np.testing.assert_array_equal(result.direction, direction)
