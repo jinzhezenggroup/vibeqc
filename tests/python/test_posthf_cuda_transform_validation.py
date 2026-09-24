@@ -45,7 +45,9 @@ def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
     )
     assert validation < status < failure
     assert "validate(p)" in validate_api
-    assert download.index("validate(p)") < download.index("cudaMemcpyAsync(out, p.result")
+    assert download.index("validate(p)") < download.index(
+        "cudaMemcpyAsync(out, p.result"
+    )
 
 
 def test_resident_cuda_mo_block_is_validated_before_publication() -> None:
@@ -54,10 +56,12 @@ def test_resident_cuda_mo_block_is_validated_before_publication() -> None:
 
     pointer = owner[owner.index("def device_pointer") : owner.index("def to_host")]
     assert '_call("posthf_cuda_validate_v1", self._handle)' in pointer
-    assert pointer.index("posthf_cuda_validate_v1") < pointer.index("posthf_cuda_pointer_v1")
+    assert pointer.index("posthf_cuda_validate_v1") < pointer.index(
+        "posthf_cuda_pointer_v1"
+    )
 
     validation = provider.index("engine.validate()")
-    diagnostics = provider.index('diagnostics = {', validation)
+    diagnostics = provider.index("diagnostics = {", validation)
     assert validation < diagnostics
 
 
