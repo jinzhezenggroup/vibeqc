@@ -10,7 +10,6 @@ promotion remain separate capabilities.
 from __future__ import annotations
 
 import math
-import typing
 from copy import deepcopy
 from dataclasses import dataclass, replace
 
