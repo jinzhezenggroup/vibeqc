@@ -169,7 +169,7 @@ Matrix charge_guided_lowdin_density(const core::System& system,
         system.basis_representation == VIBEQC_BASIS_SPHERICAL
             ? 2u * static_cast<std::size_t>(shell.angular_momentum) + 1u
             : molecule::cartesian_count(shell.angular_momentum);
-    if (count == 0 || count > n - std::min(n, ao_atoms.size())) {
+    if (count == 0 || ao_atoms.size() > n || count > n - ao_atoms.size()) {
       throw std::invalid_argument("charge-guided seed AO ownership exceeds the basis");
     }
     ao_atoms.insert(ao_atoms.end(), count, static_cast<std::size_t>(shell.atom_index));
