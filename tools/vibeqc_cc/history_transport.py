@@ -13,6 +13,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
+from vibeqc_compiler.common.arrays import immutable
 
 from .gpu_state import AmplitudeSnapshot
 from .projected_transport import project_amplitude_guess
@@ -82,9 +83,7 @@ class RecycledHistoryEntry:
                 raise ValueError(
                     f"{name} must be a finite FP64 array matching target amplitudes"
                 )
-            owned = np.array(value, dtype=np.float64, order="C", copy=True)
-            owned.flags.writeable = False
-            frozen.append(owned)
+            frozen.append(immutable(value))
         object.__setattr__(self, "residual_singles", frozen[0])
         object.__setattr__(self, "residual_doubles", frozen[1])
         if not math.isfinite(self.residual_max_abs) or self.residual_max_abs < 0:
@@ -135,13 +134,20 @@ def _target_elements(transport: StateTransport) -> int:
     return nocc * nvir + nocc * nocc * nvir * nvir
 
 
+def _validate_history_source(transport: StateTransport, source: AmplitudeSnapshot) -> None:
+    if not isinstance(source, AmplitudeSnapshot):
+        raise TypeError("source_history entries must be AmplitudeSnapshot objects")
+    if source.reference_id != transport.source.reference_id:
+        raise ValueError("history amplitude reference does not match transport source")
+    o, v = transport.source.nocc, transport.source.nvir
+    if source.t1.shape != (o, v) or source.t2.shape != (o, o, v, v):
+        raise ValueError("history amplitude shape does not match transport source")
+
+
 def _transport_history_amplitudes(
     transport: StateTransport, source: AmplitudeSnapshot
 ) -> AmplitudeSnapshot:
-    if source.reference_id != transport.source.reference_id:
-        raise ValueError("history amplitude reference does not match transport source")
-    if source.t1.shape != (transport.source.nocc, transport.source.nvir):
-        raise ValueError("history amplitude shape does not match transport source")
+    _validate_history_source(transport, source)
 
     if transport.compatibility in (
         TransportCompatibility.identity,
@@ -204,10 +210,13 @@ def recycle_diis_history(
     if required > selected.maximum_total_elements:
         raise ValueError("recycled DIIS history exceeds the configured element budget")
 
+    # Validate the entire retained input before the first target-operator call.
+    # A stale later vector must not perform partial target work for earlier ones.
+    for source in retained:
+        _validate_history_source(transport, source)
+
     entries: list[RecycledHistoryEntry] = []
     for offset, source in enumerate(retained, start=dropped):
-        if not isinstance(source, AmplitudeSnapshot):
-            raise TypeError("source_history entries must be AmplitudeSnapshot objects")
         target = _transport_history_amplitudes(transport, source)
         residual = target_residual(target)
         if not isinstance(residual, tuple) or len(residual) != 2:
