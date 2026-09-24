@@ -152,6 +152,18 @@ int main(int argc,char** argv) {
     if(!state.solved.converged() || !state.reference) return 3;
     const auto plan=vibeqc::cc::plan_rccsdt_force_cpu(system,*state.reference,state.problem,
                                                     state.solved,256ULL<<20);
+    bool bad_device=false, bad_stage=false;
+    try {
+      (void)vibeqc::cc::rccsdt_force_cuda_derivative(
+          system,*state.reference,state.problem,state.solved,state.eps_o,state.eps_v,
+          plan.peak_bytes,-1,64ULL<<20);
+    } catch(const std::invalid_argument&) { bad_device=true; }
+    try {
+      (void)vibeqc::cc::rccsdt_force_cuda_derivative(
+          system,*state.reference,state.problem,state.solved,state.eps_o,state.eps_v,
+          plan.peak_bytes,0,0);
+    } catch(const std::invalid_argument&) { bad_stage=true; }
+    if(!bad_device || !bad_stage) return 8;
     // Refuse before even the first triples-response output is materialized.
     trace::start(); bool refused=false;
     try {
@@ -165,6 +177,7 @@ int main(int argc,char** argv) {
                                                 state.eps_o,state.eps_v,plan.peak_bytes);
     trace::active=false;
     if(force.numeric_capacity_bytes!=plan.peak_bytes ||
+       force.cuda_derivative || force.derivative_stage_budget_bytes!=0 ||
        trace::peak+plan.retained_input_bytes>plan.peak_bytes) return 5;
     const auto old_capacity=state.problem.foo.capacity();
     state.problem.foo.reserve(old_capacity+32);
