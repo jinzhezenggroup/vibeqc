@@ -224,3 +224,19 @@ def test_curated_registration_cannot_enter_automatic_force_lane() -> None:
             backend="cpu",
             spin="unpolarized",
         )
+
+
+@pytest.mark.parametrize(
+    "name", ["LDA_X", "lda_x", "GGA_X_PBE", "MGGA_X_SCAN", "HYB_GGA_XC_PBE0"]
+)
+def test_nonautomatic_registration_rejected_before_bulk_import(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    assert name.upper() not in bulk_gradient.AUTO_BULK_COMPONENTS
+    monkeypatch.setattr(
+        bulk_gradient,
+        "functional_capability",
+        lambda *args, **kwargs: pytest.fail("nonautomatic graph must not be imported"),
+    )
+    with pytest.raises(UnsupportedMethod, match="non-curated pure semilocal"):
+        resolve_bulk_force_capability(name, backend="cpu", spin="unpolarized")
