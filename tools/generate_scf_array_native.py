@@ -211,15 +211,17 @@ inline void density_from_orbitals(double* output, const double* coefficients,
                                   std::size_t nbf, std::size_t coefficient_stride,
                                   std::size_t occupied, double occupation_weight) {{
   for (std::size_t mu = 0; mu < nbf; ++mu) {{
-    for (std::size_t nu = 0; nu < nbf; ++nu) {{
+    for (std::size_t nu = mu; nu < nbf; ++nu) {{
       double value = 0.0;
       for (std::size_t orbital = 0; orbital < occupied; ++orbital) {{
-        // Preserve the legacy FP64 product/accumulation order: the occupied
-        // factor cache uses bitwise density witnesses.
+        // Preserve the legacy FP64 product/accumulation order for the unique
+        // AO pair. Physical SCF callers use exact occupation weights 1 or 2,
+        // so the mirrored pair is bitwise-equivalent to the swapped product.
         value += occupation_weight * coefficients[mu * coefficient_stride + orbital] *
                  coefficients[nu * coefficient_stride + orbital];
       }}
       output[mu * nbf + nu] = value;
+      if (mu != nu) output[nu * nbf + mu] = value;
     }}
   }}
 }}
