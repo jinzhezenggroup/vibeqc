@@ -28,7 +28,10 @@ def test_append_fences_only_reusable_host_record_lifetime() -> None:
         < append.index(launch)
         < append.index(fence)
     )
-    assert "cudaStreamSynchronize(p.context.stream)" not in append
+    successful, cleanup = append.split("} catch (...) {", maxsplit=1)
+    assert "cudaStreamSynchronize(p.context.stream)" not in successful
+    assert "(void)cudaStreamSynchronize(p.context.stream);" in cleanup
+    assert cleanup.index("cudaStreamSynchronize") < cleanup.index("throw;")
     assert "cudaMemcpyDeviceToHost" not in append
 
 
