@@ -16,3 +16,40 @@ VibeQC documentation is organized by **reader and task**, not by the internal so
 The generated [public method table](public_methods.md), `codegen_capabilities.json`, the `cuda_ownership/` ledger, and the generated Libxc import/coverage reports remain at the docs root because repository tooling currently writes or consumes those paths. Guides should link to those sources rather than copying their contents.
 
 Historical rationale and discarded designs belong under `.agents/notes/`, not in current-state guides.
+
+## Build locally
+
+From the repository root:
+
+```console
+python -m pip install -r docs/requirements.txt
+python -m sphinx -b html docs docs/_build/html
+```
+
+The generated HTML is written to `docs/_build/html/`.
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Guides
+
+learn/index
+user/index
+reference/index
+developer/index
+maintainer/index
+agent/index
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+:caption: Generated and root reference
+
+public_methods
+libxc_bulk_import
+libxc_maple_coverage
+density_sources
+xc_expressions
+cuda_ownership/README
+```
