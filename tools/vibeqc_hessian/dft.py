@@ -18,13 +18,20 @@ from types import MappingProxyType
 
 import numpy as np
 from vibeqc._dft_gradient import StationaryDerivativeContract, _native_ao_atoms
+from vibeqc.ks import native_xc_functional_code
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.dft.ao import directional_ao_jets, jet_indices
+from vibeqc_compiler.dft.features import density_features
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryMeanField,
 )
 from vibeqc_compiler.method.stationary_hvp import StationaryHVPPlan
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import (
+    _geometry_feature_direction,
+    _geometry_feature_directions,
+)
+from vibeqc_compiler.xc.potential import assemble_coefficients_directional
 from vibeqc_compiler.xc.grid_response import (
     partition_mixed_response,
     partition_response,
@@ -182,20 +189,199 @@ def _grid_sources(state: _NativeRKSIntegralState) -> tuple[typing.Any, ...]:
     return ks, basis, grid, spec, atomic_weights, centers, ao_atoms
 
 
+def _xc_domain(state: _NativeRKSIntegralState) -> tuple[typing.Any, str, int]:
+    """Return the live production SCF XC contract, family and AO order."""
+    kernel = state.response.xc_kernel
+    contract = kernel._contraction.contract
+    family = contract.ingredients.family
+    if family not in ("lda", "gga"):
+        raise ValueError("bounded RKS HVP requires semilocal LDA/GGA")
+    return kernel.spec, family, contract.ingredients.ao_order
+
+
+def _native_point_state(
+    state: _NativeRKSIntegralState,
+    jets: np.ndarray,
+    density: np.ndarray,
+    family: str,
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """Evaluate the exact production SCF point model, including its tail domain."""
+    ks = state.response.state
+    requested = ("rho",) if family == "lda" else ("rho", "gradient")
+    features = density_features(jets, density, ingredients=requested)
+    zero_gradient = np.zeros((2, jets.shape[1], 3), dtype=np.float64)
+    point = ks._source.evaluate_xc_points(
+        native_xc_functional_code(ks.identity.method),
+        features["rho"],
+        features.get("gradient", zero_gradient),
+    )
+    compact = {
+        "rho": immutable(0.5 * point["rho"].sum(axis=0)[None]),
+    }
+    if family == "gga":
+        compact["gradient"] = immutable(
+            0.5 * point["gradient"].sum(axis=0)[None]
+        )
+    return features, point, compact
+
+
+def _native_directional_coefficients(
+    state: _NativeRKSIntegralState,
+    features: typing.Mapping[str, np.ndarray],
+    direction: typing.Mapping[str, np.ndarray],
+    family: str,
+) -> dict[str, np.ndarray]:
+    """Differentiate the same scaled SCF point potential in a physical direction."""
+    npoint = features["rho"].shape[1]
+    zero_gradient = np.zeros((2, npoint, 3), dtype=np.float64)
+    base_gradient = features.get("gradient", zero_gradient)
+    delta_gradient = direction.get("gradient", zero_gradient)
+    response = state.response.state._source.evaluate_rks_response_points(
+        family == "gga",
+        features["rho"].sum(axis=0),
+        base_gradient.sum(axis=0),
+        direction["rho"].sum(axis=0),
+        delta_gradient.sum(axis=0),
+    )
+    result = {
+        "rho": immutable(0.5 * response["rho"].sum(axis=0)[None]),
+    }
+    if family == "gga":
+        result["gradient"] = immutable(
+            0.5 * response["gradient"].sum(axis=0)[None]
+        )
+    return result
+
+
+def _total_feature_direction(
+    direction: typing.Mapping[str, np.ndarray], family: str
+) -> tuple[np.ndarray, np.ndarray | None]:
+    rho = np.asarray(direction["rho"]).sum(axis=0)
+    gradient = (
+        None
+        if family == "lda"
+        else np.asarray(direction["gradient"]).sum(axis=0)
+    )
+    return rho, gradient
+
+
+def _directional_energy(
+    coefficients: typing.Mapping[str, np.ndarray],
+    direction: typing.Mapping[str, np.ndarray],
+    family: str,
+) -> np.ndarray:
+    """Contract the RKS total-density Cartesian differential pointwise."""
+    rho, gradient = _total_feature_direction(direction, family)
+    result = coefficients["rho"][0] * rho
+    if family == "gga":
+        assert gradient is not None
+        result = result + np.sum(coefficients["gradient"][0] * gradient, axis=1)
+    return result
+
+
+def _native_mixed_geometry_directional(
+    state: _NativeRKSIntegralState,
+    raw_jets: np.ndarray,
+    density: np.ndarray,
+    weights: np.ndarray,
+    *,
+    ao_atoms: np.ndarray,
+    left_centers: np.ndarray,
+    left_points: np.ndarray,
+    left_weights: np.ndarray,
+    right_centers: np.ndarray,
+    right_points: np.ndarray,
+    right_weights: np.ndarray,
+    mixed_weights: np.ndarray,
+    delta_density: np.ndarray,
+) -> float:
+    """Evaluate #964's mixed chain rule with the production scaled SCF point owner.
+
+    Geometry/AO/grid algebra is identical to #964. Only the scalar first and
+    directional second XC coefficients come from the native SCF-domain bridge,
+    which is required for its admitted low-density and exact-vacuum branches.
+    """
+    _, family, order = _xc_domain(state)
+    base_count = len(jet_indices(order))
+    extended_count = len(jet_indices(order + 1))
+    base_jets = raw_jets[:base_count]
+    left_extended = directional_ao_jets(
+        raw_jets,
+        order + 1,
+        ao_atoms=ao_atoms,
+        point_motion=left_points,
+        center_motion=left_centers,
+    )
+    left_jets = left_extended[:base_count]
+    right_jets = directional_ao_jets(
+        raw_jets,
+        order,
+        ao_atoms=ao_atoms,
+        point_motion=right_points,
+        center_motion=right_centers,
+    )
+    mixed_jets = directional_ao_jets(
+        left_extended[:extended_count],
+        order,
+        ao_atoms=ao_atoms,
+        point_motion=right_points,
+        center_motion=right_centers,
+    )
+    features, point, coefficients = _native_point_state(
+        state, base_jets, density, family
+    )
+    left, right, mixed = _geometry_feature_directions(
+        features,
+        base_jets,
+        left_jets,
+        right_jets,
+        mixed_jets,
+        density,
+        delta_density,
+        family,
+    )
+    directional_coefficients = _native_directional_coefficients(
+        state, features, right, family
+    )
+    left_energy = _directional_energy(coefficients, left, family)
+    right_energy = _directional_energy(coefficients, right, family)
+    mixed_feature_energy = _directional_energy(coefficients, mixed, family)
+    left_rho, left_gradient = _total_feature_direction(left, family)
+    mixed_feature_energy = (
+        mixed_feature_energy
+        + directional_coefficients["rho"][0] * left_rho
+    )
+    if family == "gga":
+        assert left_gradient is not None
+        mixed_feature_energy = mixed_feature_energy + np.sum(
+            directional_coefficients["gradient"][0] * left_gradient, axis=1
+        )
+    value = (
+        float(mixed_weights @ point["energy"])
+        + float(left_weights @ right_energy)
+        + float(right_weights @ left_energy)
+        + float(weights @ mixed_feature_energy)
+    )
+    if not np.isfinite(value):
+        raise FloatingPointError("nonfinite production-domain XC mixed contraction")
+    return value
+
+
 def _xc_frozen_fock_direction(
     state: _NativeRKSIntegralState,
     direction: np.ndarray,
     *,
     tile_points: int,
 ) -> tuple[np.ndarray, dict[str, typing.Any]]:
-    """Differentiate the explicit semilocal XC AO potential at fixed D."""
+    """Differentiate the production semilocal XC AO potential at fixed D."""
     ks, basis, grid, spec, atomic_weights, centers, ao_atoms = _grid_sources(state)
-    program = ContractionProgram(state.response.xc_kernel.spec, "geometry")
+    _, family, order = _xc_domain(state)
     density = np.asarray(ks.density[0])
     result = np.zeros((state.nbf, state.nbf), dtype=np.float64)
     branches: list[str] = []
     for begin, end in _tile_range(len(grid.points), tile_points):
         points = np.asarray(grid.points[begin:end])
+        weights = np.asarray(grid.weights[begin:end])
         owners = np.asarray(grid.owners[begin:end], dtype=np.int64)
         point_motion = direction[owners]
         partition = partition_response(
@@ -208,17 +394,37 @@ def _xc_frozen_fock_direction(
         )
         selected = (np.arange(end - begin), owners)
         weight_motion = atomic_weights[begin:end] * partition.directional[selected]
-        jets = basis.evaluate(
-            points, program.contract.ingredients.ao_order + 1
-        )
-        matrices = program.potential_geometry_directional(
-            jets,
-            density,
-            np.asarray(grid.weights[begin:end]),
+        raw_jets = basis.evaluate(points, order + 1)
+        base_count = len(jet_indices(order))
+        base_jets = raw_jets[:base_count]
+        directional_jets = directional_ao_jets(
+            raw_jets,
+            order,
             ao_atoms=ao_atoms,
-            center_motion=direction,
             point_motion=point_motion,
-            weight_motion=weight_motion,
+            center_motion=direction,
+        )
+        features, _, coefficients = _native_point_state(
+            state, base_jets, density, family
+        )
+        feature_direction = _geometry_feature_direction(
+            features,
+            base_jets,
+            directional_jets,
+            density,
+            np.zeros_like(density),
+            family,
+        )
+        directional_coefficients = _native_directional_coefficients(
+            state, features, feature_direction, family
+        )
+        matrices = assemble_coefficients_directional(
+            base_jets,
+            directional_jets,
+            coefficients,
+            directional_coefficients,
+            weights,
+            weight_motion,
         )
         if np.asarray(matrices).shape != (1, state.nbf, state.nbf):
             raise ValueError("unpolarized XC geometry JVP returned invalid AO layout")
@@ -229,8 +435,9 @@ def _xc_frozen_fock_direction(
     return result, {
         "tiles": len(branches),
         "partition_branch_identities": tuple(branches),
+        "point_model": ks.identity.regularization_identity,
+        "point_derivative": "native-scaled-scf-directional-v1",
     }
-
 
 def _build_perturbation(
     state: _NativeRKSIntegralState,
@@ -306,7 +513,7 @@ def _xc_mixed_components(
 ) -> tuple[dict[str, np.ndarray], dict[str, typing.Any]]:
     """Differentiate each plan-owned XC gradient source along one right direction."""
     ks, basis, grid, spec, atomic_weights, centers, ao_atoms = _grid_sources(state)
-    program = ContractionProgram(state.response.xc_kernel.spec, "geometry")
+    _, _, order = _xc_domain(state)
     density = np.asarray(ks.density[0])
     delta_density = np.asarray(density_response)
     components = {
@@ -332,9 +539,7 @@ def _xc_mixed_components(
         )
         selected = (np.arange(end - begin), owners)
         right_weights = atom_weights * right_partition.directional[selected]
-        jets = basis.evaluate(
-            points, program.contract.ingredients.ao_order + 2
-        )
+        jets = basis.evaluate(points, order + 2)
         zero_points = np.zeros_like(points)
         zero_weights = np.zeros(end - begin)
 
@@ -344,7 +549,8 @@ def _xc_mixed_components(
                 left[atom, axis] = 1.0
                 left_points = left[owners]
 
-                ao_value = program.mixed_geometry_directional(
+                components["xc_ao"][atom, axis] += _native_mixed_geometry_directional(
+                    state,
                     jets,
                     density,
                     weights,
@@ -358,9 +564,9 @@ def _xc_mixed_components(
                     mixed_weights=zero_weights,
                     delta_density=delta_density,
                 )
-                components["xc_ao"][atom, axis] += ao_value.total
 
-                grid_value = program.mixed_geometry_directional(
+                components["xc_grid"][atom, axis] += _native_mixed_geometry_directional(
+                    state,
                     jets,
                     density,
                     weights,
@@ -374,7 +580,6 @@ def _xc_mixed_components(
                     mixed_weights=zero_weights,
                     delta_density=delta_density,
                 )
-                components["xc_grid"][atom, axis] += grid_value.total
 
                 mixed_partition = partition_mixed_response(
                     points,
@@ -388,7 +593,8 @@ def _xc_mixed_components(
                 )
                 left_weights = atom_weights * mixed_partition.left[selected]
                 mixed_weights = atom_weights * mixed_partition.mixed[selected]
-                weight_value = program.mixed_geometry_directional(
+                components["xc_weight"][atom, axis] += _native_mixed_geometry_directional(
+                    state,
                     jets,
                     density,
                     weights,
@@ -402,7 +608,6 @@ def _xc_mixed_components(
                     mixed_weights=mixed_weights,
                     delta_density=delta_density,
                 )
-                components["xc_weight"][atom, axis] += weight_value.total
                 branch_pairs.append(
                     (
                         right_partition.branch_identity,
@@ -417,9 +622,10 @@ def _xc_mixed_components(
         "coordinate_directions": 3 * state.nat,
         "mixed_contractions_per_coordinate": 3,
         "partition_branch_pairs": tuple(branch_pairs),
+        "point_model": ks.identity.regularization_identity,
+        "point_derivative": "native-scaled-scf-directional-v1",
         "dense_molecular_hessian_allocated": False,
     }
-
 
 def _resolve_direction(
     state: _NativeRKSIntegralState,
