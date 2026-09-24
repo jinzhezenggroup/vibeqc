@@ -289,13 +289,20 @@ class BoundCCSDOrbitalResponse:
     This owner deliberately stops before the Z solve and before every AO/nuclear
     derivative program. It owns only the raw MO Hamiltonian replay, generated
     fixed-orbital pullback, native RHF response operator, and independently
-    generated orbital matrix used to qualify that operator. It therefore cannot
+    generated orbital matrix used to qualify that operator. Generated TensorIR
+    may execute through an explicit external owner; the RHF J/K response operator
+    remains separately owned. It therefore cannot
     publish a nuclear gradient and does not inherit complete-gradient memory
     gates or derivative-backend settings.
     """
 
     def __init__(
-        self, response: typing.Any, provider: typing.Any, *, options: typing.Any = None
+        self,
+        response: typing.Any,
+        provider: typing.Any,
+        *,
+        options: typing.Any = None,
+        tensor_executor: typing.Any = None,
     ) -> None:
         started = time.perf_counter()
         options = CCSDGradientOptions() if options is None else options
@@ -306,6 +313,13 @@ class BoundCCSDOrbitalResponse:
         ):
             raise TypeError(
                 "CC orbital response requires a bound CC response and conventional provider"
+            )
+        if tensor_executor is not None and (
+            not callable(getattr(tensor_executor, "execute", None))
+            or not isinstance(getattr(tensor_executor, "backend", None), str)
+        ):
+            raise TypeError(
+                "external orbital-response tensor executor must expose execute() and backend"
             )
         source = provider.source
         _validate_source(source)
@@ -338,6 +352,7 @@ class BoundCCSDOrbitalResponse:
             ("reference_identity", reference.identity),
             ("source_identity", source.identity),
             ("options", options),
+            ("tensor_executor", tensor_executor),
         ):
             put(name, value)
         self._assert_current()
@@ -494,9 +509,21 @@ class BoundCCSDOrbitalResponse:
                 "CC orbital-response operator identity changed"
             )
 
+    @property
+    def tensor_backend(self) -> str:
+        return (
+            _tensor_owner(self.response).tensor_backend
+            if self.tensor_executor is None
+            else self.tensor_executor.backend
+        )
+
     def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
-        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        outputs = (
+            _tensor_owner(self.response)._tensor_execute(program, feeds)
+            if self.tensor_executor is None
+            else self.tensor_executor.execute(program, feeds)
+        )
         if set(outputs) != set(program.outputs):
             raise ResponseCompatibilityError(
                 "CC orbital-response program returned an incomplete output set"
