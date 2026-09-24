@@ -8,8 +8,8 @@
 namespace vibeqc::scf::cuda_execution {
 
 namespace {
-__device__ void decode_symmetric_pair(std::uint32_t pair, std::uint32_t width,
-                                      std::uint32_t& row, std::uint32_t& column) {
+__device__ void decode_symmetric_pair(std::uint32_t pair, std::uint32_t width, std::uint32_t& row,
+                                      std::uint32_t& column) {
   row = 0;
   auto row_width = width;
   while (pair >= row_width) {
