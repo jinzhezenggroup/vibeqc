@@ -48,11 +48,11 @@ def test_emitted_cuda_uses_atom_major_2d_schedule() -> None:
 
     # Production PBE endpoint shapes retained in the performance record. The
     # old distance + partition kernels each decoded atom/point with / and %.
-    for atoms, points, decoded in (
+    for atoms, point_count, decoded in (
         (48, 1_327_104, 254_803_968),
         (96, 2_654_208, 1_019_215_872),
     ):
-        assert 4 * atoms * points == decoded
+        assert 4 * atoms * point_count == decoded
 
 
 def test_points_reuse_angular_factors() -> None:
@@ -89,6 +89,42 @@ def test_points_reuse_angular_factors() -> None:
 
     # Fixed maximum cache: 3 doubles per polar/azimuth entry.
     assert 8 * (3 * 256 + 3 * 1024) == 30_720
+
+
+def test_partition_reuses_inverse_center_separations() -> None:
+    """Pay ordinary center-pair divisions once; retain overflow fallback."""
+    source = emit_quadrature_cuda()
+    geometry = source.split("__global__ void geometry_kernel", 1)[1].split(
+        "// Angular factors", 1
+    )[0]
+    assert "separation > tolerance ? 1.0 / separation : 0.0" in geometry
+    assert "isfinite(inverse) ? inverse : -separation" in geometry
+    assert "inverse_separation[a * na + b]" in geometry
+
+    partition = source.split("__global__ void partition_kernel", 1)[1].split(
+        "__global__ void normalize_kernel", 1
+    )[0]
+    assert "const double inverse = inverse_separation[hi * na + lo];" in partition
+    assert "if (inverse > 0.0)" in partition
+    assert ") * inverse;" in partition
+    assert "else if (inverse < 0.0)" in partition
+    assert ") / (-inverse);" in partition
+    assert " / sep" not in partition
+
+    root = Path(__file__).resolve().parents[2]
+    native = (root / "src/dft/cuda_quadrature.cu").read_text()
+    assert "data, l.atoms, spec.coincident_tolerance, data + l.geometry" in native
+    assert "count, l.atoms, data + l.distances," in native
+
+    # Production shapes have representable reciprocals. The old partition did
+    # one division per ordered point/pair visit; setup now divides per center pair.
+    for atoms, points, old_divisions, new_divisions in (
+        (48, 1_327_104, 2_993_946_624, 1_128),
+        (96, 2_654_208, 24_206_376_960, 4_560),
+    ):
+        assert points * atoms * (atoms - 1) == old_divisions
+        assert atoms * (atoms - 1) // 2 == new_divisions
+        assert new_divisions < old_divisions
 
 
 def test_emitted_layout_counts_actual_buffer_shapes_without_cuda(
