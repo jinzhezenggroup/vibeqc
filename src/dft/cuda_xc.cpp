@@ -217,9 +217,9 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
   if (precision != CudaXcDensityPrecision::Fp64 &&
       precision != CudaXcDensityPrecision::Fp32ComputeFp64Accumulate)
     throw std::invalid_argument("unknown CUDA XC density precision");
-  if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate &&
-      layout_.functional > 2U)
-    throw std::invalid_argument("mixed CUDA XC density precision is not qualified for this functional");
+  if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate && layout_.functional > 2U)
+    throw std::invalid_argument(
+        "mixed CUDA XC density precision is not qualified for this functional");
   if (!generation || generation <= generations_.submitted())
     throw std::invalid_argument("CUDA XC density generation is stale");
   device_pointer(density, device_);
