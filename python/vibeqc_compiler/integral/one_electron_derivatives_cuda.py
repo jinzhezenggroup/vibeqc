@@ -3,7 +3,7 @@
 import typing
 from itertools import product
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .expr import Graph
 from .ir_serialization import integral_to_payload
 from .one_electron_cuda import (
@@ -140,7 +140,7 @@ def _emit_gradient_helpers(
                 )
                 roots = (overlap.gradients[0][0], kernel.gradients[0][0])
             target, roots = _geometry_boundary(kernel, roots)
-            emitter = CudaEmitter(target, {})
+            emitter = ScalarCEmitter(target, {})
             emitter.emit(roots)
             lines += [
                 f"    case {index}U: {{",
@@ -189,7 +189,7 @@ def _emit_gradient_helpers(
             build_one_electron_derivative_ir("nuclear_attraction", (0, 0)), ("", "")
         )
         target, roots = _geometry_boundary(kernel, (kernel.boys_argument,))
-        emitter = CudaEmitter(target, {})
+        emitter = ScalarCEmitter(target, {})
         emitter.emit(roots)
         lines += [
             *emitter.lines,
