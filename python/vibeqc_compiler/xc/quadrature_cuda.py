@@ -79,14 +79,18 @@ _KERNELS = r"""
 __device__ inline double distance(const double* a, const double* b) {
   return hypot(hypot(a[0] - b[0], a[1] - b[1]), a[2] - b[2]);
 }
-// Compute each unordered center distance once, before processing any points.
-__global__ void geometry_kernel(const double* centers, size_t na, double* separation) {
+// Compute each unordered center distance once, then retain its reciprocal for
+// the point-heavy Becke partition. Zero is the exact coincident/tolerance
+// sentinel, so every point worker avoids a repeated FP64 division.
+__global__ void geometry_kernel(const double* centers, size_t na, double tolerance,
+                                double* inverse_separation) {
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < na * na;
        i += size_t(blockDim.x) * gridDim.x) {
     const size_t a = i / na, b = i % na;
     if (b > a) continue;
-    const double value = distance(centers + 3 * a, centers + 3 * b);
-    separation[a * na + b] = separation[b * na + a] = value;
+    const double separation = distance(centers + 3 * a, centers + 3 * b);
+    const double inverse = separation > tolerance ? 1.0 / separation : 0.0;
+    inverse_separation[a * na + b] = inverse_separation[b * na + a] = inverse;
   }
 }
 // Angular factors depend only on the fixed quadrature rules, not on atoms or
@@ -144,9 +148,8 @@ __global__ void distances_kernel(size_t count, size_t na, const double* xyz,
       distances[a * count + point] = distance(xyz + 3 * point, centers + 3 * a);
 }
 template <unsigned Iterations>
-__global__ void partition_kernel(size_t count, size_t na, double tolerance,
-                                 const double* distances, const double* separation,
-                                 double* logs) {
+__global__ void partition_kernel(size_t count, size_t na, const double* distances,
+                                 const double* inverse_separation, double* logs) {
   for (size_t a = blockIdx.y; a < na; a += gridDim.y) {
     for (size_t point = size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < count;
          point += size_t(blockDim.x) * gridDim.x) {
@@ -157,10 +160,10 @@ __global__ void partition_kernel(size_t count, size_t na, double tolerance,
       for (size_t b = 0; b < na; ++b) {
         if (a == b) continue;
         const size_t hi = a > b ? a : b, lo = a > b ? b : a;
-        const double sep = separation[hi * na + lo];
-        const double mu = sep > tolerance
+        const double inverse = inverse_separation[hi * na + lo];
+        const double mu = inverse != 0.0
             ? fmin(1.0, fmax(-1.0, (distances[hi * count + point] -
-                                    distances[lo * count + point]) / sep)) : 0.0;
+                                    distances[lo * count + point]) * inverse)) : 0.0;
         const double pair = fmin(1.0, fmax(0.0, becke<Iterations>(mu)));
         value += a > b ? log(pair) : log1p(-pair);
       }
@@ -182,8 +185,8 @@ __global__ void normalize_kernel(size_t begin, size_t count, size_t per_atom, si
     weights[p] = weight;
   }
 }
-inline void launch_partition(unsigned iterations, size_t count, size_t na, double tolerance,
-                             const double* distances, const double* separation,
+inline void launch_partition(unsigned iterations, size_t count, size_t na,
+                             const double* distances, const double* inverse_separation,
                              double* logs, cudaStream_t stream) {
   switch (iterations) {
 @PARTITION_CASES@
@@ -217,7 +220,7 @@ def emit_quadrature_cuda() -> str:
         )
         cases.append(
             f"    case {iterations}: partition_kernel<{iterations}><<<atom_point_grid(count, na), 128, 0, stream>>>"
-            "(count, na, tolerance, distances, separation, logs); break;"
+            "(count, na, distances, inverse_separation, logs); break;"
         )
     lines.append(_KERNELS.replace("@PARTITION_CASES@", "\n".join(cases)))
     return "\n".join(lines)
