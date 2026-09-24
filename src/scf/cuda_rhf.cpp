@@ -87,7 +87,6 @@
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 #include "scf/mean_field.hpp"
-#include "scf/rhf.hpp"
 #include "solver/iteration_control.hpp"
 #include "tensor/metrics.hpp"
 
