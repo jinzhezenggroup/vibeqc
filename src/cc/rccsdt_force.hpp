@@ -48,6 +48,8 @@ struct RccsdtForceResult {
   double minimum_same_space_gap{};
   std::size_t triples_response_pages{};
   std::size_t numeric_capacity_bytes{};
+  bool cuda_derivative{};
+  std::size_t derivative_stage_budget_bytes{};
   std::string response_operator_hash;
 };
 
@@ -67,5 +69,21 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
                                    const SolverResult& cc_result, std::span<const double> eps_o,
                                    std::span<const double> eps_v, std::size_t max_bytes,
                                    double denominator_threshold = 1e-10);
+
+/** Hybrid native qualification: keep the complete validated RCCSD(T) response
+ * owner on CPU, but contract its final AO/nuclear derivative weights through
+ * the existing generated CUDA conventional derivative consumer.
+ *
+ * max_bytes retains the complete host response allowance from
+ * plan_rccsdt_force_cpu. derivative_stage_budget_bytes is a separate per-stage
+ * CUDA allowance owned by conventional_derivative_cuda; it is not a combined
+ * endpoint device-memory cap. This function does not widen public Calculator
+ * CUDA-force capability.
+ */
+RccsdtForceResult rccsdt_force_cuda_derivative(
+    const core::System& system, const scf::PhysicalReference& reference,
+    const Problem& problem, const SolverResult& cc_result, std::span<const double> eps_o,
+    std::span<const double> eps_v, std::size_t max_bytes, int device_id,
+    std::size_t derivative_stage_budget_bytes, double denominator_threshold = 1e-10);
 
 }  // namespace vibeqc::cc
