@@ -27,7 +27,8 @@ from tools.vibeqc_cc.triples_orbital_response import (
 )
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_response import NativeJKBackend
+from tools.vibeqc_response import NativeJKBackend, RHFResponseOperator
+from tools.vibeqc_response.krylov import _HostKrylovEngine
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 
@@ -268,6 +269,117 @@ def test_borrowed_response_backend_owns_physical_z_actions(
     assert actual.baseline.response_backend is borrowed
     assert actual.baseline.operator.backend is borrowed
     assert borrowed.statistics["actions"] > 0
+    assert actual.response_identity == water_state.response_identity
+    np.testing.assert_allclose(
+        actual.z_result.solution,
+        water_state.z_result.solution,
+        atol=2e-11,
+        rtol=2e-11,
+    )
+    for field in ("hcore", "eri", "overlap", "orbital_rhs"):
+        np.testing.assert_allclose(
+            actual.weights[field],
+            water_state.weights[field],
+            atol=2e-11,
+            rtol=2e-11,
+        )
+
+
+def test_resident_z_execution_reuses_checked_krylov_engine(
+    water_state: BoundCCSDTOrbitalResponse,
+) -> None:
+    class FakeResident:
+        resident = True
+
+        def __init__(
+            self,
+            matrix: np.ndarray,
+            *,
+            vector_slots: int,
+            device_budget_bytes: int,
+        ) -> None:
+            self.matrix = np.asarray(matrix, dtype=np.float64)
+            self.dimension = self.matrix.shape[0]
+            self.vector_slots = vector_slots
+            self.workspace_bytes = min(
+                device_budget_bytes,
+                max(1, self.dimension * vector_slots * 8),
+            )
+            self.diagnostics = {
+                "owned_device_bytes": self.workspace_bytes,
+                "operator_actions": 0,
+                "fake_resident": 1,
+            }
+            self._host = _HostKrylovEngine(self.dimension)
+            self.closed = False
+
+        def __getattr__(self, name: str) -> typing.Any:
+            return getattr(self._host, name)
+
+        def apply(self, operator: typing.Any, value: typing.Any) -> np.ndarray:
+            del operator
+            self.diagnostics["operator_actions"] += 1
+            return self.matrix @ np.asarray(value, dtype=np.float64)
+
+        def close(self) -> None:
+            self.closed = True
+
+    class ResidentBackend:
+        def __init__(self, inner: NativeJKBackend) -> None:
+            self.inner = inner
+            self.identity = inner.identity
+            self.hamiltonian_id = inner.hamiltonian_id
+            self.nbf = inner.nbf
+            self.host_workspace_bytes = inner.host_workspace_bytes
+            self.device_workspace_bytes = 0
+            self.device_resident_bytes = 4096
+            self.statistics = inner.statistics
+            self.last_resident: FakeResident | None = None
+
+        def validate_reference(self, reference: typing.Any) -> typing.Any:
+            return self.inner.validate_reference(reference)
+
+        def coulomb_exchange(self, density: typing.Any) -> typing.Any:
+            return self.inner.coulomb_exchange(density)
+
+        def resident_response(
+            self,
+            problem: typing.Any,
+            *,
+            vector_slots: int,
+            device_budget_bytes: int,
+        ) -> FakeResident:
+            matrix = RHFResponseOperator(problem, self).to_dense()
+            owner = FakeResident(
+                matrix,
+                vector_slots=vector_slots,
+                device_budget_bytes=device_budget_bytes,
+            )
+            self.last_resident = owner
+            return owner
+
+    with _prepared_ccsdt() as (response, provider, options):
+        inner = NativeJKBackend(
+            provider.source,
+            axis_tile=max(provider.source.shell_sizes),
+            budget_bytes=options.provider_budget_bytes,
+        )
+        backend = ResidentBackend(inner)
+        actual = BoundCCSDTOrbitalResponse(
+            response,
+            provider,
+            options=options,
+            response_backend=backend,
+            response_execution="cuda-resident",
+            response_device_budget_bytes=1 << 20,
+        )
+
+    resident = backend.last_resident
+    assert resident is not None
+    assert resident.closed is True
+    assert resident.diagnostics["operator_actions"] > 0
+    assert actual.response_execution == "cuda-resident"
+    assert actual.resident_response_diagnostics["fake_resident"] == 1
     assert actual.response_identity == water_state.response_identity
     np.testing.assert_allclose(
         actual.z_result.solution,
