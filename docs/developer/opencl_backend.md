@@ -54,9 +54,9 @@ over a version-number assumption.
 
 ## Scientific and execution contracts
 
-`ScalarCEmitter` holds the existing C-family scalar arithmetic emitter.
-`CudaEmitter` preserves its CUDA import/API, while `opencl_lowering.py` emits
-structured OpenCL address spaces, arguments, work-item indexing and FP64 policy.
+`ScalarCEmitter` is the single C-family scalar arithmetic emitter used by
+CPU and CUDA source wrappers, while `opencl_lowering.py` emits structured
+OpenCL address spaces, arguments, work-item indexing and FP64 policy.
 There is no CUDA source-text replacement. `ScalarKernel` names an ordered
 primitive input ABI and existing scientific graph roots; emission preserves
 the scientific hash while source and schedule hashes vary with the target.
