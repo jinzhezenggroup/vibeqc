@@ -80,7 +80,9 @@ def test_resident_lease_closes_on_every_post_allocation_exit(mode: str) -> None:
     def solve(transpose: object, rhs: object, **kwargs: object) -> object:
         del rhs, kwargs
         events.append("solve")
-        assert (getattr(transpose, "_krylov_engine", None) is engine) == (mode != "host")
+        assert (getattr(transpose, "_krylov_engine", None) is engine) == (
+            mode != "host"
+        )
         if mode == "solve":
             raise RuntimeError("injected solve")
         return SimpleNamespace(solution=[1.0, 2.0])
@@ -107,8 +109,13 @@ def test_resident_lease_closes_on_every_post_allocation_exit(mode: str) -> None:
         "ResponseCompatibilityError": ValueError,
         "rhs": [1.0, 2.0],
     }
+
+    def execute_region() -> None:
+        # Exercise trusted repository code, never caller-supplied Python text.
+        exec(compile(region, "resident-z-lease", "exec"), scope)  # noqa: S102
+
     if mode in {"success", "host"}:
-        exec(compile(region, "resident-z-lease", "exec"), scope)
+        execute_region()
         assert scope["z"].solution == [1.0, 2.0]
     else:
         expected = (
@@ -119,7 +126,7 @@ def test_resident_lease_closes_on_every_post_allocation_exit(mode: str) -> None:
             else RuntimeError
         )
         with pytest.raises(expected):
-            exec(compile(region, "resident-z-lease", "exec"), scope)
+            execute_region()
     assert events.count("close") == (0 if mode == "host" else 1)
     if mode != "host":
         assert events[0] == "prepare" and events[-1] == "close"
