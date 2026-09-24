@@ -27,6 +27,7 @@ from tools.vibeqc_cc.triples_orbital_response import (
 )
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
+from tools.vibeqc_response import NativeJKBackend
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 
@@ -233,6 +234,54 @@ def test_cuda_tensor_owner_covers_hamiltonian_response_without_bound_cpu_replay(
     assert budgets and set(budgets) == {64 << 20}
     assert compiled
     assert executor.compiled_program_count == len(set(compiled))
+
+
+def test_borrowed_response_backend_owns_physical_z_actions(
+    water_state: BoundCCSDTOrbitalResponse,
+    monkeypatch: typing.Any,
+) -> None:
+    with _prepared_ccsdt() as (response, provider, options):
+        borrowed = NativeJKBackend(
+            provider.source,
+            axis_tile=max(provider.source.shell_sizes),
+            budget_bytes=options.provider_budget_bytes,
+        )
+
+        def reject_internal_backend(*args: object, **kwargs: object) -> typing.NoReturn:
+            del args, kwargs
+            raise AssertionError("orbital response rebuilt its hard-coded CPU backend")
+
+        from tools.vibeqc_cc import complete_gradient as complete_gradient_module
+
+        monkeypatch.setattr(
+            complete_gradient_module,
+            "NativeJKBackend",
+            reject_internal_backend,
+        )
+        actual = BoundCCSDTOrbitalResponse(
+            response,
+            provider,
+            options=options,
+            response_backend=borrowed,
+        )
+
+    assert actual.baseline.response_backend is borrowed
+    assert actual.baseline.operator.backend is borrowed
+    assert borrowed.statistics["actions"] > 0
+    assert actual.response_identity == water_state.response_identity
+    np.testing.assert_allclose(
+        actual.z_result.solution,
+        water_state.z_result.solution,
+        atol=2e-11,
+        rtol=2e-11,
+    )
+    for field in ("hcore", "eri", "overlap", "orbital_rhs"):
+        np.testing.assert_allclose(
+            actual.weights[field],
+            water_state.weights[field],
+            atol=2e-11,
+            rtol=2e-11,
+        )
 
 
 def test_real_denominator_sources_chain_through_canonical_fock(
