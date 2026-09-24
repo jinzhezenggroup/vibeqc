@@ -12,10 +12,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import TYPE_CHECKING
 
 from .accuracy import ErrorEvidence, EvidenceKind
-from .progressive_controller import StagePlan, TargetProblem
 from .progressive_policy import RefinementCandidate, rank_refinement_candidates
+
+if TYPE_CHECKING:
+    from .progressive_controller import StagePlan, TargetProblem
 
 
 @dataclass(frozen=True, order=True)
