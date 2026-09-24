@@ -6,7 +6,6 @@
 
 #include "core/types.hpp"
 #include "integrals/s_integrals.hpp"
-#include "molecule/basis.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/reference/observation.hpp"
 
@@ -164,9 +163,14 @@ Matrix charge_guided_lowdin_density(const core::System& system, const integrals:
     if (shell.atom_index >= system.atoms.size()) {
       throw std::invalid_argument("charge-guided seed shell references an invalid atom");
     }
-    const std::size_t count = system.basis_representation == VIBEQC_BASIS_SPHERICAL
-                                  ? 2u * static_cast<std::size_t>(shell.angular_momentum) + 1u
-                                  : molecule::cartesian_count(shell.angular_momentum);
+    const std::uint64_t angular = shell.angular_momentum;
+    const std::uint64_t count64 =
+        system.basis_representation == VIBEQC_BASIS_SPHERICAL
+            ? 2u * angular + 1u
+            : (angular + 1u) * (angular + 2u) / 2u;
+    const std::size_t count =
+        count64 > std::numeric_limits<std::size_t>::max() ? 0u
+                                                          : static_cast<std::size_t>(count64);
     if (count == 0 || ao_atoms.size() > n || count > n - ao_atoms.size()) {
       throw std::invalid_argument("charge-guided seed AO ownership exceeds the basis");
     }
