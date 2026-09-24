@@ -29,8 +29,7 @@ inline bool solve_dense_linear(std::vector<double> matrix, std::vector<double> r
     const double diagonal = matrix[pivot * n + column];
     if (!std::isfinite(diagonal) || std::abs(diagonal) < 1.0e-14) return false;
     if (pivot != column) {
-      for (std::size_t j = 0; j < n; ++j)
-        std::swap(matrix[column * n + j], matrix[pivot * n + j]);
+      for (std::size_t j = 0; j < n; ++j) std::swap(matrix[column * n + j], matrix[pivot * n + j]);
       std::swap(rhs[column], rhs[pivot]);
     }
     for (std::size_t j = column; j < n; ++j) matrix[column * n + j] /= diagonal;

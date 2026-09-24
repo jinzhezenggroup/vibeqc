@@ -156,5 +156,4 @@ double dot(const Matrix& a, const Matrix& b) {
   return result;
 }
 
-
 }  // namespace vibeqc::scf::reference
