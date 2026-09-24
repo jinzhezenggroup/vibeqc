@@ -206,6 +206,15 @@ def _compile_bridge(tmp_path: Path) -> Path:
     return executable
 
 
+def _validate_measurements(rows: list[dict[str, str]]) -> None:
+    for row_index, row in enumerate(rows):
+        for field, value in row.items():
+            if field not in {"case", "repeat"}:
+                assert math.isfinite(float(value)), (
+                    f"nonfinite measurement at row {row_index}, field {field}"
+                )
+
+
 def test_xtb_charge_seed_endpoint_validation(tmp_path: Path) -> None:
     executable = _compile_bridge(tmp_path)
     completed = subprocess.run(
@@ -223,13 +232,7 @@ def test_xtb_charge_seed_endpoint_validation(tmp_path: Path) -> None:
     )
     rows = list(csv.DictReader(completed.stdout.splitlines()))
     assert len(rows) == 9
-    numeric = {
-        key: float(value)
-        for row in rows
-        for key, value in row.items()
-        if key not in {"case", "repeat"}
-    }
-    assert all(math.isfinite(value) for value in numeric.values())
+    _validate_measurements(rows)
 
     summary = {}
     for case in sorted({row["case"] for row in rows}):
