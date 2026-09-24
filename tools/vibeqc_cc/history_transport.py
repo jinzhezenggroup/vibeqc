@@ -134,7 +134,9 @@ def _target_elements(transport: StateTransport) -> int:
     return nocc * nvir + nocc * nocc * nvir * nvir
 
 
-def _validate_history_source(transport: StateTransport, source: AmplitudeSnapshot) -> None:
+def _validate_history_source(
+    transport: StateTransport, source: AmplitudeSnapshot
+) -> None:
     if not isinstance(source, AmplitudeSnapshot):
         raise TypeError("source_history entries must be AmplitudeSnapshot objects")
     if source.reference_id != transport.source.reference_id:
