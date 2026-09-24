@@ -17,7 +17,9 @@ def test_fast_occupied_exchange_paths_skip_full_output_clear() -> None:
         maxsplit=1,
     )
     assert "cudaMemsetAsync(" not in projected_and_resident
-    assert "&zero, output + r + c * n" in " ".join(SOURCE.split())
+
+    normalized_source = " ".join(SOURCE.split())
+    assert "&zero, output + r + c * n" in normalized_source
     assert "&zero, output, n" in projected_and_resident
 
     before_panel_loop = fallback.split(
