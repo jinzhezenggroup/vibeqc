@@ -34,7 +34,7 @@ eigensolution, but it does not contain iteration counts, tolerances, Broyden or
 DIIS history, or an eigensolver implementation choice.
 
 Runtime fixed-point control is shared with mean-field SCF through
-`src/scf/solver/self_consistent.hpp` (#581). A GFN runtime adapter owns its
+`src/solver/self_consistent.hpp` (#581). A GFN runtime adapter owns its
 electronic state, occupations, Hamiltonian construction and mixing policy while
 reusing that method-neutral convergence driver; this compiler IR still owns
 none of those policies.
