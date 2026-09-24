@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
-from vibeqc_compiler.dft.xc_contraction_cuda import compact_panel_program
+from vibeqc_compiler.dft.xc_contraction_cuda import (
+    compact_panel_program,
+    emit_native_xc_matrix_schedule,
+)
 
 
 @pytest.mark.parametrize(
@@ -34,3 +37,18 @@ def test_compact_factor_matches_full_bilinear(
         for j in range(1, 4):
             expected += ao[j].T @ ((weights * c[4])[:, None] * ao[j])
     np.testing.assert_allclose(actual, expected, rtol=3e-14, atol=5e-13)
+
+
+def test_potential_uses_compact_triangular_tile_domain() -> None:
+    """Potential launch work must contain only the authoritative tile triangle."""
+    source = emit_native_xc_matrix_schedule()
+    assert "const I tiles = (n+15)/16, tile_pairs = tiles*(tiles+1)/2;" in source
+    assert "dim3(tile_pairs,1,spins)" in source
+    assert "if (blockIdx.x > blockIdx.y) return;" not in source
+    assert "tile_mu = pair-low*(low+1)/2;" in source
+
+    for nao, square, triangle in ((192, 144, 78), (384, 576, 300), (768, 2304, 1176)):
+        tiles = (nao + 15) // 16
+        assert tiles * tiles == square
+        assert tiles * (tiles + 1) // 2 == triangle
+        assert triangle < square
