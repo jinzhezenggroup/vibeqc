@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from vibeqc_compiler.common.paths import LAYOUT_VERSION, asset_path, source_hashes
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda import CudaEmitter
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.integral.expr import RematerializationPolicy
 
 
@@ -103,7 +103,7 @@ def emit_cuda(program: typing.Any, schedule: typing.Any = None) -> typing.Any:
                 roots, RematerializationPolicy.inline_single_use_values()
             )
             models.append(placement.to_payload())
-        emitter = CudaEmitter(
+        emitter = ScalarCEmitter(
             program.graph,
             {
                 name: f"input[{i} * npoint + point]"
