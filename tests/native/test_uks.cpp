@@ -9,7 +9,6 @@
 #include "scf/fock_prepared.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
-#include "xc_cpu_generated.hpp"
 
 namespace {
 using namespace vibeqc;
@@ -25,8 +24,7 @@ dft::SemilocalPointValue pw91_program_point(const double rho[2], const double (&
 }
 
 const dft::SemilocalPointProgram kPw91QualificationProgram{
-    "PW91 qualification program", dft::generated::kPw91SemilocalExpressionIdentity, 7U, 1U,
-    pw91_program_point};
+    "PW91 qualification program", "test://generated-pw91-semilo", 7U, 1U, pw91_program_point};
 
 core::System closed_shell_h2(double displacement = 0.0) {
   core::System system;
