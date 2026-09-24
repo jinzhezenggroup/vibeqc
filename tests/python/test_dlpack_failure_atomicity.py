@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from vibeqc_compiler.array_api.interop import (
     DLPackDevice,
     DLPackInteropError,
@@ -57,7 +56,9 @@ def test_legacy_consumer_internal_typeerror_is_not_retried() -> None:
 
 
 @pytest.mark.parametrize("device", [DLPackDevice(True, 0), DLPackDevice(1, False)])
-def test_typed_expected_device_does_not_bypass_integer_validation(device: DLPackDevice) -> None:
+def test_typed_expected_device_does_not_bypass_integer_validation(
+    device: DLPackDevice,
+) -> None:
     calls = []
 
     def consume(value: object, *, copy: bool = False) -> object:
@@ -65,7 +66,9 @@ def test_typed_expected_device_does_not_bypass_integer_validation(device: DLPack
         return value
 
     with pytest.raises(DLPackInteropError, match="invalid DLPack device"):
-        import_dlpack(np.arange(2.0), SimpleNamespace(from_dlpack=consume), expected_device=device)
+        import_dlpack(
+            np.arange(2.0), SimpleNamespace(from_dlpack=consume), expected_device=device
+        )
     assert calls == []
 
 
