@@ -55,8 +55,8 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
   q::azimuth_kernel<<<q::blocks(spec.angular_azimuth), 128, 0, stream.get()>>>(spec.angular_azimuth,
                                                                                data + l.azimuth);
   check(cudaGetLastError());
-  q::geometry_kernel<<<q::blocks(l.atoms * l.atoms), 128, 0, stream.get()>>>(data, l.atoms,
-                                                                             data + l.geometry);
+  q::geometry_kernel<<<q::blocks(l.atoms * l.atoms), 128, 0, stream.get()>>>(
+      data, l.atoms, spec.coincident_tolerance, data + l.geometry);
   check(cudaGetLastError());
   for (std::size_t begin = 0; begin < l.points; begin += l.tile) {
     const auto count = std::min(l.tile, l.points - begin);
@@ -68,8 +68,8 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
     q::distances_kernel<<<q::atom_point_grid(count, l.atoms), 128, 0, stream.get()>>>(
         count, l.atoms, data + l.xyz, data, data + l.distances);
     check(cudaGetLastError());
-    q::launch_partition(spec.partition_iterations, count, l.atoms, spec.coincident_tolerance,
-                        data + l.distances, data + l.geometry, data + l.logs, stream.get());
+    q::launch_partition(spec.partition_iterations, count, l.atoms, data + l.distances,
+                        data + l.geometry, data + l.logs, stream.get());
     check(cudaGetLastError());
     q::normalize_kernel<<<q::blocks(count), 128, 0, stream.get()>>>(
         begin, count, per_atom, l.atoms, data + l.logs, data + l.weights, invalid.get());
