@@ -34,6 +34,23 @@ class HistoryRecyclePolicy:
 
 
 @dataclass(frozen=True)
+class TargetResidualEvaluator:
+    """Target-identity-bound residual evaluator used for recycled DIIS errors."""
+
+    state_identity: str
+    evaluate: Callable[[AmplitudeSnapshot], tuple[np.ndarray, np.ndarray]]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.state_identity, str) or not self.state_identity:
+            raise ValueError("state_identity must be a nonempty target identity")
+        if not callable(self.evaluate):
+            raise TypeError("evaluate must be callable")
+
+    def __call__(self, amplitudes: AmplitudeSnapshot) -> tuple[np.ndarray, np.ndarray]:
+        return self.evaluate(amplitudes)
+
+
+@dataclass(frozen=True)
 class RecycledHistoryEntry:
     """One target-bound amplitude vector with a freshly evaluated target error."""
 
@@ -144,7 +161,7 @@ def _transport_history_amplitudes(
 def recycle_diis_history(
     transport: StateTransport,
     source_history: Sequence[AmplitudeSnapshot],
-    target_residual: Callable[[AmplitudeSnapshot], tuple[np.ndarray, np.ndarray]],
+    target_residual: TargetResidualEvaluator,
     *,
     policy: HistoryRecyclePolicy | None = None,
 ) -> RecycledHistory:
@@ -164,8 +181,10 @@ def recycle_diis_history(
         raise TypeError("policy must be HistoryRecyclePolicy")
     if not isinstance(source_history, Sequence):
         raise TypeError("source_history must be an ordered sequence")
-    if not callable(target_residual):
-        raise TypeError("target_residual must be callable")
+    if not isinstance(target_residual, TargetResidualEvaluator):
+        raise TypeError("target_residual must be a TargetResidualEvaluator")
+    if target_residual.state_identity != transport.target.identity:
+        raise ValueError("target residual evaluator does not match transport target identity")
     if transport.compatibility is TransportCompatibility.incompatible:
         raise ValueError("incompatible state transport requires DIIS history reset")
 
