@@ -39,6 +39,9 @@ def _prepared_ccsdt(
     with _source(inputs(name)) as source:
         reference, _ = export_rhf(
             source,
+            # Paired backend tests compare exact scientific identities, so
+            # their independent exports must share the fixture generation.
+            generation_id=f"ccsdt-orbital-response-fixture:{name}",
             tolerance=options.scf_tolerance,
             max_iterations=options.scf_max_iterations,
         )
