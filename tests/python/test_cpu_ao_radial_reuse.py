@@ -20,13 +20,21 @@ def test_cpu_ao_radial_factor_is_reused_across_requested_jets() -> None:
     body = _evaluate_body()
     radial = body.index("const double radial =")
     weighted = body.index("const double weighted_radial =", radial)
-    jet_loop = body.index("for (std::size_t jet = 0; jet < jets; ++jet)", weighted)
+    jet_loop = body.index("for (std::size_t jet = 0; jet < JetCount; ++jet)", weighted)
 
     # One primitive exponential feeds every requested derivative jet instead of
     # being recomputed from inside a jet-major traversal.
     assert radial < weighted < jet_loop
     assert body.count("std::exp(") == 1
     assert body.index("double r2 = 0;") < radial
+
+
+def test_legal_jet_extents_do_not_restore_value_only_runtime_dispatch() -> None:
+    body = _evaluate_body()
+    assert "std::array<double, JetCount> values{};" in body
+    assert "JetCount == 1 ? 0U : derivatives[jet][k]" in body
+    for jets in (1, 4, 10, 20):
+        assert f"evaluate_jets.template operator()<{jets}>()" in body
 
 
 def test_cpu_ao_radial_exp_work_census() -> None:
