@@ -78,9 +78,7 @@ int main(int argc, char** argv) {
     return executable
 
 
-@pytest.mark.parametrize(
-    "weight", [0.0, 1.0, 2.0, 0.1, 0.3, 1.1, 1.3, 1.5, 3.0, -0.3]
-)
+@pytest.mark.parametrize("weight", [0.0, 1.0, 2.0, 0.1, 0.3, 1.1, 1.3, 1.5, 3.0, -0.3])
 @pytest.mark.parametrize("occupied", [0, 1, 2])
 def test_density_retains_full_square_weight_semantics(
     density_probe: Path, weight: float, occupied: int
