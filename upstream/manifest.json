@@ -74,7 +74,7 @@
     },
     "gfn1-geometry-python-data": {
       "generator": "tools/parameters/generate_gfn1_geometry.py",
-      "generator_sha256": "fa1479dc13a4653aef2b87a082894274b4b6f66dbe3dbea580e27a7c6f97d243",
+      "generator_sha256": "0450a4b184a46dc877d0f9e2e416725ab35b5a7e9d6d2ec9a77d2345c755aab3",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
@@ -85,7 +85,7 @@
     },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "1199ae8a4823c40cf1ccd7d9bb5988cf5031a08837a309d93ec5010bad98ad68",
+      "generator_sha256": "7bb4ee44f06ec30b754bfe113764019542da0bfe472a53ce4b4ed2d7f74c712b",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
