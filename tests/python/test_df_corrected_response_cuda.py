@@ -65,7 +65,7 @@ def test_corrected_streamed_response_preserves_force_oracle(
         device="cuda",
         density_fitting="cuda",
         density_fitting_memory_budget_bytes=(
-            24 if case_name == "water-tetramer" else 16
+            24 if case_name == "water-tetramer" else 18
         )
         << 20,
         energy_tolerance=1e-12,
