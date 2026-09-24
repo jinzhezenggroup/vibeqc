@@ -453,11 +453,15 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
   return plan;
 }
 
-RccsdtForceResult rccsdt_force_cpu(const core::System& system,
-                                   const scf::PhysicalReference& reference, const Problem& problem,
-                                   const SolverResult& cc_result, std::span<const double> eps_o,
-                                   std::span<const double> eps_v, std::size_t max_bytes,
-                                   double denominator_threshold) {
+namespace {
+RccsdtForceResult rccsdt_force_impl(const core::System& system,
+                                    const scf::PhysicalReference& reference,
+                                    const Problem& problem, const SolverResult& cc_result,
+                                    std::span<const double> eps_o,
+                                    std::span<const double> eps_v, std::size_t max_bytes,
+                                    bool cuda_derivative, int device_id,
+                                    std::size_t derivative_stage_budget_bytes,
+                                    double denominator_threshold) {
   validate_problem(problem);
   if (!cc_result.converged())
     throw std::invalid_argument("RCCSD(T) force requires converged RCCSD amplitudes");
@@ -465,7 +469,9 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
       reference.nocc != problem.nocc || eps_o.size() != problem.nocc ||
       eps_v.size() != problem.nvir || !std::isfinite(denominator_threshold) ||
       denominator_threshold <= 0.0)
-    throw std::invalid_argument("RCCSD(T) force is outside the qualified CPU domain");
+    throw std::invalid_argument("RCCSD(T) force is outside the qualified native domain");
+  if (cuda_derivative && (device_id < 0 || !derivative_stage_budget_bytes))
+    throw std::invalid_argument("invalid RCCSD(T) CUDA derivative stage request");
   const auto o = problem.nocc, v = problem.nvir, n = reference.nbf;
   if (reference.orbital_energies.size() != n || !finite(reference.orbital_energies))
     throw std::invalid_argument("RCCSD(T) force requires finite canonical orbital energies");
@@ -611,7 +617,11 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   weights.two_electron = std::move(total.eri);
   weights.overlap = std::move(total.overlap);
   weights.stationarity_residual = stationarity;
-  auto gradient = mp2::conventional_derivative_cpu(system, reference, weights);
+  auto gradient =
+      cuda_derivative
+          ? mp2::conventional_derivative_cuda(system, reference, weights, device_id,
+                                               derivative_stage_budget_bytes)
+          : mp2::conventional_derivative_cpu(system, reference, weights);
   for (double& value : gradient) value = -value;
   if (!finite(gradient)) throw std::runtime_error("nonfinite RCCSD(T) analytic force");
 
@@ -625,8 +635,32 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   result.minimum_same_space_gap = minimum_same_space_gap;
   result.triples_response_pages = triples.pages;
   result.numeric_capacity_bytes = resources.peak_bytes;
+  result.cuda_derivative = cuda_derivative;
+  result.derivative_stage_budget_bytes =
+      cuda_derivative ? derivative_stage_budget_bytes : 0;
   result.response_operator_hash = generated::orbital_jvp_program_hash;
   return result;
+}
+}  // namespace
+
+RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+                                   const scf::PhysicalReference& reference, const Problem& problem,
+                                   const SolverResult& cc_result, std::span<const double> eps_o,
+                                   std::span<const double> eps_v, std::size_t max_bytes,
+                                   double denominator_threshold) {
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, false, 0,
+                           0, denominator_threshold);
+}
+
+RccsdtForceResult rccsdt_force_cuda_derivative(
+    const core::System& system, const scf::PhysicalReference& reference,
+    const Problem& problem, const SolverResult& cc_result, std::span<const double> eps_o,
+    std::span<const double> eps_v, std::size_t max_bytes, int device_id,
+    std::size_t derivative_stage_budget_bytes, double denominator_threshold) {
+  if (device_id < 0 || !derivative_stage_budget_bytes)
+    throw std::invalid_argument("invalid RCCSD(T) CUDA derivative stage request");
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, true,
+                           device_id, derivative_stage_budget_bytes, denominator_threshold);
 }
 
 }  // namespace vibeqc::cc
