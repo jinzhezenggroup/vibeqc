@@ -196,6 +196,12 @@ def test_cuda_tensor_owner_covers_hamiltonian_response_without_bound_cpu_replay(
         provider,
         options,
     ):
+        # Exact identities include the RHF export generation. Compare dispatch
+        # paths on this same state; the independently exported water fixture
+        # remains the numerical oracle below, not an interchangeable owner.
+        same_state_reference = BoundCCSDTOrbitalResponse(
+            response, provider, options=options
+        )
 
         def reject_bound_tensor_execution(
             *args: object, **kwargs: object
@@ -211,7 +217,7 @@ def test_cuda_tensor_owner_covers_hamiltonian_response_without_bound_cpu_replay(
         actual = BoundCCSDTOrbitalResponse(response, provider, options=options)
 
     assert actual.baseline.tensor_backend == executor.backend
-    assert actual.response_identity == water_state.response_identity
+    assert actual.response_identity == same_state_reference.response_identity
     for field in (
         "hcore",
         "eri",
@@ -242,6 +248,9 @@ def test_borrowed_response_backend_owns_physical_z_actions(
     monkeypatch: typing.Any,
 ) -> None:
     with _prepared_ccsdt() as (response, provider, options):
+        same_state_reference = BoundCCSDTOrbitalResponse(
+            response, provider, options=options
+        )
         borrowed = NativeJKBackend(
             provider.source,
             axis_tile=max(provider.source.shell_sizes),
@@ -269,7 +278,7 @@ def test_borrowed_response_backend_owns_physical_z_actions(
     assert actual.baseline.response_backend is borrowed
     assert actual.baseline.operator.backend is borrowed
     assert borrowed.statistics["actions"] > 0
-    assert actual.response_identity == water_state.response_identity
+    assert actual.response_identity == same_state_reference.response_identity
     np.testing.assert_allclose(
         actual.z_result.solution,
         water_state.z_result.solution,
@@ -359,12 +368,24 @@ def test_resident_z_execution_reuses_checked_krylov_engine(
             return owner
 
     with _prepared_ccsdt() as (response, provider, options):
+        same_state_host = BoundCCSDTOrbitalResponse(response, provider, options=options)
         inner = NativeJKBackend(
             provider.source,
             axis_tile=max(provider.source.shell_sizes),
             budget_bytes=options.provider_budget_bytes,
         )
         backend = ResidentBackend(inner)
+        # Exact response identity also hashes the solved Z values. A dense
+        # resident action can differ from a host J/K action in the last bit;
+        # require exact identity only for a deterministic same-state replay.
+        same_state_reference = BoundCCSDTOrbitalResponse(
+            response,
+            provider,
+            options=options,
+            response_backend=backend,
+            response_execution="cuda-resident",
+            response_device_budget_bytes=1 << 20,
+        )
         actual = BoundCCSDTOrbitalResponse(
             response,
             provider,
@@ -380,7 +401,15 @@ def test_resident_z_execution_reuses_checked_krylov_engine(
     assert resident.diagnostics["operator_actions"] > 0
     assert actual.response_execution == "cuda-resident"
     assert actual.resident_response_diagnostics["fake_resident"] == 1
-    assert actual.response_identity == water_state.response_identity
+    assert actual.response_identity == same_state_reference.response_identity
+    assert actual.reference_identity == same_state_host.reference_identity
+    assert (
+        actual.fixed_orbital_response_identity
+        == same_state_host.fixed_orbital_response_identity
+    )
+    assert (
+        actual.baseline.operator_identity == same_state_host.baseline.operator_identity
+    )
     np.testing.assert_allclose(
         actual.z_result.solution,
         water_state.z_result.solution,
