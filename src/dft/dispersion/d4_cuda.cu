@@ -5,7 +5,9 @@
 #include "dft/dispersion/d4_cuda.hpp"
 
 namespace vibeqc::dft::dispersion {
-namespace {
+// CuMetal emits its kernel registration in a separate translation unit.
+// Named detail linkage lets that registration resolve the CUDA host stubs.
+namespace d4_cuda_detail {
 
 constexpr int kThreadsPerBlock = 256;
 
@@ -457,12 +459,13 @@ __global__ void finalize_kernel(D4CudaBatch batch, double* workspace, D4CudaResu
 
 cudaError_t launch_status() { return cudaPeekAtLastError(); }
 
-}  // namespace
+}  // namespace d4_cuda_detail
 
 cudaError_t launch_d4_fixed_charge_batched_cuda(const D4CudaBatch& batch,
                                                 const D4Parameters& parameters, D4Tables tables,
                                                 double* workspace, std::size_t workspace_elements,
                                                 const D4CudaResult& result, cudaStream_t stream) {
+  using namespace d4_cuda_detail;
   if (batch.systems == 0) return cudaSuccess;
   if (batch.offsets == nullptr || result.statuses == nullptr || result.energies == nullptr ||
       !d4_detail::valid_parameters(parameters) ||
