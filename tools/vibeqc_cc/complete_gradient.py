@@ -525,7 +525,7 @@ class BoundCCSDOrbitalResponse:
                 "CC orbital-response source/provider/reference is stale or closed"
             )
         self.response.bound._assert_current(self.reference_identity)
-        if hasattr(self, "response_backend"):
+        if hasattr(self, "operator") and hasattr(self, "response_backend"):
             if self.operator.backend is not self.response_backend:
                 raise ResponseCompatibilityError(
                     "CC orbital-response backend ownership changed"
