@@ -53,9 +53,9 @@ properties come from capability discovery: HF requests energy and forces,
 whereas LDA/PBE RKS and UKS request energy only.
 
 SCF options and retained densities live under `scf/`, not `core/`. The core
-types describe only systems and runtime state. The HF compatibility umbrella
-`scf/rhf.hpp` includes the smaller `mean_field.hpp` and `cuda_batch.hpp`
-boundaries for existing internal callers.
+types describe only systems and runtime state. Internal callers include the
+specific `scf/mean_field.hpp` or `scf/cuda_batch.hpp` boundary they consume;
+there is no forwarding HF umbrella.
 
 ## Derivative policy
 
