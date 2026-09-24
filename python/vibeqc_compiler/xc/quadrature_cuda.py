@@ -29,7 +29,7 @@ inline size_t sum(size_t a, size_t b) {
   return a + b;
 }
 struct Layout {
-  size_t atoms, points, tile, rules, geometry, distances, logs, xyz, weights;
+  size_t atoms, points, tile, rules, polar, azimuth, geometry, distances, logs, xyz, weights;
   size_t doubles, device_bytes;
 };
 // 4096 points bounds launch overhead and O(tile * atoms) scratch. The small
@@ -43,7 +43,9 @@ inline Layout layout(size_t atoms, size_t points) {
   l.points = points;
   l.tile = std::min(points, size_t{4096});
   l.rules = product(4, atoms); // xyz centers plus resolved radii
-  l.geometry = sum(l.rules, 2 * (512 + 256));
+  l.polar = sum(l.rules, 2 * (512 + 256));
+  l.azimuth = sum(l.polar, 3 * 256);
+  l.geometry = sum(l.azimuth, 3 * 1024);
   l.distances = sum(l.geometry, product(atoms, atoms));
   l.logs = sum(l.distances, product(l.tile, atoms));
   l.xyz = sum(l.logs, product(l.tile, atoms));
@@ -87,12 +89,32 @@ __global__ void geometry_kernel(const double* centers, size_t na, double* separa
     separation[a * na + b] = separation[b * na + a] = value;
   }
 }
+// Angular factors depend only on the fixed quadrature rules, not on atoms or
+// radial shells. Build them once on device so every molecular point reuses the
+// same device-math sqrt/sin/cos results instead of recomputing them.
+__global__ void polar_kernel(size_t nz, const double* zn, const double* zw, double* polar) {
+  for (size_t z = size_t(blockIdx.x) * blockDim.x + threadIdx.x; z < nz;
+       z += size_t(blockDim.x) * gridDim.x) {
+    polar[3 * z] = sqrt(fmax(0.0, 1.0 - zn[z] * zn[z]));
+    polar[3 * z + 1] = zn[z];
+    polar[3 * z + 2] = zw[z];
+  }
+}
+__global__ void azimuth_kernel(size_t nphi, double* azimuth) {
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  for (size_t p = size_t(blockIdx.x) * blockDim.x + threadIdx.x; p < nphi;
+       p += size_t(blockDim.x) * gridDim.x) {
+    const double phi = 2.0 * pi * p / nphi;
+    azimuth[3 * p] = cos(phi);
+    azimuth[3 * p + 1] = sin(phi);
+    azimuth[3 * p + 2] = 2.0 * pi / nphi;
+  }
+}
 // Atom/radial/polar/azimuth order is the public derivative-export contract.
 __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, size_t nphi,
                               const double* centers, const double* radii, const double* rn,
-                              const double* rw, const double* zn, const double* zw,
+                              const double* rw, const double* polar, const double* azimuth,
                               double* xyz, double* weights) {
-  constexpr double pi = 3.141592653589793238462643383279502884;
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
        i += size_t(blockDim.x) * gridDim.x) {
     size_t index = begin + i;
@@ -104,12 +126,12 @@ __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, 
     const double t = 0.5 * (rn[radial] + 1.0);
     const double r = radii[owner] * t / (1.0 - t);
     const double wr = 0.5 * rw[radial] * radii[owner] * r * r / ((1.0 - t) * (1.0 - t));
-    const double ring = sqrt(fmax(0.0, 1.0 - zn[z] * zn[z]));
-    const double phi = 2.0 * pi * phi_index / nphi;
-    xyz[3*i] = centers[3*owner] + r * ring * cos(phi);
-    xyz[3*i+1] = centers[3*owner+1] + r * ring * sin(phi);
-    xyz[3*i+2] = centers[3*owner+2] + r * zn[z];
-    weights[i] = wr * zw[z] * (2.0 * pi / nphi);
+    const double* pz = polar + 3 * z;
+    const double* pp = azimuth + 3 * phi_index;
+    xyz[3*i] = centers[3*owner] + r * pz[0] * pp[0];
+    xyz[3*i+1] = centers[3*owner+1] + r * pz[0] * pp[1];
+    xyz[3*i+2] = centers[3*owner+2] + r * pz[1];
+    weights[i] = wr * pz[2] * pp[2];
   }
 }
 // Atom-major 2-D launch keeps adjacent point lanes coalesced without runtime
