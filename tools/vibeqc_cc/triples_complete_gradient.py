@@ -47,7 +47,7 @@ from .lambda_cuda import PreparedCUDALambda
 from .lambda_solver import BoundCCSDLambda, _graph_bytes
 from .native_tensor_cuda import CudaCCTensorExecutor
 from .solver import solve
-from .triples import triples_energy
+from .triples import _check_denominators, _validate, triples_energy
 from .triples_cuda import TriplesTileConfig
 from .triples_lambda_response import (
     BoundCCSDTResponse,
@@ -59,6 +59,11 @@ from .triples_response import TRIPLES_RESPONSE_INPUTS
 from .triples_response_cuda import (
     CudaTriplesResponseTiles,
     solve_corrected_lambda_cuda,
+)
+from .triples_tiles import (
+    TriplesTileEnumerator,
+    _tile_input_feeds,
+    build_tile_triples_program,
 )
 
 
@@ -240,7 +245,33 @@ class BoundCCSDTGradient(BoundCCSDGradient):
         )
         nocc = self.reference.nocc
         nvir = self.reference.nmo - nocc
-        triples = float(triples_energy(nocc, nvir, *_triples_arrays(bound)))
+        if self.tensor_executor is None:
+            triples = float(triples_energy(nocc, nvir, *_triples_arrays(bound)))
+        else:
+            # Publish energy through the selected execution boundary, not the
+            # independent CPU oracle. Its existing byte budget admits each tile.
+            values = _triples_arrays(bound)
+            _validate(nocc, nvir, *values)
+            arrays = dict(
+                zip(
+                    ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"),
+                    values,
+                    strict=True,
+                )
+            )
+            _check_denominators(arrays["eps_o"], arrays["eps_v"], 1e-10)
+            chunk = state.response.vir_chunk_size
+            triples = 0.0
+            for tile in TriplesTileEnumerator(
+                nocc, nvir, vir_chunk_size=1 if chunk is None else chunk
+            ):
+                program = build_tile_triples_program(
+                    nocc, nvir, vir_chunk=(tile.a_start, tile.a_end)
+                )
+                outputs = self._run(program, _tile_input_feeds(arrays, tile.a_end))
+                triples += float(outputs["triples_energy"])
+            if not np.isfinite(triples):
+                raise ImplicitSolveError("nonfinite RCCSD(T) publication energy")
         correlation = correlation_ccsd + triples
         corrected = state.response.corrected
         self._assert_current()
