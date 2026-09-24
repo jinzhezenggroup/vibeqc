@@ -591,9 +591,20 @@ def _run_one_electron(
 
 
 def _run_eri(
-    data: dict[str, object], density: np.ndarray, *, direction: np.ndarray | None = None
+    data: dict[str, object],
+    density: np.ndarray,
+    *,
+    direction: np.ndarray | None = None,
+    exchange_energy_coefficient: float = -0.25,
 ) -> np.ndarray:
-    """Provider output for four-center ERIs as Hessian or HVP."""
+    """Provider output for four-center ERIs as Hessian or HVP.
+
+    The default ordered energy weight is conventional closed-shell RHF.
+    Passing zero exchange coefficient gives the pure-Coulomb stationary weight
+    used by semilocal RKS without adding a second integral implementation.
+    """
+    if not np.isfinite(exchange_energy_coefficient):
+        raise ValueError("exchange energy coefficient must be finite")
     state = data["state"]
     nat = state.nat
     adapter, cache = data["adapter"], data["cache"]
@@ -618,9 +629,10 @@ def _run_eri(
                     w4 = 0.5 * np.einsum(
                         "uv,wx->uvwx", density[sa, sb], density[sc, sd]
                     )
-                    w4 -= 0.25 * np.einsum(
-                        "uw,vx->uvwx", density[sa, sc], density[sb, sd]
-                    )
+                    if exchange_energy_coefficient:
+                        w4 += exchange_energy_coefficient * np.einsum(
+                            "uw,vx->uvwx", density[sa, sc], density[sb, sd]
+                        )
                     prims = tuple(data["primitives"][i] for i in (a, b, c, d))
                     ca, cb, cc, cd = (shells[x].atom_index for x in (a, b, c, d))
                     centers = np.array(
