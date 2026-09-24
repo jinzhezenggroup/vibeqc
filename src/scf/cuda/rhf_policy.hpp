@@ -85,7 +85,7 @@ struct DirectJkFixedTopologyTaskProfile {
 
 struct DirectJkBoundedStreamingTaskProfile {
   std::size_t maximum_task_capacity{8U * 1024U * 1024U};
-  // The qualified 8M GeneratedShellTask page is 1.5 GiB at the current ABI.
+  // Keep the qualified 1.5-GiB page cap; task capacity follows the current ABI.
   std::size_t maximum_arena_bytes{std::size_t{3} << 29};
 };
 

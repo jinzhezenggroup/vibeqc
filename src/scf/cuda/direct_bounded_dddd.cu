@@ -83,7 +83,7 @@ __launch_bounds__(detail::kDirectQuartetThreads) void bounded_direct_dddd_stream
         bool keep = (active == nullptr || active[system] != 0U) &&
                     topology.shell_pair_bounds[bra_pair] * topology.shell_pair_bounds[ket_pair] >=
                         screening_tolerance;
-        if (keep) {
+        if (keep && topology.fock_consumer != detail::GeneratedFockConsumer::Coulomb) {
           keep = direct_shell_quartet_survives_screening<Unrestricted, Purpose>(
               batch, bra_pair, ket_pair, screening_tolerance, topology.shell_pair_bounds,
               density_bounds);
@@ -124,7 +124,8 @@ __launch_bounds__(detail::kDirectQuartetThreads) void bounded_direct_dddd_stream
         } else {
           contract_fock_direct_quartet_subtile<Unrestricted, kDdddAngularOrder>(
               batch, &queue_count, &task, screening_tolerance, schwarz_bounds, density, active,
-              output, nullptr, subtile, lane);
+              output, nullptr, subtile, lane,
+              topology.fock_consumer == detail::GeneratedFockConsumer::Coulomb);
         }
       }
       __syncwarp();

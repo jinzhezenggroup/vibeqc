@@ -27,7 +27,7 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
     const ActiveShellQuartetTile* active_shell_quartet_tiles, double screening_tolerance,
     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* fock,
     const std::uint64_t* generated_fock_shell_class_mask, std::size_t active_subtile,
-    unsigned ao_quartet_lane) {
+    unsigned ao_quartet_lane, bool coulomb_only = false) {
   static_assert(AngularOrder < detail::kDirectQuartetAngularOrderCount);
   constexpr std::size_t subtiles_per_tile = detail::direct_quartet_subtiles_per_tile(AngularOrder);
   const std::size_t active_tile = active_subtile / subtiles_per_tile;
@@ -93,7 +93,7 @@ __device__ __forceinline__ void contract_fock_direct_quartet_subtile(
     const double integral = scalar_value(evaluated_integral);
     if (integral == 0.0) return;
     accumulate_direct_fock_integral<Unrestricted>(n, physical_offset, spin_offset, density, fock, i,
-                                                  j, k, l, integral);
+                                                  j, k, l, integral, coulomb_only);
   }
 }
 
