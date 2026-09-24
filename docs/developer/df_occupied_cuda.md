@@ -200,8 +200,20 @@ The method passes its verified final-state token. The response owner checks
 source identity, solve epoch, system, model, occupations, exact canonical device
 density, and each device factor generation before borrowing C. Missing/stale
 tokens, corrected determinants, external densities, unreserved plans and
-unsupported factors keep dense response. UHF additionally verifies the exact
-sum of its spin densities and admits both rank-squared projections together.
+unsupported factors keep dense response under `auto`. UHF additionally verifies
+the exact sum of its spin densities and admits both rank-squared projections
+together.
+
+On singleton, full-rank streamed RHF plans only, an explicit
+`VIBEQC_DF_RESPONSE_SPACE=occupied` request may reconstruct a *new* algebraic
+factor from a corrected final density. It requires the same source/model/solve
+epoch/occupation, bounded matching density and orbital generation advances,
+and the charged occupied value-plan reservation. A GPU eigensolve and full
+density reconstruction gate reject indefinite, non-finite, excess-rank or
+inexact densities; the existing bounded dense response remains the fallback.
+Before overwriting factor scratch, the response revokes the previous SCF
+generation, so this factor is never advertised as a canonical SCF factor.
+`auto`, UHF, batch and truncated-metric response policies are unchanged.
 
 The response computes `T_Q=C^T A_Q C` and `U_P=sum_Q V_PQ T_Q` from raw
 three-center values, preserving finite discarded metric directions. In the
