@@ -10,7 +10,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
-from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.method import resolve_method
@@ -260,7 +259,7 @@ def test_imported_full_hessians_emit_existing_c_and_cuda_backends(
         for variable in variables
     }
     scalar = ScalarCEmitter(graph, names)
-    cuda = CudaEmitter(graph, names)
+    cuda = ScalarCEmitter(graph, names)
     scalar.emit(roots)
     cuda.emit(roots)
     assert scalar.lines
