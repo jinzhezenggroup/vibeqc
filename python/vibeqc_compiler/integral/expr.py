@@ -1262,7 +1262,7 @@ class Graph:
         """Return use counts, last uses, and peak materialized live values.
 
         The topological definition order is the same order consumed by
-        :class:`~vibeqc_compiler.integral.cuda.CudaEmitter`. An input remains live
+        :class:`~vibeqc_compiler.integral.scalar_c.ScalarCEmitter`. An input remains live
         through the event that defines its final consumer, so the estimate
         conservatively includes both operands and the result of that operation.
         """
@@ -1334,7 +1334,7 @@ class Graph:
 
         Decisions are made from canonical SSA use counts and lifetime spans.
         The returned post-plan operation and liveness metrics are then measured
-        from the actual expression expansions that :class:`CudaEmitter` uses,
+        from the actual expression expansions that :class:`ScalarCEmitter` uses,
         including duplicated descendants of a rematerialized value.
         """
 
