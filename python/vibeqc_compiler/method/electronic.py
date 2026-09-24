@@ -16,9 +16,9 @@ from vibeqc_compiler.common.provenance import canonical_hash
 SCHEMA = "vibeqc.electronic_method_ir"
 VERSION = 1
 
-_FAMILIES = ("hf", "ks", "cc")
+_FAMILIES = ("hf", "ks", "semiempirical", "cc")
 _REFERENCES = ("restricted", "unrestricted")
-_STATE_KINDS = ("density", "amplitude")
+_STATE_KINDS = ("density", "amplitude", "charge", "multipole", "magnetization")
 _ENERGY_KINDS = ("total", "correlation")
 
 
@@ -208,7 +208,7 @@ class DerivativeSpec:
 
 @dataclass(frozen=True)
 class ElectronicMethodIR:
-    """Canonical method-level graph shared by HF, KS and coupled cluster.
+    """Canonical method-level graph shared by HF, KS, GFN and coupled cluster.
 
     This first slice is descriptive only.  It captures persistent state,
     operator/data dependencies, energy ownership and iteration contracts while
@@ -557,6 +557,137 @@ def rks_electronic_method_ir(method: typing.Any) -> ElectronicMethodIR:
             (("density", "density_error"),),
             (("density", "density_next"),),
             "ks-fixed-point-v1",
+        ),
+        composition_identity=method.identity,
+    )
+
+
+def gfn_electronic_method_ir(method: typing.Any) -> ElectronicMethodIR:
+    """Project an audited GFN XtbMethodIR into the common orchestration IR.
+
+    The projection owns only persistent-state/dataflow structure. Scientific
+    equations remain owned by XtbMethodIR and its lower-level compiler graphs;
+    SCC policy, occupations, eigensolver choice and runtime capability remain
+    outside this representation.
+    """
+    from .xtb import XtbMethodIR, resolve_xtb_method
+
+    method = resolve_xtb_method(method) if isinstance(method, str) else method
+    if not isinstance(method, XtbMethodIR):
+        raise TypeError("GFN projection requires a resolved XtbMethodIR")
+
+    state_kind = {
+        "shell_charge": "charge",
+        "charge": "charge",
+        "dipole": "multipole",
+        "quadrupole": "multipole",
+        "magnetization": "magnetization",
+    }
+    state_names = tuple(method.compiler_requirements["state_requirements"])
+    if not state_names:
+        raise ValueError("GFN orchestration requires explicit SCC state")
+    if any(name not in state_kind for name in state_names):
+        raise ValueError("GFN orchestration encountered an unsupported SCC state")
+
+    integral_sources = tuple(
+        f"{operator}_integrals"
+        for operator in method.compiler_requirements["integral_operators"]
+    )
+    if "overlap_integrals" not in integral_sources:
+        raise ValueError("GFN orchestration requires overlap integrals")
+
+    proposals = tuple(f"{name}_proposal" for name in state_names)
+    residuals = tuple(f"{name}_residual" for name in state_names)
+    updates = tuple(f"{name}_next" for name in state_names)
+    scientific_inputs = (
+        "geometry",
+        "parameters",
+        *state_names,
+        *integral_sources,
+    )
+
+    return ElectronicMethodIR(
+        identifier=method.identifier,
+        family="semiempirical",
+        reference=method.reference,
+        sources=(
+            "geometry",
+            "mixing_policy",
+            "occupation_policy",
+            "parameters",
+            *integral_sources,
+        ),
+        states=tuple(
+            StateSpec(
+                name,
+                state_kind[name],
+                f"{method.model_flavor}-{name}-state-v1",
+            )
+            for name in state_names
+        ),
+        operators=(
+            OperatorSpec(
+                "assemble_hamiltonian",
+                "hamiltonian",
+                scientific_inputs,
+                ("hamiltonian",),
+                ir_identity=method.identity,
+            ),
+            OperatorSpec(
+                "diagonalize_hamiltonian",
+                "eigensolve",
+                ("hamiltonian", "overlap_integrals"),
+                ("orbital_coefficients", "orbital_energies"),
+            ),
+            OperatorSpec(
+                "evaluate_occupations",
+                "occupation",
+                ("occupation_policy", "orbital_energies"),
+                ("occupations",),
+            ),
+            OperatorSpec(
+                "project_scc_state",
+                "state_projection",
+                (
+                    "orbital_coefficients",
+                    "occupations",
+                    *integral_sources,
+                ),
+                proposals,
+                ir_identity=method.identity,
+            ),
+            OperatorSpec(
+                "scc_residuals",
+                "fixed_point_residual",
+                (*state_names, *proposals),
+                residuals,
+            ),
+            OperatorSpec(
+                "scc_update",
+                "state_update",
+                ("mixing_policy", *state_names, *residuals),
+                updates,
+            ),
+            OperatorSpec(
+                "gfn_energy",
+                "energy",
+                (
+                    "geometry",
+                    "parameters",
+                    *state_names,
+                    "orbital_energies",
+                    "occupations",
+                ),
+                ("total_energy",),
+                ir_identity=method.identity,
+            ),
+        ),
+        energy=EnergySpec("total_energy"),
+        iteration=IterationSpec(
+            state_names,
+            tuple(zip(state_names, residuals, strict=True)),
+            tuple(zip(state_names, updates, strict=True)),
+            "gfn-scc-fixed-point-v1",
         ),
         composition_identity=method.identity,
     )

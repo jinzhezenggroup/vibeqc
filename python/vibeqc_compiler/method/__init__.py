@@ -95,6 +95,7 @@ _EXPORTS = {
     "original_nonlocal_correlation": "vibeqc_compiler.common.nonlocal_correlation",
     "r2scan3c_d4_eeq": ".dispersion",
     "resolve_method": ".spec",
+    "gfn_electronic_method_ir": ".electronic",
     "rccsd_electronic_method_ir": ".electronic",
     "rhf_electronic_method_ir": ".electronic",
     "rks_electronic_method_ir": ".electronic",

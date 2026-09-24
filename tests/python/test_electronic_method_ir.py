@@ -11,8 +11,10 @@ from vibeqc_compiler.method import (
     IterationSpec,
     OperatorSpec,
     StateSpec,
+    gfn_electronic_method_ir,
     rccsd_electronic_method_ir,
     resolve_method,
+    resolve_xtb_method,
     rhf_electronic_method_ir,
     rks_electronic_method_ir,
 )
@@ -67,6 +69,59 @@ def test_dft_aliases_share_structural_identity_but_keep_manifest_name() -> None:
     alias = rks_electronic_method_ir("PBEH")
     assert canonical.identity == alias.identity
     assert canonical.manifest_identity != alias.manifest_identity
+
+
+@pytest.mark.parametrize(
+    ("name", "expected_states"),
+    (
+        ("GFN1-xTB", {"shell_charge", "charge", "magnetization"}),
+        ("GFN2-xTB", {"charge", "dipole", "quadrupole", "magnetization"}),
+    ),
+)
+def test_gfn_reuses_xtb_method_identity_without_copying_scientific_graph(
+    name: str, expected_states: set[str]
+) -> None:
+    method = resolve_xtb_method(name)
+    graph = gfn_electronic_method_ir(method)
+
+    assert graph.family == "semiempirical"
+    assert graph.reference == method.reference
+    assert graph.composition_identity == method.identity
+    assert {state.name for state in graph.states} == expected_states
+    assert graph.iteration is not None
+    assert set(graph.iteration.states) == expected_states
+    assert graph.iteration.solver_contract == "gfn-scc-fixed-point-v1"
+    assert dict(graph.iteration.residuals) == {
+        state: f"{state}_residual" for state in expected_states
+    }
+    assert dict(graph.iteration.updates) == {
+        state: f"{state}_next" for state in expected_states
+    }
+    scientific = {
+        operator.ir_identity
+        for operator in graph.operators
+        if operator.ir_identity is not None
+    }
+    assert scientific == {method.identity}
+    assert method.capability["runtime_executable"] is False
+    json.dumps(graph.to_payload(), sort_keys=True, allow_nan=False)
+
+
+def test_gfn_orchestration_keeps_eigensolver_and_runtime_policy_outside_xtb_ir() -> None:
+    method = resolve_xtb_method("GFN2-xTB")
+    graph = gfn_electronic_method_ir(method)
+
+    assert _before(
+        graph.operator_order, "assemble_hamiltonian", "diagonalize_hamiltonian"
+    )
+    assert _before(
+        graph.operator_order, "diagonalize_hamiltonian", "evaluate_occupations"
+    )
+    assert _before(graph.operator_order, "evaluate_occupations", "project_scc_state")
+    assert "mixing_policy" in graph.sources
+    assert "occupation_policy" in graph.sources
+    assert "mixing_policy" not in method.semantic_payload()
+    assert "occupation_policy" not in method.semantic_payload()
 
 
 def test_rccsd_wraps_existing_tensorir_by_identity() -> None:
