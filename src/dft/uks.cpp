@@ -281,8 +281,9 @@ ScfResult run_uks_impl(
     bool stabilized{};
   };
 
-  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance, residual_gate, true};
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance, residual_gate,
+      true};
   auto outcome = ::vibeqc::solver::run_self_consistent(
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
@@ -351,7 +352,8 @@ ScfResult run_uks_impl(
           return UksState{std::move(state.alpha), std::move(state.beta)};
         return UksState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
       },
-      [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const UksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const UksLoopEvaluation& evaluation) {
         result.energy = progress.energy;
         result.iterations = progress.iteration;
         result.energy_change = progress.energy_change;
