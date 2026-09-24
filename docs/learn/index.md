@@ -14,3 +14,17 @@ Read in order:
 8. [Glossary](glossary.md)
 
 Then continue with the [User Guide](../user/index.md).
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+quantum-chemistry-in-10-minutes
+molecules-charge-spin
+basis-sets
+hf-and-scf
+dft-and-xc
+energy-force-hessian
+post-hf
+glossary
+```
