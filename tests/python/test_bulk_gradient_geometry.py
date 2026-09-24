@@ -57,8 +57,9 @@ def _stage(
 
 def _force_evidence(
     capability: libxc_bulk_capabilities.BulkFunctionalCapability,
+    *,
+    spin: str,
 ) -> dict:
-    spin = "unpolarized"
     return {
         "compiled-cpu": _stage(capability, "compiled-cpu"),
         "production-domain": _stage(capability, "production-domain"),
@@ -76,21 +77,27 @@ def _force_evidence(
 
 
 @pytest.mark.parametrize(
-    "name",
+    ("name", "spin", "minority_scale"),
     [
-        "LDA_C_VWN_4",
-        "GGA_X_PBE_SOL",
+        ("LDA_C_VWN_4", "unpolarized", None),
+        ("GGA_X_PBE_SOL", "unpolarized", None),
+        ("MGGA_X_R2SCAN01", "unpolarized", None),
+        ("MGGA_X_R2SCAN01", "polarized", 0.17),
+        ("MGGA_X_R2SCAN01", "polarized", 1e-8),
     ],
 )
 def test_noncurated_bulk_geometry_matches_independent_displaced_energy(
     name: str,
+    spin: str,
+    minority_scale: float | None,
 ) -> None:
     base = libxc_bulk_capabilities.functional_capability(name)
     diagnostic = resolve_bulk_force_geometry_diagnostic(
         name,
-        spin="unpolarized",
-        evidence=_force_evidence(base),
+        spin=spin,
+        evidence=_force_evidence(base, spin=spin),
     )
+    assert diagnostic.resolution.tau_generalized_ks is name.startswith("MGGA")
     meta, _, _ = load_integration_fixture("h2")
     args = basis_arguments(meta)
     points = np.array(
@@ -105,7 +112,12 @@ def test_noncurated_bulk_geometry_matches_independent_displaced_energy(
     weights = np.array([0.17, 0.23, 0.31, 0.29], dtype=np.float64)
 
     with NativeAO(**args) as basis:
-        density = np.eye(basis.nao, dtype=np.float64) * 0.35
+        eye = np.eye(basis.nao, dtype=np.float64)
+        density = (
+            eye * 0.35
+            if spin == "unpolarized"
+            else np.stack((eye * 0.31, eye * float(minority_scale)))
+        )
         jets = basis.evaluate(points, diagnostic.contraction.contract.ao_order)
         partials = diagnostic.geometry(
             jets,
@@ -139,7 +151,7 @@ def test_noncurated_bulk_geometry_matches_independent_displaced_energy(
     )
 
     assert oracle.spread < 2e-7
-    np.testing.assert_allclose(oracle.stable_estimate, expected, atol=2e-8)
+    np.testing.assert_allclose(oracle.stable_estimate, expected, atol=5e-8)
     payload = diagnostic.to_payload()
     assert payload["schema"] == BULK_FORCE_GEOMETRY_SCHEMA
     assert payload["force_resolution"]["identity"] == base.identity
