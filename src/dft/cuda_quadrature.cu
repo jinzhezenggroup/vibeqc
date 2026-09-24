@@ -59,7 +59,7 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
         data + 3 * l.atoms, data + l.rules, data + l.rules + 512, data + l.rules + 1024,
         data + l.rules + 1280, data + l.xyz, data + l.weights);
     check(cudaGetLastError());
-    q::distances_kernel<<<q::blocks(count * l.atoms), 128, 0, stream.get()>>>(
+    q::distances_kernel<<<q::atom_point_grid(count, l.atoms), 128, 0, stream.get()>>>(
         count, l.atoms, data + l.xyz, data, data + l.distances);
     check(cudaGetLastError());
     q::launch_partition(spec.partition_iterations, count, l.atoms, spec.coincident_tolerance,
