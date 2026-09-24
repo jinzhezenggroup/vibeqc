@@ -413,18 +413,14 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   return options;
 }
 
-/** Copy every pointee before constructing scientific owners. Legacy method
- * descriptors that omit KS options retain the original v1 unit-radius GridSpec
- * and 256-point tiles strictly as an ABI/reference compatibility boundary.
- * Modern production callers pass the compiler-resolved GridSpec v2 here; C++
- * does not own a second production profile/default policy. */
+/** Copy every pointee before constructing scientific owners. The public entry
+ * has already admitted a complete current descriptor. A null KS-options pointer
+ * retains the existing default GridSpec and tile values; production callers pass
+ * the compiler-resolved grid, not a second native production profile. */
 dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor, scf::ScfOptions& options,
                               const NativeKsExecutionPlan& execution_plan) {
   dft::GridSpec grid;
-  if (!field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
-                     sizeof(descriptor.ks_options)) ||
-      !descriptor.ks_options)
-    return grid;
+  if (!descriptor.ks_options) return grid;
   const auto& input = *descriptor.ks_options;
   if (input.struct_size < sizeof(vibeqc_ks_options) || input.abi_version != VIBEQC_ABI_VERSION)
     throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS execution-plan ABI mismatch");
@@ -533,11 +529,7 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
  * owner copies the result, so descriptor/temporary system lifetimes never leak
  * into a prepared calculation. An omitted auxiliary basis means the orbital basis. */
 std::optional<core::System> ks_auxiliary_template(const vibeqc_method_descriptor& descriptor) {
-  if (!field_present(descriptor,
-                     offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
-                     sizeof(descriptor.density_fitting_auxiliary_basis)) ||
-      !descriptor.density_fitting_auxiliary_basis)
-    return std::nullopt;
+  if (!descriptor.density_fitting_auxiliary_basis) return std::nullopt;
   return descriptor.density_fitting_auxiliary_basis->data;
 }
 
