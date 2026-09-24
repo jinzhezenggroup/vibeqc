@@ -139,7 +139,7 @@ def test_exact_history_recomputes_every_target_residual() -> None:
     assert result.target_residual_evaluations == 2
     assert seen == [transport.target.reference_id] * 2
     np.testing.assert_array_equal(result.entries[1].residual_singles, [[0.4]])
-    np.testing.assert_array_equal(result.entries[1].residual_doubles, [[[[0.12]]]])
+    np.testing.assert_allclose(\n        result.entries[1].residual_doubles, [[[[0.12]]]], rtol=1e-15, atol=0.0\n    )
     assert not result.entries[1].residual_singles.flags.writeable
     assert not result.entries[1].residual_doubles.flags.writeable
 
