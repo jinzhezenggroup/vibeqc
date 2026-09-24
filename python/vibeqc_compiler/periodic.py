@@ -16,6 +16,7 @@ import numpy as np
 from vibeqc_compiler.common.provenance import canonical_hash
 
 CELL_SCHEMA = "vibeqc.periodic-cell.v1"
+SYSTEM_SCHEMA = "vibeqc.periodic-system.v1"
 DEFAULT_MAX_IMAGE_CANDIDATES = 1_000_000
 
 
@@ -56,6 +57,50 @@ def _nonnegative_scalar(value: typing.Any, *, label: str) -> float:
     if not math.isfinite(scalar) or scalar < 0.0:
         raise ValueError(f"{label} must be finite and nonnegative")
     return scalar
+
+
+def _integer_scalar(value: typing.Any, *, label: str, nonnegative: bool = False) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, np.integer)):
+        raise TypeError(f"{label} must be an integer")
+    result = int(value)
+    if nonnegative and result < 0:
+        raise ValueError(f"{label} must be nonnegative")
+    return result
+
+
+def _atomic_numbers(value: typing.Any) -> tuple[int, ...]:
+    if np.iscomplexobj(value):
+        raise TypeError("atomic_numbers must contain integers")
+    array = np.asarray(value)
+    if (
+        array.ndim != 1
+        or array.size == 0
+        or not np.issubdtype(array.dtype, np.integer)
+    ):
+        raise TypeError(
+            "atomic_numbers must be a non-empty one-dimensional integer array"
+        )
+    numbers = tuple(int(number) for number in array.tolist())
+    if any(number < 1 or number > 118 for number in numbers):
+        raise ValueError("atomic_numbers must lie in the inclusive range 1..118")
+    return numbers
+
+
+def _positions_bohr(
+    value: typing.Any, *, atom_count: int
+) -> tuple[tuple[float, float, float], ...]:
+    if np.iscomplexobj(value):
+        raise ValueError("positions_bohr must be real")
+    try:
+        array = np.asarray(value, dtype=np.float64)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise TypeError("positions_bohr must be numeric") from error
+    if array.shape != (atom_count, 3) or not np.all(np.isfinite(array)):
+        raise ValueError(f"positions_bohr must be a finite {atom_count}x3 matrix")
+    return tuple(
+        tuple(float(component) for component in row)
+        for row in array
+    )
 
 
 @dataclass(frozen=True)
@@ -199,3 +244,121 @@ class PeriodicCell:
                     ):
                         offsets.append(offset)
         return tuple(offsets)
+
+
+@dataclass(frozen=True)
+class PeriodicSystem:
+    """Immutable internal periodic system with explicit cache generations.
+
+    Cartesian atom positions are retained verbatim in Bohr. Constructing or
+    updating a system never wraps, rescales, or reorders atoms. Scientific
+    identities are separated from monotonic preparation generations so callers
+    can distinguish equivalent data from a deliberately invalidated cache owner.
+    """
+
+    cell: PeriodicCell
+    atomic_numbers: typing.Any
+    positions_bohr: typing.Any
+    charge: int = 0
+    spin: int = 0
+    geometry_generation: int = 0
+    cell_generation: int = 0
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.cell, PeriodicCell):
+            raise TypeError("cell must be a PeriodicCell")
+        numbers = _atomic_numbers(self.atomic_numbers)
+        positions = _positions_bohr(self.positions_bohr, atom_count=len(numbers))
+        charge = _integer_scalar(self.charge, label="charge")
+        spin = _integer_scalar(self.spin, label="spin", nonnegative=True)
+        geometry_generation = _integer_scalar(
+            self.geometry_generation, label="geometry_generation", nonnegative=True
+        )
+        cell_generation = _integer_scalar(
+            self.cell_generation, label="cell_generation", nonnegative=True
+        )
+        object.__setattr__(self, "atomic_numbers", numbers)
+        object.__setattr__(self, "positions_bohr", positions)
+        object.__setattr__(self, "charge", charge)
+        object.__setattr__(self, "spin", spin)
+        object.__setattr__(self, "geometry_generation", geometry_generation)
+        object.__setattr__(self, "cell_generation", cell_generation)
+
+    def geometry_payload(self) -> dict[str, typing.Any]:
+        """Return atom identity and unwrapped Cartesian geometry only."""
+        return {
+            "atomic_numbers": list(self.atomic_numbers),
+            "positions_bohr": [list(position) for position in self.positions_bohr],
+            "position_units": "Bohr",
+        }
+
+    @property
+    def geometry_identity(self) -> str:
+        """Return the canonical atom/position identity, independent of the cell."""
+        return canonical_hash(self.geometry_payload())
+
+    @property
+    def cell_identity(self) -> str:
+        """Return the canonical direct-cell identity."""
+        return self.cell.identity
+
+    @property
+    def identity(self) -> str:
+        """Return the canonical scientific identity of this periodic system."""
+        return canonical_hash(
+            {
+                "schema": SYSTEM_SCHEMA,
+                "cell_identity": self.cell_identity,
+                "geometry_identity": self.geometry_identity,
+                "charge": self.charge,
+                "spin": self.spin,
+            }
+        )
+
+    @property
+    def prepared_identity(self) -> str:
+        """Return a cache identity that also includes explicit generations."""
+        return canonical_hash(
+            {
+                "schema": SYSTEM_SCHEMA,
+                "system_identity": self.identity,
+                "geometry_generation": self.geometry_generation,
+                "cell_generation": self.cell_generation,
+            }
+        )
+
+    def to_payload(self) -> dict[str, typing.Any]:
+        """Return a detached machine-readable system description."""
+        return {
+            "schema": SYSTEM_SCHEMA,
+            "cell": self.cell.to_payload(),
+            **self.geometry_payload(),
+            "charge": self.charge,
+            "spin": self.spin,
+            "geometry_generation": self.geometry_generation,
+            "cell_generation": self.cell_generation,
+        }
+
+    def with_positions(self, positions_bohr: typing.Any) -> PeriodicSystem:
+        """Return a geometry-invalidating copy without wrapping atom positions."""
+        return PeriodicSystem(
+            cell=self.cell,
+            atomic_numbers=self.atomic_numbers,
+            positions_bohr=positions_bohr,
+            charge=self.charge,
+            spin=self.spin,
+            geometry_generation=self.geometry_generation + 1,
+            cell_generation=self.cell_generation,
+        )
+
+    def with_cell(self, cell: PeriodicCell) -> PeriodicSystem:
+        """Return a cell-invalidating copy while preserving Cartesian positions."""
+        return PeriodicSystem(
+            cell=cell,
+            atomic_numbers=self.atomic_numbers,
+            positions_bohr=self.positions_bohr,
+            charge=self.charge,
+            spin=self.spin,
+            geometry_generation=self.geometry_generation,
+            cell_generation=self.cell_generation + 1,
+        )
