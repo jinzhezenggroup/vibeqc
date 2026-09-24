@@ -106,6 +106,7 @@ _cc_package.__path__ = [str(_cc_path)]
 _cc_package.__package__ = "tools.vibeqc_cc"
 sys.modules.setdefault("tools.vibeqc_cc", _cc_package)
 
+from tools.vibeqc_cc.df_equations import build_df_virtual_correction_program
 from tools.vibeqc_cc.doubles import build_ccsd_program
 from tools.vibeqc_cc.gradient_equations import (
     build_fock_weight_program,
@@ -119,6 +120,7 @@ from tools.vibeqc_cc.lambda_equations import (
 from tools.vibeqc_cc.triples_tiles import build_runtime_tile_triples_program
 
 REPRESENTATIVE = (2, 3)
+REPRESENTATIVE_AUXILIARY = 4
 REPRESENTATIVE_ORBITALS = sum(REPRESENTATIVE)
 TRIPLES_RESPONSE_INPUTS = (
     "ovvv",
@@ -186,7 +188,7 @@ def _kind(index: Index) -> str:
 def _dim(index: Index) -> str:
     if index.space.kind in ("occupied", "virtual"):
         return "o" if _kind(index) == "occupied" else "v"
-    if index.space.kind == "batch":
+    if index.space.kind in ("batch", "auxiliary"):
         return "q"
     if index.space.kind == "orbital" and index.space.size == REPRESENTATIVE_ORBITALS:
         bounds = (index.start, index.stop)
@@ -644,6 +646,11 @@ def _cpu_function(
         returned = [outputs["d_fov"]]
     elif output_type == "TriplesResponseOutputs":
         returned = [outputs[f"bar_{name}"] for name in TRIPLES_RESPONSE_INPUTS]
+    elif output_type == "DFVirtualOutputs":
+        returned = [
+            outputs["df_virtual_singles"],
+            outputs["df_virtual_doubles"],
+        ]
     else:
         raise ValueError(f"unsupported RCCSD generated CPU output type {output_type}")
     lines.append("  return {" + ",".join(returned) + "};")
@@ -671,6 +678,9 @@ def _required_function(program: Program, name: str, *, batch_dim: bool = False) 
 def cpu_header() -> str:
     iteration = iteration_program(*REPRESENTATIVE)
     replay = build_ccsd_program(*REPRESENTATIVE, form="expanded", diagnostics=False)
+    df_virtual = build_df_virtual_correction_program(
+        *REPRESENTATIVE, REPRESENTATIVE_AUXILIARY
+    )
     lambda_programs = build_lambda_programs(*REPRESENTATIVE, form="shared")
     lambda_independent = build_lambda_programs(*REPRESENTATIVE, form="expanded")
     lambda_rhs = lambda_programs.energy_vjp.program
@@ -738,6 +748,8 @@ def cpu_header() -> str:
             "struct Inputs {",
             *[f"  const double* {name}{{}};" for name in INPUT_NAMES],
             "};",
+            "struct DFVirtualInputs { const double* bov{}; const double* bvv{}; const double* t1{}; const double* t2{}; };",
+            "struct DFVirtualOutputs { const double* r1{}; const double* r2{}; };",
             "struct IterationOutputs { double energy{}; const double* r1{}; const double* r2{}; const double* next_t1{}; const double* next_t2{}; };",
             "struct ReplayOutputs { double energy{}; const double* r1{}; const double* r2{}; };",
             "struct LambdaOutputs { const double* t1{}; const double* t2{}; };",
@@ -765,6 +777,7 @@ def cpu_header() -> str:
             f'inline constexpr const char* iteration_equation_hash="{iteration.provenance["physical_equation"]}";',
             f'inline constexpr const char* iteration_program_hash="{iteration.logical_hash}";',
             f'inline constexpr const char* replay_equation_hash="{replay.logical_hash}";',
+            f'inline constexpr const char* df_virtual_correction_program_hash="{df_virtual.logical_hash}";',
             f'inline constexpr const char* lambda_rhs_program_hash="{lambda_rhs.logical_hash}";',
             f'inline constexpr const char* lambda_transpose_program_hash="{lambda_transpose.logical_hash}";',
             f'inline constexpr const char* lambda_independent_rhs_program_hash="{independent_rhs.logical_hash}";',
@@ -779,6 +792,9 @@ def cpu_header() -> str:
             f'inline constexpr const char* triples_response_program_hash="{triples_response.logical_hash}";',
             _required_function(iteration, "iteration_arena_elements"),
             _required_function(replay, "replay_arena_elements"),
+            _required_function(
+                df_virtual, "df_virtual_correction_arena_elements", batch_dim=True
+            ),
             _required_function(lambda_rhs, "lambda_rhs_arena_elements"),
             _required_function(lambda_transpose, "lambda_transpose_arena_elements"),
             _required_function(
@@ -801,6 +817,19 @@ def cpu_header() -> str:
             ),
             _cpu_function(iteration, "run_iteration_cpu", "IterationOutputs"),
             _cpu_function(replay, "run_replay_cpu", "ReplayOutputs"),
+            _cpu_function(
+                df_virtual,
+                "run_df_virtual_correction_cpu",
+                "DFVirtualOutputs",
+                signature="const DFVirtualInputs& inputs",
+                input_overrides={
+                    "bov": "inputs.bov",
+                    "bvv": "inputs.bvv",
+                    "t1": "inputs.t1",
+                    "t2": "inputs.t2",
+                },
+                batch_dim=True,
+            ),
             _cpu_function(
                 lambda_rhs,
                 "run_lambda_rhs_cpu",
