@@ -26,9 +26,9 @@ def test_df_cuda_density_contracts_unique_pairs_for_production_weights() -> None
     assert "if (symmetric_density && row > column) return;" in kernel
     assert "density[element] = value;" in kernel
     assert "density[offset + column + row * nbf] = value;" in kernel
-    assert kernel.index("if (symmetric_density && row > column) return;") < kernel.index(
-        "for (std::int32_t orbital"
-    )
+    assert kernel.index(
+        "if (symmetric_density && row > column) return;"
+    ) < kernel.index("for (std::int32_t orbital")
 
 
 def test_df_cuda_density_preserves_generic_weight_fallback() -> None:

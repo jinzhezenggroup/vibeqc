@@ -178,8 +178,7 @@ __global__ void build_device_density_kernel(std::size_t batch_size, std::size_t 
              coefficients[offset + column + orbital * nbf];
   }
   density[element] = value;
-  if (symmetric_density && row != column)
-    density[offset + column + row * nbf] = value;
+  if (symmetric_density && row != column) density[offset + column + row * nbf] = value;
 }
 
 __global__ void compute_device_energy_kernel(std::size_t batch_size, std::size_t nbf,
