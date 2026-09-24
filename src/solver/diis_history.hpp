@@ -37,9 +37,17 @@ class DiisHistory {
 
   void push(const std::vector<double>& vector, std::vector<double> error) {
     validate(vector, error);
-    if (!elements_) elements_ = vector.size();
+    // Commit both halves together. An allocation failure must not leave a
+    // vector without its residual, or bind an uncommitted initial dimension.
+    const auto elements = vector.size();
     vectors_.push_back(vector);
-    errors_.push_back(std::move(error));
+    try {
+      errors_.push_back(std::move(error));
+    } catch (...) {
+      vectors_.pop_back();
+      throw;
+    }
+    if (!elements_) elements_ = elements;
     if (vectors_.size() > capacity_) retire_oldest();
   }
 
