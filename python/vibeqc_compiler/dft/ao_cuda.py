@@ -17,7 +17,11 @@ from vibeqc_compiler.integral.expr import AlgebraForm, Graph
 
 from .ao import jet_indices
 from .feature_policy import emit_feature_policy
-from .xc_contraction_cuda import emit_native_xc_matrix_schedule
+from .xc_contraction_cuda import (
+    DEFAULT_XC_MATRIX_SCHEDULE,
+    XcMatrixSchedule,
+    emit_native_xc_matrix_schedule,
+)
 
 _GRID_SCIENTIFIC_KERNELS = r"""#include "../tensor/cuda_runtime.cuh"
 #include "xc_point.hpp"
@@ -540,14 +544,18 @@ def emit_native_xc_point_dispatch() -> str:
     return "\n".join(lines) + "\n"
 
 
-def emit_native_xc_contraction_kernels() -> str:
-    """Emit resident XC features, point algebra, potential and scalar reductions."""
+def emit_native_xc_contraction_kernels(
+    matrix_schedule: XcMatrixSchedule = DEFAULT_XC_MATRIX_SCHEDULE,
+) -> str:
+    """Emit resident XC kernels for one explicit compiler matrix schedule."""
 
+    if not isinstance(matrix_schedule, XcMatrixSchedule):
+        raise TypeError("native XC contraction emission requires XcMatrixSchedule")
     return (
         _NATIVE_XC_CONTRACTION_KERNELS.replace(
             "@POINT_DISPATCH@", emit_native_xc_point_dispatch()
         )
-        + emit_native_xc_matrix_schedule()
+        + emit_native_xc_matrix_schedule(matrix_schedule)
     )
 
 
@@ -624,16 +632,25 @@ def emit_grid_policy() -> typing.Any:
     return "\n".join(lines)
 
 
-def emit_grid_source(*, native_ks: typing.Any = False) -> typing.Any:
+def emit_grid_source(
+    *,
+    native_ks: typing.Any = False,
+    xc_matrix_schedule: XcMatrixSchedule = DEFAULT_XC_MATRIX_SCHEDULE,
+) -> typing.Any:
     """Compose one AO policy with the grid runtime and optional resident KS glue.
 
     The native library additionally instantiates its borrowed-buffer XC kernels.
     JIT grid owners retain their own ABI and arena without that native extension.
+    The selected matrix schedule is embedded in generated source identity.
     """
+    if not isinstance(xc_matrix_schedule, XcMatrixSchedule):
+        raise TypeError("grid source emission requires XcMatrixSchedule")
+    if not native_ks and xc_matrix_schedule != DEFAULT_XC_MATRIX_SCHEDULE:
+        raise ValueError("non-default XC matrix schedules require native KS emission")
     policy = emit_grid_policy()
     source = policy + emit_grid_scientific_kernels() + '#include "cuda_grid.cu"\n'
     if native_ks:
-        source += emit_native_xc_contraction_kernels()
+        source += emit_native_xc_contraction_kernels(xc_matrix_schedule)
         source += '#include "cuda_xc_kernels.cuh"\n'
     return (
         source,
