@@ -39,7 +39,8 @@ class Diis {
       for (std::size_t i = 0; i < n; ++i)
         for (std::size_t j = i; j < n; ++j) {
           const double dot =
-              std::inner_product(history_.errors()[i].begin(), history_.errors()[i].end(), history_.errors()[j].begin(), 0.0);
+              std::inner_product(history_.errors()[i].begin(), history_.errors()[i].end(),
+                                 history_.errors()[j].begin(), 0.0);
           gram[i * n + j] = dot;
           gram[j * n + i] = dot;
           scale = std::max(scale, std::abs(dot));

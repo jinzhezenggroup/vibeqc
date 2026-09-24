@@ -27,9 +27,7 @@ class DiisHistory {
   [[nodiscard]] const std::vector<std::vector<double>>& vectors() const noexcept {
     return vectors_;
   }
-  [[nodiscard]] const std::vector<std::vector<double>>& errors() const noexcept {
-    return errors_;
-  }
+  [[nodiscard]] const std::vector<std::vector<double>>& errors() const noexcept { return errors_; }
 
   void validate(const std::vector<double>& vector, const std::vector<double>& error) const {
     const std::size_t expected = elements_ ? elements_ : vector.size();
@@ -61,8 +59,9 @@ class DiisHistory {
     const auto maximum = std::numeric_limits<std::size_t>::max();
     std::size_t bytes = 0;
     const auto add = [&](const std::vector<double>& values) {
-      const std::size_t current =
-          values.capacity() > maximum / sizeof(double) ? maximum : values.capacity() * sizeof(double);
+      const std::size_t current = values.capacity() > maximum / sizeof(double)
+                                      ? maximum
+                                      : values.capacity() * sizeof(double);
       bytes = current > maximum - bytes ? maximum : bytes + current;
     };
     for (const auto& value : vectors_) add(value);
