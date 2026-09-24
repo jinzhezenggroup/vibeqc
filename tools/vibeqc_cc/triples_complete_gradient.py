@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import time
 import typing
-from pathlib import Path
 from dataclasses import dataclass, replace
+from pathlib import Path
 from types import MappingProxyType
 
 import numpy as np
@@ -330,13 +330,13 @@ def complete_ccsdt_cuda_response_gradient_validation(
 
     started = time.perf_counter()
     if not isinstance(compiler, CudaCompilerAdapter):
-        raise TypeError("CUDA RCCSD(T) gradient validation requires CudaCompilerAdapter")
+        raise TypeError(
+            "CUDA RCCSD(T) gradient validation requires CudaCompilerAdapter"
+        )
     if not isinstance(cache, Path):
         raise TypeError("CUDA RCCSD(T) gradient cache must be a pathlib.Path")
     options = (
-        CCSDGradientOptions(derivative_backend="cuda")
-        if options is None
-        else options
+        CCSDGradientOptions(derivative_backend="cuda") if options is None else options
     )
     if not isinstance(options, CCSDGradientOptions):
         raise TypeError("RCCSD(T) gradient options must be CCSDGradientOptions")

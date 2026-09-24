@@ -137,7 +137,9 @@ class BoundCCSDResponse:
             not callable(getattr(tensor_executor, "execute", None))
             or not isinstance(getattr(tensor_executor, "backend", None), str)
         ):
-            raise TypeError("external CC tensor executor must expose execute() and backend")
+            raise TypeError(
+                "external CC tensor executor must expose execute() and backend"
+            )
         amplitude_bytes = sum(layout.spec.size * 8 for layout in bound.layouts)
         required = bound.logical_reserved_host_bytes + 8 * amplitude_bytes
         _checked_bytes(required, "CC response simultaneous logical host reservation")

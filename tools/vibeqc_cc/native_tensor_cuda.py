@@ -87,7 +87,7 @@ class CudaCCTensorExecutor:
                 raise RuntimeError(
                     "CUDA CC tensor backend changed; no CPU or alternate fallback allowed"
                 )
-            identity = getattr(program, "logical_hash")
+            identity = program.logical_hash
             self._metrics[identity] = dict(result.metrics)
             return dict(result.outputs)
 

@@ -167,11 +167,15 @@ def test_rccsdt_parameter_vjps_use_cuda_executor_without_cpu_replay(
         parameter_executor=executor,
     )
 
-    def reject_bound_tensor_execution(*args: object, **kwargs: object) -> typing.NoReturn:
+    def reject_bound_tensor_execution(
+        *args: object, **kwargs: object
+    ) -> typing.NoReturn:
         del args, kwargs
         raise AssertionError("bound CPU parameter TensorIR replayed")
 
-    monkeypatch.setattr(BoundCCSDLambda, "_tensor_execute", reject_bound_tensor_execution)
+    monkeypatch.setattr(
+        BoundCCSDLambda, "_tensor_execute", reject_bound_tensor_execution
+    )
     actual = response.weight("fov", reference_identity=snapshot.identity)
 
     assert response.response_identity == expected_response.response_identity
