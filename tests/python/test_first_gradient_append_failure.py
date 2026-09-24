@@ -24,7 +24,8 @@ def append_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
         r"execute<Program><<<.*?>>>", "submit<Program>", append, flags=re.DOTALL
     )
     assert replacements == 1
-    harness = r"""
+    harness = (
+        r"""
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -76,7 +77,9 @@ template<class T> void submit(const double*,std::size_t,Mapping,std::size_t,
                               const double*,double*,int*) {
   ++launches; kernel_pending=true;
 }
-""" + append + r"""
+"""
+        + append
+        + r"""
 int main(int argc, char** argv) {
   assert(argc==4);
   failure=std::atoi(argv[1]); drain_failure=std::atoi(argv[2]);
@@ -104,6 +107,7 @@ int main(int argc, char** argv) {
   }
 }
 """
+    )
     directory = tmp_path_factory.mktemp("first-gradient-append")
     cpp, executable = directory / "append.cpp", directory / "append"
     cpp.write_text(harness)
