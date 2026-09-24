@@ -210,7 +210,7 @@ def test_xtb_charge_seed_endpoint_validation(tmp_path: Path) -> None:
     executable = _compile_bridge(tmp_path)
     completed = subprocess.run(
         [str(executable)],
-        check=True,
+        check=False,
         text=True,
         capture_output=True,
         timeout=180,
@@ -221,6 +221,12 @@ def test_xtb_charge_seed_endpoint_validation(tmp_path: Path) -> None:
             "MKL_NUM_THREADS": "1",
         },
     )
+    if completed.returncode != 0:
+        pytest.fail(
+            f"validation executable failed with {completed.returncode}\n"
+            f"stdout:\n{completed.stdout}\n"
+            f"stderr:\n{completed.stderr}"
+        )
     rows = list(csv.DictReader(completed.stdout.splitlines()))
     assert len(rows) == 9
     numeric = {
