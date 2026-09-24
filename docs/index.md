@@ -30,7 +30,7 @@ The generated HTML is written to `docs/_build/html/`.
 
 ```{toctree}
 :hidden:
-:maxdepth: 2
+:maxdepth: 3
 :caption: Guides
 
 learn/index
