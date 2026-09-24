@@ -9,7 +9,7 @@ import typing
 
 from vibeqc_compiler.common.provenance import canonical_hash
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .expr import AlgebraForm, AlgebraFusion, AlgebraOrdering, RematerializationPolicy
 from .ir_serialization import integral_to_payload
 from .second_derivatives import SecondDerivativeKernel, require_second_consumer
@@ -137,7 +137,7 @@ def emit_second_derivative_primitive(
             }
         )
         if kernel.boys_argument is not None:
-            argument = CudaEmitter(kernel.graph, variables)
+            argument = ScalarCEmitter(kernel.graph, variables)
             argument.emit((kernel.boys_argument,))
             lines += [
                 f"  double boys[{kernel.boys_count}]{{}};",
@@ -159,7 +159,7 @@ def emit_second_derivative_primitive(
         AlgebraOrdering.TOPOLOGICAL,
         AlgebraFusion.SEPARATE,
     )
-    emitter = CudaEmitter(graph, variables, plan)
+    emitter = ScalarCEmitter(graph, variables, plan)
     emitter.emit(roots)
     lines += [
         *emitter.lines,
