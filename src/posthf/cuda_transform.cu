@@ -14,6 +14,7 @@ struct Transform {
   size_t nbf{}, stage{}, output{}, coefficients{};
   std::array<size_t, 4> m{}, tile{}, c_offset{};
   double *c{}, *first{}, *second{}, *result{};
+  bool validated = true;
 };
 using vibeqc::runtime::size_add;
 using vibeqc::runtime::size_mul;
@@ -38,6 +39,19 @@ int guarded(char* error, size_t size, F fn) noexcept {
     error_text(error, size, "unknown post-HF CUDA error");
     return 1;
   }
+}
+void validate(Transform& p) {
+  if (p.validated) return;
+  auto& ctx = p.context;
+  ctx.section(true, ctx.metrics.kernel_ms, [&] {
+    check_scale<<<blocks(p.output, 256), 256, 0, ctx.stream>>>(p.result, p.output, 1, ctx.error, 0);
+    cuda_check(cudaGetLastError());
+  });
+  int invalid = 0;
+  cuda_check(cudaMemcpyAsync(&invalid, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
+  cuda_check(cudaStreamSynchronize(ctx.stream));
+  if (invalid) throw std::runtime_error("nonfinite MO transformation");
+  p.validated = true;
 }
 }  // namespace
 extern "C" {
@@ -131,6 +145,17 @@ int posthf_cuda_add_v1(void* pointer, const double* values, const size_t* begin,
       const double one = 1;
       blas_check(cublasDaxpy(ctx.handle, p.output, &one, in, 1, p.result, 1));
     });
+    p.validated = false;
+  });
+}
+int posthf_cuda_validate_v1(void* pointer, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer) throw std::invalid_argument("null MO validation");
+    auto& p = *static_cast<Transform*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    validate(p);
   });
 }
 int posthf_cuda_download_v1(void* pointer, double* out, size_t elements, char* error, size_t size) {
@@ -141,16 +166,7 @@ int posthf_cuda_download_v1(void* pointer, double* out, size_t elements, char* e
     std::lock_guard<std::mutex> lock(ctx.mutex);
     ctx.check_device();
     if (elements != p.output) throw std::invalid_argument("MO download size mismatch");
-    ctx.section(true, ctx.metrics.kernel_ms, [&] {
-      check_scale<<<blocks(p.output, 256), 256, 0, ctx.stream>>>(p.result, p.output, 1, ctx.error,
-                                                                 0);
-      cuda_check(cudaGetLastError());
-    });
-    int invalid = 0;
-    cuda_check(
-        cudaMemcpyAsync(&invalid, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
-    cuda_check(cudaStreamSynchronize(ctx.stream));
-    if (invalid) throw std::runtime_error("nonfinite MO transformation");
+    validate(p);
     ctx.section(true, ctx.metrics.output_ms, [&] {
       cuda_check(cudaMemcpyAsync(out, p.result, elements * 8, cudaMemcpyDeviceToHost, ctx.stream));
     });
