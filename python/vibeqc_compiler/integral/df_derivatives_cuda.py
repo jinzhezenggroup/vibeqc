@@ -3,7 +3,7 @@
 import typing
 from itertools import product
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_derivatives import axis_polynomial, build_df_derivative_ir
 from .ir_serialization import integral_to_payload
 
@@ -118,7 +118,7 @@ __device__ __noinline__ void axis_polynomial(unsigned a,unsigned b,unsigned c,
         if a == b == 4:
             continue
         graph, roots = axis_polynomial(a, b, c)
-        emitter = CudaEmitter(graph, {})
+        emitter = ScalarCEmitter(graph, {})
         emitter.emit(roots)
         lines += [f"    case {a * 20 + b * 4 + c}U: {{", *emitter.lines]
         lines += [
