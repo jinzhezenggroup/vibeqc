@@ -328,6 +328,88 @@ void modified_plans_are_rejected_before_execution() {
   require(actions == 0, "mutated plan reached its operator");
 }
 
+void response_batch_contract() {
+  DenseOperator matrix{2, {2.0, 0.0, 0.0, 3.0}};
+  vibeqc::response::LinearResponseProblem problem(
+      2, [&](auto input, auto output) { matrix(input, output); });
+  GmresOptions options;
+  options.relative_tolerance = 1e-13;
+  options.restart = 2;
+  options.max_iterations = 4;
+
+  const std::array<double, 2> rhs_a{2.0, 3.0};
+  const std::array<double, 1> short_rhs{1.0};
+  const std::array<double, 2> rhs_b{4.0, -6.0};
+  const std::array<double, 2> diagonal{2.0, 3.0};
+  const std::array<vibeqc::response::ResponseSolveRequest, 3> requests{
+      vibeqc::response::ResponseSolveRequest{rhs_a},
+      vibeqc::response::ResponseSolveRequest{short_rhs},
+      vibeqc::response::ResponseSolveRequest{rhs_b, {}, diagonal},
+  };
+
+  const auto probe = vibeqc::response::prepare_response_batch(
+      problem, options, requests.size(), std::numeric_limits<std::size_t>::max());
+  const auto exact = vibeqc::response::prepare_response_batch(problem, options, requests.size(),
+                                                              probe.peak_numeric_bytes);
+  require(exact.admitted, "exact response batch numeric budget was rejected");
+  require(exact.retained_solution_bytes == requests.size() * 2 * sizeof(double),
+          "response batch retained-solution accounting is wrong");
+  require(exact.peak_numeric_bytes ==
+              exact.solve_plan.workspace_bytes + (requests.size() - 1) * 2 * sizeof(double),
+          "response batch peak does not include prior live solutions");
+
+  const auto batch = vibeqc::response::solve_response_batch(exact, problem, requests);
+  require(batch.complete() && batch.responses.size() == requests.size(),
+          "response batch did not complete every request");
+  require(batch.responses[0].converged() &&
+              batch.responses[1].status == GmresStatus::nonfinite_input &&
+              batch.responses[2].converged(),
+          "one malformed RHS contaminated an independent response request");
+  require(std::abs(batch.responses[0].solution[0] - 1.0) < 1e-12 &&
+              std::abs(batch.responses[0].solution[1] - 1.0) < 1e-12 &&
+              std::abs(batch.responses[2].solution[0] - 2.0) < 1e-12 &&
+              std::abs(batch.responses[2].solution[1] + 2.0) < 1e-12,
+          "response batch returned a wrong solution");
+  require(batch.planned_peak_numeric_bytes == exact.peak_numeric_bytes &&
+              batch.retained_solution_bytes == exact.retained_solution_bytes,
+          "response batch result lost its numeric-payload accounting");
+  require(matrix.actions == batch.responses[0].operator_actions +
+                                batch.responses[1].operator_actions +
+                                batch.responses[2].operator_actions,
+          "response batch operator-action diagnostics are inconsistent");
+
+  DenseOperator blocked_matrix{2, matrix.values};
+  vibeqc::response::LinearResponseProblem blocked_problem(
+      2, [&](auto input, auto output) { blocked_matrix(input, output); });
+  const auto blocked_plan = vibeqc::response::prepare_response_batch(
+      blocked_problem, options, requests.size(), probe.peak_numeric_bytes - 1);
+  require(!blocked_plan.admitted, "one-byte-short response batch budget was admitted");
+  const auto blocked =
+      vibeqc::response::solve_response_batch(blocked_plan, blocked_problem, requests);
+  require(blocked.status == vibeqc::response::ResponseBatchStatus::workspace_limit &&
+              blocked.responses.empty() && blocked_matrix.actions == 0,
+          "response batch budget refusal invoked an operator or allocated response results");
+
+  const auto empty_plan = vibeqc::response::prepare_response_batch(problem, options, 0, 0);
+  const std::span<const vibeqc::response::ResponseSolveRequest> empty_requests;
+  const auto empty = vibeqc::response::solve_response_batch(empty_plan, problem, empty_requests);
+  require(empty_plan.admitted && empty_plan.peak_numeric_bytes == 0 && empty.complete() &&
+              empty.responses.empty(),
+          "empty response batch did not remain a zero-work request");
+
+  bool rejected = false;
+  auto modified = exact;
+  --modified.peak_numeric_bytes;
+  const auto actions_before = matrix.actions;
+  try {
+    (void)vibeqc::response::solve_response_batch(modified, problem, requests);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected && matrix.actions == actions_before,
+          "mutated response batch plan reached its operator");
+}
+
 void stable_norm_extremes() {
   const std::array<double, 2> tiny{1e-200, 0.0};
   const std::array<double, 2> large{1e200, 0.0};
@@ -354,6 +436,7 @@ int main() {
     restarted_and_exhausted_paths();
     breakdown_and_nonfinite_paths();
     options_and_workspace_boundaries();
+    response_batch_contract();
     stable_norm_extremes();
     measured_workspace_owns_returned_storage();
     std::cout << "Native GMRES contracts passed\n";
