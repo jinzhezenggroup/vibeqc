@@ -243,13 +243,15 @@ def _native_directional_coefficients(
         direction["rho"].sum(axis=0),
         delta_gradient.sum(axis=0),
     )
+    if response["rho"].shape != (1, npoint):
+        raise ValueError("native RKS response must publish one total-density channel")
     result = {
-        "rho": immutable(0.5 * response["rho"].sum(axis=0)[None]),
+        "rho": immutable(response["rho"]),
     }
     if family == "gga":
-        result["gradient"] = immutable(
-            0.5 * response["gradient"].sum(axis=0)[None]
-        )
+        if response["gradient"].shape != (1, npoint, 3):
+            raise ValueError("native RKS response returned invalid Cartesian layout")
+        result["gradient"] = immutable(response["gradient"])
     return result
 
 
