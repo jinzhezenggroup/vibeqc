@@ -139,10 +139,12 @@ def executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
         text.index("int posthf_cuda_add_v1") : text.index("int posthf_cuda_metrics_v1")
     ]
     pointer = text[
-        text.index("void* posthf_cuda_pointer_v1") : text.index("int posthf_cuda_versions_v1")
+        text.index("void* posthf_cuda_pointer_v1") : text.index(
+            "int posthf_cuda_versions_v1"
+        )
     ]
     # Only erase the CUDA launch syntax; actual validation/guard/add bodies run.
-    code = re.sub(r"<<<.*?>>>", "", helpers + actions + pointer, flags=re.S)
+    code = re.sub(r"<<<.*?>>>", "", helpers + actions + pointer, flags=re.DOTALL)
     directory = tmp_path_factory.mktemp("mo-publication")
     source = directory / "publication.cpp"
     source.write_text(_SHIM + code + _MAIN)
