@@ -226,7 +226,7 @@ def test_xtb_charge_seed_endpoint_validation(tmp_path: Path) -> None:
         for key, value in row.items()
         if key not in {"case", "repeat"}
     }
-    assert all(value == value for value in numeric.values())
+    assert all(math.isfinite(value) for value in numeric.values())
 
     summary = {}
     for case in sorted({row["case"] for row in rows}):
