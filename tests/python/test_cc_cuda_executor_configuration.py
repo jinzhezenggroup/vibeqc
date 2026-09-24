@@ -51,7 +51,9 @@ def _executor(tmp_path: Path) -> tuple[CudaCCTensorExecutor, list[str]]:
     return executor, events
 
 
-@pytest.mark.parametrize("field", ["max_bytes", "compiler", "cache", "device", "backend"])
+@pytest.mark.parametrize(
+    "field", ["max_bytes", "compiler", "cache", "device", "backend"]
+)
 @pytest.mark.parametrize("method", ["execute", "prewarm"])
 def test_changed_configuration_rejected_before_cached_plan_use(
     tmp_path: Path, field: str, method: str
@@ -62,7 +64,9 @@ def test_changed_configuration_rejected_before_cached_plan_use(
     original = getattr(executor, field)
     changes = {
         "max_bytes": 1,
-        "compiler": CudaCompilerAdapter(Path("another-nvcc"), cuda_target_info("sm_80")),
+        "compiler": CudaCompilerAdapter(
+            Path("another-nvcc"), cuda_target_info("sm_80")
+        ),
         "cache": tmp_path / "other-cache",
         "device": 1,
         "backend": "numpy-cpu-interpreter",
