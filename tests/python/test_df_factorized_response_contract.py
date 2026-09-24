@@ -27,6 +27,7 @@ def test_factorized_packed_exchange_matches_materialized_matrix() -> None:
 def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     root = Path(__file__).resolve().parents[2]
     bridge = (root / "src/scf/cuda/df_gradient_bridge.cu").read_text()
+    force_owner = (root / "src/scf/cuda/df_force_response.cpp").read_text()
     producer = (root / "src/scf/cuda/df_response_weights.cu").read_text()
     consumer = (root / "src/scf/cuda/df_shell_kernel.cuh").read_text()
 
@@ -41,5 +42,9 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     assert "read_fitted || packed_pairs" not in streamed
     assert "consume, packed_pairs, auxiliary_shell_offsets" in streamed
     assert "read_values,\n        factorized_exchange" in streamed
+    assert "!borrow && plan->integral_source && metric.full_rank && space != \"dense\"" in force_owner
+    assert "owned_factors.owner_identity ? &owned_factors : nullptr" in force_owner
+    assert "whitened && !borrowed && !owned_occupied" in bridge
+    assert "!borrowed && !whitened && !owned_occupied" in bridge
     assert "factorized.coefficients[lo + k * o.nbf]" in consumer
     assert "factorized.projected + panel * o.nbf * factorized.rank" in consumer

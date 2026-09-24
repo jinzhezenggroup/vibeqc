@@ -364,15 +364,15 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                   plan->factor_basis_identity,
                   metric};
     }
-    CudaDfOccupiedResponseView streamed_factors;
-    if (!borrow && plan->integral_source && plan->streamed && metric.full_rank &&
-        space != "dense") {
-      // A streamed value plan has no all-Q raw or symmetric-C owner to lend.
-      // It can still lend validated canonical C while the response bridge
-      // budgets its own much smaller C^T A_P C projections. Never lend the
-      // streamed K eigenbasis projection as if it were symmetric whitening.
+    CudaDfOccupiedResponseView owned_factors;
+    if (!borrow && plan->integral_source && metric.full_rank && space != "dense") {
+      // Canonical occupied factors are an immutable owner view, independent of
+      // mutable J/K tensor storage. This lets both retained-whitened and streamed
+      // source-backed plans lend C while the response bridge budgets its own
+      // projected-factor/raw-slice scratch. The token/density/generation checks
+      // above remain the authority; a label alone never establishes this view.
       const auto selected = select_occupied_response_factors(
-          *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
+          *plan, system, final_state, terms, maximum_bytes, owned_factors, detail);
       if (selected != VIBEQC_STATUS_SUCCESS) return selected;
     }
     // The diagnostic upload route writes the former raw scratch buffer.
@@ -385,7 +385,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
         maximum_bytes, maximum_auxiliary_tile, derivative, detail, resources, &metric,
         reinterpret_cast<void*>(plan->blas), borrow ? &buffers : nullptr,
         packed_raw.data ? &packed_raw : nullptr, whitened.data ? &whitened : nullptr,
-        streamed_factors.owner_identity ? &streamed_factors : nullptr);
+        owned_factors.owner_identity ? &owned_factors : nullptr);
     if (status == VIBEQC_STATUS_SUCCESS && borrow && matching_source &&
         plan->resident_exchange_enabled && plan->batch_size == 1 &&
         plan->nbf * plan->naux <= static_cast<std::size_t>(std::numeric_limits<int>::max()))

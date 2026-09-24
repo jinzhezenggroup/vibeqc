@@ -1100,8 +1100,9 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source
       // generation for this capacity range without borrowing unowned memory.
-      const bool single_fitted_tensor = device_metric->full_rank && !borrowed && !whitened &&
-                                        panel_capacity / 2 < a && panel_capacity > a;
+      const bool single_fitted_tensor =
+          device_metric->full_rank && !borrowed && !whitened && !owned_occupied &&
+          panel_capacity / 2 < a && panel_capacity > a;
       const auto capacity =
           owned_occupied
               ? std::min(std::size_t{64}, (factor_capacity - occupied_retained) / (n * n))
@@ -1263,7 +1264,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
-      if (whitened && !borrowed) {
+      if (whitened && !borrowed && !owned_occupied) {
         // The forward plan already owns this immutable tensor. Reading it is
         // an explicit borrow, not extra response allocation or raw regeneration.
         // Full-width panels must use the same reader: falling back to raw A
