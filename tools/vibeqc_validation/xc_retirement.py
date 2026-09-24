@@ -28,19 +28,10 @@ LEGACY_MODULE_FILES = {
 # always allowed. Adding a new edge fails CI and therefore cannot silently turn
 # a qualification oracle back into a production compatibility backend.
 LEGACY_CONSUMER_CEILING = {
-    ("python/vibeqc_compiler/xc/program.py", "vibeqc_compiler.xc.expressions"),
-    ("python/vibeqc_compiler/xc/program.py", "vibeqc_compiler.xc.rsh_expressions"),
     (
-        "python/vibeqc_compiler/xc/program.py",
-        "vibeqc_compiler.xc.wb97mv_expressions",
+        "python/vibeqc_compiler/xc/expression_dispatch.py",
+        "vibeqc_compiler.xc.rsh_expressions",
     ),
-    ("python/vibeqc_compiler/xc/geometry_cuda.py", "vibeqc_compiler.xc.expressions"),
-    ("tools/generate_xc_cpu.py", "vibeqc_compiler.xc.expressions"),
-    ("tools/generate_xc_cpu.py", "vibeqc_compiler.xc.rsh_expressions"),
-    ("tools/vibeqc_xc/expressions.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_libxc_maple_import.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_xc_expressions.py", "vibeqc_compiler.xc.expressions"),
-    ("tests/python/test_libxc_maple_meta_gga.py", "vibeqc_compiler.xc.expressions"),
     ("tests/python/test_libxc_maple_pw91.py", "vibeqc_compiler.xc.rsh_expressions"),
     ("tests/python/test_libxc_maple_lyp.py", "vibeqc_compiler.xc.rsh_expressions"),
     # Qualification oracles already present in the integration base (6b965bd7).

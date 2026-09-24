@@ -24,7 +24,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 MANIFEST = json.loads((LIBXC_MANIFEST_ROOT / "manifest.json").read_text())
 PW91_MANIFEST = json.loads((LIBXC_MANIFEST_ROOT / "rsh-manifest.json").read_text())
 FIXTURE = json.loads((ROOT / "tests/data/xc/pw91-hessian.json").read_text())
@@ -163,7 +163,7 @@ def _evaluate_fixture(
 
 
 def test_pw91_importer_semantics_and_source_provenance() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v11"
 
     exchange, _, _, _ = _imported_component("GGA_X_PW91", "polarized")
     correlation, _, _, _ = _imported_component("GGA_C_PW91", "polarized")
@@ -298,3 +298,39 @@ def test_pw91_functional_identity_records_maple_provenance(name: str) -> None:
     assert provenance["components"][name] == direct["components"][name]
     assert len(provenance["adapter_sha256"]) == 64
     assert len(provenance["importer_sha256"]) == 64
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        case
+        for case in json.loads(
+            (ROOT / "tests/data/xc/libxc-bulk/lda.json").read_text()
+        )["cases"]
+        if case["name"] == "LDA_C_PW"
+    ],
+    ids=lambda case: case["spin"],
+)
+def test_extended_gga_pw_component_matches_independent_libxc(case: dict) -> None:
+    """The extended-family PW component retains independent E/vxc/fxc gates.
+
+    Its handwritten duplicate was removed in favor of the pinned PW adapter;
+    exercise the extended-family builder directly so the ordinary semilocal
+    dispatcher cannot hide a broken replacement in this separate consumer.
+    """
+    spec = FunctionalSpec(
+        "PW_IN_EXTENDED_FAMILY", (("LDA_C_PW", Fraction(1)),), case["spin"]
+    )
+    graph, energy, variables = energy_expression(spec)
+    density_count = 2 if case["spin"] == "polarized" else 1
+    roots = _feature_roots(graph, energy, variables[:density_count])
+    densities = np.asarray(case["features"], dtype=float).T
+    features = np.zeros((len(variables), densities.shape[1]))
+    features[:density_count] = densities
+    values = evaluate_array_graph(
+        graph, roots, dict(zip(spec.features, features, strict=True))
+    )
+    actual = np.stack(
+        [np.broadcast_to(value, features.shape[1:]) for value in values], axis=1
+    )
+    np.testing.assert_allclose(actual, case["expected"], rtol=2e-12, atol=2e-13)

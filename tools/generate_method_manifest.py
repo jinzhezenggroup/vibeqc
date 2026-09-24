@@ -37,7 +37,7 @@ PROPERTIES = {
 
 def load_manifest() -> list[dict]:
     payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    if payload.get("schema_version") != 1:
+    if payload.get("schema_version") != 2:
         raise ValueError("unsupported public method manifest schema")
     methods = payload.get("methods")
     if not isinstance(methods, list) or not methods:
@@ -57,7 +57,7 @@ def load_manifest() -> list[dict]:
             "properties",
             "supports_batch",
         }
-        optional = {"aliases", "unavailable_reason"}
+        optional = {"aliases", "unavailable_reason", "compiler_method", "spin"}
         if set(method) - (required | optional):
             raise ValueError(
                 f"unknown method manifest fields for {method.get('name')!r}"
@@ -133,6 +133,18 @@ def load_manifest() -> list[dict]:
         if method["provider"] == "xtb" and method["family"] != "semiempirical":
             raise ValueError(f"{name}: xTB provider requires semiempirical family")
 
+        compiler_method = method.get("compiler_method")
+        spin = method.get("spin")
+        if method["provider"] == "dft":
+            if not isinstance(compiler_method, str) or not compiler_method:
+                raise ValueError(f"{name}: executable DFT requires compiler_method")
+            if spin not in {"unpolarized", "polarized"}:
+                raise ValueError(f"{name}: executable DFT requires a supported spin")
+        elif compiler_method is not None or spin is not None:
+            raise ValueError(
+                f"{name}: compiler_method/spin are reserved for executable DFT providers"
+            )
+
         method_aliases = method.get("aliases", [])
         if not isinstance(method_aliases, list) or any(
             not isinstance(alias, str) or not alias or alias != alias.lower()
@@ -186,13 +198,19 @@ def emit_python(methods: list[dict]) -> str:
     lines.extend(["})", "", "METHOD_METADATA = MappingProxyType({"])
     for method in methods:
         method_aliases = tuple(method.get("aliases", []))
+        compiler_binding = ""
+        if method["provider"] == "dft":
+            compiler_binding = (
+                f', "compiler_method": {method["compiler_method"]!r}, '
+                f'"spin": {method["spin"]!r}'
+            )
         lines.append(
             f'    {method["name"]!r}: MappingProxyType({{"abi_id": '
             f'{method["abi_id"]}, "family": {method["family"]!r}, '
             f'"provider": {method["provider"]!r}, '
             f'"properties": {tuple(method["properties"])!r}, '
             f'"supports_batch": {bool(method["supports_batch"])!r}, '
-            f'"aliases": {method_aliases!r}}}),'
+            f'"aliases": {method_aliases!r}{compiler_binding}}}),'
         )
     lines.extend(["})", "", "METHOD_NAME_TO_ID = MappingProxyType({"])
     for method in methods:

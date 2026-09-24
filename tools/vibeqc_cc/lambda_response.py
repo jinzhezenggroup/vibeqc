@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.common.solver_region import RegionDerivative, SolverRegion
 
 from tools.vibeqc_response.implicit import (
@@ -22,7 +23,6 @@ from tools.vibeqc_response.implicit import (
 )
 from tools.vibeqc_response.krylov import _vector_norm
 from tools.vibeqc_response.problem import ResponseCompatibilityError
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .lambda_equations import PARAMETERS, build_parameter_vjp
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, _feed_hash, _graph_bytes
@@ -285,12 +285,17 @@ class BoundCCSDResponse:
             self.bound._assert_current(reference_identity)
             return required
 
-    def weight(self, parameter: str, *, reference_identity: str) -> CCSDParameterWeight:
-        """Generate/check one block, publishing it only after the final lifetime gate."""
+    def _weight_from_prepared(
+        self,
+        parameter: str,
+        prepared: tuple[typing.Any, typing.Any, typing.Any, int],
+        *,
+        reference_identity: str,
+    ) -> CCSDParameterWeight:
         bound = self.bound
         with bound._lock:
             bound._assert_current(reference_identity)
-            shared, independent, spec, required = self._prepare(parameter)
+            shared, independent, spec, required = prepared
             extra = {
                 "bar_correlation_energy": np.asarray(1.0),
                 "bar_singles_residual": self.lambda1,
@@ -363,6 +368,16 @@ class BoundCCSDResponse:
             bound._assert_current(reference_identity)
             return result
 
+    def weight(self, parameter: str, *, reference_identity: str) -> CCSDParameterWeight:
+        """Generate/check one block, publishing it only after the final lifetime gate."""
+        bound = self.bound
+        with bound._lock:
+            bound._assert_current(reference_identity)
+            prepared = self._prepare(parameter)
+        return self._weight_from_prepared(
+            parameter, prepared, reference_identity=reference_identity
+        )
+
     def iter_weights(
         self, parameters: Iterable[str] = PARAMETERS, *, reference_identity: str
     ) -> Iterator[CCSDParameterWeight]:
@@ -382,5 +397,18 @@ class BoundCCSDResponse:
             or len(set(names)) != len(names)
         ):
             raise ValueError("parameter blocks must be nonempty, supported and unique")
-        for name in names:
-            yield self.weight(name, reference_identity=reference_identity)
+        bound = self.bound
+        with bound._lock:
+            bound._assert_current(reference_identity)
+            prepared = tuple((name, self._prepare(name)) for name in names)
+            if bound.tensor_executor is not None:
+                bound.tensor_executor.prewarm(
+                    program
+                    for _, (shared, independent, _, _) in prepared
+                    for program in (shared.program, independent.program)
+                )
+            bound._assert_current(reference_identity)
+        for name, block in prepared:
+            yield self._weight_from_prepared(
+                name, block, reference_identity=reference_identity
+            )

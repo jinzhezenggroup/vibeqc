@@ -28,9 +28,11 @@ class PreparedFockPlan;
 namespace vibeqc::dft {
 class AoBasis;
 class MolecularGrid;
+struct SemilocalPointProgram;
 namespace nlc {
 class Vv10Plan;
-}
+struct Vv10Parameters;
+}  // namespace nlc
 }  // namespace vibeqc::dft
 
 namespace vibeqc::scf {
@@ -59,9 +61,27 @@ ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
                                const std::vector<double>* initial_density,
                                dft::nlc::Vv10Plan& nonlocal_correlation);
 
+/** MethodIR-owned PBE-family range-separated exact exchange. The primary plan
+ * carries Coulomb plus the short-range fraction as full-range K; the correction
+ * plan contributes only (long-short) long-range K. An optional VV10/rVV10
+ * provider is composed in the same self-consistent physical Fock. */
+ScfResult run_pbe_rsh_rks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density = nullptr,
+                          dft::nlc::Vv10Plan* nonlocal_correlation = nullptr);
+
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
+
+/** CPU qualification entry for one evidence-bound compiled semilocal point
+ * program. It reuses the ordinary RKS loop and does not register a public
+ * method or infer production admission from the descriptor. */
+ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density = nullptr);
 
 /** Generic RSH lowering. Fractions are physical exact-exchange weights. */
 FockBuildSpec make_global_hybrid_fock_spec(FockSpin spin, double exact_exchange);
@@ -72,6 +92,19 @@ FockBuildSpec make_rsh_correction_fock_spec(FockSpin spin, double short_range_ex
 ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
                         const std::vector<double>* initial_density = nullptr);
+
+/** Canonical generated B97M/RSH/VV10 contract. No independent SCF loop. */
+void require_wb97mv_composition(const ResolvedFockBuild& primary,
+                                const ResolvedFockBuild& correction,
+                                const dft::nlc::Vv10Parameters& nonlocal);
+ScfResult run_wb97mv_rks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density = nullptr);
+ScfResult run_wb97mv_uks(const PreparedFockPlan& primary, const PreparedFockPlan& correction,
+                         const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                         const ScfOptions& options, dft::nlc::Vv10Plan& nonlocal,
+                         const std::vector<double>* initial_density = nullptr);
 
 ScfResult run_cam_b3lyp_rks(const PreparedFockPlan& primary,
                             const PreparedFockPlan& long_range_correction,
@@ -97,9 +130,21 @@ ScfResult run_pbe_uks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis&
                                const std::vector<double>* initial_density,
                                dft::nlc::Vv10Plan& nonlocal_correlation);
 
+ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
+                          const PreparedFockPlan& long_range_correction, const dft::AoBasis& basis,
+                          const dft::MolecularGrid& grid, const ScfOptions& options,
+                          const std::vector<double>* initial_density = nullptr,
+                          dft::nlc::Vv10Plan* nonlocal_correlation = nullptr);
+
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
+
+/** UKS counterpart of run_semilocal_rks for qualification execution. */
+ScfResult run_semilocal_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density = nullptr);
 
 ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,

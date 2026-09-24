@@ -12,8 +12,8 @@ additional fail-closed constraints at execution time.
 | --- | --- | --- | --- | --- | --- |
 |`rhf` | hartree fock | `energy`, `forces` | yes | — | available |
 |`uhf` | hartree fock | `energy`, `forces` | yes | — | available |
-|`wb97m-v` | density functional | — | no | — | unavailable — method has no executable provider registration |
-|`rccsd(t)` | coupled cluster | `energy` | yes | `ccsd(t)` | available |
+|`wb97m-v` | density functional | `energy` | yes | `wb97m-v-rks` | available |
+|`rccsd(t)` | coupled cluster | `energy`, `forces` | yes | `ccsd(t)` | available |
 |`mp2` | perturbation | `energy`, `forces` | yes | — | available |
 |`lda-rks` | density functional | `energy` | yes | — | available |
 |`pbe-rks` | density functional | `energy` | yes | — | available |
@@ -28,3 +28,4 @@ additional fail-closed constraints at execution time.
 |`b3lyp-rks` | density functional | `energy` | yes | — | available |
 |`b3lyp-uks` | density functional | `energy` | yes | — | available |
 |`pbe-d4-rks` | density functional | `energy` | yes | — | available |
+|`wb97m-v-uks` | density functional | `energy` | yes | — | available |

@@ -10,6 +10,7 @@ from time import perf_counter
 import numpy as np
 from vibeqc.autotune import dft_density_candidates
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
+from vibeqc_compiler.common.reference_sources import reference_source_matches
 from vibeqc_compiler.common.resources import (
     ResourceBudget,
     ResourceCandidate,
@@ -92,7 +93,9 @@ def load_workloads(directory: typing.Any) -> typing.Any:
             ("exporter_sha256", "generate_density_workload_references.py"),
             ("basis_adapter_sha256", "generate_validation_references.py"),
         ):
-            if meta["reference"][key] != file_hash(root / "tools" / filename):
+            if not reference_source_matches(
+                root, "tools/" + filename, meta["reference"][key]
+            ):
                 raise ValueError("density workload exporter mismatch")
         if "array_files" in entry:
             # Large reference bundles retain their original NPY member bytes

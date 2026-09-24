@@ -1,18 +1,18 @@
 {
   "derived_manifests": {
-    "external/libxc-7.0.0/manifest.json": {
+    "manifests/libxc/7.0.0/manifest.json": {
       "collection": "core",
-      "final_newline": false,
+      "final_newline": true,
       "renderer": "libxc-collection",
       "source": "libxc-7.0.0"
     },
-    "external/libxc-7.0.0/rsh-manifest.json": {
+    "manifests/libxc/7.0.0/rsh-manifest.json": {
       "collection": "rsh",
-      "final_newline": false,
+      "final_newline": true,
       "renderer": "libxc-collection",
       "source": "libxc-7.0.0"
     },
-    "external/libxc-7.0.0/wb97mv-manifest.json": {
+    "manifests/libxc/7.0.0/wb97mv-manifest.json": {
       "collection": "wb97mv",
       "final_newline": true,
       "renderer": "libxc-collection",
@@ -30,8 +30,8 @@
   "products": {
     "d4-eeq-tables": {
       "generator": "tools/parameters/generate_d4_eeq.py",
-      "generator_sha256": "1e7019daf882f9fb65c0cba071bd0fc18fde26d02b4a555440670d3b90a04ed0",
-      "input_identity_sha256": "3e3dab8ad59213850374c605efd6398f6b7f62a2e7c0423f71d0f1e4de3ad960",
+      "generator_sha256": "5e7e8de824e5cfd346e39d66287ac76f12fa98dba81b37ddfb95294ebbe2cbe2",
+      "input_identity_sha256": "8415e712731bb4ee4213c16e0b3c73f92cd212f9ff596380ca868280811ea471",
       "inputs": [
         "dftd4-reference",
         "multicharge-eeq2019",
@@ -45,10 +45,11 @@
     },
     "d4-gfn2-tables": {
       "generator": "tools/parameters/generate_d4.py",
-      "generator_sha256": "2b8fcdec2fb1740d2d5a543041e399c14563d762a6cc95bd1595828b8eb83a63",
-      "input_identity_sha256": "c630d8b5080ee82e54e71ca8595ceeaf39213373445531ac33002bbbb2383fa2",
+      "generator_sha256": "2e16df0aa282c44107ddfbda0525ce483ca33ce6ce8af5b373ec854d666bb877",
+      "input_identity_sha256": "62d85b4c32c7b854e7c91457f200db61ebf174dddc66b47b9ec6d32359b05eac",
       "inputs": [
-        "dftd4-reference"
+        "dftd4-reference",
+        "mctc-lib-eeq"
       ],
       "outputs": {
         "src/dft/dispersion/d4_data.hpp": "d95741d765986ca4915e732454416a022fedbd29e33c261891aee26c70dd3f4e",
@@ -73,7 +74,7 @@
     },
     "gfn1-geometry-python-data": {
       "generator": "tools/parameters/generate_gfn1_geometry.py",
-      "generator_sha256": "fa1479dc13a4653aef2b87a082894274b4b6f66dbe3dbea580e27a7c6f97d243",
+      "generator_sha256": "0450a4b184a46dc877d0f9e2e416725ab35b5a7e9d6d2ec9a77d2345c755aab3",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
@@ -84,13 +85,13 @@
     },
     "gfn1-parameter-header": {
       "generator": "tools/parameters/generate_gfn1.py",
-      "generator_sha256": "a09a247a6b472aecfa2515a0cad1b1c9054918ce0806655b281c6d9ac9e8301f",
+      "generator_sha256": "7bb4ee44f06ec30b754bfe113764019542da0bfe472a53ce4b4ed2d7f74c712b",
       "input_identity_sha256": "4a5e1d17d73e6b4368330c46c93ad2f234e1308f37845722472773a8e3aed918",
       "inputs": [
         "xtbloom-gfn1-parameters"
       ],
       "outputs": {
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp": "ff1391b44f390f4d8d73ffd87013476aebed9075437e17d1b55185c36c1ce2ef"
+        "src/xtb/native/data/parameters/gfn1.hpp": "d7c1ed8d154db3f732255667d472fab9c977185f6f4f3c1939d112252e56a87b"
       }
     },
     "gpu4pyscf-rys-fixed": {
@@ -110,7 +111,7 @@
     "libxc-bulk-graph-catalog": {
       "canonical_inputs": {
         "python/vibeqc_compiler/xc/libxc_bulk.py": "6af8dc2b3c21ec49cf003af2d842fedd060a34a5302c1e01f4f75c31928f1967",
-        "python/vibeqc_compiler/xc/libxc_maple.py": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
+        "python/vibeqc_compiler/xc/libxc_maple.py": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
         "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19"
       },
       "generator": "tools/import_libxc_bulk.py",
@@ -121,27 +122,43 @@
       ],
       "outputs": {
         "docs/libxc_bulk_import.md": "7e6d090022729d18ac190e490f7cbd78195a51a7ec8c97dc082c283bf1416fdd",
-        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "0fcce4a5372f88625882178fe7330eef2fe3b4a0d7369ebc5a73eae3eec37105"
+        "python/vibeqc_compiler/xc/libxc_bulk_catalog.json": "960d368f1117421a9471696af1db9874467b7c133437f96cf37d7f908947b568"
+      }
+    },
+    "libxc-method-metadata": {
+      "canonical_inputs": {
+        "tools/libxc_bulk_metadata.py": "36bef0f71da9578c836548277a735160b1120906a0caddaa362bb2beb5377a19",
+        "tools/libxc_method_metadata.py": "74617e950ab38dea5487566a4757f819c9442d35512b07bcbc09f252c0468b99"
+      },
+      "generator": "tools/generate_libxc_methods.py",
+      "generator_sha256": "df7d2a5b43708285ab915b9d45e148e41428c478cb1843cf8919d6d73dc19384",
+      "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
+      "inputs": [
+        "libxc-7.0.0"
+      ],
+      "outputs": {
+        "python/vibeqc_compiler/method/_generated_libxc_methods.py": "5865e441c7be6500cb0ac3636cc8771138ded3f48f5da06745ef1cfb623327d2"
       }
     },
     "libxc-xc-admission": {
       "canonical_inputs": {
-        "python/vibeqc_compiler/xc/b88_vwn_maple.py": "b51c019c6f51f17b58121f20cc631099b6228f1b43f0134a9666ecb174ca076b",
-        "python/vibeqc_compiler/xc/expressions.py": "ddab1083272b76046347360b00afd8c81756e738be96bfa9423f34671a636c21",
+        "python/vibeqc_compiler/xc/b3lyp_production_policy.py": "db1d270221b644941824968adc2e5178c457bd4fedc8a9dc13d4177c7e6ff15d",
+        "python/vibeqc_compiler/xc/b88_vwn_maple.py": "12eb65668224ede9508afff5ceb6b7e9db623e6569f4ceab712e5000956a6786",
         "python/vibeqc_compiler/xc/ityh_maple.py": "d12d432724ca5b0bb0853a0a8ccbd1cb3b7eeaee70bed0a28e96c72879fe22f7",
-        "python/vibeqc_compiler/xc/p86_pz_maple.py": "4e5cba59e03750fbd172f738f6233c5995e60a3381d0fd4ff798fae7bf11e9d4",
-        "python/vibeqc_compiler/xc/pbe_maple.py": "177ec68c70f8c0c59b1d4a01fba275cc101c959238ad3583e2294c0017647e8e",
-        "python/vibeqc_compiler/xc/pw91_maple.py": "1171d5171401090ac13352525d3df49ffe48863cc149851d36d34af4e7fe983a",
-        "python/vibeqc_compiler/xc/rsh_expressions.py": "5d67869c600fe9639f615f8ef9df7a8d2772826c18a79a12486ccb7bded26f86",
-        "python/vibeqc_compiler/xc/rsh_maple.py": "fe2a2748861b63920be5ac10ad74d137fe30506afd5d9efce013bc98fede8bb3",
-        "python/vibeqc_compiler/xc/scan_maple.py": "4d0078a8148e5be8435660b7677c685a55ee27360f4c84efaf15581e82b46e1b",
-        "python/vibeqc_compiler/xc/spec.py": "5dd1388d38fded89e69344c2b6a5e060206b5e96b2f9d33e57cec11993ffe41e",
-        "python/vibeqc_compiler/xc/wb97mv_expressions.py": "229f7a679d56be09d6e46353d321eda3ad15ee0a54f992b7abd05b8a5f1dd45d",
-        "python/vibeqc_compiler/xc/wb97mv_maple.py": "ded9f1a20de03aa5b1dee8b957c1f4e9c64065e6e8023145cbf8d09023fc2339"
+        "python/vibeqc_compiler/xc/p86_pz_maple.py": "4cb700ca356e337ddcce108268d0afe7f4b0c31c807a319b7b3758129d1ee652",
+        "python/vibeqc_compiler/xc/pbe_maple.py": "439726631d73a0841529c72f1577dec3c8a5aca14a1ae41a7dd3cf7c46f2d5ae",
+        "python/vibeqc_compiler/xc/production_policy.py": "6bd0881c34614854e16a2378e20b17b3917c669ff6e91e71411b1410fe8c22bd",
+        "python/vibeqc_compiler/xc/pw91_maple.py": "282a7420b517ad30a99f318895501839a2ff0a322e8e31c72a53cdc95ad3d313",
+        "python/vibeqc_compiler/xc/rsh_expressions.py": "640d749a6b7ec8002dbfc2e8f8a6f793eb8a2db6f219d19d1810e7446df6ed75",
+        "python/vibeqc_compiler/xc/rsh_maple.py": "5afea731e52fe76a047a6ff175387930fb0a7f57e31f7d7738ac89a3ee73b609",
+        "python/vibeqc_compiler/xc/scan_maple.py": "faffe4e1c949cd861b44a699b6a1bebc5b22361a8494965c7a0a2bfa62ce2219",
+        "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
+        "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
+        "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
-      "generator_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
-      "input_identity_sha256": "2664145467e9ab5103bd6994ceb604f3127b6492d974db01768ba0e7029a5633",
+      "generator_sha256": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
+      "input_identity_sha256": "aa1ecae5abc04565a754de95c16772f0e73b93eed2a695103ee3a6950313887b",
       "inputs": [
         "libxc-7.0.0"
       ],
@@ -161,10 +178,10 @@
     },
     "r2scan3c-gcp": {
       "canonical_inputs": {
-        "external/r2scan3c/gcp-r2scan3c-h-ar.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
+        "tools/parameters/r2scan3c_gcp.json": "c1cede24b2527a2b688981b651d91da7206d8da1a223c3f217a86800c47eded2"
       },
       "generator": "tools/parameters/generate_gcp_r2scan3c.py",
-      "generator_sha256": "162130b1b855c0c8fbf88be6765f924d2cb42e1ed54eeb0661dd7cb063a26d78",
+      "generator_sha256": "cb0130c8e85dbbb72ff45255faf3b88c23d9ca5e2132fabfef486f7da45f33b7",
       "input_identity_sha256": "78ae1b369893bf081b986bf4a0187611ec823fd046eb8594c71ba4f14779914c",
       "inputs": [
         "simple-dftd3-gcp"
@@ -210,6 +227,19 @@
       "revision": "82fbaf41724ab9a3c0a38ddc978ad0c38c4659b4"
     },
     "dftd4-reference": {
+      "collections": {
+        "d4-generator": [
+          "src/dftd4/reference.inc",
+          "src/dftd4/reference.f90",
+          "src/dftd4/model/d4.f90",
+          "src/dftd4/model/utils.f90",
+          "src/dftd4/data/covrad.f90",
+          "src/dftd4/data/en.f90",
+          "src/dftd4/data/zeff.f90",
+          "src/dftd4/data/hardness.f90",
+          "src/dftd4/data/r4r2.f90"
+        ]
+      },
       "files": {
         "src/dftd4/data/covrad.f90": {
           "git_blob": "6dcd15338c8f02087fab8f3306a461ee79eb7680",
@@ -275,6 +305,7 @@
           "url": "https://raw.githubusercontent.com/dftd4/dftd4/6e1f59c3f39d919a2dbef0601d2576727c8b30e8/src/dftd4/reference.inc"
         }
       },
+      "git_tree": "caf7bff6f2c842b7ee57ff63322f1d46f74e1c64",
       "kind": "remote-file-set",
       "license": "LGPL-3.0-or-later",
       "repository": "https://github.com/dftd4/dftd4",
@@ -299,8 +330,8 @@
     "libxc-7.0.0": {
       "admission": {
         "importer": "python/vibeqc_compiler/xc/libxc_maple.py",
-        "importer_sha256": "721b2492beddf6fa5cf97671b374258c4c2771b7a5b8459900bb2f49fe65890a",
-        "semantics": "libxc-maple-graph/v10"
+        "importer_sha256": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
+        "semantics": "libxc-maple-graph/v11"
       },
       "collections": {
         "core": [
@@ -357,7 +388,10 @@
           "util.mpl",
           "b97mv.mpl",
           "hyb_mgga_xc_wb97mv.mpl",
-          "hyb_mgga_xc_wb97mv.c"
+          "hyb_mgga_xc_wb97mv.c",
+          "functionals.c",
+          "work_mgga.c",
+          "work_mgga_inc.c"
         ]
       },
       "consumers": [
@@ -378,6 +412,11 @@
           "sha256": "cfaacb3b656066ab286df9120c27423985a4bc2766ee385a13b86115b6b4b8cc",
           "upstream_path": "maple/b97mv.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/b97mv.mpl"
+        },
+        "functionals.c": {
+          "sha256": "0e4596fb62e283ebd05ccd400ea2977b28d91d6915db90199ddd0e5297185f65",
+          "upstream_path": "src/functionals.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/functionals.c"
         },
         "gga_c_lyp.c": {
           "sha256": "d34fb158f6174ee2c27b4fb06a5dd203b71299a0aae7857dba85953a41cc62c6",
@@ -575,6 +614,16 @@
           "sha256": "9b323c53526caac537ee57f73640b8cf9fd2768fca2d4634ee8d37978d480197",
           "upstream_path": "maple/vwn.mpl",
           "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/maple/vwn.mpl"
+        },
+        "work_mgga.c": {
+          "sha256": "d7f3756b15c00d71227a6f80aafe8e62617ad13107223b694846c212359dfad3",
+          "upstream_path": "src/work_mgga.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga.c"
+        },
+        "work_mgga_inc.c": {
+          "sha256": "a408ffed4036e108d3794db84cf9b9b596301632261d2a78c30273f6caf0c870",
+          "upstream_path": "src/work_mgga_inc.c",
+          "url": "https://gitlab.com/libxc/libxc/-/raw/7.0.0/src/work_mgga_inc.c"
         }
       },
       "kind": "file-set",
@@ -3426,6 +3475,7 @@
           "url": "https://raw.githubusercontent.com/grimme-lab/mctc-lib/e9de066d89f250d1cfb6de3a33f0c27c0e2f855d/src/mctc/ncoord/type.f90"
         }
       },
+      "git_tree": "ff26e808ccd00be0ca221656c8de9ce0da4c9265",
       "kind": "remote-file-set",
       "license": "Apache-2.0",
       "repository": "https://github.com/grimme-lab/mctc-lib",
@@ -3448,7 +3498,7 @@
     },
     "simple-dftd3-gcp": {
       "consumers": [
-        "external/r2scan3c/gcp-r2scan3c-h-ar.json",
+        "tools/parameters/r2scan3c_gcp.json",
         "tools/parameters/generate_gcp_r2scan3c.py"
       ],
       "files": {
@@ -3487,12 +3537,40 @@
       "repository": "https://github.com/dftd3/simple-dftd3",
       "revision": "41d5a07b98ce15e97bec7a1815869725f6c7b0c2"
     },
+    "xtbloom-gfn1-d3": {
+      "consumers": [
+        "manifests/xtbloom-d3.json",
+        "tools/vibeqc_d3/generate_native_data.py",
+        "tools/vibeqc_d3/reference.py",
+        "python/vibeqc_compiler/geometry/d3.py"
+      ],
+      "files": {
+        "gfn1_d3.json": {
+          "sha256": "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e",
+          "upstream_path": "data/parameters/gfn1_d3.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3.json"
+        },
+        "gfn1_d3_manifest.json": {
+          "sha256": "34344727c84992c566e2445f95e5c249222ba0ff0feeb70a0aa0f567257e8cbf",
+          "upstream_path": "data/parameters/gfn1_d3_manifest.json",
+          "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
+        }
+      },
+      "kind": "snapshot",
+      "license": "LGPL-3.0-or-later",
+      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
+      "repository": "https://github.com/jinzhezenggroup/xtbloom",
+      "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+    },
     "xtbloom-gfn1-parameters": {
       "consumers": [
         "python/vibeqc_compiler/geometry/_gfn1_data.py",
-        "src/xtb/gfn2_runtime/data/parameters/gfn1.hpp",
+        "src/xtb/native/data/parameters/gfn1.hpp",
         "tools/parameters/generate_gfn1.py",
-        "tools/parameters/generate_gfn1_geometry.py"
+        "tools/parameters/generate_gfn1_geometry.py",
+        "tools/vibeqc_d3/generate_native_data.py",
+        "tools/vibeqc_d3/reference.py",
+        "python/vibeqc_compiler/geometry/d3.py"
       ],
       "files": {
         "gfn1.json": {

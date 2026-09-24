@@ -7,6 +7,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from vibeqc import Atom
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft import (
     ExplicitGrid,
     GridPolicy,
@@ -20,8 +21,6 @@ from vibeqc_compiler.dft import (
     partition_weights,
 )
 from vibeqc_compiler.dft.fixtures import NAMES, ROOT, basis_arguments, load_fixture
-
-from tools.vibeqc_validation.schema import block_error
 
 
 def check(actual: typing.Any, expected: typing.Any) -> None:

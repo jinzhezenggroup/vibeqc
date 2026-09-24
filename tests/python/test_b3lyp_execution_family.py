@@ -22,6 +22,9 @@ def test_b3lyp_family_and_exchange_come_from_the_resolved_graph(
         )
 
 
-def test_b3lyp_family_does_not_admit_range_separated_exchange() -> None:
-    with pytest.raises(NotImplementedError, match="short-range-exchange"):
+def test_b3lyp_family_does_not_alias_unqualified_rsh_semilocal() -> None:
+    # The semantic KS plan ABI transports SR/LR exchange structurally, but CAM-B3LYP
+    # still has no qualified native semilocal family. Keep that distinct from
+    # B3LYP rather than relying on the old transport-layer range-exchange rejection.
+    with pytest.raises(NotImplementedError, match="semilocal family"):
         _native_semilocal_family(resolve_method("CAM-B3LYP"))

@@ -227,6 +227,59 @@ VIBEQC_API vibeqc_status vibeqc_rhf_response_resident_download_reconstruction_v1
     vibeqc_rhf_response_resident* owner, double* density_derivative, uint64_t density_count,
     double* energy_weighted_density_derivative, uint64_t energy_count);
 
+/** Tools-only resident unrestricted-HF response/Krylov vector owner.
+ *
+ * The owner borrows an exact unscreened unrestricted CUDA Fock plan. Alpha and
+ * beta occupied/virtual rotations share one device-resident slot arena; raw
+ * spin J/K actions and the coupled UHF Jacobian are enqueued on the plan's
+ * stream without a host response-vector round trip. This additive ABI is
+ * intentionally tools-only and does not advertise a public Calculator API.
+ */
+typedef struct vibeqc_uhf_response_resident vibeqc_uhf_response_resident;
+
+typedef struct vibeqc_uhf_response_resident_diagnostic {
+  uint32_t struct_size, abi_version;
+  uint64_t nbf, nocc_alpha, nvirt_alpha, nocc_beta, nvirt_beta;
+  uint64_t dimension, vector_slots, owned_device_bytes;
+  uint64_t h2d_bytes, d2h_bytes, synchronizations;
+  uint64_t operator_actions, blas_calls;
+  int32_t device_id;
+} vibeqc_uhf_response_resident_diagnostic;
+
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_create(
+    vibeqc_fock_plan* plan, const double* coefficients_alpha, uint64_t coefficients_alpha_count,
+    const double* orbital_energies_alpha, uint64_t orbital_energies_alpha_count,
+    uint32_t nocc_alpha, const double* coefficients_beta, uint64_t coefficients_beta_count,
+    const double* orbital_energies_beta, uint64_t orbital_energies_beta_count, uint32_t nocc_beta,
+    uint32_t vector_slots, uint64_t device_budget_bytes, vibeqc_uhf_response_resident** output);
+VIBEQC_API void vibeqc_uhf_response_resident_destroy(vibeqc_uhf_response_resident* owner);
+VIBEQC_API const char* vibeqc_uhf_response_resident_last_error(
+    const vibeqc_uhf_response_resident* owner);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_get_diagnostic(
+    const vibeqc_uhf_response_resident* owner, vibeqc_uhf_response_resident_diagnostic* diagnostic);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_upload(vibeqc_uhf_response_resident* owner,
+                                                             uint32_t slot, const double* values,
+                                                             uint64_t count);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_download(vibeqc_uhf_response_resident* owner,
+                                                               uint32_t slot, double* values,
+                                                               uint64_t count);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_zero(vibeqc_uhf_response_resident* owner,
+                                                           uint32_t slot);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_copy(vibeqc_uhf_response_resident* owner,
+                                                           uint32_t destination, uint32_t source);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_scale(vibeqc_uhf_response_resident* owner,
+                                                            uint32_t slot, double alpha);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_axpy(vibeqc_uhf_response_resident* owner,
+                                                           uint32_t destination, double alpha,
+                                                           uint32_t source);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_dot(vibeqc_uhf_response_resident* owner,
+                                                          uint32_t left, uint32_t right,
+                                                          double* value);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_norm(vibeqc_uhf_response_resident* owner,
+                                                           uint32_t slot, double* value);
+VIBEQC_API vibeqc_status vibeqc_uhf_response_resident_apply(vibeqc_uhf_response_resident* owner,
+                                                            uint32_t destination, uint32_t source);
+
 #ifdef __cplusplus
 }
 #endif

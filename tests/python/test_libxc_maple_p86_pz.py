@@ -25,7 +25,7 @@ from vibeqc_compiler.xc.spec import FunctionalSpec
 
 ROOT = Path(__file__).resolve().parents[2]
 LIBXC_ROOT = ROOT / "upstream/libxc/7.0.0"
-LIBXC_MANIFEST_ROOT = ROOT / "external/libxc-7.0.0"
+LIBXC_MANIFEST_ROOT = ROOT / "manifests/libxc/7.0.0"
 MANIFEST = json.loads((LIBXC_MANIFEST_ROOT / "rsh-manifest.json").read_text())
 FIXTURE = json.loads((ROOT / "tests/data/xc/p86-hessian.json").read_text())
 POLARIZED_FEATURES = (
@@ -120,7 +120,7 @@ def _evaluate(
 
 
 def test_maple_line_continuation_is_narrow_and_versioned() -> None:
-    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v10"
+    assert IMPORTER_SEMANTICS == "libxc-maple-graph/v11"
     graph = Graph()
     x = graph.variable("x")
     module = import_maple_source("f := x -> x + \\\n      1:")

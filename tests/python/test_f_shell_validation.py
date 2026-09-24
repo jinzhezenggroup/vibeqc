@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_adapter import CudaCompileResult
+from vibeqc_compiler.common.cuda_adapter import CudaCompileResult
 
 from tools.vibeqc_validation import f_shell
 from tools.vibeqc_validation.f_shell_cuda import emit_numerical_driver
@@ -75,9 +75,15 @@ def test_all_34_classes_emit_complete_deterministic_first_derivative_sources(
 
 def test_catalog_separates_manifest_selection_from_unmeasured_acceptance() -> None:
     assert set(f_shell.F_SHELL_CLASSES) == EXPECTED_CLASSES
-    report = f_shell.catalog()
-    assert len(report["rows"]) == 34
-    assert len({row["source"]["registry_class_index"] for row in report["rows"]}) == 34
+    # The parametrized test above already emits and validates every canonical
+    # f-shell class.  Keep this catalog/manifest semantics check representative
+    # instead of regenerating the same 34 classes a second time.
+    report = f_shell.catalog(names=f_shell.SMOKE_CLASSES)
+    assert tuple(row["shell_class"] for row in report["rows"]) == f_shell.SMOKE_CLASSES
+    assert len(report["rows"]) == len(f_shell.SMOKE_CLASSES)
+    assert len(
+        {row["source"]["registry_class_index"] for row in report["rows"]}
+    ) == len(f_shell.SMOKE_CLASSES)
     for row in report["rows"]:
         assert row["source"]["status"] == "pass"
         assert row["consumers"] == ["fock", "force"]

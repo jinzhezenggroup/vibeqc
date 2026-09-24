@@ -11,15 +11,15 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.tensor import Program, execute
+from vibeqc_compiler.tensor.cuda_emit import emit_cuda
+from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
-from tools.vibeqc_codegen.cuda_target import cuda_target_info
 from tools.vibeqc_mp2 import PreparedMP2Energy
 from tools.vibeqc_mp2.energy import denominator_check
 from tools.vibeqc_mp2.equations import energy_program
 from tools.vibeqc_posthf.fixtures import fixture_snapshot, load_fixture
-from tools.vibeqc_tensor import Program, execute
-from tools.vibeqc_tensor.cuda_emit import emit_cuda
-from tools.vibeqc_tensor.cuda_plan import plan_cuda
 
 
 class FixtureSource:

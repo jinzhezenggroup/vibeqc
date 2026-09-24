@@ -336,6 +336,111 @@ def test_generated_residency_uses_complete_source_specific_budget() -> None:
     assert constrained.peak_workspace_bytes <= constrained.budget_bytes
 
 
+def test_generated_source_auto_occupied_requires_complete_q_scratch(
+    monkeypatch: typing.Any,
+) -> None:
+    """Automatic RHF factors are admitted only with the full source lease."""
+    library = Calculator()._library
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "dense")
+    dense = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=0,
+        fixed_device_bytes=0,
+        generated_source=True,
+    )
+    assert dense.auxiliary_tile == 128
+    assert dense.automatic_rhf_rank == 0
+
+    monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "auto")
+    full_budget = 1 << 40
+    complete = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=full_budget,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert complete.stores_full_three_center
+    assert complete.ao_pair_tile == 768 * 768
+    assert complete.auxiliary_tile == 768
+    assert complete.automatic_rhf_rank == 160
+
+    constrained = density_fitting_tile_plan(
+        library,
+        1,
+        768,
+        768,
+        160,
+        budget_bytes=complete.peak_workspace_bytes - 1,
+        fixed_device_bytes=0,
+        generated_source=True,
+        rhf_occupied=160,
+    )
+    assert constrained.auxiliary_tile < 768
+    assert constrained.automatic_rhf_rank == 0
+
+
+def test_streamed_auto_reserves_factors_without_a_dense_fallback_cliff(
+    monkeypatch: typing.Any,
+) -> None:
+    """The practical auxiliary shape stays within budget in both policies."""
+    from vibeqc_compiler.method.df_exchange_schedule import projected_exchange_schedule
+
+    library = Calculator()._library
+    n, a, rank = 768, 3712, 160
+    admitted = 0
+    for budget in (4 << 30, 8 << 30, 13_685_173_124, 16 << 30):
+        plans = []
+        for policy in ("dense", "auto"):
+            monkeypatch.setenv("VIBEQC_DF_EXCHANGE", policy)
+            plans.append(
+                density_fitting_tile_plan(
+                    library,
+                    1,
+                    n,
+                    a,
+                    rank,
+                    budget_bytes=budget,
+                    fixed_device_bytes=1 << 20,
+                    generated_source=True,
+                    rhf_occupied=rank,
+                )
+            )
+        dense, automatic = plans
+        assert not dense.stores_full_three_center
+        assert automatic.peak_workspace_bytes <= budget
+        if automatic.automatic_rhf_rank:
+            admitted += 1
+            assert automatic.automatic_rhf_rank == rank
+            # The native dense planner stores its selected row/Q traversal.
+            dr = (n + dense.ao_pair_tile // n - 1) // (dense.ao_pair_tile // n)
+            dq = (a + dense.auxiliary_tile - 1) // dense.auxiliary_tile
+            ar = (n + automatic.ao_pair_tile // n - 1) // (automatic.ao_pair_tile // n)
+            aq = (a + automatic.auxiliary_tile - 1) // automatic.auxiliary_tile
+            assert ar * aq <= dr * dq
+            schedule = projected_exchange_schedule(
+                n,
+                a,
+                rank,
+                automatic.ao_pair_tile * automatic.auxiliary_tile,
+                ar,
+                aq,
+                True,
+            )
+            assert schedule.rows > 0
+        else:
+            assert automatic == dense
+    assert admitted > 0
+
+
 def test_overlap_storage_is_reserved_in_every_cuda_df_candidate() -> None:
     """Shape-only admission must charge retained S/X/coordinates for each item."""
     import json

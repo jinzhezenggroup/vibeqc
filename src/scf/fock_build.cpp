@@ -128,7 +128,7 @@ constexpr FockProviderCapabilities cosx_fock_domain() {
   capabilities.restricted = true;
   capabilities.unrestricted = true;
   capabilities.full_range = true;
-  capabilities.maximum_derivative_order = 0;
+  capabilities.maximum_derivative_order = 1;
   capabilities.maximum_angular_momentum = 3;
   capabilities.cartesian = true;
   capabilities.spherical = true;

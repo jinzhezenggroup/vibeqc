@@ -8,8 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
-
-from .schema import canonical_hash
+from vibeqc_compiler.common.evidence import canonical_hash
 
 ROOT = Path(__file__).resolve().parents[2]
 REFERENCE_DIRECTORY = ROOT / "tests/reference_data/validation"

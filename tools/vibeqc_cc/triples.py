@@ -10,7 +10,7 @@ recorded in :data:`tools.vibeqc_cc.source_manifest` and ``NOTICE``.
 Mathematical contract (faithful transcription, nothing re-derived)
 ------------------------------------------------------------------
 
-Inputs are all-MO, real, Hartree, occupied then virtual (``docs/posthf.md``):
+Inputs are all-MO, real, Hartree, occupied then virtual (``docs/developer/posthf.md``):
 
     ovvv = (i, a, b, c)          eris.get_ovvv()             (i occupied; a,b,c virtual)
     ovoo = (i, a, j, m)          eris.ovoo
@@ -70,6 +70,7 @@ import typing
 from fractions import Fraction
 from itertools import permutations
 
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import (
     Index,
     IndexSpace,
@@ -85,8 +86,6 @@ from vibeqc_compiler.tensor import (
     reduce_sum,
     transpose,
 )
-
-from tools.vibeqc_validation.schema import canonical_hash
 
 # ---------------------------------------------------------------------------
 # Auditable rational inventory in doubles.DEFINITIONS style:

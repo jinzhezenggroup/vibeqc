@@ -98,8 +98,8 @@ Libxc/high-precision validation gates.
 
 ## References
 
-- `external/libxc-7.0.0/gga_x_pbe.mpl`
-- `external/libxc-7.0.0/util.mpl`
+- `upstream/libxc/7.0.0/gga_x_pbe.mpl`
+- `upstream/libxc/7.0.0/util.mpl`
 - `python/vibeqc_compiler/xc/expressions.py`
 - `docs/xc_expressions.md`
 

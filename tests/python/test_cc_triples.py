@@ -3,7 +3,7 @@
 Slice A of issue #150.  These tests never import PySCF: the nonzero-molecule
 ground truth below is hard-coded from the pinned PySCF 2.14.0
 ``ccsd_t_slow.kernel`` run over ``tests/reference_data/cc/endpoints/*`` (see
-``docs/rccsd_t.md``). The independently generated production-reference JSON
+``docs/developer/rccsd_t.md``). The independently generated production-reference JSON
 is also checked against the committed inputs without importing PySCF.
 """
 
@@ -472,7 +472,7 @@ def test_degenerate_denominators_fail_closed() -> None:
 # -------------------------- hard-coded ground truth --------------------------
 
 # E_T (Hartree) from pinned PySCF 2.14.0 ccsd_t_slow.kernel over
-# tests/reference_data/cc/endpoints/* (o,v) documented in docs/rccsd_t.md.
+# tests/reference_data/cc/endpoints/* (o,v) documented in docs/developer/rccsd_t.md.
 GROUND_TRUTH = {
     "h2": (1, 1, 8.392021714075268e-49),
     "he": (1, 1, 0.0),
@@ -532,8 +532,9 @@ def test_pinned_ground_truth_regression(name: typing.Any) -> None:
 
 def test_committed_production_reference_provenance() -> None:
     """Keep the independent reference tied to its source and endpoint arrays."""
+    from vibeqc_compiler.common.evidence import canonical_hash
+
     from tools.cc_endpoint_fixtures import array_hash
-    from tools.vibeqc_validation.schema import canonical_hash
 
     root = Path(__file__).resolve().parents[2]
     data = json.loads((ENDPOINTS.parent / "rccsd-t.json").read_text())

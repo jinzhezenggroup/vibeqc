@@ -96,21 +96,9 @@ for _name, _value in {
 }.items():
     setattr(_tensor_package, _name, _value)
 
-# The CC equation modules only need canonical_hash from the validation facade;
-# providing it here avoids importing NumPy-backed evidence comparison helpers.
-import hashlib
-import json
-
-_validation_schema = types.ModuleType("tools.vibeqc_validation.schema")
-
-
-def _canonical_hash(value: typing.Any) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    return hashlib.sha256(encoded.encode()).hexdigest()
-
-
-_validation_schema.canonical_hash = _canonical_hash
-sys.modules["tools.vibeqc_validation.schema"] = _validation_schema
+# CC equation modules import the real canonical evidence module. Its numerical
+# comparison routines load NumPy only when executed; no module replacement is
+# required for immutable AOT equation construction.
 
 _cc_path = Path(__file__).resolve().parent / "vibeqc_cc"
 _cc_package = types.ModuleType("tools.vibeqc_cc")

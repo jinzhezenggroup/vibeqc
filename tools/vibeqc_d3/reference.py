@@ -18,22 +18,58 @@ from pathlib import Path
 import numpy as np
 from vibeqc_compiler.method.dispersion import D3Spec
 
+from tools import source_registry
+
 _ROOT = Path(__file__).resolve().parents[2]
-_DATA = _ROOT / "external" / "xtbloom-d3"
+_SOURCE_ID = "xtbloom-gfn1-d3"
+_MODEL_SOURCE_ID = "xtbloom-gfn1-parameters"
+_REQUIRED_SOURCE_FILES = frozenset({"gfn1_d3.json", "gfn1.json"})
+_MANIFEST = _ROOT / "manifests" / "xtbloom-d3.json"
 _POINTER = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
+
+
+def _registered_source_texts() -> dict[str, str]:
+    """Load exact D3/GFN1 source texts through their common-registry owners."""
+    registry = source_registry._load(source_registry.REGISTRY)
+    result: dict[str, str] = {}
+    for source_id, required in (
+        (_SOURCE_ID, ("gfn1_d3.json",)),
+        (_MODEL_SOURCE_ID, ("gfn1.json",)),
+    ):
+        source = registry["sources"].get(source_id)
+        if not isinstance(source, dict):
+            raise source_registry.SourceRegistryError(
+                f"source registry is missing {source_id!r}"
+            )
+        texts = source_registry.read_source_texts(source_id, source)
+        missing = set(required) - texts.keys()
+        if missing:
+            raise source_registry.SourceRegistryError(
+                f"{source_id!r} is missing required files: {sorted(missing)}"
+            )
+        result.update({name: texts[name] for name in required})
+    return {name: result[name] for name in sorted(_REQUIRED_SOURCE_FILES)}
 
 
 @lru_cache(maxsize=1)
 def _tables() -> typing.Any:
-    manifest = json.loads((_DATA / "manifest.json").read_text())
-    values = {}
-    for name, expected in manifest["data"].items():
-        raw = (_DATA / name).read_bytes()
-        if hashlib.sha256(raw).hexdigest() != expected:
-            raise ValueError(f"D3 source data digest mismatch: {name}")
-        values[name] = json.loads(raw)
-    data = values["gfn1_d3.json"]
-    radii = values["covalent_radii.json"]
+    manifest = json.loads(_MANIFEST.read_text())
+    source_texts = _registered_source_texts()
+    table_raw = source_texts["gfn1_d3.json"].encode("utf-8")
+    if hashlib.sha256(table_raw).hexdigest() != manifest["data"]["gfn1_d3.json"]:
+        raise ValueError("D3 source data digest mismatch: gfn1_d3.json")
+    model_raw = source_texts["gfn1.json"].encode("utf-8")
+    expected_model = manifest["sources"]["data/parameters/gfn1.json"]["sha256"]
+    if hashlib.sha256(model_raw).hexdigest() != expected_model:
+        raise ValueError("D3 source data digest mismatch: gfn1.json")
+    data = json.loads(table_raw)
+    model = json.loads(model_raw)
+    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
+        raise ValueError("upstream GFN1 element order changed")
+    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
+    radii_raw = (json.dumps(radii, indent=2) + "\n").encode()
+    if hashlib.sha256(radii_raw).hexdigest() != manifest["data"]["covalent_radii.json"]:
+        raise ValueError("derived D3 covalent radii digest mismatch")
     if len(data["elements"]) != 86 or len(radii) != 86:
         raise ValueError("D3 reference domain is exactly H through Rn")
     return data, radii, manifest["data"]

@@ -97,12 +97,12 @@ def test_gfn2_native_pair_codegen_needs_no_site_packages(tmp_path: Path) -> None
 
 
 def test_gfn2_cuda_pair_science_consumes_generated_helpers() -> None:
-    geometry = (
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_geometry.cu"
-    ).read_text(encoding="utf-8")
-    repulsion = (
-        ROOT / "src/xtb/gfn2_runtime/src/backends/cuda/gfn2_repulsion.cu"
-    ).read_text(encoding="utf-8")
+    geometry = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_geometry.cu").read_text(
+        encoding="utf-8"
+    )
+    repulsion = (ROOT / "src/xtb/native/src/backends/cuda/gfn2_repulsion.cu").read_text(
+        encoding="utf-8"
+    )
 
     for source in (geometry, repulsion):
         assert '#include "generated_gfn2_pair_native.hpp"' in source
@@ -113,3 +113,19 @@ def test_gfn2_cuda_pair_science_consumes_generated_helpers() -> None:
     assert "evaluate_gfn2_repulsion_pair" in repulsion
     assert "distance_power" not in repulsion
     assert "pair_energy = pair_charge * exp" not in repulsion
+
+
+def test_sparse_and_dense_cuda_coordination_share_generated_pair_science() -> None:
+    """CN bitwise admission cannot mix generated and handwritten arithmetic."""
+    root = Path(__file__).resolve().parents[2]
+    cuda = root / "src/xtb/native/src/backends/cuda"
+    for name in ("gfn2_geometry.cu", "gfn2_pairlist.cu"):
+        source = (cuda / name).read_text()
+        assert '#include "generated_gfn2_pair_native.hpp"' in source
+        assert (
+            "evaluate_gfn2_coordination_pair(values->distance, radius, pair)" in source
+        )
+    sparse = (cuda / "gfn2_pairlist.cu").read_text()
+    assert "__device__ double logistic(" not in sparse
+    assert "kFirstSteepness" not in sparse
+    assert "dense_bits != sparse_bits" in (cuda / "gfn2_preprocessing.cu").read_text()

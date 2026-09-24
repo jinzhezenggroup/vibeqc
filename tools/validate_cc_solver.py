@@ -16,6 +16,14 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import (
+    block_error,
+    canonical_hash,
+    file_hash,
+    new_evidence,
+    outcome,
+    write_evidence,
+)
 
 from tools.cc_endpoint_fixtures import ROOT as DATA
 from tools.cc_endpoint_fixtures import load, snapshot_from_fixture, source_arguments
@@ -24,14 +32,6 @@ from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
 from tools.vibeqc_posthf.sources import NativeSource
-from tools.vibeqc_validation.schema import (
-    block_error,
-    canonical_hash,
-    file_hash,
-    new_evidence,
-    outcome,
-    write_evidence,
-)
 
 ROOT = Path(__file__).resolve().parents[1]
 

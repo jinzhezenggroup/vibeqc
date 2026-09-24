@@ -8,6 +8,7 @@ and allocator overhead are excluded; this is not a process RSS bound.
 
 import typing
 
+from vibeqc_compiler.common.resources import checked_bytes
 from vibeqc_compiler.integral.ecp_policy import (
     REFINED_POLAR_POINTS,
     REFINED_RADIAL_POINTS,
@@ -19,7 +20,6 @@ from vibeqc_compiler.integral.first_derivative_schedule import (
 from vibeqc_compiler.integral.weighted_eri_inputs import PRIMITIVE_RANGE_RECORD
 
 from .basis import BasisSet
-from .resources import checked_bytes
 
 CPU_FORCE_HOST_CAP = 256 << 20
 
@@ -85,7 +85,7 @@ def cpu_force_inventory(
         else 0
     )
     nonlocal_force = (
-        8 * (32 * grid_points + n * n + 3 * a) if nonlocal_correlation else 0
+        8 * (40 * grid_points + n * n + 3 * a) if nonlocal_correlation else 0
     )
 
     # The generated range-ERI owner caches one PreparedWeightedEri per

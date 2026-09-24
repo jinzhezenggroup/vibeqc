@@ -23,7 +23,7 @@ from .shell_spec import AXES, ShellClassSpec
 if typing.TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-    from .cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 ShellComponent = tuple[str, str, str, str]
 CoulombState = tuple[int, int, int]

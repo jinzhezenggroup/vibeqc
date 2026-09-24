@@ -440,7 +440,7 @@ void verify_cosx_provider_semantics() {
       fock_provider_registration(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   const auto& capability = registration.domain.capabilities;
   require(capability.restricted && capability.unrestricted && capability.full_range &&
-              capability.maximum_derivative_order == 0 &&
+              capability.maximum_derivative_order == 1 &&
               capability.maximum_angular_momentum == 3 && capability.cartesian &&
               capability.spherical && !capability.batching && !capability.coulomb &&
               capability.exchange && capability.independent_terms &&
@@ -453,7 +453,7 @@ void verify_cosx_provider_semantics() {
   const auto executable =
       fock_provider_capabilities(FockApproximation::SeminumericalCosx, FockBackend::Cuda);
   require(executable.available && executable.exchange && !executable.coulomb &&
-              executable.maximum_derivative_order == 0,
+              executable.maximum_derivative_order == 1,
           "executable COSX capability query differs from its registration");
 #else
   require(!vibeqc::runtime::provider_executable(registration),
@@ -471,8 +471,14 @@ void verify_cosx_provider_semantics() {
 
   auto derivative = spec;
   derivative.derivative_order = 1;
-  require_rejected([&] { (void)resolve_fock_build(derivative, FockBackend::Cuda); },
-                   "COSX silently inherited first-derivative capability");
+  const auto resolved_derivative = resolve_fock_build(derivative, FockBackend::Cuda);
+  require(resolved_derivative.spec == derivative &&
+              resolved_derivative.schedule == FockSchedule::CudaIndependent,
+          "COSX first-derivative capability was not preserved by resolution");
+  auto second_derivative = spec;
+  second_derivative.derivative_order = 2;
+  require_rejected([&] { (void)resolve_fock_build(second_derivative, FockBackend::Cuda); },
+                   "COSX silently inherited unsupported second-derivative capability");
 
   auto coulomb_cosx = spec;
   coulomb_cosx.coulomb.approximation = FockApproximation::SeminumericalCosx;

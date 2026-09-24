@@ -25,17 +25,28 @@ simple-DFTD3 gCP sources, and the GPU4PySCF Rys table) remain hash-pinned
 remote file sets and are materialized explicitly for maintainer regeneration.
 Their SPDX identities remain recorded in the registry and retained license files.
 
+## Native GFN2 runtime provenance
+
+`src/xtb/native/` contains VibeQC adaptations of the pinned xTBloom GFN2
+runtime. Its original GPL-3.0-or-later license, scoped CUDA/MKL permission and
+third-party notices remain in that directory. See
+`src/xtb/native/CUDA_SOURCE_PROVENANCE.json` for the CPU/CUDA source revisions
+and adapted CUDA source hashes. Native identity and compiler replacements do
+not remove the attribution or change the licenses of retained source/data.
+
 ## xTBloom D3 qualification baseline
 
 The repository-only D3 tools under `tools/vibeqc_d3/native/` adapt GPL-3.0-or-later
 code from xTBloom commit `2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3`.
-`external/xtbloom-d3/` retains its source hashes, original additional CUDA/MKL
-permission, upstream parameter manifests and LGPL/Apache license texts.
+The exact pinned GFN1/D3 source data are retained under
+`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/`; implementation
+source hashes and the derived covalent-radii identity are recorded in
+`manifests/xtbloom-d3.json`. The original CUDA/MKL additional permission and
+relevant LGPL/Apache license texts are retained under `LICENSES/`.
 The D3 tables derive from simple-dftd3 v1.4.0 (LGPL-3.0-or-later); the extracted
 covalent radii retain the source's LGPL-3.0-or-later AND Apache-2.0 provenance.
-See that directory's README and manifest for the exact material and changes.
-No xTBloom/simple-dftd3 binary or runtime dependency is added, and these
-qualification sources/data are not included as VibeQC wheel assets.
+No xTBloom/simple-dftd3 binary or runtime dependency is added. The pinned data
+needed by compiler/runtime provenance are packaged as VibeQC wheel assets.
 
 ## xTBloom / DFT-D4 molecular qualification baseline
 
@@ -83,7 +94,7 @@ The canonical H-Ar def2-mTZVPP snapshot shipped under
 `python/vibeqc/data/r2scan3c/` is generated offline from MolSSI Basis Set
 Exchange commit `4adaf1372c7101620ca1a9f3130be9ae97fb8f30`. The exact source
 export, content identity, and supported-element domain are recorded in
-`external/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
+`manifests/r2scan3c/manifest.json`; the BSE BSD-3-Clause text is retained as
 `LICENSES/bse-data-BSD-3-Clause.txt`.
 
 The repository-only gCP qualification data and CPU/native reference providers
@@ -101,7 +112,7 @@ see `LICENSES/mstore-Apache-2.0.txt`.
 
 VibeQC issue #560 embeds a reviewed source snapshot of xTBloom commit
 `5a67cc59ace94c8296e873503b2ae1298e7c2861` under
-`src/xtb/gfn2_runtime/` to provide the first production GFN2-xTB runtime:
+`src/xtb/native/` to provide the first production GFN2-xTB runtime:
 intrinsic-basis integrals, H0, ES2/ES3/AES2, generalized eigensolution,
 occupations, Mulliken/multipole state, SCC mixing, repulsion, self-consistent
 D4, spin terms, total energy, and analytic nuclear forces. VibeQC compiles the required common/GFN2/CPU-runtime sources from that
@@ -112,7 +123,7 @@ state immediately before production GFN1 CUDA execution was integrated. The
 cohort reuses VibeQC's canonical packed D4 tables and carries the narrow
 correctness backport from xTBloom #487 that passes CUDA kernel descriptors by
 value rather than launcher-stack reference.
-`src/xtb/gfn2_runtime/CUDA_SOURCE_PROVENANCE.json` records the exact source
+`src/xtb/native/CUDA_SOURCE_PROVENANCE.json` records the exact source
 set and per-file upstream/vendored hashes. No GFN1 runtime is compiled or
 admitted, and CUDA wheel admission remains a separate gate. The former broad
 xTBloom subproject is not restored, and an installed xTBloom library or

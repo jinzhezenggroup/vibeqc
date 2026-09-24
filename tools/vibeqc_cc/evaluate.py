@@ -4,11 +4,11 @@ import typing
 from hashlib import sha256
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.tensor import Program, execute
 
 from tools.vibeqc_posthf import MOBlock
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_validation.schema import canonical_hash
 
 from .equations import BLOCKS, build_program
 

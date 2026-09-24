@@ -7,7 +7,8 @@ from enum import Enum
 from math import comb
 from typing import TYPE_CHECKING
 
-from .backend import TargetScheduleShape
+from vibeqc_compiler.common.backend import TargetScheduleShape
+
 from .expr import (
     AlgebraForm,
     AlgebraFusion,
@@ -18,7 +19,7 @@ from .ir import IntegralIR, KernelConsumer, OperatorFamily
 from .shell_spec import AXES, ShellClassSpec
 
 if TYPE_CHECKING:
-    from .cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 
 
 class ScheduleKind(str, Enum):

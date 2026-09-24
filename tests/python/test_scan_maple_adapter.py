@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
@@ -16,10 +17,9 @@ from vibeqc_compiler.xc.scan_maple import (
     SCAN_COMPONENTS,
     scan_component,
     scan_maple_provenance,
+    scan_runtime_policy,
 )
 from vibeqc_compiler.xc.spec import FunctionalSpec, functional
-
-from tools.vibeqc_validation.schema import block_error
 
 POLARIZED_FEATURES = (
     "rho_a",
@@ -199,3 +199,32 @@ def test_scan_maple_provenance_tracks_local_math_implementation(
     assert after is not None
     field = "adapter_sha256" if owner == "adapter" else "importer_sha256"
     assert after[field] != before[field]
+
+
+def test_r2scan_runtime_policy_comes_from_pinned_libxc_catalog() -> None:
+    exchange = scan_runtime_policy("MGGA_X_R2SCAN")
+    correlation = scan_runtime_policy("MGGA_C_R2SCAN")
+
+    assert exchange.density_threshold == 1.0e-11
+    assert correlation.density_threshold == 1.0e-15
+    assert exchange.sigma_threshold == pytest.approx((1.0e-11) ** (4.0 / 3.0))
+    assert correlation.sigma_threshold == pytest.approx((1.0e-15) ** (4.0 / 3.0))
+    assert exchange.tau_threshold == correlation.tau_threshold == 1.0e-20
+
+
+def test_r2scan_exchange_screens_exact_empty_spin_work_boundary() -> None:
+    graph, roots, _ = _adapter_component("MGGA_X_R2SCAN", "polarized")
+    policy = scan_runtime_policy("MGGA_X_R2SCAN")
+    rho = 0.073
+    values = {
+        "rho_a": rho,
+        "rho_b": policy.density_threshold,
+        "sigma_aa": 4.0 * rho * rho,
+        "sigma_ab": 0.0,
+        "sigma_bb": policy.sigma_threshold**2,
+        "tau_a": 0.7 * rho,
+        "tau_b": policy.tau_threshold,
+    }
+    actual = np.asarray([graph.evaluate(root, values) for root in roots[:8]])
+    assert np.isfinite(actual).all()
+    np.testing.assert_array_equal(actual[[2, 5, 7]], 0.0)

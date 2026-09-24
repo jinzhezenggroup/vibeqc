@@ -1,0 +1,731 @@
+diff --git a/.agents/notes/implemented/compatibility/2026-09-22-bounded-high-l-fock.md b/.agents/notes/implemented/compatibility/2026-09-22-bounded-high-l-fock.md
+new file mode 100644
+index 00000000..3fa963a7
+--- /dev/null
++++ b/.agents/notes/implemented/compatibility/2026-09-22-bounded-high-l-fock.md
+@@ -0,0 +1,23 @@
++# Decision: bounded high l fock
++
++Status: implemented
++Date: 2026-09-22
++
++## Decision
++
++Expose the existing exact bounded contraction with Force=false for uncovered f-shell Fock classes. Exclude classes already emitted by the generated consumer to avoid double counting.
++
++## Invariants and rejected alternatives
++
++Keep explicit bounded storage and the existing basis/component and density conventions. A missing generated class must not silently lose a Fock contribution.
++
++## Evidence and remaining qualification
++
++The recovered tests and generation checks are retained. Current-source CUDA build, RHF/UHF high-l oracle comparisons and larger complete endpoints remain merge gates; historical evidence is not a fresh run.
++
++## Revisit when
++
++Revisit the candidate when the stated endpoint gates pass or the shared owner changes.
++
++Fresh endpoint qualification and the additional order-three/profile fixes are
++recorded in [the follow-up decision](2026-09-23-bounded-direct-endpoint-qualification.md).
+diff --git a/.agents/notes/implemented/compatibility/2026-09-22-tile-validation-routing.md b/.agents/notes/implemented/compatibility/2026-09-22-tile-validation-routing.md
+new file mode 100644
+index 00000000..63c6a84d
+--- /dev/null
++++ b/.agents/notes/implemented/compatibility/2026-09-22-tile-validation-routing.md
+@@ -0,0 +1,23 @@
++# Decision: tile validation routing
++
++Status: implemented
++Date: 2026-09-22
++
++## Decision
++
++Make the diagnostic tile-validation request explicit when selecting bounded Direct-HF execution, preserving ordinary production admission as the default.
++
++## Invariants and rejected alternatives
++
++Diagnostic settings must not silently redefine the scientific method. Coordinate with the bounded high-l fallback change so diagnostics do not bypass required class coverage.
++
++## Evidence and remaining qualification
++
++Native precision-policy tests cover the routing contract. CUDA diagnostic and ordinary RHF/UHF endpoint comparisons remain merge gates.
++
++## Revisit when
++
++Revisit the candidate when the stated endpoint gates pass or the shared owner changes.
++
++The CUDA endpoint gates and single-system status-preservation fix are recorded
++in [the follow-up decision](2026-09-23-bounded-direct-endpoint-qualification.md).
+diff --git a/docs/weighted_eri.md b/docs/weighted_eri.md
+index c2ec6dbc..8edff55e 100644
+--- a/docs/weighted_eri.md
++++ b/docs/weighted_eri.md
+@@ -26,13 +26,35 @@ source emission alone does not select a production route.
+ | External psss weights | Generated precontracted Hermite DAG | One primitive record carries all x/y/z weights; optional independent fallback |
+ | External unmigrated s/p/d/f weights | Unscreened Hermite/Dual3 primitive fallback | One explicit component per record, with the caller's actual external weight |
+ 
+-Total angular order zero/one no longer has a generic AO-quartet scientific fallback.
++For forces, total angular order zero/one no longer has a generic AO-quartet scientific fallback.
+ The fixed, resident, and bounded dispatchers consume generated `ssss_force` /
+ `psss_force` through their exact shell tasks, and
+ `contract_two_electron_force_quartet_subtile` now rejects `AngularOrder < 2`
+ at compile time. The obsolete `direct_native_order01_gradient.cuh` body is
+ therefore deleted rather than retained as a dead alternate implementation.
+ 
++### Bounded Direct-HF coverage and diagnostics
++
++The bounded Fock route covers canonical s/p/d/f classes. Generated and native
++streaming consumers own their registered classes; remaining classes use the
++existing exact recurrence through a fixed-capacity hierarchical queue. Its Fock
++entry point is distinct from the force entry point: Fock-style screening does
++not imply Fock output. The scalar Fock pass handles total orders zero through
++two, and the generic value pass includes order three, notably `(f s|s s)`.
++The force pass independently retains its order-three shell consumer.
++
++`VIBEQC_BOUNDED_DIRECT_STREAMING=force` selects this schedule explicitly. Normal
++execution selects it when the fixed descriptor grid or its memory budget would
++be exceeded. Neither mode restores a topology-sized descriptor allocation.
++
++`VIBEQC_DIRECT_TILE_VALIDATION=validate` is a structural diagnostic. It reports
++`NOT_IMPLEMENTED` for the numerical endpoint after descriptor validation; its
++output is never an SCF energy/force result. Unset it for numerical qualification.
++The allocated-GPU regression suite is
++`tests/python/test_bounded_direct_high_l_cuda.py`, including independent
++PySCF/libcint energies and analytic forces. See the
++[bounded coverage rationale](../.agents/notes/implemented/compatibility/2026-09-22-bounded-high-l-fock.md).
++
+ The existing [component ledger](../benchmarks/results/rtx5090-0b6a573-issue-41-current-head-component-ledger.json)
+ measured psss as the largest exact force class, 137.054 ms per replay, on its
+ 384-AO workload. That measured hotspot motivates this slice. Its timings
+diff --git a/src/scf/cuda/direct_bounded_exact_force.cu b/src/scf/cuda/direct_bounded_exact_force.cu
+index 78f36573..3422d580 100644
+--- a/src/scf/cuda/direct_bounded_exact_force.cu
++++ b/src/scf/cuda/direct_bounded_exact_force.cu
+@@ -12,6 +12,7 @@
+ #include "scf/cuda/direct_force_low_order.cuh"
+ #include "scf/cuda/direct_metadata.hpp"
+ #include "scf/cuda/direct_page_screening.cuh"
++#include "scf/cuda/direct_queue_profile.cuh"
+ #include "scf/cuda/direct_screening.cuh"
+ #include "scf/cuda/packed_basis.hpp"
+ 
+@@ -31,7 +32,8 @@ __global__ void contract_bounded_exact_low_order_force_page_kernel(
+     unsigned high_pair_class, unsigned low_pair_class, double screening_tolerance,
+     std::uint64_t page_begin, std::uint32_t page_capacity, std::uint32_t bra_ordinal_begin,
+     std::uint32_t bra_ordinal_end, bool same_pair_class, const double* schwarz_bounds,
+-    const double* density, double* forces, std::uint32_t* bra_head) {
++    const double* density, double* forces, std::uint32_t* bra_head,
++    DeviceShellClassProfileEntry* profile) {
+   __shared__ std::uint32_t bra_ordinal;
+   if (shell_class != kSsssShellClass && shell_class != kPsssShellClass) {
+     return;
+@@ -121,6 +123,9 @@ __global__ void contract_bounded_exact_low_order_force_page_kernel(
+         continue;
+       }
+       const ActiveShellQuartetTile task{bra_pair, ket_pair, 0U};
++      // This route bypasses exact compaction, so record each surviving quartet
++      // here to preserve the same final-density ledger as the fixed schedule.
++      profile_bounded_direct_shell_quartet(batch, task, profile);
+       if (shell_class == kSsssShellClass) {
+         contract_two_electron_force_ssss_task<Unrestricted>(
+             batch, task, screening_tolerance, schwarz_bounds, density, topology.active, forces);
+@@ -140,20 +145,21 @@ void launch_contract_bounded_exact_low_order_force_page_kernel(
+     unsigned high_pair_class, unsigned low_pair_class, double screening_tolerance,
+     std::uint64_t page_begin, std::uint32_t page_capacity, std::uint32_t bra_ordinal_begin,
+     std::uint32_t bra_ordinal_end, bool same_pair_class, const double* schwarz_bounds,
+-    const double* density, double* forces, std::uint32_t* bra_head) {
++    const double* density, double* forces, std::uint32_t* bra_head,
++    DeviceShellClassProfileEntry* profile) {
+   if (unrestricted == true) {
+     if (purpose == DirectScreeningPurpose::Fock) {
+       contract_bounded_exact_low_order_force_page_kernel<true, DirectScreeningPurpose::Fock>
+           <<<grid, block, shared_bytes, stream>>>(
+               batch, topology_pointer, shell_class, high_pair_class, low_pair_class,
+               screening_tolerance, page_begin, page_capacity, bra_ordinal_begin, bra_ordinal_end,
+-              same_pair_class, schwarz_bounds, density, forces, bra_head);
++              same_pair_class, schwarz_bounds, density, forces, bra_head, profile);
+     } else {
+       contract_bounded_exact_low_order_force_page_kernel<true, DirectScreeningPurpose::Force>
+           <<<grid, block, shared_bytes, stream>>>(
+               batch, topology_pointer, shell_class, high_pair_class, low_pair_class,
+               screening_tolerance, page_begin, page_capacity, bra_ordinal_begin, bra_ordinal_end,
+-              same_pair_class, schwarz_bounds, density, forces, bra_head);
++              same_pair_class, schwarz_bounds, density, forces, bra_head, profile);
+     }
+   } else {
+     if (purpose == DirectScreeningPurpose::Fock) {
+@@ -161,13 +167,13 @@ void launch_contract_bounded_exact_low_order_force_page_kernel(
+           <<<grid, block, shared_bytes, stream>>>(
+               batch, topology_pointer, shell_class, high_pair_class, low_pair_class,
+               screening_tolerance, page_begin, page_capacity, bra_ordinal_begin, bra_ordinal_end,
+-              same_pair_class, schwarz_bounds, density, forces, bra_head);
++              same_pair_class, schwarz_bounds, density, forces, bra_head, profile);
+     } else {
+       contract_bounded_exact_low_order_force_page_kernel<false, DirectScreeningPurpose::Force>
+           <<<grid, block, shared_bytes, stream>>>(
+               batch, topology_pointer, shell_class, high_pair_class, low_pair_class,
+               screening_tolerance, page_begin, page_capacity, bra_ordinal_begin, bra_ordinal_end,
+-              same_pair_class, schwarz_bounds, density, forces, bra_head);
++              same_pair_class, schwarz_bounds, density, forces, bra_head, profile);
+     }
+   }
+ }
+diff --git a/src/scf/cuda/direct_bounded_exact_force.hpp b/src/scf/cuda/direct_bounded_exact_force.hpp
+index de19dfa4..ac69423e 100644
+--- a/src/scf/cuda/direct_bounded_exact_force.hpp
++++ b/src/scf/cuda/direct_bounded_exact_force.hpp
+@@ -11,7 +11,7 @@
+ 
+ namespace vibeqc::scf::cuda_execution {
+ 
+-/** Forward the resolved native route with unchanged geometry and borrowed buffers. */
++/** Forward the native route and optional final-density work ledger. */
+ void launch_contract_bounded_exact_low_order_force_page_kernel(
+     bool unrestricted, DirectScreeningPurpose purpose, dim3 grid, dim3 block,
+     std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch,
+@@ -19,6 +19,7 @@ void launch_contract_bounded_exact_low_order_force_page_kernel(
+     unsigned high_pair_class, unsigned low_pair_class, double screening_tolerance,
+     std::uint64_t page_begin, std::uint32_t page_capacity, std::uint32_t bra_ordinal_begin,
+     std::uint32_t bra_ordinal_end, bool same_pair_class, const double* schwarz_bounds,
+-    const double* density, double* forces, std::uint32_t* bra_head);
++    const double* density, double* forces, std::uint32_t* bra_head,
++    DeviceShellClassProfileEntry* profile);
+ 
+ }  // namespace vibeqc::scf::cuda_execution
+diff --git a/src/scf/cuda/direct_bounded_fallback.cu b/src/scf/cuda/direct_bounded_fallback.cu
+index 24ddd73e..e5ca5ce3 100644
+--- a/src/scf/cuda/direct_bounded_fallback.cu
++++ b/src/scf/cuda/direct_bounded_fallback.cu
+@@ -191,7 +191,11 @@ __global__ __launch_bounds__(kBoundedDirectThreads, 1) void bounded_direct_shell
+         const unsigned angular_order =
+             batch.shell_angular[first_shell] + batch.shell_angular[second_shell] +
+             batch.shell_angular[third_shell] + batch.shell_angular[fourth_shell];
+-        if (angular_order <= 3U) continue;
++        // The scalar force pass covers order three (including fsss), but
++        // scalar Fock stops at order two.  Its order-three registry gaps must
++        // reach the generic value consumer or their contributions disappear.
++        constexpr unsigned scalar_maximum_order = Force ? 3U : 2U;
++        if (angular_order <= scalar_maximum_order) continue;
+         const std::size_t first_ao_count = shell_ao_pair_count(batch, base.first_pair);
+         const std::size_t second_ao_count = shell_ao_pair_count(batch, base.second_pair);
+         const std::size_t ao_quartets = base.first_pair == base.second_pair
+@@ -266,4 +270,30 @@ void launch_bounded_direct_shell_quartet_kernel(
+   }
+ }
+ 
++void launch_bounded_direct_fock_shell_quartet_kernel(
++    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
++    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
++    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
++    const double* shell_pair_block_bounds, const double* system_density_bounds,
++    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
++    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
++    const double* density, const std::uint8_t* active, double* fock,
++    unsigned long long* global_cursor) {
++  if (unrestricted) {
++    bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>
++        <<<grid, block, shared_bytes, stream>>>(
++            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
++            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
++            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
++            global_cursor, nullptr);
++  } else {
++    bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>
++        <<<grid, block, shared_bytes, stream>>>(
++            batch, screening_tolerance, shell_pair_bounds, shell_pair_density_bounds,
++            shell_pair_order, shell_pair_block_bounds, system_density_bounds, enabled_mask_pointer,
++            enabled_mask, bounded_generated_overflow, schwarz_bounds, density, active, fock,
++            global_cursor, nullptr);
++  }
++}
++
+ }  // namespace vibeqc::scf::cuda_execution
+diff --git a/src/scf/cuda/direct_bounded_fallback.hpp b/src/scf/cuda/direct_bounded_fallback.hpp
+index 5214073f..1d3b1e9f 100644
+--- a/src/scf/cuda/direct_bounded_fallback.hpp
++++ b/src/scf/cuda/direct_bounded_fallback.hpp
+@@ -11,7 +11,7 @@
+ 
+ namespace vibeqc::scf::cuda_execution {
+ 
+-/** Forward the resolved native route with unchanged geometry and borrowed buffers. */
++/** Force-output fallback; purpose selects screening semantics, not the scientific output. */
+ void launch_bounded_direct_shell_quartet_kernel(
+     bool unrestricted, DirectScreeningPurpose purpose, dim3 grid, dim3 block,
+     std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch, double screening_tolerance,
+@@ -22,4 +22,15 @@ void launch_bounded_direct_shell_quartet_kernel(
+     const double* schwarz_bounds, const double* density, const std::uint8_t* active, double* output,
+     unsigned long long* global_cursor, DeviceShellClassProfileEntry* profile);
+ 
++/** Consume only Fock registry gaps through the bounded hierarchical dispatcher. */
++void launch_bounded_direct_fock_shell_quartet_kernel(
++    bool unrestricted, dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
++    DeviceBatch batch, double screening_tolerance, const double* shell_pair_bounds,
++    const ShellPairDensityBounds* shell_pair_density_bounds, const std::uint32_t* shell_pair_order,
++    const double* shell_pair_block_bounds, const double* system_density_bounds,
++    const std::uint64_t* enabled_mask_pointer, std::uint64_t enabled_mask,
++    const std::uint32_t* bounded_generated_overflow, const double* schwarz_bounds,
++    const double* density, const std::uint8_t* active, double* fock,
++    unsigned long long* global_cursor);
++
+ }  // namespace vibeqc::scf::cuda_execution
+diff --git a/src/scf/cuda/rhf_policy.cpp b/src/scf/cuda/rhf_policy.cpp
+index 86ffd570..425a2691 100644
+--- a/src/scf/cuda/rhf_policy.cpp
++++ b/src/scf/cuda/rhf_policy.cpp
+@@ -397,8 +397,17 @@ bool aot_shell_class_selection_override_requested() noexcept {
+   return selection != nullptr && *selection != '\0' && std::strcmp(selection, "all") != 0;
+ }
+ 
++DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept {
++  const bool requested = selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
++  return {
++      .requested = requested,
++      .produces_numerical_endpoint = !requested,
++      .endpoint_status = requested ? VIBEQC_STATUS_NOT_IMPLEMENTED : VIBEQC_STATUS_SUCCESS,
++  };
++}
++
+ bool direct_tile_validation_requested() noexcept {
+-  return selected("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
++  return resolve_direct_tile_validation_policy().requested;
+ }
+ 
+ double converged_fock_reuse_density_rms(double density_tolerance) noexcept {
+diff --git a/src/scf/cuda/rhf_policy.hpp b/src/scf/cuda/rhf_policy.hpp
+index fb8215c7..782d64e1 100644
+--- a/src/scf/cuda/rhf_policy.hpp
++++ b/src/scf/cuda/rhf_policy.hpp
+@@ -232,6 +232,20 @@ bool bounded_direct_fock_only_diagnostic_requested() noexcept;
+ bool bounded_fock_class_timing_requested() noexcept;
+ /** True when force AOT classes are explicitly narrowed for a diagnostic replay. */
+ bool aot_shell_class_selection_override_requested() noexcept;
++/**
++ * Direct-tile validation is a structural diagnostic, never a numerical endpoint.
++ *
++ * When requested, CUDA execution may build and validate the compacted descriptor
++ * queue, but it must stop before reporting SCF energy/force results.  The explicit
++ * non-success endpoint status prevents diagnostic output from being mistaken for
++ * scientific correctness evidence.
++ */
++struct DirectTileValidationPolicy {
++  bool requested{};
++  bool produces_numerical_endpoint{true};
++  vibeqc_status endpoint_status{VIBEQC_STATUS_SUCCESS};
++};
++DirectTileValidationPolicy resolve_direct_tile_validation_policy() noexcept;
+ bool direct_tile_validation_requested() noexcept;
+ double converged_fock_reuse_density_rms(double density_tolerance) noexcept;
+ bool force_density_product_screening_requested() noexcept;
+diff --git a/src/scf/cuda_hf_entry.cpp b/src/scf/cuda_hf_entry.cpp
+index f0f48ab8..3cc70c7d 100644
+--- a/src/scf/cuda_hf_entry.cpp
++++ b/src/scf/cuda_hf_entry.cpp
+@@ -4,6 +4,7 @@
+ 
+ #include "scf/cuda_batch.hpp"
+ #include "scf/rhf.hpp"
++#include "vibeqc/vibeqc.hpp"
+ 
+ namespace vibeqc::scf {
+ 
+@@ -25,6 +26,11 @@ ScfResult run_rhf_cuda(const core::System& system, const ScfOptions& options, in
+   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) {
+     throw std::invalid_argument("CUDA RHF received invalid arguments");
+   }
++  // Preserve the structural-only diagnostic status through the single-system
++  // adapter; translating it to runtime_error would turn it into INTERNAL_ERROR.
++  if (status == VIBEQC_STATUS_NOT_IMPLEMENTED) {
++    throw Error(status, "CUDA RHF numerical endpoint is unavailable in this mode");
++  }
+   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_SCF_NOT_CONVERGED) {
+     throw std::runtime_error("CUDA RHF execution failed");
+   }
+@@ -45,6 +51,9 @@ ScfResult run_uhf_cuda(const core::System& system, const ScfOptions& options, in
+   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) {
+     throw std::invalid_argument("CUDA UHF received invalid arguments");
+   }
++  if (status == VIBEQC_STATUS_NOT_IMPLEMENTED) {
++    throw Error(status, "CUDA UHF numerical endpoint is unavailable in this mode");
++  }
+   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_SCF_NOT_CONVERGED) {
+     throw std::runtime_error("CUDA UHF execution failed");
+   }
+diff --git a/src/scf/cuda_rhf.cpp b/src/scf/cuda_rhf.cpp
+index c558c5e0..af74d67a 100644
+--- a/src/scf/cuda_rhf.cpp
++++ b/src/scf/cuda_rhf.cpp
+@@ -574,7 +574,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+   const bool bounded_direct_aot_only_diagnostic = bounded_direct_aot_only_diagnostic_requested();
+   const bool bounded_direct_fock_only_diagnostic = bounded_direct_fock_only_diagnostic_requested();
+   const bool bounded_fock_class_timing = bounded_fock_class_timing_requested();
+-  const bool direct_tile_validation = direct_tile_validation_requested();
++  const auto direct_tile_validation_policy = cuda_policy::resolve_direct_tile_validation_policy();
++  const bool direct_tile_validation = direct_tile_validation_policy.requested;
+   // Read this per execution so one prepared topology can compare the new
+   // route with the complete ordinary ppps queue in the same binary.
+   const bool resident_ppps_bra = resident_ppps_bra_requested();
+@@ -2143,16 +2144,35 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+     }
+     return cudaSuccess;
+   };
++  const auto launch_bounded_generic_fock = [&](bool is_unrestricted, const double* quartet_density,
++                                               double* quartet_fock) -> cudaError_t {
++    if (host_uncovered_fock_shell_class_mask == 0U || bounded_direct_aot_only_diagnostic) {
++      return cudaSuccess;
++    }
++    // Generated/native pages own every class in host_generated_fock_shell_class_mask.
++    // Visit only the remaining high-l registry gaps through the hierarchical
++    // pair-block dispatcher. This preserves bounded memory without resurrecting
++    // a topology-sized descriptor arena or double-counting qualified classes.
++    cudaError_t error = cudaMemsetAsync(
++        bounded_direct_generated_overflow, 0,
++        detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
++    if (error == cudaSuccess) {
++      error =
++          cudaMemsetAsync(bounded_direct_cursor, 0, sizeof(unsigned long long), resources.stream_);
++    }
++    if (error != cudaSuccess) return error;
++    launch_bounded_direct_fock_shell_quartet_kernel(
++        is_unrestricted, plan.persistent_quartet_worker_blocks, kBoundedDirectThreads, 0,
++        resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
++        shell_pair_density_bounds, bounded_direct_shell_pair_order,
++        bounded_direct_shell_pair_block_bounds, bounded_direct_system_density_bounds, nullptr,
++        host_generated_fock_shell_class_mask, bounded_direct_generated_overflow, schwarz_bounds,
++        quartet_density, active, quartet_fock, bounded_direct_cursor);
++    return cudaPeekAtLastError();
++  };
+   const auto launch_bounded_generated_fock =
+       [&](bool is_unrestricted, const double* quartet_density, double* quartet_fock,
+           bool allow_mixed_precision) -> cudaError_t {
+-    // The bounded Fock path follows the same hard routing invariant as force:
+-    // every present class must have a generated or native exact consumer.
+-    // Missing classes are unsupported instead of silently invoking the
+-    // whole-topology generic evaluator.
+-    if (host_uncovered_fock_shell_class_mask != 0U && !bounded_direct_aot_only_diagnostic) {
+-      return cudaErrorNotSupported;
+-    }
+     if (bounded_direct_fock_only_diagnostic) {
+       // The fixed-density measurement uses one uniform streaming schedule.
+       // Mark every generated class for that consumer so an all-FP64 page does
+@@ -2161,8 +2181,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+           bounded_direct_generated_overflow, 1,
+           detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
+       if (diagnostic_error != cudaSuccess) return diagnostic_error;
+-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
+-                                           allow_mixed_precision);
++      diagnostic_error = launch_bounded_streaming_fock(is_unrestricted, quartet_density,
++                                                       quartet_fock, allow_mixed_precision);
++      return diagnostic_error == cudaSuccess
++                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
++                 : diagnostic_error;
+     }
+     if (!bounded_direct_count_diagnostic) {
+       // Normal bounded execution uses disjoint exact pages for every
+@@ -2176,8 +2199,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+       cudaError_t paged_error =
+           launch_bounded_paged_generated_fock(is_unrestricted, quartet_density, quartet_fock);
+       if (paged_error != cudaSuccess) return paged_error;
+-      return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
+-                                           allow_mixed_precision);
++      cudaError_t streaming_error = launch_bounded_streaming_fock(
++          is_unrestricted, quartet_density, quartet_fock, allow_mixed_precision);
++      return streaming_error == cudaSuccess
++                 ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
++                 : streaming_error;
+     }
+     cudaError_t error = cudaMemsetAsync(
+         bounded_direct_generated_task_counts, 0,
+@@ -2278,8 +2304,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+     error = consume_generated_wave(bounded_direct_generated_retry_task_offsets);
+     if (error != cudaSuccess) return error;
+ 
+-    return launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
+-                                         allow_mixed_precision);
++    error = launch_bounded_streaming_fock(is_unrestricted, quartet_density, quartet_fock,
++                                          allow_mixed_precision);
++    return error == cudaSuccess
++               ? launch_bounded_generic_fock(is_unrestricted, quartet_density, quartet_fock)
++               : error;
+   };
+   // The exact provider is resolved/validated by run_hf_cuda_bucket_cached.
+   // Dense, packed, generated and streamed paths below are execution schedules
+@@ -3039,6 +3068,16 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+       }
+     }
+   }
++  if (cuda_error == cudaSuccess && direct_tile_validation) {
++    // This mode validates descriptor structure only.  The Fock consumer was
++    // intentionally skipped above, so returning a numerical SCF endpoint here
++    // would turn a structural diagnostic into misleading scientific evidence.
++    std::fprintf(stderr,
++                 "direct-tile-validation mode=structural-only numerical-endpoint=disabled\n");
++    std::fflush(stderr);
++    fill_global_failure(outputs, direct_tile_validation_policy.endpoint_status);
++    return outputs;
++  }
+   if (cuda_error == cudaSuccess && bounded_direct_count_diagnostic && bounded_direct_streaming) {
+     cuda_error = cudaStreamSynchronize(resources.stream_);
+     std::array<std::uint32_t, detail::kDirectQuartetShellClassCount> host_counts{};
+@@ -4168,7 +4207,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
+       kBoundedDirectThreads, 0, resources.stream_, device_batch, bounded_stream_topology,         \
+       shell_class, high_pair_class, low_pair_class, options.screening_tolerance, page_begin,      \
+       page_capacity, page_range.bra_begin, page_range.bra_end, high_pair_class == low_pair_class, \
+-      schwarz_bounds, quartet_density, forces, bounded_direct_generated_task_heads + shell_class)
++      schwarz_bounds, quartet_density, forces, bounded_direct_generated_task_heads + shell_class, \
++      shell_class_profiling ? shell_class_profile : nullptr)
+         if (purpose == DirectScreeningPurpose::Force) {
+           if (is_unrestricted) {
+             VIBEQC_LAUNCH_BOUNDED_NATIVE_PAGE(true, DirectScreeningPurpose::Force);
+diff --git a/tests/native/test_precision_policy.cpp b/tests/native/test_precision_policy.cpp
+index 410d78f9..20708c68 100644
+--- a/tests/native/test_precision_policy.cpp
++++ b/tests/native/test_precision_policy.cpp
+@@ -526,6 +526,45 @@ void verify_one_electron_provider_policy() {
+   }
+ }
+ 
++void verify_direct_tile_validation_policy() {
++  using vibeqc::scf::cuda_policy::direct_tile_validation_requested;
++  using vibeqc::scf::cuda_policy::resolve_direct_tile_validation_policy;
++
++  {
++    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", nullptr);
++    const auto policy = resolve_direct_tile_validation_policy();
++    require(!policy.requested && policy.produces_numerical_endpoint &&
++                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
++            "ordinary CUDA execution keeps its numerical endpoint");
++    require(!direct_tile_validation_requested(),
++            "absent tile-validation diagnostic remains disabled");
++  }
++  {
++    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "validate");
++    const auto policy = resolve_direct_tile_validation_policy();
++    require(policy.requested && !policy.produces_numerical_endpoint,
++            "tile validation is explicitly structural-only");
++    require(policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
++            "structural validation cannot report a successful numerical endpoint");
++    require(direct_tile_validation_requested(),
++            "the compatibility selector follows the explicit validation policy");
++  }
++  {
++    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "1");
++    const auto policy = resolve_direct_tile_validation_policy();
++    require(policy.requested && !policy.produces_numerical_endpoint &&
++                policy.endpoint_status == VIBEQC_STATUS_NOT_IMPLEMENTED,
++            "legacy truthy tile-validation selector preserves diagnostic semantics");
++  }
++  {
++    ScopedEnv validation("VIBEQC_DIRECT_TILE_VALIDATION", "unexpected");
++    const auto policy = resolve_direct_tile_validation_policy();
++    require(!policy.requested && policy.produces_numerical_endpoint &&
++                policy.endpoint_status == VIBEQC_STATUS_SUCCESS,
++            "unknown tile-validation spellings do not silently enter diagnostic mode");
++  }
++}
++
+ void verify_cpu_provenance() {
+   const vibeqc::scf::ScfResult fp64 =
+       run_cpu_rhf(std::optional<vibeqc_precision_mode>(VIBEQC_PRECISION_FP64));
+@@ -572,6 +611,7 @@ int main() {
+     verify_aot_shell_class_selection_override();
+     verify_converged_fock_reuse_rms();
+     verify_one_electron_provider_policy();
++    verify_direct_tile_validation_policy();
+     verify_cpu_provenance();
+     std::cout << "validated precision policy controller and CPU provenance\n";
+     return EXIT_SUCCESS;
+diff --git a/tests/python/test_bounded_direct_high_l_cuda.py b/tests/python/test_bounded_direct_high_l_cuda.py
+new file mode 100644
+index 00000000..0c6c2a3b
+--- /dev/null
++++ b/tests/python/test_bounded_direct_high_l_cuda.py
+@@ -0,0 +1,133 @@
++"""Bounded Direct-HF must retain exact high-angular Fock and force coverage."""
++
++import json
++import os
++from collections.abc import Callable
++from dataclasses import asdict
++
++import numpy as np
++import pytest
++from vibeqc import Calculator, Primitive, Shell
++
++pytestmark = pytest.mark.skipif(
++    os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
++    reason="requires an explicitly Slurm-allocated GPU",
++)
++
++ATOMS = (("He", (0.0, 0.0, -0.7)), ("H", (0.0, 0.0, 0.7)))
++BASIS = (
++    Shell(0, 0, (Primitive(1.5, 1.0),)),
++    Shell(0, 2, (Primitive(0.8, 1.0),)),
++    Shell(0, 3, (Primitive(0.6, 1.0),)),
++    Shell(1, 0, (Primitive(1.2, 1.0),)),
++)
++
++
++@pytest.mark.parametrize(
++    ("method", "charge", "multiplicity"),
++    (("rhf", 1, 1), ("uhf", 0, 2)),
++)
++def test_forced_bounded_high_l_matches_fixed(
++    monkeypatch: pytest.MonkeyPatch,
++    method: str,
++    charge: int,
++    multiplicity: int,
++    record_property: Callable[[str, object], None],
++) -> None:
++    """Registry gaps use the bounded high-l oracle instead of failing late."""
++
++    assert os.environ.get("SLURM_JOB_ID")
++    monkeypatch.delenv("VIBEQC_BOUNDED_DIRECT_STREAMING", raising=False)
++    monkeypatch.delenv("VIBEQC_DIRECT_TILE_VALIDATION", raising=False)
++    options = {
++        "method": method,
++        "basis": BASIS,
++        "device": "cuda",
++        "density_fitting": "none",
++        "energy_tolerance": 1.0e-12,
++        "density_tolerance": 1.0e-10,
++        "screening_tolerance": 1.0e-14,
++    }
++    # This suite is explicitly admitted by a GPU allocation. Runtime failures
++    # must fail the gate rather than masquerading as unavailable-device skips.
++    with Calculator(**options).prepare_batch(
++        [ATOMS],
++        charges=[charge],
++        multiplicities=[multiplicity],
++        shell_class_profiling=True,
++    ) as prepared:
++        fixed = prepared.execute(strict=True).items[0]
++        fixed_work = prepared.last_shell_class_profile()
++
++    monkeypatch.setenv("VIBEQC_BOUNDED_DIRECT_STREAMING", "force")
++    with Calculator(**options).prepare_batch(
++        [ATOMS],
++        charges=[charge],
++        multiplicities=[multiplicity],
++        shell_class_profiling=True,
++    ) as prepared:
++        bounded = prepared.execute(strict=True).items[0]
++        bounded_work = prepared.last_shell_class_profile()
++
++    assert fixed.executed_backend == bounded.executed_backend == "cuda"
++    assert bounded.energy == pytest.approx(fixed.energy, abs=2.0e-10)
++    np.testing.assert_allclose(bounded.forces, fixed.forces, atol=6.0e-9, rtol=0)
++    # Generated, native, and fallback routes must own the same final-density
++    # shell/AO/primitive domain, with no omitted or double-counted quartets.
++    assert fixed_work == bounded_work
++    assert any(row.label == "fsss" and row.shell_quartets for row in bounded_work)
++    record_property("work_counts", json.dumps([asdict(row) for row in bounded_work]))
++
++    # Both routes share retained recurrence code; their agreement alone cannot
++    # establish the mathematics. Recompute the Cartesian reference with libcint.
++    from pyscf import gto, scf
++
++    molecule = gto.M(
++        atom=ATOMS,
++        basis={
++            "He": [[0, [1.5, 1.0]], [2, [0.8, 1.0]], [3, [0.6, 1.0]]],
++            "H": [[0, [1.2, 1.0]]],
++        },
++        unit="Bohr",
++        cart=True,
++        charge=charge,
++        spin=multiplicity - 1,
++        verbose=0,
++    )
++    reference = (scf.RHF if method == "rhf" else scf.UHF)(molecule)
++    reference.conv_tol = 1.0e-13
++    reference.conv_tol_grad = 1.0e-10
++    reference.kernel()
++    assert reference.converged
++    assert bounded.energy == pytest.approx(reference.e_tot, abs=2.0e-10)
++    oracle_forces = -reference.nuc_grad_method().kernel()
++    np.testing.assert_allclose(bounded.forces, oracle_forces, atol=6.0e-9, rtol=0)
++    record_property("oracle_energy_error", abs(bounded.energy - reference.e_tot))
++    record_property(
++        "oracle_force_error", float(np.max(np.abs(bounded.forces - oracle_forces)))
++    )
++
++
++@pytest.mark.parametrize("bounded", [False, True])
++@pytest.mark.parametrize(
++    ("method", "charge", "multiplicity"),
++    (("rhf", 1, 1), ("uhf", 0, 2)),
++)
++def test_tile_validation_is_structural_only(
++    monkeypatch: pytest.MonkeyPatch,
++    bounded: bool,
++    method: str,
++    charge: int,
++    multiplicity: int,
++) -> None:
++    """A successful descriptor diagnostic cannot return an SCF result."""
++    assert os.environ.get("SLURM_JOB_ID")
++    monkeypatch.setenv("VIBEQC_DIRECT_TILE_VALIDATION", "validate")
++    monkeypatch.setenv(
++        "VIBEQC_BOUNDED_DIRECT_STREAMING", "force" if bounded else "none"
++    )
++    calculator = Calculator(
++        method=method, basis=BASIS, device="cuda", density_fitting="none"
++    )
++    with pytest.raises(NotImplementedError):
++        calculator.singlepoint(ATOMS, charge=charge, multiplicity=multiplicity)
+diff --git a/tests/python/test_codegen.py b/tests/python/test_codegen.py
+index 4af2adbc..7779ce89 100644
+--- a/tests/python/test_codegen.py
++++ b/tests/python/test_codegen.py
+@@ -1686,6 +1686,50 @@ def test_bounded_force_registry_gaps_use_exact_runtime_fallback() -> None:
+     assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
+ 
+ 
++def test_bounded_fock_registry_gaps_use_exact_runtime_fallback() -> None:
++    """Keep high-l bounded Fock correct without an unbounded descriptor arena."""
++
++    source = _direct_cuda_source()
++    fallback = source.index("const auto launch_bounded_generic_fock")
++    dispatch = source.index("const auto launch_bounded_generated_fock", fallback)
++    dispatch_end = source.index(
++        "// The exact provider is resolved/validated by run_hf_cuda_bucket_cached.",
++        dispatch,
++    )
++    assert fallback < dispatch < dispatch_end
++    assert "host_uncovered_fock_shell_class_mask == 0U" in source[fallback:dispatch]
++    assert (
++        "launch_bounded_direct_fock_shell_quartet_kernel" in source[fallback:dispatch]
++    )
++    assert "host_generated_fock_shell_class_mask" in source[fallback:dispatch]
++    assert "launch_bounded_generic_fock" in source[dispatch:dispatch_end]
++    assert "return cudaErrorNotSupported;" not in source[dispatch:dispatch_end]
++
++    fallback_source = (
++        REPOSITORY_ROOT / "src/scf/cuda/direct_bounded_fallback.cu"
++    ).read_text()
++    fock_wrapper = fallback_source.index(
++        "void launch_bounded_direct_fock_shell_quartet_kernel("
++    )
++    assert (
++        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, false>"
++        in fallback_source[fock_wrapper:]
++    )
++    assert (
++        "bounded_direct_shell_quartet_kernel<false, DirectScreeningPurpose::Fock, false>"
++        in fallback_source[fock_wrapper:]
++    )
++    # The older force fallback may use Fock screening while still writing forces.
++    # Do not conflate screening purpose with the scientific consumer again.
++    force_wrapper = fallback_source.index(
++        "void launch_bounded_direct_shell_quartet_kernel("
++    )
++    assert (
++        "bounded_direct_shell_quartet_kernel<true, DirectScreeningPurpose::Fock, true>"
++        in fallback_source[force_wrapper:fock_wrapper]
++    )
++
++
+ def test_production_manifest_drives_generated_registry_and_shards(
+     tmp_path: Path,
+ ) -> None:

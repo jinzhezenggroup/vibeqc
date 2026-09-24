@@ -29,8 +29,16 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from vibeqc.profiles import find_nvcc
-from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.common.evidence import (
+    GATES,
+    block_error,
+    canonical_hash,
+    new_evidence,
+    outcome,
+    validate_evidence,
+)
 from vibeqc_compiler.tensor import (
     PrecisionDirective,
     conservative_precision_variants,
@@ -46,15 +54,6 @@ from vibeqc_compiler.tensor.cuda_fixtures import cc_fixtures
 from vibeqc_compiler.tensor.cuda_plan import Reservations, TensorSchedule, plan_cuda
 from vibeqc_compiler.tensor.cuda_tune import tune_cuda
 from vibeqc_compiler.tensor.interpreter import execute
-
-from tools.vibeqc_validation.schema import (
-    GATES,
-    block_error,
-    canonical_hash,
-    new_evidence,
-    outcome,
-    validate_evidence,
-)
 
 ROOT = Path(__file__).resolve().parents[1]
 

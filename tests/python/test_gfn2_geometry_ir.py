@@ -231,7 +231,7 @@ def test_parameter_subset_covers_complete_gfn2_element_domain() -> None:
         gfn2_element_parameters(87)
 
 
-def test_gfn2_coordination_matches_pinned_mctc_xtbloom_oracle() -> None:
+def test_gfn2_coordination_matches_pinned_mctc_vibeqc_xtb_oracle() -> None:
     compiled = _compiled(
         CN_ATOMIC_NUMBERS,
         CN_COORDINATES,
@@ -591,8 +591,8 @@ def test_gfn2_ragged_geometry_primal_and_vjps_execute_on_cuda(
     tmp_path: Path,
 ) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 
@@ -641,8 +641,8 @@ def test_gfn2_ragged_geometry_primal_and_vjps_execute_on_cuda(
 )
 def test_gfn2_geometry_primal_and_vjps_execute_on_cuda(tmp_path: Path) -> None:
     from vibeqc.profiles import find_nvcc
-    from vibeqc_compiler.integral.cuda_adapter import CudaCompilerAdapter
-    from vibeqc_compiler.integral.cuda_target import cuda_target_info
+    from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
     from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
     from vibeqc_compiler.tensor.cuda_plan import plan_cuda
 

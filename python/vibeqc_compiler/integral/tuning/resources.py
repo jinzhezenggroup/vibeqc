@@ -5,10 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..batch_benchmark import KernelResources
-    from ..cuda_target import (
+    from vibeqc_compiler.common.cuda_target import (
         CudaTargetInfo,
     )
+
+    from ..batch_benchmark import KernelResources
     from ..ir import KernelConsumer
     from .policy import ScheduleTrial
 

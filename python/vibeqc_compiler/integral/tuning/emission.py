@@ -9,6 +9,11 @@ import hashlib
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.cuda_target import (
+    cuda_target_info,
+    normalize_cuda_architecture,
+)
+
 from ..benchmark import (
     emit_shell_class_benchmark_cuda,
     emit_shell_class_oracle_cuda,
@@ -20,7 +25,6 @@ from ..cuda_schedule import (
     PairStorage,
     ScheduleKind,
 )
-from ..cuda_target import cuda_target_info, normalize_cuda_architecture
 from ..fused_schedule import build_fused_shell_plan
 from ..ir import KernelConsumer, build_integral_ir
 from .policy import ScheduleTrial

@@ -250,6 +250,10 @@ def run_matrix(
             "--output",
             str(result_path),
         ]
+        # GPU4PySCF's matched DF reference must rebuild the full Fock from the
+        # full density.  Without this explicit protocol flag its incremental
+        # DF path rejects the issue-206 endpoint before producing a result.
+        command.append("--reference-full-fock")
         command.extend(["--maximum-energy-error", "1e-9"])
         if payload["execution"].get("properties") == ["energy"]:
             command.append("--energy-only")

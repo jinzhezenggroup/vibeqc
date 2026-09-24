@@ -12,6 +12,7 @@
 #include "scf/cuda_density_fitting_eigen.hpp"
 #include "scf/cuda_density_fitting_final_state.hpp"
 #include "scf/df_exchange_policy.hpp"
+#include "scf/df_projected_exchange_schedule.hpp"
 #include "scf/df_streamed_k_policy.hpp"
 #include "tensor/cpu_linalg.hpp"
 #include "tensor/symmetric_matrix_function.hpp"
@@ -654,57 +655,6 @@ std::size_t workspace_bytes(std::size_t ao_pair_tile, std::size_t auxiliary_tile
   return static_cast<std::size_t>(bytes);
 }
 
-std::vector<double> metric_function_response_from_value(
-    const std::vector<double>& metric, const std::vector<double>& function_value_matrix,
-    const std::vector<double>& response, std::size_t n, double relative_threshold,
-    tensor::SymmetricMatrixFunction function) {
-  const auto elements = checked_matrix_elements(n, "DF metric response dimension is invalid");
-  if (metric.size() != elements || function_value_matrix.size() != elements ||
-      response.size() != elements || !std::isfinite(relative_threshold) ||
-      relative_threshold < 0.0 || relative_threshold >= 1.0)
-    throw std::invalid_argument("DF metric response dimensions or threshold are inconsistent");
-  require_finite(metric, "DF metric response requires a finite metric");
-  require_finite(function_value_matrix, "DF metric response requires a finite matrix function");
-  require_finite(response, "DF metric response requires finite weights");
-
-  std::vector<double> symmetric(elements);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      symmetric[i * n + j] = 0.5 * (metric[i * n + j] + metric[j * n + i]);
-
-  const auto eigen = symmetric_eigen(std::move(symmetric), n);
-  const auto& q = eigen.vectors;
-  const double largest = eigen.values.back();
-  if (!(largest > 0.0)) throw std::runtime_error("DF metric has no positive response subspace");
-  const double cutoff = relative_threshold * largest;
-  const double resolution = 128 * std::numeric_limits<double>::epsilon() * largest;
-  std::vector<std::uint8_t> retained(n);
-  for (std::size_t i = 0; i < n; ++i) {
-    double projected_value = 0.0;
-    for (std::size_t row = 0; row < n; ++row)
-      for (std::size_t column = 0; column < n; ++column)
-        projected_value +=
-            q[row * n + i] * function_value_matrix[row * n + column] * q[column * n + i];
-    if (function == tensor::SymmetricMatrixFunction::pseudoinverse) {
-      retained[i] = eigen.values[i] * projected_value > 0.5;
-    } else {
-      retained[i] = eigen.values[i] > 0.0 && std::sqrt(eigen.values[i]) * projected_value > 0.5;
-    }
-    if (relative_threshold > 0.0) {
-      if (std::abs(eigen.values[i] - cutoff) <= resolution)
-        throw std::runtime_error("DF metric rank crossing: eigenvalue is unresolved at the cutoff");
-      if (static_cast<bool>(retained[i]) != (eigen.values[i] > cutoff))
-        throw std::invalid_argument(
-            "DF metric function active subspace differs from its threshold");
-    }
-  }
-  if (std::none_of(retained.begin(), retained.end(), [](std::uint8_t keep) { return keep != 0; }))
-    throw std::invalid_argument("DF metric function retains no positive subspace");
-
-  return tensor::symmetric_matrix_function_vjp(eigen.values, q, retained, response, function,
-                                               resolution);
-}
-
 }  // namespace
 
 bool cpu_materialized_df_derivatives_requested() noexcept {
@@ -739,69 +689,23 @@ std::vector<double> density_fitting_metric_inverse_response(const std::vector<do
                                                             const std::vector<double>& response,
                                                             std::size_t n,
                                                             double relative_threshold) {
-  return metric_function_response_from_value(metric, inverse, response, n, relative_threshold,
-                                             tensor::SymmetricMatrixFunction::pseudoinverse);
+  return integrals::density_fitting_metric_response(metric, inverse, response, n,
+                                                    relative_threshold,
+                                                    tensor::SymmetricMatrixFunction::pseudoinverse);
 }
 
 std::vector<double> density_fitting_metric_inverse_square_root_response(
     const std::vector<double>& metric, const std::vector<double>& inverse_square_root,
     const std::vector<double>& response, std::size_t n, double relative_threshold) {
-  return metric_function_response_from_value(metric, inverse_square_root, response, n,
-                                             relative_threshold,
-                                             tensor::SymmetricMatrixFunction::inverse_sqrt);
+  return integrals::density_fitting_metric_response(metric, inverse_square_root, response, n,
+                                                    relative_threshold,
+                                                    tensor::SymmetricMatrixFunction::inverse_sqrt);
 }
 
 DensityFittingMetricFactor factor_density_fitting_metric(const std::vector<double>& metric,
                                                          std::size_t dimension,
                                                          double relative_threshold) {
-  std::size_t metric_elements = 0;
-  if (dimension == 0 || !checked_multiply(dimension, dimension, metric_elements) ||
-      metric.size() != metric_elements) {
-    throw std::invalid_argument("metric dimensions are inconsistent");
-  }
-  if (!(relative_threshold > 0.0) || !(relative_threshold < 1.0)) {
-    throw std::invalid_argument("metric relative threshold must lie strictly between zero and one");
-  }
-  std::vector<double> symmetric(metric.size());
-  for (std::size_t row = 0; row < dimension; ++row) {
-    for (std::size_t column = 0; column < dimension; ++column) {
-      const double value =
-          0.5 * (metric[index(row, column, dimension)] + metric[index(column, row, dimension)]);
-      if (!std::isfinite(value)) {
-        throw std::invalid_argument("metric entries must be finite");
-      }
-      symmetric[index(row, column, dimension)] = value;
-    }
-  }
-  const EigenResult eigen = symmetric_eigen(std::move(symmetric), dimension);
-  const double largest = eigen.values.back();
-  if (!(largest > 0.0) || !std::isfinite(largest)) {
-    throw std::runtime_error("Coulomb metric has no positive eigenspace");
-  }
-  DensityFittingMetricFactor result;
-  result.dimension = dimension;
-  result.absolute_threshold = relative_threshold * largest;
-  result.inverse_square_root.assign(metric_elements, 0.0);
-  double smallest_retained = largest;
-  for (std::size_t item = 0; item < dimension; ++item) {
-    const double value = eigen.values[item];
-    if (value <= result.absolute_threshold) continue;
-    ++result.effective_rank;
-    smallest_retained = std::min(smallest_retained, value);
-    const double scale = 1.0 / std::sqrt(value);
-    for (std::size_t row = 0; row < dimension; ++row) {
-      for (std::size_t column = 0; column < dimension; ++column) {
-        result.inverse_square_root[index(row, column, dimension)] +=
-            eigen.vectors[index(row, item, dimension)] * scale *
-            eigen.vectors[index(column, item, dimension)];
-      }
-    }
-  }
-  if (result.effective_rank == 0) {
-    throw std::runtime_error("Coulomb metric threshold removed every auxiliary direction");
-  }
-  result.condition_number = largest / smallest_retained;
-  return result;
+  return integrals::factor_density_fitting_metric(metric, dimension, relative_threshold);
 }
 
 DensityFittingThreeCenter orthonormalize_density_fitting_three_center(
@@ -1174,11 +1078,16 @@ static DensityFittingTilePlan plan_density_fitting_tiles_impl(
   // contraction/setup/SCF allowance fits. Zero keeps the compatibility policy.
   if (memory_budget_bytes != 0) {
     plan.ao_pair_tile = ao_pair_count;
-    // Generated B retention needs one full tensor plus three bounded K panels.
-    // Full AO rows keep the resident GEMM/capture layout; Q is independent of
-    // the stored auxiliary extent. A fixed ceiling avoids spending every extra
-    // GiB on interchangeable contraction scratch after B already fits.
-    plan.auxiliary_tile = generated_source ? std::min<std::size_t>(naux, 128) : naux;
+    // Generated B retention needs one full tensor plus three K panels. The
+    // ordinary dense path caps interchangeable Q scratch at 128, but a
+    // method-authorized occupied-RHF plan needs the complete Q extent so that
+    // both SCF K and the exact raw-response owner can be reused. If that full
+    // layout does not fit, the generated branch below finds the largest
+    // bounded resident panel and the automatic wrapper drops the optional
+    // factor reservation.
+    plan.auxiliary_tile = generated_source && occupied_exchange ? naux
+                          : generated_source                    ? std::min<std::size_t>(naux, 128)
+                                                                : naux;
     plan.stores_full_three_center = generated_source;
     update_bytes();
     if (plan.peak_workspace_bytes <= memory_budget_bytes) {
@@ -1258,22 +1167,47 @@ static DensityFittingTilePlan plan_density_fitting_tiles_impl(
   return plan;
 }
 
-/** Automatic factors are optional: never shrink a dense plan solely to charge
- * storage that the resulting streamed/partial path cannot consume. */
+/** Automatic factors are optional: retain dense residency when it fits, and
+ * reserve streamed factors only when the compiler predicts less raw work. */
 DensityFittingTilePlan plan_density_fitting_tiles(std::size_t batch, std::size_t nbf,
                                                   std::size_t naux, std::size_t occupied,
                                                   std::size_t budget, std::size_t fixed,
                                                   bool generated_source,
                                                   std::size_t automatic_rhf_rank) {
-  const bool automatic = df_occupied_exchange_auto_requested() && !generated_source &&
+  const bool automatic = df_occupied_exchange_auto_requested() &&
                          df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank);
   if (automatic) {
     try {
       auto plan = plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget, fixed,
                                                   generated_source, true);
-      if (plan.stores_full_three_center) {
+      const auto ao_pair_count = nbf * nbf;
+      // A retained B tensor with a bounded Q panel cannot consume the
+      // automatic occupied owner. Keep the ordinary dense/source plan in that
+      // case instead of charging SCF factor state that execution cannot use.
+      if (plan.stores_full_three_center && plan.ao_pair_tile == ao_pair_count &&
+          plan.auxiliary_tile == naux) {
         plan.automatic_rhf_rank = automatic_rhf_rank;
         return plan;
+      }
+      if (generated_source && !plan.stores_full_three_center) {
+        const auto dense = plan_density_fitting_tiles_impl(batch, nbf, naux, occupied, budget,
+                                                           fixed, generated_source, false);
+        // Optional factor storage must not turn a retained dense tensor into
+        // regeneration or increase the fallback's source passes when a mixed
+        // seed cannot be factored exactly.
+        const auto capacity = (plan.ao_pair_tile / nbf) * nbf * plan.auxiliary_tile;
+        const auto dense_capacity = (dense.ao_pair_tile / nbf) * nbf * dense.auxiliary_tile;
+        const auto fallback = df_streamed_k_panel(nbf, naux, capacity);
+        const auto original = df_streamed_k_panel(nbf, naux, dense_capacity);
+        if (!dense.stores_full_three_center &&
+            static_cast<long double>(fallback.row_tiles) * fallback.output_tiles <=
+                static_cast<long double>(original.row_tiles) * original.output_tiles &&
+            df_projected_exchange_schedule(nbf, naux, automatic_rhf_rank, capacity,
+                                           df_triangular_exchange_requested())
+                .rows) {
+          plan.automatic_rhf_rank = automatic_rhf_rank;
+          return plan;
+        }
       }
     } catch (const DensityFittingBudgetError&) {
       // Retry the original dense budget before reporting an infeasible job.

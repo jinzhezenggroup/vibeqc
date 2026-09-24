@@ -24,7 +24,8 @@ from .shared import _PRODUCTION_MANIFEST_PATH
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..cuda_target import CudaTargetInfo
+    from vibeqc_compiler.common.cuda_target import CudaTargetInfo
+
     from ..shell_spec import ShellClassSpec
 
 

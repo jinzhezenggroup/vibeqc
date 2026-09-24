@@ -451,7 +451,7 @@ class Calculator:
             raise TypeError("target_accuracy must be a TargetAccuracy contract")
         self._target_accuracy = target_accuracy
         if resource_budget is not None:
-            from .resources import ResourceBudget
+            from vibeqc_compiler.common.resources import ResourceBudget
 
             if not isinstance(resource_budget, ResourceBudget):
                 raise TypeError("resource_budget must be a ResourceBudget")
@@ -707,19 +707,7 @@ class Calculator:
         ):
             raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
-        if self._method_name in (
-            "lda-rks",
-            "pbe-rks",
-            "lda-uks",
-            "pbe-uks",
-            "pbe0-rks",
-            "pbe0-uks",
-            "r2scan-rks",
-            "r2scan-uks",
-            "b3lyp-rks",
-            "b3lyp-uks",
-            "pbe-d4-rks",
-        ):
+        if self._method in _method_manifest.NATIVE_DFT_METHOD_IDS:
             from .ks import KsOptions, resolve_ks_options
 
             if supplied_method_ir is None and isinstance(ks_options, KsOptions):
@@ -909,28 +897,9 @@ class Calculator:
                 self._ks_options_version = query()
             from .ks import resolve_ks_options
 
-            if self._ks_options_version == 0:
-                if (
-                    self._ks_options.requires_composition_v2
-                    or self._ks_options != resolve_ks_options(self._method_name)
-                ):
-                    raise NotImplementedError(
-                        "native library does not support KS model options"
-                    )
-            elif (
-                self._ks_options_version == 1
-                and self._ks_options.requires_composition_v2
-            ):
+            if self._ks_options_version != 1:
                 raise NotImplementedError(
-                    "native library does not support KS composition options v2"
-                )
-            elif self._ks_options_version < 3 and self._ks_options.requires_schedule_v3:
-                raise NotImplementedError(
-                    "native library does not support KS execution schedules v3"
-                )
-            elif self._ks_options_version < 5 and self._ks_options.requires_nonlocal_v5:
-                raise NotImplementedError(
-                    "native library does not support KS nonlocal correlation v5"
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
 
         available = ctypes.c_int32()
@@ -953,7 +922,16 @@ class Calculator:
         named_cpu_all_electron_force = (
             self._device_name == "cpu"
             and self._method_name
-            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            in (
+                "pbe0-rks",
+                "pbe0-uks",
+                "b3lyp-rks",
+                "b3lyp-uks",
+                "pbe-d4-rks",
+                "wb97m-v",
+                "wb97m-v-rks",
+                "wb97m-v-uks",
+            )
             and not basis_has_ecp
             and self._ks_options is not None
             and (
@@ -964,6 +942,16 @@ class Calculator:
                 )
             )
         )
+        if self._method_name.startswith("wb97m-v"):
+            named_cpu_all_electron_force = named_cpu_all_electron_force and (
+                self._basis == "sto-3g"
+                if isinstance(self._basis, str)
+                else all(
+                    shell.angular_momentum <= 1
+                    for element in self._basis.elements
+                    for shell in element.shells
+                )
+            )
         semilocal_force = (
             self._ks_options is not None
             and self._ks_options.coefficients == (1.0, 1.0, 0.0)
@@ -979,6 +967,7 @@ class Calculator:
         )
         if (
             self._capabilities.family == "density_functional"
+            and density_fitting_mode == _native.DENSITY_FITTING_NONE
             and (semilocal_force or named_cpu_all_electron_force)
             and not (
                 self._device_name == "cuda"
@@ -1003,9 +992,11 @@ class Calculator:
                 | {"forces"},
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
-            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
-                raise NotImplementedError(
-                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+            if self._method == _native.METHOD_RCCSD_T and device == "cuda":
+                self._capabilities = replace(
+                    self._capabilities,
+                    supported_properties=self._capabilities.supported_properties
+                    - {"forces"},
                 )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
@@ -1024,9 +1015,22 @@ class Calculator:
                     "DFT automatic precision currently requires CUDA"
                 )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
-                raise NotImplementedError("DFT supports conventional Coulomb only")
-            if auxiliary_basis is not None:
-                raise ValueError("DFT does not accept an unused auxiliary basis")
+                # DF changes the Hamiltonian. Keep its backend explicit and do
+                # not advertise the conventional stationary force consumer.
+                if self._precision_mode != _native.PRECISION_FP64:
+                    raise NotImplementedError(
+                        "DFT density fitting requires precision='fp64'"
+                    )
+                if (
+                    density_fitting_mode == _native.DENSITY_FITTING_CPU_REFERENCE
+                    and device != "cpu"
+                ) or (
+                    density_fitting_mode == _native.DENSITY_FITTING_CUDA
+                    and device != "cuda"
+                ):
+                    raise ValueError(
+                        "DFT density-fitting backend must match device; use 'auto' to follow it"
+                    )
             if target_accuracy is not None:
                 raise NotImplementedError(
                     "DFT accuracy-model identities are not implemented yet"
@@ -1110,12 +1114,7 @@ class Calculator:
         if active_ks_options is not None and self._ks_options_version >= 1:
             from .ks import native_ks_options
 
-            descriptor.ks_options = ctypes.pointer(
-                native_ks_options(
-                    active_ks_options,
-                    version=min(self._ks_options_version, 5),
-                )
-            )
+            descriptor.ks_options = ctypes.pointer(native_ks_options(active_ks_options))
         if self._method in _COUPLED_CLUSTER_METHODS:
             descriptor.ccsd_max_iterations = self._ccsd_max_iterations
             descriptor.ccsd_diis_history = self._ccsd_diis_history
@@ -1626,6 +1625,11 @@ class Calculator:
     ) -> typing.Any:
         """Resolve this calculator's active scientific controls without executing."""
         if self._capabilities.family == "density_functional":
+            if self._density_fitting_mode != _native.DENSITY_FITTING_NONE:
+                raise NotImplementedError(
+                    "DFT density-fitting resource plans are not qualified; "
+                    "use density_fitting_memory_budget_bytes for the native DF provider"
+                )
             from .resources_ks import ks_resource_request
 
             return ks_resource_request(
@@ -1769,16 +1773,11 @@ class Calculator:
             multiplicities=multiplicities,
         )
         if selection.options is not None:
-            if self._ks_options_version == 0:
-                if selection.options != self._ks_options:
-                    raise NotImplementedError(
-                        "native library does not support profile-selected KS model options"
-                    )
-            else:
-                native_ks_options(
-                    selection.options,
-                    version=min(self._ks_options_version, 5),
+            if self._ks_options_version != 1:
+                raise NotImplementedError(
+                    "native library does not support the current semantic KS execution-plan ABI"
                 )
+            native_ks_options(selection.options)
         return selection
 
     def _effective_ks_options(
@@ -1805,7 +1804,7 @@ class Calculator:
         budget: typing.Any = None,
     ) -> typing.Any:
         """Dry-run the active scientific inputs; no solve or warm-state mutation."""
-        from .resources import ResourceBudget, plan_resources
+        from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
 
         systems = tuple(
             tuple(Atom.from_value(atom) for atom in system) for system in systems

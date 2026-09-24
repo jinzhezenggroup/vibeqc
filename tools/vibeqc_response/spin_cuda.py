@@ -254,6 +254,30 @@ class CudaSpinJKBackend:
             )
             return result.coulomb, result.exchange[0], result.exchange[1]
 
+    def resident_response(
+        self,
+        problem: typing.Any,
+        *,
+        vector_slots: int = 128,
+        device_budget_bytes: int = 128 << 20,
+    ) -> typing.Any:
+        """Create an exact unrestricted resident response owner.
+
+        The owner shares this backend's direct CUDA stream and plan. Density
+        fitted plans remain on the existing host-orchestrated path until a
+        separate resident DF ABI is qualified.
+        """
+        with self._lock:
+            self._ensure_open()
+            from .resident_uhf_cuda import CudaResidentUHFResponse
+
+            return CudaResidentUHFResponse(
+                self,
+                problem,
+                vector_slots=vector_slots,
+                device_budget_bytes=device_budget_bytes,
+            )
+
     def export_reference(
         self,
         *,

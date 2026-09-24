@@ -35,10 +35,10 @@ import typing
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.evidence import canonical_hash, file_hash
 
 from tools.cc_endpoint_fixtures import array_hash
 from tools.vibeqc_cc.triples import triples_energy
-from tools.vibeqc_validation.schema import canonical_hash, file_hash
 
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINTS = ROOT / "tests/reference_data/cc/endpoints"

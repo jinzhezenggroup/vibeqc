@@ -13,7 +13,7 @@ from pathlib import Path
 from vibeqc_compiler.method.correction import CorrectionProvenance, CorrectionResult
 
 ANGSTROM_TO_BOHR = 1.8897261254578281
-_DATA = Path(__file__).resolve().parents[2] / "external/r2scan3c/gcp-r2scan3c-h-ar.json"
+_DATA = Path(__file__).resolve().parents[2] / "tools/parameters/r2scan3c_gcp.json"
 
 
 def _load() -> typing.Any:

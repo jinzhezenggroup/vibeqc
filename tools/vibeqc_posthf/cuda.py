@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc.profiles import file_hash
-from vibeqc_compiler.integral.native_runtime import compile_runtime
+from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.tensor.cuda_execute import _PREPARATION_LOCK, _Metrics
 
 from .reference import immutable
@@ -78,6 +78,7 @@ class CudaTransform:
             ct.c_char_p,
             ct.c_size_t,
         ]
+        lib.posthf_cuda_validate_v1.argtypes = [ct.c_void_p, ct.c_char_p, ct.c_size_t]
         lib.posthf_cuda_download_v1.argtypes = [
             ct.c_void_p,
             _DOUBLE,
@@ -140,10 +141,18 @@ class CudaTransform:
                 (ct.c_size_t * 4)(*tile.shape),
             )
 
+    def validate(self) -> None:
+        """Validate the completed resident block once before publication."""
+        with self._lock:
+            self._check_open()
+            self._call("posthf_cuda_validate_v1", self._handle)
+
     @property
     def device_pointer(self) -> typing.Any:
-        self._check_open()
-        return self._library.posthf_cuda_pointer_v1(self._handle)
+        with self._lock:
+            self._check_open()
+            self._call("posthf_cuda_validate_v1", self._handle)
+            return self._library.posthf_cuda_pointer_v1(self._handle)
 
     def to_host(self) -> typing.Any:
         """Return an immutable detached FP64 block; account transfers separately."""

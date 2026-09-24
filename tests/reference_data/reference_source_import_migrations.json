@@ -1,0 +1,80 @@
+{
+  "schema": "vibeqc.reference-source-import-migrations.v1",
+  "source_base_commit": "09820aade255ab42c5d4a17fe90d080621f8e93b",
+  "scope": "Exact import-only source migration; no new reference execution, numerical values, historical metadata or archive identity. Unlisted source changes remain rejected.",
+  "normalization": "Remove only Import/ImportFrom nodes; retain all other AST fields, annotations, docstrings and literals. Omit empty Python-version-specific type_params fields.",
+  "sources": [
+    {
+      "path": "tools/generate_accuracy_references.py",
+      "historical_sha256": "a21a587f51f954ef12742482d0f0a9a97a30714136f9fe16921c664b33993b45",
+      "current_sha256": "60ca564620751dc1ba9a58fa1b36a92c4869c19ed2f1d2bfaf768f150d752af5",
+      "non_import_ast_sha256": "b4a1fb2d37de8d5e3c813c336d440d114a60ddaa68b763f2b48ff9fa018d4c7e",
+      "removed_imports": [
+        "from tools.vibeqc_validation.schema import canonical_hash, file_hash"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.common.evidence import canonical_hash, file_hash"
+      ]
+    },
+    {
+      "path": "tools/generate_cc_endpoints.py",
+      "historical_sha256": "87a206c3c9f879115e6e962df6c297900c9ccc45d887f98683fa12694a922ab8",
+      "current_sha256": "059c843f92f34cddcd4825fec1576e634f1fab0be455246283b9d8e53424fd90",
+      "non_import_ast_sha256": "4956e09da51562dd470246694b64b250f2c5d123aff2f66625ef4a8536b5a4a2",
+      "removed_imports": [
+        "from tools.vibeqc_validation.schema import canonical_hash, file_hash"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.common.evidence import canonical_hash, file_hash"
+      ]
+    },
+    {
+      "path": "tools/generate_cc_triples_references.py",
+      "historical_sha256": "90c51308796b765d8a8f3a2345d397e1aae205c7f62b300d9d9122cd0d94f3aa",
+      "current_sha256": "c6049016d5054205c2130dd7d9c9308cb2eaf82be7d00104ec2a5c6a8f99f0cb",
+      "non_import_ast_sha256": "abfafcec13372fcd79e1d50c9566663cdc4a67d273815422256d6541eec7d77b",
+      "removed_imports": [
+        "from tools.vibeqc_validation.schema import canonical_hash, file_hash"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.common.evidence import canonical_hash, file_hash"
+      ]
+    },
+    {
+      "path": "tools/generate_validation_references.py",
+      "historical_sha256": "210765088eda3366537b0e7baefb89dacc634ee82b032bf972bf991475168b3e",
+      "current_sha256": "610069f7a0e6ad0f1a88bbdccd176f0fc12b26e787f5c77914da2df3b4b5899f",
+      "non_import_ast_sha256": "894197fc48887f5c6175631bdd53be0a4e87ebb7c88cf0c2c583c41bb821b61f",
+      "removed_imports": [
+        "from tools.vibeqc_validation.schema import block_error, canonical_hash, file_hash"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.common.evidence import block_error, canonical_hash, file_hash"
+      ]
+    },
+    {
+      "path": "tools/generate_xc_integration_references.py",
+      "historical_sha256": "84cebf0c7646151d2e8c756bf2eb0452ace1018a35c78e687386a9446c63413d",
+      "current_sha256": "4ca9ae49ac9f751f1545ab7e473a5f9e3611832dc45eee9dac9cbef3f68bfba4",
+      "non_import_ast_sha256": "198684eab9f66b6f6722e08a75d8a03167f3e3297946c91040222f7384659562",
+      "removed_imports": [
+        "from tools.vibeqc_dft.fixtures import load_fixture"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.dft.fixtures import load_fixture"
+      ]
+    },
+    {
+      "path": "tools/vibeqc_validation/fixtures.py",
+      "historical_sha256": "7259560d24fbb675e3e527678ccf058ec6bb417116349170381d16b1979baef5",
+      "current_sha256": "9408a5393335a991b50398f893e4df53595e3ed09049b08527c58ca1a92c9d0c",
+      "non_import_ast_sha256": "22abe25947f8104ae1ea819ab7fb9564cd48e4c1902435732c8f29acd370bde5",
+      "removed_imports": [
+        "from .schema import canonical_hash"
+      ],
+      "added_imports": [
+        "from vibeqc_compiler.common.evidence import canonical_hash"
+      ]
+    }
+  ]
+}

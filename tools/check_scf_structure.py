@@ -91,6 +91,9 @@ CUDA_ALLOWED = {
         "scf/cuda/device_timer.",
         "scf/cuda/launch_geometry.",
         "scf/cuda_batch.hpp",
+        "scf/eigensolver_workspace.hpp",
+        "runtime/resource_cuda.cuh",
+        "vibeqc/vibeqc.hpp",
     ),
 }
 CUDA_ALLOWED["cuda_df_source"] = (
@@ -149,6 +152,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/cuda/final_validation_kernels.",
     "scf/cuda/scf_diis_kernels.",
     "scf/cuda_density_fitting.hpp",
+    "scf/cuda_density_fitting_device.hpp",
     "scf/cuda_df_gradient.hpp",
     "scf/cuda_density_fitting_eigen.hpp",
     "scf/cuda_density_fitting_final_state.hpp",
@@ -157,6 +161,7 @@ CUDA_ALLOWED["cuda_df_runtime"] = tuple(
     "scf/density_fitting.hpp",
     "scf/df_exchange_policy.hpp",
     "scf/df_streamed_k_policy.hpp",
+    "scf/df_projected_exchange_schedule.hpp",
     "molecule/basis.hpp",
     "runtime/",
 )
@@ -235,10 +240,24 @@ CUDA_ALLOWED["cuda_direct_queues"] = tuple(
 )
 # Provider host APIs own staging and lifetime while borrowing kernel launches.
 # A retained recurrence fragment must not enter a host implementation.
-CUDA_MODULES["cuda_direct_provider_host"] = ("direct_jk", "direct_jk_plan")
+CUDA_MODULES["cuda_direct_provider_host"] = (
+    "direct_jk",
+    "direct_jk_plan",
+    "direct_coulomb",
+)
 CUDA_ALLOWED["cuda_direct_provider_host"] = (
     "scf/cuda/direct_jk.",
     "scf/cuda/direct_jk_plan.",
+    "scf/cuda/direct_coulomb.",
+    "scf/cuda/basis_transform_kernels.hpp",
+    "scf/cuda/df_jk_kernels.hpp",
+    "scf/cuda/direct_bounded_dddd.hpp",
+    "scf/cuda/direct_constants.hpp",
+    "scf/cuda/direct_pair_cache.hpp",
+    "scf/cuda/direct_schwarz_kernels.hpp",
+    "scf/cuda/queue_plan.hpp",
+    "scf/direct_task_layout.hpp",
+    "scf/aot_shell_registry.hpp",
     "scf/cuda/direct_jk_kernels.hpp",
     "scf/cuda/packed_basis.",
     "scf/cuda/checked_layout.",
@@ -330,12 +349,10 @@ CUDA_MODULES["cuda_direct_numerics"] = (
     "direct_native_gradient_types",
     "direct_native_order2_gradient",
     "direct_native_order2_shell",
-    "direct_native_order3_gradient",
     "direct_native_order456_gradient",
     "direct_native_pair_order2",
     "direct_native_pair_order2_gradient",
     "direct_native_pair_order3",
-    "direct_native_pair_order3_gradient",
     "direct_native_psss",
     "direct_native_shell_class",
     "direct_native_shell_pair_hermite",
@@ -351,11 +368,11 @@ CUDA_MODULES["cuda_direct_contractions"] = (
     "direct_eri_symmetry",
     "direct_fock_accumulation",
     "direct_fock_quartet",
-    "direct_fock_psss",
     "direct_fock_order2",
     "direct_force_density",
     "direct_force_low_order",
     "direct_force_order2",
+    "direct_force_order3",
     "direct_force_quartet",
     "direct_bounded_contraction",
 )

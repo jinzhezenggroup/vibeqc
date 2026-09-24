@@ -65,6 +65,12 @@ def test_native_snapshot_rejects_relabeling_and_replay(
                 StationaryKsState.from_native(batch, basis)
             batch.execute(strict=True)
             state = StationaryKsState.from_native(batch, basis)
+            assert state.identity.spin == (
+                "polarized" if unrestricted else "unpolarized"
+            )
+            assert state.identity.ingredients == (
+                ("rho",) if method.startswith("lda") else ("rho", "sigma")
+            )
             assert state._source.backend == device
             assert state._source.metadata[0] == (2 if device == "cpu" else 3)
             if device == "cpu":

@@ -1,0 +1,81 @@
+name: RCCSD(T) CPU bundle evidence
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/ccsdt-cpu-bundle-evidence.yml
+      - tools/benchmark_ccsdt_cpu_bundles.py
+      - tools/vibeqc_cc/triples_response.py
+      - tools/vibeqc_cc/triples_lambda_response.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ccsdt-cpu-bundle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  endpoint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      OMP_NUM_THREADS: 1
+      OPENBLAS_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+      NUMEXPR_NUM_THREADS: 1
+      VIBEQC_ENABLE_CUDA: "OFF"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+      - name: Prepare CPU linear algebra dependency
+        run: |
+          uv venv --python 3.11
+          uv pip install --python .venv/bin/python scipy
+          xtb_linalg="$(.venv/bin/python - <<'PY_INNER'
+          from pathlib import Path
+          import scipy
+
+          site = Path(scipy.__file__).resolve().parent.parent
+          matches = sorted((site / "scipy.libs").glob("libscipy_openblas*.so"))
+          if len(matches) != 1:
+              raise SystemExit(f"expected one SciPy OpenBLAS runtime, found {matches}")
+          print(matches[0])
+          PY_INNER
+          )"
+          echo "VIBEQC_XTB_CPU_LINALG_LIBRARY=${xtb_linalg}" >> "$GITHUB_ENV"
+      - name: Build and install CPU runtime
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DVIBEQC_ENABLE_CUDA=OFF \
+            -DVIBEQC_BUILD_TESTS=OFF \
+            -DVIBEQC_XTB_CPU_LINALG_LIBRARY="$VIBEQC_XTB_CPU_LINALG_LIBRARY" \
+            -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --parallel
+          uv pip install --python .venv/bin/python --editable '.[reference-test]'
+      - name: Compare cold and warm complete endpoints
+        env:
+          VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
+          PYTHONPATH: python:.
+        run: |
+          mkdir -p build/ccsdt-bundle-evidence
+          for case in h2o nh3; do
+            .venv/bin/python tools/benchmark_ccsdt_cpu_bundles.py \
+              --case "$case" \
+              --cache-root "build/ccsdt-bundle-evidence/${case}-cache" \
+              --output "build/ccsdt-bundle-evidence/${case}.json"
+          done
+      - name: Upload qualification reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: ccsdt-cpu-bundle-evidence
+          path: build/ccsdt-bundle-evidence/*.json
+          if-no-files-found: warn

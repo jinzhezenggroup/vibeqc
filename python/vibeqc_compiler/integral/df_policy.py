@@ -9,6 +9,28 @@ center channels, including the translation-derived auxiliary contribution.
 import typing
 
 
+def emit_df_value_source_schedule_cuda() -> str:
+    """Separate raw public tiles from outputs that reduce over auxiliaries.
+
+    A raw tile has one source auxiliary per output. The transformed consumer
+    has many and benefits from its existing cooperative primitive/source warp.
+    These mappings change work placement, not the scalar integral equations.
+    Explicit mappings remain stable controls for endpoint qualification.
+    """
+    return """struct ValueSourceSchedule {
+  static constexpr unsigned primitive_lanes = 4;
+  static constexpr unsigned auxiliary_mapping = 0;
+  static constexpr unsigned component_mapping = 1;
+  static constexpr unsigned primitive_mapping = 2;
+  static constexpr unsigned automatic_mapping = 3;
+  static constexpr unsigned resolve(unsigned requested, bool transformed) {
+    return requested == automatic_mapping
+        ? (transformed ? primitive_mapping : auxiliary_mapping) : requested;
+  }
+};
+"""
+
+
 def emit_df_derivative_schedule_cuda() -> typing.Any:
     """Emit weighted-response scheduling independently of scalar mathematics.
 
@@ -46,12 +68,9 @@ def emit_df_policy_cuda(*, derivatives: typing.Any = False) -> typing.Any:
         if derivatives
         else "generated_df_value_candidates.cuh"
     )
-    value = r"""// Split a transformed output's warp across auxiliary source terms and
-// primitive products. Four lanes retain contraction parallelism while eight
-// source terms progress independently, including short and long contractions.
-struct ValueSourceSchedule {
-  static constexpr unsigned primitive_lanes = 4;
-};
+    value = (
+        emit_df_value_source_schedule_cuda()
+        + r"""
 template<unsigned Math=0> struct ValueMath {
   using Vec3 = generated_df::Vec3;
   using Angular = generated_df::Angular;
@@ -75,6 +94,7 @@ template<unsigned Math=0> struct ValueMath {
 };
 using Value=ValueMath<0>;
 """
+    )
     derivative = r"""struct Derivative {
   using Vec3 = generated_df_derivatives::Vec3;
   using Angular = generated_df_derivatives::Angular;

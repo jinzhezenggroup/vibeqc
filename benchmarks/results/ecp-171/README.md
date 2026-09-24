@@ -4,7 +4,7 @@ Measured 2026-09-12 on an allocated Inspire RTX 4090, CUDA 12.9, driver
 570.195.03, Python 3.11.16, PySCF 2.14.0; CPU/OpenBLAS workers set to one.
 `measurements.json` retains hardware, library hashes, source hashes, inputs,
 three timing samples, numerical errors and conservative resource bounds.
-This is small-fixture validation of the [documented domain](../../../docs/ecp.md),
+This is small-fixture validation of the [documented domain](../../../docs/user/ecp.md),
 not a clean-revision performance promotion or broad heavy-element claim.
 
 | NaH/NaH+ check | CPU | CUDA |

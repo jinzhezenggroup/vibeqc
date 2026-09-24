@@ -164,8 +164,9 @@ def main() -> int:
                     )
             return 0
         if args.command == "resources":
+            from vibeqc_compiler.common.resources import ResourceBudget
+
             from .autotune import read_xyz
-            from .resources import ResourceBudget
             from .resources_hf import estimate_hf_resources
             from .resources_ks import estimate_ks_resources
 

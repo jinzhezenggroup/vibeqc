@@ -6,7 +6,7 @@ from itertools import pairwise
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.tensor import execute
 
 from tools.vibeqc_cc.gpu_state import (

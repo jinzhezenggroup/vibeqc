@@ -4,6 +4,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
 namespace vibeqc::dft {
@@ -18,24 +19,27 @@ bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
   const bool b3lyp = model.functional == 3U;
-  if (model.version != 1 || model.functional > 3U ||
-      model.scf_domain_version != (b3lyp ? 2U : 1U) || !model.tile_points || !model.owner ||
-      (model.spins != 1 && model.spins != 2) ||
+  const bool wb97mv = model.functional == 4U;
+  if (model.version != 1 || model.functional > 4U ||
+      model.scf_domain_version != (wb97mv ? 3U : (b3lyp ? 2U : 1U)) || !model.tile_points ||
+      !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||
       (fock.spec.spin == scf::FockSpin::Restricted ? 1U : 2U) != model.spins ||
       fock.precision != scf::FockPrecision::Float64 || fock.spec.derivative_order != 0 ||
       !fock.spec.coulomb.present || fock.spec.coulomb.coefficient != 1.0 ||
-      fock.spec.coulomb.approximation != scf::FockApproximation::Exact ||
+      (fock.spec.coulomb.approximation != scf::FockApproximation::Exact &&
+       fock.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
       fock.spec.coulomb.op != scf::FockOperator::FullRange ||
       !std::isfinite(model.semilocal_exchange_scale) || model.semilocal_exchange_scale < 0 ||
       !std::isfinite(model.semilocal_correlation_scale) || model.semilocal_correlation_scale < 0 ||
       (fock.spec.exchange.present &&
        (fock.spec.exchange.op != scf::FockOperator::FullRange ||
-        fock.spec.exchange.approximation != scf::FockApproximation::Exact ||
+        (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
+         fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
-      (!b3lyp && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
+      (!b3lyp && !wb97mv && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
         fock.spec.exchange.present)) ||
       (b3lyp && (fock.backend != scf::FockBackend::Cpu || model.semilocal_exchange_scale != 1 ||
@@ -43,6 +47,13 @@ bool valid_model(const KsFinalStateIdentity& identity) {
                  fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2))))
     return false;
   try {
+    if (wb97mv) {
+      if (!model.range_correction || !model.nonlocal_correlation ||
+          model.nonlocal_density_domain != nlc::Vv10DensityDomain::MolecularV1 ||
+          model.semilocal_exchange_scale != 1.0 || model.semilocal_correlation_scale != 1.0)
+        return false;
+      scf::require_wb97mv_composition(fock, *model.range_correction, *model.nonlocal_correlation);
+    }
     validate_grid_spec(model.grid);
     scf::validate_resolved_fock_build(fock);
   } catch (const std::invalid_argument&) {

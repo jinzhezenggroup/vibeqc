@@ -14,7 +14,16 @@ import numpy as np
 
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.arrays import immutable
+from vibeqc_compiler.dft.xc_bilinear import ao_pair_bilinear
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph
+
+
+class PackedCoefficientViews(dict):
+    """Read-only coefficient views backed by one native physical owner."""
+
+    def __init__(self, owner: np.ndarray, values: dict[str, np.ndarray]) -> None:
+        super().__init__(values)
+        self.owner = owner
 
 
 @dataclass(frozen=True)
@@ -85,6 +94,32 @@ class CoefficientProgram:
             else:
                 result[kind][spin, :, axis] = value
         return {key: immutable(value) for key, value in result.items()}
+
+    def unpack_views(self, values: typing.Any, npoint: typing.Any) -> typing.Any:
+        """Map packed native rows to zero-copy read-only coefficient views."""
+        values = np.asarray(values)
+        spins = 2 if self.spin == "polarized" else 1
+        block = 1 + (3 if self.family != "lda" else 0) + (1 if self.kinetic else 0)
+        if (
+            values.dtype != np.float64
+            or values.shape != (spins * block, npoint)
+            or not values.flags.c_contiguous
+            or not np.isfinite(values).all()
+            or len(self.roots) != spins * block
+        ):
+            raise ValueError("invalid packed XC coefficient owner")
+        blocks = values.reshape(spins, block, npoint)
+        result: dict[str, np.ndarray] = {"rho": blocks[:, 0, :]}
+        row = 1
+        if self.family != "lda":
+            result["gradient"] = blocks[:, row : row + 3, :].transpose(0, 2, 1)
+            row += 3
+        if self.kinetic:
+            result["tau"] = blocks[:, row, :]
+        values.setflags(write=False)
+        for view in result.values():
+            view.setflags(write=False)
+        return PackedCoefficientViews(values, result)
 
     def evaluate(
         self,
@@ -240,18 +275,8 @@ def jet_pullback_program(family: typing.Any) -> typing.Any:
     """
     if family not in ("lda", "gga", "mgga"):
         raise ValueError("AO pullbacks support LDA/GGA/meta-GGA")
-    graph = Graph()
-    jets = 1 if family == "lda" else 4
-    coefficient_count = jets + (1 if family == "mgga" else 0)
-    x = [graph.variable(f"x{j}") for j in range(jets)]
-    y = [graph.variable(f"y{j}") for j in range(jets)]
-    c = [graph.variable(f"c{j}") for j in range(coefficient_count)]
-    bilinear = c[0] * x[0] * y[0]
-    for j in range(1, jets):
-        bilinear += c[j] * (x[j] * y[0] + x[0] * y[j])
-    if family == "mgga":
-        for j in range(1, 4):
-            bilinear += c[4] * x[j] * y[j]
+    graph, x, y, _coefficients, bilinear = ao_pair_bilinear(family)
+    jets = len(x)
     roots = [
         graph.differentiate(bilinear, x[j]) + graph.differentiate(bilinear, y[j])
         for j in range(jets)

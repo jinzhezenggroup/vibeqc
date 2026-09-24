@@ -1,0 +1,7 @@
+{
+  "name": "rccsdt_triples",
+  "outputs": [
+    "generated/generated_rccsdt_cuda.cu"
+  ],
+  "owner": "tools/generate_rccsdt_cuda.py"
+}

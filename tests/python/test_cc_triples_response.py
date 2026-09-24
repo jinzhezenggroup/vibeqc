@@ -2,8 +2,8 @@
 
 import numpy as np
 import pytest
-from vibeqc_compiler.integral.cuda_target import cuda_target_info
-from vibeqc_compiler.tensor import optimize
+from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.tensor import execute, optimize
 from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
 
 from tools.vibeqc_cc.triples import triples_energy
@@ -58,6 +58,40 @@ def test_disjoint_tile_vjps_sum_to_untiled_vjp_without_double_counting(
             atol=2e-11,
             err_msg=f"tile accumulation mismatch for {name}",
         )
+
+
+def test_native_tile_response_prewarms_exact_executed_set() -> None:
+    o, v = 2, 3
+    arrays = _random_case(o, v, 15406)
+    selected = ("t1", "t2")
+
+    class RecordingExecutor:
+        def __init__(self) -> None:
+            self.programs = ()
+            self.executed = []
+
+        def prewarm(self, programs: object) -> None:
+            assert not self.programs
+            self.programs = tuple(programs)
+
+        def execute(self, program: object, feeds: object) -> object:
+            assert any(program is entry for entry in self.programs)
+            self.executed.append(program)
+            return execute(program, feeds).outputs
+
+    executor = RecordingExecutor()
+    actual = accumulate_tile_triples_vjp(
+        o, v, *arrays, vir_chunk_size=1, inputs=selected, executor=executor
+    )
+    expected = accumulate_tile_triples_vjp(
+        o, v, *arrays, vir_chunk_size=1, inputs=selected
+    )
+
+    assert len(executor.programs) == len(executor.executed) == v
+    assert len({program.logical_hash for program in executor.programs}) == v
+    assert executor.programs == tuple(executor.executed)
+    for name in selected:
+        np.testing.assert_array_equal(actual[name], expected[name])
 
 
 @pytest.mark.parametrize(
