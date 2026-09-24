@@ -453,7 +453,9 @@ class BoundCCSDTResponse:
                     {**self.bound.feeds, **extra},
                 )
             )
-            values.append(np.asarray(outputs[f"bar_{parameter}"]))
+            # Executors may reuse output storage on their next call. Retain
+            # each graph's evidence before the independent replay overwrites it.
+            values.append(np.asarray(outputs[f"bar_{parameter}"]).copy())
         if not np.allclose(values[0], values[1], atol=1e-12, rtol=1e-10):
             raise ImplicitSolveError(
                 "independent corrected-Lambda parameter-weight check failed"
