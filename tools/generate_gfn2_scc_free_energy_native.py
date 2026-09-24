@@ -29,8 +29,15 @@ from vibeqc_compiler.method.gfn2_scc_free_energy_runtime import (
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
 
 _INTERNAL_INPUTS = (
-    "core", "es2", "es3", "aes2", "spin", "d4_two_body",
-    "explicit_point_charge", "electric_field", "periodic_embedding",
+    "core",
+    "es2",
+    "es3",
+    "aes2",
+    "spin",
+    "d4_two_body",
+    "explicit_point_charge",
+    "electric_field",
+    "periodic_embedding",
 )
 _FREE_INPUTS = ("electronic_temperature", "entropy", "internal_energy")
 

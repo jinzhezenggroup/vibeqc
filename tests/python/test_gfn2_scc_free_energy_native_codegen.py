@@ -35,8 +35,14 @@ def test_scc_energy_tensorir_preserves_component_order_and_free_energy() -> None
     ).outputs["internal_energy"]
     expected = components["core"]
     for name in (
-        "es2", "es3", "aes2", "spin", "d4_two_body",
-        "explicit_point_charge", "electric_field", "periodic_embedding",
+        "es2",
+        "es3",
+        "aes2",
+        "spin",
+        "d4_two_body",
+        "explicit_point_charge",
+        "electric_field",
+        "periodic_embedding",
     ):
         expected = expected + components[name]
     assert internal == expected
@@ -116,8 +122,14 @@ int main() {
     executable = tmp_path / "scc_energy"
     subprocess.run(
         [
-            compiler, "-std=c++20", "-O2", "-I", str(tmp_path),
-            str(source), "-o", str(executable),
+            compiler,
+            "-std=c++20",
+            "-O2",
+            "-I",
+            str(tmp_path),
+            str(source),
+            "-o",
+            str(executable),
         ],
         check=True,
         capture_output=True,
