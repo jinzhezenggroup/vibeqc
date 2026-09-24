@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from itertools import product
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_values import build_df_axis_moment, build_df_value_ir
 from .ir_serialization import integral_to_payload
 from .rys import (
@@ -52,7 +52,7 @@ def emit_df_axis_cuda() -> str:
     ]
     for a, b, c in product(range(4), repeat=3):
         graph, root = build_df_axis_moment(a, b, c)
-        emitter = CudaEmitter(graph, {})
+        emitter = ScalarCEmitter(graph, {})
         emitter.emit((root,))
         lines.extend(
             [
