@@ -11,11 +11,17 @@ from tools.vibeqc_local_cc.spaces import PairSpace
 
 def _space(rank: int = 3, virtual_rank: int = 3) -> PairSpace:
     return PairSpace(
-        "reference", "localized", "domain", (0, 0),
-        np.eye(virtual_rank)[:, virtual_rank-rank:],
-        np.array([0.0] * (virtual_rank-rank) + [1.0] * rank),
-        tuple(range(virtual_rank-rank, virtual_rank)),
-        0.5, 1e-12, False, False,
+        "reference",
+        "localized",
+        "domain",
+        (0, 0),
+        np.eye(virtual_rank)[:, virtual_rank - rank :],
+        np.array([0.0] * (virtual_rank - rank) + [1.0] * rank),
+        tuple(range(virtual_rank - rank, virtual_rank)),
+        0.5,
+        1e-12,
+        False,
+        False,
     )
 
 
@@ -65,7 +71,9 @@ def test_small_pair_rank_still_charges_canonical_projector_hashing(
     monkeypatch.setattr(coupling, "pair_transfer", forbidden)
     # One overlap element plus three full 32x32 portable projector buffers.
     with pytest.raises(MemoryError, match="24584 numeric bytes"):
-        coupling.project_pair_matrix(np.ones((1, 1)), source, source, budget_bytes=24583)
+        coupling.project_pair_matrix(
+            np.ones((1, 1)), source, source, budget_bytes=24583
+        )
     assert calls == []
 
 
