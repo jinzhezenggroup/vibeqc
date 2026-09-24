@@ -354,6 +354,7 @@ inline void scheduled_potential(cudaStream_t stream, const double* ao,
 }
 """
 
+
 def _emit_tiled(schedule: XcMatrixSchedule) -> str:
     if not isinstance(schedule, XcMatrixSchedule):
         raise TypeError("XC matrix emission requires XcMatrixSchedule")
