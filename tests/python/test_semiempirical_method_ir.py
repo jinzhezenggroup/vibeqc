@@ -202,7 +202,7 @@ def test_gfn_adapter_preserves_audited_graph_without_runtime_claim(
     }
     common_by_id = {node.node_id: node for node in common.primitives}
     for primitive in legacy.primitives:
-        assert common_by_id[primitive.kind].requires == primitive.requires
+        assert common_by_id[primitive.kind].requires == tuple(sorted(primitive.requires))
     assert tuple(product.name for product in common.requested_products) == (
         "energy",
         "nuclear-gradient",
