@@ -60,6 +60,14 @@ int main() {
   nonsymmetric.apply_transpose()(input, output);
   if (output[0] != 7.0 || output[1] != 10.0) return 6;
 
+  try {
+    LinearResponseProblem contradictory(
+        2, general_apply, LinearResponseSymmetry::Symmetric, transpose_apply);
+    (void)contradictory;
+    return 7;
+  } catch (const std::invalid_argument&) {
+  }
+
   return 0;
 }
 '''
