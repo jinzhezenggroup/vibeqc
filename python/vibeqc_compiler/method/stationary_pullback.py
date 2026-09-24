@@ -34,12 +34,16 @@ class ProviderPullbackRule:
             if not isinstance(value, str) or not value.strip():
                 raise ValueError(f"{label} identity must be nonempty")
         dependencies = tuple(self.dependency_identities)
-        if any(not isinstance(value, str) or not value.strip() for value in dependencies):
+        if any(
+            not isinstance(value, str) or not value.strip() for value in dependencies
+        ):
             raise ValueError("provider dependency identities must be nonempty")
         if len(set(dependencies)) != len(dependencies):
             raise ValueError("duplicate provider dependency identity")
         if type(self.derivative_order) is not int or self.derivative_order != 1:
-            raise ValueError("stationary provider rules currently require derivative order 1")
+            raise ValueError(
+                "stationary provider rules currently require derivative order 1"
+            )
         object.__setattr__(self, "dependency_identities", dependencies)
 
 

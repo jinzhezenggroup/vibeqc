@@ -37,8 +37,12 @@ def _problem() -> StationaryProblem:
         (
             ParameterSource("factor", "factor-field-v1", ("metric",), "factor-rule-v1"),
             ParameterSource("geometry", "geometry-field-v1"),
-            ParameterSource("metric", "metric-field-v1", ("geometry",), "metric-rule-v1"),
-            ParameterSource("overlap", "overlap-field-v1", ("geometry",), "overlap-rule-v1"),
+            ParameterSource(
+                "metric", "metric-field-v1", ("geometry",), "metric-rule-v1"
+            ),
+            ParameterSource(
+                "overlap", "overlap-field-v1", ("geometry",), "overlap-rule-v1"
+            ),
         ),
         "provider-pullback-test-v1",
         "test-solver-v1",
@@ -48,8 +52,12 @@ def _problem() -> StationaryProblem:
 def _rules() -> tuple[ProviderPullbackRule, ...]:
     return (
         ProviderPullbackRule("factor-rule-v1", "factor-field-v1", ("metric-field-v1",)),
-        ProviderPullbackRule("metric-rule-v1", "metric-field-v1", ("geometry-field-v1",)),
-        ProviderPullbackRule("overlap-rule-v1", "overlap-field-v1", ("geometry-field-v1",)),
+        ProviderPullbackRule(
+            "metric-rule-v1", "metric-field-v1", ("geometry-field-v1",)
+        ),
+        ProviderPullbackRule(
+            "overlap-rule-v1", "overlap-field-v1", ("geometry-field-v1",)
+        ),
     )
 
 
