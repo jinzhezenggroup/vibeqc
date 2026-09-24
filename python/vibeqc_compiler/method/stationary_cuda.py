@@ -685,7 +685,7 @@ def _emit_stationary_dispatch(
     lines = [
         "namespace vibeqc_stationary_cuda {",
         "struct StationaryDispatchEntry { unsigned id, kind; unsigned rank; signed char centers[4], axes[3]; };",
-        "static const StationaryDispatchEntry stationary_dispatch[] = {",
+        "static __device__ const StationaryDispatchEntry stationary_dispatch[] = {",
     ]
     for dispatch, kind, centers, axes in rows:
         cm = tuple(centers) + (-1,) * (4 - len(centers))
