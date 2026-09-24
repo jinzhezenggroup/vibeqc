@@ -160,7 +160,7 @@ jobs:
             cuda-cccl-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
-            libcusparse-dev-12-9 \
+            libcusparse-12-9 \
             libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
