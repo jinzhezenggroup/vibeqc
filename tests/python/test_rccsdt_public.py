@@ -63,7 +63,7 @@ def test_native_rccsdt_capability_is_energy_forces_batch() -> None:
     assert alias.available and alias.supported_properties == caps.supported_properties
 
 
-@pytest.mark.parametrize("case", ("h2", "h2o"))
+@pytest.mark.parametrize("case", ("h2", "h2o", "nh3", "ch4"))
 def test_public_native_rccsdt_matches_pinned_standard_triples(
     device: str, case: str
 ) -> None:
@@ -209,3 +209,18 @@ def test_public_force_admits_reported_endpoint_budget() -> None:
         _calculator(correlation_memory_budget_bytes=peak - 1).singlepoint(
             atoms, properties=("energy", "forces")
         )
+
+
+@pytest.mark.parametrize("properties", (None, ("energy", "forces")))
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_RCCSDT_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA native library",
+)
+def test_public_cuda_energy_admission_does_not_promote_forces(
+    properties: tuple[str, ...] | None,
+) -> None:
+    atoms, _, _ = _reference_case("h2")
+    with pytest.raises(
+        NotImplementedError, match="CUDA analytic forces are not promoted"
+    ):
+        _calculator(device="cuda").singlepoint(atoms, properties=properties)
