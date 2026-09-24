@@ -9,6 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "solver/diis_history.hpp"
+
 namespace vibeqc::solver {
 
 /** Method-neutral host Pulay DIIS for flattened FP64 state/error vectors.
@@ -20,33 +22,24 @@ namespace vibeqc::solver {
  */
 class Diis {
  public:
-  Diis(unsigned capacity, std::size_t elements) : capacity_(capacity), elements_(elements) {}
+  Diis(unsigned capacity, std::size_t elements) : history_(capacity, elements) {}
 
   [[nodiscard]] unsigned restarts() const noexcept { return restarts_; }
 
-  void clear() {
-    vectors_.clear();
-    errors_.clear();
-  }
+  void clear() { history_.clear(); }
 
   std::vector<double> update(std::vector<double> vector, std::vector<double> error) {
-    if (vector.size() != elements_ || error.size() != elements_)
-      throw std::invalid_argument("DIIS vector/error dimensions do not match the state size");
-    if (!capacity_) return vector;
-    vectors_.push_back(vector);
-    errors_.push_back(std::move(error));
-    if (vectors_.size() > capacity_) {
-      vectors_.erase(vectors_.begin());
-      errors_.erase(errors_.begin());
-    }
-    while (vectors_.size() > 1) {
-      const auto n = vectors_.size();
+    history_.validate(vector, error);
+    if (!history_.capacity()) return vector;
+    history_.push(vector, std::move(error));
+    while (history_.size() > 1) {
+      const auto n = history_.size();
       std::vector<double> gram(n * n);
       double scale = 0.0;
       for (std::size_t i = 0; i < n; ++i)
         for (std::size_t j = i; j < n; ++j) {
           const double dot =
-              std::inner_product(errors_[i].begin(), errors_[i].end(), errors_[j].begin(), 0.0);
+              std::inner_product(history_.errors()[i].begin(), history_.errors()[i].end(), history_.errors()[j].begin(), 0.0);
           gram[i * n + j] = dot;
           gram[j * n + i] = dot;
           scale = std::max(scale, std::abs(dot));
@@ -66,13 +59,12 @@ class Diis {
           std::vector<double> result(elements_);
           for (std::size_t row = 0; row < n; ++row)
             for (std::size_t i = 0; i < elements_; ++i)
-              result[i] += solution[row] * vectors_[row][i];
+              result[i] += solution[row] * history_.vectors()[row][i];
           return result;
         }
       }
 
-      vectors_.erase(vectors_.begin());
-      errors_.erase(errors_.begin());
+      history_.retire_oldest();
       ++restarts_;
     }
     return vector;
@@ -105,11 +97,8 @@ class Diis {
     return std::all_of(x.begin(), x.end(), [](double y) { return std::isfinite(y); });
   }
 
-  unsigned capacity_{};
   unsigned restarts_{};
-  std::size_t elements_{};
-  std::vector<std::vector<double>> vectors_;
-  std::vector<std::vector<double>> errors_;
+  detail::DiisHistory history_;
 };
 
 }  // namespace vibeqc::solver
