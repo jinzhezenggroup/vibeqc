@@ -243,8 +243,13 @@ __global__ void halve_density(double* d, std::size_t n) {
 }
 
 void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
-                               std::uint32_t functional, bool uks) {
-  Fixture strict(basis, grid, functional, uks, 13), mixed(basis, grid, functional, uks, 13);
+                               std::uint32_t functional, bool uks, std::size_t tile = 13) {
+  // Keep the strict reference on the scalar schedule; the candidate also
+  // exercises tiled mixed arithmetic when the caller supplies a large tile.
+  Fixture strict(basis, grid, functional, uks, 13), mixed(basis, grid, functional, uks, tile);
+  if (tile >= 16)
+    require(basis.nao >= 16 && mixed.layout.tile_points >= 16,
+            "mixed tiled qualification must admit its target schedule");
   const auto d = density(basis.nao, uks ? 2 : 1);
   strict.submit(d);
   mixed.submit(d, CudaXcDensityPrecision::Fp32ComputeFp64Accumulate);
@@ -463,6 +468,7 @@ void matrix_schedule_cases() {
           for (std::size_t tile : {17U, 31U, 64U}) {
             Fixture test(large_basis, large_grid, functional, uks, tile);
             compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+            mixed_density_contraction(large_basis, large_grid, functional, uks, tile);
           }
       graph_capture(large_basis, large_grid, 1U, false, 33);
       for (unsigned functional : {0U, 1U})
