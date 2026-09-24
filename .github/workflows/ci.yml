@@ -44,22 +44,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Select change-aware PR CodSpeed coverage
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          changed_files="$(
-            git diff --name-only \
-              "${{ github.event.pull_request.base.sha }}" \
-              "${{ github.event.pull_request.head.sha }}" --
-          )"
-          extra_cases=""
-          if grep -Eq \
-            '^(benchmarks/test_cpu_codspeed\.py|src/dft/|src/scf/|src/methods/|include/vibeqc/(dft|scf|methods)/|python/vibeqc_compiler/(dft|xc)/|manifests/|upstream/libxc/|tools/generate_xc)' \
-            <<<"$changed_files"; then
-            extra_cases="wb97mv"
-          fi
-          echo "VIBEQC_CODSPEED_EXTRA_CASES=${extra_cases}" >> "$GITHUB_ENV"
       - name: Install ccache 4.14
         run: |
           archive="ccache-${CCACHE_VERSION}-linux-x86_64-glibc.tar.xz"
@@ -176,7 +160,7 @@ jobs:
             cuda-cccl-12-9 \
             libcublas-dev-12-9 \
             libcusolver-dev-12-9 \
-            libcusparse-12-9 \
+            libcusparse-dev-12-9 \
             libnvjitlink-12-9 \
             python3-numpy
           "$CUDACXX" --version
@@ -721,6 +705,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Select change-aware PR CodSpeed coverage
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          changed_files="$(
+            git diff --name-only --no-renames \
+              "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" --
+          )"
+          extra_cases=""
+          if grep -Eq \
+            '^(benchmarks/test_cpu_codspeed\.py$|\.github/workflows/ci\.yml$|src/dft/|src/scf/|src/methods/|src/integrals/|include/vibeqc([./])|python/vibeqc/|python/vibeqc_compiler/(dft|xc)/|python/vibeqc_compiler/(method|integral)/|manifests/|upstream/libxc/|tools/(generate_xc|libxc))' \
+            <<<"$changed_files"; then
+            extra_cases="wb97mv"
+          fi
+          echo "VIBEQC_CODSPEED_EXTRA_CASES=${extra_cases}" >> "$GITHUB_ENV"
       - name: Install uv and Python 3.11
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
