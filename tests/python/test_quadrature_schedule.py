@@ -30,9 +30,7 @@ def test_codegen_has_no_runtime_or_numpy_dependency(tmp_path: Path) -> None:
     assert grid_response.grid_response_program is grid_response_ir.grid_response_program
     assert (
         grid_response.grid_mixed_response_program
-        is grid_response_ir.grid_response_mixed_response_program
-        if hasattr(grid_response_ir, "grid_response_mixed_response_program")
-        else grid_response_ir.grid_mixed_response_program
+        is grid_response_ir.grid_mixed_response_program
     )
 
 
