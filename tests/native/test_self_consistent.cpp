@@ -4,15 +4,15 @@
 #include <stdexcept>
 #include <utility>
 
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "solver/diis.hpp"
 
 namespace {
 
-using vibeqc::scf::solver::run_bounded_iterations;
-using vibeqc::scf::solver::run_self_consistent;
-using vibeqc::scf::solver::SelfConsistentPolicy;
-using vibeqc::scf::solver::SelfConsistentProgress;
+using vibeqc::solver::run_bounded_iterations;
+using vibeqc::solver::run_self_consistent;
+using vibeqc::solver::SelfConsistentPolicy;
+using vibeqc::solver::SelfConsistentProgress;
 
 void require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
