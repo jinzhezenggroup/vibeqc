@@ -500,9 +500,7 @@ def semiempirical_from_xtb(method: object) -> SemiempiricalMethodIR:
             for state in primitive.state_requirements
         }
     )
-    spin_semantics = (
-        "spin-resolved" if method.reference == "unrestricted" else "shared"
-    )
+    spin_semantics = "spin-resolved" if method.reference == "unrestricted" else "shared"
     state_fields = tuple(
         StateField(
             name=state,
