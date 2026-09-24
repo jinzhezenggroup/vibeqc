@@ -868,8 +868,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     // Only the trusted occupied producer supplies folded packed AO weights.
     // Unsupported/corrected states retain the dense response, folding its two
     // ordered adjoints when a generated shell consumer is available.
-    const bool packed_request =
-        pair_policy == "packed" && shell_execution && full_shell_domain;
+    const bool packed_request = pair_policy == "packed" && shell_execution && full_shell_domain;
     bool packed_pairs = packed_request && borrowed && borrowed->occupied_response;
     const char* fusion_control = std::getenv("VIBEQC_DF_RESPONSE_FUSION");
     const std::string_view fusion_policy = fusion_control ? fusion_control : "off";
@@ -1100,9 +1099,9 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source
       // generation for this capacity range without borrowing unowned memory.
-      const bool single_fitted_tensor =
-          device_metric->full_rank && !borrowed && !whitened && !owned_occupied &&
-          panel_capacity / 2 < a && panel_capacity > a;
+      const bool single_fitted_tensor = device_metric->full_rank && !borrowed && !whitened &&
+                                        !owned_occupied && panel_capacity / 2 < a &&
+                                        panel_capacity > a;
       const auto capacity =
           owned_occupied
               ? std::min(std::size_t{64}, (factor_capacity - occupied_retained) / (n * n))

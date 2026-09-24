@@ -371,8 +371,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       // source-backed plans lend C while the response bridge budgets its own
       // projected-factor/raw-slice scratch. The token/density/generation checks
       // above remain the authority; a label alone never establishes this view.
-      const auto selected = select_occupied_response_factors(
-          *plan, system, final_state, terms, maximum_bytes, owned_factors, detail);
+      const auto selected = select_occupied_response_factors(*plan, system, final_state, terms,
+                                                             maximum_bytes, owned_factors, detail);
       if (selected != VIBEQC_STATUS_SUCCESS) return selected;
     }
     // The diagnostic upload route writes the former raw scratch buffer.

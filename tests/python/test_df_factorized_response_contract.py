@@ -42,7 +42,10 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     assert "read_fitted || packed_pairs" not in streamed
     assert "consume, packed_pairs, auxiliary_shell_offsets" in streamed
     assert "read_values,\n        factorized_exchange" in streamed
-    assert "!borrow && plan->integral_source && metric.full_rank && space != \"dense\"" in force_owner
+    assert (
+        '!borrow && plan->integral_source && metric.full_rank && space != "dense"'
+        in force_owner
+    )
     assert "owned_factors.owner_identity ? &owned_factors : nullptr" in force_owner
     assert "whitened && !borrowed && !owned_occupied" in bridge
     assert "!borrowed && !whitened && !owned_occupied" in bridge
