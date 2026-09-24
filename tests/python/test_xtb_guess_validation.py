@@ -1,4 +1,4 @@
-"""Temporary endpoint validation for #1246 xTB-informed RKS guesses."""
+"""Endpoint validation evidence for #1246 xTB-informed RKS guesses."""
 
 from __future__ import annotations
 
