@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 
 import numpy as np
 import pytest
 
 from tools.vibeqc_cc.gpu_state import AmplitudeSnapshot
-from tools.vibeqc_cc.history_transport import HistoryRecyclePolicy, recycle_diis_history
+from tools.vibeqc_cc.history_transport import (
+    HistoryRecyclePolicy,
+    TargetResidualEvaluator,
+    recycle_diis_history,
+)
 from tools.vibeqc_cc.state_transport import (
     StateIdentity,
     StateTransport,
@@ -99,6 +104,13 @@ def _target_residual(amplitudes: AmplitudeSnapshot) -> tuple[np.ndarray, np.ndar
     return amplitudes.t1 * 2.0, amplitudes.t2 * 3.0
 
 
+def _evaluator(
+    transport: StateTransport,
+    evaluate: Callable[[AmplitudeSnapshot], tuple[np.ndarray, np.ndarray]] = _target_residual,
+) -> TargetResidualEvaluator:
+    return TargetResidualEvaluator(transport.target.identity, evaluate)
+
+
 def test_exact_history_recomputes_every_target_residual() -> None:
     transport = _transport()
     assert transport.compatibility is TransportCompatibility.exact_orbital_rotation
@@ -108,7 +120,9 @@ def test_exact_history_recomputes_every_target_residual() -> None:
         seen.append(amplitudes.reference_id)
         return _target_residual(amplitudes)
 
-    result = recycle_diis_history(transport, [_snapshot(0.1), _snapshot(0.2)], residual)
+    result = recycle_diis_history(
+        transport, [_snapshot(0.1), _snapshot(0.2)], _evaluator(transport, residual)
+    )
 
     assert result.kind == "target_recomputed_diis_history"
     assert result.transport_id == transport.identity
@@ -130,7 +144,9 @@ def test_projected_history_uses_target_space_before_residual() -> None:
         seen.append(amplitudes.t1.copy())
         return _target_residual(amplitudes)
 
-    result = recycle_diis_history(transport, [_snapshot(0.2)], residual)
+    result = recycle_diis_history(
+        transport, [_snapshot(0.2)], _evaluator(transport, residual)
+    )
 
     np.testing.assert_array_equal(seen[0], [[0.2, 0.0]])
     np.testing.assert_array_equal(result.entries[0].amplitudes.t1, [[0.2, 0.0]])
@@ -142,7 +158,7 @@ def test_history_capacity_retains_newest_vectors_with_source_indices() -> None:
     result = recycle_diis_history(
         transport,
         [_snapshot(0.1), _snapshot(0.2), _snapshot(0.3)],
-        _target_residual,
+        _evaluator(transport),
         policy=HistoryRecyclePolicy(maximum_vectors=2),
     )
 
@@ -166,7 +182,7 @@ def test_history_budget_fails_before_target_operator_call() -> None:
         recycle_diis_history(
             transport,
             [_snapshot(0.1), _snapshot(0.2)],
-            residual,
+            _evaluator(transport, residual),
             policy=HistoryRecyclePolicy(maximum_vectors=2, maximum_total_elements=7),
         )
     assert calls == 0
@@ -182,7 +198,11 @@ def test_source_reference_mismatch_fails_before_target_operator_call() -> None:
         return _target_residual(amplitudes)
 
     with pytest.raises(ValueError, match="transport source"):
-        recycle_diis_history(transport, [_snapshot(0.1, reference_id="stale")], residual)
+        recycle_diis_history(
+            transport,
+            [_snapshot(0.1, reference_id="stale")],
+            _evaluator(transport, residual),
+        )
     assert calls == 0
 
 
@@ -193,7 +213,9 @@ def test_invalid_target_residual_cannot_publish_history() -> None:
         return np.zeros((2, 2), dtype=np.float64), amplitudes.t2.copy()
 
     with pytest.raises(ValueError, match="matching target amplitudes"):
-        recycle_diis_history(transport, [_snapshot(0.1)], wrong_shape)
+        recycle_diis_history(
+            transport, [_snapshot(0.1)], _evaluator(transport, wrong_shape)
+        )
 
 
 def test_incompatible_transport_requires_reset_without_target_call() -> None:
@@ -207,5 +229,22 @@ def test_incompatible_transport_requires_reset_without_target_call() -> None:
         return _target_residual(amplitudes)
 
     with pytest.raises(ValueError, match="history reset"):
-        recycle_diis_history(transport, [_snapshot(0.1)], residual)
+        recycle_diis_history(
+            transport, [_snapshot(0.1)], _evaluator(transport, residual)
+        )
+    assert calls == 0
+
+
+def test_target_residual_identity_mismatch_fails_before_operator_call() -> None:
+    transport = _transport()
+    calls = 0
+
+    def residual(amplitudes: AmplitudeSnapshot) -> tuple[np.ndarray, np.ndarray]:
+        nonlocal calls
+        calls += 1
+        return _target_residual(amplitudes)
+
+    evaluator = TargetResidualEvaluator("stale-target-identity", residual)
+    with pytest.raises(ValueError, match="target identity"):
+        recycle_diis_history(transport, [_snapshot(0.1)], evaluator)
     assert calls == 0
