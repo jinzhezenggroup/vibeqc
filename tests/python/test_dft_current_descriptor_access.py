@@ -23,19 +23,26 @@ def test_current_dft_readers_do_not_probe_legacy_prefixes() -> None:
     assert "field_present(" not in _source()
 
 
-def test_current_dft_descriptor_readers_compile_and_keep_defaults(tmp_path: Path) -> None:
+def test_current_dft_descriptor_readers_compile_and_keep_defaults(
+    tmp_path: Path,
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("requires a host C++ compiler")
     text = _source()
-    grid = text[text.index("dft::GridSpec ks_grid_options("):text.index("Result adapt_result(")]
+    grid = text[
+        text.index("dft::GridSpec ks_grid_options(") : text.index(
+            "Result adapt_result("
+        )
+    ]
     auxiliary = text[
-        text.index("std::optional<core::System> ks_auxiliary_template("):
-        text.index("void validate_ks_auxiliary_geometry(")
+        text.index("std::optional<core::System> ks_auxiliary_template(") : text.index(
+            "void validate_ks_auxiliary_geometry("
+        )
     ]
     unit = tmp_path / "descriptor.cpp"
     unit.write_text(
-        r'''
+        r"""
 #include <array>
 #include <cassert>
 #include <climits>
@@ -79,8 +86,10 @@ struct vibeqc_method_descriptor {
  const vibeqc_ks_options* ks_options=nullptr;
  const Auxiliary* density_fitting_auxiliary_basis=nullptr;
 };
-'''
-        + grid + auxiliary + r'''
+"""
+        + grid
+        + auxiliary
+        + r"""
 int main() {
  vibeqc_method_descriptor d; scf::ScfOptions options; NativeKsExecutionPlan plan;
  auto defaults=ks_grid_options(d,options,plan);
@@ -107,11 +116,15 @@ int main() {
  auto owned=ks_auxiliary_template(d); aux.data.atoms[0]=7;
  assert(owned && owned->atoms[0]==1 && owned->atoms[1]==8);
 }
-''', encoding="utf-8",
+""",
+        encoding="utf-8",
     )
     binary = tmp_path / "descriptor"
     subprocess.run(
         [compiler, "-std=c++20", "-O0", str(unit), "-o", str(binary)],
-        check=True, capture_output=True, text=True, timeout=30,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     subprocess.run([str(binary)], check=True, timeout=10)
