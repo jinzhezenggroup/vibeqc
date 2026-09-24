@@ -1,42 +1,47 @@
+"""CUDA SCF density science must be emitted from the canonical TensorIR."""
+
 from pathlib import Path
 
 import pytest
 
+from tools.generate_scf_array_native import template_hash
+from vibeqc_compiler.array_api.scf import density_program as array_density_program
+from vibeqc_compiler.tensor.scf_cuda import density_template_hash, emit_density_cuda
+
 SOURCE = Path(__file__).parents[2] / "src/scf/cuda/scf_density_kernels.cu"
 
 
-def _function(source: str, name: str, next_name: str) -> str:
-    start = source.index(f"__global__ void {name}")
-    end = source.index(f"__global__ void {next_name}", start)
-    return source[start:end]
-
-
-def test_cuda_density_builds_contract_only_unique_ao_pairs() -> None:
-    source = SOURCE.read_text()
-    rhf = _function(source, "build_density_kernel", "build_spin_density_kernel")
-    spin = _function(source, "build_spin_density_kernel", "mix_open_shell_guess_kernel")
-
-    for kernel in (rhf, spin):
-        assert "if (row > column) return;" in kernel
-        assert "density[element] = value;" in kernel
-        assert "density[offset + matrix_index(column, row, n)] = value;" in kernel
-        assert kernel.index("if (row > column) return;") < kernel.index(
-            "for (std::int32_t orbital"
-        )
-
-
-def test_weighted_density_keeps_full_square_rounding_order() -> None:
-    source = SOURCE.read_text()
-    weighted = _function(
-        source, "build_weighted_density_kernel", "build_spin_weighted_density_kernel"
-    )
-    spin_weighted = _function(
-        source, "build_spin_weighted_density_kernel", "sum_uhf_spin_matrices_kernel"
+def test_cuda_density_uses_same_logical_tensor_identity_as_cpu() -> None:
+    assert density_template_hash() == template_hash(
+        array_density_program(1, 3, spin_count=2, orbital_count=2)
     )
 
-    # The orbital-energy factor is not a power-of-two scale, so swapping AO
-    # operands can change FP64 rounding. This optimization intentionally does
-    # not mirror the weighted-density kernels.
+
+def test_cuda_density_is_compiler_owned_and_symmetric() -> None:
+    generated = emit_density_cuda()
+    source = SOURCE.read_text()
+
+    assert "template <int OccupationWeight>" in generated
+    assert "if (row > column) return;" in generated
+    assert "density[element] = value;" in generated
+    assert "density[offset + column + row * n] = value;" in generated
+    assert "if constexpr (OccupationWeight == 2)" in generated
+
+    assert "__global__ void build_density_kernel" not in source
+    assert "__global__ void build_spin_density_kernel" not in source
+    assert "generated::occupied_density_kernel<2>" in source
+    assert "generated::occupied_density_kernel<1>" in source
+
+
+def test_weighted_density_keeps_native_full_square_rounding_order() -> None:
+    source = SOURCE.read_text()
+    start = source.index("__global__ void build_weighted_density_kernel")
+    end = source.index("__global__ void build_spin_weighted_density_kernel", start)
+    weighted = source[start:end]
+    start = end
+    end = source.index("__global__ void sum_uhf_spin_matrices_kernel", start)
+    spin_weighted = source[start:end]
+
     for kernel in (weighted, spin_weighted):
         assert "if (row > column) return;" not in kernel
         assert "matrix_index(column, row, n)] = value" not in kernel

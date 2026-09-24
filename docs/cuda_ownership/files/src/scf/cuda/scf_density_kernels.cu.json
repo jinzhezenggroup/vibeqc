@@ -2,13 +2,13 @@
   "path": "src/scf/cuda/scf_density_kernels.cu",
   "role": "runtime",
   "subsystem": "scf_tensor",
-  "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
+  "reason": "Native CUDA launch/runtime owner. Plain RHF/UHF density contraction is compiler-generated; warm-start and weighted-density paths remain native.",
   "regions": [
     {
-      "start": "__global__ void build_density_kernel",
+      "start": "__global__ void mix_open_shell_guess_kernel",
       "stop": "__device__ double warm_density_block_sum",
       "role": "scientific",
-      "reason": "Existing occupied-orbital density and symmetry-breaking frontier guess equations."
+      "reason": "Existing open-shell symmetry-breaking frontier guess equation."
     },
     {
       "start": "__global__ void build_weighted_density_kernel",

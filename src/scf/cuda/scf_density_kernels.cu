@@ -2,62 +2,12 @@
 
 #include <cmath>
 
+#include "generated_scf_density_cuda.cuh"
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/scf_constants.hpp"
 #include "scf/cuda/scf_density_kernels.hpp"
 
 namespace vibeqc::scf::cuda_execution {
-
-__global__ void build_density_kernel(std::int32_t batch_size, std::int32_t nbf,
-                                     const std::int32_t* occupied, const double* coefficients,
-                                     const std::uint8_t* active, double* density) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
-  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
-  if (active != nullptr && active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  // Density is symmetric: one thread contracts each unique AO pair and publishes its mirror.
-  if (row > column) return;
-  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
-  double value = 0.0;
-  for (std::int32_t orbital = 0; orbital < occupied[system]; ++orbital) {
-    value += 2.0 * coefficients[offset + matrix_index(row, orbital, n)] *
-             coefficients[offset + matrix_index(column, orbital, n)];
-  }
-  density[element] = value;
-  if (row != column) density[offset + matrix_index(column, row, n)] = value;
-}
-
-__global__ void build_spin_density_kernel(std::int32_t batch_size, std::int32_t spin_count,
-                                          std::int32_t nbf, const std::int32_t* occupied,
-                                          const double* coefficients, const std::uint8_t* active,
-                                          double* density) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t state_count = static_cast<std::size_t>(batch_size) * spin_count;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= state_count * matrix_size) return;
-  const std::size_t state = element / matrix_size;
-  const std::size_t system = state / static_cast<std::size_t>(spin_count);
-  if (active != nullptr && active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  // Density is symmetric: one thread contracts each unique AO pair and publishes its mirror.
-  if (row > column) return;
-  const std::size_t offset = state * matrix_size;
-  double value = 0.0;
-  for (std::int32_t orbital = 0; orbital < occupied[state]; ++orbital) {
-    value += coefficients[offset + matrix_index(row, orbital, n)] *
-             coefficients[offset + matrix_index(column, orbital, n)];
-  }
-  density[element] = value;
-  if (row != column) density[offset + matrix_index(column, row, n)] = value;
-}
 
 __global__ void mix_open_shell_guess_kernel(std::int32_t batch_size, std::int32_t nbf,
                                             const std::int32_t* occupied,
@@ -277,8 +227,8 @@ void launch_build_density_kernel(dim3 grid, dim3 block, std::size_t shared_bytes
                                  cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
                                  const std::int32_t* occupied, const double* coefficients,
                                  const std::uint8_t* active, double* density) {
-  build_density_kernel<<<grid, block, shared_bytes, stream>>>(batch_size, nbf, occupied,
-                                                              coefficients, active, density);
+  generated::occupied_density_kernel<2><<<grid, block, shared_bytes, stream>>>(
+      batch_size, 1, nbf, occupied, coefficients, active, density);
 }
 
 void launch_build_spin_density_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
@@ -286,7 +236,7 @@ void launch_build_spin_density_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       std::int32_t spin_count, std::int32_t nbf,
                                       const std::int32_t* occupied, const double* coefficients,
                                       const std::uint8_t* active, double* density) {
-  build_spin_density_kernel<<<grid, block, shared_bytes, stream>>>(
+  generated::occupied_density_kernel<1><<<grid, block, shared_bytes, stream>>>(
       batch_size, spin_count, nbf, occupied, coefficients, active, density);
 }
 

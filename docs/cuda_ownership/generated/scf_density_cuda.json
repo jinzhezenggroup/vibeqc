@@ -1,0 +1,8 @@
+{
+  "name": "scf_density_cuda",
+  "outputs": [
+    "generated/generated_scf_density_cuda.cuh"
+  ],
+  "owner": "python/vibeqc_compiler/tensor/scf_cuda.py",
+  "scope": "Build-time CUDA lowering of the canonical SCF density TensorIR for RHF/UHF integer occupations. The generated schedule contracts one upper-triangle AO pair and mirrors the completed value while native code retains launch, stream, active-item and solver/runtime ownership."
+}
