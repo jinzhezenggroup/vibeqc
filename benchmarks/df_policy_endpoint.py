@@ -197,6 +197,16 @@ def endpoint_errors(
     return differences[0], differences[1] if force is not None else None
 
 
+def require_frozen_checkpoint_geometry(manifest: typing.Any, target_hash: str) -> None:
+    """Reject changed-geometry seeds while allowing control-only warm replay."""
+    if (
+        len(manifest.items) != 1
+        or not isinstance(manifest.items[0].get("model"), dict)
+        or manifest.items[0]["model"].get("geometry_hash") != target_hash
+    ):
+        raise RuntimeError("warm checkpoint geometry differs from benchmark target")
+
+
 def main() -> None:
     """Retain each numerical result before enforcing unchanged strict gates."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -266,13 +276,18 @@ def main() -> None:
         help="Reject samples outside the declared fixed SCF update count",
     )
     args = parser.parse_args()
+    allocation = os.environ.get("SLURM_JOB_ID") or os.environ.get(
+        "VIBEQC_BENCHMARK_ALLOCATION"
+    )
     if (
-        not os.environ.get("SLURM_JOB_ID")
+        not allocation
         or args.repeats < 1
         or args.df_budget < 0
         or (args.expected_iterations is not None and args.expected_iterations < 1)
     ):
-        parser.error("requires Slurm, positive repeats and a nonnegative DF budget")
+        parser.error(
+            "requires a declared GPU allocation, positive repeats and a nonnegative DF budget"
+        )
     if args.shell_work and not args.components_after:
         parser.error("--shell-work requires --components-after")
     if args.screening_features and not args.shell_work:
@@ -393,7 +408,8 @@ def main() -> None:
             ["git", "rev-parse", "HEAD"], text=True
         ).strip(),
         "library_sha256": hashlib.sha256(library.read_bytes()).hexdigest(),
-        "slurm_job_id": os.environ["SLURM_JOB_ID"],
+        "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+        "benchmark_allocation": allocation,
         "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
         "control": args.control,
         "policies": args.policies,
@@ -450,6 +466,15 @@ def main() -> None:
         density_tolerance=1e-10,
         max_iterations=100,
     )
+    if args.warm_checkpoint_in:
+        from vibeqc.checkpoint import inspect_checkpoint
+
+        require_frozen_checkpoint_geometry(
+            inspect_checkpoint(args.warm_checkpoint_in),
+            calculator.resolved_model(
+                case.atoms, charge=case.charge, multiplicity=case.multiplicity
+            ).geometry_hash,
+        )
     prepare_start = time.perf_counter()
     with calculator.prepare_batch([case.atoms]) as batch:
         payload["prepare_seconds"] = time.perf_counter() - prepare_start
@@ -528,6 +553,18 @@ def main() -> None:
                 [item.basis_metadata for item in cold.items],
             )
             payload["reference_sha256"] = hashlib.sha256(reference_bytes).hexdigest()
+            cold_errors = endpoint_errors(
+                cold.energies,
+                np.array([item.forces for item in cold.items]),
+                expected_energy,
+                expected_forces,
+            )
+            payload["initialization_errors"] = cold_errors
+            save()
+            if cold_errors[0] > energy_gate or cold_errors[1] > force_gate:
+                raise RuntimeError(
+                    "initialization failed independent energy/force gates"
+                )
         save()
         # Every clean replay precedes instrumentation. Component records live
         # in a separate collection and reuse the same frozen density/owner.
@@ -542,8 +579,26 @@ def main() -> None:
             traced = args.trace or diagnostic
             phase = "diagnostic-" if diagnostic else ""
             select_policy(policy)
+            payload["active_phase"] = {
+                "policy": policy,
+                "repeat": repeat,
+                "diagnostic": diagnostic,
+                "stage": "prime",
+                "started_unix_seconds": time.time(),
+            }
+            save()
             prime, prime_seconds = execute(batch)
-            if fresh_reference is not None:
+            payload["active_phase"] = {
+                "policy": policy,
+                "repeat": repeat,
+                "diagnostic": diagnostic,
+                "stage": "sample",
+                "started_unix_seconds": time.time(),
+                "prime_seconds": prime_seconds,
+                "prime_iterations": [item.iterations for item in prime.items],
+            }
+            save()
+            if fresh_reference is not None or args.reference:
                 prime_errors = endpoint_errors(
                     prime.energies,
                     None
@@ -718,6 +773,7 @@ def main() -> None:
             payload.setdefault("diagnostics" if diagnostic else "samples", []).append(
                 sample
             )
+            payload.pop("active_phase", None)
             save()
             print(phase + policy, repeat, seconds, sample["iterations"], flush=True)
             if sample["maximum_energy_error"] > energy_gate or (

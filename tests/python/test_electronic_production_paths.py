@@ -8,6 +8,7 @@ import typing
 
 from tools.check_electronic_production_paths import (
     DEFAULT_LEDGER,
+    EVIDENCE_LEVELS,
     load_and_validate,
     validate_production_path_ledger,
 )
@@ -16,9 +17,54 @@ if typing.TYPE_CHECKING:
     from pathlib import Path
 
 
+def _evidence_levels() -> dict[str, object]:
+    return {
+        "represented": {
+            "state": "present",
+            "evidence": ["science.cpp"],
+            "reason": None,
+        },
+        "compiled-cpu": {
+            "state": "present",
+            "evidence": ["test_energy.py"],
+            "reason": None,
+        },
+        "compiled-cuda": {
+            "state": "not-applicable",
+            "evidence": [],
+            "reason": "CPU fixture.",
+        },
+        "device-executed": {
+            "state": "not-applicable",
+            "evidence": [],
+            "reason": "CPU fixture.",
+        },
+        "domain-qualified": {
+            "state": "present",
+            "evidence": ["test_energy.py"],
+            "reason": None,
+        },
+        "molecular": {
+            "state": "present",
+            "evidence": ["test_energy.py"],
+            "reason": None,
+        },
+        "derivative": {
+            "state": "not-applicable",
+            "evidence": [],
+            "reason": "Energy-only fixture.",
+        },
+        "public": {
+            "state": "present",
+            "evidence": ["test_energy.py"],
+            "reason": None,
+        },
+    }
+
+
 def _fixture() -> dict[str, object]:
     return {
-        "schema": "vibeqc.electronic-production-paths.v1",
+        "schema": "vibeqc.electronic-production-paths.v2",
         "coverage": "pilot",
         "rows": [
             {
@@ -37,6 +83,7 @@ def _fixture() -> dict[str, object]:
                 "state_owner": "state.hpp",
                 "resource_owner": "resources.cpp",
                 "evidence": ["test_energy.py"],
+                "evidence_levels": _evidence_levels(),
                 "blocker": None,
             }
         ],
@@ -67,6 +114,9 @@ def test_repository_production_path_ledger_is_valid() -> None:
     rows = typing.cast("list[dict[str, object]]", payload["rows"])
     assert {row["method_family"] for row in rows} >= {"hf", "dft"}
     assert {row["backend"] for row in rows} >= {"cpu", "cuda"}
+    for row in rows:
+        levels = typing.cast("dict[str, object]", row["evidence_levels"])
+        assert set(levels) == set(EVIDENCE_LEVELS)
 
 
 def test_production_row_requires_existing_actual_path_anchors(tmp_path: Path) -> None:
@@ -130,6 +180,95 @@ def test_non_unsupported_row_cannot_carry_stale_blocker(tmp_path: Path) -> None:
     errors = validate_production_path_ledger(payload, root=tmp_path)
     assert errors == [
         "hf-energy-cpu-direct.blocker must be empty unless status is 'unsupported'"
+    ]
+
+
+def test_all_evidence_levels_are_required(tmp_path: Path) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    levels = typing.cast("dict[str, object]", row["evidence_levels"])
+    levels.pop("device-executed")
+    errors = validate_production_path_ledger(payload, root=tmp_path)
+    assert errors == [
+        "hf-energy-cpu-direct.evidence_levels missing levels: device-executed"
+    ]
+
+
+def test_missing_evidence_state_requires_reason_and_no_evidence(tmp_path: Path) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
+    levels["domain-qualified"] = {
+        "state": "missing",
+        "evidence": ["test_energy.py"],
+        "reason": "",
+    }
+    errors = validate_production_path_ledger(payload, root=tmp_path)
+    assert errors == [
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be empty "
+            "when state is 'missing'"
+        ),
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must explain "
+            "state 'missing'"
+        ),
+    ]
+
+
+def test_failed_evidence_keeps_failure_anchor_and_reason(tmp_path: Path) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
+    levels["domain-qualified"] = {
+        "state": "failed",
+        "evidence": ["test_energy.py"],
+        "reason": "Pinned oracle mismatch.",
+    }
+    assert validate_production_path_ledger(payload, root=tmp_path) == []
+
+
+def test_production_backend_compile_evidence_cannot_be_silently_missing(
+    tmp_path: Path,
+) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
+    levels["compiled-cpu"] = {
+        "state": "missing",
+        "evidence": [],
+        "reason": "No retained compile evidence.",
+    }
+    errors = validate_production_path_ledger(payload, root=tmp_path)
+    assert errors == [
+        (
+            "hf-energy-cpu-direct.evidence_levels.compiled-cpu must be present "
+            "for a production row"
+        )
+    ]
+
+
+def test_present_evidence_requires_anchor_and_rejects_stale_reason(
+    tmp_path: Path,
+) -> None:
+    payload = _fixture()
+    row = typing.cast("list[dict[str, object]]", payload["rows"])[0]
+    levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
+    levels["domain-qualified"] = {
+        "state": "present",
+        "evidence": [],
+        "reason": "old blocker",
+    }
+    errors = validate_production_path_ledger(payload, root=tmp_path)
+    assert errors == [
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.evidence must be non-empty "
+            "when state is 'present'"
+        ),
+        (
+            "hf-energy-cpu-direct.evidence_levels.domain-qualified.reason must be empty "
+            "when evidence is present"
+        ),
     ]
 
 
