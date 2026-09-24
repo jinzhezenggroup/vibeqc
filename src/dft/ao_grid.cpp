@@ -108,43 +108,54 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
       derivatives[derivative_count++] = {derivative[0], derivative[1], derivative[2]};
   if (derivative_count != jets) throw std::logic_error("AO jet enumeration mismatch");
 
-  for (std::size_t point = 0; point < npoint; ++point) {
-    for (std::size_t ao = 0; ao < count; ++ao) {
-      const auto* record = aos + 16 * (ao_ids ? ao_ids[ao] : ao_begin + ao);
-      const auto atom = static_cast<std::size_t>(record[0]);
-      std::array<double, 3> r{};
-      double r2 = 0;
-      for (unsigned k = 0; k < 3; ++k) {
-        r[k] = points[3 * point + k] - packed[3 * atom + k];
-        r2 += r[k] * r[k];
-      }
+  // Keep one mathematical traversal while specializing its four legal jet
+  // extents. In particular, value-only work must not pay for a 20-jet array
+  // and a runtime inner reduction when radial reuse removes no work there.
+  const auto evaluate_jets = [&]<std::size_t JetCount>() {
+    for (std::size_t point = 0; point < npoint; ++point) {
+      for (std::size_t ao = 0; ao < count; ++ao) {
+        const auto* record = aos + 16 * (ao_ids ? ao_ids[ao] : ao_begin + ao);
+        const auto atom = static_cast<std::size_t>(record[0]);
+        std::array<double, 3> r{};
+        double r2 = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+          r[k] = points[3 * point + k] - packed[3 * atom + k];
+          r2 += r[k] * r[k];
+        }
 
-      std::array<double, 20> values{};
-      const auto first = static_cast<std::size_t>(record[1]);
-      const auto end = first + static_cast<std::size_t>(record[2]);
-      for (auto p = first; p < end; ++p) {
-        const double alpha = primitives[2 * p];
-        const double radial = primitives[2 * p + 1] * std::exp(-alpha * r2);
-        // Exact exponential underflow contributes zero, without evaluating
-        // potentially overflowing far-field polynomial factors.
-        if (radial == 0) continue;
-        for (unsigned t = 0; t < static_cast<unsigned>(record[3]); ++t) {
-          const double weighted_radial = radial * record[7 + 4 * t];
-          for (std::size_t jet = 0; jet < jets; ++jet) {
-            double term = weighted_radial;
-            for (unsigned k = 0; k < 3; ++k)
-              term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]),
-                                           derivatives[jet][k], alpha, r[k]);
-            values[jet] += term;
+        std::array<double, JetCount> values{};
+        const auto first = static_cast<std::size_t>(record[1]);
+        const auto end = first + static_cast<std::size_t>(record[2]);
+        for (auto p = first; p < end; ++p) {
+          const double alpha = primitives[2 * p];
+          const double radial = primitives[2 * p + 1] * std::exp(-alpha * r2);
+          // Exact exponential underflow contributes zero, without evaluating
+          // potentially overflowing far-field polynomial factors.
+          if (radial == 0) continue;
+          for (unsigned t = 0; t < static_cast<unsigned>(record[3]); ++t) {
+            const double weighted_radial = radial * record[7 + 4 * t];
+            for (std::size_t jet = 0; jet < JetCount; ++jet) {
+              double term = weighted_radial;
+              for (unsigned k = 0; k < 3; ++k)
+                term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]),
+                                             JetCount == 1 ? 0U : derivatives[jet][k], alpha, r[k]);
+              values[jet] += term;
+            }
           }
         }
-      }
 
-      for (std::size_t jet = 0; jet < jets; ++jet) {
-        if (!std::isfinite(values[jet])) throw std::runtime_error("nonfinite AO jet result");
-        output[(jet * npoint + point) * count + ao] = values[jet];
+        for (std::size_t jet = 0; jet < JetCount; ++jet) {
+          if (!std::isfinite(values[jet])) throw std::runtime_error("nonfinite AO jet result");
+          output[(jet * npoint + point) * count + ao] = values[jet];
+        }
       }
     }
+  };
+  switch (order) {
+    case 0: evaluate_jets.template operator()<1>(); break;
+    case 1: evaluate_jets.template operator()<4>(); break;
+    case 2: evaluate_jets.template operator()<10>(); break;
+    case 3: evaluate_jets.template operator()<20>(); break;
   }
 }
 }  // namespace vibeqc::dft
