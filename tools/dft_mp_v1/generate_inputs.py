@@ -2,7 +2,8 @@
 
 The committed JSON inputs are the runtime contract. The RDKit-derived inputs are
 reconstructable only by the recorded platform/wheel. Default execution is a
-read-only audit. A new version candidate requires an explicit separate output.
+read-only LF-normalized audit that never overwrites v1 inputs. A new version
+candidate requires an explicit separate output.
 """
 
 from __future__ import annotations
@@ -181,13 +182,14 @@ def build() -> dict[str, dict]:
     return out
 
 
-def serialized_inputs() -> dict[str, bytes]:
-    result = {}
-    for key, generated in sorted(build().items()):
+def _render_inputs(generated_cases: dict[str, dict]) -> dict[str, bytes]:
+    """Serialize candidate input bytes without touching the frozen files."""
+    candidates = {}
+    for key, generated in sorted(generated_cases.items()):
         value = {"schema_version": 1, "id": key, "units": "bohr", **generated}
-        result[f"{key}.json"] = (
+        candidates[f"{key}.json"] = (
             json.dumps(value, indent=2, sort_keys=True) + "\n"
-        ).encode()
+        ).encode("utf-8")
         changed = json.loads(json.dumps(value))
         changed["id"] = f"{key}-changed"
         changed["atoms"][0][1][0] = changed["atoms"][0][1][0] + 0.01
@@ -200,22 +202,32 @@ def serialized_inputs() -> dict[str, bytes]:
             "license": value["source"]["license"],
             "attribution": value["source"]["attribution"],
         }
-        result[f"{key}-changed.json"] = (
+        candidates[f"{key}-changed.json"] = (
             json.dumps(changed, indent=2, sort_keys=True) + "\n"
-        ).encode()
-    return result
+        ).encode("utf-8")
+    return candidates
+
+
+def serialized_inputs() -> dict[str, bytes]:
+    return _render_inputs(build())
 
 
 def audit_serialized(candidates: dict[str, bytes], frozen: Path) -> None:
     actual_names = {path.name for path in frozen.glob("*.json")}
-    mismatches = sorted(actual_names ^ set(candidates))
+    missing = sorted(set(candidates) - actual_names)
+    if missing:
+        raise RuntimeError(
+            "cannot audit frozen input(s); no files changed: " + ", ".join(missing)
+        )
+    mismatches = sorted(actual_names - set(candidates))
     for name, candidate in sorted(candidates.items()):
         path = frozen / name
         if path.is_file() and path.read_bytes().replace(b"\r\n", b"\n") != candidate:
             mismatches.append(name)
     if mismatches:
         raise RuntimeError(
-            "frozen input audit mismatch: " + ", ".join(sorted(set(mismatches)))
+            "frozen input audit mismatch; no files changed: "
+            + ", ".join(sorted(set(mismatches)))
         )
 
 
@@ -235,14 +247,14 @@ def write_candidate_files(
         (target / name).write_bytes(value)
 
 
-def main() -> None:
+def main(argv: list[str] | tuple[str, ...] | None = ()) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--candidate-output",
         type=Path,
         help="write a deliberate new-version candidate to a separate empty tree",
     )
-    arguments = parser.parse_args()
+    arguments = parser.parse_args(argv)
     candidates = serialized_inputs()
     frozen = ROOT / "inputs"
     if arguments.candidate_output is None:
@@ -256,4 +268,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(None)
