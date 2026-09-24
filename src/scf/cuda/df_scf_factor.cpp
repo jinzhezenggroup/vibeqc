@@ -287,9 +287,8 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
     detail = "VIBEQC_DF_JK_SHARED_SOURCE must be auto, 0 or 1";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  const bool shared_requested =
-      !shared_policy || std::strcmp(shared_policy, "auto") == 0 ||
-      std::strcmp(shared_policy, "1") == 0;
+  const bool shared_requested = !shared_policy || std::strcmp(shared_policy, "auto") == 0 ||
+                                std::strcmp(shared_policy, "1") == 0;
   const bool shared = shared_requested && !beta && (seed || ready) && joint_rank &&
                       qualified_value_rhf_exchange(plan, joint_rank) && plan.triangular_exchange &&
                       joint_schedule.blocks >= 1 && joint_schedule.blocks <= 2 &&
