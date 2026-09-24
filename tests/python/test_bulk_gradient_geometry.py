@@ -151,7 +151,7 @@ def test_noncurated_bulk_geometry_matches_independent_displaced_energy(
     )
 
     assert oracle.spread < 2e-7
-    np.testing.assert_allclose(oracle.stable_estimate, expected, atol=5e-8)
+    np.testing.assert_allclose(oracle.stable_estimate, expected, atol=2e-8)
     payload = diagnostic.to_payload()
     assert payload["schema"] == BULK_FORCE_GEOMETRY_SCHEMA
     assert payload["force_resolution"]["identity"] == base.identity
