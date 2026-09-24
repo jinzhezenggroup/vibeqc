@@ -16,7 +16,15 @@ from pathlib import Path
 
 from .freeze_contract import REPO, ROOT, build, canonical, digest, source_digest
 
-STATUSES = {"unknown", "unsupported", "not-run", "failed", "timed-out", "pass"}
+STATUSES = {
+    "unknown",
+    "unsupported",
+    "not-run",
+    "running",
+    "failed",
+    "timed-out",
+    "pass",
+}
 TIMINGS = ("cold", "warm", "changed_geometry")
 COMPONENTS = {
     "prepare",
@@ -62,6 +70,15 @@ def checked_file(base: Path, record: dict, *, key: str = "path") -> Path:
         f"stale or modified evidence: {path}",
     )
     return path
+
+
+def checked_capture(base: Path, capture: dict) -> None:
+    require(
+        type(capture) is dict and set(capture) == {"stdout", "stderr", "progress"},
+        "raw attempt capture missing",
+    )
+    for record in capture.values():
+        checked_file(base, record)
 
 
 def manifest() -> dict:
@@ -143,7 +160,12 @@ def _sha(value: object, label: str) -> None:
 
 
 def _check_run(
-    run: dict, campaign: dict, row: dict, contract: dict, base: Path
+    run: dict,
+    campaign: dict,
+    row: dict,
+    contract: dict,
+    base: Path,
+    capture: dict | None = None,
 ) -> None:
     require(run.get("status") == "pass", "result schema status missing")
     require(run.get("row_id") == row["id"], "row mismatch")
@@ -187,6 +209,12 @@ def _check_run(
         "provider mismatch",
     )
     require(
+        run.get("spin") == row["spin"]
+        and run.get("charge") == case["charge"]
+        and run.get("multiplicity") == case["multiplicity"],
+        "spin/charge/multiplicity mismatch",
+    )
+    require(
         run.get("basis_representation") == "real_spherical"
         and run.get("auxiliary") is None
         and run.get("ecp") is None
@@ -214,8 +242,9 @@ def _check_run(
         "physical residual failed",
     )
     require(
-        type(scf.get("screening_thresholds")) is dict and scf["screening_thresholds"],
-        "missing screening controls",
+        scf.get("max_iterations") == model["scf"]["max_iterations"]
+        and scf.get("screening_thresholds") == model["scf"]["screening_thresholds"],
+        "SCF iteration/screening controls drift",
     )
     require(
         scf.get("final_forces_state") == run["attained_state"],
@@ -346,7 +375,9 @@ def _check_run(
     )
     timeline = precision.get("scf_fock_timeline")
     require(type(timeline) is list and timeline, "SCF/Fock event timeline missing")
+    previous_iteration = -1
     for sequence, event in enumerate(timeline):
+        require(type(event) is dict, "malformed SCF/Fock event")
         require(
             event.get("kind")
             in (
@@ -367,6 +398,13 @@ def _check_run(
             and event["iteration"] >= 0,
             "each SCF/Fock call requires one ordered event",
         )
+        require(
+            event["iteration"] >= previous_iteration
+            and type(event.get("state")) is str
+            and event["state"],
+            "SCF/Fock event iteration or state missing",
+        )
+        previous_iteration = event["iteration"]
     for kind, name in (
         ("mixed_fock", "mixed_stage_fock_builds"),
         ("strict_fock", "strict_stage_fock_builds"),
@@ -379,6 +417,34 @@ def _check_run(
             == native[name],
             f"{kind} timeline/provenance mismatch",
         )
+    refinement = [
+        event
+        for event in timeline
+        if event["kind"] == "strict_fock" and event.get("phase") == "refinement"
+    ]
+    require(
+        len(refinement) == native["refinement_iterations"],
+        "strict refinement iterations are not tied to Fock events",
+    )
+    mixed_events = [event for event in timeline if event["kind"] == "mixed_fock"]
+    if mixed_events:
+        require(
+            refinement
+            and max(event["sequence"] for event in mixed_events)
+            < min(event["sequence"] for event in refinement),
+            "mixed Fock work occurred after strict refinement began",
+        )
+    fock_indices = [
+        event["sequence"] for event in timeline if event["kind"].endswith("fock")
+    ]
+    final_audits = [event for event in timeline if event["kind"] == "final_audit"]
+    require(
+        fock_indices
+        and final_audits
+        and final_audits[-1]["sequence"] > max(fock_indices)
+        and final_audits[-1]["state"] == run["attained_state"],
+        "final physical audit must follow refinement/Fock on returned state",
+    )
     for operator in precision["operators"]:
         require(type(operator) is dict, "malformed operator record")
         require(
@@ -476,7 +542,11 @@ def _check_run(
             run["strict_comparator"].get("energy_tolerance_eh")
             == model["scf"]["energy_tolerance_eh"]
             and run["strict_comparator"].get("density_tolerance")
-            == model["scf"]["density_tolerance"],
+            == model["scf"]["density_tolerance"]
+            and run["strict_comparator"].get("max_iterations")
+            == model["scf"]["max_iterations"]
+            and run["strict_comparator"].get("screening_thresholds")
+            == model["scf"]["screening_thresholds"],
             "strict and mixed final SCF targets differ",
         )
         error = run.get("mixed_vs_strict", {})
@@ -508,6 +578,10 @@ def _check_run(
             "online scientific CUDA compilation",
         )
     if row["level"] == "promoted":
+        require(
+            capture is not None and run.get("attempt_ledger") == capture["progress"],
+            "performance ledger is not the captured raw progress",
+        )
         for check_name in ("batch_throughput", "strict_fallback"):
             check = run.get("checks", {}).get(check_name)
             require(
@@ -588,6 +662,39 @@ def _check_run(
                         <= 0.01 * total,
                         "timing total/component mismatch",
                     )
+        ledger_path = checked_file(base, run["attempt_ledger"])
+        try:
+            attempts = [
+                json.loads(line)
+                for line in ledger_path.read_text(encoding="utf-8").splitlines()
+            ]
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            raise InvalidEvidence(f"invalid timing attempt ledger: {error}") from error
+        expected_attempts = [
+            (boundary, pair_index, route, pair[route]["total_ms"])
+            for boundary in TIMINGS
+            for pair_index, pair in enumerate(run["timing"][boundary])
+            for route in pair["order"]
+        ]
+        require(
+            len(attempts) == len(expected_attempts),
+            "timing attempts include missing/failed/dropped samples",
+        )
+        for index, (attempt, expected_attempt) in enumerate(
+            zip(attempts, expected_attempts, strict=True)
+        ):
+            boundary, pair_index, route, total_ms = expected_attempt
+            require(
+                type(attempt) is dict
+                and attempt.get("attempt_id") == index
+                and attempt.get("boundary") == boundary
+                and attempt.get("pair_index") == pair_index
+                and attempt.get("route") == route
+                and attempt.get("status") == "pass"
+                and attempt.get("conditions_sha256") == campaign["conditions_sha256"]
+                and attempt.get("total_ms") == total_ms,
+                "timing ledger/sample mismatch or failed attempt",
+            )
 
 
 def _geomean(values: list[float]) -> float:
@@ -597,7 +704,7 @@ def _geomean(values: list[float]) -> float:
 def _performance_gate(records: dict[str, dict], contract: dict) -> list[str]:
     errors = []
     for method in ("pbe", "r2scan", "pbe0"):
-        for boundary in ("cold", "changed_geometry"):
+        for boundary in TIMINGS:
             grouped = []
             for case in contract["gates"]["performance_cases"]:
                 key = f"{method}/rks/{case}/promoted"
@@ -614,6 +721,8 @@ def _performance_gate(records: dict[str, dict], contract: dict) -> list[str]:
                     errors.append(f"{key} {boundary}: >5% regression")
                 grouped.append(ratios)
             if len(grouped) != len(contract["gates"]["performance_cases"]):
+                continue
+            if boundary == "warm":
                 continue
             point = _geomean([statistics.median(ratios) for ratios in grouped])
             rng = random.Random(1185)  # noqa: S311 - deterministic bootstrap, not security
@@ -714,8 +823,22 @@ def audit(receipt_path: Path, *, final: bool = False) -> dict:
         status = entry.get("status")
         require(status in STATUSES, f"invalid status: {key}")
         if status != "pass":
-            if entry.get("partial_progress") is not None:
-                checked_file(base, entry["partial_progress"])
+            if status == "running":
+                failures.append(f"{key}: unresolved active adapter attempt")
+                continue
+            if status != "not-run":
+                try:
+                    checked_capture(base, entry.get("capture"))
+                    if entry.get("partial_progress") is not None:
+                        require(
+                            entry["partial_progress"] == entry["capture"]["progress"],
+                            "partial progress does not match raw capture",
+                        )
+                except (InvalidEvidence, KeyError, TypeError) as error:
+                    (
+                        failures if expected[key]["required"] else optional_findings
+                    ).append(f"{key}: unretained optional/required attempt: {error}")
+                    continue
             require(
                 type(entry.get("reason")) is str and entry["reason"],
                 f"reason missing: {key}",
@@ -726,9 +849,16 @@ def audit(receipt_path: Path, *, final: bool = False) -> dict:
             )
             continue
         try:
+            checked_capture(base, entry.get("capture"))
+            require(
+                entry.get("evidence") == entry["capture"]["stdout"],
+                "pass evidence is not captured stdout",
+            )
             path = checked_file(base, entry.get("evidence"))
             run = read_json(path)
-            _check_run(run, campaign, expected[key], contract, path.parent)
+            _check_run(
+                run, campaign, expected[key], contract, path.parent, entry["capture"]
+            )
             passed[key] = run
         except (InvalidEvidence, KeyError, TypeError, ValueError) as error:
             failures.append(f"{key}: invalid pass: {error}")
@@ -759,15 +889,30 @@ def audit(receipt_path: Path, *, final: bool = False) -> dict:
                 and raw_acceptance.get("status") == "PASS",
                 "#1190 raw receipt mismatch",
             )
-        result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", source, "origin/master"],
-            cwd=REPO,
-            check=False,
-            capture_output=True,
-        )
-        if result.returncode != 0:
-            failures.append("source revision is not in fetched upstream master")
+        try:
+            refresh = subprocess.run(
+                ["git", "fetch", "origin", "master", "--quiet"],
+                cwd=REPO,
+                check=False,
+                capture_output=True,
+                timeout=60,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            refresh = None
+        if refresh is None or refresh.returncode != 0:
+            failures.append("could not refresh upstream master for final acceptance")
         else:
+            result = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", source, "origin/master"],
+                cwd=REPO,
+                check=False,
+                capture_output=True,
+            )
+            if result.returncode != 0:
+                failures.append(
+                    "source revision is not in freshly fetched upstream master"
+                )
+        if refresh is not None and refresh.returncode == 0 and result.returncode == 0:
             source_contract = subprocess.run(
                 ["git", "show", f"{source}:tools/dft_mp_v1/manifest.json"],
                 cwd=REPO,

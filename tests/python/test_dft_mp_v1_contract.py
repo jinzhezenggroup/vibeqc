@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
+import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -133,6 +134,9 @@ def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> di
         "backend": "cuda",
         "provider": "native-dft",
         "j_k": "direct",
+        "spin": row["spin"],
+        "charge": case["charge"],
+        "multiplicity": case["multiplicity"],
         "basis_representation": "real_spherical",
         "auxiliary": None,
         "ecp": None,
@@ -144,8 +148,9 @@ def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> di
             "converged": True,
             "energy_tolerance_eh": 1e-10,
             "density_tolerance": 1e-8,
+            "max_iterations": 100,
             "physical_residual": 1e-9,
-            "screening_thresholds": {"eri": 1e-12},
+            "screening_thresholds": {"direct_eri": 1e-12},
             "final_forces_state": "state-1",
         },
         "energy_eh": -1.0,
@@ -189,7 +194,14 @@ def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> di
                 "operator_work_counters_valid": True,
             },
             "scf_fock_timeline": [
-                {"kind": kind, "count": 1, "sequence": index, "iteration": index}
+                {
+                    "kind": kind,
+                    "count": 1,
+                    "sequence": index,
+                    "iteration": index,
+                    "state": "state-1",
+                    "phase": "refinement" if kind == "strict_fock" else "scf",
+                }
                 for index, kind in enumerate(
                     (
                         "mixed_fock",
@@ -223,6 +235,8 @@ def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> di
             "physical_residual": 1e-9,
             "energy_tolerance_eh": 1e-10,
             "density_tolerance": 1e-8,
+            "max_iterations": 100,
+            "screening_thresholds": {"direct_eri": 1e-12},
         },
         "mixed_vs_strict": {
             "total_energy_abs_eh": 1e-8,
@@ -248,6 +262,12 @@ def test_mixed_numerical_oracle_and_work_negative_controls(
         complete_energy_forces=True,
     )
     _check_run(value, campaign, row, contract, tmp_path)
+
+    def late_mixed(record: dict) -> None:
+        events = record["precision"]["scf_fock_timeline"]
+        events[1].update(kind="strict_fock", phase="refinement")
+        events[3].update(kind="mixed_fock", phase="scf")
+
     mutations = [
         (
             "zero actual mixed work",
@@ -255,7 +275,24 @@ def test_mixed_numerical_oracle_and_work_negative_controls(
                 mixed_stage_fock_builds=0
             ),
         ),
+        ("audit before Fock", lambda x: x["precision"]["scf_fock_timeline"].reverse()),
+        ("mixed after refinement", late_mixed),
+        (
+            "missing refinement event",
+            lambda x: x["precision"]["scf_fock_timeline"][2].update(phase="scf"),
+        ),
         ("different SCF root", lambda x: x.update(reference_attained_state="state-2")),
+        ("wrong spin", lambda x: x.update(spin="uks")),
+        (
+            "wrong screening",
+            lambda x: x["scf"].update(screening_thresholds={"direct_eri": 1e-9}),
+        ),
+        (
+            "strict screening drift",
+            lambda x: x["strict_comparator"].update(
+                screening_thresholds={"direct_eri": 1e-9}
+            ),
+        ),
         ("shared oracle", lambda x: x["independent_oracle"].update(provider="vibeqc")),
         (
             "force error",
@@ -362,29 +399,103 @@ def test_runner_retains_explicit_unrun_rows_and_raw_journal(
     receipt = json.loads(result.read_text(encoding="utf-8"))
     assert len(receipt["rows"]) == len(contract["rows"])
     assert receipt["rows"][0]["status"] == "unsupported"
-    assert receipt["rows"][0]["partial_progress"]["sha256"] == digest(b"")
+    assert receipt["rows"][0]["capture"]["progress"]["sha256"] == digest(b"")
     assert all(row["status"] == "not-run" for row in receipt["rows"][1:])
     assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
         "\n"
-    ) == 1
+    ) == 2
     assert capture(plan_path, tmp_path / "out", {first}) == result
     assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
         "\n"
-    ) == 1
+    ) == 2
     interrupted = json.loads(result.read_text(encoding="utf-8"))
-    interrupted["rows"][0] = {"id": first, "status": "not-run", "reason": "interrupted"}
+    interrupted["rows"][0] = {"id": first, "status": "running", "reason": "interrupted"}
     result.write_bytes(canonical(interrupted))
     partial = result.parent / f"{first.replace('/', '__')}.progress.jsonl"
     partial.write_text('{"sample":1}\n', encoding="utf-8")
-    capture(plan_path, tmp_path / "out", {first})
+    with pytest.raises(InvalidEvidence, match="running adapter"):
+        capture(plan_path, tmp_path / "out", {first})
     resumed = json.loads(result.read_text(encoding="utf-8"))
-    assert resumed["rows"][0]["status"] == "failed"
-    assert resumed["rows"][0]["partial_progress"]["sha256"] == digest(
-        partial.read_bytes()
-    )
+    assert resumed["rows"][0]["status"] == "running"
+    assert partial.read_text(encoding="utf-8").strip() == '{"sample":1}'
     assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
         "\n"
     ) == 2
+    second = contract["rows"][1]["id"]
+    interrupted = receipt
+    interrupted["rows"][1] = {
+        "id": second,
+        "status": "running",
+        "reason": "zero-progress interruption",
+    }
+    result.write_bytes(canonical(interrupted))
+    for suffix in ("stdout", "stderr", "progress.jsonl"):
+        (result.parent / f"{second.replace('/', '__')}.{suffix}").write_bytes(b"")
+    with pytest.raises(InvalidEvidence, match="running adapter"):
+        capture(plan_path, tmp_path / "out", {second})
+    resumed = json.loads(result.read_text(encoding="utf-8"))
+    assert resumed["rows"][1]["status"] == "running"
+
+
+def test_runner_retains_non_object_json_failure(tmp_path: Path, contract: dict) -> None:
+    adapter = tmp_path / "adapter.py"
+    adapter.write_text('print("[]")\n', encoding="utf-8")
+    campaign = _campaign(tmp_path)
+    campaign["adapter"] = {"path": adapter.name, "sha256": digest(adapter.read_bytes())}
+    plan = {
+        "adapter_command": [sys.executable, str(adapter)],
+        "adapter_command_file_index": 1,
+        "timeout_seconds": 10,
+        "campaign": campaign,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical(plan))
+    first = contract["rows"][0]["id"]
+    result = capture(plan_path, tmp_path / "out", {first})
+    entry = json.loads(result.read_text(encoding="utf-8"))["rows"][0]
+    assert entry["status"] == "failed"
+    assert "JSON must be an object" in entry["reason"]
+    assert entry["capture"]["stdout"]["sha256"] == digest(b"[]\n") or entry["capture"][
+        "stdout"
+    ]["sha256"] == digest(b"[]\r\n")
+    assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
+        "\n"
+    ) == 2
+
+
+def test_timeout_terminates_adapter_descendants(tmp_path: Path, contract: dict) -> None:
+    marker = tmp_path / "leaked-child.txt"
+    child = (
+        "import pathlib,time; time.sleep(2); "
+        f"pathlib.Path({str(marker)!r}).write_text('leaked')"
+    )
+    adapter = tmp_path / "adapter.py"
+    adapter.write_text(
+        "import pathlib,subprocess,sys,time\n"
+        f"child=subprocess.Popen([sys.executable,'-c',{child!r}])\n"
+        "progress=pathlib.Path(sys.argv[sys.argv.index('--progress')+1])\n"
+        "progress.write_text(str(child.pid)+'\\n')\n"
+        "time.sleep(10)\n",
+        encoding="utf-8",
+    )
+    campaign = _campaign(tmp_path)
+    campaign["adapter"] = {"path": adapter.name, "sha256": digest(adapter.read_bytes())}
+    plan = {
+        "adapter_command": [sys.executable, str(adapter)],
+        "adapter_command_file_index": 1,
+        "timeout_seconds": 1,
+        "campaign": campaign,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical(plan))
+    first = contract["rows"][0]["id"]
+    result = capture(plan_path, tmp_path / "out", {first})
+    entry = json.loads(result.read_text(encoding="utf-8"))["rows"][0]
+    assert entry["status"] == "timed-out"
+    progress = result.parent / entry["capture"]["progress"]["path"]
+    assert progress.read_text(encoding="utf-8").strip().isdigit()
+    time.sleep(2.5)
+    assert not marker.exists()
 
 
 def test_cold_gain_cannot_mask_changed_geometry_loss(contract: dict) -> None:
@@ -397,6 +508,10 @@ def test_cold_gain_cannot_mask_changed_geometry_loss(contract: dict) -> None:
                         {"strict": {"total_ms": 125.0}, "mixed": {"total_ms": 100.0}}
                         for _ in range(5)
                     ],
+                    "warm": [
+                        {"strict": {"total_ms": 100.0}, "mixed": {"total_ms": 100.0}}
+                        for _ in range(5)
+                    ],
                     "changed_geometry": [
                         {"strict": {"total_ms": 90.0}, "mixed": {"total_ms": 100.0}}
                         for _ in range(5)
@@ -406,6 +521,110 @@ def test_cold_gain_cannot_mask_changed_geometry_loss(contract: dict) -> None:
     errors = _performance_gate(records, contract)
     assert any("changed_geometry" in error for error in errors)
     assert not any("cold" in error for error in errors)
+    for record in records.values():
+        for pair in record["timing"]["changed_geometry"]:
+            pair["strict"]["total_ms"] = 125.0
+        for pair in record["timing"]["warm"]:
+            pair["strict"]["total_ms"] = 90.0
+    warm_errors = _performance_gate(records, contract)
+    assert any("warm" in error for error in warm_errors)
+    assert not any("changed_geometry" in error for error in warm_errors)
+
+
+def test_promoted_row_rejects_unreported_failed_attempt(
+    tmp_path: Path, contract: dict
+) -> None:
+    row = next(r for r in contract["rows"] if r["id"] == "pbe/rks/water8/promoted")
+    campaign = _campaign(tmp_path)
+    value = _run_record(tmp_path, contract, row, campaign)
+    raw = value["independent_oracle"]["raw"]
+    value["checks"]["finite_difference"].update(
+        step_bohr=[0.01, 0.005], reconverged_each_displacement=True
+    )
+    value["checks"]["grid_convergence"]["independent_finer_grid"] = True
+    value["checks"]["changed_geometry"].update(
+        input_sha256=contract["cases"]["water8"]["changed_input_sha256"],
+        grid_identity=contract["cases"]["water8"]["changed_grid_identity"],
+        complete_energy_forces=True,
+    )
+    value["checks"]["batch_throughput"] = {
+        "status": "pass",
+        "raw": raw,
+        "batch_size": 4,
+        "complete_energy_forces": True,
+    }
+    value["checks"]["strict_fallback"] = {"status": "pass", "raw": raw}
+    value["profiled_runs_separate"] = True
+    value["peak_simultaneous_bytes"] = 1024
+    value["ablations"] = {
+        name: {"raw": raw, "cold_ms": 100.0, "changed_geometry_ms": 100.0}
+        for name in contract["required_ablations"]
+    }
+    components = {
+        "prepare": 0.0,
+        "scf": 80.0,
+        "final_verification": 0.0,
+        "forces": 20.0,
+        "transfers": 0.0,
+        "synchronization": 0.0,
+        "selection": 0.0,
+        "conversion": 0.0,
+        "other": 0.0,
+    }
+    value["timing"] = {
+        boundary: [
+            {
+                "order": ["strict", "mixed"] if index % 2 == 0 else ["mixed", "strict"],
+                "unprofiled": True,
+                "complete_endpoint": True,
+                "conditions_sha256": campaign["conditions_sha256"],
+                "strict": {"total_ms": 100.0, "components_ms": components},
+                "mixed": {"total_ms": 100.0, "components_ms": components},
+            }
+            for index in range(5)
+        ]
+        for boundary in ("cold", "warm", "changed_geometry")
+    }
+    attempts = [
+        {
+            "attempt_id": attempt_id,
+            "boundary": boundary,
+            "pair_index": index,
+            "route": route,
+            "status": "pass",
+            "conditions_sha256": campaign["conditions_sha256"],
+            "total_ms": 100.0,
+        }
+        for attempt_id, (boundary, index, route) in enumerate(
+            (boundary, index, route)
+            for boundary in ("cold", "warm", "changed_geometry")
+            for index in range(5)
+            for route in value["timing"][boundary][index]["order"]
+        )
+    ]
+    progress = tmp_path / "attempts.jsonl"
+    progress.write_bytes(b"\n".join(canonical(attempt) for attempt in attempts) + b"\n")
+    progress_record = {"path": progress.name, "sha256": digest(progress.read_bytes())}
+    capture_record = {"stdout": raw, "stderr": raw, "progress": progress_record}
+    value["attempt_ledger"] = progress_record
+    _check_run(value, campaign, row, contract, tmp_path, capture_record)
+    attempts.append(
+        {
+            "attempt_id": 30,
+            "boundary": "cold",
+            "pair_index": 5,
+            "route": "mixed",
+            "status": "failed",
+        }
+    )
+    progress.write_bytes(b"\n".join(canonical(attempt) for attempt in attempts) + b"\n")
+    capture_record["progress"] = {
+        "path": progress.name,
+        "sha256": digest(progress.read_bytes()),
+    }
+    value["attempt_ledger"] = capture_record["progress"]
+    with pytest.raises(InvalidEvidence, match="timing attempts"):
+        _check_run(value, campaign, row, contract, tmp_path, capture_record)
 
 
 def test_optional_nonpass_never_replaces_required_final_row(
@@ -425,6 +644,11 @@ def test_optional_nonpass_never_replaces_required_final_row(
     monkeypatch.setattr(contract_validator.subprocess, "run", git_result)
     campaign = _campaign(tmp_path)
     evidence = _file(tmp_path / "mock_only.json", b'{"status":"pass"}\n')
+    mock_capture = {
+        "stdout": evidence,
+        "stderr": _file(tmp_path / "mock_stderr.txt", b""),
+        "progress": _file(tmp_path / "mock_progress.jsonl", b""),
+    }
     raw_final = _file(
         tmp_path / "mock_final.json",
         canonical(
@@ -436,7 +660,12 @@ def test_optional_nonpass_never_replaces_required_final_row(
         ),
     )
     rows = [
-        {"id": row["id"], "status": "pass", "evidence": evidence}
+        {
+            "id": row["id"],
+            "status": "pass",
+            "evidence": evidence,
+            "capture": mock_capture,
+        }
         if row["required"]
         else {"id": row["id"], "status": "not-run", "reason": "optional stress case"}
         for row in contract["rows"]
@@ -460,6 +689,35 @@ def test_optional_nonpass_never_replaces_required_final_row(
     assert outcome["product_status"] == "PASS"
     assert outcome["passed_required_rows"] == 115
     assert len(outcome["optional_findings"]) == 2
+    optional_indices = [
+        index for index, row in enumerate(contract["rows"]) if not row["required"]
+    ]
+    for index, status in zip(optional_indices, ("unsupported", "failed"), strict=True):
+        receipt["rows"][index] = {
+            "id": contract["rows"][index]["id"],
+            "status": status,
+            "reason": "optional stress case",
+        }
+    path.write_bytes(canonical(receipt))
+    outcome = audit(path, final=True)
+    assert outcome["product_status"] == "PASS"
+    assert len(outcome["optional_findings"]) == 2
+    receipt["rows"][optional_indices[0]]["status"] = "running"
+    path.write_bytes(canonical(receipt))
+    assert audit(path, final=True)["product_status"] == "BLOCKED"
+    receipt["rows"][optional_indices[0]]["status"] = "unsupported"
+    path.write_bytes(canonical(receipt))
+    monkeypatch.setattr(
+        contract_validator.subprocess,
+        "run",
+        lambda argv, **kwargs: (
+            type("Done", (), {"returncode": 1, "stdout": b""})()
+            if argv[1] == "fetch"
+            else git_result(argv, **kwargs)
+        ),
+    )
+    assert audit(path, final=True)["product_status"] == "BLOCKED"
+    monkeypatch.setattr(contract_validator.subprocess, "run", git_result)
     receipt["rows"][0] = {
         "id": contract["rows"][0]["id"],
         "status": "not-run",

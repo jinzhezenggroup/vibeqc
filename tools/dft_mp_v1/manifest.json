@@ -162,7 +162,7 @@
     }
   },
   "contract_id": "DFT-MP-v1",
-  "contract_sha256": "8fa2996508f6f9a5b2aea4e633377713a55d7759c9fc3b44e9dee658ee3e5385",
+  "contract_sha256": "a9d439261a08007a296862e8869d35c1b127e6725e7bd73e294fa9ccc9b602a0",
   "final_acceptance_issue": 1190,
   "gates": {
     "complete_endpoint": "prepare+SCF+final strict verification/refinement+analytic forces+transfers+synchronization+selection; changed geometry includes rebuild",
@@ -584,7 +584,9 @@
       "energy_tolerance_eh": 1e-10,
       "max_iterations": 100,
       "physical_residual_max": 1e-08,
-      "screening": "production default, receipt must record numeric thresholds",
+      "screening_thresholds": {
+        "direct_eri": 1e-12
+      },
       "state_selection": "same attained state required"
     }
   },

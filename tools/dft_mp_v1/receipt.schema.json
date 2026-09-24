@@ -39,10 +39,11 @@
         "type": "object", "required": ["id", "status"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
-          "status": {"enum": ["unknown", "unsupported", "not-run", "failed", "timed-out", "pass"]},
+          "status": {"enum": ["unknown", "unsupported", "not-run", "running", "failed", "timed-out", "pass"]},
           "reason": {"type": "string", "minLength": 1},
           "evidence": {"$ref": "#/$defs/file"},
-          "partial_progress": {"$ref": "#/$defs/file"}
+          "partial_progress": {"$ref": "#/$defs/file"},
+          "capture": {"type": "object", "required": ["stdout", "stderr", "progress"], "properties": {"stdout": {"$ref": "#/$defs/file"}, "stderr": {"$ref": "#/$defs/file"}, "progress": {"$ref": "#/$defs/file"}}, "additionalProperties": false}
         }, "additionalProperties": false
       }
     },

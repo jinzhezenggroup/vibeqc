@@ -10,12 +10,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal
 import subprocess
 import time
 from pathlib import Path
 
 from .freeze_contract import ROOT, digest
-from .validate import audit, checked_file, manifest, read_json, require
+from .validate import InvalidEvidence, audit, checked_file, manifest, read_json, require
 
 
 def _write(path: Path, value: dict) -> None:
@@ -24,6 +26,49 @@ def _write(path: Path, value: dict) -> None:
         json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     temp.replace(path)
+
+
+def _capture(out: Path, safe: str) -> dict:
+    return {
+        kind: {
+            "path": f"{safe}.{suffix}",
+            "sha256": digest((out / f"{safe}.{suffix}").read_bytes()),
+        }
+        for kind, suffix in (
+            ("stdout", "stdout"),
+            ("stderr", "stderr"),
+            ("progress", "progress.jsonl"),
+        )
+    }
+
+
+def _terminate_tree(process: subprocess.Popen[bytes]) -> bool:
+    """Stop descendants as well as the direct adapter after a watchdog expiry."""
+
+    try:
+        if os.name == "nt":
+            killed = subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                timeout=30,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            if killed.returncode != 0:
+                process.kill()
+                process.wait(timeout=10)
+                return False
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=10)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        try:
+            process.kill()
+            process.wait(timeout=10)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return False
 
 
 def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
@@ -86,8 +131,12 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
         receipt = prior
     else:
         _write(receipt_path, receipt)
-    audit(receipt_path)
     journal = out / "progress.jsonl"
+    require(
+        not any(entry["status"] == "running" for entry in receipt["rows"]),
+        "running adapter may still own child processes; stop it and start a new campaign",
+    )
+    audit(receipt_path)
     for index, row in enumerate(contract["rows"]):
         key = row["id"]
         if selected is not None and key not in selected:
@@ -97,37 +146,14 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
         safe = key.replace("/", "__")
         input_path = ROOT / contract["cases"][row["case"]]["input"]
         partial_path = out / f"{safe}.progress.jsonl"
-        if partial_path.exists() and partial_path.stat().st_size:
-            # A previous process died before it could update the receipt. Keep
-            # its partial observations and require a new campaign for a retry.
-            entry = {
-                "id": key,
-                "status": "failed",
-                "reason": "interrupted adapter attempt; partial progress retained",
-                "partial_progress": {
-                    "path": partial_path.name,
-                    "sha256": digest(partial_path.read_bytes()),
-                },
-            }
-            receipt["rows"][index] = entry
-            with journal.open("a", encoding="utf-8") as handle:
-                handle.write(
-                    json.dumps(
-                        {
-                            "row": key,
-                            "status": "failed",
-                            "reason": entry["reason"],
-                            "partial_progress_sha256": entry["partial_progress"][
-                                "sha256"
-                            ],
-                        },
-                        sort_keys=True,
-                    )
-                    + "\n"
-                )
-            _write(receipt_path, receipt)
-            continue
-        partial_path.touch(exist_ok=True)
+        stdout_path = out / f"{safe}.stdout"
+        stderr_path = out / f"{safe}.stderr"
+        if any(path.exists() for path in (partial_path, stdout_path, stderr_path)):
+            raise InvalidEvidence(
+                "unclaimed adapter files may still be live; stop prior process and start a new campaign"
+            )
+        for path in (partial_path, stdout_path, stderr_path):
+            path.touch()
         argv = [
             *command,
             "--manifest",
@@ -140,33 +166,77 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
             str(partial_path),
         ]
         started = time.time()
-        try:
-            completed = subprocess.run(
-                argv,
-                cwd=plan_path.resolve().parent,
-                timeout=timeout,
-                capture_output=True,
-                check=False,
+        receipt["rows"][index] = {
+            "id": key,
+            "status": "running",
+            "reason": "adapter attempt in progress",
+        }
+        _write(receipt_path, receipt)
+        with journal.open("a", encoding="utf-8") as handle:
+            handle.write(
+                json.dumps(
+                    {
+                        "row": key,
+                        "status": "running",
+                        "start_unix_s": started,
+                        "argv": argv,
+                    },
+                    sort_keys=True,
+                )
+                + "\n"
             )
-            stdout, stderr = completed.stdout, completed.stderr
-            if completed.returncode:
+        stop_campaign = False
+        try:
+            with (
+                stdout_path.open("wb") as stdout_handle,
+                stderr_path.open("wb") as stderr_handle,
+            ):
+                process = subprocess.Popen(
+                    argv,
+                    cwd=plan_path.resolve().parent,
+                    stdout=stdout_handle,
+                    stderr=stderr_handle,
+                    start_new_session=os.name != "nt",
+                    creationflags=(
+                        subprocess.CREATE_NEW_PROCESS_GROUP
+                        | subprocess.CREATE_NO_WINDOW
+                    )
+                    if os.name == "nt"
+                    else 0,
+                )
+                try:
+                    returncode = process.wait(timeout=timeout)
+                    timed_out = False
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+                    stop_campaign = not _terminate_tree(process)
+                    returncode = process.returncode
+            if timed_out:
+                entry = {
+                    "id": key,
+                    "status": "failed" if stop_campaign else "timed-out",
+                    "reason": "watchdog could not terminate full process tree"
+                    if stop_campaign
+                    else f"watchdog {timeout}s",
+                }
+            elif returncode:
                 entry = {
                     "id": key,
                     "status": "failed",
-                    "reason": f"adapter exit {completed.returncode}",
+                    "reason": f"adapter exit {returncode}",
                 }
             else:
-                payload = json.loads(stdout)
-                if payload.get("status") == "pass":
-                    evidence_path = out / f"{safe}.json"
-                    evidence_path.write_bytes(stdout)
+                payload = json.loads(stdout_path.read_bytes())
+                if type(payload) is not dict:
+                    entry = {
+                        "id": key,
+                        "status": "failed",
+                        "reason": "adapter JSON must be an object",
+                    }
+                elif payload.get("status") == "pass":
                     entry = {
                         "id": key,
                         "status": "pass",
-                        "evidence": {
-                            "path": evidence_path.name,
-                            "sha256": digest(stdout),
-                        },
                     }
                 else:
                     status = payload.get("status", "unknown")
@@ -186,30 +256,23 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                             or "adapter did not provide a pass result"
                         ),
                     }
-        except subprocess.TimeoutExpired as error:
-            stdout, stderr = error.stdout or b"", error.stderr or b""
-            entry = {"id": key, "status": "timed-out", "reason": f"watchdog {timeout}s"}
         except (json.JSONDecodeError, UnicodeDecodeError) as error:
             entry = {
                 "id": key,
                 "status": "failed",
                 "reason": f"invalid adapter JSON: {error}",
             }
-            stdout, stderr = completed.stdout, completed.stderr
         except OSError as error:
             entry = {
                 "id": key,
                 "status": "failed",
                 "reason": f"adapter launch failed: {error}",
             }
-            stdout, stderr = b"", b""
-        (out / f"{safe}.stdout").write_bytes(stdout)
-        (out / f"{safe}.stderr").write_bytes(stderr)
+        entry["capture"] = _capture(out, safe)
+        if entry["status"] == "pass":
+            entry["evidence"] = entry["capture"]["stdout"]
         if entry["status"] != "pass":
-            entry["partial_progress"] = {
-                "path": partial_path.name,
-                "sha256": digest(partial_path.read_bytes()),
-            }
+            entry["partial_progress"] = entry["capture"]["progress"]
         receipt["rows"][index] = entry
         with journal.open("a", encoding="utf-8") as handle:
             handle.write(
@@ -219,8 +282,7 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                         "status": entry["status"],
                         "start_unix_s": started,
                         "end_unix_s": time.time(),
-                        "stdout_sha256": digest(stdout),
-                        "stderr_sha256": digest(stderr),
+                        "capture": entry["capture"],
                         "argv": argv,
                     },
                     sort_keys=True,
@@ -228,6 +290,8 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                 + "\n"
             )
         _write(receipt_path, receipt)
+        if stop_campaign:
+            break
     return receipt_path
 
 

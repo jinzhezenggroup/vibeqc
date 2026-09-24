@@ -164,7 +164,7 @@ def build() -> dict:
                 "energy_tolerance_eh": 1e-10,
                 "density_tolerance": 1e-8,
                 "physical_residual_max": 1e-8,
-                "screening": "production default, receipt must record numeric thresholds",
+                "screening_thresholds": {"direct_eri": 1e-12},
                 "state_selection": "same attained state required",
             },
             "methods": methods,

@@ -42,6 +42,8 @@ the GridSpec v1 route, and global hybrids require an explicit grid. All result
 receipts bind the case-specific point/weight identity from this explicit spec;
 an independent finer-grid convergence check remains a separate gate. Changing
 the spec requires a versioned contract amendment before measurement.
+The public direct-ERI screening tolerance is frozen at `1e-12`; strict and
+mixed receipts must report the same numeric control and SCF targets.
 
 Changing a case, source, mathematical model, basis, grid, mandatory row or
 acceptance gate requires a new contract version and hash. Record the reason,
@@ -77,9 +79,21 @@ raw stdout/stderr, a progress journal and an atomic receipt update. Rerunning
 the same output resumes only `not-run` rows; retries of failed/timed-out rows
 need a distinct campaign directory so negative evidence stays visible.
 The adapter appends per-sample observations to its `--progress` JSONL path;
-the runner hashes and retains that partial file even after a timeout.
-If a process died before the row receipt was updated, restart marks that row
-`failed` and retains the orphaned progress instead of mixing two attempts.
+the runner hashes stdout, stderr and progress for every attempted row. It
+writes a `running` receipt and journal event before launch. If the runner dies
+before finalizing a row, restart refuses to launch more work because the old
+process tree may still be alive, even when no sample was written. The operator
+must confirm it has ended and start a new campaign; raw files remain available.
+A timeout terminates the adapter process tree; if cleanup cannot be confirmed,
+the campaign stops.
+
+For a promoted row, the adapter's progress JSONL is the `attempt_ledger` bound
+to the runner's captured progress hash. It contains one record per attempted
+route, in boundary/pair/order sequence: `attempt_id` (contiguous from zero),
+`boundary` (`cold`, `warm`, `changed_geometry`), `pair_index`, `route`
+(`strict` or `mixed`), `status`, `conditions_sha256`, and `total_ms` on success.
+The validator compares every ledger record with the reported timing pairs;
+failed, timed-out, missing and dropped attempts prevent a promoted PASS.
 
 The semantic validator verifies file hashes, every mandatory row, exact
 input/basis/grid/method/source/library/artifact identity, attained state,
@@ -90,15 +104,19 @@ unknown, unsupported, not-run, failed and timed-out rows as product passes.
 For promotion, each core method separately needs five interleaved unprofiled
 pairs per case and boundary, at least 1.20x geometric-mean speedup on cold and
 changed-geometry complete E+force, and a stratified paired-bootstrap 95%
-lower bound above 1. Warm replay is retained separately. Every case is kept,
+lower bound above 1. Warm replay is retained separately and is also subject
+to the per-case gate against unexplained latency regression above 5%. Every case is kept,
 including losses and timeouts. The declared 20 GiB simultaneous memory budget
 is part of this first RTX 5090/sm_120 contract; a different allocation must be
 versioned before measurement.
 
-`--final` additionally requires the #1190 reviewed raw receipt and checks that
-the exact source commit is an ancestor of a freshly fetched `origin/master`
+`--final` additionally requires the #1190 reviewed raw receipt, fetches current
+upstream `master`, and checks that the exact source commit is its ancestor
 and contains this exact manifest blob.
 The build record must bind that source to the installed binary and AOT artifact.
 An adapter can still lie in JSON or a build record can be forged; human review
 and independent reproduction of retained raw evidence remain mandatory. A
 schema-only or mocked runner test is never scientific acceptance.
+The installed-production adapter and runnable final campaign plan are owned
+by #1190, consuming the public endpoints from #1186/#1187/#1189. This package
+provides the frozen orchestration and validation contract they must satisfy.
