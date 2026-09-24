@@ -71,6 +71,13 @@ def _integer_scalar(value: typing.Any, *, label: str, nonnegative: bool = False)
 def _atomic_numbers(value: typing.Any) -> tuple[int, ...]:
     if np.iscomplexobj(value):
         raise TypeError("atomic_numbers must contain integers")
+    # Mixed integer/bool sequences promote True to 1 before dtype validation.
+    # Inspect original scalar types so malformed atom identity cannot become H.
+    if any(
+        isinstance(number, (bool, np.bool_))
+        for number in np.asarray(value, dtype=object).flat
+    ):
+        raise TypeError("atomic_numbers must contain integers, not booleans")
     array = np.asarray(value)
     if array.ndim != 1 or array.size == 0 or not np.issubdtype(array.dtype, np.integer):
         raise TypeError(
