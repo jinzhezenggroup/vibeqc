@@ -40,6 +40,9 @@ def _prepared_ccsdt(
     with _source(inputs(name)) as source:
         reference, _ = export_rhf(
             source,
+            # Paired backend tests compare exact scientific identities, so
+            # their independent exports must share the fixture generation.
+            generation_id=f"ccsdt-orbital-response-fixture:{name}",
             tolerance=options.scf_tolerance,
             max_iterations=options.scf_max_iterations,
         )
@@ -380,7 +383,17 @@ def test_resident_z_execution_reuses_checked_krylov_engine(
     assert resident.diagnostics["operator_actions"] > 0
     assert actual.response_execution == "cuda-resident"
     assert actual.resident_response_diagnostics["fake_resident"] == 1
-    assert actual.response_identity == water_state.response_identity
+    # response_identity includes the actual rounded Z solution, not only the
+    # mathematical problem. Dense resident actions may differ in last bits.
+    # Preserve exact input identities and qualify outputs at the existing gates.
+    assert actual.reference_identity == water_state.reference_identity
+    assert actual.cc_state_identity == water_state.cc_state_identity
+    assert (
+        actual.fixed_orbital_response_identity
+        == water_state.fixed_orbital_response_identity
+    )
+    assert actual.baseline.weight_identity == water_state.baseline.weight_identity
+    assert actual.baseline.operator_identity == water_state.baseline.operator_identity
     np.testing.assert_allclose(
         actual.z_result.solution,
         water_state.z_result.solution,
