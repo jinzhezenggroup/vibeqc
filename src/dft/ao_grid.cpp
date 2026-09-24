@@ -152,10 +152,18 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
     }
   };
   switch (order) {
-    case 0: evaluate_jets.template operator()<1>(); break;
-    case 1: evaluate_jets.template operator()<4>(); break;
-    case 2: evaluate_jets.template operator()<10>(); break;
-    case 3: evaluate_jets.template operator()<20>(); break;
+    case 0:
+      evaluate_jets.template operator()<1>();
+      break;
+    case 1:
+      evaluate_jets.template operator()<4>();
+      break;
+    case 2:
+      evaluate_jets.template operator()<10>();
+      break;
+    case 3:
+      evaluate_jets.template operator()<20>();
+      break;
   }
 }
 }  // namespace vibeqc::dft
