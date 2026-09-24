@@ -98,12 +98,15 @@ def _ratio_exceeds(candidate: RefinementCandidate, threshold: float) -> bool:
     )
 
 
-def _evidence_for(stage: StagePlan, candidate: RefinementCandidate) -> ErrorEvidence:
+def _evidence_for(
+    stage: StagePlan, candidate: RefinementCandidate, *, scope: str
+) -> ErrorEvidence:
     matches = tuple(
         evidence
         for evidence in stage.error_evidence
         if (
-            evidence.source == candidate.source
+            evidence.scope == scope
+            and evidence.source == candidate.source
             and evidence.observable == candidate.observable
             and evidence.norm == candidate.norm
             and evidence.unit == candidate.unit
@@ -177,7 +180,7 @@ def decide_guarded_refinement(
             "no source crossed the hysteretic refinement boundary",
         )
 
-    evidence = _evidence_for(stage, selected)
+    evidence = _evidence_for(stage, selected, scope=problem.accuracy.scope)
     usable, reason = _conditioning_is_usable(evidence, guard)
     if not usable:
         return GuardedRefinementDecision("target_baseline", selected, reason)

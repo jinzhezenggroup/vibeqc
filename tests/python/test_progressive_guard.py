@@ -195,3 +195,45 @@ def test_invalid_guard_limits_are_rejected(
     values.update(kwargs)
     with pytest.raises(ValueError, match=message):
         RefinementGuard(**values)
+
+
+@pytest.mark.parametrize("active", (None, IDENTITY))
+@pytest.mark.parametrize("scope", ("relaxed_target", "fixed_density"))
+@pytest.mark.parametrize("reverse", (False, True))
+def test_other_scope_cannot_shadow_selected_observation(
+    active: RefinementIdentity | None, scope: str, reverse: bool
+) -> None:
+    selected = replace(_evidence(1.3e-5), scope=scope)
+    other = replace(
+        _evidence(1e10, kind=EvidenceKind.EMPIRICAL, condition_estimate=None),
+        scope="fixed_density" if scope == "relaxed_target" else "relaxed_target",
+    )
+    evidence = (selected, other) if not reverse else (other, selected)
+    problem = replace(PROBLEM, accuracy=replace(PROBLEM.accuracy, scope=scope))
+    stage = replace(_stage(selected), error_evidence=evidence)
+    actual = decide_guarded_refinement(problem, stage, GUARD, active=active)
+    expected = decide_guarded_refinement(
+        problem, _stage(selected), GUARD, active=active
+    )
+    assert actual == expected
+    assert actual.requires_refinement
+    assert not actual.requires_target_baseline
+
+
+@pytest.mark.parametrize("reverse", (False, True))
+def test_other_scope_observation_cannot_bypass_conditioning(reverse: bool) -> None:
+    selected = _evidence(1.3e-5, kind=EvidenceKind.ASYMPTOTIC, condition_estimate=None)
+    other = replace(_evidence(1.3e-5), scope="fixed_density")
+    evidence = (selected, other) if not reverse else (other, selected)
+    stage = replace(_stage(selected), error_evidence=evidence)
+    actual = decide_guarded_refinement(PROBLEM, stage, GUARD)
+    assert actual.requires_target_baseline
+    assert not actual.requires_refinement
+
+
+def test_duplicate_evidence_in_selected_scope_still_rejected() -> None:
+    item = _evidence(1.3e-5)
+    with pytest.raises(ValueError, match="duplicate actionable"):
+        decide_guarded_refinement(
+            PROBLEM, replace(_stage(item), error_evidence=(item, item)), GUARD
+        )
