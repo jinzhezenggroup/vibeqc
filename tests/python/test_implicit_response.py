@@ -316,7 +316,9 @@ def test_checked_transpose_solve_preserves_resident_engine_and_final_check() -> 
         assert_current=current,
     )
 
-    np.testing.assert_allclose(result.solution, np.linalg.solve(matrix, rhs), atol=1e-12)
+    np.testing.assert_allclose(
+        result.solution, np.linalg.solve(matrix, rhs), atol=1e-12
+    )
     assert counters["resident"] > 0
     assert counters["host"] == 1
     assert result.operator_actions == counters["resident"] + counters["host"]
