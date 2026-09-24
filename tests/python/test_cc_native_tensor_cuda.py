@@ -46,7 +46,7 @@ class _Prepared:
         self.plan = plan
         self.device = device
 
-    def __enter__(self) -> _Prepared:
+    def __enter__(self) -> typing.Self:
         return self
 
     def __exit__(self, *unused: object) -> None:
