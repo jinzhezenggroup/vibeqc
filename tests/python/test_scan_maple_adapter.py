@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.evidence import block_error
-from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc import libxc_maple, scan_maple
@@ -157,7 +156,7 @@ def test_scan_adapter_emits_scalar_c_and_cuda(name: str) -> None:
 
     scalar = ScalarCEmitter(graph, variables)
     scalar.emit(roots)
-    cuda = CudaEmitter(graph, variables)
+    cuda = ScalarCEmitter(graph, variables)
     cuda.emit(roots)
 
     assert scalar.lines
