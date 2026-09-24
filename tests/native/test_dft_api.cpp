@@ -116,10 +116,10 @@ vibeqc_method_descriptor lda_method() {
           0};
 }
 
-void ks_legacy_method_prefix_guard() {
+void ks_short_method_descriptor_rejected() {
 #if defined(__unix__) || defined(__APPLE__)
-  // The public ABI borrows a possibly short caller allocation, not a padded
-  // current descriptor. Put its absent suffix on an inaccessible page.
+  // Validation must reject a short allocation from its advertised size before
+  // any current-layout suffix is read.
   const auto page_size = static_cast<std::size_t>(sysconf(_SC_PAGESIZE));
   require(page_size > sizeof(vibeqc_method_descriptor), "invalid system page size");
   struct Pages {
@@ -139,21 +139,18 @@ void ks_legacy_method_prefix_guard() {
                           offsetof(vibeqc_method_descriptor, precision_mode)}) {
     auto method = lda_method();
     method.struct_size = static_cast<std::uint32_t>(size);
-    auto* legacy = reinterpret_cast<vibeqc_method_descriptor*>(boundary - size);
-    std::memcpy(legacy, &method, size);
+    auto* truncated = reinterpret_cast<vibeqc_method_descriptor*>(boundary - size);
+    std::memcpy(truncated, &method, size);
     vibeqc_calculation* calculation = nullptr;
-    require(vibeqc_calculation_prepare(fixture.context, fixture.system, legacy, &calculation) ==
-                VIBEQC_STATUS_SUCCESS,
-            "short legacy method preparation read an absent suffix");
-    vibeqc_calculation_destroy(calculation);
+    require(vibeqc_calculation_prepare(fixture.context, fixture.system, truncated, &calculation) ==
+                VIBEQC_STATUS_ABI_MISMATCH,
+            "short method descriptor was accepted");
     vibeqc_system* systems[]{fixture.system};
     vibeqc_batch* batch = nullptr;
-    require(vibeqc_batch_prepare(fixture.context, systems, 1, legacy, 0, &batch) ==
-                VIBEQC_STATUS_SUCCESS,
-            "short legacy batch preparation read an absent suffix");
-    vibeqc_batch_destroy(batch);
+    require(vibeqc_batch_prepare(fixture.context, systems, 1, truncated, 0, &batch) ==
+                VIBEQC_STATUS_ABI_MISMATCH,
+            "short batch method descriptor was accepted");
   }
-  // KS options intentionally use one current semantic layout; no nested legacy prefixes.
 #endif
 }
 
@@ -425,7 +422,7 @@ void warm_execution_allocation_failure() {
 
 int main() {
   try {
-    ks_legacy_method_prefix_guard();
+    ks_short_method_descriptor_rejected();
     ks_option_snapshot();
     ks_option_semantic_plan();
     pbe0_composition_snapshot();
