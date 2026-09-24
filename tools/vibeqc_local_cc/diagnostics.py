@@ -1,7 +1,7 @@
 """Fail-closed convergence diagnostics for projected local-CC pair residuals.
 
 This module deliberately evaluates only physical residual arrays expressed in the
-current :class:`PairSpace` gauges.  It does not accept an energy change as a
+current :class:`PairSpace` gauges. It does not accept an energy change as a
 convergence substitute and it does not transport stale residual history across
 pair-space changes.
 """
@@ -50,7 +50,9 @@ class LocalCCResidualReport:
         return self.worst_metric.rms <= self.tolerance
 
 
-def _residual_array(value: typing.Any, *, rank: int, pair: tuple[int, int]) -> np.ndarray:
+def _residual_array(
+    value: typing.Any, *, rank: int, pair: tuple[int, int]
+) -> np.ndarray:
     if np.iscomplexobj(value):
         raise ValueError(f"pair {pair} residual must be real")
     try:
@@ -80,7 +82,7 @@ def _stable_rms_and_maximum(array: np.ndarray) -> tuple[float, float]:
 
 
 def evaluate_pair_residuals(
-    spaces: typing.Iterable[PairSpace],
+    spaces: typing.Iterable[typing.Any],
     residuals: typing.Iterable[typing.Any],
     *,
     tolerance: typing.Any = 1e-7,
@@ -89,12 +91,12 @@ def evaluate_pair_residuals(
     """Evaluate bounded pair-local projected residual convergence.
 
     ``residuals`` must already be the physical projected residuals in the exact
-    gauges of ``spaces``.  The function intentionally accepts no energy-change
+    gauges of ``spaces``. The function intentionally accepts no energy-change
     argument: pair convergence cannot be inferred from global energy stability.
 
     The byte budget covers only the supplied dense float64 residual matrices.
     Amplitudes, DIIS/history, pair-overlap caches, integral providers, and backend
-    workspace remain independent resource owners.  The complete declared residual
+    workspace remain independent resource owners. The complete declared residual
     footprint is checked from pair ranks before any residual is coerced to NumPy.
     """
 
@@ -129,7 +131,8 @@ def evaluate_pair_residuals(
         )
 
     metrics: list[PairResidualMetric] = []
-    for space, value in sorted(zip(pair_spaces, values, strict=True), key=lambda item: item[0].pair):
+    paired = zip(pair_spaces, values, strict=True)
+    for space, value in sorted(paired, key=lambda item: item[0].pair):
         array = _residual_array(value, rank=space.rank, pair=space.pair)
         rms, maximum = _stable_rms_and_maximum(array)
         metrics.append(
