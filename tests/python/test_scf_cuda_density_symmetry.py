@@ -3,10 +3,10 @@
 from pathlib import Path
 
 import pytest
-
-from tools.generate_scf_array_native import template_hash
 from vibeqc_compiler.array_api.scf import density_program as array_density_program
 from vibeqc_compiler.tensor.scf_cuda import density_template_hash, emit_density_cuda
+
+from tools.generate_scf_array_native import template_hash
 
 SOURCE = Path(__file__).parents[2] / "src/scf/cuda/scf_density_kernels.cu"
 

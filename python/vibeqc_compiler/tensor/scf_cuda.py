@@ -42,8 +42,7 @@ def _template_hash(program: typing.Any) -> str:
     return canonical_hash(
         {
             "outputs": {
-                name: _signature(node)
-                for name, node in sorted(program.outputs.items())
+                name: _signature(node) for name, node in sorted(program.outputs.items())
             }
         }
     )
