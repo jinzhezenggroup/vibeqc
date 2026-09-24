@@ -107,6 +107,9 @@ class StateField:
     def __post_init__(self) -> None:
         _text(self.name, "state field name")
         _text(self.scope, f"{self.name} state scope")
+        _text(self.dtype, "state dtype")
+        _text(self.spin_semantics, "state spin semantics")
+        _text(self.version, "state schema version")
         if (
             isinstance(self.components, bool)
             or not isinstance(self.components, int)
@@ -147,6 +150,7 @@ class ProductSpec:
 
     def __post_init__(self) -> None:
         _text(self.name, "product name")
+        _text(self.version, "product version")
         if (
             isinstance(self.derivative_order, bool)
             or not isinstance(self.derivative_order, int)
@@ -183,6 +187,7 @@ class ParameterSetRef:
         _text(self.identifier, "parameter-set identifier")
         _text(self.schema, "parameter-set schema")
         _text(self.source_identity, "parameter-set source identity")
+        _text(self.version, "parameter-set version")
         if self.version != SEMIEMPIRICAL_PARAMETER_SET_VERSION:
             raise InvalidSemiempiricalMethod(
                 "unsupported semiempirical parameter-set version"
@@ -200,7 +205,7 @@ class ParameterSetRef:
                 or not 1 <= number <= 118
                 for number in numbers
             )
-            or len(numbers) != len(set(numbers))
+            or len(numbers) != len(set(numbers)):
         ):
             raise InvalidSemiempiricalMethod(
                 "supported atomic numbers must be unique integers in [1, 118]"
@@ -252,6 +257,8 @@ class PrimitiveNode:
 
     def __post_init__(self) -> None:
         _text(self.node_id, "primitive node id")
+        _text(self.category, "primitive category")
+        _text(self.version, "primitive version")
         if self.category not in _ALLOWED_CATEGORIES:
             raise InvalidSemiempiricalMethod(
                 f"unsupported primitive category {self.category!r}"
@@ -361,6 +368,7 @@ class SemiempiricalMethodIR:
         _text(self.family, "semiempirical family")
         _text(self.model, "semiempirical model")
         _text(self.reference, "semiempirical reference")
+        _text(self.version, "method IR version")
         if self.version != SEMIEMPIRICAL_METHOD_IR_VERSION:
             raise InvalidSemiempiricalMethod(
                 "unsupported SemiempiricalMethodIR version"
