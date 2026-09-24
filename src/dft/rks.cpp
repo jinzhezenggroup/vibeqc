@@ -22,7 +22,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
@@ -698,10 +698,10 @@ ScfResult run_rks(
     const double residual_tolerance = std::min(1.0e-9, options.density_tolerance);
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
-      const solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
+      const ::vibeqc::solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
                                                       options.density_tolerance, residual_tolerance,
                                                       true};
-      return solver::run_self_consistent(
+      return ::vibeqc::solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {
             const auto current_factor = factor;
@@ -726,7 +726,7 @@ ScfResult run_rks(
                                      physical_residual,       spin_electrons};
           },
           [&](Matrix& current_density, RksLoopEvaluation evaluation,
-              const solver::SelfConsistentProgress& progress) {
+              const ::vibeqc::solver::SelfConsistentProgress& progress) {
             if (strict_full && progress.converged) {
               // The independent final audit must rebuild the exact density that
               // actually passed the strict physical criteria, not an unchecked
@@ -742,7 +742,7 @@ ScfResult run_rks(
             }
             return std::move(evaluation.next_density);
           },
-          [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+          [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
             const unsigned reported_iteration = iteration_offset + progress.iteration;
             result.iterations = reported_iteration;
             result.energy = progress.energy;
@@ -824,10 +824,10 @@ ScfResult run_rks(
     return result;
   }
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
+  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
                                             options.density_tolerance,
                                             std::min(1.0e-9, options.density_tolerance), true};
-  auto outcome = solver::run_self_consistent(
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
         const auto current_factor = factor;
@@ -853,7 +853,7 @@ ScfResult run_rks(
                                  physical_residual,       spin_electrons};
       },
       [&](Matrix& current_density, RksLoopEvaluation evaluation,
-          const solver::SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         if (!progress.converged && progress.iteration == options.max_iterations) {
           // A failed return must keep E/residual/D/factor on the same physical
           // generation rather than publishing the last unchecked proposal.
@@ -863,7 +863,7 @@ ScfResult run_rks(
         }
         return std::move(evaluation.next_density);
       },
-      [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
