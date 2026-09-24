@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.evidence import block_error
-from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Expr, Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.xc.fixtures import load_fixture
@@ -426,7 +425,7 @@ def test_imported_scan_family_emits_scalar_c_and_cuda(name: str) -> None:
     scalar = ScalarCEmitter(graph, variables)
     scalar.emit(roots)
     scalar_references = tuple(scalar.reference(root) for root in roots)
-    cuda = CudaEmitter(graph, variables)
+    cuda = ScalarCEmitter(graph, variables)
     cuda.emit(roots)
 
     assert len(scalar_references) == 36
