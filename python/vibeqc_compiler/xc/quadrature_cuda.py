@@ -63,6 +63,14 @@ inline unsigned blocks(size_t count) {
 #include <cuda_runtime.h>
 #include <cmath>
 namespace vibeqc::generated::quadrature {
+// Keep the atom coordinate in grid.y instead of recovering atom/point from a
+// flattened runtime divisor in every lane. Cap the total block count at the
+// historical 65535 while allowing oversized atom sets to grid-stride in y.
+inline dim3 atom_point_grid(size_t points, size_t atoms) {
+  const unsigned x = blocks(points);
+  const size_t y_cap = std::max(size_t{1}, size_t{65535} / x);
+  return dim3(x, static_cast<unsigned>(std::min(atoms, y_cap)));
+}
 """
 
 _KERNELS = r"""
@@ -104,35 +112,38 @@ __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, 
     weights[i] = wr * zw[z] * (2.0 * pi / nphi);
   }
 }
-// Atom-major tiles give adjacent point lanes coalesced scratch access.
+// Atom-major 2-D launch keeps adjacent point lanes coalesced without runtime
+// quotient/remainder recovery for every point-center visit.
 __global__ void distances_kernel(size_t count, size_t na, const double* xyz,
                                  const double* centers, double* distances) {
-  for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count * na;
-       i += size_t(blockDim.x) * gridDim.x)
-    distances[i] = distance(xyz + 3 * (i % count), centers + 3 * (i / count));
+  for (size_t a = blockIdx.y; a < na; a += gridDim.y)
+    for (size_t point = size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < count;
+         point += size_t(blockDim.x) * gridDim.x)
+      distances[a * count + point] = distance(xyz + 3 * point, centers + 3 * a);
 }
 template <unsigned Iterations>
 __global__ void partition_kernel(size_t count, size_t na, double tolerance,
                                  const double* distances, const double* separation,
                                  double* logs) {
-  for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count * na;
-       i += size_t(blockDim.x) * gridDim.x) {
-    const size_t a = i / count, point = i % count;
-    double value = 0.0;
-    // b<a contributions precede b>a, as in the scalar triangular pair loop.
-    // Keep the original orientation for log1p(-pair); reversing mu can lose
-    // tails through cancellation and change normalized weights near centers.
-    for (size_t b = 0; b < na; ++b) {
-      if (a == b) continue;
-      const size_t hi = a > b ? a : b, lo = a > b ? b : a;
-      const double sep = separation[hi * na + lo];
-      const double mu = sep > tolerance
-          ? fmin(1.0, fmax(-1.0, (distances[hi * count + point] -
-                                  distances[lo * count + point]) / sep)) : 0.0;
-      const double pair = fmin(1.0, fmax(0.0, becke<Iterations>(mu)));
-      value += a > b ? log(pair) : log1p(-pair);
+  for (size_t a = blockIdx.y; a < na; a += gridDim.y) {
+    for (size_t point = size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < count;
+         point += size_t(blockDim.x) * gridDim.x) {
+      double value = 0.0;
+      // b<a contributions precede b>a, as in the scalar triangular pair loop.
+      // Keep the original orientation for log1p(-pair); reversing mu can lose
+      // tails through cancellation and change normalized weights near centers.
+      for (size_t b = 0; b < na; ++b) {
+        if (a == b) continue;
+        const size_t hi = a > b ? a : b, lo = a > b ? b : a;
+        const double sep = separation[hi * na + lo];
+        const double mu = sep > tolerance
+            ? fmin(1.0, fmax(-1.0, (distances[hi * count + point] -
+                                    distances[lo * count + point]) / sep)) : 0.0;
+        const double pair = fmin(1.0, fmax(0.0, becke<Iterations>(mu)));
+        value += a > b ? log(pair) : log1p(-pair);
+      }
+      logs[a * count + point] = value;
     }
-    logs[i] = value;
   }
 }
 __global__ void normalize_kernel(size_t begin, size_t count, size_t per_atom, size_t na,
@@ -183,7 +194,7 @@ def emit_quadrature_cuda() -> str:
             ]
         )
         cases.append(
-            f"    case {iterations}: partition_kernel<{iterations}><<<blocks(count * na), 128, 0, stream>>>"
+            f"    case {iterations}: partition_kernel<{iterations}><<<atom_point_grid(count, na), 128, 0, stream>>>"
             "(count, na, tolerance, distances, separation, logs); break;"
         )
     lines.append(_KERNELS.replace("@PARTITION_CASES@", "\n".join(cases)))
