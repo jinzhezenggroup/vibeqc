@@ -69,7 +69,16 @@ int main(int argc,char**argv) {
     cpp.write_text(source)
     binary = directory / "partition"
     subprocess.run(
-        [compiler, "-std=c++20", "-O0", "-D__CUDACC__", f"-I{directory}", str(cpp), "-o", str(binary)],
+        [
+            compiler,
+            "-std=c++20",
+            "-O0",
+            "-D__CUDACC__",
+            f"-I{directory}",
+            str(cpp),
+            "-o",
+            str(binary),
+        ],
         check=True,
         timeout=30,
     )
@@ -78,8 +87,15 @@ int main(int argc,char**argv) {
 
 @pytest.mark.parametrize(
     "separation,tolerance",
-    [(1e-310, 0.0), (1e-310, 1e-320), (1e-308, 0.0), (0.0, 0.0),
-     (5e-13, 1e-12), (2.0, 1e-12), (1e-100, 0.0)],
+    [
+        (1e-310, 0.0),
+        (1e-310, 1e-320),
+        (1e-308, 0.0),
+        (0.0, 0.0),
+        (5e-13, 1e-12),
+        (2.0, 1e-12),
+        (1e-100, 0.0),
+    ],
 )
 def test_emitted_partition_retains_finite_quotient_boundary(
     partition_binary: Path, separation: float, tolerance: float
