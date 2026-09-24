@@ -88,7 +88,7 @@
 #include "scf/generated_shell_task.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/rhf.hpp"
-#include "scf/solver/iteration_control.hpp"
+#include "solver/iteration_control.hpp"
 #include "tensor/metrics.hpp"
 
 namespace vibeqc::scf {
@@ -3001,7 +3001,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   if (cuda_error == cudaSuccess && split_provider_iteration) {
     std::vector<std::uint8_t> host_active(batch_size, 1U);
-    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
+    ::vibeqc::solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       cuda_error = plan.graphs.launch_iteration(resources.stream_);
       if (cuda_error != cudaSuccess) return false;
       status = launch_iteration_eigensolver(ordinary_eigensolver_family);
@@ -3250,7 +3250,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // reports an honest non-convergence instead of a clamped success. Each item
     // leaves the loop on its own convergence, so a stagnating item is promoted
     // without holding back or dictating the precision of its neighbors.
-    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
+    ::vibeqc::solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       if (std::none_of(host_refinement_active.begin(), host_refinement_active.end(),
                        [](std::uint8_t value) { return value != 0; })) {
         return false;
