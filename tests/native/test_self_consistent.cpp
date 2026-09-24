@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "solver/self_consistent.hpp"
 #include "solver/diis.hpp"
+#include "solver/self_consistent.hpp"
 
 namespace {
 
