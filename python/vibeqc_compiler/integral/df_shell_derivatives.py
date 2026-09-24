@@ -18,7 +18,7 @@ from vibeqc_compiler.common.homogeneous_schedule import (
 )
 
 from .cooperative_schedule import CooperativeLaneSchedule
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_derivatives import axis_polynomial
 
 PROTOTYPE_CLASSES = tuple(a for a in product(range(2), repeat=3) if any(a))
@@ -286,7 +286,7 @@ struct Moments {
         ]
         for powers, offset in offsets.items():
             graph, roots = axis_polynomial(*powers)
-            emitter = CudaEmitter(graph, {})
+            emitter = ScalarCEmitter(graph, {})
             emitter.emit(roots)
             lines += ["    {", *emitter.lines]
             lines += [
