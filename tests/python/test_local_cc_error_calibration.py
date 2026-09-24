@@ -125,3 +125,32 @@ def test_invalid_oracle_tolerance_fails_closed(tolerance: object) -> None:
 def test_calibration_requires_typed_local_mp2_evidence() -> None:
     with pytest.raises(TypeError, match="LocalMP2Result"):
         calibrate_discarded_space(object())
+
+
+@pytest.mark.parametrize("discarded", [1e-20, 1e-18, 1e-17])
+def test_tiny_discarded_weights_do_not_cancel_against_retained_weight(
+    discarded: float,
+) -> None:
+    pair = _pair((0, 0), discarded_weight=discarded, full_pair_energy=-0.2)
+    report = calibrate_discarded_space(_result(pair, canonical=-0.2))
+    row = report.pairs[0]
+    assert row.retained_occupation_weight == 0.5
+    assert row.discarded_occupation_weight == pytest.approx(discarded, rel=1e-15, abs=0)
+    assert row.discarded_occupation_fraction == pytest.approx(
+        discarded / (0.5 + discarded), rel=1e-15, abs=0
+    )
+
+
+def test_finite_occupation_entries_with_overflowing_total_are_rejected() -> None:
+    pair = _pair((0, 0), discarded_weight=0.01, full_pair_energy=-0.2)
+    space = replace(
+        pair.space,
+        columns=np.eye(3)[:, 1:],
+        occupation_eigenvalues=np.array([0.01, 1e308, 1e308]),
+        retained_indices=(1, 2),
+    )
+    pair = replace(
+        pair, space=space, amplitudes=np.zeros((2, 2)), integrals=np.zeros((2, 2))
+    )
+    with pytest.raises(ValueError, match="occupation weights"):
+        calibrate_discarded_space(_result(pair, canonical=-0.2))

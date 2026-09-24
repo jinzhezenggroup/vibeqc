@@ -75,9 +75,21 @@ def _occupation_weights(pair: PairMP2Result) -> tuple[float, float, float]:
     # permits tiny negative roundoff down to -1e-12; clamp only that admitted
     # numerical noise before forming a dimensionless discarded-weight heuristic.
     positive = [max(0.0, float(value)) for value in values]
-    retained = sum(positive[index] for index in pair.space.retained_indices)
-    total = sum(positive)
-    discarded = max(0.0, total - retained)
+    # Sum disjoint spectral subsets directly: total - retained can erase a
+    # small but nonzero discarded population beside the retained one.
+    retained_indices = set(pair.space.retained_indices)
+    try:
+        retained = math.fsum(positive[index] for index in retained_indices)
+        discarded = math.fsum(
+            value
+            for index, value in enumerate(positive)
+            if index not in retained_indices
+        )
+        total = math.fsum((retained, discarded))
+    except OverflowError as error:
+        raise ValueError(
+            f"pair {pair.space.pair} has nonfinite summed occupation weights"
+        ) from error
     fraction = discarded / total if total > 0.0 else 0.0
     return retained, discarded, fraction
 
