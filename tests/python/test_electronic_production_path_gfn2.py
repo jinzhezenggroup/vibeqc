@@ -34,7 +34,13 @@ def test_gfn2_cpu_evidence_stays_scoped() -> None:
     row = _gfn2_row()
     levels = typing.cast("dict[str, dict[str, object]]", row["evidence_levels"])
 
-    for level in ("represented", "compiled-cpu", "domain-qualified", "molecular", "public"):
+    for level in (
+        "represented",
+        "compiled-cpu",
+        "domain-qualified",
+        "molecular",
+        "public",
+    ):
         assert levels[level]["state"] == "present"
     for level in ("compiled-cuda", "device-executed", "derivative"):
         assert levels[level]["state"] == "not-applicable"
