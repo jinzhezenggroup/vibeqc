@@ -40,6 +40,9 @@ def _prepared_ccsdt(
     with _source(inputs(name)) as source:
         reference, _ = export_rhf(
             source,
+            # Paired backend tests compare exact scientific identities, so
+            # their independent exports must share the fixture generation.
+            generation_id=f"ccsdt-orbital-response-fixture:{name}",
             tolerance=options.scf_tolerance,
             max_iterations=options.scf_max_iterations,
         )
@@ -403,10 +406,12 @@ def test_resident_z_execution_reuses_checked_krylov_engine(
     assert actual.resident_response_diagnostics["fake_resident"] == 1
     assert actual.response_identity == same_state_reference.response_identity
     assert actual.reference_identity == same_state_host.reference_identity
+    assert actual.cc_state_identity == same_state_host.cc_state_identity
     assert (
         actual.fixed_orbital_response_identity
         == same_state_host.fixed_orbital_response_identity
     )
+    assert actual.baseline.weight_identity == same_state_host.baseline.weight_identity
     assert (
         actual.baseline.operator_identity == same_state_host.baseline.operator_identity
     )
