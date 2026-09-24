@@ -30,9 +30,7 @@ class _Transport:
 
 
 def _snapshot(reference: str = "source", nvir: int = 1) -> AmplitudeSnapshot:
-    return AmplitudeSnapshot(
-        reference, np.ones((1, nvir)), np.ones((1, 1, nvir, nvir))
-    )
+    return AmplitudeSnapshot(reference, np.ones((1, nvir)), np.ones((1, 1, nvir, nvir)))
 
 
 @pytest.mark.parametrize("invalid", ["reference", "shape", "type"])
@@ -72,7 +70,9 @@ def test_recycled_residual_cannot_reenable_write_access(
         return value.t1.copy(), value.t2.copy()
 
     result = history.recycle_diis_history(
-        _Transport(), [_snapshot()], history.TargetResidualEvaluator("target-state", residual)
+        _Transport(),
+        [_snapshot()],
+        history.TargetResidualEvaluator("target-state", residual),
     )
     with pytest.raises(ValueError):
         getattr(result.entries[0], field).setflags(write=True)
