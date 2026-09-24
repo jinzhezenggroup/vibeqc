@@ -15,7 +15,9 @@ def _function_body(header: str, name: str, next_name: str) -> str:
 
 def test_density_codegen_contracts_only_unique_ao_pairs() -> None:
     header = native_header()
-    density = _function_body(header, "density_from_orbitals", "weighted_density_from_orbitals")
+    density = _function_body(
+        header, "density_from_orbitals", "weighted_density_from_orbitals"
+    )
     weighted = _function_body(header, "weighted_density_from_orbitals", "diis_gram")
 
     assert "for (std::size_t nu = mu; nu < nbf; ++nu)" in density
