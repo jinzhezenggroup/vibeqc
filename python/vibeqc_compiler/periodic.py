@@ -93,7 +93,7 @@ def _positions_bohr(
         raise TypeError("positions_bohr must be numeric") from error
     if array.shape != (atom_count, 3) or not np.all(np.isfinite(array)):
         raise ValueError(f"positions_bohr must be a finite {atom_count}x3 matrix")
-    return tuple(tuple(float(component) for component in row) for row in array)
+    return tuple((float(row[0]), float(row[1]), float(row[2])) for row in array)
 
 
 @dataclass(frozen=True)
