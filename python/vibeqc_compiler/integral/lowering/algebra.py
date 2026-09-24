@@ -5,7 +5,7 @@ consumers reuse these fragments without duplicating their expressions."""
 
 from __future__ import annotations
 
-from ..cuda import CudaEmitter
+from ..scalar_c import ScalarCEmitter
 from ..cuda_schedule import (
     AlgebraForm,
     ScheduleIR,
@@ -135,7 +135,7 @@ def _emit_packed_force_geometry_algebra_cuda(
         AlgebraForm.BINARY,
         PowerLowering.SMALL_INTEGER,
     )
-    emitter = CudaEmitter(graph, variable_code)
+    emitter = ScalarCEmitter(graph, variable_code)
     emitter.lines.append("  double argument_squared_distance;")
     for (__, target), root in zip(root_specs, roots, strict=True):
         if target is None:
@@ -281,7 +281,7 @@ __device__ __forceinline__ void generated_dppp_make_packed_force_geometry(
         schedule.algebra_ordering,
         schedule.algebra_fusion,
     )
-    emitter = CudaEmitter(
+    emitter = ScalarCEmitter(
         graph,
         variable_code,
         materialization_plan=materialization_plan,
