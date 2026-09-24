@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.dft.ao_cuda import emit_grid_source
 from vibeqc_compiler.dft.xc_contraction_cuda import (
     DEFAULT_XC_MATRIX_SCHEDULE,
     XcMatrixSchedule,
@@ -176,4 +177,19 @@ def test_xc_matrix_emitter_materializes_explicit_tile_candidate() -> None:
     assert "(n+7)/8" in source
     assert "all 64 lanes" in source
     assert "dim3(16,16)" not in source
+
+def test_xc_matrix_candidate_is_frozen_in_grid_source_identity() -> None:
+    source8, identity8, _ = emit_grid_source(
+        native_ks=True, xc_matrix_schedule=XcMatrixSchedule(8)
+    )
+    source16, identity16, _ = emit_grid_source(native_ks=True)
+
+    assert "dim3(8,8)" in source8
+    assert "dim3(16,16)" in source16
+    assert identity8 != identity16
+
+    with pytest.raises(ValueError, match="require native KS"):
+        emit_grid_source(
+            native_ks=False, xc_matrix_schedule=XcMatrixSchedule(8)
+        )
 
