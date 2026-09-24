@@ -277,6 +277,7 @@ class SymmetricMatrixFunctionSpec:
             gap,
             source_hash,
             max_bytes,
+            _immutable(values),
         )
 
 
@@ -320,6 +321,11 @@ class MatrixFunctionEvaluation:
     relative_gap: float
     source_hash: str
     max_bytes: int = field(repr=False, compare=False)
+    # Preserve the already computed spectrum for adapters. Recovering small
+    # spectral function values from the dense value loses relative accuracy.
+    # The default preserves construction compatibility for existing snapshots;
+    # consumers requiring a spectrum reject such legacy/manual snapshots.
+    eigenvalues: np.ndarray | None = field(default=None, repr=False, compare=False)
 
     @property
     def manifest(self) -> dict:
@@ -346,7 +352,11 @@ class MatrixFunctionEvaluation:
                 "divided": self.divided,
                 "seed": seed,
             },
-            max_bytes=self.max_bytes - self.value.nbytes * 3,
+            max_bytes=(
+                self.max_bytes
+                - self.value.nbytes * 3
+                - (0 if self.eigenvalues is None else self.eigenvalues.nbytes)
+            ),
         ).outputs["response"]
 
     def jvp(self, tangent: np.ndarray) -> np.ndarray:

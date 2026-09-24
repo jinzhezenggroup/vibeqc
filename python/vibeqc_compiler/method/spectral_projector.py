@@ -1,7 +1,7 @@
 """Gauge-invariant fixed-rank spectral-projector response.
 
 This reference adapter reuses the validated eigensystem, branch decision, and
-retained/discarded divided differences prepared by ``matrix_function.py``.
+eigenvalues prepared by ``matrix_function.py``.
 It differentiates only the spectral projector for a locally fixed retained
 membership. It does not differentiate rank selection, claim smoothness through
 threshold crossings, or define a local-correlation force by itself.
@@ -17,15 +17,19 @@ import numpy as np
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.method.matrix_function import MatrixFunctionEvaluation
 
-VERSION = "fixed-rank-spectral-projector-v1"
+VERSION = "fixed-rank-spectral-projector-v2"
 _FLOAT64_BYTES = 8
 
 
 def projector_logical_workspace_bytes(size: int) -> int:
-    """Return the bounded logical FP64-array footprint used by this reference."""
+    """Conservatively admit owned state and transient logical FP64 arrays.
+
+    Parent/caller storage and opaque NumPy/BLAS workspaces are excluded. This
+    bounds the reference array schedule, not process RSS or allocator peaks.
+    """
     if type(size) is not int or size <= 0 or size > 2**31 - 1:
         raise ValueError("projector size must be a positive bounded integer")
-    required = _FLOAT64_BYTES * (5 * size * size + 2 * size)
+    required = _FLOAT64_BYTES * (12 * size * size + 4 * size)
     if required > 2**63 - 1:
         raise ValueError("projector size exceeds signed-64-bit logical byte capacity")
     return required
@@ -121,6 +125,10 @@ class FixedRankProjectorEvaluation:
 
     def _response(self, seed: typing.Any, *, symmetric: bool) -> np.ndarray:
         value = _checked_seed(seed, self.size, symmetric=symmetric)
+        if self.rank in (0, self.size):
+            # P is constant on this branch. Do not rotate a huge finite seed
+            # only to multiply an irrelevant overflowing result by zero.
+            return _immutable(np.zeros((self.size, self.size), dtype=np.float64))
         value = 0.5 * value + 0.5 * value.T
         rotated = self.vectors.T @ value @ self.vectors
         weighted = self.divided * rotated
@@ -147,14 +155,11 @@ def prepare_fixed_rank_projector(
     """Reuse a validated truncated matrix-function state as projector response.
 
     The matrix-function state owns eigensystem validation and the cutoff/rank
-    branch. Its retained/discarded divided differences contain
-
-    ``f(lambda_r) / (lambda_r - lambda_d)``.
-
-    Dividing those cross terms by the retained matrix-function value recovers
-    the gauge-invariant projector divided difference
-    ``1 / (lambda_r - lambda_d)`` without a second eigendecomposition or any
-    division by gaps internal to the retained or discarded subspaces.
+    branch. Use its retained eigenvalues directly for the cross-subspace
+    coefficient ``1 / (lambda_r - lambda_d)``. Dividing parent function divided
+    differences by values recovered from the dense matrix loses accuracy for
+    ill-conditioned functions and can silently inherit spectral underflow.
+    There is no second eigendecomposition or within-subspace gap division.
     """
     if not isinstance(state, MatrixFunctionEvaluation):
         raise TypeError("projector response requires MatrixFunctionEvaluation")
@@ -166,6 +171,15 @@ def prepare_fixed_rank_projector(
     if type(max_bytes) is not int or not required <= max_bytes <= 2**63 - 1:
         raise ValueError("projector response logical workspace budget exceeded")
 
+    values = state.eigenvalues
+    if (
+        values is None
+        or values.shape != (state.spec.size,)
+        or values.dtype != np.dtype("float64")
+        or values.flags.writeable
+        or not np.isfinite(values).all()
+    ):
+        raise ValueError("projector response requires prepared spectral eigenvalues")
     retained = np.asarray(state.retained, dtype=bool)
     discarded = ~retained
     vectors = np.asarray(state.vectors, dtype=np.float64)
@@ -174,18 +188,15 @@ def prepare_fixed_rank_projector(
 
     divided = np.zeros((state.spec.size, state.spec.size), dtype=np.float64)
     if state.rank and np.any(discarded):
-        function_values = np.einsum(
-            "pi,pq,qi->i",
-            retained_vectors,
-            state.value,
-            retained_vectors,
-            optimize=True,
-        )
-        if not np.isfinite(function_values).all() or np.any(function_values <= 0.0):
-            raise ValueError("invalid retained matrix-function spectral values")
-        cross = state.divided[np.ix_(retained, discarded)] / function_values[:, None]
-        if not np.isfinite(cross).all():
-            raise ValueError("nonfinite retained/discarded projector response")
+        with np.errstate(over="raise", divide="raise", invalid="raise"):
+            try:
+                cross = 1.0 / (values[retained, None] - values[None, discarded])
+            except FloatingPointError as error:
+                raise ValueError(
+                    "nonfinite retained/discarded projector response"
+                ) from error
+        if not np.isfinite(cross).all() or np.any(cross <= 0.0):
+            raise ValueError("invalid retained/discarded projector response")
         divided[np.ix_(retained, discarded)] = cross
         divided[np.ix_(discarded, retained)] = cross.T
 

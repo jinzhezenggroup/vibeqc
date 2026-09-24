@@ -50,7 +50,7 @@ def test_projector_jvp_matches_recomputed_fixed_rank_finite_difference() -> None
 
 
 def test_projector_response_ignores_internal_gauge_motion() -> None:
-    matrix = np.diag(np.array([0.2, 2.0, 2.0]))
+    matrix = np.diag(np.array([0.1, 2.0, 2.0]))
     retained_internal = np.array(
         [[0.0, 0.0, 0.0], [0.0, 0.0, 0.6], [0.0, 0.6, 0.0]],
         dtype=np.float64,
@@ -156,3 +156,8 @@ def test_projector_identity_tracks_rebound_parent_state() -> None:
     assert not first.projector.flags.writeable
     assert not first.divided.flags.writeable
     assert not first.vectors.flags.writeable
+
+
+def test_projector_rejects_unresolved_cutoff_even_with_retained_degeneracy() -> None:
+    with pytest.raises(ValueError, match="unresolved at the cutoff"):
+        _state(np.diag(np.array([0.2, 2.0, 2.0])))
