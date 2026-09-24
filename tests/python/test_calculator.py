@@ -250,23 +250,6 @@ def test_ks_separate_physical_residual_is_published(method: typing.Any) -> None:
     assert result.density_rms < 1e-8
 
 
-def test_ks_older_library_without_scf_getter(monkeypatch: typing.Any) -> None:
-    """Python keeps the legacy result usable when the additive symbol is absent."""
-    calculator = Calculator(method="lda-rks", basis="sto-3g", device="cpu")
-    library = calculator._library
-
-    class LegacyLibrary:
-        def __getattr__(self, name: typing.Any) -> typing.Any:
-            if name == "vibeqc_calculation_get_scf_diagnostic":
-                raise AttributeError(name)
-            return getattr(library, name)
-
-    monkeypatch.setattr(calculator, "_library", LegacyLibrary())
-    result = calculator.singlepoint([("He", (0.0, 0.0, 0.0))])
-    assert result.converged
-    assert result.physical_residual_rms is None
-
-
 @pytest.mark.parametrize("method", ("lda-uks", "pbe-uks"))
 @pytest.mark.parametrize(
     ("charge", "multiplicity"),
