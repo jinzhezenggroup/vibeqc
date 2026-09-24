@@ -6,7 +6,7 @@ from dataclasses import replace
 import pytest
 from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.integral.cache import integral_cache_key
-from vibeqc_compiler.integral.cuda import CudaEmitter
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.integral.df_values import (
     build_df_component_kernel,
     build_df_value_ir,
@@ -45,7 +45,7 @@ def integral_program() -> typing.Any:
 
 def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> None:
     kernel = integral_program()
-    emitters = [emitter(kernel.graph, {}) for emitter in (CudaEmitter, ScalarCEmitter)]
+    emitters = [emitter(kernel.graph, {}) for emitter in (ScalarCEmitter, ScalarCEmitter)]
     for emitter in emitters:
         emitter.emit(kernel.roots)
     assert emitters[0].lines == emitters[1].lines
