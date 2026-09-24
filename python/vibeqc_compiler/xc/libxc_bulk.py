@@ -169,14 +169,9 @@ class BulkProgram:
         return tuple(result)
 
     def emit_source(self, derivative_order: int = 1, *, cuda: bool = False) -> str:
-        """Emit a scalar point function through the existing C/CUDA emitters."""
+        """Emit a scalar point function for the requested C/CUDA wrapper."""
         variables = {name: f"features[{i}]" for i, name in enumerate(self.features)}
-        if cuda:
-            from vibeqc_compiler.integral.cuda import CudaEmitter
-
-            emitter = CudaEmitter(self.graph, variables)
-        else:
-            emitter = ScalarCEmitter(self.graph, variables)
+        emitter = ScalarCEmitter(self.graph, variables)
         roots = self.roots(derivative_order)
         emitter.emit(roots)
         prefix = 'extern "C" __device__ ' if cuda else ""
