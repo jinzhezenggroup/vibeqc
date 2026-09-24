@@ -29,8 +29,12 @@ from .native import NativeRHFState
 
 # One declared conventional RHF frozen-Fock contraction, shared by the CPU
 # reference traversal and generated CUDA matrix consumer.
-RHF_FIRST_ERI_TERMS = (
+COULOMB_FIRST_ERI_TERMS = (
     DirectionalMatrixTerm(0, (0, 1), (2, 3), 1.0),
+)
+
+RHF_FIRST_ERI_TERMS = (
+    *COULOMB_FIRST_ERI_TERMS,
     DirectionalMatrixTerm(0, (0, 2), (1, 3), -0.5),
 )
 
@@ -125,21 +129,39 @@ def generated_first_order(state: typing.Any) -> typing.Any:
 def generated_directional_first_order(
     state: typing.Any, direction: typing.Any
 ) -> typing.Any:
-    """Contract a direction shell-locally into H1(v)/S1(v), each (AO,AO).
+    """Contract the conventional RHF frozen Fock direction into H1(v)/S1(v)."""
+    if not isinstance(state, NativeRHFState):
+        raise TypeError("generated Hessian sources require NativeRHFState")
+    return _generated_first_order(
+        state,
+        checked_direction(direction, state.nat),
+        eri_terms=RHF_FIRST_ERI_TERMS,
+    )
 
-    The same generated primitive derivatives supply the full and directional
-    callers. Only bounded shell-component gradients are formed; no molecular
-    coordinate-indexed H1/S1 or ERI derivative tensor is allocated here.
-    Integral arithmetic is native CPU; caller-side direction/density reduction
-    is explicit host work, not a generated CUDA derivative contraction.
+
+def generated_coulomb_directional_first_order(
+    state: typing.Any, direction: typing.Any
+) -> typing.Any:
+    """Contract one pure-Coulomb stationary frozen-Fock direction.
+
+    This shares the exact S/T/V and weighted-ERI derivative provider with RHF,
+    but admits only the Coulomb density-to-Fock term. Semilocal XC geometry is
+    a separate source owned by the DFT contraction layer.
     """
     if not isinstance(state, NativeRHFState):
         raise TypeError("generated Hessian sources require NativeRHFState")
-    return _generated_first_order(state, checked_direction(direction, state.nat))
+    return _generated_first_order(
+        state,
+        checked_direction(direction, state.nat),
+        eri_terms=COULOMB_FIRST_ERI_TERMS,
+    )
 
 
 def _generated_first_order(
-    state: typing.Any, direction: typing.Any = None
+    state: typing.Any,
+    direction: typing.Any = None,
+    *,
+    eri_terms: typing.Any = RHF_FIRST_ERI_TERMS,
 ) -> typing.Any:
     provider = _FirstDerivativeProvider(state)
     shells, offsets = provider.shells, provider.offsets
@@ -192,7 +214,7 @@ def _generated_first_order(
             )
             # Ordered AO traversal: no orbit multiplicities or energy prefactors.
             ao = (u, v, w, x)
-            for term in RHF_FIRST_ERI_TERMS:
+            for term in eri_terms:
                 i, j = (ao[k] for k in term.output_pair)
                 k, l = (ao[k] for k in term.weight_pair)
                 accumulate(
@@ -208,22 +230,20 @@ def _generated_first_order(
     return frozen, overlap
 
 
-def generated_rhf_relaxation_contraction(
+def _generated_relaxation_components(
     state: typing.Any,
     density_response: typing.Any,
     energy_weighted_density_response: typing.Any,
-) -> typing.Any:
-    """Return the first-integral part of a complete RHF molecular HVP.
+    *,
+    exchange_energy_coefficient: float,
+) -> dict[str, np.ndarray]:
+    """Contract stationary first-integral HVP terms by physical source.
 
-    For a solved directional response this contracts, for every output nuclear
-    coordinate R,
-
-        Tr[H1_R D1(v)] - Tr[S1_R W1(v)]
-
-    directly against generated first-integral derivatives. The two-electron
-    contribution is the directional derivative of the frozen RHF energy weight,
-    evaluated shell-locally, so no all-coordinate H1/S1 or molecular ERI
-    derivative tensor is formed.
+    exchange_energy_coefficient multiplies the symmetric derivative of the
+    ordered exchange energy weight. Pure-Coulomb KS passes zero; conventional
+    closed-shell RHF passes -0.25. The shared one-electron, Coulomb and
+    overlap/Pulay terms are therefore generated once without method-specific
+    derivative kernels.
     """
     provider = _FirstDerivativeProvider(state)
     density_response = _checked_ao_weight(
@@ -234,17 +254,27 @@ def generated_rhf_relaxation_contraction(
         state.nbf,
         "energy-weighted density response",
     )
+    if not np.isfinite(exchange_energy_coefficient):
+        raise ValueError("exchange energy coefficient must be finite")
     shells, offsets = provider.shells, provider.offsets
     density = state.P0
-    result = np.zeros((state.nat, 3), dtype=np.float64)
+    components = {
+        "one_electron": np.zeros((state.nat, 3), dtype=np.float64),
+        "coulomb": np.zeros((state.nat, 3), dtype=np.float64),
+        "exchange": np.zeros((state.nat, 3), dtype=np.float64),
+        "overlap_pulay": np.zeros((state.nat, 3), dtype=np.float64),
+    }
 
     def accumulate(
-        atoms: typing.Any, derivative: typing.Any, coefficient: typing.Any
+        target: str,
+        atoms: typing.Any,
+        derivative: typing.Any,
+        coefficient: typing.Any,
     ) -> None:
         if coefficient == 0:
             return
         for center, atom in enumerate(atoms):
-            result[atom] += coefficient * derivative[center]
+            components[target][atom] += coefficient * derivative[center]
 
     for a, b in product(range(len(shells)), repeat=2):
         angular = (shells[a].angular_momentum, shells[b].angular_momentum)
@@ -252,12 +282,13 @@ def generated_rhf_relaxation_contraction(
         ir = build_one_electron_derivative_ir("kinetic", angular)
         for (u, v), gradient in provider.raw_tiles(ir, (a, b), atoms):
             i, j = offsets[a] + u, offsets[b] + v
-            accumulate(atoms, gradient, density_response[i, j])
+            accumulate("one_electron", atoms, gradient, density_response[i, j])
 
         ir = build_one_electron_derivative_ir("overlap", angular)
         for (u, v), gradient in provider.raw_tiles(ir, (a, b), atoms):
             i, j = offsets[a] + u, offsets[b] + v
             accumulate(
+                "overlap_pulay",
                 atoms,
                 gradient,
                 -energy_weighted_density_response[i, j],
@@ -270,7 +301,9 @@ def generated_rhf_relaxation_contraction(
             centers = (*atoms, nucleus)
             for (u, v), gradient in provider.raw_tiles(ir, (a, b), centers):
                 i, j = offsets[a] + u, offsets[b] + v
-                accumulate(centers, gradient, density_response[i, j])
+                accumulate(
+                    "one_electron", centers, gradient, density_response[i, j]
+                )
 
     for slots in product(range(len(shells)), repeat=4):
         angular = tuple(shells[i].angular_momentum for i in slots)
@@ -280,18 +313,51 @@ def generated_rhf_relaxation_contraction(
             u, v, w, x = (
                 offsets[shell] + c for shell, c in zip(slots, component, strict=True)
             )
-            # d/dP of W2(P) = 1/2 P_uv P_wx - 1/4 P_uw P_vx,
-            # evaluated along D1(v). This is exactly Tr[D1 G_R(P0)].
-            coefficient = 0.5 * (
+            coulomb = 0.5 * (
                 density_response[u, v] * density[w, x]
                 + density[u, v] * density_response[w, x]
             )
-            coefficient -= 0.25 * (
+            accumulate("coulomb", atoms, gradient, coulomb)
+            exchange = exchange_energy_coefficient * (
                 density_response[u, w] * density[v, x]
                 + density[u, w] * density_response[v, x]
             )
-            accumulate(atoms, gradient, coefficient)
+            accumulate("exchange", atoms, gradient, exchange)
 
+    if not all(np.isfinite(value).all() for value in components.values()):
+        raise FloatingPointError("nonfinite stationary relaxation contraction")
+    return {name: np.array(value, copy=True) for name, value in components.items()}
+
+
+def generated_coulomb_relaxation_components(
+    state: typing.Any,
+    density_response: typing.Any,
+    energy_weighted_density_response: typing.Any,
+) -> dict[str, np.ndarray]:
+    """Return pure-J stationary first-integral HVP terms by plan source."""
+    result = _generated_relaxation_components(
+        state,
+        density_response,
+        energy_weighted_density_response,
+        exchange_energy_coefficient=0.0,
+    )
+    result.pop("exchange")
+    return result
+
+
+def generated_rhf_relaxation_contraction(
+    state: typing.Any,
+    density_response: typing.Any,
+    energy_weighted_density_response: typing.Any,
+) -> typing.Any:
+    """Return the complete first-integral relaxation term for RHF HVPs."""
+    components = _generated_relaxation_components(
+        state,
+        density_response,
+        energy_weighted_density_response,
+        exchange_energy_coefficient=-0.25,
+    )
+    result = sum(components.values(), np.zeros((state.nat, 3), dtype=np.float64))
     if not np.isfinite(result).all():
         raise FloatingPointError("nonfinite RHF relaxation contraction")
     return result
