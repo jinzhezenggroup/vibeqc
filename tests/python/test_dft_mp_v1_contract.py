@@ -322,6 +322,46 @@ def test_mixed_numerical_oracle_and_work_negative_controls(
             _check_run(altered, campaign, row, contract, tmp_path)
 
 
+@pytest.mark.parametrize(
+    ("residual", "accepted"),
+    [
+        (0.0, True),
+        (1e-9, True),
+        (1e-8, True),
+        (-1.0, False),
+        (float("-inf"), False),
+        (False, False),
+        (True, False),
+        (None, False),
+        ("0", False),
+        (float("nan"), False),
+        (float("inf"), False),
+        (2e-8, False),
+    ],
+)
+def test_strict_comparator_residual_uses_finite_nonnegative_norm(
+    tmp_path: Path, contract: dict, residual: object, accepted: bool
+) -> None:
+    row = next(r for r in contract["rows"] if r["id"] == "pbe/rks/water/mixed_correct")
+    campaign = _campaign(tmp_path)
+    value = _run_record(tmp_path, contract, row, campaign)
+    value["checks"]["finite_difference"].update(
+        step_bohr=[0.01, 0.005], reconverged_each_displacement=True
+    )
+    value["checks"]["grid_convergence"]["independent_finer_grid"] = True
+    value["checks"]["changed_geometry"].update(
+        input_sha256=contract["cases"]["water"]["changed_input_sha256"],
+        grid_identity=contract["cases"]["water"]["changed_grid_identity"],
+        complete_energy_forces=True,
+    )
+    value["strict_comparator"]["physical_residual"] = residual
+    if accepted:
+        _check_run(value, campaign, row, contract, tmp_path)
+    else:
+        with pytest.raises(InvalidEvidence, match="strict comparator"):
+            _check_run(value, campaign, row, contract, tmp_path)
+
+
 def test_missing_timeout_and_fake_pass_cannot_complete(
     tmp_path: Path, contract: dict
 ) -> None:

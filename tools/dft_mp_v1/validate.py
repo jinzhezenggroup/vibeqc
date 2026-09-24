@@ -624,7 +624,11 @@ def _check_run(
             "strict comparator must use matched binary and schedule",
         )
         require(
-            run["strict_comparator"].get("physical_residual", float("inf"))
+            _finite(
+                run["strict_comparator"].get("physical_residual"),
+                "strict comparator physical residual",
+                nonnegative=True,
+            )
             <= model["scf"]["physical_residual_max"],
             "strict comparator residual failed",
         )
