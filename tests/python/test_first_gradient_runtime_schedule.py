@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME = REPOSITORY_ROOT / "src/integrals/first_gradient_runtime.cuh"
 
@@ -23,7 +22,12 @@ def test_append_fences_only_reusable_host_record_lifetime() -> None:
     launch = "execute<Program><<<"
     fence = "cudaEventSynchronize(p.context.begin)"
 
-    assert append.index(copy) < append.index(record) < append.index(launch) < append.index(fence)
+    assert (
+        append.index(copy)
+        < append.index(record)
+        < append.index(launch)
+        < append.index(fence)
+    )
     assert "cudaStreamSynchronize(p.context.stream)" not in append
     assert "cudaMemcpyDeviceToHost" not in append
 
