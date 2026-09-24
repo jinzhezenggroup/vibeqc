@@ -38,14 +38,14 @@ RUNTIME_ADAPTERS = {
 # it must not acquire integral recurrence, SCF, or schedule dependencies.
 SCALAR_CLIENTS = {
     "dft.xc_bilinear": {"vibeqc_compiler.integral.expr"},
-    "dft.xc_contraction_cuda": {"vibeqc_compiler.integral.cuda"},
+    "dft.xc_contraction_cuda": {"vibeqc_compiler.integral.scalar_c"},
     "dft.ao_cuda": {
         "vibeqc_compiler.integral.expr",
-        "vibeqc_compiler.integral.cuda",
+        "vibeqc_compiler.integral.scalar_c",
     },
     "dft.feature_policy": {
         "vibeqc_compiler.integral.expr",
-        "vibeqc_compiler.integral.cuda",
+        "vibeqc_compiler.integral.scalar_c",
         "vibeqc_compiler.integral.scalar_c",
     },
 }
