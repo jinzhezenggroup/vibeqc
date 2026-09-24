@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "src/posthf/cuda_transform.cu"
 
@@ -19,7 +18,9 @@ def _source_tiles(nbf: int, axis_tile: int = 2) -> int:
 def test_cuda_mo_validation_occurs_only_at_publication() -> None:
     source = SOURCE.read_text(encoding="utf-8")
     add = _function_body(source, "posthf_cuda_add_v1", "posthf_cuda_download_v1")
-    download = _function_body(source, "posthf_cuda_download_v1", "posthf_cuda_metrics_v1")
+    download = _function_body(
+        source, "posthf_cuda_download_v1", "posthf_cuda_metrics_v1"
+    )
 
     assert "cublasDaxpy" in add
     assert "check_scale<<<" not in add
@@ -29,7 +30,9 @@ def test_cuda_mo_validation_occurs_only_at_publication() -> None:
     assert download.count("check_scale<<<") == 1
     validation = download.index("check_scale<<<")
     status = download.index("cudaMemcpyAsync(&invalid")
-    failure = download.index('if (invalid) throw std::runtime_error("nonfinite MO transformation")')
+    failure = download.index(
+        'if (invalid) throw std::runtime_error("nonfinite MO transformation")'
+    )
     publication = download.index("cudaMemcpyAsync(out, p.result")
     assert validation < status < failure < publication
 
