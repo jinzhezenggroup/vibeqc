@@ -43,6 +43,12 @@ def test_frozen_geometry_reproduces_exact_bytes_and_actual_basis_counts(
     pytest.importorskip("rdkit")
     from tools.dft_mp_v1 import generate_inputs
 
+    if not generate_inputs.generator_is_qualified():
+        with pytest.raises(RuntimeError, match="unqualified DFT-MP-v1 generator"):
+            generate_inputs.build()
+        pytest.skip(
+            "frozen geometry reconstruction requires the recorded generator wheel"
+        )
     regenerated = generate_inputs.build()
     for key, source in regenerated.items():
         original = json.loads(
@@ -76,6 +82,61 @@ def test_frozen_geometry_reproduces_exact_bytes_and_actual_basis_counts(
             (ROOT / "inputs" / f"{key}-changed.json").read_text(encoding="utf-8")
         )
         assert changed["source"]["delta_bohr"] == 0.01
+
+
+def test_generator_provenance_rejects_platform_or_wheel_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("rdkit")
+    from tools.dft_mp_v1 import generate_inputs
+
+    recorded = generate_inputs.recorded_generator_provenance()
+    drifted = {**recorded, "system": "unqualified-system"}
+    monkeypatch.setattr(
+        generate_inputs, "current_generator_provenance", lambda: drifted
+    )
+
+    assert not generate_inputs.generator_is_qualified()
+    with pytest.raises(RuntimeError, match="unqualified DFT-MP-v1 generator"):
+        generate_inputs.build()
+
+
+def test_generator_audit_preserves_frozen_tree_on_mismatch(tmp_path: Path) -> None:
+    pytest.importorskip("rdkit")
+    from tools.dft_mp_v1 import generate_inputs
+
+    frozen = tmp_path / "inputs"
+    frozen.mkdir()
+    case = frozen / "case.json"
+    case.write_bytes(b'{"frozen":true}\n')
+    before = {path.name: path.read_bytes() for path in frozen.iterdir()}
+
+    with pytest.raises(RuntimeError, match="frozen input audit mismatch"):
+        generate_inputs.audit_serialized({"case.json": b'{"candidate":true}\n'}, frozen)
+
+    assert {path.name: path.read_bytes() for path in frozen.iterdir()} == before
+
+
+def test_generator_candidate_output_is_separate_and_empty(tmp_path: Path) -> None:
+    pytest.importorskip("rdkit")
+    from tools.dft_mp_v1 import generate_inputs
+
+    frozen = tmp_path / "inputs"
+    frozen.mkdir()
+    (frozen / "case.json").write_bytes(b"frozen\n")
+    candidate = {"case.json": b"candidate\n"}
+
+    with pytest.raises(ValueError, match="separate output tree"):
+        generate_inputs.write_candidate_files(candidate, frozen, frozen=frozen)
+    occupied = tmp_path / "occupied"
+    occupied.mkdir()
+    (occupied / "prior.txt").write_bytes(b"prior\n")
+    with pytest.raises(ValueError, match="empty"):
+        generate_inputs.write_candidate_files(candidate, occupied, frozen=frozen)
+
+    output = tmp_path / "candidate-v2"
+    generate_inputs.write_candidate_files(candidate, output, frozen=frozen)
+    assert (output / "case.json").read_bytes() == b"candidate\n"
 
 
 def _file(path: Path, content: bytes = b"raw evidence\n") -> dict:

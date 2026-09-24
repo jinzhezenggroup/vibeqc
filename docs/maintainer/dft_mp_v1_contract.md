@@ -63,12 +63,18 @@ python -m tools.dft_mp_v1.run --plan /absolute/campaign-plan.json --out /absolut
 python -m tools.dft_mp_v1.validate /absolute/output/receipt.json --final
 ```
 
-`generate_inputs.py` needs RDKit 2026.03.4; `freeze_contract.py` regenerates
-the manifest from checked-in inputs and the bundled basis. These commands are
-audit tools, not benchmark-time geometry generators. Regeneration must be
-byte-for-byte stable. The runner plan contains `adapter_command` as an argv
-array, `adapter_command_file_index`, bounded `timeout_seconds` and a `campaign`
-object matching `receipt.schema.json`. It checks and hashes the adapter,
+`generate_inputs.py` is a read-only audit by default. RDKit-derived geometry
+reconstruction is qualified only for the platform, Python ABI and exact RDKit
+wheel recorded in `generator_provenance.json`; the version string alone is not
+portable evidence. An unqualified environment fails before generating or
+writing. A deliberate new-version candidate uses `--candidate-output` with a
+separate empty tree; the v1 input directory is never overwritten. The tool
+serializes every candidate before comparison or output. `freeze_contract.py`
+rebuilds the manifest from checked-in inputs and the bundled basis. These are
+audit tools, not benchmark-time geometry generators. The runner plan contains
+`adapter_command` as an argv array, `adapter_command_file_index`, bounded
+`timeout_seconds` and a `campaign` object matching `receipt.schema.json`. It
+checks and hashes the adapter,
 library, artifact and build record before starting. The adapter receives
 `--manifest`, `--row`, `--input` and `--progress` and writes one
 `result.schema.json` object
