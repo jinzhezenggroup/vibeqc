@@ -3,8 +3,15 @@
 from pathlib import Path
 
 import pytest
-from vibeqc_compiler.array_api.scf import density_program as array_density_program
-from vibeqc_compiler.tensor.scf_cuda import density_template_hash, emit_density_cuda
+from vibeqc_compiler.array_api.scf import (
+    density_program as array_density_program,
+    weighted_density_program as array_weighted_density_program,
+)
+from vibeqc_compiler.tensor.scf_cuda import (
+    density_template_hash,
+    emit_density_cuda,
+    weighted_density_template_hash,
+)
 
 from tools.generate_scf_array_native import template_hash
 
@@ -15,9 +22,12 @@ def test_cuda_density_uses_same_logical_tensor_identity_as_cpu() -> None:
     assert density_template_hash() == template_hash(
         array_density_program(1, 3, spin_count=2, orbital_count=2)
     )
+    assert weighted_density_template_hash() == template_hash(
+        array_weighted_density_program(1, 3, spin_count=2, orbital_count=2)
+    )
 
 
-def test_cuda_density_is_compiler_owned_and_symmetric() -> None:
+def test_cuda_plain_density_is_compiler_owned_and_symmetric() -> None:
     generated = emit_density_cuda()
     source = SOURCE.read_text()
 
@@ -33,18 +43,22 @@ def test_cuda_density_is_compiler_owned_and_symmetric() -> None:
     assert "generated::occupied_density_kernel<1>" in source
 
 
-def test_weighted_density_keeps_native_full_square_rounding_order() -> None:
+def test_cuda_weighted_density_is_generated_but_keeps_full_square_order() -> None:
+    generated = emit_density_cuda()
     source = SOURCE.read_text()
-    start = source.index("__global__ void build_weighted_density_kernel")
-    end = source.index("__global__ void build_spin_weighted_density_kernel", start)
-    weighted = source[start:end]
-    start = end
-    end = source.index("__global__ void sum_uhf_spin_matrices_kernel", start)
-    spin_weighted = source[start:end]
+    start = generated.index("__global__ void occupied_weighted_density_kernel")
+    weighted = generated[start:]
 
-    for kernel in (weighted, spin_weighted):
-        assert "if (row > column) return;" not in kernel
-        assert "matrix_index(column, row, n)] = value" not in kernel
+    assert "if (row > column) return;" not in weighted
+    assert "weighted_density[element] = value;" in weighted
+    assert (
+        "2.0 * orbital_energies[eigen_offset + orbital] *" in weighted
+    )
+
+    assert "__global__ void build_weighted_density_kernel" not in source
+    assert "__global__ void build_spin_weighted_density_kernel" not in source
+    assert "generated::occupied_weighted_density_kernel<2>" in source
+    assert "generated::occupied_weighted_density_kernel<1>" in source
 
 
 @pytest.mark.parametrize(

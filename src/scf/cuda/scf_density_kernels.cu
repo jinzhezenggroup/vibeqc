@@ -155,60 +155,6 @@ __global__ void apply_uhf_warm_density_kernel(std::int32_t batch_size, std::int3
   }
 }
 
-__global__ void build_weighted_density_kernel(std::int32_t batch_size, std::int32_t nbf,
-                                              const std::int32_t* occupied,
-                                              const double* coefficients,
-                                              const double* orbital_energies,
-                                              const std::uint8_t* active,
-                                              double* weighted_density) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= static_cast<std::size_t>(batch_size) * matrix_size) return;
-  const std::int32_t system = static_cast<std::int32_t>(element / matrix_size);
-  if (active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
-  const std::size_t eigen_offset = static_cast<std::size_t>(system) * n;
-  double value = 0.0;
-  for (std::int32_t orbital = 0; orbital < occupied[system]; ++orbital) {
-    value += 2.0 * orbital_energies[eigen_offset + orbital] *
-             coefficients[offset + matrix_index(row, orbital, n)] *
-             coefficients[offset + matrix_index(column, orbital, n)];
-  }
-  weighted_density[element] = value;
-}
-
-__global__ void build_spin_weighted_density_kernel(std::int32_t batch_size, std::int32_t nbf,
-                                                   const std::int32_t* occupied,
-                                                   const double* coefficients,
-                                                   const double* orbital_energies,
-                                                   const std::uint8_t* active,
-                                                   double* weighted_density) {
-  const std::size_t n = static_cast<std::size_t>(nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t state_count = static_cast<std::size_t>(batch_size) * 2;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (element >= state_count * matrix_size) return;
-  const std::size_t state = element / matrix_size;
-  const std::size_t system = state / 2;
-  if (active[system] == 0) return;
-  const std::size_t local = element % matrix_size;
-  const std::size_t row = local % n;
-  const std::size_t column = local / n;
-  const std::size_t offset = state * matrix_size;
-  const std::size_t eigen_offset = state * n;
-  double value = 0.0;
-  for (std::int32_t orbital = 0; orbital < occupied[state]; ++orbital) {
-    value += orbital_energies[eigen_offset + orbital] *
-             coefficients[offset + matrix_index(row, orbital, n)] *
-             coefficients[offset + matrix_index(column, orbital, n)];
-  }
-  weighted_density[element] = value;
-}
-
 __global__ void sum_uhf_spin_matrices_kernel(std::int32_t batch_size, std::int32_t nbf,
                                              const double* spin_matrices,
                                              const std::uint8_t* active, double* total_matrices) {
@@ -274,16 +220,16 @@ void launch_build_weighted_density_kernel(dim3 grid, dim3 block, std::size_t sha
                                           const double* coefficients,
                                           const double* orbital_energies,
                                           const std::uint8_t* active, double* weighted_density) {
-  build_weighted_density_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch_size, nbf, occupied, coefficients, orbital_energies, active, weighted_density);
+  generated::occupied_weighted_density_kernel<2><<<grid, block, shared_bytes, stream>>>(
+      batch_size, 1, nbf, occupied, coefficients, orbital_energies, active, weighted_density);
 }
 
 void launch_build_spin_weighted_density_kernel(
     dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, std::int32_t batch_size,
     std::int32_t nbf, const std::int32_t* occupied, const double* coefficients,
     const double* orbital_energies, const std::uint8_t* active, double* weighted_density) {
-  build_spin_weighted_density_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch_size, nbf, occupied, coefficients, orbital_energies, active, weighted_density);
+  generated::occupied_weighted_density_kernel<1><<<grid, block, shared_bytes, stream>>>(
+      batch_size, 2, nbf, occupied, coefficients, orbital_energies, active, weighted_density);
 }
 
 void launch_sum_uhf_spin_matrices_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
