@@ -205,7 +205,7 @@ class ParameterSetRef:
                 or not 1 <= number <= 118
                 for number in numbers
             )
-            or len(numbers) != len(set(numbers)):
+            or len(numbers) != len(set(numbers))
         ):
             raise InvalidSemiempiricalMethod(
                 "supported atomic numbers must be unique integers in [1, 118]"
