@@ -70,26 +70,24 @@ def _active_cases() -> tuple[_Case, ...]:
 
 
 def _calculator(case: _Case) -> Calculator:
-    kwargs = {}
-    if case.grid_shape is not None:
-        radial, polar, azimuth = case.grid_shape
-        kwargs.update(
-            ks_options=KsOptions(
-                grid=GridSpec(
-                    radial_points=radial,
-                    angular_polar=polar,
-                    angular_azimuth=azimuth,
-                )
-            ),
-            energy_tolerance=1e-10,
-            density_tolerance=1e-8,
-            max_iterations=160,
-        )
+    if case.grid_shape is None:
+        return Calculator(method=case.method, basis=case.basis, device="cpu")
+
+    radial, polar, azimuth = case.grid_shape
     return Calculator(
         method=case.method,
         basis=case.basis,
         device="cpu",
-        **kwargs,
+        ks_options=KsOptions(
+            grid=GridSpec(
+                radial_points=radial,
+                angular_polar=polar,
+                angular_azimuth=azimuth,
+            )
+        ),
+        energy_tolerance=1e-10,
+        density_tolerance=1e-8,
+        max_iterations=160,
     )
 
 
