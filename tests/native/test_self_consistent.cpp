@@ -171,14 +171,13 @@ void verify_method_neutral_diis() {
 
 void verify_three_history_diis_gram_symmetry() {
   vibeqc::solver::Diis diis(3, 3);
-  require(diis.update({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}) ==
-              std::vector<double>({1.0, 2.0, 3.0}),
+  require(diis.update({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}) == std::vector<double>({1.0, 2.0, 3.0}),
           "first three-history DIIS state changed");
   (void)diis.update({3.0, 5.0, 7.0}, {1.0, 1.0, 0.0});
   const auto extrapolated = diis.update({2.0, 4.0, 8.0}, {0.0, 1.0, 1.0});
   require(extrapolated.size() == 3 && std::abs(extrapolated[0] - 0.5) < 1e-14 &&
-              std::abs(extrapolated[1] - 1.5) < 1e-14 &&
-              std::abs(extrapolated[2] - 3.5) < 1e-14 && diis.restarts() == 0,
+              std::abs(extrapolated[1] - 1.5) < 1e-14 && std::abs(extrapolated[2] - 3.5) < 1e-14 &&
+              diis.restarts() == 0,
           "three-history shared DIIS Gram/extrapolation changed");
 }
 
