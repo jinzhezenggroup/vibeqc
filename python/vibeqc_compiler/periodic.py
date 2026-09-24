@@ -72,11 +72,7 @@ def _atomic_numbers(value: typing.Any) -> tuple[int, ...]:
     if np.iscomplexobj(value):
         raise TypeError("atomic_numbers must contain integers")
     array = np.asarray(value)
-    if (
-        array.ndim != 1
-        or array.size == 0
-        or not np.issubdtype(array.dtype, np.integer)
-    ):
+    if array.ndim != 1 or array.size == 0 or not np.issubdtype(array.dtype, np.integer):
         raise TypeError(
             "atomic_numbers must be a non-empty one-dimensional integer array"
         )
@@ -97,10 +93,7 @@ def _positions_bohr(
         raise TypeError("positions_bohr must be numeric") from error
     if array.shape != (atom_count, 3) or not np.all(np.isfinite(array)):
         raise ValueError(f"positions_bohr must be a finite {atom_count}x3 matrix")
-    return tuple(
-        tuple(float(component) for component in row)
-        for row in array
-    )
+    return tuple(tuple(float(component) for component in row) for row in array)
 
 
 @dataclass(frozen=True)
