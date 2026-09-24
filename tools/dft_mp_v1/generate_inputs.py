@@ -2,7 +2,8 @@
 
 Requires the repository's Python package and RDKit 2026.03.4. The committed JSON
 inputs, rather than this generator or a mutable benchmark catalogue, are the
-runtime contract. Re-generation is an audit and must reproduce byte-for-byte.
+runtime contract. Re-generation is a read-only audit and must reproduce the
+LF-normalized frozen bytes. It never overwrites v1 inputs on a mismatch.
 """
 
 from __future__ import annotations
@@ -122,14 +123,14 @@ def build() -> dict[str, dict]:
     return out
 
 
-def main() -> None:
-    target = ROOT / "inputs"
-    target.mkdir(parents=True, exist_ok=True)
-    for key, generated in sorted(build().items()):
+def _render_inputs(generated_cases: dict[str, dict]) -> dict[str, bytes]:
+    """Serialize candidate input bytes without touching the frozen files."""
+    candidates = {}
+    for key, generated in sorted(generated_cases.items()):
         value = {"schema_version": 1, "id": key, "units": "bohr", **generated}
-        (target / f"{key}.json").write_text(
-            json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        candidates[f"{key}.json"] = (
+            json.dumps(value, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
         changed = json.loads(json.dumps(value))
         changed["id"] = f"{key}-changed"
         changed["atoms"][0][1][0] = changed["atoms"][0][1][0] + 0.01
@@ -142,9 +143,30 @@ def main() -> None:
             "license": value["source"]["license"],
             "attribution": value["source"]["attribution"],
         }
-        (target / f"{key}-changed.json").write_text(
-            json.dumps(changed, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        candidates[f"{key}-changed.json"] = (
+            json.dumps(changed, indent=2, sort_keys=True) + "\n"
+        ).encode("utf-8")
+    return candidates
+
+
+def main() -> None:
+    """Audit all frozen inputs before any deliberate versioned regeneration."""
+    target = ROOT / "inputs"
+    candidates = _render_inputs(build())
+    mismatches = []
+    for name, candidate in candidates.items():
+        try:
+            retained = (target / name).read_bytes().replace(b"\r\n", b"\n")
+        except OSError as error:
+            raise RuntimeError(f"cannot audit frozen input {name}: {error}") from error
+        if retained != candidate:
+            mismatches.append(name)
+    if mismatches:
+        raise RuntimeError(
+            "regeneration differs from frozen DFT-MP-v1 inputs; no files changed: "
+            + ", ".join(mismatches)
         )
+    print(f"Verified {len(candidates)} frozen DFT-MP-v1 input files; no files changed.")
 
 
 if __name__ == "__main__":
