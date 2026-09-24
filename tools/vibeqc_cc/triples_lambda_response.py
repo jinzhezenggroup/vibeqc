@@ -132,10 +132,13 @@ def _triples_sources(
         raise ResponseCompatibilityError(
             "CUDA triples response inputs belong to another CC state"
         )
-    missing = set(inputs) - set(cuda_response.inputs)
-    if missing or not set(inputs).issubset(cuda_response.sources):
+    required = set(inputs)
+    missing = sorted(
+        (required - set(cuda_response.inputs)) | (required - set(cuda_response.sources))
+    )
+    if missing:
         raise ResponseCompatibilityError(
-            f"CUDA triples response is missing required source blocks: {sorted(missing or (set(inputs) - set(cuda_response.sources)))}"
+            f"CUDA triples response is missing required source blocks: {missing}"
         )
 
     values = {}
