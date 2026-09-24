@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "solver/dense_linear.hpp"
 #include "solver/diis_history.hpp"
 
 namespace vibeqc::solver {
@@ -53,7 +54,7 @@ class Diis {
       for (std::size_t i = 0; i < n; ++i) system[i * (n + 1) + n] = system[n * (n + 1) + i] = -1.0;
       rhs[n] = -1.0;
 
-      if (solve_linear(system, rhs, solution)) {
+      if (solve_dense_linear(system, rhs, solution)) {
         solution.resize(n);
         if (std::all_of(solution.begin(), solution.end(),
                         [](double c) { return std::isfinite(c) && std::abs(c) <= 1e6; })) {
@@ -72,32 +73,6 @@ class Diis {
   }
 
  private:
-  static bool solve_linear(std::vector<double> matrix, std::vector<double> rhs,
-                           std::vector<double>& x) {
-    const auto n = rhs.size();
-    for (std::size_t col = 0; col < n; ++col) {
-      auto pivot = col;
-      for (std::size_t row = col + 1; row < n; ++row)
-        if (std::abs(matrix[row * n + col]) > std::abs(matrix[pivot * n + col])) pivot = row;
-      const double divisor = matrix[pivot * n + col];
-      if (!std::isfinite(divisor) || std::abs(divisor) < 1e-14) return false;
-      if (pivot != col) {
-        for (std::size_t j = 0; j < n; ++j) std::swap(matrix[col * n + j], matrix[pivot * n + j]);
-        std::swap(rhs[col], rhs[pivot]);
-      }
-      for (std::size_t j = col; j < n; ++j) matrix[col * n + j] /= divisor;
-      rhs[col] /= divisor;
-      for (std::size_t row = 0; row < n; ++row) {
-        if (row == col) continue;
-        const double factor = matrix[row * n + col];
-        for (std::size_t j = col; j < n; ++j) matrix[row * n + j] -= factor * matrix[col * n + j];
-        rhs[row] -= factor * rhs[col];
-      }
-    }
-    x = std::move(rhs);
-    return std::all_of(x.begin(), x.end(), [](double y) { return std::isfinite(y); });
-  }
-
   unsigned restarts_{};
   detail::DiisHistory history_;
 };
