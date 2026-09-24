@@ -73,7 +73,6 @@ class Diis {
   }
 
  private:
-
   unsigned restarts_{};
   detail::DiisHistory history_;
 };
