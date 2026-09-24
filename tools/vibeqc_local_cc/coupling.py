@@ -64,14 +64,21 @@ class PairTransfer:
         )
 
 
-def pair_transfer(source: PairSpace, target: PairSpace) -> PairTransfer:
-    """Build the exact coordinate map between compatible local pair gauges."""
+def _compatible_spaces(source: PairSpace, target: PairSpace) -> None:
+    """Validate parents and shapes without constructing overlap or gauge arrays."""
     if not isinstance(source, PairSpace) or not isinstance(target, PairSpace):
         raise TypeError("pair transfer requires PairSpace inputs")
     if source.reference_id != target.reference_id:
         raise ValueError("pair transfer cannot cross electronic references")
     if source.localization_id != target.localization_id:
         raise ValueError("pair transfer cannot cross localized occupied frames")
+    if source.columns.shape[0] != target.columns.shape[0]:
+        raise ValueError("pair transfer requires one canonical virtual coordinate space")
+
+
+def pair_transfer(source: PairSpace, target: PairSpace) -> PairTransfer:
+    """Build the exact coordinate map between compatible local pair gauges."""
+    _compatible_spaces(source, target)
     overlap = target.overlap(source)
     return PairTransfer(
         source.reference_id,
@@ -97,17 +104,36 @@ def project_pair_matrix(
     This is an exact coordinate transformation when both spaces span the same
     virtual subspace and an explicitly projected initial/intermediate tensor
     otherwise. It is not a local-CC equation or convergence certificate.
+
+    Admission precedes overlap/gauge construction and input conversion. The
+    conservative numeric allowance covers these owned FP64 buffers and hashing
+    copies, not caller-owned inputs, Python metadata or private BLAS workspace.
     """
-    transfer = pair_transfer(source, target)
+    _compatible_spaces(source, target)
+    budget = checked_budget(budget_bytes)
     source_rank = source.rank
     target_rank = target.rank
-    array = immutable(values, shape=(source_rank, source_rank))
-    peak_elements = (
-        source_rank * source_rank
-        + target_rank * source_rank
-        + target_rank * target_rank
+    virtual_rank = source.columns.shape[0]
+    overlap_elements = target_rank * source_rank
+    # Conservative live FP64-buffer bound, not a whole-process/BLAS peak.
+    # Gauge hashing materializes a full canonical-virtual projector even when
+    # the pair rank is tiny. Include its portable hashing copies as well as
+    # source conversion, both O*T*O.T temporaries and immutable publication.
+    peak_elements = max(
+        3 * overlap_elements,
+        overlap_elements + 3 * virtual_rank * virtual_rank,
+        overlap_elements + 2 * virtual_rank * max(source_rank, target_rank),
+        overlap_elements + 4 * source_rank * source_rank,
+        source_rank * source_rank + 2 * overlap_elements + target_rank * target_rank,
+        2 * target_rank * target_rank,
     )
     peak_bytes = 8 * peak_elements
-    if peak_bytes > checked_budget(budget_bytes):
+    if peak_bytes > budget:
         raise MemoryError(f"pair projection needs {peak_bytes} numeric bytes")
-    return immutable(transfer.overlap @ array @ transfer.overlap.T)
+    transfer = pair_transfer(source, target)
+    array = immutable(values, shape=(source_rank, source_rank))
+    intermediate = transfer.overlap @ array
+    projected = intermediate @ transfer.overlap.T
+    # The publication copy must not coexist with the contraction workspaces.
+    del intermediate, array, transfer
+    return immutable(projected)
