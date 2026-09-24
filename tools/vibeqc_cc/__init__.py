@@ -72,6 +72,7 @@ from .lambda_equations import (
 )
 from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
+from .native_tensor_cuda import CudaCCTensorExecutor
 from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
 from .state_transport import (
@@ -149,6 +150,7 @@ __all__ = [
     "CCSDTParameterWeight",
     "Capabilities",
     "CorrectedLambdaResult",
+    "CudaCCTensorExecutor",
     "CudaTriplesResponseResult",
     "CudaTriplesResponseTiles",
     "CudaTriplesResult",
