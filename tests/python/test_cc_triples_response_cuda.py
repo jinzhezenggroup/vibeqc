@@ -313,9 +313,7 @@ def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_re
         cpu_corrected,
         vir_chunk_size=1,
     )
-    expected_fov = cpu_response.weight(
-        "fov", reference_identity=snapshot.identity
-    )
+    expected_fov = cpu_response.weight("fov", reference_identity=snapshot.identity)
     expected_eps = cpu_response.orbital_energy_weights(
         reference_identity=snapshot.identity
     )
@@ -348,7 +346,9 @@ def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_re
             reference_identity=snapshot.identity,
         )
 
-        def reject_cpu_triples_replay(*args: object, **kwargs: object) -> typing.NoReturn:
+        def reject_cpu_triples_replay(
+            *args: object, **kwargs: object
+        ) -> typing.NoReturn:
             del args, kwargs
             raise AssertionError("CPU triples response replayed under CUDA binding")
 
@@ -364,9 +364,7 @@ def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_re
             vir_chunk_size=1,
             triples_response=gpu_sources,
         )
-        actual_fov = response.weight(
-            "fov", reference_identity=snapshot.identity
-        )
+        actual_fov = response.weight("fov", reference_identity=snapshot.identity)
         actual_eps = response.orbital_energy_weights(
             reference_identity=snapshot.identity
         )
@@ -424,7 +422,9 @@ def test_bound_cuda_response_rejects_missing_source_without_cpu_fallback(
             reference_identity=snapshot.identity,
         )
 
-        def reject_cpu_triples_replay(*args: object, **kwargs: object) -> typing.NoReturn:
+        def reject_cpu_triples_replay(
+            *args: object, **kwargs: object
+        ) -> typing.NoReturn:
             del args, kwargs
             raise AssertionError("CPU triples response fallback attempted")
 
