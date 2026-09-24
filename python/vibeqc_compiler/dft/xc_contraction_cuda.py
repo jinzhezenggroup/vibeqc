@@ -10,7 +10,7 @@ precision change is needed.
 
 from typing import Any
 
-from vibeqc_compiler.integral.cuda import CudaEmitter
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .xc_bilinear import ao_pair_bilinear
 
@@ -53,7 +53,7 @@ __global__ void compact_potential_panels(const double* ao, const double* coeffic
         bindings.update(
             {f"c{j}": f"coefficients[(spin*terms+{j})*count+point]" for j in range(5)}
         )
-        emitter = CudaEmitter(graph, bindings)
+        emitter = ScalarCEmitter(graph, bindings)
         emitter.emit(roots)
         lines.append(f"    if (terms == {terms}) {{")
         lines.extend("    " + line for line in emitter.lines)
