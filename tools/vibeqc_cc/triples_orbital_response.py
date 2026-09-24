@@ -21,7 +21,7 @@ from tools.vibeqc_response.implicit import (
     _immutable,
     checked_transpose_solve,
 )
-from tools.vibeqc_response.krylov import _vector_norm
+from tools.vibeqc_response.krylov import _vector_norm, resident_vector_slots
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 from .complete_gradient import BoundCCSDOrbitalResponse, CCSDGradientOptions
@@ -134,6 +134,8 @@ class BoundCCSDTOrbitalResponse:
         *,
         options: CCSDGradientOptions | None = None,
         response_backend: typing.Any = None,
+        response_execution: str = "host",
+        response_device_budget_bytes: int = 128 << 20,
     ) -> None:
         if not isinstance(response, BoundCCSDTResponse):
             raise TypeError("RCCSD(T) orbital response requires BoundCCSDTResponse")
@@ -141,6 +143,15 @@ class BoundCCSDTOrbitalResponse:
         if not isinstance(options, CCSDGradientOptions):
             raise TypeError(
                 "RCCSD(T) orbital response options must be CCSDGradientOptions"
+            )
+        if response_execution not in ("host", "cuda-resident"):
+            raise ValueError("response_execution must be 'host' or 'cuda-resident'")
+        if (
+            type(response_device_budget_bytes) is not int
+            or not 0 < response_device_budget_bytes < 2**63
+        ):
+            raise ValueError(
+                "response_device_budget_bytes must be a positive signed-64-bit value"
             )
 
         # Reuse the already-qualified #153 raw Hamiltonian, RHF operator,
@@ -278,20 +289,66 @@ class BoundCCSDTOrbitalResponse:
         rhs = _immutable(np.asarray(correlation["orbital_rhs"]).reshape(-1))
         operator = baseline.operator
         owner = baseline
+        resident_owner = None
+        resident_diagnostics = None
+        if response_execution == "cuda-resident":
+            backend = baseline.response_backend
+            prepare_resident = getattr(backend, "resident_response", None)
+            retained_provider = getattr(backend, "device_resident_bytes", None)
+            if not callable(prepare_resident) or type(retained_provider) is not int:
+                raise TypeError(
+                    "cuda-resident Z response requires a backend with "
+                    "resident_response() and device_resident_bytes"
+                )
+            if not 0 <= retained_provider < response_device_budget_bytes:
+                raise ImplicitSolveError(
+                    "RHF response backend leaves no device budget for resident Z"
+                )
+            slots = resident_vector_slots(operator.dimension, options.z_options)
+            resident_owner = prepare_resident(
+                operator.problem,
+                vector_slots=slots,
+                device_budget_bytes=response_device_budget_bytes - retained_provider,
+            )
+            if getattr(resident_owner, "dimension", None) != operator.dimension:
+                raise ResponseCompatibilityError(
+                    "resident RHF response dimension differs from physical Z problem"
+                )
+            if (
+                type(getattr(resident_owner, "workspace_bytes", None)) is not int
+                or retained_provider + resident_owner.workspace_bytes
+                > response_device_budget_bytes
+            ):
+                close = getattr(resident_owner, "close", None)
+                if callable(close):
+                    close()
+                raise ImplicitSolveError(
+                    "combined RHF J/K and resident Z storage exceeds device budget"
+                )
 
         class Transpose:
             dimension = operator.dimension
+
+            def __init__(self, engine: typing.Any = None) -> None:
+                if engine is not None:
+                    self._krylov_engine = engine
 
             def apply(self, vector: typing.Any) -> typing.Any:
                 return operator.apply_transpose(vector)
 
         solver = ResponseGMRES(operator.dimension, options.z_options)
-        z = checked_transpose_solve(
-            Transpose(),
-            rhs,
-            solver=solver,
-            assert_current=owner._assert_current,
-        )
+        try:
+            z = checked_transpose_solve(
+                Transpose(resident_owner),
+                rhs,
+                solver=solver,
+                assert_current=owner._assert_current,
+            )
+            if resident_owner is not None:
+                resident_diagnostics = dict(resident_owner.diagnostics)
+        finally:
+            if resident_owner is not None:
+                resident_owner.close()
         independent_z_residual = _vector_norm(
             baseline.orbital_matrix.T @ z.solution - rhs
         )
@@ -359,6 +416,9 @@ class BoundCCSDTOrbitalResponse:
             ("baseline", baseline),
             ("reference", reference),
             ("options", options),
+            ("response_execution", response_execution),
+            ("response_device_budget_bytes", response_device_budget_bytes),
+            ("resident_response_diagnostics", resident_diagnostics),
             ("weights", total),
             ("correlation_weights", correlation),
             ("component_weights", components),
