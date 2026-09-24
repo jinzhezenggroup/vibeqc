@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstring>
 #include <limits>
 #include <mutex>
 #include <optional>
@@ -220,8 +219,7 @@ class Mp2PreparedBatch final : public PreparedBatch {
   Mp2PreparedBatch(Capabilities capabilities, core::ContextState& context,
                    std::vector<core::System> systems, const vibeqc_method_descriptor& descriptor)
       : capabilities_(capabilities), context_(&context), systems_(std::move(systems)) {
-    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
-    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_ = descriptor;
     descriptor_.density_fitting_auxiliary_basis = nullptr;
     descriptor_.ks_options = nullptr;
     owners_.reserve(systems_.size());
@@ -353,12 +351,7 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
                                                              core::ContextState& context,
                                                              const core::System& system,
                                                              const vibeqc_method_descriptor& d) {
-  auto present = [&](std::size_t end) { return d.struct_size >= end; };
-  const auto density_fitting_mode =
-      present(offsetof(vibeqc_method_descriptor, density_fitting_mode) +
-              sizeof(d.density_fitting_mode))
-          ? d.density_fitting_mode
-          : VIBEQC_DENSITY_FITTING_NONE;
+  const auto density_fitting_mode = d.density_fitting_mode;
   if (density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE &&
       density_fitting_mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
       density_fitting_mode != VIBEQC_DENSITY_FITTING_CUDA &&
@@ -374,19 +367,14 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
   if (d.screening_tolerance != 0)
     throw std::invalid_argument(
         "canonical MP2 requires unscreened integrals (screening_tolerance=0)");
-  if (present(offsetof(vibeqc_method_descriptor, precision_mode) + sizeof(d.precision_mode))) {
-    if (d.precision_mode != VIBEQC_PRECISION_FP64 && d.precision_mode != VIBEQC_PRECISION_AUTO)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
-    if (d.precision_mode != VIBEQC_PRECISION_FP64)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "canonical MP2 requires FP64 precision");
-  }
+  if (d.precision_mode != VIBEQC_PRECISION_FP64 && d.precision_mode != VIBEQC_PRECISION_AUTO)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
+  if (d.precision_mode != VIBEQC_PRECISION_FP64)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "canonical MP2 requires FP64 precision");
   std::optional<core::System> auxiliary;
   if (density_fitted) {
-    auxiliary = present(offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
-                        sizeof(d.density_fitting_auxiliary_basis)) &&
-                        d.density_fitting_auxiliary_basis
-                    ? d.density_fitting_auxiliary_basis->data
-                    : system;
+    auxiliary = d.density_fitting_auxiliary_basis ? d.density_fitting_auxiliary_basis->data
+                                                  : system;
     if (auxiliary->atoms.size() != system.atoms.size())
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "RI-MP2 auxiliary basis must contain the same atoms");
@@ -405,24 +393,15 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
     auxiliary->charge = system.charge;
     auxiliary->multiplicity = system.multiplicity;
     auxiliary->electron_count = system.electron_count;
-  } else if (present(offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
-                     sizeof(d.density_fitting_auxiliary_basis)) &&
-             d.density_fitting_auxiliary_basis) {
+  } else if (d.density_fitting_auxiliary_basis) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "an auxiliary basis requires an explicit RI-MP2 mode");
   }
-  std::size_t budget = 256ULL << 20;
-  if (present(offsetof(vibeqc_method_descriptor, correlation_memory_budget_bytes) +
-              sizeof(d.correlation_memory_budget_bytes)) &&
-      d.correlation_memory_budget_bytes)
-    budget = d.correlation_memory_budget_bytes;
+  std::size_t budget =
+      d.correlation_memory_budget_bytes ? d.correlation_memory_budget_bytes : 256ULL << 20;
   if (budget > static_cast<std::uint64_t>(INT64_MAX))
     throw std::invalid_argument("MP2 budget exceeds signed-64-bit numeric capacity");
-  double threshold = 1e-10;
-  if (present(offsetof(vibeqc_method_descriptor, mp2_denominator_threshold) +
-              sizeof(d.mp2_denominator_threshold)) &&
-      d.mp2_denominator_threshold != 0)
-    threshold = d.mp2_denominator_threshold;
+  const double threshold = d.mp2_denominator_threshold != 0 ? d.mp2_denominator_threshold : 1e-10;
   if (!std::isfinite(threshold) || threshold <= 0)
     throw std::invalid_argument("invalid MP2 denominator threshold");
   if (!std::isfinite(d.energy_tolerance) || d.energy_tolerance < 0 ||
@@ -440,16 +419,8 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
   options.reference_memory_budget_bytes = budget;
   options.density_fitting_mode = density_fitting_mode;
   options.density_fitting_relative_threshold =
-      present(offsetof(vibeqc_method_descriptor, density_fitting_relative_threshold) +
-              sizeof(d.density_fitting_relative_threshold)) &&
-              d.density_fitting_relative_threshold != 0
-          ? d.density_fitting_relative_threshold
-          : 1e-10;
-  const std::size_t requested_density_fitting_budget =
-      present(offsetof(vibeqc_method_descriptor, density_fitting_memory_budget_bytes) +
-              sizeof(d.density_fitting_memory_budget_bytes))
-          ? d.density_fitting_memory_budget_bytes
-          : 0;
+      d.density_fitting_relative_threshold != 0 ? d.density_fitting_relative_threshold : 1e-10;
+  const std::size_t requested_density_fitting_budget = d.density_fitting_memory_budget_bytes;
   if (!(options.density_fitting_relative_threshold > 0.0) ||
       !(options.density_fitting_relative_threshold < 1.0) ||
       !std::isfinite(options.density_fitting_relative_threshold))
@@ -511,18 +482,11 @@ std::unique_ptr<PreparedBatch> prepare_mp2_batch(const Capabilities& capabilitie
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "MP2 batch does not support profiling");
   if ((flags & ~(VIBEQC_BATCH_ENABLE_WARM_STARTS | profiling_flags)) != 0)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unsupported MP2 batch flag");
-  const auto present = [&](std::size_t end) { return descriptor.struct_size >= end; };
-  const auto density_fitting_mode =
-      present(offsetof(vibeqc_method_descriptor, density_fitting_mode) +
-              sizeof(descriptor.density_fitting_mode))
-          ? descriptor.density_fitting_mode
-          : VIBEQC_DENSITY_FITTING_NONE;
+  const auto density_fitting_mode = descriptor.density_fitting_mode;
   if (density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "MP2 batch supports conventional correlation only");
-  if (present(offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
-              sizeof(descriptor.density_fitting_auxiliary_basis)) &&
-      descriptor.density_fitting_auxiliary_basis)
+  if (descriptor.density_fitting_auxiliary_basis)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "conventional MP2 batch does not accept an auxiliary basis");
   return std::make_unique<Mp2PreparedBatch>(capabilities, context, std::move(systems), descriptor);
