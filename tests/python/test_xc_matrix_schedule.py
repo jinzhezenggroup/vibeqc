@@ -96,22 +96,21 @@ def test_tiled_first_point_tile_initializes_outputs_without_global_clears() -> N
 
 
 @pytest.mark.parametrize(
-    "nao,spins,expected_matrix_bytes",
+    "nao,spins,expected_matrix_bytes,expected_removed_bytes",
     [
-        (384, 1, 1_179_648),
-        (384, 2, 2_359_296),
-        (768, 1, 4_718_592),
-        (768, 2, 9_437_184),
+        (384, 1, 1_179_648, 1_179_672),
+        (384, 2, 2_359_296, 2_359_320),
+        (768, 1, 4_718_592, 4_718_616),
+        (768, 2, 9_437_184, 9_437_208),
     ],
 )
 def test_first_tile_initialization_traffic_census(
-    nao: int, spins: int, expected_matrix_bytes: int
+    nao: int, spins: int, expected_matrix_bytes: int, expected_removed_bytes: int
 ) -> None:
-    """Pin the matrix clear traffic removed from every admitted XC evaluation."""
+    """Pin the matrix and totals clear traffic removed per admitted XC evaluation."""
     matrix_bytes = spins * nao * nao * 8
     assert matrix_bytes == expected_matrix_bytes
-    # The old path also submitted a separate 24-byte totals clear.
-    assert matrix_bytes + 3 * 8 > matrix_bytes
+    assert matrix_bytes + 3 * 8 == expected_removed_bytes
 
 
 @pytest.mark.parametrize(
