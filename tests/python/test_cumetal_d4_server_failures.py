@@ -105,7 +105,8 @@ def test_real_child_roundtrip_and_closed_streams(
     )
     real_popen = subprocess.Popen
     monkeypatch.setattr(
-        module.subprocess, "Popen",
+        module.subprocess,
+        "Popen",
         lambda args, **kwargs: real_popen([sys.executable, str(script)], **kwargs),
     )
     server = module._D4Server(script)
