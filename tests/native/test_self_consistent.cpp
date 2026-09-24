@@ -169,6 +169,19 @@ void verify_method_neutral_diis() {
   require(dependent.restarts() == 1, "shared DIIS did not count dependent-history retirement");
 }
 
+void verify_three_history_diis_gram_symmetry() {
+  vibeqc::solver::Diis diis(3, 3);
+  require(diis.update({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}) ==
+              std::vector<double>({1.0, 2.0, 3.0}),
+          "first three-history DIIS state changed");
+  (void)diis.update({3.0, 5.0, 7.0}, {1.0, 1.0, 0.0});
+  const auto extrapolated = diis.update({2.0, 4.0, 8.0}, {0.0, 1.0, 1.0});
+  require(extrapolated.size() == 3 && std::abs(extrapolated[0] - 0.5) < 1e-14 &&
+              std::abs(extrapolated[1] - 1.5) < 1e-14 &&
+              std::abs(extrapolated[2] - 3.5) < 1e-14 && diis.restarts() == 0,
+          "three-history shared DIIS Gram/extrapolation changed");
+}
+
 void verify_terminal_accept_can_keep_current_state() {
   const SelfConsistentPolicy policy{4, 1.0e-12, 1.0e-12, 1.0e-12, false};
   const auto outcome = run_self_consistent(
@@ -195,6 +208,7 @@ int main() {
     verify_accept_owns_update_policy();
     verify_terminal_accept_can_keep_current_state();
     verify_method_neutral_diis();
+    verify_three_history_diis_gram_symmetry();
     verify_diis_shape_rejection_preserves_history();
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
