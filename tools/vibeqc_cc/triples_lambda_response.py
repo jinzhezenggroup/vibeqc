@@ -412,11 +412,6 @@ class BoundCCSDTResponse:
             {
                 "baseline": self.baseline.response_identity,
                 "corrected_lambda": corrected_lambda_identity,
-                "triples_response": (
-                    None
-                    if triples_response is None
-                    else triples_response.source_identity
-                ),
                 "scope": "fixed-orbital RCCSD(T) mathematical-input weights",
             }
         )
