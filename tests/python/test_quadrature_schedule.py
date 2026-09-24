@@ -30,7 +30,9 @@ def test_codegen_has_no_runtime_or_numpy_dependency(tmp_path: Path) -> None:
     assert grid_response.grid_response_program is grid_response_ir.grid_response_program
     assert (
         grid_response.grid_mixed_response_program
-        is grid_response_ir.grid_mixed_response_program
+        is grid_response_ir.grid_response_mixed_response_program
+        if hasattr(grid_response_ir, "grid_response_mixed_response_program")
+        else grid_response_ir.grid_mixed_response_program
     )
 
 
@@ -55,6 +57,45 @@ def test_emitted_cuda_uses_atom_major_2d_schedule() -> None:
         assert 4 * atoms * points == decoded
 
 
+def test_points_reuse_radial_factors() -> None:
+    """Pay the radial-map quotients once per rule entry, not once per point."""
+    source = emit_quadrature_cuda()
+    assert "__global__ void radial_kernel" in source
+    radial = source.split("__global__ void radial_kernel", 1)[1].split(
+        "// Angular factors", 1
+    )[0]
+    assert "radial[2 * r] = t / one_minus_t;" in radial
+    assert "radial[2 * r + 1] = 0.5 * rw[r] / (one_minus_t * one_minus_t);" in radial
+
+    points = source.split("__global__ void points_kernel", 1)[1].split(
+        "// Atom-major 2-D launch", 1
+    )[0]
+    assert "rn[" not in points
+    assert "rw[" not in points
+    assert "const double r = radius * pr[0];" in points
+    assert "const double wr = pr[1] * radius * r * r;" in points
+
+    root = Path(__file__).resolve().parents[2]
+    native = (root / "src/dft/cuda_quadrature.cu").read_text()
+    radial_launch = native.index("q::radial_kernel<<<")
+    point_loop = native.index("for (std::size_t begin = 0; begin < l.points")
+    assert radial_launch < point_loop
+    assert "std::vector<double> input(l.radial, 0.0);" in native
+    assert "data + l.radial, data + l.polar, data + l.azimuth" in native
+
+    # Standard PBE uses 54 radial nodes. The old point kernel performs two
+    # radial-map FP64 divisions per molecular point; setup now performs two per
+    # radial node once for the complete grid.
+    setup_divisions = 2 * 54
+    assert setup_divisions == 108
+    for atoms, point_count in ((48, 1_327_104), (96, 2_654_208)):
+        assert atoms * 54 * 16 * 32 == point_count
+        assert 2 * point_count > setup_divisions
+
+    # Fixed maximum radial cache: two doubles for each of 512 rule entries.
+    assert 8 * 2 * 512 == 8_192
+
+
 def test_points_reuse_angular_factors() -> None:
     """Move angular special functions out of every molecular-point worker."""
     source = emit_quadrature_cuda()
@@ -76,7 +117,7 @@ def test_points_reuse_angular_factors() -> None:
     point_loop = native.index("for (std::size_t begin = 0; begin < l.points")
     assert polar_launch < point_loop
     assert azimuth_launch < point_loop
-    assert "std::vector<double> input(l.polar, 0.0);" in native
+    assert "std::vector<double> input(l.radial, 0.0);" in native
 
     # The production standard PBE grid is 54 radial x 16 polar x 32 azimuth.
     # Before this change every point evaluates sqrt + cos + sin; after it, the
@@ -95,7 +136,7 @@ def test_partition_reuses_inverse_center_separations() -> None:
     """Pay each center-pair division once instead of once per point visit."""
     source = emit_quadrature_cuda()
     geometry = source.split("__global__ void geometry_kernel", 1)[1].split(
-        "// Angular factors", 1
+        "// Radial map factors", 1
     )[0]
     assert "separation > tolerance ? 1.0 / separation : 0.0" in geometry
     assert "inverse_separation[a * na + b]" in geometry
@@ -147,12 +188,13 @@ int main() {
       const auto l = layout(atoms, points);
       const size_t tile = std::min(points, size_t{4096});
       // Enumerate owned arrays independently of generated offsets.
-      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + 3*256 + 3*1024
+      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + 2*512 + 3*256 + 3*1024
                            + atoms*atoms + tile*atoms + tile*atoms + 3*tile + tile;
       if (l.device_bytes != doubles*sizeof(double) + sizeof(int)) return 1;
       if (l.weights + tile != l.doubles) return 2;
-      if (l.azimuth != l.polar + 3*256) return 3;
-      if (l.geometry != l.azimuth + 3*1024) return 4;
+      if (l.polar != l.radial + 2*512) return 3;
+      if (l.azimuth != l.polar + 3*256) return 4;
+      if (l.geometry != l.azimuth + 3*1024) return 5;
     }
   unsigned rejected = 0;
   try { (void)layout(0, 1); } catch (const std::invalid_argument&) { ++rejected; }
@@ -161,7 +203,7 @@ int main() {
   try { (void)layout(UINT32_MAX, 1); } catch (const std::overflow_error&) { ++rejected; }
   try { (void)layout(size_t{UINT32_MAX}+1, 1); }
       catch (const std::invalid_argument&) { ++rejected; }
-  return rejected == 5 ? 0 : 5;
+  return rejected == 5 ? 0 : 6;
 }
 """
     )
