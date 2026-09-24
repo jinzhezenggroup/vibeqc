@@ -20,6 +20,17 @@ def test_native_bridge_header_does_not_leak_execution_descriptors() -> None:
     assert "gfn2_cuda_execution" not in header
 
 
+def test_native_bridge_exposes_atomic_charges_only_by_explicit_request() -> None:
+    header = (ROOT / "src/methods/gfn2_runtime_bridge.hpp").read_text()
+    source = (ROOT / "src/methods/gfn2_runtime_bridge.cpp").read_text()
+    assert "bool compute_atomic_charges = false;" in header
+    assert "std::vector<double> atomic_charges;" in header
+    assert "request.compute_atomic_charges" in source
+    assert "VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES" in source
+    assert "output.atomic_charges = output_buffer(atomic_charges);" in source
+    assert "result.atomic_charges = std::move(atomic_charges);" in source
+
+
 def test_method_layer_has_no_vendor_abi() -> None:
     methods = ROOT / "src/methods"
     for path in methods.glob("*"):
