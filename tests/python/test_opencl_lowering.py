@@ -17,7 +17,6 @@ from vibeqc_compiler.integral.opencl_lowering import (
     source_hash,
 )
 from vibeqc_compiler.integral.runtime_backend import ExecutionShape, RuntimeCapabilities
-from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 
 def integral_program() -> typing.Any:
@@ -43,15 +42,12 @@ def integral_program() -> typing.Any:
     )
 
 
-def test_real_integral_dag_retains_identical_cuda_scalar_arithmetic() -> None:
+def test_real_integral_dag_uses_canonical_scalar_arithmetic() -> None:
     kernel = integral_program()
-    emitters = [emitter(kernel.graph, {}) for emitter in (ScalarCEmitter, ScalarCEmitter)]
-    for emitter in emitters:
-        emitter.emit(kernel.roots)
-    assert emitters[0].lines == emitters[1].lines
-    assert emitters[0].reference(kernel.roots[0]) == emitters[1].reference(
-        kernel.roots[0]
-    )
+    emitter = ScalarCEmitter(kernel.graph, {})
+    emitter.emit(kernel.roots)
+    assert emitter.lines
+    assert emitter.reference(kernel.roots[0])
     target = RuntimeCapabilities("opencl", True, 256, 32768)
     first = emit_opencl(kernel, target, ExecutionShape(16))
     second = emit_opencl(kernel, target, ExecutionShape(64))
