@@ -131,16 +131,17 @@ def resolve_bulk_force_capability(
     grant a force: even a representable registration must carry an exact force
     endpoint pass covering the requested backend and spin layout.
     """
-    capability = functional_capability(name, evidence=evidence)
-    ingredients = _validate_force_ingredient_contract(capability)
-
-    if capability.name not in AUTO_BULK_COMPONENTS:
+    key = name.upper() if isinstance(name, str) else name
+    if key not in AUTO_BULK_COMPONENTS:
         raise UnsupportedMethod(
             "automatic bulk analytic forces require one non-curated pure semilocal "
             "AUTO_BULK_COMPONENTS registration; curated, exact-exchange, "
             "range-separated, and nonlocal compositions require their separately "
             "qualified MethodIR force owners"
         )
+
+    capability = functional_capability(key, evidence=evidence)
+    ingredients = _validate_force_ingredient_contract(capability)
 
     endpoint = resolve_endpoint_capability(
         capability.name,
