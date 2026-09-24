@@ -156,35 +156,5 @@ double dot(const Matrix& a, const Matrix& b) {
   return result;
 }
 
-bool solve_linear(Matrix a, std::vector<double> b, std::vector<double>& x, std::size_t n) {
-  for (std::size_t column = 0; column < n; ++column) {
-    std::size_t pivot = column;
-    for (std::size_t row = column + 1; row < n; ++row) {
-      if (std::abs(a[index(row, column, n)]) > std::abs(a[index(pivot, column, n)])) {
-        pivot = row;
-      }
-    }
-    if (std::abs(a[index(pivot, column, n)]) < 1.0e-14) return false;
-    if (pivot != column) {
-      for (std::size_t j = 0; j < n; ++j) {
-        std::swap(a[index(column, j, n)], a[index(pivot, j, n)]);
-      }
-      std::swap(b[column], b[pivot]);
-    }
-    const double diagonal = a[index(column, column, n)];
-    for (std::size_t j = column; j < n; ++j) a[index(column, j, n)] /= diagonal;
-    b[column] /= diagonal;
-    for (std::size_t row = 0; row < n; ++row) {
-      if (row == column) continue;
-      const double factor = a[index(row, column, n)];
-      for (std::size_t j = column; j < n; ++j) {
-        a[index(row, j, n)] -= factor * a[index(column, j, n)];
-      }
-      b[row] -= factor * b[column];
-    }
-  }
-  x = std::move(b);
-  return true;
-}
 
 }  // namespace vibeqc::scf::reference
