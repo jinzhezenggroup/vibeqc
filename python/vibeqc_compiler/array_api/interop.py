@@ -118,8 +118,7 @@ def import_dlpack(
             ) from exc
     except Exception as exc:
         raise DLPackInteropError(
-            "zero-copy DLPack import failed; the consumer may require "
-            "an explicit copy"
+            "zero-copy DLPack import failed; the consumer may require an explicit copy"
         ) from exc
 
     target_device = dlpack_device(imported)
