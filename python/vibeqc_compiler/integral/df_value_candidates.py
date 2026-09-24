@@ -10,7 +10,7 @@ import typing
 from itertools import product
 
 from ..common.cuda_target import compute_capability_from_architecture
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_derivatives_cuda import emit_df_geometry_cuda
 from .df_values import (
     build_df_axis_moment,
@@ -183,7 +183,7 @@ def emit_df_value_candidates_cuda(manifest: typing.Any = None) -> typing.Any:
                             for axis, name in enumerate("xyz")
                         }
                     )
-                emitter = CudaEmitter(graph, variables)
+                emitter = ScalarCEmitter(graph, variables)
                 emitter.emit((expression,))
                 lines.extend(emitter.lines)
                 if rys:
