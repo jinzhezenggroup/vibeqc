@@ -1,4 +1,4 @@
-"""RCCSD must not read optional fields beyond the declared legacy ABI prefix."""
+"""Current RCCSD method descriptors are mandatory at the public C boundary."""
 
 import ctypes as ct
 
@@ -10,7 +10,7 @@ from vibeqc import Atom, _native
 @pytest.mark.parametrize(
     "last_field", ["density_fitting_mode", "correlation_memory_budget_bytes"]
 )
-def test_old_prefix_ignores_absent_poisoned_budget(last_field: str) -> None:
+def test_truncated_method_descriptor_is_rejected(last_field: str) -> None:
     calc = _calculator()
     atoms, _ = _reference_case()
     atoms = tuple(Atom(int(z), tuple(xyz)) for z, xyz in atoms)
@@ -25,13 +25,12 @@ def test_old_prefix_ignores_absent_poisoned_budget(last_field: str) -> None:
         system = calc._create_native_system(context, atoms, 0, 1)
         method = calc._method_descriptor()
         method.struct_size = getattr(_native.MethodDescriptor, last_field).offset
-        # Storage is deliberately present for deterministic detection without
-        # making the regression depend on a segmentation fault or page layout.
         method.correlation_memory_budget_bytes = 1 << 63
         status = library.vibeqc_calculation_prepare(
             context, system, ct.byref(method), ct.byref(calculation)
         )
-        assert status == _native.STATUS_SUCCESS and calculation
+        assert status == _native.STATUS_ABI_MISMATCH
+        assert not calculation
     finally:
         if calculation:
             library.vibeqc_calculation_destroy(calculation)
