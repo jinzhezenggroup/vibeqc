@@ -23,10 +23,11 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
 
 }  // namespace
 
-void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, const double* points,
-             const double* weights, const double* density, double* ao, double* work,
-             double* features, double* coefficients, double* point_totals, double* potential,
-             double* totals, int* error, const double* direction, double* delta_features) {
+void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStream_t stream,
+             const double* basis, const double* points, const double* weights,
+             const double* density, double* ao, double* work, double* features,
+             double* coefficients, double* point_totals, double* potential, double* totals,
+             int* error, const double* direction, double* delta_features) {
   const I matrices = l.spins * l.nao * l.nao;
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
   cuda_check(cudaMemsetAsync(totals, 0, 3 * sizeof(double), stream));
@@ -65,9 +66,8 @@ void enqueue(const CudaXcLayout& l, cudaStream_t stream, const double* basis, co
                                  l.feature_terms, l.functional, delta_features, error);
       cuda_check(cudaGetLastError());
     }
-    evaluate_points<<<blocks(count, 128), 128, 0, stream>>>(
-        features, weights + begin, count, l.spins, l.feature_terms, l.functional, coefficients,
-        point_totals, error, delta_features);
+    point_launcher(stream, features, weights + begin, count, l.spins, coefficients, point_totals,
+                   error, delta_features);
     cuda_check(cudaGetLastError());
     // Feature/response consumers have finished reading work. The compiler may
     // reuse those same panels for weighted symmetric potential assembly.

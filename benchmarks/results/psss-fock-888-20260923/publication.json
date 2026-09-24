@@ -1,0 +1,205 @@
+{
+  "archives": [],
+  "decision": {
+    "reason": "20 strict GPU regressions pass with independent RHF/UHF oracle comparisons. All 17 A/B configurations preserve exact work and iterations and pass the unchanged 2% retirement ceiling.",
+    "scope": "numerical",
+    "status": "accepted"
+  },
+  "files": [
+    {
+      "bytes": 4074,
+      "path": "README.md",
+      "role": "summary",
+      "sha256": "be80e03d3c321878d91bdbe808d375ef2daec197d3ec4c7e381bbff1b1135298"
+    },
+    {
+      "bytes": 14285,
+      "path": "direct_endpoint_gate.py",
+      "role": "reproduction",
+      "sha256": "be34f148b525da41f358b95c52326ccd5b36e3c84d19b2ec436da1dbb3654e41"
+    },
+    {
+      "bytes": 10101,
+      "path": "evidence.json",
+      "role": "evidence",
+      "sha256": "b55678eeaa83730f2011a123a123cd60b46ed7e279508233c592957227e7c37e"
+    },
+    {
+      "bytes": 37288,
+      "path": "final-tetramer-0.json",
+      "role": "samples",
+      "sha256": "ef962cc38a9f79133a4ee95051b92323d25674c9516f7b767e1bcde1fe0c99cf"
+    },
+    {
+      "bytes": 41167,
+      "path": "final-uhf-0.json",
+      "role": "samples",
+      "sha256": "60258ef8103291341d572df24b1611c4faa27c36967f37d750dcb790bfe1bf1d"
+    },
+    {
+      "bytes": 40795,
+      "path": "final-uhf-1.json",
+      "role": "samples",
+      "sha256": "baa01ca80520c83169ec3c247a06f3a16cc1d23fd4046781b7b55f8fd22c9cbd"
+    },
+    {
+      "bytes": 52875,
+      "path": "final-uhf-2.json",
+      "role": "samples",
+      "sha256": "5196048c1d10de65206d1e1f34056e72064cd1489a499204a8f57d3cc8ca603f"
+    },
+    {
+      "bytes": 53032,
+      "path": "final-uhf-3.json",
+      "role": "samples",
+      "sha256": "59118290f62410bb36f3cf9daa281472a44aa701ce5c233803b145d2dfd1db79"
+    },
+    {
+      "bytes": 2450,
+      "path": "independent-errors.json",
+      "role": "samples",
+      "sha256": "dca6e5082b2330e6a498f98b0664c8beb09788c2f04a15cc4ab39e588b385312"
+    },
+    {
+      "bytes": 8090,
+      "path": "matrix.json",
+      "role": "samples",
+      "sha256": "53b24715efae79e961b4865f4d116aaf262062398d2726473aa9502f2fa4765a"
+    },
+    {
+      "bytes": 529,
+      "path": "ownership-delta.json",
+      "role": "samples",
+      "sha256": "e516cf3e5d41942b523db7bb7b6bc2cbd252fa7aa7d98130470a649062818954"
+    },
+    {
+      "bytes": 357,
+      "path": "provenance.json",
+      "role": "samples",
+      "sha256": "e1b3bb93b0fdccc3641f3460f8c0dfa9a120685d675f8e20016d145d9ccb6761"
+    },
+    {
+      "bytes": 69703,
+      "path": "ragged-final-sto3g-b1-0.json",
+      "role": "samples",
+      "sha256": "043b4c1ad17cc2585a920d18c982b0d7951cf3c839c28562ea74c12cba066cec"
+    },
+    {
+      "bytes": 69989,
+      "path": "ragged-final-sto3g-b1-1.json",
+      "role": "samples",
+      "sha256": "c27b8eda451db496b7521a4c0b62272acf457e5d3abd4d2ffa2e26cc16d25390"
+    },
+    {
+      "bytes": 69190,
+      "path": "ragged-final-sto3g-b1-2.json",
+      "role": "samples",
+      "sha256": "2a7a87cf637407ee5e9bd4026d87b5483c2711187c6fff8eb18c91fed6820b63"
+    },
+    {
+      "bytes": 83568,
+      "path": "ragged-final-sto3g-b3-0.json",
+      "role": "samples",
+      "sha256": "ea48903964cef7c857bc722781f88d754026bc33ea435689435a983e0dce8f41"
+    },
+    {
+      "bytes": 83358,
+      "path": "ragged-final-sto3g-b3-1.json",
+      "role": "samples",
+      "sha256": "aa9b9d25c9a18fbccb303b9e4da6309bb091e227e0ec6647625cef5d6e8cb1d7"
+    },
+    {
+      "bytes": 83746,
+      "path": "ragged-final-sto3g-b3-2.json",
+      "role": "samples",
+      "sha256": "4de2e08450e8586b334efd412189fc5be3ebd27468ad0e2df138c7daec502532"
+    },
+    {
+      "bytes": 70321,
+      "path": "ragged-final-svp-b1-0.json",
+      "role": "samples",
+      "sha256": "224f8499782127e63367469ffe1b7681e67a9a2a97447e01c1040ff0071f16b0"
+    },
+    {
+      "bytes": 68141,
+      "path": "ragged-final-svp-b1-1.json",
+      "role": "samples",
+      "sha256": "3fddaacddfcb3d63b180f18935499ff08c4cd8b209573b6455ae7e060761c53c"
+    },
+    {
+      "bytes": 68713,
+      "path": "ragged-final-svp-b1-2.json",
+      "role": "samples",
+      "sha256": "c9cd49f5c600dc79b5d351cec374cc7b1eb4dd57673789e7677479a46665fd26"
+    },
+    {
+      "bytes": 83520,
+      "path": "ragged-final-svp-b3-0.json",
+      "role": "samples",
+      "sha256": "b7660af8a30a9e6d23f3da028d59ff1e8cad2ac88a6be6241d8d7565a11db30f"
+    },
+    {
+      "bytes": 84138,
+      "path": "ragged-final-svp-b3-1.json",
+      "role": "samples",
+      "sha256": "426b7ec30d36366b616880db32fdad05eec645eae595e8a10d5fba0eb50d4469"
+    },
+    {
+      "bytes": 83454,
+      "path": "ragged-final-svp-b3-2.json",
+      "role": "samples",
+      "sha256": "64dd5f09ddf5806024cea3a72c5a0180c73879378a5ba669d0b5fd0bc0998a92"
+    },
+    {
+      "bytes": 7282,
+      "path": "ragged_endpoint_gate.py",
+      "role": "reproduction",
+      "sha256": "cef52c3612d21c7936a5fdc6b0889327f9ddaf6b297d0e9af2dfbe582f9bdfd7"
+    },
+    {
+      "bytes": 35261,
+      "path": "regressions.json",
+      "role": "samples",
+      "sha256": "8340dd1bf46586d6a49fd3a8e6387325558e0e960b34b9f21540b0c764c05cb3"
+    },
+    {
+      "bytes": 3554,
+      "path": "resource-summary.json",
+      "role": "samples",
+      "sha256": "86e22648493220dafdee9e18e3dbe235c18b1a84a869561bd9997a33a2d1b7f6"
+    }
+  ],
+  "reproduction": {
+    "command": [
+      "srun",
+      "--partition=main",
+      "--gres=gpu:5090:1",
+      "--nodes=1",
+      "--ntasks=1",
+      "--time=00:20:00",
+      "python",
+      "benchmarks/results/psss-fock-888-20260923/ragged_endpoint_gate.py",
+      "--base",
+      "/path/to/native-baseline",
+      "--candidate",
+      "/path/to/candidate",
+      "--basis",
+      "sto-3g",
+      "--batch",
+      "3",
+      "--schedules",
+      "fixed,resident,paged",
+      "--cycles",
+      "3",
+      "--repeats",
+      "7",
+      "--output",
+      ".artifacts/888-ragged.json"
+    ]
+  },
+  "schema": "vibeqc.benchmark-publication.v1",
+  "source": {
+    "dirty": false,
+    "revision": "2cf3dec31100b0cda0b5267dc4364f75ccad9682"
+  }
+}

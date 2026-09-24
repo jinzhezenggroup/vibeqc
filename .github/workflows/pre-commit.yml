@@ -37,6 +37,20 @@ jobs:
         env:
           EVIDENCE_BASE: ${{ github.event.pull_request.base.sha }}
         run: python3 tools/evidence.py check-change --base "$EVIDENCE_BASE"
+      - name: Prevent legacy codegen test regrowth
+        if: github.event_name == 'pull_request'
+        env:
+          OWNERSHIP_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Compare with the base actually tested, not a stale event base SHA.
+          read -r merge base head extra <<< "$(git rev-list --parents -n 1 HEAD)"
+          if [[ -z "$base" || -n "$extra" || "$head" != "$OWNERSHIP_HEAD" ]]; then
+            echo "Expected a two-parent PR test merge with the requested head" >&2
+            exit 1
+          fi
+          baseline="$RUNNER_TEMP/codegen-test-baseline.py"
+          git show "$base:tests/python/test_codegen.py" > "$baseline"
+          python3 tools/check_codegen_test_ownership.py --baseline "$baseline"
       - name: Run pre-commit hooks on all files
         run: >-
           uvx --from prek==0.3.1 prek run

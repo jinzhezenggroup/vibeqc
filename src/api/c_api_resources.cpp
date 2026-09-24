@@ -5,6 +5,7 @@
 #include <limits>
 #include <stdexcept>
 
+#include "dft/grid.hpp"
 #include "dft/scf_diagnostic.hpp"
 #include "runtime/resource_ledger.hpp"
 #include "runtime/resource_usage.hpp"
@@ -90,10 +91,27 @@ int vibeqc_resource_ks_cuda_v1(std::size_t nao, std::size_t atoms, std::size_t s
     const auto xc = vibeqc::dft::cuda_xc_layout_shape(atoms, primitives, nao, points, pbe != 0,
                                                       spins == 2, tile_points);
     const auto direct =
-        vibeqc::scf::cuda_direct_jk_device_bytes(1, nao, atoms, shells, primitives, 0);
+        vibeqc::scf::cuda_direct_coulomb_device_bytes(1, nao, atoms, shells, primitives);
     output[0] = state;
     output[1] = xc.device_bytes;
     output[2] = direct;
+    return 0;
+  } catch (...) {
+    return 1;
+  }
+#else
+  return 2;
+#endif
+}
+
+/** Separate additive bridge preserves the KS v1 three-output ABI. Quadrature
+ * scratch coexists with the Fock provider but retires before KS/XC state. */
+int vibeqc_resource_quadrature_cuda_v1(std::size_t atoms, std::size_t points,
+                                       std::uint64_t* bytes) {
+  if (!bytes) return 1;
+#if VIBEQC_HAS_CUDA
+  try {
+    *bytes = vibeqc::dft::cuda_quadrature_bytes(atoms, points);
     return 0;
   } catch (...) {
     return 1;

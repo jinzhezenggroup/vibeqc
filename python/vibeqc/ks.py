@@ -38,10 +38,12 @@ B3LYP_SCF_DOMAIN = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
 WB97MV_SCF_DOMAIN = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16"
 _NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN, WB97MV_SCF_DOMAIN))
 
+# Manifest aliases share exactly the canonical method/spin binding.
 _NATIVE_KS_METHODS = {
-    name: (metadata["compiler_method"], metadata["spin"])
+    selector: (metadata["compiler_method"], metadata["spin"])
     for name, metadata in METHOD_METADATA.items()
     if metadata["provider"] == "dft"
+    for selector in (name, *metadata["aliases"])
 }
 
 
@@ -420,7 +422,9 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
 def scf_domain_for_method(method: typing.Any) -> str:
     """Return the exact native point-domain identity for one public KS method."""
     method_ir, _ = resolve_ks_method(method)
-    return B3LYP_SCF_DOMAIN if _native_semilocal_family(method_ir) == 3 else SCF_DOMAIN
+    return {3: B3LYP_SCF_DOMAIN, 4: WB97MV_SCF_DOMAIN}.get(
+        _native_semilocal_family(method_ir), SCF_DOMAIN
+    )
 
 
 def native_xc_functional_code(method: typing.Any) -> int:
@@ -475,9 +479,9 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             resolved.spin != expected.spin
             or resolved.version != expected.version
             or sorted(resolved.components) != sorted(expected.components)
-            or resolved.exact_exchange
-            or resolved.range_omega
-            or resolved.long_range_exchange
+            or resolved.exact_exchange != expected.exact_exchange
+            or resolved.range_omega != expected.range_omega
+            or resolved.long_range_exchange != expected.long_range_exchange
         ):
             raise NotImplementedError(
                 "KS FunctionalSpec does not match the method's supported composition/spin"

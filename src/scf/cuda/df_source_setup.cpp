@@ -176,7 +176,9 @@ vibeqc_status create_cuda_density_fitting_integral_source_impl(
       new (std::nothrow) CudaDensityFittingIntegralSourceImpl{});
   if (!candidate) return VIBEQC_STATUS_OUT_OF_MEMORY;
   candidate->device_id = device_id;
-  candidate->value_mapping = cuda_policy::df_value_mapping_requested();
+  const auto requested_mapping = cuda_policy::df_value_mapping_requested();
+  candidate->value_mapping = resolve_cuda_df_source_value_mapping(requested_mapping, true);
+  candidate->raw_value_mapping = resolve_cuda_df_source_value_mapping(requested_mapping, false);
   if (!cuda_policy::df_value_math_requested(candidate->value_math)) {
     detail = "VIBEQC_DF_VALUE_MATH must be auto, generic, polynomial rys or candidate";
     return VIBEQC_STATUS_INVALID_ARGUMENT;

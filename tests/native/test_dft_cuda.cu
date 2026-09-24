@@ -304,9 +304,10 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   bad.canary();
 }
 
-void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t tile = 9) {
-  Fixture captured(basis, grid, 1U, false, tile);
-  const auto d = density(basis.nao, 1);
+void graph_capture(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                   bool unrestricted, std::size_t tile = 9) {
+  Fixture captured(basis, grid, functional, unrestricted, tile);
+  auto d = density(basis.nao, unrestricted ? 2 : 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
   check(cudaStreamSynchronize(captured.stream));
@@ -318,10 +319,24 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t 
     captured.plan->enqueue(captured.density, d.size(), ++captured.generation);
     check(cudaStreamEndCapture(captured.stream, &graph));
     check(cudaGraphInstantiate(&executable, graph, 0));
-    check(cudaGraphLaunch(executable, captured.stream));
-    check(cudaStreamSynchronize(captured.stream));
-    require(captured.scalars().error == 0, "captured XC result was invalid");
-    captured.canary();
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      // The immutable consumer survives graph replay, but the density does not.
+      // Compare its complete outputs against a fresh independently checked plan.
+      check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, captured.stream));
+      check(cudaGraphLaunch(executable, captured.stream));
+      check(cudaStreamSynchronize(captured.stream));
+      const auto result = captured.scalars();
+      require(result.error == 0, "captured XC result was invalid");
+      Fixture fresh(basis, grid, functional, unrestricted, 7);
+      compare(fresh, basis, grid, d);
+      close(result.energy, fresh.scalars().energy, "captured XC energy");
+      const auto actual = captured.potential(), expected = fresh.potential();
+      for (std::size_t i = 0; i < actual.size(); ++i)
+        close(actual[i], expected[i], "captured XC potential");
+      captured.canary();
+      for (double& value : d) value *= 0.7;
+    }
   } catch (...) {
     if (executable) cudaGraphExecDestroy(executable);
     if (graph) cudaGraphDestroy(graph);
@@ -330,43 +345,75 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid, std::size_t 
   check(cudaGraphExecDestroy(executable));
   check(cudaGraphDestroy(graph));
 }
-/** Signed density directions reuse AO panels before potential prepacking.
- * Compare the complete device response to independent CPU potential differences,
- * so a premature overwrite of work cannot pass a primal-only energy test. */
-void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional) {
-  Fixture response(basis, grid, functional, true, 19, CudaXcAoPrecision::Fp64, true);
-  auto d = density(basis.nao, 2);
+
+/** Exercise both response consumers through the production pipeline, including
+ * a captured signed direction changed between replays. CPU physical-potential
+ * differences at two steps provide an oracle independent of response AD. */
+void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                          bool unrestricted, std::size_t tile) {
+  Fixture response(basis, grid, functional, unrestricted, tile, CudaXcAoPrecision::Fp64, true);
+  const auto d = density(basis.nao, unrestricted ? 2 : 1);
   std::vector<double> direction(d.size());
-  const auto n = basis.nao, matrix = n * n;
-  for (unsigned spin = 0; spin < 2; ++spin) {
+  const auto n = basis.nao, matrix = n * n, spins = response.layout.spins;
+  for (std::size_t spin = 0; spin < spins; ++spin) {
     direction[spin * matrix] = -0.013 * (spin + 1);
     direction[spin * matrix + 1] = direction[spin * matrix + n] = 0.007 * (spin + 1);
   }
   vibeqc::runtime::OwnedCudaBuffer<double> device_direction(0, d.size(), response.stream);
   check(cudaMemcpy(response.density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice));
-  check(cudaMemcpy(device_direction.get(), direction.data(), d.size() * sizeof(double),
-                   cudaMemcpyHostToDevice));
-  response.plan->enqueue_response(response.density, device_direction.get(), d.size(),
-                                  ++response.generation);
-  require(response.scalars().error == 0, "signed matrix response was rejected");
-  const auto actual = response.potential();
   const auto independent = [&](double step) {
     auto perturbed = d;
     for (std::size_t i = 0; i < d.size(); ++i) perturbed[i] += step * direction[i];
+    if (!unrestricted)
+      return functional ? integrate_pbe_rks_with_tail(basis, grid, perturbed, 23).potential
+                        : integrate_lda_xc_pw_rks(basis, grid, perturbed, 23).potential;
     const std::vector<double> a(perturbed.begin(), perturbed.begin() + matrix),
         b(perturbed.begin() + matrix, perturbed.end());
-    return functional ? integrate_pbe_uks(basis, grid, a, b, 23)
-                      : integrate_lda_xc_pw_uks(basis, grid, a, b, 23);
+    const auto ref = functional ? integrate_pbe_uks(basis, grid, a, b, 23)
+                                : integrate_lda_xc_pw_uks(basis, grid, a, b, 23);
+    auto potential = ref.potential[0];
+    potential.insert(potential.end(), ref.potential[1].begin(), ref.potential[1].end());
+    return potential;
   };
-  for (double step : {1e-4, 3e-5}) {
-    const auto plus = independent(step), minus = independent(-step);
-    for (unsigned spin = 0; spin < 2; ++spin)
-      for (std::size_t i = 0; i < matrix; ++i)
-        close(actual[spin * matrix + i],
-              (plus.potential[spin][i] - minus.potential[spin][i]) / (2 * step),
-              "signed matrix response versus independent potential difference", 1e-7);
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  try {
+    check(cudaStreamBeginCapture(response.stream, cudaStreamCaptureModeGlobal));
+    response.plan->enqueue_response(response.density, device_direction.get(), d.size(),
+                                    ++response.generation);
+    check(cudaStreamEndCapture(response.stream, &graph));
+    check(cudaGraphInstantiate(&executable, graph, 0));
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      check(cudaMemcpyAsync(device_direction.get(), direction.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, response.stream));
+      check(cudaGraphLaunch(executable, response.stream));
+      require(response.scalars().error == 0, "signed matrix response was rejected");
+      const auto actual = response.potential();
+      for (double step : {1e-4, 3e-5}) {
+        const auto plus = independent(step), minus = independent(-step);
+        for (std::size_t i = 0; i < actual.size(); ++i)
+          close(actual[i], (plus[i] - minus[i]) / (2 * step),
+                "signed matrix response versus independent potential difference", 1e-7);
+      }
+      response.canary();
+      for (double& value : direction) value *= -0.4;
+    }
+    // Exact vacuum with zero tangent has an independently known zero response.
+    // Reusing the same captured entry also catches stale point coefficients.
+    check(cudaMemsetAsync(response.density, 0, d.size() * sizeof(double), response.stream));
+    check(cudaMemsetAsync(device_direction.get(), 0, d.size() * sizeof(double), response.stream));
+    check(cudaGraphLaunch(executable, response.stream));
+    require(response.scalars().error == 0, "vacuum matrix response was rejected");
+    for (double value : response.potential())
+      require(value == 0.0, "vacuum matrix response retained a stale coefficient");
+    response.canary();
+  } catch (...) {
+    if (executable) cudaGraphExecDestroy(executable);
+    if (graph) cudaGraphDestroy(graph);
+    throw;
   }
-  response.canary();
+  check(cudaGraphExecDestroy(executable));
+  check(cudaGraphDestroy(graph));
 }
 
 void matrix_schedule_cases() {
@@ -395,9 +442,9 @@ void matrix_schedule_cases() {
             Fixture test(large_basis, large_grid, functional, uks, tile);
             compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
           }
-      graph_capture(large_basis, large_grid, 33);
+      graph_capture(large_basis, large_grid, 1U, false, 33);
       for (unsigned functional : {0U, 1U})
-        matrix_response_case(large_basis, large_grid, functional);
+        matrix_response_case(large_basis, large_grid, functional, true, 19);
       for (std::uint32_t functional : {0U, 1U, 2U})
         variational_and_state(large_basis, large_grid, functional, 17);
     }
@@ -416,7 +463,13 @@ int main(int argc, char** argv) {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
-    graph_capture(basis, grid);
+    for (unsigned functional : {0U, 1U, 2U})
+      for (bool unrestricted : {false, true}) {
+        graph_capture(basis, grid, functional, unrestricted);
+        if (functional < 2U)
+          for (std::size_t tile : {1U, 7U, 129U})
+            matrix_response_case(basis, grid, functional, unrestricted, tile);
+      }
     {
       for (bool unrestricted : {false, true})
         for (std::uint32_t functional : {0U, 1U}) {

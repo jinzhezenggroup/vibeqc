@@ -1,0 +1,750 @@
+[
+  {
+    "raw_file": "dft-reference/r2scan-direct-12.json",
+    "raw_sha256": "0291efd3dc1bfb43d221d7f2683c10b14857264a9e8e09ac377a254ff2e17299",
+    "timestamp_utc": "2026-09-22T14:48:13.010158+00:00",
+    "device_state": {
+      "performance_state": "P0",
+      "power_draw_watts": 70.57,
+      "power_limit_watts": 575.0,
+      "sm_clock_mhz": 2557.0,
+      "memory_clock_mhz": 14001.0,
+      "temperature_celsius": 52.0,
+      "sampling_point": "before endpoint measurements",
+      "raw_sampling_point_label": "after benchmark measurements"
+    },
+    "method": "r2scan-rks",
+    "mode": "direct",
+    "aos": 96,
+    "basis": "def2-SVP spherical",
+    "endpoint": "SCF energy",
+    "status": "reference_only",
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "all_samples_converged": true
+    },
+    "grid_points": 294912,
+    "grid_identity": "4d04fc3a4b5c38f5abb49fffca355f1b63be311c6bf666957859a46a03586365",
+    "grid_export": {
+      "seconds": 0.7318454501219094,
+      "cache_hit": false,
+      "tile_points": 32768,
+      "molecular_grid_identity": "21127b16edc2723c0ed4b37304f00ac90471467a2a8f15f3c1136eaf9b8fd538",
+      "array_identity": "sha256(float64 points bytes followed by weights bytes)"
+    },
+    "native_not_measured": "reference-only run requested",
+    "reference_strict_grid_order": true,
+    "reference_empty_ao_block_adapter": "one identically zero AO row",
+    "convergence_gate_passed": true,
+    "benchmark_sha256": "854dd10bc88050227a98e3447fe1f2e7071c598039adf3341e31ff4d206b5c77",
+    "engines": {
+      "GPU4PySCF": {
+        "cold_ms": 5736.727633047849,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 14,
+            "final_residuals": {
+              "energy_change_hartree": 0.0,
+              "density_rms": 1.0239139785804503e-08,
+              "orbital_gradient_norm": 5.257681782098553e-09
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 667.4158680252731,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 6.537547012436571e-09,
+                  "orbital_gradient_norm": 4.372509841169904e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 672.5061140023172,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 6.537549345671664e-09,
+                  "orbital_gradient_norm": 4.372510687221707e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 667.9946002550423,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 6.5375488435593555e-09,
+                  "orbital_gradient_norm": 4.372505848492955e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "family": "dft",
+    "atoms": 12,
+    "native_prepare_ms": null,
+    "gates_passed": null,
+    "provenance": "7141387e450080ba0ad1e4235e4f328e19d66a76d534dca15e3a84552cff7222"
+  },
+  {
+    "raw_file": "dft-reference/r2scan-direct-24.json",
+    "raw_sha256": "660f75e3b67cc0a76e86e385f5f8ca5d4a1691d670c36beea5e601cdcfcc7dda",
+    "timestamp_utc": "2026-09-22T14:47:51.243809+00:00",
+    "device_state": {
+      "performance_state": "P0",
+      "power_draw_watts": 72.64,
+      "power_limit_watts": 575.0,
+      "sm_clock_mhz": 2557.0,
+      "memory_clock_mhz": 14001.0,
+      "temperature_celsius": 54.0,
+      "sampling_point": "before endpoint measurements",
+      "raw_sampling_point_label": "after benchmark measurements"
+    },
+    "method": "r2scan-rks",
+    "mode": "direct",
+    "aos": 192,
+    "basis": "def2-SVP spherical",
+    "endpoint": "SCF energy",
+    "status": "reference_only",
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "all_samples_converged": true
+    },
+    "grid_points": 589824,
+    "grid_identity": "a12b301b962adfd7234aa55dd003bbb365e9b5f710dc98c3177f5b78349b4bf7",
+    "grid_export": {
+      "seconds": 4.9421349610202014,
+      "cache_hit": false,
+      "tile_points": 32768,
+      "molecular_grid_identity": "78310cbdca7ae508a3fa790f7be237b1e195745c124d60b6434f69db1128596e",
+      "array_identity": "sha256(float64 points bytes followed by weights bytes)"
+    },
+    "native_not_measured": "reference-only run requested",
+    "reference_strict_grid_order": true,
+    "reference_empty_ao_block_adapter": "one identically zero AO row",
+    "convergence_gate_passed": true,
+    "benchmark_sha256": "854dd10bc88050227a98e3447fe1f2e7071c598039adf3341e31ff4d206b5c77",
+    "engines": {
+      "GPU4PySCF": {
+        "cold_ms": 9870.485559105873,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 13,
+            "final_residuals": {
+              "energy_change_hartree": 1.318767317570746e-11,
+              "density_rms": 2.0716450115128585e-08,
+              "orbital_gradient_norm": 3.432212523347921e-09
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 1309.8318348638713,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 4.473751989313646e-09,
+                  "orbital_gradient_norm": 2.7709886517567163e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1356.6034082323313,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 4.4737548775851695e-09,
+                  "orbital_gradient_norm": 2.770989398863518e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1309.9647667258978,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 4.473751116050154e-09,
+                  "orbital_gradient_norm": 2.7709862106095875e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "family": "dft",
+    "atoms": 24,
+    "native_prepare_ms": null,
+    "gates_passed": null,
+    "provenance": "7141387e450080ba0ad1e4235e4f328e19d66a76d534dca15e3a84552cff7222"
+  },
+  {
+    "raw_file": "dft-reference/r2scan-direct-48.json",
+    "raw_sha256": "0dc8aa2aeea00491ab43d9187a48c7da9a1f6b8849c2ed3122cd76754654fd62",
+    "timestamp_utc": "2026-09-22T14:47:07.835487+00:00",
+    "device_state": {
+      "performance_state": "P0",
+      "power_draw_watts": 91.64,
+      "power_limit_watts": 575.0,
+      "sm_clock_mhz": 2557.0,
+      "memory_clock_mhz": 14001.0,
+      "temperature_celsius": 54.0,
+      "sampling_point": "before endpoint measurements",
+      "raw_sampling_point_label": "after benchmark measurements"
+    },
+    "method": "r2scan-rks",
+    "mode": "direct",
+    "aos": 384,
+    "basis": "def2-SVP spherical",
+    "endpoint": "SCF energy",
+    "status": "reference_only",
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "all_samples_converged": true
+    },
+    "grid_points": 1179648,
+    "grid_identity": "13599db1b7025886f15f13a447782e08513a1c470ce7d34625564ab108b4c57d",
+    "grid_export": {
+      "seconds": 0.07878539059311152,
+      "cache_hit": true,
+      "tile_points": 32768,
+      "molecular_grid_identity": "66a86714894ebabc5336cfde0e0a36cf75fe11c2f46f90a20b55e1250fb7136d",
+      "array_identity": "sha256(float64 points bytes followed by weights bytes)"
+    },
+    "native_not_measured": "reference-only run requested",
+    "reference_strict_grid_order": true,
+    "reference_empty_ao_block_adapter": "one identically zero AO row",
+    "convergence_gate_passed": true,
+    "benchmark_sha256": "854dd10bc88050227a98e3447fe1f2e7071c598039adf3341e31ff4d206b5c77",
+    "engines": {
+      "GPU4PySCF": {
+        "cold_ms": 22967.213219963014,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 18,
+            "final_residuals": {
+              "energy_change_hartree": 1.3642420526593924e-11,
+              "density_rms": 3.371831740239874e-09,
+              "orbital_gradient_norm": 7.018057215700722e-09
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 4668.737549800426,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 3,
+                "final_residuals": {
+                  "energy_change_hartree": 2.000888343900442e-11,
+                  "density_rms": 1.4045097949672251e-08,
+                  "orbital_gradient_norm": 4.803450454324084e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 4673.71408874169,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 3,
+                "final_residuals": {
+                  "energy_change_hartree": 2.0463630789890885e-11,
+                  "density_rms": 1.4045130590712748e-08,
+                  "orbital_gradient_norm": 4.803467142364159e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 4669.193418230861,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 3,
+                "final_residuals": {
+                  "energy_change_hartree": 2.0463630789890885e-11,
+                  "density_rms": 1.4045131962238368e-08,
+                  "orbital_gradient_norm": 4.803439885228406e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "family": "dft",
+    "atoms": 48,
+    "native_prepare_ms": null,
+    "gates_passed": null,
+    "provenance": "7141387e450080ba0ad1e4235e4f328e19d66a76d534dca15e3a84552cff7222"
+  },
+  {
+    "raw_file": "dft/r2scan-df-3.json",
+    "raw_sha256": "41b50e16a484981a8ac1474ac1f7f9a6dd62616c17116f3e4a5ca3ae94b1379b",
+    "timestamp_utc": "2026-09-22T14:20:01.110156+00:00",
+    "device_state": {
+      "performance_state": "P0",
+      "power_draw_watts": 70.23,
+      "power_limit_watts": 575.0,
+      "sm_clock_mhz": 2557.0,
+      "memory_clock_mhz": 14001.0,
+      "temperature_celsius": 53.0,
+      "sampling_point": "before endpoint measurements",
+      "raw_sampling_point_label": "after benchmark measurements"
+    },
+    "method": "r2scan-rks",
+    "mode": "df",
+    "aos": 24,
+    "basis": "def2-SVP spherical",
+    "endpoint": "SCF energy",
+    "status": "reference_only",
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "all_samples_converged": true
+    },
+    "grid_points": 73728,
+    "grid_identity": "5fa65042cbd3459c9b379e104552c2c39da7e1761ed074a2b9548fe153696284",
+    "grid_export": {
+      "seconds": 0.005872061941772699,
+      "cache_hit": true,
+      "tile_points": 32768,
+      "molecular_grid_identity": "e773839e59f0a55affd1a319fe1d8ef328aea9139c7cf99d1f34f6d208ec5b7e",
+      "array_identity": "sha256(float64 points bytes followed by weights bytes)"
+    },
+    "native_unavailable": "NotImplementedError: DFT supports conventional Coulomb only",
+    "convergence_gate_passed": true,
+    "benchmark_sha256": "882a24a619cb248f3ef2bb5984c396214b36ed9398e693223ee7d7198dc920c8",
+    "engines": {
+      "GPU4PySCF": {
+        "cold_ms": 2060.588451102376,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 10,
+            "final_residuals": {
+              "energy_change_hartree": 2.842170943040401e-14,
+              "density_rms": 1.0622091352386289e-07,
+              "orbital_gradient_norm": 8.216258419273825e-09
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 253.77907697111368,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2991196448143156e-08,
+                  "orbital_gradient_norm": 5.289843483543968e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 254.53559309244156,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2991196448143156e-08,
+                  "orbital_gradient_norm": 5.289843483543968e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 254.0916260331869,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2991196448143156e-08,
+                  "orbital_gradient_norm": 5.289843483543968e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "family": "dft",
+    "atoms": 3,
+    "native_prepare_ms": null,
+    "gates_passed": null,
+    "provenance": "7141387e450080ba0ad1e4235e4f328e19d66a76d534dca15e3a84552cff7222"
+  },
+  {
+    "raw_file": "dft/r2scan-direct-3.json",
+    "raw_sha256": "05c4c336aab95ae262dafca81f3f48c789feaa904803d66cb726ee8db4253728",
+    "timestamp_utc": "2026-09-22T14:19:46.345905+00:00",
+    "device_state": {
+      "performance_state": "P0",
+      "power_draw_watts": 70.58,
+      "power_limit_watts": 575.0,
+      "sm_clock_mhz": 2557.0,
+      "memory_clock_mhz": 14001.0,
+      "temperature_celsius": 53.0,
+      "sampling_point": "before endpoint measurements",
+      "raw_sampling_point_label": "after benchmark measurements"
+    },
+    "method": "r2scan-rks",
+    "mode": "direct",
+    "aos": 24,
+    "basis": "def2-SVP spherical",
+    "endpoint": "SCF energy",
+    "status": "measured",
+    "accuracy": {
+      "selection": "all_measured_pairs",
+      "pair_count": 5,
+      "maximum_energy_error_hartree": 1.3358203432289883e-12,
+      "maximum_force_error_hartree_per_bohr": null
+    },
+    "accuracy_pairs": [
+      {
+        "repeat": 0,
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.3358203432289883e-12,
+        "maximum_force_error_hartree_per_bohr": null
+      },
+      {
+        "repeat": 1,
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.0658141036401503e-12,
+        "maximum_force_error_hartree_per_bohr": null
+      },
+      {
+        "repeat": 2,
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.0658141036401503e-12,
+        "maximum_force_error_hartree_per_bohr": null
+      },
+      {
+        "repeat": 3,
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.0658141036401503e-12,
+        "maximum_force_error_hartree_per_bohr": null
+      },
+      {
+        "repeat": 4,
+        "iteration_branches_match": false,
+        "maximum_energy_error_hartree": 1.0658141036401503e-12,
+        "maximum_force_error_hartree_per_bohr": null
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "all_samples_converged": true
+    },
+    "grid_points": 73728,
+    "grid_identity": "5fa65042cbd3459c9b379e104552c2c39da7e1761ed074a2b9548fe153696284",
+    "grid_export": {
+      "seconds": 0.04201543377712369,
+      "cache_hit": false,
+      "tile_points": 32768,
+      "molecular_grid_identity": "e773839e59f0a55affd1a319fe1d8ef328aea9139c7cf99d1f34f6d208ec5b7e",
+      "array_identity": "sha256(float64 points bytes followed by weights bytes)"
+    },
+    "convergence_gate_passed": true,
+    "benchmark_sha256": "882a24a619cb248f3ef2bb5984c396214b36ed9398e693223ee7d7198dc920c8",
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 5879.906869959086,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 13,
+            "energy_change_hartree": 7.105427357601002e-14,
+            "density_rms": 9.307798809448481e-10,
+            "warm_start_used": false,
+            "warm_start_fallback": false,
+            "final_residuals": {
+              "energy_change_hartree": 7.105427357601002e-14,
+              "density_rms": 9.307798809448481e-10,
+              "orbital_gradient_norm": null
+            },
+            "warm_start": {
+              "used": false,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 898.6770939081907,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 2,
+                "energy_change_hartree": 2.2737367544323206e-13,
+                "density_rms": 4.22218860671959e-10,
+                "warm_start_used": true,
+                "warm_start_fallback": false,
+                "final_residuals": {
+                  "energy_change_hartree": 2.2737367544323206e-13,
+                  "density_rms": 4.22218860671959e-10,
+                  "orbital_gradient_norm": null
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 932.7462338842452,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 2,
+                "energy_change_hartree": 2.2737367544323206e-13,
+                "density_rms": 4.22218860671959e-10,
+                "warm_start_used": true,
+                "warm_start_fallback": false,
+                "final_residuals": {
+                  "energy_change_hartree": 2.2737367544323206e-13,
+                  "density_rms": 4.22218860671959e-10,
+                  "orbital_gradient_norm": null
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 900.0844722613692,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 2,
+                "energy_change_hartree": 2.2737367544323206e-13,
+                "density_rms": 4.22218860671959e-10,
+                "warm_start_used": true,
+                "warm_start_fallback": false,
+                "final_residuals": {
+                  "energy_change_hartree": 2.2737367544323206e-13,
+                  "density_rms": 4.22218860671959e-10,
+                  "orbital_gradient_norm": null
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 2075.704047922045,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "iterations": 10,
+            "final_residuals": {
+              "energy_change_hartree": 1.7053025658242404e-13,
+              "density_rms": 1.0617136095831987e-07,
+              "orbital_gradient_norm": 8.210117938634916e-09
+            },
+            "warm_start": {
+              "used": true,
+              "fallback": false
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 237.96674702316523,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2977796446227758e-08,
+                  "orbital_gradient_norm": 5.296386621518642e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 231.69250506907701,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2977796446227758e-08,
+                  "orbital_gradient_norm": 5.296386621518642e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          },
+          {
+            "ms": 230.02298409119248,
+            "convergence": [
+              {
+                "converged": true,
+                "iterations": 1,
+                "final_residuals": {
+                  "energy_change_hartree": null,
+                  "density_rms": 1.2977796446227758e-08,
+                  "orbital_gradient_norm": 5.296386621518642e-09
+                },
+                "warm_start": {
+                  "used": true,
+                  "fallback": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "family": "dft",
+    "atoms": 3,
+    "native_prepare_ms": 178.62912127748132,
+    "gates_passed": true,
+    "provenance": "b62ac8ede6f4f508d999c4d5c487cb412c973bbe55c0a1ac10bfc5c4bb276411"
+  },
+  {
+    "family": "dft",
+    "method": "r2scan-rks",
+    "mode": "direct",
+    "atoms": 96,
+    "aos": 768,
+    "status": "stopped",
+    "endpoint": "SCF energy",
+    "engine_stopped": "GPU4PySCF",
+    "point_time_limit_seconds": 120,
+    "reason": "No completed benchmark before the point time limit; this is not an endpoint latency.",
+    "engines": {},
+    "evidence": [
+      {
+        "raw_file": "dft-reference/r2scan-direct-96.log",
+        "sha256": "a9ba0df9653735a0cb5064fe99e4dc866ec42e15372eeb4faba6a0b8eff22d6e",
+        "bytes": 264
+      },
+      {
+        "raw_file": "dft-reference/r2scan-direct-96.outcome",
+        "sha256": "5f29b603d63f071bd6355891aafec14c04a1671293962a874341e6bb05d45664",
+        "bytes": 43
+      }
+    ]
+  }
+]

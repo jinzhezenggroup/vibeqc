@@ -419,6 +419,12 @@ jobs:
               # finite differences and larger-molecule independent references.
               # H2/small-contract coverage stays routine; broad endpoint replay
               # belongs to scheduled/manual qualification.
+              # The NH3 complete RCCSD(T) analytic-gradient endpoint is a
+              # separate ~4.7 minute native solve on hosted runners. H2O stays
+              # routine and is shared by the component/response checks through
+              # the module cache; keep NH3 for scheduled/manual qualification.
+              --deselect
+              'tests/python/test_ccsd_t_complete_gradient.py::test_complete_ccsdt_gradient_matches_pinned_pyscf[nh3]'
               --deselect
               'tests/python/test_cc_complete_gradient.py::test_complete_native_endpoint_matches_pinned_pyscf_gradient[ch4]'
               --deselect
@@ -490,13 +496,19 @@ jobs:
               'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[lda-uks-tight]'
               --deselect
               'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
-              # Full reconverged SPD ECP finite differences each cost about
-              # nine minutes on hosted runners. Keep the lighter complete
-              # ECP force contracts on every PR and the exhaustive pair nightly.
+              # Closed-shell SPD ECP reconverged finite differences are
+              # qualification-scale on hosted runners. Recent PBE cases alone
+              # take ~6.5 minutes each; LDA was already kept off the routine
+              # path for the same reason. Routine CI retains the lighter
+              # complete/budgeted ECP force contracts and UKS coverage.
               --deselect
               'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
               --deselect
               'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
@@ -524,6 +536,8 @@ jobs:
             tests/python/test_hessian_directional.py
             tests/python/test_response_operator.py
             tests/python/test_codegen.py
+            tests/python/test_codegen_autotune.py
+            tests/python/test_codegen_profiles.py
             tests/python/test_d3_geometry_ir.py
             tests/python/test_d3_generated_ragged.py
             tests/python/test_high_angular.py
@@ -620,6 +634,8 @@ jobs:
             compiler-heavy)
               test_targets=(
                 tests/python/test_codegen.py
+                tests/python/test_codegen_autotune.py
+                tests/python/test_codegen_profiles.py
                 tests/python/test_d3_geometry_ir.py
                 tests/python/test_d3_generated_ragged.py
                 tests/python/test_high_angular.py

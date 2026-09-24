@@ -1,0 +1,222 @@
+{
+  "coverage": "pilot",
+  "description": "G1 pilot inventory for issue #934. Rows are actual-path anchors, not capability promotion claims; coverage remains explicitly pilot until the method/product/backend/domain matrix is complete. Evidence levels record only retained anchors: missing, failed, skipped, and not-applicable stages stay explicit rather than being inferred from production status.",
+  "rows": [
+    {
+      "artifact": "native CPU SCF/Fock executable",
+      "backend": "cpu",
+      "blocker": null,
+      "domain": "direct-rhf",
+      "evidence": [
+        "tests/native/test_rhf.cpp",
+        "tests/python/test_calculator.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU production path.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This pilot row covers energy only.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/native/test_rhf.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_calculator.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "src/scf/solver/mean_field_driver.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/scf/fock_execution.cpp",
+      "id": "hf-energy-cpu-direct-rhf",
+      "method_family": "hf",
+      "product": "energy",
+      "provider_owner": "src/scf/fock_prepared.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/scf/fock_prepared.cpp",
+      "scientific_owner": "src/scf/solver/mean_field_driver.cpp",
+      "selector": "python/vibeqc/calculator.py",
+      "state_owner": "src/core/electronic_reference.hpp",
+      "status": "production"
+    },
+    {
+      "artifact": "AOT native CUDA KS/XC executable",
+      "backend": "cuda",
+      "blocker": null,
+      "domain": "semilocal-rks",
+      "evidence": [
+        "tests/native/test_dft.cpp",
+        "tests/python/test_calculator.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [],
+          "reason": "This ledger row describes the CUDA production path.",
+          "state": "not-applicable"
+        },
+        "compiled-cuda": {
+          "evidence": [
+            "tests/native/test_dft.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This pilot row covers energy only.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "The pilot ledger has no retained real-device execution receipt for this row.",
+          "state": "missing"
+        },
+        "domain-qualified": {
+          "evidence": [],
+          "reason": "The pilot ledger has no source-bound CUDA domain-qualification receipt for this row.",
+          "state": "missing"
+        },
+        "molecular": {
+          "evidence": [],
+          "reason": "The pilot ledger does not yet retain molecular CUDA endpoint evidence separately from the public-path anchor.",
+          "state": "missing"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_calculator.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "python/vibeqc_compiler/method/spec.py"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/dft/cuda_ks.cpp",
+      "id": "dft-energy-cuda-rks",
+      "method_family": "dft",
+      "product": "energy",
+      "provider_owner": "src/scf/fock_prepared.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/scf/fock_prepared.cpp",
+      "scientific_owner": "python/vibeqc_compiler/method/spec.py",
+      "selector": "python/vibeqc/ks.py",
+      "state_owner": "src/dft/cuda_ks.hpp",
+      "status": "production"
+    },
+    {
+      "artifact": "generated RCCSD CPU iteration/replay evaluator consumed by the native solver",
+      "backend": "cpu",
+      "blocker": null,
+      "domain": "canonical-rccsd",
+      "evidence": [
+        "tests/python/test_rccsd_native_hamiltonian_codegen.py",
+        "tests/python/test_rccsd_public.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/python/test_rccsd_native_hamiltonian_codegen.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU production path; CUDA RCCSD is tracked separately.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "The public RCCSD endpoint exposes energy only; analytic forces are not implemented.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_rccsd_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "tools/vibeqc_cc/doubles.py"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/methods/rccsd_method.cpp",
+      "id": "cc-energy-cpu-rccsd",
+      "method_family": "cc",
+      "product": "energy",
+      "provider_owner": "src/posthf/native_provider.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/cc/solver.cpp",
+      "scientific_owner": "tools/vibeqc_cc/doubles.py",
+      "selector": "src/methods/registry.cpp",
+      "state_owner": "src/cc/solver.hpp",
+      "status": "production"
+    }
+  ],
+  "schema": "vibeqc.electronic-production-paths.v2"
+}

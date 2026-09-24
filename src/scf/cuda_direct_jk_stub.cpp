@@ -17,6 +17,10 @@ std::size_t cuda_direct_jk_device_bytes(std::size_t, std::size_t, std::size_t, s
       fock_provider_registration(FockApproximation::Exact, FockBackend::Cuda),
       "CUDA direct J/K allocation inventory"));
 }
+std::size_t cuda_direct_coulomb_device_bytes(std::size_t batch, std::size_t nao, std::size_t atoms,
+                                             std::size_t shells, std::size_t primitives) {
+  return cuda_direct_jk_device_bytes(batch, nao, atoms, shells, primitives, 0);
+}
 vibeqc_status create_cuda_direct_jk_plan(int, const std::vector<core::System>&, unsigned, double,
                                          std::size_t, CudaDirectJkPlan** output,
                                          CudaDirectJkDiagnostic& diagnostic, std::string& detail) {

@@ -71,7 +71,6 @@
       "files": [
         "src/scf/cuda/direct_cached_tensor_kernels.cu",
         "src/scf/cuda/direct_fock_order2.cuh",
-        "src/scf/cuda/direct_fock_psss.cuh",
         "src/scf/cuda/direct_fock_quartet.cuh",
         "src/scf/cuda/direct_jk_kernels.cu",
         "src/scf/cuda/direct_native_eri_order2.cuh",
@@ -122,7 +121,11 @@
         "python/vibeqc_compiler/integral/direct_pair_gradient_cuda.py",
         "python/vibeqc_compiler/integral/coulomb_recurrence_cuda.py"
       ],
-      "required_compiler_capabilities": ["#830 GVN/redundancy cleanup", "#832 live-range/rematerialization/fusion profitability", "#833 reusable schedule vocabulary"],
+      "required_compiler_capabilities": [
+        "#830 GVN/redundancy cleanup",
+        "#832 live-range/rematerialization/fusion profitability",
+        "#833 reusable schedule vocabulary"
+      ],
       "retirement_condition": "The order-4/5/6 consumer body and high-order Coulomb recurrence are retired from native scientific ownership. Remaining pair/source helpers stay tracked separately until their other production consumers have qualified generated replacements.",
       "files": [
         "src/scf/cuda/direct_native_pair_order2_gradient.cuh",

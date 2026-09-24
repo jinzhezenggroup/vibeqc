@@ -85,6 +85,10 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
       return NativeKsExecutionPlan{1, kKsSemilocalB3lyp, false};
     case VIBEQC_METHOD_B3LYP_UKS:
       return NativeKsExecutionPlan{2, kKsSemilocalB3lyp, false};
+    case VIBEQC_METHOD_WB97M_V:
+      return NativeKsExecutionPlan{1, kKsSemilocalWb97mv, false};
+    case VIBEQC_METHOD_WB97M_V_UKS:
+      return NativeKsExecutionPlan{2, kKsSemilocalWb97mv, false};
     case VIBEQC_METHOD_R2SCAN_RKS:
       return NativeKsExecutionPlan{1, kKsSemilocalR2scan, false};
     case VIBEQC_METHOD_R2SCAN_UKS:
@@ -508,8 +512,8 @@ std::size_t ks_provider_bytes(const core::System& system, vibeqc_backend backend
     std::size_t primitives = 0;
     for (const auto& shell : system.shells)
       primitives = runtime::add_capacity(primitives, shell.primitives.size());
-    return scf::cuda_direct_jk_device_bytes(1, molecule::ao_count(system), system.atoms.size(),
-                                            system.shells.size(), primitives, 0);
+    return scf::cuda_direct_coulomb_device_bytes(1, molecule::ao_count(system), system.atoms.size(),
+                                                 system.shells.size(), primitives);
   }
 #endif
   return 0;
@@ -584,6 +588,20 @@ std::optional<core::System> ks_auxiliary_for_system(const core::System& system,
   return auxiliary;
 }
 
+/** Backend selection must precede materialization: constructing the reference
+ * grid and then uploading it hides cubic host work in CUDA preparation. */
+dft::MolecularGrid ks_molecular_grid(const core::System& system, dft::GridSpec spec,
+                                     vibeqc_backend backend, int device) {
+  if (backend == VIBEQC_BACKEND_CUDA) {
+#if VIBEQC_HAS_CUDA
+    return dft::MolecularGrid::from_cuda(system, spec, device);
+#else
+    throw std::runtime_error("CUDA quadrature is unavailable in this build");
+#endif
+  }
+  return dft::MolecularGrid(system, spec);
+}
+
 class KsPreparedCalculation final : public PreparedCalculation {
  public:
   KsPreparedCalculation(Capabilities capabilities, core::System system,
@@ -600,7 +618,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                   ? ks_provider_bytes(system_, backend)
                   : options_.density_fitting_memory_budget_bytes),
         basis_(system_),
-        grid_(system_, grid) {
+        grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
     if (execution_plan_.range_exchange) prepare_range_exchange(device);
 #if VIBEQC_HAS_CUDA
@@ -1442,6 +1460,8 @@ vibeqc_status read_dft_derivative_state(PreparedBatch& batch, std::size_t index,
 
 void validate_ks_spin_state(const NativeKsExecutionPlan& execution_plan,
                             const core::System& system) {
+  if (execution_plan.semilocal_family == kKsSemilocalWb97mv && !system.ecp_terms.empty())
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "WB97M-V ECP execution is not qualified");
   if (!unrestricted(execution_plan)) {
     if (system.electron_count <= 0 || system.electron_count % 2 || system.multiplicity != 1)
       throw std::invalid_argument(
