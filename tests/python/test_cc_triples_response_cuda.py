@@ -15,10 +15,10 @@ from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.common.resources import ResourceBudget
 from vibeqc_compiler.tensor import execute as cpu_execute
 
+import tools.vibeqc_cc.triples_lambda_response as triples_lambda_response_module
 from tools.vibeqc_cc import PreparedCUDALambda
 from tools.vibeqc_cc.lambda_solver import BoundCCSDLambda
 from tools.vibeqc_cc.triples_cuda import TriplesTileConfig
-import tools.vibeqc_cc.triples_lambda_response as triples_lambda_response_module
 from tools.vibeqc_cc.triples_lambda_response import (
     BoundCCSDTResponse,
     solve_corrected_lambda,
@@ -294,7 +294,6 @@ def test_cuda_corrected_lambda_rejects_response_for_other_shape(
             )
 
 
-
 def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_replay(
     monkeypatch: typing.Any, tmp_path: Path
 ) -> None:
@@ -446,6 +445,7 @@ def test_bound_cuda_response_rejects_missing_source_without_cpu_fallback(
             match="missing required source blocks",
         ):
             response.weight("fov", reference_identity=snapshot.identity)
+
 
 _REAL = os.environ.get("VIBEQC_CC_TRIPLES_RESPONSE_CUDA_TEST") == "1"
 
