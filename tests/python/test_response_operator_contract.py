@@ -17,7 +17,7 @@ def test_native_response_symmetry_contract_compiles_and_runs(tmp_path: Path) -> 
     source = tmp_path / "response_symmetry_contract.cpp"
     executable = tmp_path / "response_symmetry_contract"
     source.write_text(
-        r'''
+        r"""
 #include <array>
 #include <span>
 #include <stdexcept>
@@ -70,7 +70,7 @@ int main() {
 
   return 0;
 }
-'''
+"""
     )
     subprocess.run(
         [
