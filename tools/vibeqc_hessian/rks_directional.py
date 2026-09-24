@@ -55,6 +55,39 @@ class DirectionalRKSResponse:
         }
 
 
+def _validate_partition_provenance(
+    atomic_weights: typing.Any, weights: typing.Any, fractions: typing.Any
+) -> None:
+    """Compare dimensionless ownership, not radially amplified raw measures.
+
+    Native hypot and generated scaled norms can differ by a few ULPs. A remote
+    point's large atomic measure must not amplify that partition roundoff into
+    a false provenance failure. Actual AO integration still uses native weights.
+    """
+    raw, actual, expected = map(np.asarray, (atomic_weights, weights, fractions))
+    if (
+        raw.ndim != 1
+        or actual.shape != raw.shape
+        or expected.shape != raw.shape
+        or any(value.dtype.kind not in "iuf" for value in (raw, actual, expected))
+        or any(not np.isfinite(value).all() for value in (raw, actual, expected))
+        or np.any(raw < 0)
+        or np.any(actual < 0)
+        or np.any(expected < 0)
+        or np.any(expected > 1)
+    ):
+        raise ValueError("invalid native grid partition measures")
+    live = raw > 0
+    if np.any(actual[~live] != 0):
+        raise ValueError("zero atomic measure has nonzero grid weight")
+    with np.errstate(over="ignore", invalid="ignore", divide="ignore"):
+        observed = actual[live] / raw[live]
+    if not np.isfinite(observed).all() or not np.allclose(
+        expected[live], observed, atol=2e-14, rtol=2e-13
+    ):
+        raise ValueError("native grid partition provenance does not reproduce weights")
+
+
 def _native_rks_xc_geometry_direction(
     operator: NativeRKSResponse, direction: np.ndarray
 ) -> tuple[np.ndarray, str]:
@@ -103,9 +136,9 @@ def _native_rks_xc_geometry_direction(
     atomic_weights = np.asarray(source.atomic_weights)
     if atomic_weights.shape != (len(points),):
         raise ValueError("native grid atomic measure has invalid shape")
-    reconstructed = atomic_weights * partition.weights[selected]
-    if not np.allclose(reconstructed, grid.weights, atol=2e-14, rtol=2e-13):
-        raise ValueError("native grid partition provenance does not reproduce weights")
+    _validate_partition_provenance(
+        atomic_weights, grid.weights, partition.weights[selected]
+    )
     weight_motion = atomic_weights * partition.directional[selected]
 
     contraction = ExternalPointContraction(spec, "geometry")
