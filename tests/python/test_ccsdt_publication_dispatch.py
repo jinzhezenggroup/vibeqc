@@ -90,7 +90,14 @@ def _owner(
 
     def feeds(values: typing.Any, end: int) -> dict[str, int]:
         assert tuple(values) == (
-            "ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"
+            "ovvv",
+            "ovoo",
+            "ovov",
+            "fov",
+            "t1",
+            "t2",
+            "eps_o",
+            "eps_v",
         )
         assert all(x is y for x, y in zip(values.values(), arrays, strict=True))
         return {"end": end}
@@ -106,24 +113,32 @@ def _owner(
         return {"correlation_energy": -0.125}
 
     fixed = Record(
-        bound=bound, baseline=Record(_execute_tensor=ccsd),
-        corrected=Record(), vir_chunk_size=chunk,
+        bound=bound,
+        baseline=Record(_execute_tensor=ccsd),
+        corrected=Record(),
+        vir_chunk_size=chunk,
     )
     state = Record(
-        response=fixed, baseline=Record(response_backend=Record(identity="jk")),
+        response=fixed,
+        baseline=Record(response_backend=Record(identity="jk")),
         z_result=Record(),
     )
     obj = Record(
         response=state,
         reference=Record(nocc=2, nmo=6, reference_energy=-75.0),
-        provider=Record(), timings={},
+        provider=Record(),
+        timings={},
         tensor_executor=Record(backend="cuda-fp64-ordinary-stream") if cuda else None,
-        _run=run, _assert_current=lambda: calls.append(("current",)),
+        _run=run,
+        _assert_current=lambda: calls.append(("current",)),
     )
     environment.update(
-        triples_energy=cpu, _triples_arrays=lambda bound: arrays,
-        _validate=validate, _check_denominators=guard,
-        TriplesTileEnumerator=tiles, build_tile_triples_program=program,
+        triples_energy=cpu,
+        _triples_arrays=lambda bound: arrays,
+        _validate=validate,
+        _check_denominators=guard,
+        TriplesTileEnumerator=tiles,
+        build_tile_triples_program=program,
         _tile_input_feeds=feeds,
     )
     return obj, calls
@@ -134,7 +149,9 @@ def _publish(context: typing.Any, state: typing.Any) -> typing.Any:
 
 
 @pytest.mark.parametrize("chunk", [None, 1, 2, 3])
-def test_selected_executor_publishes_all_tiles(publication: typing.Any, chunk: int | None) -> None:
+def test_selected_executor_publishes_all_tiles(
+    publication: typing.Any, chunk: int | None
+) -> None:
     state, calls = _owner(publication[1], chunk=chunk)
     result = _publish(publication, state)
     step = chunk or 1
@@ -153,7 +170,9 @@ def test_cpu_default_is_unchanged(publication: typing.Any) -> None:
     assert not any(call[0] == "execute" for call in calls)
 
 
-def test_selected_executor_budget_failure_has_no_cpu_retry(publication: typing.Any) -> None:
+def test_selected_executor_budget_failure_has_no_cpu_retry(
+    publication: typing.Any,
+) -> None:
     state, calls = _owner(publication[1])
 
     def fail(*args: typing.Any) -> typing.NoReturn:
