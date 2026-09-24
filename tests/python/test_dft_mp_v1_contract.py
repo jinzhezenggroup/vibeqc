@@ -371,6 +371,20 @@ def test_runner_retains_explicit_unrun_rows_and_raw_journal(
     assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
         "\n"
     ) == 1
+    interrupted = json.loads(result.read_text(encoding="utf-8"))
+    interrupted["rows"][0] = {"id": first, "status": "not-run", "reason": "interrupted"}
+    result.write_bytes(canonical(interrupted))
+    partial = result.parent / f"{first.replace('/', '__')}.progress.jsonl"
+    partial.write_text('{"sample":1}\n', encoding="utf-8")
+    capture(plan_path, tmp_path / "out", {first})
+    resumed = json.loads(result.read_text(encoding="utf-8"))
+    assert resumed["rows"][0]["status"] == "failed"
+    assert resumed["rows"][0]["partial_progress"]["sha256"] == digest(
+        partial.read_bytes()
+    )
+    assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
+        "\n"
+    ) == 2
 
 
 def test_cold_gain_cannot_mask_changed_geometry_loss(contract: dict) -> None:

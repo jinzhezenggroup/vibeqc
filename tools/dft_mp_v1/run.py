@@ -97,6 +97,36 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
         safe = key.replace("/", "__")
         input_path = ROOT / contract["cases"][row["case"]]["input"]
         partial_path = out / f"{safe}.progress.jsonl"
+        if partial_path.exists() and partial_path.stat().st_size:
+            # A previous process died before it could update the receipt. Keep
+            # its partial observations and require a new campaign for a retry.
+            entry = {
+                "id": key,
+                "status": "failed",
+                "reason": "interrupted adapter attempt; partial progress retained",
+                "partial_progress": {
+                    "path": partial_path.name,
+                    "sha256": digest(partial_path.read_bytes()),
+                },
+            }
+            receipt["rows"][index] = entry
+            with journal.open("a", encoding="utf-8") as handle:
+                handle.write(
+                    json.dumps(
+                        {
+                            "row": key,
+                            "status": "failed",
+                            "reason": entry["reason"],
+                            "partial_progress_sha256": entry["partial_progress"][
+                                "sha256"
+                            ],
+                        },
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+            _write(receipt_path, receipt)
+            continue
         partial_path.touch(exist_ok=True)
         argv = [
             *command,

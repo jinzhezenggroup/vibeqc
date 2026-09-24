@@ -78,6 +78,8 @@ the same output resumes only `not-run` rows; retries of failed/timed-out rows
 need a distinct campaign directory so negative evidence stays visible.
 The adapter appends per-sample observations to its `--progress` JSONL path;
 the runner hashes and retains that partial file even after a timeout.
+If a process died before the row receipt was updated, restart marks that row
+`failed` and retains the orphaned progress instead of mixing two attempts.
 
 The semantic validator verifies file hashes, every mandatory row, exact
 input/basis/grid/method/source/library/artifact identity, attained state,
