@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import subprocess
 from pathlib import Path
@@ -28,13 +29,18 @@ class _D4Server:
             text=True,
             bufsize=1,
         )
-        assert self._process.stdin is not None
-        assert self._process.stdout is not None
-        ready = self._process.stdout.readline().strip()
-        if not ready.startswith("READY device="):
+        try:
+            assert self._process.stdin is not None
+            assert self._process.stdout is not None
+            ready = self._process.stdout.readline().strip()
+            if not ready.startswith("READY device="):
+                raise RuntimeError(
+                    f"CuMetal D4 benchmark did not become ready: {ready!r}"
+                )
+            print(ready, flush=True)
+        except BaseException:
             self.close()
-            raise RuntimeError(f"CuMetal D4 benchmark did not become ready: {ready!r}")
-        print(ready, flush=True)
+            raise
 
     def run_once(self) -> float:
         assert self._process.stdin is not None
@@ -46,24 +52,34 @@ class _D4Server:
         if not reply.startswith(prefix):
             raise RuntimeError(f"invalid CuMetal D4 benchmark reply: {reply!r}")
         device_ms = float(reply[len(prefix) :])
-        if not device_ms > 0.0:
+        if not math.isfinite(device_ms) or device_ms <= 0.0:
             raise RuntimeError(f"invalid CuMetal D4 device duration: {device_ms}")
         return device_ms
 
     def close(self) -> None:
-        if self._process.poll() is not None:
-            return
-        if self._process.stdin is not None:
-            try:
-                self._process.stdin.write("quit\n")
-                self._process.stdin.flush()
-            except BrokenPipeError:
-                pass
+        process = self._process
         try:
-            self._process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self._process.kill()
-            self._process.wait(timeout=10)
+            if process.poll() is None:
+                if process.stdin is not None and not process.stdin.closed:
+                    try:
+                        process.stdin.write("quit\n")
+                        process.stdin.flush()
+                    except (OSError, ValueError):
+                        pass
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=10)
+        finally:
+            # Reap the child before releasing its pipes, including startup
+            # failures and a child that has already exited on a numerical error.
+            for pipe in (process.stdin, process.stdout):
+                if pipe is not None:
+                    try:
+                        pipe.close()
+                    except OSError:
+                        pass
 
 
 @pytest.fixture(scope="module")
