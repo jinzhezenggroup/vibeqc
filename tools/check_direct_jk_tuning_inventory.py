@@ -19,7 +19,11 @@ _ALLOWED_EXCLUDED_CLASSIFICATIONS = {
     "resource-safety-constraint",
     "scientific-numerical-policy",
 }
-_CONSTEXPR_RE_TEMPLATE = r"\b{symbol}\s*=\s*(?P<expression>[^;]+);"
+_CONSTEXPR_RE_TEMPLATE = r"\bconstexpr\s+[^;=]*?\b{symbol}\s*=\s*(?P<expression>[^;]+);"
+_CPP_NONCODE = re.compile(
+    r"\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|//[^\n]*|/\*.*?\*/",
+    flags=re.DOTALL,
+)
 
 
 def _safe_repository_path(
@@ -92,14 +96,22 @@ def _require_constexpr(
     text = _read_text(source, f"{section}.{symbol}.source", errors)
     if text is None:
         return
-    match = re.search(
-        _CONSTEXPR_RE_TEMPLATE.format(symbol=re.escape(symbol)),
-        text,
-        flags=re.MULTILINE,
+    # Comments and quoted examples are not current C++ declarations.
+    text = _CPP_NONCODE.sub(" ", text)
+    matches = list(
+        re.finditer(
+            _CONSTEXPR_RE_TEMPLATE.format(symbol=re.escape(symbol)),
+            text,
+            flags=re.MULTILINE,
+        )
     )
-    if match is None:
+    if not matches:
         errors.append(f"{section}.{symbol}: declaration not found in {entry['source']}")
         return
+    if len(matches) != 1:
+        errors.append(f"{section}.{symbol}: multiple declarations in {entry['source']}")
+        return
+    match = matches[0]
     actual = _normalized_expression(match.group("expression"))
     wanted = _normalized_expression(expected)
     if actual != wanted:
