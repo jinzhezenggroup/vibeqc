@@ -137,19 +137,23 @@ def test_points_reuse_angular_factors() -> None:
 
 
 def test_partition_reuses_inverse_center_separations() -> None:
-    """Pay each center-pair division once instead of once per point visit."""
+    """Pay ordinary center-pair divisions once; retain overflow fallback."""
     source = emit_quadrature_cuda()
     geometry = source.split("__global__ void geometry_kernel", 1)[1].split(
         "// The radial transform", 1
     )[0]
     assert "separation > tolerance ? 1.0 / separation : 0.0" in geometry
+    assert "isfinite(inverse) ? inverse : -separation" in geometry
     assert "inverse_separation[a * na + b]" in geometry
 
     partition = source.split("__global__ void partition_kernel", 1)[1].split(
         "__global__ void normalize_kernel", 1
     )[0]
     assert "const double inverse = inverse_separation[hi * na + lo];" in partition
-    assert ") * inverse)) : 0.0;" in partition
+    assert "if (inverse > 0.0)" in partition
+    assert ") * inverse;" in partition
+    assert "else if (inverse < 0.0)" in partition
+    assert ") / (-inverse);" in partition
     assert " / sep" not in partition
 
     root = Path(__file__).resolve().parents[2]
@@ -157,9 +161,8 @@ def test_partition_reuses_inverse_center_separations() -> None:
     assert "data, l.atoms, spec.coincident_tolerance, data + l.geometry" in native
     assert "count, l.atoms, data + l.distances," in native
 
-    # The production PBE shapes are all non-coincident. The old partition did
-    # one division for every ordered (point, a, b!=a) visit. The new geometry
-    # setup performs one division per unordered center pair for the entire grid.
+    # Production shapes have representable reciprocals. The old partition did
+    # one division per ordered point/pair visit; setup now divides per center pair.
     for atoms, points, old_divisions, new_divisions in (
         (48, 1_327_104, 2_993_946_624, 1_128),
         (96, 2_654_208, 24_206_376_960, 4_560),
