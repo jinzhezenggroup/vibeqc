@@ -21,10 +21,22 @@ def fixture(
     f_on_h: typing.Any = False,
     spin: typing.Any = 0,
     f_projector: typing.Any = False,
+    compact_d_oracle: typing.Any = False,
 ) -> typing.Any:
     gto = pytest.importorskip("pyscf.gto")
     # Parameters are read only by this independent test, never by runtime.
     basis = {"Na": gto.basis.load("lanl2dz", "Na"), "H": gto.basis.load("sto-3g", "H")}
+    if compact_d_oracle:
+        if not d_shell or f_shell:
+            raise ValueError("compact ECP oracle is specific to the d-shell gate")
+        # Synthetic test-only valence basis: one s, one p and one d shell on
+        # the ECP center. It keeps both spherical/cartesian d endpoints below
+        # the unchanged public ECP pair-sample budget while retaining a fully
+        # independent PySCF oracle on the same Hamiltonian.
+        basis["Na"] = [
+            [0, [0.65, 1.0]],
+            [1, [0.45, 1.0]],
+        ]
     if d_shell:
         basis["Na"] += [[2, [0.35, 1.0]]]
     if f_shell:

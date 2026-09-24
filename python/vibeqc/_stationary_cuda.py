@@ -1181,8 +1181,6 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
     _, aos, expansions, requests = _layout(basis)
     component_mode = _component_mode(expansions)
-    if component_mode and ecp:
-        raise NotImplementedError("CUDA ECP stationary gradients admit s/p bases only")
     if component_mode and compiler is None:
         raise TypeError(
             "d-shell stationary CUDA requires an explicit CUDA compiler adapter"

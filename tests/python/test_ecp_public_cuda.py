@@ -38,14 +38,21 @@ def calculator(
 
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 @pytest.mark.parametrize("representation", ["cartesian", "spherical"])
+@pytest.mark.parametrize("d_shell", [False, True])
 def test_public_ecp_force_analytic_and_reconverged_fd(
     method: typing.Any,
     representation: typing.Any,
+    d_shell: typing.Any,
     record_property: typing.Any,
     tmp_path: typing.Any,
 ) -> None:
     spin = int(method.endswith("uks"))
-    atoms, record, mol = fixture(spin=spin, representation=representation)
+    atoms, record, mol = fixture(
+        spin=spin,
+        representation=representation,
+        d_shell=d_shell,
+        compact_d_oracle=d_shell,
+    )
     charge, multiplicity = mol.charge, mol.spin + 1
     # Exercise serialized spherical ECP data through the real public endpoint.
     public_basis = record
@@ -106,7 +113,7 @@ def test_public_ecp_force_analytic_and_reconverged_fd(
         errors.append(abs(-(energies[0] - energies[1]) / (2 * step) - projection))
     assert max(errors) < 2e-7
     record_property("fd_errors", errors)
-    if representation == "spherical":
+    if representation == "spherical" and not d_shell:
         # s/p real spherical and Cartesian spaces are equivalent, but public
         # normalized AO ordering/representation identities remain distinct.
         from dataclasses import replace
