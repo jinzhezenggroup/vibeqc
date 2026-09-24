@@ -2561,7 +2561,7 @@ def test_production_codegen_cmake_tracks_transitive_generator_inputs(
     for dependency in (
         "python/vibeqc_compiler/integral/blocks.py",
         "python/vibeqc_compiler/integral/cache.py",
-        "python/vibeqc_compiler/integral/cuda.py",
+        "python/vibeqc_compiler/integral/scalar_c.py",
         "python/vibeqc_compiler/integral/capabilities.py",
         "python/vibeqc_compiler/integral/cuda_lowering.py",
         "python/vibeqc_compiler/integral/expr.py",
