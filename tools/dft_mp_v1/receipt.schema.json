@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jinzhezenggroup/vibeqc/tools/dft_mp_v1/receipt.schema.json",
+  "title": "DFT-MP-v1 campaign receipt v1",
+  "type": "object",
+  "required": ["schema_version", "contract_sha256", "campaign", "rows"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract_sha256": {"$ref": "#/$defs/sha256"},
+    "campaign": {
+      "type": "object",
+      "required": ["execution_kind", "source_commit", "build_source_commit", "library_source_commit", "library", "artifact", "adapter", "build_record", "conditions", "conditions_sha256", "hardware"],
+      "properties": {
+        "execution_kind": {"const": "installed_production"},
+        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "build_source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "library_source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "library": {"$ref": "#/$defs/file"},
+        "artifact": {"$ref": "#/$defs/file"},
+        "adapter": {"$ref": "#/$defs/file"},
+        "build_record": {"$ref": "#/$defs/file"},
+        "conditions": {"$ref": "#/$defs/file"},
+        "conditions_sha256": {"$ref": "#/$defs/sha256"},
+        "hardware": {
+          "type": "object", "required": ["device", "sm", "device_uuid", "driver", "toolchain", "build_profile"],
+          "properties": {
+            "device": {"const": "RTX 5090"}, "sm": {"const": 120},
+            "device_uuid": {"type": "string", "minLength": 1},
+            "driver": {"type": "string", "minLength": 1},
+            "toolchain": {"type": "string", "minLength": 1},
+            "build_profile": {"type": "string", "minLength": 1}
+          }, "additionalProperties": false
+        }
+      }, "additionalProperties": false
+    },
+    "rows": {
+      "type": "array", "items": {
+        "type": "object", "required": ["id", "status"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["unknown", "unsupported", "not-run", "failed", "timed-out", "pass"]},
+          "reason": {"type": "string", "minLength": 1},
+          "evidence": {"$ref": "#/$defs/file"},
+          "partial_progress": {"$ref": "#/$defs/file"}
+        }, "additionalProperties": false
+      }
+    },
+    "final_acceptance": {
+      "type": "object", "required": ["issue", "status", "source_commit", "review_url", "raw_receipt"],
+      "properties": {
+        "issue": {"const": 1190}, "status": {"const": "PASS"},
+        "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "review_url": {"type": "string", "format": "uri"},
+        "raw_receipt": {"$ref": "#/$defs/file"}
+      }, "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "file": {"type": "object", "required": ["path", "sha256"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}, "additionalProperties": false}
+  }
+}

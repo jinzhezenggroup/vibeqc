@@ -1,0 +1,455 @@
+"""Negative controls for the frozen DFT-MP-v1 evidence contract."""
+
+from __future__ import annotations
+
+import copy
+import json
+import sys
+from typing import TYPE_CHECKING
+
+import pytest
+from vibeqc import Atom, GridSpec
+from vibeqc_compiler.dft.grid import molecular_grid_identity
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+from tools.dft_mp_v1 import validate as contract_validator
+from tools.dft_mp_v1.freeze_contract import ROOT, canonical, digest, source_digest
+from tools.dft_mp_v1.run import run as capture
+from tools.dft_mp_v1.validate import (
+    InvalidEvidence,
+    _check_run,
+    _performance_gate,
+    audit,
+    manifest,
+)
+
+
+@pytest.fixture(scope="module")
+def contract() -> dict:
+    return manifest()
+
+
+def test_source_text_identity_is_crlf_independent() -> None:
+    assert source_digest(b"a\nb\n") == source_digest(b"a\r\nb\r\n")
+
+
+def test_frozen_geometry_reproduces_exact_bytes_and_actual_basis_counts(
+    contract: dict,
+) -> None:
+    pytest.importorskip("rdkit")
+    from tools.dft_mp_v1 import generate_inputs
+
+    regenerated = generate_inputs.build()
+    for key, source in regenerated.items():
+        original = json.loads(
+            (ROOT / "inputs" / f"{key}.json").read_text(encoding="utf-8")
+        )
+        assert original == {"schema_version": 1, "id": key, "units": "bohr", **source}
+    assert [
+        (
+            key,
+            contract["cases"][key]["atom_count"],
+            contract["cases"][key]["ao_count_spherical"],
+        )
+        for key in ("water8", "water16", "water32")
+    ] == [("water8", 24, 192), ("water16", 48, 384), ("water32", 96, 768)]
+    assert contract["cases"]["ace_glygly_nme"]["ao_count_spherical"] == 247
+    assert sum(row["required"] for row in contract["rows"]) == 115
+    assert sum(not row["required"] for row in contract["rows"]) == 2
+    assert (
+        contract["model"]["grid_selection"]
+        == "explicit_common_pbe_tight_derivative_v2_not_per_method_default"
+    )
+    water = json.loads((ROOT / "inputs/water.json").read_text(encoding="utf-8"))
+    atoms = [Atom.from_value((element, xyz)) for element, xyz in water["atoms"]]
+    grid = GridSpec(**contract["model"]["grid_spec"])
+    assert (
+        molecular_grid_identity(atoms, grid)
+        == contract["cases"]["water"]["grid_identity"]
+    )
+    for key in regenerated:
+        changed = json.loads(
+            (ROOT / "inputs" / f"{key}-changed.json").read_text(encoding="utf-8")
+        )
+        assert changed["source"]["delta_bohr"] == 0.01
+
+
+def _file(path: Path, content: bytes = b"raw evidence\n") -> dict:
+    path.write_bytes(content)
+    return {"path": path.name, "sha256": digest(content)}
+
+
+def _campaign(tmp_path: Path) -> dict:
+    record = _file(tmp_path / "dummy.bin")
+    conditions = _file(tmp_path / "conditions.json", b'{"mode":"fixture"}\n')
+    build = {
+        "source_commit": "a" * 40,
+        "library_sha256": record["sha256"],
+        "artifact_sha256": record["sha256"],
+        "scientific_cuda_artifacts_prebuilt": True,
+    }
+    build_file = _file(tmp_path / "build.json", canonical(build))
+    return {
+        "execution_kind": "installed_production",
+        "source_commit": "a" * 40,
+        "build_source_commit": "a" * 40,
+        "library_source_commit": "a" * 40,
+        "library": record,
+        "artifact": record,
+        "adapter": record,
+        "build_record": build_file,
+        "conditions": conditions,
+        "conditions_sha256": conditions["sha256"],
+        "hardware": {
+            "device": "RTX 5090",
+            "sm": 120,
+            "driver": "pinned",
+            "toolchain": "pinned",
+            "build_profile": "pinned",
+            "device_uuid": "pinned",
+        },
+    }
+
+
+def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> dict:
+    case = contract["cases"][row["case"]]
+    raw = _file(tmp_path / "oracle.raw")
+    check = {"status": "pass", "raw": raw}
+    return {
+        "status": "pass",
+        "row_id": row["id"],
+        "contract_sha256": contract["contract_sha256"],
+        "source_commit": campaign["source_commit"],
+        "library_sha256": campaign["library"]["sha256"],
+        "artifact_sha256": campaign["artifact"]["sha256"],
+        "input_sha256": case["input_sha256"],
+        "basis_pack_sha256": contract["basis"]["basis_pack_sha256"],
+        "grid_identity": case["grid_identity"],
+        "method_version": contract["model"]["methods"][row["method"]]["version"],
+        "ao_count": case["ao_count_spherical"],
+        "atom_count": case["atom_count"],
+        "backend": "cuda",
+        "provider": "native-dft",
+        "j_k": "direct",
+        "basis_representation": "real_spherical",
+        "auxiliary": None,
+        "ecp": None,
+        "periodic": False,
+        "attained_state": "state-1",
+        "reference_attained_state": "state-1",
+        "schedule_identity": "schedule-1",
+        "scf": {
+            "converged": True,
+            "energy_tolerance_eh": 1e-10,
+            "density_tolerance": 1e-8,
+            "physical_residual": 1e-9,
+            "screening_thresholds": {"eri": 1e-12},
+            "final_forces_state": "state-1",
+        },
+        "energy_eh": -1.0,
+        "forces_eh_per_bohr": [[0.0, 0.0, 0.0] for _ in range(case["atom_count"])],
+        "independent_oracle": {
+            "provider": "other-implementation",
+            "raw": raw,
+            "source_sha256": "c" * 64,
+            "method_version": contract["model"]["methods"][row["method"]]["version"],
+            "basis_pack_sha256": contract["basis"]["basis_pack_sha256"],
+            "total_energy_error_eh": 1e-9,
+            "energy_gate_eh": 1e-8,
+            "force_component_max_error_eh_per_bohr": 1e-8,
+            "force_gate_eh_per_bohr": 1e-7,
+        },
+        "checks": {
+            **{
+                name: copy.deepcopy(check)
+                for name in (
+                    "grid_convergence",
+                    "finite_difference",
+                    "changed_geometry",
+                    "warm_replay",
+                    "batch_isolation",
+                    "failure_recovery",
+                )
+            }
+        },
+        "online_scientific_cuda_compiles": 0,
+        "precision": {
+            "requested_mode": "auto",
+            "operator_inventory_complete": True,
+            "native_provenance": {
+                "mixed_stage_fock_builds": 2,
+                "strict_stage_fock_builds": 2,
+                "post_scf_fock_builds": 1,
+                "refinement_iterations": 2,
+                "execution_retries": 0,
+                "final_residual_audits": 1,
+                "strict_refinement_applied": True,
+                "operator_work_counters_valid": True,
+            },
+            "scf_fock_timeline": [
+                {"kind": kind, "count": 1, "sequence": index, "iteration": index}
+                for index, kind in enumerate(
+                    (
+                        "mixed_fock",
+                        "mixed_fock",
+                        "strict_fock",
+                        "strict_fock",
+                        "post_scf_fock",
+                        "final_audit",
+                    )
+                )
+            ],
+            "conversion_count": 0,
+            "fallback_count": 0,
+            "operators": [
+                {
+                    "name": "J",
+                    "count": 2,
+                    "storage": "fp64",
+                    "compute": "fp32",
+                    "accumulation": "fp64",
+                    "reduction": "fp64",
+                    "arithmetic_mode": "mixed",
+                }
+            ],
+        },
+        "strict_comparator": {
+            "source_commit": campaign["source_commit"],
+            "state": "state-1",
+            "library_sha256": campaign["library"]["sha256"],
+            "schedule_identity": "schedule-1",
+            "physical_residual": 1e-9,
+            "energy_tolerance_eh": 1e-10,
+            "density_tolerance": 1e-8,
+        },
+        "mixed_vs_strict": {
+            "total_energy_abs_eh": 1e-8,
+            "force_component_max_eh_per_bohr": 1e-7,
+            "matched_model_and_grid": True,
+        },
+    }
+
+
+def test_mixed_numerical_oracle_and_work_negative_controls(
+    tmp_path: Path, contract: dict
+) -> None:
+    row = next(r for r in contract["rows"] if r["id"] == "pbe/rks/water/mixed_correct")
+    campaign = _campaign(tmp_path)
+    value = _run_record(tmp_path, contract, row, campaign)
+    value["checks"]["finite_difference"].update(
+        step_bohr=[0.01, 0.005], reconverged_each_displacement=True
+    )
+    value["checks"]["grid_convergence"]["independent_finer_grid"] = True
+    value["checks"]["changed_geometry"].update(
+        input_sha256=contract["cases"]["water"]["changed_input_sha256"],
+        grid_identity=contract["cases"]["water"]["changed_grid_identity"],
+        complete_energy_forces=True,
+    )
+    _check_run(value, campaign, row, contract, tmp_path)
+    mutations = [
+        (
+            "zero actual mixed work",
+            lambda x: x["precision"]["native_provenance"].update(
+                mixed_stage_fock_builds=0
+            ),
+        ),
+        ("different SCF root", lambda x: x.update(reference_attained_state="state-2")),
+        ("shared oracle", lambda x: x["independent_oracle"].update(provider="vibeqc")),
+        (
+            "force error",
+            lambda x: x["mixed_vs_strict"].update(force_component_max_eh_per_bohr=1e-5),
+        ),
+        (
+            "one-step FD",
+            lambda x: x["checks"]["finite_difference"].update(step_bohr=[0.01]),
+        ),
+        (
+            "shared coarse grid",
+            lambda x: x["checks"]["grid_convergence"].update(
+                independent_finer_grid=False
+            ),
+        ),
+        (
+            "fake raw oracle",
+            lambda x: x["independent_oracle"]["raw"].update(sha256="0" * 64),
+        ),
+        ("different source", lambda x: x.update(source_commit="d" * 40)),
+    ]
+    for label, mutate in mutations:
+        altered = copy.deepcopy(value)
+        mutate(altered)
+        with pytest.raises(InvalidEvidence, match=".+"):
+            _check_run(altered, campaign, row, contract, tmp_path)
+
+
+def test_missing_timeout_and_fake_pass_cannot_complete(
+    tmp_path: Path, contract: dict
+) -> None:
+    campaign = _campaign(tmp_path)
+    rows = [
+        {"id": row["id"], "status": "not-run", "reason": "no allocated GPU run"}
+        for row in contract["rows"]
+    ]
+    receipt = {
+        "schema_version": 1,
+        "contract_sha256": contract["contract_sha256"],
+        "campaign": campaign,
+        "rows": rows,
+    }
+    path = tmp_path / "receipt.json"
+    path.write_bytes(canonical(receipt))
+    result = audit(path)
+    assert result["product_status"] == "BLOCKED" and result["passed_rows"] == 0
+    assert result["required_rows"] == 115 and result["optional_rows"] == 2
+    assert len(result["optional_findings"]) == 2
+    assert not any("b3lyp/uks/o2" in error for error in result["failures"])
+    receipt["rows"][0] = {
+        "id": rows[0]["id"],
+        "status": "timed-out",
+        "reason": "watchdog",
+    }
+    path.write_bytes(canonical(receipt))
+    assert audit(path)["product_status"] == "BLOCKED"
+    receipt["rows"][0] = {
+        "id": rows[0]["id"],
+        "status": "pass",
+        "evidence": _file(tmp_path / "fake.json", b"{}"),
+    }
+    path.write_bytes(canonical(receipt))
+    assert any("invalid pass" in error for error in audit(path)["failures"])
+    receipt["rows"][0] = rows[0]
+    optional = next(
+        index for index, row in enumerate(contract["rows"]) if not row["required"]
+    )
+    receipt["rows"][optional] = {
+        "id": rows[optional]["id"],
+        "status": "pass",
+        "evidence": _file(tmp_path / "fake_optional.json", b"{}"),
+    }
+    path.write_bytes(canonical(receipt))
+    assert any(
+        "b3lyp/uks/o2" in error and "invalid pass" in error
+        for error in audit(path)["failures"]
+    )
+    receipt["rows"].pop()
+    path.write_bytes(canonical(receipt))
+    with pytest.raises(InvalidEvidence, match="missing or extra"):
+        audit(path)
+
+
+def test_runner_retains_explicit_unrun_rows_and_raw_journal(
+    tmp_path: Path, contract: dict
+) -> None:
+    adapter = tmp_path / "adapter.py"
+    adapter.write_text(
+        'import json\nprint(json.dumps({"status":"unsupported","reason":"no production capability"}))\n',
+        encoding="utf-8",
+    )
+    campaign = _campaign(tmp_path)
+    campaign["adapter"] = {"path": adapter.name, "sha256": digest(adapter.read_bytes())}
+    plan = {
+        "adapter_command": [sys.executable, str(adapter)],
+        "adapter_command_file_index": 1,
+        "timeout_seconds": 10,
+        "campaign": campaign,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical(plan))
+    first = contract["rows"][0]["id"]
+    result = capture(plan_path, tmp_path / "out", {first})
+    receipt = json.loads(result.read_text(encoding="utf-8"))
+    assert len(receipt["rows"]) == len(contract["rows"])
+    assert receipt["rows"][0]["status"] == "unsupported"
+    assert receipt["rows"][0]["partial_progress"]["sha256"] == digest(b"")
+    assert all(row["status"] == "not-run" for row in receipt["rows"][1:])
+    assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
+        "\n"
+    ) == 1
+    assert capture(plan_path, tmp_path / "out", {first}) == result
+    assert (result.parent / "progress.jsonl").read_text(encoding="utf-8").count(
+        "\n"
+    ) == 1
+
+
+def test_cold_gain_cannot_mask_changed_geometry_loss(contract: dict) -> None:
+    records = {}
+    for method in ("pbe", "r2scan", "pbe0"):
+        for case in contract["gates"]["performance_cases"]:
+            records[f"{method}/rks/{case}/promoted"] = {
+                "timing": {
+                    "cold": [
+                        {"strict": {"total_ms": 125.0}, "mixed": {"total_ms": 100.0}}
+                        for _ in range(5)
+                    ],
+                    "changed_geometry": [
+                        {"strict": {"total_ms": 90.0}, "mixed": {"total_ms": 100.0}}
+                        for _ in range(5)
+                    ],
+                }
+            }
+    errors = _performance_gate(records, contract)
+    assert any("changed_geometry" in error for error in errors)
+    assert not any("cold" in error for error in errors)
+
+
+def test_optional_nonpass_never_replaces_required_final_row(
+    tmp_path: Path, contract: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(contract_validator, "_check_run", lambda *_: None)
+    monkeypatch.setattr(contract_validator, "_performance_gate", lambda *_: [])
+
+    def git_result(argv: list[str], **_: object) -> object:
+        output = (
+            canonical({"contract_sha256": contract["contract_sha256"]})
+            if argv[1] == "show"
+            else b""
+        )
+        return type("Done", (), {"returncode": 0, "stdout": output})()
+
+    monkeypatch.setattr(contract_validator.subprocess, "run", git_result)
+    campaign = _campaign(tmp_path)
+    evidence = _file(tmp_path / "mock_only.json", b'{"status":"pass"}\n')
+    raw_final = _file(
+        tmp_path / "mock_final.json",
+        canonical(
+            {
+                "status": "PASS",
+                "source_commit": campaign["source_commit"],
+                "contract_sha256": contract["contract_sha256"],
+            }
+        ),
+    )
+    rows = [
+        {"id": row["id"], "status": "pass", "evidence": evidence}
+        if row["required"]
+        else {"id": row["id"], "status": "not-run", "reason": "optional stress case"}
+        for row in contract["rows"]
+    ]
+    receipt = {
+        "schema_version": 1,
+        "contract_sha256": contract["contract_sha256"],
+        "campaign": campaign,
+        "rows": rows,
+        "final_acceptance": {
+            "issue": 1190,
+            "status": "PASS",
+            "source_commit": campaign["source_commit"],
+            "review_url": "https://github.com/jinzhezenggroup/vibeqc/pull/1",
+            "raw_receipt": raw_final,
+        },
+    }
+    path = tmp_path / "receipt.json"
+    path.write_bytes(canonical(receipt))
+    outcome = audit(path, final=True)
+    assert outcome["product_status"] == "PASS"
+    assert outcome["passed_required_rows"] == 115
+    assert len(outcome["optional_findings"]) == 2
+    receipt["rows"][0] = {
+        "id": contract["rows"][0]["id"],
+        "status": "not-run",
+        "reason": "mandatory capability absent",
+    }
+    path.write_bytes(canonical(receipt))
+    assert audit(path, final=True)["product_status"] == "BLOCKED"
