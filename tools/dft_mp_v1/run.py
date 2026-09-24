@@ -101,6 +101,7 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
         Path(command[adapter_index]).resolve() == adapter_path.resolve(),
         "adapter command/provenance mismatch",
     )
+    out = out.resolve()
     out.mkdir(parents=True, exist_ok=True)
     receipt = {
         "schema_version": 1,

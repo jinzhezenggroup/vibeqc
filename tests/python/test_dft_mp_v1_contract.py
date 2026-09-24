@@ -463,6 +463,45 @@ def test_runner_retains_non_object_json_failure(tmp_path: Path, contract: dict) 
     ) == 2
 
 
+def test_runner_resolves_relative_output_before_adapter_cwd_change(
+    tmp_path: Path,
+    contract: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan_dir = tmp_path / "plan"
+    caller_dir = tmp_path / "caller"
+    plan_dir.mkdir()
+    caller_dir.mkdir()
+    adapter = plan_dir / "adapter.py"
+    adapter.write_text(
+        "import json, pathlib, sys\n"
+        "progress = pathlib.Path(sys.argv[sys.argv.index('--progress') + 1])\n"
+        "progress.write_text(json.dumps({'attempt_id': 0}) + '\\n')\n"
+        "print(json.dumps({'status': 'unsupported', 'reason': 'fixture'}))\n",
+        encoding="utf-8",
+    )
+    campaign = _campaign(plan_dir)
+    campaign["adapter"] = {"path": adapter.name, "sha256": digest(adapter.read_bytes())}
+    plan = {
+        "adapter_command": [sys.executable, str(adapter)],
+        "adapter_command_file_index": 1,
+        "timeout_seconds": 10,
+        "campaign": campaign,
+    }
+    plan_path = plan_dir / "plan.json"
+    plan_path.write_bytes(canonical(plan))
+    first = contract["rows"][0]["id"]
+    monkeypatch.chdir(caller_dir)
+
+    receipt_path = capture(plan_path, type(plan_path)("results"), {first})
+
+    assert receipt_path == caller_dir / "results" / "receipt.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt["rows"][0]["status"] == "unsupported"
+    progress = receipt_path.parent / receipt["rows"][0]["capture"]["progress"]["path"]
+    assert json.loads(progress.read_text(encoding="utf-8"))["attempt_id"] == 0
+
+
 def test_timeout_terminates_adapter_descendants(tmp_path: Path, contract: dict) -> None:
     marker = tmp_path / "leaked-child.txt"
     child = (
