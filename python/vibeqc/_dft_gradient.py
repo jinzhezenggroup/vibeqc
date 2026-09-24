@@ -15,7 +15,11 @@ from vibeqc_compiler.dft.ao import NativeAO
 from vibeqc_compiler.dft.grid import ExplicitGrid, MolecularGrid, checked_int
 from vibeqc_compiler.dft.nonlocal_integration import NonlocalGeometry
 from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
-from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
+from vibeqc_compiler.xc.contractions import (
+    ContractionProgram,
+    ExternalPointContraction,
+    GeometryPartials,
+)
 from vibeqc_compiler.xc.grid_response import grid_response_tiles
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
@@ -657,7 +661,7 @@ def _scf_domain_xc_geometry(
         if actual != getattr(state.identity, name):
             raise ValueError(f"stationary {name.replace('_', ' ')} mismatch")
 
-    program = ContractionProgram(functional, "geometry")
+    program = ExternalPointContraction(functional, "geometry")
     density = state.density[0] if contract.spin == "unpolarized" else state.density
     jets = basis.evaluate(grid.points, program.contract.ao_order)
     features = program.features(jets, density)
