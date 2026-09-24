@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import sys
 from pathlib import Path
 
 import pytest
@@ -36,9 +37,17 @@ def test_d3_native_generator_reads_exact_sources_from_common_registry() -> None:
     assert "upstream/xtbloom/" not in implementation
 
 
-def test_d3_native_generator_preserves_checked_in_product() -> None:
-    output = generate_native_data.DEFAULT_OUTPUT.read_text(encoding="utf-8")
-    assert generate_native_data.render() == output
+def test_d3_native_generator_writes_requested_product(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "generated" / "d3_data.hpp"
+    monkeypatch.setattr(
+        sys, "argv", ["generate_native_data.py", "--output", str(output)]
+    )
+
+    generate_native_data.main()
+
+    assert output.read_text(encoding="utf-8") == generate_native_data.render()
 
 
 @pytest.mark.parametrize("source_id", _SOURCE_OWNERS.values())
