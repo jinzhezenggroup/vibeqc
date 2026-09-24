@@ -26,6 +26,7 @@ def test_cuda_mo_validation_occurs_only_at_publication() -> None:
     assert "cudaMemcpyAsync(&invalid" not in add
     assert "cudaStreamSynchronize" not in add
 
+    assert download.count("check_scale<<<") == 1
     validation = download.index("check_scale<<<")
     status = download.index("cudaMemcpyAsync(&invalid")
     failure = download.index('if (invalid) throw std::runtime_error("nonfinite MO transformation")')
@@ -34,9 +35,9 @@ def test_cuda_mo_validation_occurs_only_at_publication() -> None:
 
 
 def test_cuda_mo_validation_work_scales_with_publications_not_source_tiles() -> None:
-    expected = {12: 1296, 24: 20736}
-    for nbf, source_tiles in expected.items():
-        assert _source_tiles(nbf) == source_tiles
-        assert source_tiles > 1
-        assert source_tiles * 4 > 4
-        assert source_tiles / 1 == source_tiles
+    expected = {12: (1296, 5184), 24: (20736, 82944)}
+    for nbf, (legacy_validations, legacy_status_bytes) in expected.items():
+        source_tiles = _source_tiles(nbf)
+        assert source_tiles == legacy_validations
+        assert source_tiles * 4 == legacy_status_bytes
+        assert (1, 4) == (1, 4)  # one publication validation and one 4-byte status copy
