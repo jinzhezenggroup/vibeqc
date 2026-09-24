@@ -48,7 +48,9 @@ def _validated_pair_spaces(
 ) -> dict[tuple[int, int], PairSpace]:
     _require_exact_pair_keys(spaces, bucket, name="pair-space")
     result: dict[tuple[int, int], PairSpace] = {}
-    for pair, expected_gauge in zip(bucket.pairs, bucket.gauge_identities, strict=True):
+    for pair, expected_gauge, expected_crossing in zip(
+        bucket.pairs, bucket.gauge_identities, bucket.rank_crossings, strict=True
+    ):
         space = spaces[pair]
         if not isinstance(space, PairSpace):
             raise TypeError("pair-state staging requires canonical PairSpace records")
@@ -60,13 +62,19 @@ def _validated_pair_spaces(
             raise ValueError("pair-space provenance does not match the bucket")
         if space.rank != bucket.key.rank or space.gauge_identity != expected_gauge:
             raise ValueError("pair-space gauge does not match the bucket")
+        if space.rank_crossing != expected_crossing:
+            raise ValueError("pair-space rank branch does not match the bucket")
         result[pair] = space
     return result
 
 
 def _validated_matrix(matrix: object, *, rank: int) -> np.ndarray:
-    if not isinstance(matrix, np.ndarray):
-        raise TypeError("pair-state matrices must already be NumPy arrays")
+    # Subclasses can hide values behind masks or override np.isfinite while
+    # assignment still copies their underlying numeric storage into the buffer.
+    if type(matrix) is not np.ndarray:
+        raise TypeError(
+            "pair-state matrices must already be NumPy arrays without subclass semantics"
+        )
     array = matrix
     if array.shape != (rank, rank):
         raise ValueError(f"pair-state matrix must have shape {(rank, rank)}")
@@ -92,7 +100,7 @@ def gather_pair_state_bucket(
     ``bucket.state_matrices_per_pair`` square matrices expressed in that pair's
     current PNO gauge.  The returned array has shape
     ``(npair, nstate, rank, rank)`` in ``bucket.pairs`` order and owns an
-    immutable C-contiguous float64 copy.
+    immutable C-contiguous float64 copy retained by a read-only buffer view.
 
     The output allocation is preflighted against ``budget_bytes`` before any
     state matrix is coerced or inspected.  Pair-space provenance and exact gauge
@@ -139,4 +147,8 @@ def gather_pair_state_bucket(
             )
 
     packed.setflags(write=False)
-    return packed
+    # A direct owner array can reverse its WRITEABLE flag. Publish through a
+    # read-only buffer view instead, retaining the single owned numeric buffer.
+    return np.frombuffer(memoryview(packed).toreadonly(), dtype=np.float64).reshape(
+        packed.shape
+    )
