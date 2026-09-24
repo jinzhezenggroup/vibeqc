@@ -50,6 +50,24 @@ compression speedup. LDA assembly uses one matrix product per spin; GGA forms
 one combined spatial panel and uses two. Reported coefficient SSA before/after
 CSE is distinct from an AO-pair expansion, which is never constructed.
 
+## Native CUDA matrix schedule
+
+The resident CUDA semilocal owner uses compiler-generated 16-by-16 shared-memory
+contractions for admitted AO/point shapes. Density products preserve explicit
+symmetrization of the input. Potential assembly derives compact weighted panels
+from `dft.xc_bilinear` using Graph differentiation, then contracts both symmetric
+AO legs. LDA/GGA reuse one panel per spin; meta-GGA uses four. The original
+density-product work panels are dead after feature/response coefficients have
+been formed, so this schedule adds no global buffer or provider allocation.
+
+The compiler owns tiling, the shape admission and the scalar fallback. Native
+code supplies the stream and borrowed pointers. Shapes smaller than one matrix
+tile or outside the two-dimensional launch domain keep the scalar grid-stride
+schedule. Partial blocks use zero padding and still participate in all barriers;
+only the authoritative triangle writes and mirrors the final potential.
+Quadrature, point-domain rules, precision, screening and convergence gates do
+not change. See the [schedule decision](../../.agents/notes/implemented/performance/2026-09-23-cuda-xc-matrix-tiles.md).
+
 ## Explicit native execution
 
 ```python
