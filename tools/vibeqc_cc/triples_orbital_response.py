@@ -310,7 +310,8 @@ class BoundCCSDTOrbitalResponse:
                 resident_owner = prepare_resident(
                     operator.problem,
                     vector_slots=slots,
-                    device_budget_bytes=response_device_budget_bytes - retained_provider,
+                    device_budget_bytes=response_device_budget_bytes
+                    - retained_provider,
                 )
                 # Register ownership before reading metadata or constructing the
                 # solver: either can fail after native storage has been allocated.
