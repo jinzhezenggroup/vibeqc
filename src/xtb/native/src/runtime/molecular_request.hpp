@@ -14,7 +14,8 @@ namespace vibeqc::xtb::detail {
 inline vibeqc_xtb_status_t validate_molecular_request(const vibeqc_xtb_batch_t& batch,
                                                       const vibeqc_xtb_compute_options_t& options,
                                                       std::string& error) {
-  constexpr auto supported = VIBEQC_XTB_COMPUTE_ENERGY | VIBEQC_XTB_COMPUTE_FORCES;
+  constexpr auto supported = VIBEQC_XTB_COMPUTE_ENERGY | VIBEQC_XTB_COMPUTE_FORCES |
+                             VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES;
   if (batch.batch_size != 1 || options.model != VIBEQC_XTB_MODEL_GFN2_XTB ||
       options.scc_start_mode != VIBEQC_XTB_SCC_START_FRESH || (options.flags & ~supported) != 0u ||
       batch.total_point_charges != 0 || batch.total_charge_response_elements != 0 ||
