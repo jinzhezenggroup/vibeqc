@@ -19,7 +19,12 @@ from vibeqc_compiler.common.evidence import canonical_hash
 
 from tools.vibeqc_posthf.export import export_rhf
 from tools.vibeqc_posthf.providers import ConventionalProvider
-from tools.vibeqc_response.implicit import ImplicitSolveError, _checked_bytes
+from tools.vibeqc_response.implicit import (
+    ImplicitSolveError,
+    _array,
+    _checked_bytes,
+    _immutable,
+)
 from tools.vibeqc_response.problem import ResponseCompatibilityError
 
 from .complete_gradient import (
@@ -98,6 +103,7 @@ class BoundCCSDTGradient(BoundCCSDGradient):
             ("minimum_orbital_curvature", response.minimum_orbital_curvature),
             ("same_space_stationarity", response.same_space_stationarity),
             ("operator_identity", response.baseline.operator_identity),
+            ("tensor_executor", response.response.parameter_executor),
         ):
             put(name, value)
         self._assert_current()
@@ -173,6 +179,24 @@ class BoundCCSDTGradient(BoundCCSDGradient):
         )
         self._assert_current()
 
+    def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
+        if self.tensor_executor is None:
+            return super()._run(program, feeds)
+        self._assert_current()
+        outputs = self.tensor_executor.execute(program, feeds)
+        if set(outputs) != set(program.outputs):
+            raise ResponseCompatibilityError(
+                "RCCSD(T) CUDA tensor executor returned an incomplete output set"
+            )
+        result = MappingProxyType(
+            {
+                name: _immutable(_array(outputs[name], node.spec.shape, name))
+                for name, node in program.outputs.items()
+            }
+        )
+        self._assert_current()
+        return result
+
     def _assert_current(self) -> None:
         self.response._assert_current()
         if (
@@ -197,7 +221,10 @@ class BoundCCSDTGradient(BoundCCSDGradient):
         state = self.response
         bound = state.response.bound
         correlation_ccsd = float(
-            bound._run(bound.independent.primal)["correlation_energy"]
+            state.response.baseline._execute_tensor(
+                bound.independent.primal,
+                bound.feeds,
+            )["correlation_energy"]
         )
         nocc = self.reference.nocc
         nvir = self.reference.nmo - nocc
@@ -233,9 +260,14 @@ class BoundCCSDTGradient(BoundCCSDGradient):
                 "logical_reserved_host_bytes": self.logical_reserved_host_bytes,
                 "provider_budget_bytes": self.provider.budget_bytes,
                 "native_hf_backend": self.reference.hf_backend,
-                "tensor_backend": bound.tensor_backend,
-                "orbital_backend": "native-cpu-shell-tile-jk",
+                "tensor_backend": (
+                    bound.tensor_backend
+                    if self.tensor_executor is None
+                    else self.tensor_executor.backend
+                ),
+                "orbital_backend": self.response.baseline.response_backend.identity,
                 "orbital_solver": "shared-response-gmres",
+                "response_execution": self.response.response_execution,
                 "dense_orbital_curvature_check": True,
                 "dense_cc_jacobian": False,
                 "dense_mo_eri_and_weights": True,
