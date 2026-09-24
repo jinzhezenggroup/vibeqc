@@ -11,7 +11,7 @@ import typing
 from functools import cache
 from itertools import product
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .expr import Graph, Node
 from .ir_serialization import integral_to_payload
 from .one_electron_values import (
@@ -139,7 +139,7 @@ def _emit_pair_geometry() -> typing.Any:
     ]
     for field in fields[:8]:
         lines.append(f"  pair.{field} = {field};")
-    emitter = CudaEmitter(kernel.graph, {})
+    emitter = ScalarCEmitter(kernel.graph, {})
     for name, expr in kernel.pair_geometry:
         emitter.emit_assignment(expr, f"pair.{name}")
     return "\n".join(lines + emitter.lines + ["  return pair;", "}"])
@@ -188,7 +188,7 @@ def _emit_operator_helpers(
                     graph=graph,
                 )
                 target, roots = _geometry_boundary(kernel, (s.value, kernel.value))
-            emitter = CudaEmitter(target, {})
+            emitter = ScalarCEmitter(target, {})
             lines.append(f"    case {index}U: {{")
             if attraction:
                 emitter.emit((roots[0],))
