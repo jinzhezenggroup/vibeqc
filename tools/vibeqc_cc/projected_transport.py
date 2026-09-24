@@ -28,8 +28,21 @@ class ProjectedAmplitudePolicy:
     def __post_init__(self) -> None:
         if type(self.maximum_elements) is not int or self.maximum_elements < 1:
             raise ValueError("maximum_elements must be a positive integer")
-        if not math.isfinite(self.map_tolerance) or not 0 < self.map_tolerance <= 1e-4:
+        try:
+            if (
+                isinstance(self.map_tolerance, (str, bytes))
+                or np.iscomplexobj(self.map_tolerance)
+                or np.ndim(self.map_tolerance) != 0
+            ):
+                raise ValueError("not a real scalar")
+            tolerance = float(self.map_tolerance)
+        except (TypeError, ValueError, OverflowError) as error:
+            raise ValueError("map_tolerance must be a real scalar") from error
+        if not math.isfinite(tolerance) or not 0 < tolerance <= 1e-4:
             raise ValueError("map_tolerance must be finite and in (0, 1e-4]")
+        # Frozen dataclasses do not detach a caller-owned zero-dimensional array.
+        # Retain the validated scalar value, never its mutable container.
+        object.__setattr__(self, "map_tolerance", tolerance)
 
 
 @dataclass(frozen=True)
