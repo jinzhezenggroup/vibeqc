@@ -698,9 +698,9 @@ ScfResult run_rks(
     const double residual_tolerance = std::min(1.0e-9, options.density_tolerance);
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
-      const ::vibeqc::solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
-                                                      options.density_tolerance, residual_tolerance,
-                                                      true};
+      const ::vibeqc::solver::SelfConsistentPolicy stage_policy{
+          iteration_budget, options.energy_tolerance, options.density_tolerance,
+          residual_tolerance, true};
       return ::vibeqc::solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {
@@ -742,7 +742,8 @@ ScfResult run_rks(
             }
             return std::move(evaluation.next_density);
           },
-          [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+          [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+              const RksLoopEvaluation& evaluation) {
             const unsigned reported_iteration = iteration_offset + progress.iteration;
             result.iterations = reported_iteration;
             result.energy = progress.energy;
@@ -824,9 +825,9 @@ ScfResult run_rks(
     return result;
   }
 
-  const ::vibeqc::solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance,
-                                            std::min(1.0e-9, options.density_tolerance), true};
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance,
+      std::min(1.0e-9, options.density_tolerance), true};
   auto outcome = ::vibeqc::solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
@@ -863,7 +864,8 @@ ScfResult run_rks(
         }
         return std::move(evaluation.next_density);
       },
-      [&](const ::vibeqc::solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const RksLoopEvaluation& evaluation) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
