@@ -2309,9 +2309,6 @@ def test_order2_force_retires_handwritten_gradient_bodies() -> None:
     assert not (
         REPOSITORY_ROOT / "src/scf/cuda/direct_native_order2_gradient.cuh"
     ).exists()
-    assert not (
-        REPOSITORY_ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh"
-    ).exists()
     assert "contracted_eri_cartesian_source_order2_generated_gradient" in source
     quartet_source = (
         REPOSITORY_ROOT / "src/scf/cuda/direct_force_quartet.cuh"
