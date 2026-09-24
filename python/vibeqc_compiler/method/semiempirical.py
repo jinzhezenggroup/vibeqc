@@ -1,16 +1,20 @@
 """Family-neutral semiempirical method composition IR (#875).
 
-This module owns only immutable scientific composition and identity. Family
-resolvers remain responsible for constructing audited graphs; runtime SCC/SCF
-iteration, mixing, eigensolvers, batching, and capability publication stay
+This layer owns immutable scientific composition and identity only. Family
+resolvers remain responsible for constructing audited graphs; SCC/SCF policy,
+mixing, eigensolvers, batching, lowering, and public/runtime capability stay
 outside this representation.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.provenance import canonical_hash
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.method.xtb import XtbParameterSet
 
 SEMIEMPIRICAL_METHOD_IR_VERSION = "semiempirical-method-ir-v1"
 SEMIEMPIRICAL_PARAMETER_SET_VERSION = "semiempirical-parameter-set-v1"
@@ -85,7 +89,7 @@ class ParameterResource:
         _text(self.role, "parameter resource role")
         _text(self.identity, "parameter resource identity")
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {"role": self.role, "identity": self.identity}
 
 
@@ -122,7 +126,7 @@ class StateField:
                 "unsupported semiempirical state schema version"
             )
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "version": self.version,
             "name": self.name,
@@ -156,7 +160,7 @@ class ProductSpec:
                 "unsupported semiempirical product version"
             )
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "version": self.version,
             "name": self.name,
@@ -215,7 +219,7 @@ class ParameterSetRef:
             raise InvalidSemiempiricalMethod("parameter resource roles must be unique")
         object.__setattr__(self, "resources", tuple(sorted(self.resources)))
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "version": self.version,
             "identifier": self.identifier,
@@ -275,7 +279,7 @@ class PrimitiveNode:
                 ),
             )
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "version": self.version,
             "node_id": self.node_id,
@@ -363,7 +367,6 @@ class SemiempiricalMethodIR:
             )
         if not isinstance(self.parameter_set, ParameterSetRef):
             raise TypeError("SemiempiricalMethodIR requires a ParameterSetRef")
-
         if not isinstance(self.state_fields, tuple):
             raise InvalidSemiempiricalMethod("state fields must be an immutable tuple")
         if not all(isinstance(field, StateField) for field in self.state_fields):
@@ -421,7 +424,7 @@ class SemiempiricalMethodIR:
             self, "requested_products", tuple(sorted(self.requested_products))
         )
 
-    def to_payload(self) -> dict:
+    def to_payload(self) -> dict[str, object]:
         return {
             "version": self.version,
             "family": self.family,
@@ -440,16 +443,22 @@ class SemiempiricalMethodIR:
         return canonical_hash(self.to_payload())
 
 
-def _gfn_parameter_resources(parameter_set: object) -> tuple[ParameterResource, ...]:
+def _gfn_parameter_resources(
+    parameter_set: XtbParameterSet,
+) -> tuple[ParameterResource, ...]:
     resources: list[ParameterResource] = []
-    parameter_identity = parameter_set.identity
-    for domain in ("basis", "orbital", "correction", "spin"):
-        tables = getattr(parameter_set, f"{domain}_tables")
+    domains = (
+        ("basis", parameter_set.basis_tables),
+        ("orbital", parameter_set.orbital_tables),
+        ("correction", parameter_set.correction_tables),
+        ("spin", parameter_set.spin_tables),
+    )
+    for domain, tables in domains:
         for table in tables:
             role = f"{domain}:{table}"
             identity = canonical_hash(
                 {
-                    "xtb_parameter_set_identity": parameter_identity,
+                    "xtb_parameter_set_identity": parameter_set.identity,
                     "domain": domain,
                     "table": table,
                 }
@@ -491,11 +500,15 @@ def semiempirical_from_xtb(method: object) -> SemiempiricalMethodIR:
             for state in primitive.state_requirements
         }
     )
+    spin_semantics = (
+        "spin-resolved" if method.reference == "unrestricted" else "shared"
+    )
     state_fields = tuple(
         StateField(
             name=state,
             scope=_GFN_STATE_LAYOUT[state][0],
             components=_GFN_STATE_LAYOUT[state][1],
+            spin_semantics=spin_semantics,
         )
         for state in states
     )
@@ -508,7 +521,7 @@ def semiempirical_from_xtb(method: object) -> SemiempiricalMethodIR:
         )
         for domain in ("basis", "orbital", "correction", "spin")
     }
-    nodes = []
+    nodes: list[PrimitiveNode] = []
     for primitive in method.primitives:
         if primitive.kind not in _GFN_CATEGORY:
             raise InvalidSemiempiricalMethod(
