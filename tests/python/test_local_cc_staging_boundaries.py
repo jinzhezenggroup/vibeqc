@@ -61,7 +61,11 @@ def test_masked_state_is_rejected_without_discarding_mask(hidden: float) -> None
 def test_array_subclass_cannot_override_finiteness_validation() -> None:
     class FiniteOverride(np.ndarray):
         def __array_ufunc__(
-            self, ufunc: typing.Any, method: str, *args: typing.Any, **kwargs: typing.Any
+            self,
+            ufunc: typing.Any,
+            method: str,
+            *args: typing.Any,
+            **kwargs: typing.Any,
         ) -> np.ndarray:
             return np.ones(self.shape, dtype=bool)
 
@@ -109,9 +113,9 @@ def test_matching_rank_branch_remains_admitted(crossing: bool) -> None:
 @pytest.mark.parametrize("view", ["direct", "flat", "view"])
 def test_published_array_cannot_reenable_writes(view: str) -> None:
     result = _gather(_space(), np.eye(2))
-    candidate = {
-        "direct": result, "flat": result.reshape(-1), "view": result.view()
-    }[view]
+    candidate = {"direct": result, "flat": result.reshape(-1), "view": result.view()}[
+        view
+    ]
     with pytest.raises(ValueError):
         candidate.setflags(write=True)
 
