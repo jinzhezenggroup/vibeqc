@@ -96,41 +96,54 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
     if (!std::isfinite(points[i])) throw std::invalid_argument("nonfinite grid point");
   const auto* primitives = packed.data() + 3 * natom;
   const auto* aos = primitives + 2 * nprimitive;
-  std::size_t jet = 0;
-  for (unsigned degree = 0; degree <= order; ++degree) {
-    for (const auto& derivative : molecule::cartesian_components(degree)) {
-      for (std::size_t point = 0; point < npoint; ++point) {
-        for (std::size_t ao = 0; ao < count; ++ao) {
-          const auto* record = aos + 16 * (ao_ids ? ao_ids[ao] : ao_begin + ao);
-          const auto atom = static_cast<std::size_t>(record[0]);
-          std::array<double, 3> r{};
-          double r2 = 0;
-          for (unsigned k = 0; k < 3; ++k) {
-            r[k] = points[3 * point + k] - packed[3 * atom + k];
-            r2 += r[k] * r[k];
+
+  // Derivative identities are tile invariants. More importantly, all jets for
+  // one AO/point share the same center displacement and Gaussian radial factor.
+  // Evaluate those expensive invariants once, then accumulate every requested
+  // derivative while preserving each jet's primitive/term summation order.
+  std::array<std::array<unsigned, 3>, 20> derivatives{};
+  std::size_t derivative_count = 0;
+  for (unsigned degree = 0; degree <= order; ++degree)
+    for (const auto& derivative : molecule::cartesian_components(degree))
+      derivatives[derivative_count++] = {derivative[0], derivative[1], derivative[2]};
+  if (derivative_count != jets) throw std::logic_error("AO jet enumeration mismatch");
+
+  for (std::size_t point = 0; point < npoint; ++point) {
+    for (std::size_t ao = 0; ao < count; ++ao) {
+      const auto* record = aos + 16 * (ao_ids ? ao_ids[ao] : ao_begin + ao);
+      const auto atom = static_cast<std::size_t>(record[0]);
+      std::array<double, 3> r{};
+      double r2 = 0;
+      for (unsigned k = 0; k < 3; ++k) {
+        r[k] = points[3 * point + k] - packed[3 * atom + k];
+        r2 += r[k] * r[k];
+      }
+
+      std::array<double, 20> values{};
+      const auto first = static_cast<std::size_t>(record[1]);
+      const auto end = first + static_cast<std::size_t>(record[2]);
+      for (auto p = first; p < end; ++p) {
+        const double alpha = primitives[2 * p];
+        const double radial = primitives[2 * p + 1] * std::exp(-alpha * r2);
+        // Exact exponential underflow contributes zero, without evaluating
+        // potentially overflowing far-field polynomial factors.
+        if (radial == 0) continue;
+        for (unsigned t = 0; t < static_cast<unsigned>(record[3]); ++t) {
+          const double weighted_radial = radial * record[7 + 4 * t];
+          for (std::size_t jet = 0; jet < jets; ++jet) {
+            double term = weighted_radial;
+            for (unsigned k = 0; k < 3; ++k)
+              term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]),
+                                           derivatives[jet][k], alpha, r[k]);
+            values[jet] += term;
           }
-          double value = 0;
-          const auto first = static_cast<std::size_t>(record[1]);
-          const auto end = first + static_cast<std::size_t>(record[2]);
-          for (auto p = first; p < end; ++p) {
-            const double alpha = primitives[2 * p];
-            const double radial = primitives[2 * p + 1] * std::exp(-alpha * r2);
-            // Exact exponential underflow contributes zero, without evaluating
-            // potentially overflowing far-field polynomial factors.
-            if (radial == 0) continue;
-            for (unsigned t = 0; t < static_cast<unsigned>(record[3]); ++t) {
-              double term = radial * record[7 + 4 * t];
-              for (unsigned k = 0; k < 3; ++k)
-                term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]),
-                                             derivative[k], alpha, r[k]);
-              value += term;
-            }
-          }
-          if (!std::isfinite(value)) throw std::runtime_error("nonfinite AO jet result");
-          output[(jet * npoint + point) * count + ao] = value;
         }
       }
-      ++jet;
+
+      for (std::size_t jet = 0; jet < jets; ++jet) {
+        if (!std::isfinite(values[jet])) throw std::runtime_error("nonfinite AO jet result");
+        output[(jet * npoint + point) * count + ao] = values[jet];
+      }
     }
   }
 }
