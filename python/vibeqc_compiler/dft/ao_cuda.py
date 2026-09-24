@@ -551,12 +551,9 @@ def emit_native_xc_contraction_kernels(
 
     if not isinstance(matrix_schedule, XcMatrixSchedule):
         raise TypeError("native XC contraction emission requires XcMatrixSchedule")
-    return (
-        _NATIVE_XC_CONTRACTION_KERNELS.replace(
-            "@POINT_DISPATCH@", emit_native_xc_point_dispatch()
-        )
-        + emit_native_xc_matrix_schedule(matrix_schedule)
-    )
+    return _NATIVE_XC_CONTRACTION_KERNELS.replace(
+        "@POINT_DISPATCH@", emit_native_xc_point_dispatch()
+    ) + emit_native_xc_matrix_schedule(matrix_schedule)
 
 
 def emit_grid_scientific_kernels() -> str:

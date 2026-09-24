@@ -161,9 +161,7 @@ def test_xc_matrix_admission_charges_compact_triangle_grid_dimension() -> None:
     schedule = XcMatrixSchedule(16)
     assert schedule.admitted(361 * 16, 256)
     assert not schedule.admitted(362 * 16, 256)
-    assert not schedule.admitted(
-        16, 16, spins=2, work_jets=4, maximum_grid_dimension=7
-    )
+    assert not schedule.admitted(16, 16, spins=2, work_jets=4, maximum_grid_dimension=7)
 
     source = emit_native_xc_matrix_schedule()
     assert "const I tile_pairs = tiles*(tiles+1)/2;" in source
@@ -178,6 +176,7 @@ def test_xc_matrix_emitter_materializes_explicit_tile_candidate() -> None:
     assert "all 64 lanes" in source
     assert "dim3(16,16)" not in source
 
+
 def test_xc_matrix_candidate_is_frozen_in_grid_source_identity() -> None:
     source8, identity8, _ = emit_grid_source(
         native_ks=True, xc_matrix_schedule=XcMatrixSchedule(8)
@@ -189,7 +188,4 @@ def test_xc_matrix_candidate_is_frozen_in_grid_source_identity() -> None:
     assert identity8 != identity16
 
     with pytest.raises(ValueError, match="require native KS"):
-        emit_grid_source(
-            native_ks=False, xc_matrix_schedule=XcMatrixSchedule(8)
-        )
-
+        emit_grid_source(native_ks=False, xc_matrix_schedule=XcMatrixSchedule(8))

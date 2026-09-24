@@ -29,11 +29,7 @@ class XcMatrixSchedule:
     tile: int
 
     def __post_init__(self) -> None:
-        if (
-            type(self.tile) is not int
-            or self.tile < 1
-            or self.tile & (self.tile - 1)
-        ):
+        if type(self.tile) is not int or self.tile < 1 or self.tile & (self.tile - 1):
             raise ValueError("XC matrix tile must be a positive power of two")
 
     @property
@@ -98,9 +94,7 @@ class XcMatrixSchedule:
         )
 
 
-XC_MATRIX_SCHEDULE_CANDIDATES = tuple(
-    XcMatrixSchedule(tile) for tile in (8, 16, 32)
-)
+XC_MATRIX_SCHEDULE_CANDIDATES = tuple(XcMatrixSchedule(tile) for tile in (8, 16, 32))
 DEFAULT_XC_MATRIX_SCHEDULE = XcMatrixSchedule(16)
 
 
@@ -167,9 +161,7 @@ def select_xc_matrix_schedule(
                 return schedule
         raise ValueError(f"XC matrix tile {preferred_tile} is not qualified")
     return (
-        DEFAULT_XC_MATRIX_SCHEDULE
-        if DEFAULT_XC_MATRIX_SCHEDULE in candidates
-        else None
+        DEFAULT_XC_MATRIX_SCHEDULE if DEFAULT_XC_MATRIX_SCHEDULE in candidates else None
     )
 
 
@@ -368,7 +360,6 @@ def _emit_tiled(schedule: XcMatrixSchedule) -> str:
     for token, value in replacements.items():
         source = source.replace(token, value)
     return source
-
 
 
 def emit_native_xc_matrix_schedule(
