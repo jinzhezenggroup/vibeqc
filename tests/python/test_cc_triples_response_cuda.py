@@ -369,6 +369,7 @@ def test_cuda_source_bundle_feeds_complete_fixed_orbital_response_without_cpu_re
             reference_identity=snapshot.identity
         )
 
+    assert response.response_identity == cpu_response.response_identity
     np.testing.assert_allclose(
         actual_fov.values, expected_fov.values, atol=1e-12, rtol=1e-12
     )
