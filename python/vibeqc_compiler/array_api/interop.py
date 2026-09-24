@@ -7,6 +7,7 @@ stream handoff and capsule consumption through ``from_dlpack``.
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
 
 DLPACK_INTEROP_VERSION = 1
@@ -73,8 +74,10 @@ def dlpack_device(value: object) -> DLPackDevice:
 def _expected_device(
     value: DLPackDevice | tuple[int, int] | None,
 ) -> DLPackDevice | None:
-    if value is None or isinstance(value, DLPackDevice):
-        return value
+    if value is None:
+        return None
+    if isinstance(value, DLPackDevice):
+        value = value.as_tuple()
     return _normalize_device(value, owner="expected device")
 
 
@@ -86,11 +89,11 @@ def import_dlpack(
 ) -> DLPackImport:
     """Import *source* through a namespace-owned same-device DLPack handoff.
 
-    The first attempt requests ``copy=False`` when the namespace supports the
-    newer Array API signature. A one-argument fallback is retained for older
-    DLPack consumers whose protocol contract predates that keyword. Device
-    relocation is intentionally rejected because it would require an explicit
-    copy and a separate synchronization/lifetime contract.
+    Request ``copy=False`` unless signature binding establishes a legacy
+    one-argument consumer before invocation. An opaque consumer is called once
+    with ``copy=False``; wrap an older opaque consumer with an explicit legacy
+    signature. Never retry a failed handoff with weaker copy requirements.
+    Device relocation requires a separate copy/synchronization contract.
     """
     source_device = dlpack_device(source)
     wanted = _expected_device(expected_device)
@@ -104,18 +107,34 @@ def import_dlpack(
     if not callable(consumer):
         raise DLPackInteropError("array namespace does not provide from_dlpack")
 
+    # Decide compatibility without invoking the consumer or exporting a capsule.
+    # TypeError may originate after consumption, not only from keyword binding.
+    legacy = False
     try:
-        imported = consumer(source, copy=False)
-        copy_control = "explicit-copy-false"
-    except TypeError:
+        signature = inspect.signature(consumer)
+    except (TypeError, ValueError):
+        signature = None
+    if signature is not None:
         try:
+            signature.bind(source, copy=False)
+        except TypeError as exc:
+            if "copy" in signature.parameters:
+                raise DLPackInteropError(
+                    "from_dlpack must accept the copy keyword"
+                ) from exc
+            try:
+                signature.bind(source)
+            except TypeError as exc:
+                raise DLPackInteropError("unsupported from_dlpack signature") from exc
+            legacy = True
+
+    try:
+        if legacy:
             imported = consumer(source)
             copy_control = "legacy-dlpack-zero-copy"
-        except Exception as exc:
-            raise DLPackInteropError(
-                "zero-copy DLPack import failed; the consumer may require "
-                "an explicit copy"
-            ) from exc
+        else:
+            imported = consumer(source, copy=False)
+            copy_control = "explicit-copy-false"
     except Exception as exc:
         raise DLPackInteropError(
             "zero-copy DLPack import failed; the consumer may require an explicit copy"
