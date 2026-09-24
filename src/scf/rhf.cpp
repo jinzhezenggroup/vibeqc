@@ -1,4 +1,4 @@
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 
 #include <algorithm>
 #include <charconv>
