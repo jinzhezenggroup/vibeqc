@@ -11,7 +11,7 @@ from vibeqc.profiles import file_hash
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft.features import density_features
-from vibeqc_compiler.integral.cuda import CudaEmitter
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph, Node
 from vibeqc_compiler.xc import (
     FunctionalSpec,
@@ -54,7 +54,7 @@ def test_piecewise_select_is_lazy_and_differentiates_selected_branch() -> None:
     )
     np.testing.assert_allclose(values[0], [1.0, 0.0, 0.5])
     np.testing.assert_allclose(values[1], [-2.0, 0.0, -0.25])
-    emitter = CudaEmitter(graph, {"x": "x"})
+    emitter = ScalarCEmitter(graph, {"x": "x"})
     emitter.emit((selected, derivative))
     source = "\n".join(emitter.lines)
     assert "if (x <= 0.0)" in source
@@ -179,7 +179,7 @@ def test_stable_unary_rebuilds_second_derivatives_and_cuda(
         target, roots = graph.apply_algebra_form((root, first, second), form)
         target, roots = target.lower_small_integer_powers(roots)
         check([target.evaluate(r, {"x": point}) for r in roots], expected, atol=1e-25)
-        emitter = CudaEmitter(target, {"x": "x"})
+        emitter = ScalarCEmitter(target, {"x": "x"})
         emitter.emit(roots)
         assert operation + "(" in "\n".join(emitter.lines)
     with pytest.raises(ValueError):
@@ -190,7 +190,7 @@ def test_stable_unary_rebuilds_second_derivatives_and_cuda(
     with pytest.raises(ValueError):
         graph.evaluate(bad, {"x": 1})
     with pytest.raises(ValueError):
-        CudaEmitter(graph, {}).emit((bad,))
+        ScalarCEmitter(graph, {}).emit((bad,))
 
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
