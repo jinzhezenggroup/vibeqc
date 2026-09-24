@@ -54,7 +54,11 @@ class CudaCCTensorExecutor:
         # Cached plans were admitted for this exact owner configuration. Do not
         # silently reuse an old budget or target after public attributes change.
         configuration = (
-            self.max_bytes, self.compiler, self.cache, self.device, self.backend
+            self.max_bytes,
+            self.compiler,
+            self.cache,
+            self.device,
+            self.backend,
         )
         if configuration != self._configuration:
             raise RuntimeError(
