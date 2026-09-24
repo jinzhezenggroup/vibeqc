@@ -35,6 +35,13 @@ def test_native_execution_is_confined_to_bridge_implementation() -> None:
     assert "vibeqc::xtb::detail::Gfn2CpuExecutionCache" in source
 
 
+def test_cpu_scc_uses_shared_method_neutral_iteration_control() -> None:
+    source = (ROOT / "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp").read_text()
+    assert '"solver/iteration_control.hpp"' in source
+    assert "vibeqc::solver::run_bounded_iterations" in source
+    assert "while (driver_state.converged[0]" not in source
+
+
 def test_retired_runtime_and_external_api_cannot_reenter_production() -> None:
     assert not (ROOT / "src/xtb/gfn2_runtime").exists()
     native = ROOT / "src/xtb/native"
