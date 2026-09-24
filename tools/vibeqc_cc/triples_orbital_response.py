@@ -311,6 +311,9 @@ class BoundCCSDTOrbitalResponse:
                 device_budget_bytes=response_device_budget_bytes - retained_provider,
             )
             if getattr(resident_owner, "dimension", None) != operator.dimension:
+                close = getattr(resident_owner, "close", None)
+                if callable(close):
+                    close()
                 raise ResponseCompatibilityError(
                     "resident RHF response dimension differs from physical Z problem"
                 )
