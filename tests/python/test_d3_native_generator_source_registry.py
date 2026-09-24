@@ -22,7 +22,9 @@ def test_d3_native_generator_reads_exact_sources_from_common_registry() -> None:
     texts, revision = generate_native_data._registered_source_texts()
     implementation = Path(generate_native_data.__file__).read_text(encoding="utf-8")
 
-    assert set(texts) == generate_native_data._REQUIRED_SOURCE_FILES == set(_SOURCE_OWNERS)
+    assert (
+        set(texts) == generate_native_data._REQUIRED_SOURCE_FILES == set(_SOURCE_OWNERS)
+    )
     for name, text in texts.items():
         source = registry["sources"][_SOURCE_OWNERS[name]]
         assert source["revision"] == revision
@@ -66,7 +68,9 @@ def test_d3_native_generator_rejects_split_upstream_revisions(
         }
 
     monkeypatch.setattr(source_registry, "read_source_texts", read)
-    with pytest.raises(source_registry.SourceRegistryError, match="same upstream revision"):
+    with pytest.raises(
+        source_registry.SourceRegistryError, match="same upstream revision"
+    ):
         generate_native_data._registered_source_texts()
 
 
