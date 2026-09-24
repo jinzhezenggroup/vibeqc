@@ -1,7 +1,9 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "src/posthf/cuda_transform.cu"
+NATIVE = ROOT / "src/posthf/cuda_transform.cu"
+OWNER = ROOT / "tools/vibeqc_posthf/cuda.py"
+PROVIDER = ROOT / "tools/vibeqc_posthf/providers.py"
 
 
 def _function_body(source: str, name: str, next_name: str) -> str:
@@ -15,26 +17,48 @@ def _source_tiles(nbf: int, axis_tile: int = 2) -> int:
     return tiles**4
 
 
-def test_cuda_mo_validation_occurs_only_at_publication() -> None:
-    source = SOURCE.read_text(encoding="utf-8")
-    add = _function_body(source, "posthf_cuda_add_v1", "posthf_cuda_download_v1")
+def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
+    source = NATIVE.read_text(encoding="utf-8")
+    add = _function_body(source, "posthf_cuda_add_v1", "posthf_cuda_validate_v1")
+    validate_api = _function_body(
+        source, "posthf_cuda_validate_v1", "posthf_cuda_download_v1"
+    )
     download = _function_body(
         source, "posthf_cuda_download_v1", "posthf_cuda_metrics_v1"
     )
+    helper_begin = source.index("void validate(Transform& p)")
+    helper_end = source.index("}  // namespace", helper_begin)
+    helper = source[helper_begin:helper_end]
 
     assert "cublasDaxpy" in add
     assert "check_scale<<<" not in add
     assert "cudaMemcpyAsync(&invalid" not in add
     assert "cudaStreamSynchronize" not in add
+    assert "p.validated = false" in add
 
-    assert download.count("check_scale<<<") == 1
-    validation = download.index("check_scale<<<")
-    status = download.index("cudaMemcpyAsync(&invalid")
-    failure = download.index(
+    assert source.count("check_scale<<<") == 1
+    assert "if (p.validated) return" in helper
+    validation = helper.index("check_scale<<<")
+    status = helper.index("cudaMemcpyAsync(&invalid")
+    failure = helper.index(
         'if (invalid) throw std::runtime_error("nonfinite MO transformation")'
     )
-    publication = download.index("cudaMemcpyAsync(out, p.result")
-    assert validation < status < failure < publication
+    assert validation < status < failure
+    assert "validate(p)" in validate_api
+    assert download.index("validate(p)") < download.index("cudaMemcpyAsync(out, p.result")
+
+
+def test_resident_cuda_mo_block_is_validated_before_publication() -> None:
+    owner = OWNER.read_text(encoding="utf-8")
+    provider = PROVIDER.read_text(encoding="utf-8")
+
+    pointer = owner[owner.index("def device_pointer") : owner.index("def to_host")]
+    assert '_call("posthf_cuda_validate_v1", self._handle)' in pointer
+    assert pointer.index("posthf_cuda_validate_v1") < pointer.index("posthf_cuda_pointer_v1")
+
+    validation = provider.index("engine.validate()")
+    diagnostics = provider.index('diagnostics = {', validation)
+    assert validation < diagnostics
 
 
 def test_cuda_mo_validation_work_scales_with_publications_not_source_tiles() -> None:
