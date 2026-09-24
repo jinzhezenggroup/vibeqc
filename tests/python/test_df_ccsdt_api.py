@@ -1,4 +1,4 @@
-# ruff: noqa: ANN001, ANN201
+# ruff: noqa: ANN201
 """Executable facade tests for #157 C2a."""
 
 import pytest
