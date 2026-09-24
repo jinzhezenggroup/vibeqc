@@ -168,3 +168,33 @@ LDA/PBE/r²SCAN RKS/UKS E/V and state suite, including matrix tiles, signed
 responses, FP32 AO qualification, same-input diagnostics, and the restored
 complete independent-CPU minority-potential comparison. No tail case is
 skipped and no potential tolerance is loosened.
+
+## Exact-head 96-atom endpoint repair
+
+The later exact PR head `b5c2c585` did not contain #1086's generated-shell
+pure-J route. PBE-RKS direct Coulomb therefore used the generic independent
+AO-pair kernel, whose output-pair by density-pair traversal has O(nao^4)
+candidate work. On the 96-atom / 768-AO / 2,654,208-grid-point input,
+Slurm 11518 reached two hours without returning the cold solve, and Slurm
+11533 was stopped after a second 2 h 03 min without a result. Even an exact
+head `max_iterations=2` diagnostic reached its ten-minute Slurm limit in
+11536. Preparation remained approximately 3.94 seconds. The older 25.085 s
+two-step diagnostic above used a different composed source and does not
+qualify this exact PR head.
+
+Merging exact #1106 `b5c2c585` with exact #1086 `5c656961` has no textual
+conflict. The diagnostic merge tree was
+`4861ea84614ec0826c16c9b5c6cee437b092db5b`; its Release sm_120 library
+SHA-256 was `63999b0ac8653cb6e1c47834f801d9cb59479b17aade4e779c0ebd77bc7574b3`.
+Slurm 11537 returned the same two deliberately unconverged PBE96 steps in
+34.631 s. Slurm 11538 completed the public cold energy endpoint in 472.288 s
+with 27 CUDA Fock builds, energy -2441.542771036898 Eh, density RMS
+1.115e-13, and physical residual RMS/max 1.608e-13. Its energy differs from
+the separately converged #1086 exact-head endpoint by 5.96e-11 Eh; that
+cross-head comparison is a consistency check, not an independent 96-atom
+numerical oracle. The matched exact #1106 head never completed, so no
+finite complete-endpoint speedup ratio or allocator high-water is claimed.
+
+Keep #1106 based on the generated pure-J source or an equivalent qualified
+owner when rebasing. A bounded two-step result from another composition must
+not replace exact-head complete-endpoint qualification.

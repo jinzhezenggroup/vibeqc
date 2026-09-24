@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "scf/cuda/direct_coulomb.hpp"
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda_direct_jk.hpp"
 
@@ -27,6 +28,7 @@ struct CudaDirectJkPlan {
   std::vector<void*> allocations;
   std::size_t device_bytes{};
   CudaDirectJkDiagnostic diagnostic{};
+  std::unique_ptr<cuda_execution::GeneratedCoulombPlan> generated_coulomb;
   ~CudaDirectJkPlan();
 };
 
