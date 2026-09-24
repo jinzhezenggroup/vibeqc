@@ -34,6 +34,7 @@ int main() {
     const auto dense = vibeqc::scf::df_streamed_k_panel(n, a, capacity);
     const auto p = vibeqc::scf::df_projected_exchange_schedule(n, a, rank, capacity, triangular);
     std::size_t loaded = 0;
+    std::size_t charged = 0;
     if (p.rows) {
       // Independent storage simulator: a contraction must read precisely the
       // rows currently resident in each slot, and write every required AO pair
@@ -63,6 +64,38 @@ int main() {
           });
       if (!ok || std::any_of(coverage.begin(), coverage.end(), [](auto v) { return v != 1; }))
         return 2;
+      if (triangular) {
+        std::vector<int> charge_coverage(n, 0);
+        const auto shared = vibeqc::scf::generated::visit_shared_projected_exchange(
+            n, p.rows, triangular,
+            [&](std::size_t begin, std::size_t count, std::size_t, bool charge) {
+              if (charge) {
+                charged += count;
+                for (auto row = begin; row < begin + count; ++row)
+                  if (++charge_coverage[row] != 1) return false;
+              }
+              return true;
+            },
+            [&](auto...) { return true; });
+        if (!shared || charged != n ||
+            std::any_of(charge_coverage.begin(), charge_coverage.end(), [](auto v) { return v != 1; }))
+          return 4;
+        for (bool fail_projection : {false, true}) {
+          int calls = 0;
+          const auto aborted = vibeqc::scf::generated::visit_shared_projected_exchange(
+              n, p.rows, triangular,
+              [&](auto...) { ++calls; return !fail_projection; },
+              [&](auto...) { ++calls; return false; });
+          if (aborted || calls != (fail_projection ? 1 : 2)) return 5;
+        }
+      } else {
+        int calls = 0;
+        const auto rejected = vibeqc::scf::generated::visit_shared_projected_exchange(
+            n, p.rows, triangular,
+            [&](auto...) { ++calls; return true; },
+            [&](auto...) { ++calls; return true; });
+        if (rejected || calls) return 6;
+      }
       // Both callback failures must stop immediately, before subsequent work.
       for (bool fail_projection : {false, true}) {
         int calls = 0;
@@ -74,7 +107,7 @@ int main() {
       }
     }
     std::cout << p.rows << ' ' << p.blocks << ' ' << p.generated_rows << ' '
-              << dense.row_tiles << ' ' << dense.output_tiles << ' ' << loaded << '\n';
+              << dense.row_tiles << ' ' << dense.output_tiles << ' ' << loaded << ' ' << charged << '\n';
   }
 }
 """
@@ -129,8 +162,9 @@ def test_emitted_schedule_minimizes_raw_work(schedule_query: typing.Any) -> None
     ]
     for shape, result in zip(shapes, schedule_query(shapes), strict=True):
         n, a, rank, capacity, triangular = shape
-        rows, blocks, count, dense_rows, dense_q, actual_count = result
+        rows, blocks, count, dense_rows, dense_q, actual_count, charged_rows = result
         assert count == actual_count
+        assert charged_rows == (n if rows and triangular else 0)
         # Python and emitted native policy share the contract, while this
         # independent census qualifies its optimum against every legal width.
         expected = projected_exchange_schedule(
@@ -152,11 +186,15 @@ def test_emitted_schedule_minimizes_raw_work(schedule_query: typing.Any) -> None
 
 
 def test_practical_96_atom_capacity_and_rejection(schedule_query: typing.Any) -> None:
-    # Exact observed n/naux/rank with the original four Q=580 buffers.
-    shape = (768, 3712, 160, 768 * 768 * 580, 1)
-    rows, blocks, count, dense_rows, dense_q, actual_count = schedule_query([shape])[0]
-    assert (rows, blocks, count, dense_rows, dense_q) == (384, 2, 768, 1, 7)
-    assert count == actual_count
+    # Automatic factor reservation makes the executed tile 579 rather than 580.
+    for result in schedule_query(
+        [(768, 3712, 160, 768 * 768 * tile, 1) for tile in (579, 580)]
+    ):
+        rows, blocks, count, dense_rows, dense_q, actual_count, charged_rows = result
+        assert (rows, blocks, count, dense_rows, dense_q) == (384, 2, 768, 1, 7)
+        assert count == actual_count
+        assert charged_rows == 768
+        assert (count + charged_rows) * 768 * 3712 == 4_378_853_376
     assert count * 768 * 3712 == 2_189_426_688
     invalid = [
         (0, 3, 1, 10, 1),

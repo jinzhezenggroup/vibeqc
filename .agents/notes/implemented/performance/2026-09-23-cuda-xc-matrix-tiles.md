@@ -198,3 +198,14 @@ finite complete-endpoint speedup ratio or allocator high-water is claimed.
 Keep #1106 based on the generated pure-J source or an equivalent qualified
 owner when rebasing. A bounded two-step result from another composition must
 not replace exact-head complete-endpoint qualification.
+
+#1086 subsequently landed on master as a squash commit. A conflict-free merge
+of current master `6f6a3789` into #1106 produced source tree
+`0b19afa5dfda07ea2bbe3497eae34868da202663`; its Release sm_120 library
+SHA-256 was `ffb27a04847272f8281aaa46607d730ea7296a6ee967003379c283f84892d76c`.
+The PBE/CUDA implementation did not change in that merge. Slurm 11539 repeated
+the full 96-atom cold public energy endpoint on this final composition:
+4.044 s preparation, 454.739 s execution, 26 CUDA Fock builds, converged
+energy -2441.542771036919 Eh, density RMS 8.733e-13, and physical residual
+RMS/max 2.181e-12. Compiler structure checks passed for 343 modules with zero
+dependency errors; the final composition built successfully.
