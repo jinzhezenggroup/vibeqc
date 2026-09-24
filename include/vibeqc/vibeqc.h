@@ -159,10 +159,9 @@ typedef struct vibeqc_d3_system_descriptor {
 /**
  * Explicit molecular D3 model.
  *
- * The historical typedef name and prefix through maximum_bytes are preserved
- * for ABI-0 two-body D3(BJ) callers. Zero damping and BJ+ATM require the
- * appended fields below and are accepted only by separately qualified
- * capability paths. Zero-damping+ATM is deliberately unsupported.
+ * Callers must provide the current complete descriptor layout. BJ, zero damping,
+ * and BJ+ATM are accepted only by their separately qualified capability paths.
+ * Zero-damping+ATM is deliberately unsupported.
  */
 typedef struct vibeqc_d3_bj_descriptor {
   uint32_t struct_size;
