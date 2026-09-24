@@ -20,6 +20,8 @@ __global__ void build_density_kernel(std::int32_t batch_size, std::int32_t nbf,
   const std::size_t local = element % matrix_size;
   const std::size_t row = local % n;
   const std::size_t column = local / n;
+  // Density is symmetric: one thread contracts each unique AO pair and publishes its mirror.
+  if (row > column) return;
   const std::size_t offset = static_cast<std::size_t>(system) * matrix_size;
   double value = 0.0;
   for (std::int32_t orbital = 0; orbital < occupied[system]; ++orbital) {
@@ -27,6 +29,7 @@ __global__ void build_density_kernel(std::int32_t batch_size, std::int32_t nbf,
              coefficients[offset + matrix_index(column, orbital, n)];
   }
   density[element] = value;
+  if (row != column) density[offset + matrix_index(column, row, n)] = value;
 }
 
 __global__ void build_spin_density_kernel(std::int32_t batch_size, std::int32_t spin_count,
@@ -44,6 +47,8 @@ __global__ void build_spin_density_kernel(std::int32_t batch_size, std::int32_t 
   const std::size_t local = element % matrix_size;
   const std::size_t row = local % n;
   const std::size_t column = local / n;
+  // Density is symmetric: one thread contracts each unique AO pair and publishes its mirror.
+  if (row > column) return;
   const std::size_t offset = state * matrix_size;
   double value = 0.0;
   for (std::int32_t orbital = 0; orbital < occupied[state]; ++orbital) {
@@ -51,6 +56,7 @@ __global__ void build_spin_density_kernel(std::int32_t batch_size, std::int32_t 
              coefficients[offset + matrix_index(column, orbital, n)];
   }
   density[element] = value;
+  if (row != column) density[offset + matrix_index(column, row, n)] = value;
 }
 
 __global__ void mix_open_shell_guess_kernel(std::int32_t batch_size, std::int32_t nbf,
