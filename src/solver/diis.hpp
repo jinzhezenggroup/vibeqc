@@ -56,9 +56,9 @@ class Diis {
         solution.resize(n);
         if (std::all_of(solution.begin(), solution.end(),
                         [](double c) { return std::isfinite(c) && std::abs(c) <= 1e6; })) {
-          std::vector<double> result(elements_);
+          std::vector<double> result(history_.elements());
           for (std::size_t row = 0; row < n; ++row)
-            for (std::size_t i = 0; i < elements_; ++i)
+            for (std::size_t i = 0; i < history_.elements(); ++i)
               result[i] += solution[row] * history_.vectors()[row][i];
           return result;
         }
