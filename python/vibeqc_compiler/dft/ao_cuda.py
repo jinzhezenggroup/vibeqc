@@ -12,7 +12,7 @@ import typing
 
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.integral.cuda import CudaEmitter
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 from vibeqc_compiler.integral.expr import AlgebraForm, Graph
 
 from .ao import jet_indices
@@ -612,7 +612,7 @@ def emit_grid_policy() -> typing.Any:
                 graph, (root,) = graph.apply_algebra_form(
                     (root,), AlgebraForm.FACTORED_NARY
                 )
-                emitter = CudaEmitter(graph, {}, scalar_type=scalar_type)
+                emitter = ScalarCEmitter(graph, {}, scalar_type=scalar_type)
                 emitter.emit((root,))
                 lines.append(f"  case {4 * power + derivative}: {{")
                 lines.extend(emitter.lines)
