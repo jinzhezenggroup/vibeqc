@@ -2,7 +2,6 @@
 
 import typing
 
-from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
@@ -14,7 +13,6 @@ def emit_feature_policy(*, device: typing.Any = False) -> typing.Any:
     jets in both slots. Runtime controls traversal and requested-output masks.
     The host XC consumer uses the same roots as bounded dense/local CUDA.
     """
-    emitter_type = CudaEmitter if device else ScalarCEmitter
     qualifier = "__device__" if device else "inline"
     lines = []
     graph = Graph()
@@ -33,7 +31,7 @@ def emit_feature_policy(*, device: typing.Any = False) -> typing.Any:
     # The same compiler-owned bilinears then give the occupation-weighted
     # orbital identities, with no second native scientific formula.
     for mask, indices in ((1, (0,)), (6, (1, 2, 3)), (8, (4,))):
-        emitter = emitter_type(graph, {})
+        emitter = ScalarCEmitter(graph, {})
         emitter.emit(tuple(roots[i] for i in indices))
         lines.append(f"  if (mask & {mask}) {{")
         lines.extend(emitter.lines)
@@ -46,7 +44,7 @@ def emit_feature_policy(*, device: typing.Any = False) -> typing.Any:
         sum((gradients[a][k] * gradients[b][k] for k in range(3)), graph.constant(0))
         for a, b in ((0, 0), (0, 1), (1, 1))
     )
-    emitter = emitter_type(graph, {})
+    emitter = ScalarCEmitter(graph, {})
     emitter.emit(roots)
     lines.append(f"{qualifier} void sigma(const double (&g)[2][3], double* output) {{")
     lines.extend(emitter.lines)
