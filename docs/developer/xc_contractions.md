@@ -70,6 +70,14 @@ not change. See the [schedule decision](../../.agents/notes/implemented/performa
 
 ## Explicit native execution
 
+The CUDA density-feature reduction uses one warp per spin/grid point for
+32 or more AOs. Lanes traverse adjacent AO components and reduce the existing
+generated rho/gradient/tau contributions in FP64; smaller AO spaces retain
+scalar summation. The compiler chooses the launch, and native execution binds
+the same borrowed buffers for physical density and signed response. Point and
+AO tails are covered without extra shared/global storage. Changing reduction
+order requires the independent complete potential and response gates.
+
 ```python
 from pathlib import Path
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter

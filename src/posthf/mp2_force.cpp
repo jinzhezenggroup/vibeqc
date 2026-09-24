@@ -80,7 +80,8 @@ response::LinearResponseProblem response_problem(const scf::PhysicalReference& r
                              input[j * nv + b];
                 output[i * nv + a] = value;
               }
-          }};
+          },
+          response::LinearResponseSymmetry::Symmetric};
 }
 
 ConventionalForceResult conventional_force_impl(

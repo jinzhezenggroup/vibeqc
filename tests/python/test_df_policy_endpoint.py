@@ -3,11 +3,17 @@
 import json
 import typing
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from benchmarks.df_policy_endpoint import CASES, endpoint_errors, independent_reference
+from benchmarks.df_policy_endpoint import (
+    CASES,
+    endpoint_errors,
+    independent_reference,
+    require_frozen_checkpoint_geometry,
+)
 
 EVIDENCE = (
     Path(__file__).resolve().parents[2] / "benchmarks/results/issue377-379-df/gpu4pyscf"
@@ -18,6 +24,15 @@ EVIDENCE = (
 # Never discover this list from existing files: losing a retained fixture must
 # still fail the gate instead of silently reducing coverage.
 RETAINED_REFERENCE_AOS = (96, 192, 384, 768)
+
+
+def test_frozen_benchmark_checkpoint_rejects_changed_geometry() -> None:
+    manifest = SimpleNamespace(
+        items=({"model": {"geometry_hash": "source"}, "controls": "different"},)
+    )
+    require_frozen_checkpoint_geometry(manifest, "source")
+    with pytest.raises(RuntimeError, match="checkpoint geometry differs"):
+        require_frozen_checkpoint_geometry(manifest, "target")
 
 
 def reference_inputs(aos: typing.Any) -> typing.Any:

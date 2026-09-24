@@ -1,0 +1,541 @@
+{
+  "schema": "vibeqc.compiler-historical-optimization-ledger",
+  "schema_version": 2,
+  "coverage": "historical-ownership-and-cross-method-adoption",
+  "groups": [
+    {
+      "id": "active-domain-pruning",
+      "name": "Work-domain pruning, compaction, and bounded paging",
+      "historical_commits": [
+        "5abed3d1",
+        "a5ebfdb2",
+        "bde644a8",
+        "384d34bf",
+        "7649d896"
+      ],
+      "mechanisms": [
+        "compact active shell/quartet domains",
+        "exact bounded page construction",
+        "domain specialization from admitted screening facts"
+      ],
+      "current_owners": [
+        {
+          "kind": "compiler",
+          "refs": [
+            "#682",
+            "#673"
+          ],
+          "responsibility": "Represent and specialize active execution domains without duplicating scientific screening policy."
+        },
+        {
+          "kind": "numerical-policy",
+          "refs": [
+            "#175"
+          ],
+          "responsibility": "Own physical screening and error criteria supplied to the compiler as admitted facts."
+        }
+      ],
+      "retained_boundary": "The compiler may compact an admitted domain but must not invent or relax the scientific screening threshold.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#682",
+            "#673",
+            "#175"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "specialization-workspace",
+      "name": "Exact specialization and bounded workspace sizing",
+      "historical_commits": [
+        "8300dff7",
+        "43b8cba2",
+        "f260de08",
+        "1041d865",
+        "89d9e902",
+        "1575a469"
+      ],
+      "mechanisms": [
+        "shell/signature specialization",
+        "resolved workspace extents",
+        "compile-time removal of unused recurrence state"
+      ],
+      "current_owners": [
+        {
+          "kind": "compiler",
+          "refs": [
+            "#682",
+            "#459"
+          ],
+          "responsibility": "Own specialization identities and exact resolved program shapes."
+        },
+        {
+          "kind": "schedule",
+          "refs": [
+            "#833"
+          ],
+          "responsibility": "Bind legal target schedules and bounded workspace shapes."
+        }
+      ],
+      "retained_boundary": "Specialization follows semantic and target facts; method names and benchmark fingerprints are not dispatch keys.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#682",
+            "#459",
+            "#833"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "multi-output-fusion",
+      "name": "Multi-output common-work fusion and derivative recovery",
+      "historical_commits": [
+        "a057e82a",
+        "40cef2f1",
+        "93f6eee1",
+        "8ea23793",
+        "660e4239",
+        "032f4978",
+        "9bfca21e",
+        "151645e5"
+      ],
+      "mechanisms": [
+        "multi-root DAG sharing",
+        "shared primitive and recurrence state",
+        "derivative recovery from exact invariants",
+        "pressure-aware rematerialization versus retention"
+      ],
+      "current_owners": [
+        {
+          "kind": "compiler",
+          "refs": [
+            "#682",
+            "#181"
+          ],
+          "responsibility": "Own reusable multi-root scientific DAG sharing and generated derivative products."
+        },
+        {
+          "kind": "schedule",
+          "refs": [
+            "#832",
+            "#833"
+          ],
+          "responsibility": "Choose fusion, fission, and rematerialization under resource evidence."
+        }
+      ],
+      "retained_boundary": "Cross-output sharing is legal only when it preserves declared numerical and derivative semantics.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#682",
+            "#181",
+            "#832",
+            "#833"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "persistent-resident-schedules",
+      "name": "Persistent, resident, cooperative, and signature-aware schedules",
+      "historical_commits": [
+        "299cf691",
+        "e5a6d5f7",
+        "449e5436",
+        "26ef7475",
+        "176b07da",
+        "afbef7c2",
+        "05d9ee96",
+        "24a273b8"
+      ],
+      "mechanisms": [
+        "persistent work queues",
+        "resident data reuse",
+        "cooperative/subgroup execution",
+        "signature bucketing and bounded paging",
+        "measured schedule selection"
+      ],
+      "current_owners": [
+        {
+          "kind": "schedule",
+          "refs": [
+            "#833",
+            "#168"
+          ],
+          "responsibility": "Represent reusable schedule families and measured target-aware selection."
+        },
+        {
+          "kind": "runtime",
+          "refs": [
+            "#933"
+          ],
+          "responsibility": "Bind queues, streams, resident state, and backend resources without owning scientific equations."
+        }
+      ],
+      "retained_boundary": "Queue and residency mechanics remain runtime/schedule concerns rather than duplicate scientific implementations.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#833",
+            "#168",
+            "#933"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "precision-placement",
+      "name": "Precision placement as a schedule dimension",
+      "historical_commits": [
+        "4a395409",
+        "09314465"
+      ],
+      "mechanisms": [
+        "independent storage/compute/accumulation precision",
+        "strict target audit and refinement",
+        "conversion-aware endpoint costing"
+      ],
+      "current_owners": [
+        {
+          "kind": "compiler",
+          "refs": [
+            "#528"
+          ],
+          "responsibility": "Represent explicit precision schedules and typed cast boundaries."
+        },
+        {
+          "kind": "evidence",
+          "refs": [
+            "#375",
+            "#174"
+          ],
+          "responsibility": "Own numerical promotion, strict refinement, and retained negative evidence."
+        }
+      ],
+      "retained_boundary": "Lower precision is an execution schedule and never changes the requested scientific target or its final strict gates.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#528",
+            "#375",
+            "#174"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "data-residency-lifetime",
+      "name": "Data residency, lifetime, layout propagation, and zero-copy ownership",
+      "historical_commits": [
+        "787304dc",
+        "7e28059b",
+        "2ca01977",
+        "ff7c9cb1",
+        "c1c13b80",
+        "11d1bb68",
+        "51af4f57",
+        "07ce0bd1"
+      ],
+      "mechanisms": [
+        "resident intermediate reuse",
+        "layout propagation",
+        "copy/materialization elimination",
+        "compatible scratch lifetime reuse"
+      ],
+      "current_owners": [
+        {
+          "kind": "compiler",
+          "refs": [
+            "#831",
+            "#682"
+          ],
+          "responsibility": "Own alias/lifetime/layout analysis and legal materialization elimination."
+        },
+        {
+          "kind": "runtime",
+          "refs": [
+            "#933"
+          ],
+          "responsibility": "Own actual allocations, placements, transfers, and observed resource high-water marks."
+        }
+      ],
+      "retained_boundary": "Logical lifetime analysis does not replace backend allocation ownership or silently extend borrowed lifetimes.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#831",
+            "#682",
+            "#933"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    },
+    {
+      "id": "dft-tile-batch-fusion",
+      "name": "DFT tile, batch, fusion, and resource-aware schedule search",
+      "historical_commits": [
+        "c96f8633",
+        "9425a06a",
+        "51af4f57",
+        "9f946923",
+        "b320e5a9",
+        "f06620e7"
+      ],
+      "mechanisms": [
+        "tile-size selection",
+        "native task batching",
+        "producer/consumer fusion",
+        "resource-aware schedule pruning"
+      ],
+      "current_owners": [
+        {
+          "kind": "schedule",
+          "refs": [
+            "#168",
+            "#833"
+          ],
+          "responsibility": "Own DFT schedule legality, search, and complete-endpoint promotion."
+        },
+        {
+          "kind": "compiler",
+          "refs": [
+            "#682"
+          ],
+          "responsibility": "Provide reusable schedule and profitability primitives without a DFT-only optimizer."
+        }
+      ],
+      "retained_boundary": "DFT scientific legality stays with the DFT owner while generic scheduling mechanisms remain reusable.",
+      "adoption": [
+        {
+          "methods": [
+            "DFT"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#168",
+            "#833",
+            "#682"
+          ],
+          "note": "The DFT schedule family has an explicit shared representation. Consumer wiring, production selection, and endpoint qualification remain separate promotions."
+        },
+        {
+          "methods": [
+            "HF",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "not-applicable",
+          "note": "This group owns DFT-specific tile/batch legality. Reusable generic scheduling mechanisms are tracked by the other optimization groups."
+        }
+      ]
+    },
+    {
+      "id": "runtime-controller-boundary",
+      "name": "Runtime/controller optimizations outside scalar compiler passes",
+      "historical_commits": [
+        "a4db5f3a",
+        "3a758801"
+      ],
+      "mechanisms": [
+        "prepared-state replay",
+        "final accepted-state reuse",
+        "stream/capture lifetime",
+        "DIIS/history and convergence policy",
+        "provider/algorithm selection"
+      ],
+      "current_owners": [
+        {
+          "kind": "runtime",
+          "refs": [
+            "#933",
+            "#835"
+          ],
+          "responsibility": "Own lifecycle, replay, capture, and bounded structured execution."
+        },
+        {
+          "kind": "method-planner",
+          "refs": [
+            "#202",
+            "#926"
+          ],
+          "responsibility": "Own explicit provider/algorithm choices when they change numerical algorithms or approximations."
+        }
+      ],
+      "retained_boundary": "Generic scalar optimization must not absorb convergence policy, solver history, or approximation-changing provider selection.",
+      "adoption": [
+        {
+          "methods": [
+            "HF",
+            "DFT",
+            "MP2",
+            "CCSD(T)"
+          ],
+          "backends": [
+            "cpu",
+            "cuda"
+          ],
+          "status": "represented",
+          "refs": [
+            "#933",
+            "#835",
+            "#202",
+            "#926"
+          ],
+          "note": "The shared owner can represent this optimization family for these cells. This baseline does not claim method-consumer wiring, production selection, or benchmark qualification."
+        }
+      ]
+    }
+  ],
+  "negative_evidence": [
+    {
+      "id": "bounded-split-gram",
+      "historical_commits": [
+        "7cbbc412"
+      ],
+      "related_issues": [
+        "#682"
+      ],
+      "decision": "rejected",
+      "reason": "A legal bounded split-Gram candidate did not establish an endpoint win.",
+      "promotion_rule": "Keep the candidate disabled unless a complete matched endpoint demonstrates a reproducible benefit."
+    },
+    {
+      "id": "bounded-cuda-rks-control",
+      "historical_commits": [
+        "79a0ccfa"
+      ],
+      "related_issues": [
+        "#623",
+        "#682"
+      ],
+      "decision": "rejected",
+      "reason": "The bounded two-iteration CUDA RKS control path had no reproducible endpoint benefit.",
+      "promotion_rule": "Do not promote replay/control-flow work from launch-count or microbenchmark evidence alone."
+    },
+    {
+      "id": "mixed-refinement-endpoint",
+      "historical_commits": [],
+      "related_issues": [
+        "#174",
+        "#375",
+        "#682"
+      ],
+      "decision": "retained-negative",
+      "reason": "Lower-precision local work can lose after conversion, strict refinement, and duplicate final-state work are counted.",
+      "promotion_rule": "Price preparation, conversion, refinement, retry, and finalization before promoting a precision schedule."
+    }
+  ],
+  "adoption_contract": {
+    "methods": [
+      "HF",
+      "DFT",
+      "MP2",
+      "CCSD(T)"
+    ],
+    "backends": [
+      "cpu",
+      "cuda"
+    ],
+    "statuses": [
+      "not-applicable",
+      "unverified",
+      "represented",
+      "wired",
+      "production",
+      "benchmark-qualified"
+    ],
+    "status_semantics": {
+      "not-applicable": "The optimization family is scientifically or architecturally out of scope for this method/backend cell.",
+      "unverified": "Applicability or consumer adoption has not been established; no production claim is allowed.",
+      "represented": "A shared compiler/schedule/runtime owner can express the mechanism; this does not claim a method consumer is wired.",
+      "wired": "A method consumer invokes the mechanism, but production selection and complete-endpoint qualification are not claimed.",
+      "production": "The mechanism is eligible on a production path with method-level correctness evidence; benchmark non-regression is not implied.",
+      "benchmark-qualified": "The production path has retained complete-endpoint non-regression evidence with an explicit regression budget."
+    },
+    "benchmark_evidence_root": "benchmarks/results"
+  }
+}
