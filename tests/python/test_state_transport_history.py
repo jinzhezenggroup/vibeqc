@@ -21,7 +21,9 @@ from tools.vibeqc_cc.state_transport import (
 
 
 def _frame_hash(value: np.ndarray) -> str:
-    return hashlib.sha256(np.ascontiguousarray(value, dtype="<f8").tobytes()).hexdigest()
+    return hashlib.sha256(
+        np.ascontiguousarray(value, dtype="<f8").tobytes()
+    ).hexdigest()
 
 
 def _identity(
@@ -59,7 +61,9 @@ def _identity(
     )
 
 
-def _transport(*, projected: bool = False, incompatible: bool = False) -> StateTransport:
+def _transport(
+    *, projected: bool = False, incompatible: bool = False
+) -> StateTransport:
     source_coefficients = np.eye(2, dtype=np.float64)
     target_coefficients = np.eye(3 if projected else 2, dtype=np.float64)
     source = _identity(
@@ -76,9 +80,7 @@ def _transport(*, projected: bool = False, incompatible: bool = False) -> StateT
         equation_id="different-equations" if incompatible else "rccsd-equations",
     )
     if projected:
-        cross = np.array(
-            [[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]], dtype=np.float64
-        )
+        cross = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 0.0]], dtype=np.float64)
     else:
         cross = np.eye(2, dtype=np.float64)
     return StateTransport.classify(
@@ -92,7 +94,9 @@ def _transport(*, projected: bool = False, incompatible: bool = False) -> StateT
     )
 
 
-def _snapshot(value: float, *, reference_id: str = "source-reference") -> AmplitudeSnapshot:
+def _snapshot(
+    value: float, *, reference_id: str = "source-reference"
+) -> AmplitudeSnapshot:
     return AmplitudeSnapshot(
         reference_id,
         np.array([[value]], dtype=np.float64),
@@ -106,7 +110,9 @@ def _target_residual(amplitudes: AmplitudeSnapshot) -> tuple[np.ndarray, np.ndar
 
 def _evaluator(
     transport: StateTransport,
-    evaluate: Callable[[AmplitudeSnapshot], tuple[np.ndarray, np.ndarray]] = _target_residual,
+    evaluate: Callable[
+        [AmplitudeSnapshot], tuple[np.ndarray, np.ndarray]
+    ] = _target_residual,
 ) -> TargetResidualEvaluator:
     return TargetResidualEvaluator(transport.target.identity, evaluate)
 

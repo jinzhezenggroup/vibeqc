@@ -117,7 +117,9 @@ class RecycledHistory:
         ):
             raise ValueError("invalid dropped_prefix_count")
         if self.target_residual_evaluations != len(self.entries):
-            raise ValueError("each retained history vector requires one target residual")
+            raise ValueError(
+                "each retained history vector requires one target residual"
+            )
         if self.source_count - self.dropped_prefix_count != len(self.entries):
             raise ValueError("history accounting does not match retained entries")
         if any(
@@ -184,7 +186,9 @@ def recycle_diis_history(
     if not isinstance(target_residual, TargetResidualEvaluator):
         raise TypeError("target_residual must be a TargetResidualEvaluator")
     if target_residual.state_identity != transport.target.identity:
-        raise ValueError("target residual evaluator does not match transport target identity")
+        raise ValueError(
+            "target residual evaluator does not match transport target identity"
+        )
     if transport.compatibility is TransportCompatibility.incompatible:
         raise ValueError("incompatible state transport requires DIIS history reset")
 
