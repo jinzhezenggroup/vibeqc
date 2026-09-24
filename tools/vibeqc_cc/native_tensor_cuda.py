@@ -42,6 +42,7 @@ class CudaCCTensorExecutor:
         self.compiler = compiler
         self.cache = cache
         self.device = device
+        self._configuration = (max_bytes, compiler, cache, device, self.backend)
         self._compiled: dict[str, tuple[object, object]] = {}
         self._metrics: dict[str, dict[str, typing.Any]] = {}
         self._lock = threading.RLock()
@@ -50,6 +51,19 @@ class CudaCCTensorExecutor:
         self._PreparedCuda = PreparedCuda
 
     def _compile(self, program: object) -> tuple[object, object]:
+        # Cached plans were admitted for this exact owner configuration. Do not
+        # silently reuse an old budget or target after public attributes change.
+        configuration = (
+            self.max_bytes,
+            self.compiler,
+            self.cache,
+            self.device,
+            self.backend,
+        )
+        if configuration != self._configuration:
+            raise RuntimeError(
+                "CUDA CC tensor configuration changed; create a new executor"
+            )
         identity = getattr(program, "logical_hash", None)
         if not isinstance(identity, str) or not identity:
             raise TypeError(
@@ -87,7 +101,7 @@ class CudaCCTensorExecutor:
                 raise RuntimeError(
                     "CUDA CC tensor backend changed; no CPU or alternate fallback allowed"
                 )
-            identity = getattr(program, "logical_hash")
+            identity = program.logical_hash
             self._metrics[identity] = dict(result.metrics)
             return dict(result.outputs)
 
