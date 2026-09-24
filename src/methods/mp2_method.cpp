@@ -373,8 +373,8 @@ std::unique_ptr<PreparedCalculation> prepare_mp2_calculation(const Capabilities&
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "canonical MP2 requires FP64 precision");
   std::optional<core::System> auxiliary;
   if (density_fitted) {
-    auxiliary = d.density_fitting_auxiliary_basis ? d.density_fitting_auxiliary_basis->data
-                                                  : system;
+    auxiliary =
+        d.density_fitting_auxiliary_basis ? d.density_fitting_auxiliary_basis->data : system;
     if (auxiliary->atoms.size() != system.atoms.size())
       throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                         "RI-MP2 auxiliary basis must contain the same atoms");
