@@ -71,8 +71,18 @@ def test_d4_registration_resolves_host_stubs(
     obj = tmp_path / "stubs.o"
     subprocess.run(
         [
-            compiler, "-x", "cuda", "--cuda-host-only", "-nocudainc", "-nocudalib",
-            "-std=c++20", "-O0", "-c", str(unit), "-o", str(obj),
+            compiler,
+            "-x",
+            "cuda",
+            "--cuda-host-only",
+            "-nocudainc",
+            "-nocudalib",
+            "-std=c++20",
+            "-O0",
+            "-c",
+            str(unit),
+            "-o",
+            str(obj),
         ],
         check=True,
         capture_output=True,
@@ -87,9 +97,7 @@ def test_d4_registration_resolves_host_stubs(
         timeout=10,
     ).stdout
     stubs = [
-        line.split()[-1]
-        for line in symbols.splitlines()
-        if "__device_stub__" in line
+        line.split()[-1] for line in symbols.splitlines() if "__device_stub__" in line
     ]
     assert len(stubs) == len(declarations)
     registration = tmp_path / "registration.cpp"
