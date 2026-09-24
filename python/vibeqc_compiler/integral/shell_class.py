@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .expr import Expr, Graph
 from .ir import IntegralIR, KernelConsumer, build_integral_ir
 from .shell_signature import BasisConvention, ShellSignature
@@ -1097,7 +1097,7 @@ def emit_psss_cuda(kernel: PsssKernel) -> str:
     for center in CENTERS:
         for axis in AXES:
             variable_code[f"{center}_{axis}"] = f"{center}.{axis}"
-    emitter = CudaEmitter(kernel.graph, variable_code)
+    emitter = ScalarCEmitter(kernel.graph, variable_code)
     emitter.emit([kernel.boys_argument])
     argument_reference = emitter.reference(kernel.boys_argument)
     emitter.lines.append("  double boys[3];")
@@ -1146,7 +1146,7 @@ def emit_dppp_component_cuda(kernel: DpppComponentKernel) -> str:
     for center in CENTERS:
         for axis in AXES:
             variable_code[f"{center}_{axis}"] = f"{center}.{axis}"
-    emitter = CudaEmitter(kernel.graph, variable_code)
+    emitter = ScalarCEmitter(kernel.graph, variable_code)
     emitter.emit([kernel.boys_argument])
     argument_reference = emitter.reference(kernel.boys_argument)
     emitter.lines.append("  double boys[7];")
@@ -1218,7 +1218,7 @@ def emit_dppp_contraction_cuda(kernel: DpppContractionKernel) -> str:
                 f"geometry.decay_gradients[{row}][{axis_index}]"
             )
 
-    emitter = CudaEmitter(kernel.graph, variable_code)
+    emitter = ScalarCEmitter(kernel.graph, variable_code)
     roots = [item for center in kernel.gradients for item in center]
     emitter.emit(roots)
     p_label = "".join(kernel.p_components)
