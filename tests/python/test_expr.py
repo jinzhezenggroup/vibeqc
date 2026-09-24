@@ -22,7 +22,7 @@ from vibeqc_compiler.integral import (
     build_psss_kernel,
     build_weighted_shell_contraction_kernel,
 )
-from vibeqc_compiler.integral.cuda import CudaEmitter, format_constant
+from vibeqc_compiler.integral.scalar_c import ScalarCEmitter, format_constant
 from vibeqc_compiler.integral.expr import Graph, ScalarDomain
 
 
@@ -178,7 +178,7 @@ def test_ssa_materialized_count_matches_current_cuda_emitter() -> None:
         for coordinate in range(3)
     )
     analysis = kernel.graph.analyze_ssa(roots)
-    emitter = CudaEmitter(kernel.graph, {})
+    emitter = ScalarCEmitter(kernel.graph, {})
     emitter.emit(roots)
 
     assert analysis.materialized_value_count == len(emitter.lines)
@@ -214,9 +214,9 @@ def test_materialized_cse_plan_preserves_existing_cuda_source_shape() -> None:
     assert plan.inlined_value_count == 0
     assert plan.rematerialized_value_count == 0
 
-    legacy = CudaEmitter(graph, {})
+    legacy = ScalarCEmitter(graph, {})
     legacy.emit(roots)
-    planned = CudaEmitter(graph, {}, materialization_plan=plan)
+    planned = ScalarCEmitter(graph, {}, materialization_plan=plan)
     planned.emit(roots)
     assert planned.lines == legacy.lines
     assert planned.reference(root) == legacy.reference(root)
@@ -246,7 +246,7 @@ def test_single_use_plan_inlines_roots_with_exact_parentheses_and_metrics() -> N
         "estimated_peak_live_values": 0,
     }
 
-    emitter = CudaEmitter(
+    emitter = ScalarCEmitter(
         graph,
         {"x": "input_x", "y": "input_y", "z": "input_z"},
         materialization_plan=plan,
@@ -325,7 +325,7 @@ def test_pressure_aware_ordering_reduces_exact_materialized_peak_liveness() -> N
     assert pressure_aware.peak_live_values < topological.peak_live_values
     assert pressure_aware.to_payload()["ordering"] == "pressure_aware"
 
-    emitter = CudaEmitter(
+    emitter = ScalarCEmitter(
         kernel.graph,
         {},
         materialization_plan=pressure_aware,
@@ -375,7 +375,7 @@ def test_fma_fusion_removes_one_use_multiply_and_counts_one_operation() -> None:
     assert plan.fma_operation_count == 1
     assert product_decision.reason == "fma_operand"
 
-    emitter = CudaEmitter(graph, {}, materialization_plan=plan)
+    emitter = ScalarCEmitter(graph, {}, materialization_plan=plan)
     emitter.emit(roots)
     assert emitter.lines == ["  const double v0 = fma(x, y, z);"]
     assert emitter.reference(root) == "v0"
@@ -404,7 +404,7 @@ def test_fma_fusion_preserves_shared_multiply_cse_and_supports_inline_root() -> 
         RematerializationPolicy.inline_single_use_values(),
         fusion=AlgebraFusion.FMA,
     )
-    emitter = CudaEmitter(
+    emitter = ScalarCEmitter(
         inline_graph,
         {},
         materialization_plan=inline_plan,
@@ -437,7 +437,7 @@ def test_canonical_nary_rebuild_flattens_and_folds_associative_regions() -> None
     assert canonical.analyze_ssa(roots).arithmetic_operation_count == 3
     assert canonical.evaluate(rebuilt, {"x": 1.5, "y": -2.0}) == 6.0
 
-    emitter = CudaEmitter(canonical, {})
+    emitter = ScalarCEmitter(canonical, {})
     emitter.emit(roots)
     assert len(emitter.lines) == 1
     assert emitter.lines[0].count(" + ") == 3
@@ -455,7 +455,7 @@ def test_canonical_forms_ignore_binary_parenthesization() -> None:
 
     def emitted_form(root: typing.Any, form: typing.Any) -> typing.Any:
         canonical, roots = graph.apply_algebra_form((root,), form)
-        emitter = CudaEmitter(canonical, {})
+        emitter = ScalarCEmitter(canonical, {})
         emitter.emit(roots)
         return emitter.lines, emitter.reference(roots[0])
 
@@ -471,7 +471,7 @@ def test_scalar_c_emitter_supports_explicit_fp32_literals_and_temporaries() -> N
     x = graph.variable("x")
     root = (x + Fraction(1, 3)) * Fraction(2, 5)
 
-    emitter = CudaEmitter(graph, {"x": "x"}, scalar_type="float")
+    emitter = ScalarCEmitter(graph, {"x": "x"}, scalar_type="float")
     emitter.emit((root,))
 
     assert emitter.lines
@@ -482,7 +482,7 @@ def test_scalar_c_emitter_supports_explicit_fp32_literals_and_temporaries() -> N
         format_constant(Fraction(1, 3), scalar_type="float") == "0.33333333333333331f"
     )
     with pytest.raises(ValueError, match="scalar type"):
-        CudaEmitter(graph, {}, scalar_type="half")
+        ScalarCEmitter(graph, {}, scalar_type="half")
 
 
 def test_exact_rational_coefficients_fold_before_cuda_lowering() -> None:
@@ -544,7 +544,7 @@ def test_small_integer_power_lowering_reuses_squares_and_preserves_other_powers(
     values = {"x": 1.75}
     assert lowered.evaluate(roots[0], values) == graph.evaluate(root, values)
 
-    emitter = CudaEmitter(lowered, {})
+    emitter = ScalarCEmitter(lowered, {})
     emitter.emit(roots)
     source = "\n".join(emitter.lines)
     assert "pow(x, 4" not in source
@@ -574,7 +574,7 @@ def test_cuda_emitter_assignment_binds_stored_root_for_later_cse() -> None:
     x = graph.variable("x")
     stored = x + 1.0
     consumer = stored * 2.0
-    emitter = CudaEmitter(graph, {})
+    emitter = ScalarCEmitter(graph, {})
     emitter.emit_assignment(stored, "geometry.stored")
     emitter.emit((consumer,))
 
@@ -680,7 +680,7 @@ def test_nary_differentiation_and_fma_lowering_cover_variable_arity_nodes() -> N
     pair = x * y
     root = graph.add_many((pair, z, graph.variable("w")))
     plan = graph.materialization_plan((root,), fusion=AlgebraFusion.FMA)
-    emitter = CudaEmitter(graph, {}, materialization_plan=plan)
+    emitter = ScalarCEmitter(graph, {}, materialization_plan=plan)
     emitter.emit((root,))
     assert emitter.lines == ["  const double v0 = fma(x, y, (z + w));"]
     assert plan.operation_counts == (("add", 1), ("fma", 1))
