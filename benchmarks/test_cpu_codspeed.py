@@ -78,12 +78,9 @@ def _active_cases() -> tuple[_Case, ...]:
         unknown = extras - supported
         if unknown:
             raise RuntimeError(
-                "unknown VIBEQC_CODSPEED_EXTRA_CASES="
-                + ",".join(sorted(unknown))
+                "unknown VIBEQC_CODSPEED_EXTRA_CASES=" + ",".join(sorted(unknown))
             )
-        return tuple(
-            case for case in _CASES if case.pr_fast or case.pr_extra in extras
-        )
+        return tuple(case for case in _CASES if case.pr_fast or case.pr_extra in extras)
     raise RuntimeError(f"unknown VIBEQC_CODSPEED_TIER={tier!r}")
 
 
