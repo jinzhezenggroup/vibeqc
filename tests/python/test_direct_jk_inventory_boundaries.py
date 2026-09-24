@@ -100,15 +100,23 @@ def test_cyclic_symlink_returns_path_diagnostic(tmp_path: Path, where: str) -> N
     path.unlink()
     _link(path, Path(path.name))
     errors = checker.validate_repository(tmp_path)
-    assert errors
-    assert any("cannot resolve repository path" in error for error in errors)
+    # Non-strict resolve may defer ELOOP to read_text on newer Python versions.
+    assert any(
+        path.name in error
+        and ("cannot resolve repository path" in error or "cannot read" in error)
+        for error in errors
+    )
 
 
 def test_cyclic_root_returns_diagnostic(tmp_path: Path) -> None:
     root = tmp_path / "loop"
     _link(root, Path("loop"))
     errors = checker.validate_repository(root)
-    assert any("cannot resolve repository path" in error for error in errors)
+    assert any(
+        "inventory" in error
+        and ("cannot resolve repository path" in error or "cannot read" in error)
+        for error in errors
+    )
 
 
 def test_embedded_nul_returns_diagnostic(tmp_path: Path) -> None:
