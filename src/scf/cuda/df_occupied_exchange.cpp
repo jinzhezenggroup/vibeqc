@@ -199,12 +199,15 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     detail = "invalid occupied DF exchange dimensions";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  auto error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
-                               plan.matrix_elements * sizeof(double), plan.stream);
-  if (error != cudaSuccess) return cuda_failure(error, "zero occupied DF exchange", detail);
   trace_counter("occupied_rank", rank);
   trace_counter("occupied_factor_bytes", plan.nbf * rank * sizeof(double));
-  if (!rank) return VIBEQC_STATUS_SUCCESS;
+  if (!rank) {
+    const auto error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
+                                       plan.matrix_elements * sizeof(double), plan.stream);
+    return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
+                                : cuda_failure(error, "zero occupied DF exchange", detail);
+  }
+  cudaError_t error = cudaSuccess;
 
   if (plan.integral_source && plan.streamed && plan.metric_full_rank[system] &&
       rank <= static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux) {
@@ -301,6 +304,13 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
                ? VIBEQC_STATUS_SUCCESS
                : blas_failure(status, "resident occupied DF K product", detail);
   }
+
+  // Only the tiled fallback accumulates partial auxiliary products into K.
+  // Fast projected and resident Gram routes use beta=0 for every output block,
+  // so pre-zeroing the whole matrix is pure device traffic on each Fock build.
+  error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
+                          plan.matrix_elements * sizeof(double), plan.stream);
+  if (error != cudaSuccess) return cuda_failure(error, "zero occupied DF exchange", detail);
 
   // Rank never exceeds nbf, so both T panels fit the dense plan's buffers.
   // Source-backed execution uses exactly the dense raw-work policy; host
