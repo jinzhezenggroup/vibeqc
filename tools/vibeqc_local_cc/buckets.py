@@ -60,7 +60,10 @@ class PairStateBucket:
             raise ValueError("pair bucket metadata lengths are inconsistent")
         if len(self.pairs) != len(self.rank_crossings):
             raise ValueError("pair bucket rank-branch metadata is incomplete")
-        if type(self.state_matrices_per_pair) is not int or self.state_matrices_per_pair <= 0:
+        if (
+            type(self.state_matrices_per_pair) is not int
+            or self.state_matrices_per_pair <= 0
+        ):
             raise ValueError("state matrix count must be a positive integer")
         if any(
             len(pair) != 2
@@ -174,9 +177,7 @@ def plan_pair_state_buckets(
         while end < len(records) and records[end].key == key:
             end += 1
 
-        bytes_per_pair = (
-            state_matrices_per_pair * key.rank * key.rank * _FLOAT64_BYTES
-        )
+        bytes_per_pair = state_matrices_per_pair * key.rank * key.rank * _FLOAT64_BYTES
         budget_capacity = budget // bytes_per_pair
         if budget_capacity == 0:
             raise MemoryError(
