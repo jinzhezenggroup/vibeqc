@@ -121,7 +121,9 @@ def test_active_source_releases_below_hysteresis_band() -> None:
 
 
 @pytest.mark.parametrize("condition", (None, 10.1))
-def test_untrusted_estimator_falls_back_to_exact_target(condition: float | None) -> None:
+def test_untrusted_estimator_falls_back_to_exact_target(
+    condition: float | None,
+) -> None:
     decision = decide_guarded_refinement(
         PROBLEM,
         _stage(
@@ -182,7 +184,9 @@ def test_stale_active_identity_fails_closed() -> None:
         ({"maximum_condition_estimate": float("inf")}, "maximum_condition_estimate"),
     ),
 )
-def test_invalid_guard_limits_are_rejected(kwargs: dict[str, float], message: str) -> None:
+def test_invalid_guard_limits_are_rejected(
+    kwargs: dict[str, float], message: str
+) -> None:
     values = {
         "enter_ratio": 1.2,
         "release_ratio": 0.8,

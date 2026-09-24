@@ -95,9 +95,7 @@ def _ratio_exceeds(candidate: RefinementCandidate, threshold: float) -> bool:
     )
 
 
-def _evidence_for(
-    stage: StagePlan, candidate: RefinementCandidate
-) -> ErrorEvidence:
+def _evidence_for(stage: StagePlan, candidate: RefinementCandidate) -> ErrorEvidence:
     matches = tuple(
         evidence
         for evidence in stage.error_evidence
@@ -155,7 +153,9 @@ def decide_guarded_refinement(
     if active is not None:
         selected = indexed.get(active)
         if selected is None:
-            raise ValueError("active refinement is stale for the current stage evidence")
+            raise ValueError(
+                "active refinement is stale for the current stage evidence"
+            )
         if _ratio_exceeds(selected, guard.release_ratio):
             action = "continue_refinement"
         else:
