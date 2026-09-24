@@ -20,9 +20,9 @@ def test_density_codegen_contracts_only_unique_ao_pairs() -> None:
     )
     weighted = _function_body(header, "weighted_density_from_orbitals", "diis_gram")
 
-    assert "for (std::size_t nu = mu; nu < nbf; ++nu)" in density
-    assert "if (mu != nu) output[nu * nbf + mu] = value;" in density
-    assert "for (std::size_t nu = 0; nu < nbf; ++nu)" not in density
+    assert "occupation_weight == 1.0 || occupation_weight == 2.0" in density
+    assert "for (std::size_t nu = symmetric ? mu : 0; nu < nbf; ++nu)" in density
+    assert "if (symmetric && mu != nu) output[nu * nbf + mu] = value;" in density
 
     # Weighted density retains its historical full-square evaluation: moving the
     # orbital-energy factor across the two AO coefficients can change FP64
