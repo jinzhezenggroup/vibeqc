@@ -4,7 +4,10 @@ project = "VibeQC"
 author = "VibeQC contributors"
 language = "en"
 
-extensions = ["myst_parser"]
+extensions = [
+    "myst_parser",
+    "sphinx_rtd_theme",
+]
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -20,7 +23,16 @@ exclude_patterns = [
     "superpowers/**",
 ]
 
-html_theme = "furo"
+html_theme = "sphinx_rtd_theme"
 html_title = "VibeQC documentation"
+html_theme_options = {
+    # Keep the audience-oriented guide tree visible instead of showing only
+    # the currently selected branch.
+    "collapse_navigation": False,
+    "sticky_navigation": True,
+    "navigation_depth": 3,
+    "includehidden": True,
+    "titles_only": True,
+}
 
 myst_heading_anchors = 3
