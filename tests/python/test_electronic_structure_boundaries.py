@@ -28,12 +28,16 @@ def test_current_cross_method_boundaries_are_valid() -> None:
     ):
         assert area in report["areas"]
     assert {
+        "solver/dense_linear.hpp",
         "solver/diis.hpp",
         "solver/diis_history.hpp",
         "solver/iteration_control.hpp",
     } <= {module["path"] for module in report["modules"] if module["owner"] == "solver"}
     assert {"cc", "scf"} <= set(
         report["infrastructure_inventory"]["diis_history"]["consumer_areas"]
+    )
+    assert {"cc", "scf"} <= set(
+        report["infrastructure_inventory"]["dense_linear"]["consumer_areas"]
     )
     assert {
         "runtime/nvidia_host_api/cublas_v2.h",
