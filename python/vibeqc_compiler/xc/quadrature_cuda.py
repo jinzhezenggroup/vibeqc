@@ -29,7 +29,7 @@ inline size_t sum(size_t a, size_t b) {
   return a + b;
 }
 struct Layout {
-  size_t atoms, points, tile, rules, polar, azimuth, geometry, distances, logs, xyz, weights;
+  size_t atoms, points, tile, rules, radial, polar, azimuth, geometry, distances, logs, xyz, weights;
   size_t doubles, device_bytes;
 };
 // 4096 points bounds launch overhead and O(tile * atoms) scratch. The small
@@ -43,7 +43,8 @@ inline Layout layout(size_t atoms, size_t points) {
   l.points = points;
   l.tile = std::min(points, size_t{4096});
   l.rules = product(4, atoms); // xyz centers plus resolved radii
-  l.polar = sum(l.rules, 2 * (512 + 256));
+  l.radial = sum(l.rules, 2 * (512 + 256));
+  l.polar = sum(l.radial, 2 * 512);
   l.azimuth = sum(l.polar, 3 * 256);
   l.geometry = sum(l.azimuth, 3 * 1024);
   l.distances = sum(l.geometry, product(atoms, atoms));
@@ -93,6 +94,17 @@ __global__ void geometry_kernel(const double* centers, size_t na, double toleran
     inverse_separation[a * na + b] = inverse_separation[b * na + a] = inverse;
   }
 }
+// Radial map factors depend only on the fixed Gauss-Legendre radial rule. Build
+// the two quotients once so every atom/angular replica avoids repeating them.
+__global__ void radial_kernel(size_t nr, const double* rn, const double* rw, double* radial) {
+  for (size_t r = size_t(blockIdx.x) * blockDim.x + threadIdx.x; r < nr;
+       r += size_t(blockDim.x) * gridDim.x) {
+    const double t = 0.5 * (rn[r] + 1.0);
+    const double one_minus_t = 1.0 - t;
+    radial[2 * r] = t / one_minus_t;
+    radial[2 * r + 1] = 0.5 * rw[r] / (one_minus_t * one_minus_t);
+  }
+}
 // Angular factors depend only on the fixed quadrature rules, not on atoms or
 // radial shells. Build them once on device so every molecular point reuses the
 // same device-math sqrt/sin/cos results instead of recomputing them.
@@ -116,9 +128,9 @@ __global__ void azimuth_kernel(size_t nphi, double* azimuth) {
 }
 // Atom/radial/polar/azimuth order is the public derivative-export contract.
 __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, size_t nphi,
-                              const double* centers, const double* radii, const double* rn,
-                              const double* rw, const double* polar, const double* azimuth,
-                              double* xyz, double* weights) {
+                              const double* centers, const double* radii, const double* radial,
+                              const double* polar, const double* azimuth, double* xyz,
+                              double* weights) {
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
        i += size_t(blockDim.x) * gridDim.x) {
     size_t index = begin + i;
@@ -126,10 +138,11 @@ __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, 
     index /= nphi;
     const size_t z = index % nz;
     index /= nz;
-    const size_t radial = index % nr, owner = index / nr;
-    const double t = 0.5 * (rn[radial] + 1.0);
-    const double r = radii[owner] * t / (1.0 - t);
-    const double wr = 0.5 * rw[radial] * radii[owner] * r * r / ((1.0 - t) * (1.0 - t));
+    const size_t radial_index = index % nr, owner = index / nr;
+    const double radius = radii[owner];
+    const double* pr = radial + 2 * radial_index;
+    const double r = radius * pr[0];
+    const double wr = pr[1] * radius * r * r;
     const double* pz = polar + 3 * z;
     const double* pp = azimuth + 3 * phi_index;
     xyz[3*i] = centers[3*owner] + r * pz[0] * pp[0];
