@@ -56,22 +56,25 @@ def test_emitted_cuda_uses_atom_major_2d_schedule() -> None:
 
 
 def test_points_reuse_radial_factors() -> None:
-    """Pay the radial-map quotients once per rule entry, not once per point."""
+    """Evaluate exact radial transforms once per atom/radial pair."""
     source = emit_quadrature_cuda()
     assert "__global__ void radial_kernel" in source
     radial = source.split("__global__ void radial_kernel", 1)[1].split(
         "// Angular factors", 1
     )[0]
-    assert "radial[2 * r] = t / one_minus_t;" in radial
-    assert "radial[2 * r + 1] = 0.5 * rw[r] / (one_minus_t * one_minus_t);" in radial
+    assert "const double r = radii[owner] * t / (1.0 - t);" in radial
+    assert "0.5 * rw[radial_index] * radii[owner] * r * r /" in radial
+    assert "radial[2 * i] = r;" in radial
+    assert "radial[2 * i + 1] = wr;" in radial
 
     points = source.split("__global__ void points_kernel", 1)[1].split(
         "// Atom-major 2-D launch", 1
     )[0]
     assert "rn[" not in points
     assert "rw[" not in points
-    assert "const double r = radius * pr[0];" in points
-    assert "const double wr = pr[1] * radius * r * r;" in points
+    assert "radii[" not in points
+    assert "const double* pr = radial + 2 * (owner * nr + radial_index);" in points
+    assert "const double r = pr[0], wr = pr[1];" in points
 
     root = Path(__file__).resolve().parents[2]
     native = (root / "src/dft/cuda_quadrature.cu").read_text()
@@ -81,17 +84,20 @@ def test_points_reuse_radial_factors() -> None:
     assert "std::vector<double> input(l.radial, 0.0);" in native
     assert "data + l.radial, data + l.polar, data + l.azimuth" in native
 
-    # Standard PBE uses 54 radial nodes. The old point kernel performs two
-    # radial-map FP64 divisions per molecular point; setup now performs two per
-    # radial node once for the complete grid.
-    setup_divisions = 2 * 54
-    assert setup_divisions == 108
-    for atoms, point_count in ((48, 1_327_104), (96, 2_654_208)):
+    # Standard PBE uses 54 radial nodes and 16*32 angular replicas. The old
+    # point kernel performs two FP64 divisions per molecular point; setup now
+    # performs the exact same two divisions once per atom/radial pair.
+    for atoms, point_count, setup_divisions in (
+        (48, 1_327_104, 5_184),
+        (96, 2_654_208, 10_368),
+    ):
         assert atoms * 54 * 16 * 32 == point_count
-        assert 2 * point_count > setup_divisions
+        assert 2 * atoms * 54 == setup_divisions
+        assert 2 * point_count == setup_divisions * 16 * 32
 
-    # Fixed maximum radial cache: two doubles for each of 512 rule entries.
-    assert 8 * 2 * 512 == 8_192
+    # Fixed maximum cache: two doubles per atom for each of 512 radial entries.
+    assert 48 * 2 * 512 * 8 == 393_216
+    assert 96 * 2 * 512 * 8 == 786_432
 
 
 def test_points_reuse_angular_factors() -> None:
@@ -134,7 +140,7 @@ def test_partition_reuses_inverse_center_separations() -> None:
     """Pay each center-pair division once instead of once per point visit."""
     source = emit_quadrature_cuda()
     geometry = source.split("__global__ void geometry_kernel", 1)[1].split(
-        "// Radial map factors", 1
+        "// The radial transform", 1
     )[0]
     assert "separation > tolerance ? 1.0 / separation : 0.0" in geometry
     assert "inverse_separation[a * na + b]" in geometry
@@ -186,11 +192,11 @@ int main() {
       const auto l = layout(atoms, points);
       const size_t tile = std::min(points, size_t{4096});
       // Enumerate owned arrays independently of generated offsets.
-      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + 2*512 + 3*256 + 3*1024
+      const size_t doubles = 3*atoms + atoms + 2*512 + 2*256 + 2*512*atoms + 3*256 + 3*1024
                            + atoms*atoms + tile*atoms + tile*atoms + 3*tile + tile;
       if (l.device_bytes != doubles*sizeof(double) + sizeof(int)) return 1;
       if (l.weights + tile != l.doubles) return 2;
-      if (l.polar != l.radial + 2*512) return 3;
+      if (l.polar != l.radial + 2*512*atoms) return 3;
       if (l.azimuth != l.polar + 3*256) return 4;
       if (l.geometry != l.azimuth + 3*1024) return 5;
     }
