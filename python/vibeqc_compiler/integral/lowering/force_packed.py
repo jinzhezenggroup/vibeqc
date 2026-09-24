@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..cuda import CudaEmitter
+from ..scalar_c import ScalarCEmitter
 from ..shell_class import (
     build_weighted_shell_contraction_kernel,
 )
@@ -427,7 +427,7 @@ def _emit_scalar_thread_force_consumer_cuda(
         ]
         statements = []
         for slot, root in enumerate(roots):
-            emitter = CudaEmitter(kernel.graph, variable_code)
+            emitter = ScalarCEmitter(kernel.graph, variable_code)
             emitter.emit((root,))
             statements.append("      {")
             statements.extend("      " + line for line in emitter.lines)
