@@ -48,9 +48,7 @@ def _validated_pair_spaces(
 ) -> dict[tuple[int, int], PairSpace]:
     _require_exact_pair_keys(spaces, bucket, name="pair-space")
     result: dict[tuple[int, int], PairSpace] = {}
-    for pair, expected_gauge in zip(
-        bucket.pairs, bucket.gauge_identities, strict=True
-    ):
+    for pair, expected_gauge in zip(bucket.pairs, bucket.gauge_identities, strict=True):
         space = spaces[pair]
         if not isinstance(space, PairSpace):
             raise TypeError("pair-state staging requires canonical PairSpace records")

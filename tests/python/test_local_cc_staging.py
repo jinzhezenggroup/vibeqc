@@ -37,9 +37,7 @@ def _space(
     )
 
 
-def _bucket(
-    spaces: list[PairSpace], *, states_per_pair: int = 2
-) -> PairStateBucket:
+def _bucket(spaces: list[PairSpace], *, states_per_pair: int = 2) -> PairStateBucket:
     (bucket,) = plan_pair_state_buckets(
         spaces,
         state_matrices_per_pair=states_per_pair,
@@ -83,7 +81,9 @@ def test_pair_state_gather_uses_bucket_order_and_owns_immutable_copy() -> None:
 def test_pair_state_gather_preflights_budget_before_state_array_access() -> None:
     class ExplodingArray:
         def __array__(self) -> np.ndarray:
-            raise AssertionError("state conversion must not run before budget admission")
+            raise AssertionError(
+                "state conversion must not run before budget admission"
+            )
 
     space = _space((0, 1), 2)
     bucket = _bucket([space], states_per_pair=1)
