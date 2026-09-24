@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +18,8 @@ def test_fast_occupied_exchange_paths_skip_full_output_clear() -> None:
         maxsplit=1,
     )
     assert "cudaMemsetAsync(" not in projected_and_resident
-    assert "&zero,\n                             output + r + c * n" in SOURCE
+    # The tile GEMM must overwrite its output; indentation is not part of the contract.
+    assert re.search(r"&zero,\s*output \+ r \+ c \* n", SOURCE)
     assert "&zero, output, n" in projected_and_resident
 
     before_panel_loop = fallback.split(
