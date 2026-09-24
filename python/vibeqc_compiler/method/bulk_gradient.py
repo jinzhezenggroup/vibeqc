@@ -10,6 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
+from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.xc.bulk_runtime import (
+    BulkRuntimeProgram,
+    build_bulk_runtime_program,
+)
+from vibeqc_compiler.xc.contractions import ExternalPointContraction
 from vibeqc_compiler.xc.endpoint_capability import (
     EndpointCapabilityResolution,
     resolve_endpoint_capability,
@@ -18,7 +26,7 @@ from vibeqc_compiler.xc.libxc_bulk_capabilities import (
     BulkFunctionalCapability,
     functional_capability,
 )
-from vibeqc_compiler.xc.spec import AUTO_BULK_COMPONENTS
+from vibeqc_compiler.xc.spec import AUTO_BULK_COMPONENTS, FunctionalSpec, functional
 
 from .spec import UnsupportedMethod
 
@@ -26,6 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
 BULK_FORCE_RESOLUTION_SCHEMA = "vibeqc.bulk-libxc-force-resolution.v1"
+BULK_FORCE_GEOMETRY_SCHEMA = "vibeqc.bulk-libxc-force-geometry-diagnostic.v1"
 _SUPPORTED_FORCE_INGREDIENTS = {
     ("rho",): "lda",
     ("rho", "sigma"): "gga",
@@ -161,4 +170,112 @@ def resolve_bulk_force_capability(
         family=capability.family,
         required_ingredients=ingredients,
         production_domain_identity=capability.production_domain_profile.identity,
+    )
+
+
+@dataclass(frozen=True)
+class BulkForceGeometryDiagnostic:
+    """Interior point-provider proof feeding the common geometry pullback.
+
+    Force endpoint evidence is resolved before construction, but the point
+    executor retained here is still the existing bulk interior Graph runtime.
+    This object therefore validates the D2 contraction seam only; it does not
+    claim boundary-domain or public molecular-force execution.
+    """
+
+    resolution: BulkForceResolution
+    functional: FunctionalSpec
+    point_program: BulkRuntimeProgram
+    contraction: ExternalPointContraction
+
+    @property
+    def identity(self) -> str:
+        return canonical_hash(self.to_payload())
+
+    def to_payload(self) -> dict[str, Any]:
+        return {
+            "schema": BULK_FORCE_GEOMETRY_SCHEMA,
+            "force_resolution": self.resolution.to_payload(),
+            "functional_identity": self.functional.identity,
+            "point_expression_identity": self.point_program.expression_hash,
+            "point_execution_domain": self.point_program.spec.domain,
+            "geometry_contract_identity": self.contraction.contract.identity,
+            "claim": "interior-fixed-density-geometry-diagnostic",
+        }
+
+    def _point_rows(self, features: dict[str, Any]) -> dict[tuple[int, ...], Any]:
+        packed = self.contraction.pack_features(features)
+        indices = {name: i for i, name in enumerate(self.functional.features)}
+        try:
+            selected = np.stack(
+                [packed[indices[name]] for name in self.point_program.spec.features]
+            )
+        except KeyError as error:
+            raise RuntimeError(
+                "bulk point program feature layout disagrees with functional ABI"
+            ) from error
+        values = self.point_program.evaluate(selected)
+        return dict(zip(self.point_program.outputs, values, strict=True))
+
+    def point_energy(self, features: dict[str, Any]) -> Any:
+        """Return provider-owned per-point energy for an independent FD oracle."""
+        return self._point_rows(features)[()]
+
+    def geometry(
+        self,
+        jets: Any,
+        density: Any,
+        weights: Any,
+        *,
+        ao_atoms: Any,
+        natom: Any,
+    ) -> Any:
+        """Pull one bulk point differential back through the common AO owner."""
+        features = self.contraction.features(jets, density)
+        rows = self._point_rows(features)
+        return self.contraction.geometry_from_feature_rows(
+            jets,
+            density,
+            weights,
+            features,
+            rows,
+            ao_atoms=ao_atoms,
+            natom=natom,
+        )
+
+
+def resolve_bulk_force_geometry_diagnostic(
+    name: str,
+    *,
+    spin: str,
+    evidence: Mapping[str, Any] | None = None,
+    require_public: bool = False,
+) -> BulkForceGeometryDiagnostic:
+    """Build the CPU interior D2 seam after exact force capability resolution."""
+    resolution = resolve_bulk_force_capability(
+        name,
+        backend="cpu",
+        spin=spin,
+        evidence=evidence,
+        require_public=require_public,
+    )
+    spec = functional(resolution.name, spin=spin)
+    contraction = ExternalPointContraction(spec, "geometry")
+    point_program = build_bulk_runtime_program(
+        resolution.name,
+        spin=spin,
+        order=1,
+        outputs=contraction.contract.scalar_outputs,
+    )
+    if point_program.spec.capability_identity != resolution.identity:
+        raise RuntimeError("bulk point runtime capability identity mismatch")
+    if point_program.spec.ingredients != resolution.required_ingredients:
+        raise RuntimeError("bulk point runtime ingredient contract mismatch")
+    if point_program.spec.spin != resolution.spin:
+        raise RuntimeError("bulk point runtime spin contract mismatch")
+    return BulkForceGeometryDiagnostic(
+        resolution=resolution,
+        functional=spec,
+        point_program=point_program,
+        contraction=contraction,
     )

@@ -40,7 +40,9 @@ from vibeqc_compiler.method.stationary_gradient import (
 )
 from vibeqc_compiler.tensor import execute
 from vibeqc_compiler.tensor.cpu import NativeTensorProgram
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import (
+    ExternalPointContraction,
+)
 from vibeqc_compiler.xc.grid_native import NativeGridContraction
 from vibeqc_compiler.xc.grid_response import partition_response
 from vibeqc_compiler.xc.native import NativeContractionProgram
@@ -624,7 +626,7 @@ def complete_rks_gradient_diagnostic(
     program = (
         NativeContractionProgram(functional, "geometry", compiler=compiler, cache=cache)
         if execution == "native"
-        else ContractionProgram(functional, "geometry")
+        else ExternalPointContraction(functional, "geometry")
     )
     grid, spec = state.grid, state._source.grid_spec
     grid_consumer = (
