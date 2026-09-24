@@ -403,6 +403,34 @@ def complete_ccsdt_cuda_response_gradient_validation(
             compiler,
             cache,
         )
+        source_bound = BoundCCSDLambda(
+            reference,
+            cc,
+            options=options.lambda_options,
+            current_reference=current_reference,
+        )
+        triples_values = dict(
+            zip(
+                (
+                    "ovvv",
+                    "ovoo",
+                    "ovov",
+                    "fov",
+                    "t1",
+                    "t2",
+                    "eps_o",
+                    "eps_v",
+                ),
+                _triples_arrays(source_bound),
+                strict=True,
+            )
+        )
+        # Every reverse tile closes before the resident Lambda owner is prepared.
+        triples_response = triples_owner.run_tiles(
+            triples_values,
+            inputs=TRIPLES_RESPONSE_INPUTS,
+        )
+
         with PreparedCUDALambda(
             reference,
             cc,
@@ -417,26 +445,6 @@ def complete_ccsdt_cuda_response_gradient_validation(
             device=options.device_id,
         ) as prepared:
             baseline_lambda = prepared.solve(reference_identity=reference.identity)
-            triples_values = dict(
-                zip(
-                    (
-                        "ovvv",
-                        "ovoo",
-                        "ovov",
-                        "fov",
-                        "t1",
-                        "t2",
-                        "eps_o",
-                        "eps_v",
-                    ),
-                    _triples_arrays(prepared.bound),
-                    strict=True,
-                )
-            )
-            triples_response = triples_owner.run_tiles(
-                triples_values,
-                inputs=TRIPLES_RESPONSE_INPUTS,
-            )
             corrected = solve_corrected_lambda_cuda(
                 prepared,
                 baseline_lambda,
@@ -451,25 +459,27 @@ def complete_ccsdt_cuda_response_gradient_validation(
                 triples_response=triples_response,
                 parameter_executor=tensor_executor,
             )
-            with CudaDirectJKBackend(
-                source,
-                device_id=options.device_id,
-                device_budget_bytes=jk_device_budget_bytes,
-            ) as response_backend:
-                orbital_response = BoundCCSDTOrbitalResponse(
-                    fixed_response,
-                    provider,
-                    options=options,
-                    response_backend=response_backend,
-                    response_execution="cuda-resident",
-                    response_device_budget_bytes=response_device_budget_bytes,
-                )
-                gradient = BoundCCSDTGradient(
-                    orbital_response,
-                    options=options,
-                ).gradient()
-                response_backend_identity = response_backend.identity
-                response_backend_diagnostics = response_backend.diagnostics
+        # PreparedCUDALambda is closed here. Later CUDA phases cannot overlap its
+        # persistent resident transpose/action allocations.
+        with CudaDirectJKBackend(
+            source,
+            device_id=options.device_id,
+            device_budget_bytes=jk_device_budget_bytes,
+        ) as response_backend:
+            orbital_response = BoundCCSDTOrbitalResponse(
+                fixed_response,
+                provider,
+                options=options,
+                response_backend=response_backend,
+                response_execution="cuda-resident",
+                response_device_budget_bytes=response_device_budget_bytes,
+            )
+            gradient = BoundCCSDTGradient(
+                orbital_response,
+                options=options,
+            ).gradient()
+            response_backend_identity = response_backend.identity
+            response_backend_diagnostics = response_backend.diagnostics
 
     return replace(
         gradient,
@@ -484,6 +494,10 @@ def complete_ccsdt_cuda_response_gradient_validation(
             "physical_response_diagnostics": response_backend_diagnostics,
             "response_execution": "cuda-resident",
             "cpu_execution_fallback": False,
+            "device_budget_scope": (
+                "stage-local; triples response and Lambda are serialized; "
+                "no combined endpoint device-cap claim"
+            ),
             "total_endpoint_seconds": time.perf_counter() - started,
         },
     )
