@@ -34,7 +34,8 @@ template <class T>
 class Buffer {
  public:
   explicit Buffer(std::size_t count) : count_(count) {
-    if (count_) check(cudaMalloc(reinterpret_cast<void**>(&pointer_), count_ * sizeof(T)), "cudaMalloc");
+    if (count_)
+      check(cudaMalloc(reinterpret_cast<void**>(&pointer_), count_ * sizeof(T)), "cudaMalloc");
   }
   ~Buffer() {
     if (pointer_) cudaFree(pointer_);
@@ -46,11 +47,13 @@ class Buffer {
   std::size_t size() const { return count_; }
 
   void upload(const T* source, std::size_t count) {
-    check(cudaMemcpy(pointer_, source, count * sizeof(T), cudaMemcpyHostToDevice), "cudaMemcpy H2D");
+    check(cudaMemcpy(pointer_, source, count * sizeof(T), cudaMemcpyHostToDevice),
+          "cudaMemcpy H2D");
   }
 
   void download(T* destination, std::size_t count) const {
-    check(cudaMemcpy(destination, pointer_, count * sizeof(T), cudaMemcpyDeviceToHost), "cudaMemcpy D2H");
+    check(cudaMemcpy(destination, pointer_, count * sizeof(T), cudaMemcpyDeviceToHost),
+          "cudaMemcpy D2H");
   }
 
  private:
@@ -104,8 +107,7 @@ class BenchmarkServer {
       for (unsigned int i = 0; i < kWarmupLaunches; ++i) launch_once();
       check(cudaDeviceSynchronize(), "cudaDeviceSynchronize(warmup)");
 
-      std::cout << "READY device=" << properties.name
-                << " case=d4-production systems=" << kSystems
+      std::cout << "READY device=" << properties.name << " case=d4-production systems=" << kSystems
                 << " atoms_per_system=" << kAtomsPerSystem << std::endl;
       return true;
     } catch (const std::exception& error) {
@@ -169,8 +171,7 @@ class BenchmarkServer {
       if (status != D4Status::success) throw std::runtime_error("host D4 reference failed");
       expected_energy_[2u * system] = energy[0];
       expected_energy_[2u * system + 1u] = energy[1];
-      std::copy(gradient.begin(), gradient.end(),
-                expected_gradient_.begin() + 3u * begin);
+      std::copy(gradient.begin(), gradient.end(), expected_gradient_.begin() + 3u * begin);
       std::copy(dedq.begin(), dedq.end(), expected_dedq_.begin() + begin);
     }
   }
@@ -215,8 +216,8 @@ class BenchmarkServer {
 
   void launch_once() {
     check(launch_d4_fixed_charge_batched_cuda(batch(), gfn2_d4_parameters(), device_tables(),
-                                               device_workspace_.get(), device_workspace_.size(),
-                                               result()),
+                                              device_workspace_.get(), device_workspace_.size(),
+                                              result()),
           "launch_d4_fixed_charge_batched_cuda");
   }
 
