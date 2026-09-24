@@ -127,15 +127,9 @@ void check_charge_guided_lowdin_contract() {
         {.125, 0, 0, 1.5});
   close(charge_guided_lowdin_density(system, ints, x, base, std::array{0.0, 0.0}), base);
 
-  invalid([&] {
-    charge_guided_lowdin_density(system, ints, x, base, std::array{0.0});
-  });
-  invalid([&] {
-    charge_guided_lowdin_density(system, ints, x, base, std::array{.2, .2});
-  });
-  invalid([&] {
-    charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2});
-  });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{0.0}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{.2, .2}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2}); });
 }
 
 void check_overlap_cache_contract() {

@@ -52,8 +52,7 @@ std::pair<Matrix, Matrix> normalized_warm_uhf_density(const integrals::IntegralD
  * back to the public AO metric. This is an initial-guess heuristic, not a population-analysis
  * claim about the converged state.
  */
-Matrix charge_guided_lowdin_density(const core::System& system,
-                                    const integrals::IntegralData& ints,
+Matrix charge_guided_lowdin_density(const core::System& system, const integrals::IntegralData& ints,
                                     const Matrix& orthogonalizer, const Matrix& input,
                                     std::span<const double> atomic_charges);
 /** Prepare a restricted core guess or a finite, normalized warm density.

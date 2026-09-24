@@ -132,8 +132,7 @@ std::pair<Matrix, Matrix> normalized_warm_uhf_density(const integrals::IntegralD
   return {std::move(alpha), std::move(beta)};
 }
 
-Matrix charge_guided_lowdin_density(const core::System& system,
-                                    const integrals::IntegralData& ints,
+Matrix charge_guided_lowdin_density(const core::System& system, const integrals::IntegralData& ints,
                                     const Matrix& orthogonalizer, const Matrix& input,
                                     std::span<const double> atomic_charges) {
   const std::size_t n = ints.nbf;
@@ -165,10 +164,9 @@ Matrix charge_guided_lowdin_density(const core::System& system,
     if (shell.atom_index >= system.atoms.size()) {
       throw std::invalid_argument("charge-guided seed shell references an invalid atom");
     }
-    const std::size_t count =
-        system.basis_representation == VIBEQC_BASIS_SPHERICAL
-            ? 2u * static_cast<std::size_t>(shell.angular_momentum) + 1u
-            : molecule::cartesian_count(shell.angular_momentum);
+    const std::size_t count = system.basis_representation == VIBEQC_BASIS_SPHERICAL
+                                  ? 2u * static_cast<std::size_t>(shell.angular_momentum) + 1u
+                                  : molecule::cartesian_count(shell.angular_momentum);
     if (count == 0 || ao_atoms.size() > n || count > n - ao_atoms.size()) {
       throw std::invalid_argument("charge-guided seed AO ownership exceeds the basis");
     }
@@ -188,9 +186,8 @@ Matrix charge_guided_lowdin_density(const core::System& system,
       overlap_square_root[index(j, i, n)] = symmetric;
     }
   }
-  Matrix orthogonal_density =
-      reference::multiply(reference::multiply(overlap_square_root, normalized, n),
-                          overlap_square_root, n);
+  Matrix orthogonal_density = reference::multiply(
+      reference::multiply(overlap_square_root, normalized, n), overlap_square_root, n);
   for (std::size_t i = 0; i < n; ++i) {
     for (std::size_t j = i + 1; j < n; ++j) {
       const double symmetric =
@@ -208,8 +205,7 @@ Matrix charge_guided_lowdin_density(const core::System& system,
   constexpr double population_tolerance = 1.0e-12;
   double target_sum = 0.0;
   for (std::size_t atom = 0; atom < system.atoms.size(); ++atom) {
-    double target =
-        static_cast<double>(system.atoms[atom].ionic_charge()) - atomic_charges[atom];
+    double target = static_cast<double>(system.atoms[atom].ionic_charge()) - atomic_charges[atom];
     if (target < -population_tolerance || current[atom] < -population_tolerance) {
       throw std::invalid_argument("charge-guided seed produced a negative atomic population");
     }
@@ -240,11 +236,9 @@ Matrix charge_guided_lowdin_density(const core::System& system,
     }
   }
 
-  Matrix density =
-      reference::multiply(reference::multiply(orthogonalizer, orthogonal_density, n),
-                          orthogonalizer, n);
-  normalize_spin_density(density, ints.overlap, n,
-                         static_cast<std::size_t>(system.electron_count));
+  Matrix density = reference::multiply(reference::multiply(orthogonalizer, orthogonal_density, n),
+                                       orthogonalizer, n);
+  normalize_spin_density(density, ints.overlap, n, static_cast<std::size_t>(system.electron_count));
   if (!std::all_of(density.begin(), density.end(),
                    [](double value) { return std::isfinite(value); })) {
     throw std::invalid_argument("charge-guided seed produced a non-finite AO density");
