@@ -49,7 +49,7 @@ from .ir import (
     sqrt,
     transpose,
 )
-from .layout import DenseLayout
+from vibeqc_compiler.common.layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .precision import (
     CastBoundary,
