@@ -38,8 +38,11 @@ class DFRCCSDTCapabilities:
     def __post_init__(self) -> None:
         if self.method != "df-rccsd(t)" or self.family != "coupled_cluster":
             raise ValueError("DF-RCCSD(T) capability identity mismatch")
-        if self.supported_properties != frozenset({"energy"}):
+        properties = frozenset(self.supported_properties)
+        if properties != frozenset({"energy"}):
             raise ValueError("DF-RCCSD(T) C2a is energy-only")
+        # Frozen dataclasses do not freeze caller-owned mutable containers.
+        object.__setattr__(self, "supported_properties", properties)
         if self.reference_mode != "conventional-rhf":
             raise ValueError("DF-RCCSD(T) requires a conventional RHF reference")
         if self.correlation_mode != "density-fitting":
