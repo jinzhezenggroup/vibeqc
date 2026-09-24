@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 import shutil
 import statistics
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 BRIDGE = r"""
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -23,6 +25,7 @@ BRIDGE = r"""
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "dft/xc.hpp"
