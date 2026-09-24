@@ -82,7 +82,8 @@ __device__ inline double distance(const double* a, const double* b) {
 }
 // Compute each unordered center distance once, then retain its reciprocal for
 // the point-heavy Becke partition. Zero is the exact coincident/tolerance
-// sentinel, so every point worker avoids a repeated FP64 division.
+// sentinel. A negative entry retains the physical separation only when its
+// reciprocal overflows; that rare path keeps the original quotient.
 __global__ void geometry_kernel(const double* centers, size_t na, double tolerance,
                                 double* inverse_separation) {
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < na * na;
@@ -91,7 +92,8 @@ __global__ void geometry_kernel(const double* centers, size_t na, double toleran
     if (b > a) continue;
     const double separation = distance(centers + 3 * a, centers + 3 * b);
     const double inverse = separation > tolerance ? 1.0 / separation : 0.0;
-    inverse_separation[a * na + b] = inverse_separation[b * na + a] = inverse;
+    const double retained = isfinite(inverse) ? inverse : -separation;
+    inverse_separation[a * na + b] = inverse_separation[b * na + a] = retained;
   }
 }
 // The radial transform depends only on (atom, radial rule entry), while every
@@ -176,9 +178,14 @@ __global__ void partition_kernel(size_t count, size_t na, const double* distance
         if (a == b) continue;
         const size_t hi = a > b ? a : b, lo = a > b ? b : a;
         const double inverse = inverse_separation[hi * na + lo];
-        const double mu = inverse != 0.0
-            ? fmin(1.0, fmax(-1.0, (distances[hi * count + point] -
-                                    distances[lo * count + point]) * inverse)) : 0.0;
+        double coordinate = 0.0;
+        if (inverse > 0.0) {
+          coordinate = (distances[hi * count + point] - distances[lo * count + point]) * inverse;
+        } else if (inverse < 0.0) {
+          // Do not turn 0*infinity into a clipped endpoint for equidistant points.
+          coordinate = (distances[hi * count + point] - distances[lo * count + point]) / (-inverse);
+        }
+        const double mu = fmin(1.0, fmax(-1.0, coordinate));
         const double pair = fmin(1.0, fmax(0.0, becke<Iterations>(mu)));
         value += a > b ? log(pair) : log1p(-pair);
       }

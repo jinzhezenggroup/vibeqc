@@ -60,3 +60,10 @@ Refs #1100, #1102, #1117. Stacked after #1193 only to serialize edits to the sam
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Review correction: non-representable reciprocals
+
+The [reciprocal-overflow correction](../numerics/2026-09-24-becke-reciprocal-overflow.md) refines the buffer encoding for legal zero/tiny coincident tolerances. Positive entries remain finite reciprocals, zero retains its sentinel meaning, and a negative entry stores the original separation when its reciprocal would overflow. Only that exceptional case uses the original pointwise quotient. The ordinary-geometry census above remains applicable; a nonzero entry must no longer be assumed to be a reciprocal without checking its sign.
+
+Agent: ChatGPT (Odd-PR Review)
+Model: GPT-6 Astra Pro
