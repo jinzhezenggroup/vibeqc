@@ -26,7 +26,10 @@ def test_full_spd_dispatch_uses_device_global_storage(dispatch: tuple) -> None:
     assert len(rows) == 10301
     # The complete table exceeds constant space even before padding.
     assert len(rows) * 3 * 4 > 64 * 1024
-    assert "static __device__ const StationaryDispatchEntry stationary_dispatch[]" in source
+    assert (
+        "static __device__ const StationaryDispatchEntry stationary_dispatch[]"
+        in source
+    )
     assert "__constant__" not in source
 
 
@@ -42,7 +45,13 @@ def test_every_dispatch_preserves_kind_and_permutations(
         center_values = (*centers, *([-1] * (4 - len(centers))))
         expected.append(
             "{%d,%d,%d,{%s},{%s}}"
-            % (identifier, kind, len(centers), ",".join(map(str, center_values)), ",".join(map(str, axes)))
+            % (
+                identifier,
+                kind,
+                len(centers),
+                ",".join(map(str, center_values)),
+                ",".join(map(str, axes)),
+            )
         )
     prefix = r"""
 #include <algorithm>
@@ -94,7 +103,10 @@ int main() {
     path.write_text(prefix + source + driver.replace("@ROWS@", ",\n".join(expected)))
     subprocess.run(
         [compiler, "-std=c++17", "-O0", str(path), "-o", str(executable)],
-        check=True, capture_output=True, text=True, timeout=60,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     subprocess.run([str(executable)], check=True, timeout=10)
 
@@ -114,5 +126,8 @@ def test_emitted_dispatch_compiles_with_nvcc_without_a_device(
     )
     subprocess.run(
         [compiler, "-std=c++17", "-dc", str(path), "-o", str(tmp_path / "dispatch.o")],
-        check=True, capture_output=True, text=True, timeout=120,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
