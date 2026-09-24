@@ -119,8 +119,9 @@ struct SemilocalPointValue {
   double kinetic[2]{};
 };
 
-using SemilocalPointEvaluator = SemilocalPointValue (*)(
-    const double rho[2], const double (&gradient)[2][3], const double tau[2]);
+using SemilocalPointEvaluator = SemilocalPointValue (*)(const double rho[2],
+                                                        const double (&gradient)[2][3],
+                                                        const double tau[2]);
 
 /** One already-compiled semilocal point program. The identifier is diagnostic
  * only; expression_identity binds the generated mathematics. ingredient_mask
@@ -139,8 +140,7 @@ void validate_semilocal_point_program(const SemilocalPointProgram& program);
 XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
                                    const SemilocalPointProgram& program,
-                                   std::size_t tile_points = 256,
-                                   XcDensitySource source = {});
+                                   std::size_t tile_points = 256, XcDensitySource source = {});
 SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& alpha_density,
                                        const std::vector<double>& beta_density,

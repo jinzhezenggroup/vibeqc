@@ -116,9 +116,8 @@ struct RksEvaluation {
 };
 
 struct RksXcEvaluator {
-  using Direct = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
-                                     const Matrix&, dft::XcDensitySource, std::size_t, double,
-                                     double);
+  using Direct = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&, const Matrix&,
+                                     dft::XcDensitySource, std::size_t, double, double);
   Direct direct{};
   const dft::SemilocalPointProgram* program{};
 
@@ -126,9 +125,8 @@ struct RksXcEvaluator {
   RksXcEvaluator(const dft::SemilocalPointProgram& value) : program(&value) {}
 
   dft::XcIntegral operator()(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
-                             const Matrix& density, dft::XcDensitySource source,
-                             std::size_t tile, double exchange_scale,
-                             double correlation_scale) const {
+                             const Matrix& density, dft::XcDensitySource source, std::size_t tile,
+                             double exchange_scale, double correlation_scale) const {
     if (program) {
       if (exchange_scale != 1.0 || correlation_scale != 1.0)
         throw std::invalid_argument("generic semilocal RKS does not accept legacy XC scaling");
@@ -557,14 +555,13 @@ ScfResult run_rks(
   ks.occupations = {occupied, occupied};
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  ks.ao_order = evaluate_xc.program
-                    ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
-                    : (std::string_view(method_name) == "LDA" ? 0U : 1U);
-  ks.scf_domain_version =
-      evaluate_xc.program ? evaluate_xc.program->domain_version
-                          : (std::string_view(method_name) == "WB97M-V"
-                                 ? 3U
-                                 : (std::string_view(method_name) == "B3LYP" ? 2U : 1U));
+  ks.ao_order = evaluate_xc.program ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
+                                    : (std::string_view(method_name) == "LDA" ? 0U : 1U);
+  ks.scf_domain_version = evaluate_xc.program
+                              ? evaluate_xc.program->domain_version
+                              : (std::string_view(method_name) == "WB97M-V"
+                                     ? 3U
+                                     : (std::string_view(method_name) == "B3LYP" ? 2U : 1U));
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   const bool incremental_xc = options.experimental_incremental_xc;

@@ -522,11 +522,11 @@ void validate_semilocal_point_program(const SemilocalPointProgram& program) {
 
 XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
-                                   const SemilocalPointProgram& program,
-                                   std::size_t tile_points, XcDensitySource source) {
+                                   const SemilocalPointProgram& program, std::size_t tile_points,
+                                   XcDensitySource source) {
   validate_semilocal_point_program(program);
-  return integrate_semilocal_rks(basis, grid, density, tile_points, source,
-                                 program.ingredient_mask, program.evaluate, program.identifier);
+  return integrate_semilocal_rks(basis, grid, density, tile_points, source, program.ingredient_mask,
+                                 program.evaluate, program.identifier);
 }
 
 SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,

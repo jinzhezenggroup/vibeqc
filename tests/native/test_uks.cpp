@@ -19,15 +19,14 @@ void require(bool passed, const char* message) {
   if (!passed) throw std::runtime_error(message);
 }
 
-dft::SemilocalPointValue pw91_program_point(const double rho[2],
-                                            const double (&gradient)[2][3],
+dft::SemilocalPointValue pw91_program_point(const double rho[2], const double (&gradient)[2][3],
                                             const double[2]) {
   return dft::evaluate_pw91_point(rho, gradient);
 }
 
 const dft::SemilocalPointProgram kPw91QualificationProgram{
-    "PW91 qualification program", dft::generated::kPw91SemilocalExpressionIdentity,
-    7U, 1U, pw91_program_point};
+    "PW91 qualification program", dft::generated::kPw91SemilocalExpressionIdentity, 7U, 1U,
+    pw91_program_point};
 
 core::System closed_shell_h2(double displacement = 0.0) {
   core::System system;
@@ -249,9 +248,8 @@ void run_generic_semilocal_scf_case() {
   const auto rks_xc = dft::integrate_pw91_rks(basis, grid, rks.density);
   const auto rks_jk = rks_plan.build(rks.density);
   const auto& ints = rks_plan.one_electron();
-  const double independent =
-      ints.nuclear_repulsion + scf::reference::dot(rks.density, ints.hcore) +
-      0.5 * scf::reference::dot(rks.density, rks_jk.coulomb) + rks_xc.energy;
+  const double independent = ints.nuclear_repulsion + scf::reference::dot(rks.density, ints.hcore) +
+                             0.5 * scf::reference::dot(rks.density, rks_jk.coulomb) + rks_xc.energy;
   require(std::abs(independent - rks.energy) < 2e-11,
           "generic semilocal RKS endpoint disagrees with component rebuild");
   require(rks.dft_diagnostic.ao_order == 1 && rks.dft_diagnostic.scf_domain_version == 1,

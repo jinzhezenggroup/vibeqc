@@ -248,9 +248,8 @@ ScfResult run_uks_impl(
   diagnostic.occupations = {na, nb};
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  diagnostic.ao_order = evaluate_xc.program
-                            ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
-                            : (std::string_view(method_name) == "LDA" ? 0U : 1U);
+  diagnostic.ao_order = evaluate_xc.program ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
+                                            : (std::string_view(method_name) == "LDA" ? 0U : 1U);
   diagnostic.scf_domain_version =
       evaluate_xc.program ? evaluate_xc.program->domain_version
                           : (std::string_view(method_name) == "WB97M-V"
