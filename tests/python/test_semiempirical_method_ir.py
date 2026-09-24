@@ -228,7 +228,9 @@ def test_gfn_adapter_excludes_manifest_alias_from_common_identity() -> None:
     right = resolve_xtb_method(XtbMethodSpec("alias-right", "gfn2", GFN2_PARAMETER_SET))
 
     assert left.manifest_identity != right.manifest_identity
-    assert semiempirical_from_xtb(left).identity == semiempirical_from_xtb(right).identity
+    assert (
+        semiempirical_from_xtb(left).identity == semiempirical_from_xtb(right).identity
+    )
 
 
 def test_gfn_adapter_parameter_provenance_changes_common_identity() -> None:
@@ -244,9 +246,10 @@ def test_gfn_adapter_parameter_provenance_changes_common_identity() -> None:
         )
     )
 
-    assert semiempirical_from_xtb(revised).identity != semiempirical_from_xtb(
-        baseline
-    ).identity
+    assert (
+        semiempirical_from_xtb(revised).identity
+        != semiempirical_from_xtb(baseline).identity
+    )
 
 
 def test_gfn_adapter_requires_audited_xtb_ir() -> None:

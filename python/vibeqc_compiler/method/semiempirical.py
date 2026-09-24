@@ -59,7 +59,9 @@ class InvalidSemiempiricalMethod(ValueError):
 
 def _text(value: object, label: str) -> str:
     if not isinstance(value, str) or not value or value != value.strip():
-        raise InvalidSemiempiricalMethod(f"{label} requires a non-empty canonical string")
+        raise InvalidSemiempiricalMethod(
+            f"{label} requires a non-empty canonical string"
+        )
     return value
 
 
@@ -106,7 +108,9 @@ class StateField:
             or not isinstance(self.components, int)
             or self.components <= 0
         ):
-            raise InvalidSemiempiricalMethod("state components must be a positive integer")
+            raise InvalidSemiempiricalMethod(
+                "state components must be a positive integer"
+            )
         if self.dtype not in _ALLOWED_DTYPES:
             raise InvalidSemiempiricalMethod(f"unsupported state dtype {self.dtype!r}")
         if self.spin_semantics not in _ALLOWED_SPIN_SEMANTICS:
@@ -114,7 +118,9 @@ class StateField:
                 f"unsupported state spin semantics {self.spin_semantics!r}"
             )
         if self.version != SEMIEMPIRICAL_STATE_FIELD_VERSION:
-            raise InvalidSemiempiricalMethod("unsupported semiempirical state schema version")
+            raise InvalidSemiempiricalMethod(
+                "unsupported semiempirical state schema version"
+            )
 
     def to_payload(self) -> dict:
         return {
@@ -142,9 +148,13 @@ class ProductSpec:
             or not isinstance(self.derivative_order, int)
             or self.derivative_order < 0
         ):
-            raise InvalidSemiempiricalMethod("product derivative order must be non-negative")
+            raise InvalidSemiempiricalMethod(
+                "product derivative order must be non-negative"
+            )
         if self.version != SEMIEMPIRICAL_PRODUCT_VERSION:
-            raise InvalidSemiempiricalMethod("unsupported semiempirical product version")
+            raise InvalidSemiempiricalMethod(
+                "unsupported semiempirical product version"
+            )
 
     def to_payload(self) -> dict:
         return {
@@ -170,7 +180,9 @@ class ParameterSetRef:
         _text(self.schema, "parameter-set schema")
         _text(self.source_identity, "parameter-set source identity")
         if self.version != SEMIEMPIRICAL_PARAMETER_SET_VERSION:
-            raise InvalidSemiempiricalMethod("unsupported semiempirical parameter-set version")
+            raise InvalidSemiempiricalMethod(
+                "unsupported semiempirical parameter-set version"
+            )
         if not isinstance(self.supported_atomic_numbers, tuple):
             raise InvalidSemiempiricalMethod(
                 "supported atomic numbers must be an immutable tuple"
@@ -194,7 +206,9 @@ class ParameterSetRef:
             raise InvalidSemiempiricalMethod(
                 "parameter set requires immutable named resources"
             )
-        if not all(isinstance(resource, ParameterResource) for resource in self.resources):
+        if not all(
+            isinstance(resource, ParameterResource) for resource in self.resources
+        ):
             raise InvalidSemiempiricalMethod("unsupported parameter resource")
         roles = tuple(resource.role for resource in self.resources)
         if len(roles) != len(set(roles)):
@@ -242,7 +256,9 @@ class PrimitiveNode:
         if not isinstance(self.fixed_point, bool):
             raise TypeError("fixed_point must be boolean")
         if self.version != SEMIEMPIRICAL_PRIMITIVE_VERSION:
-            raise InvalidSemiempiricalMethod("unsupported semiempirical primitive version")
+            raise InvalidSemiempiricalMethod(
+                "unsupported semiempirical primitive version"
+            )
         for field in (
             "requires",
             "produces",
@@ -254,7 +270,9 @@ class PrimitiveNode:
             object.__setattr__(
                 self,
                 field,
-                _strings(getattr(self, field), f"{self.node_id} {field.replace('_', ' ')}"),
+                _strings(
+                    getattr(self, field), f"{self.node_id} {field.replace('_', ' ')}"
+                ),
             )
 
     def to_payload(self) -> dict:
@@ -275,12 +293,18 @@ class PrimitiveNode:
 
 def _canonical_nodes(nodes: tuple[PrimitiveNode, ...]) -> tuple[PrimitiveNode, ...]:
     if not isinstance(nodes, tuple) or not nodes:
-        raise InvalidSemiempiricalMethod("semiempirical graph requires immutable primitives")
+        raise InvalidSemiempiricalMethod(
+            "semiempirical graph requires immutable primitives"
+        )
     if not all(isinstance(node, PrimitiveNode) for node in nodes):
-        raise InvalidSemiempiricalMethod("semiempirical graph contains an unsupported primitive")
+        raise InvalidSemiempiricalMethod(
+            "semiempirical graph contains an unsupported primitive"
+        )
     by_id = {node.node_id: node for node in nodes}
     if len(by_id) != len(nodes):
-        raise InvalidSemiempiricalMethod("semiempirical graph has duplicate primitive ids")
+        raise InvalidSemiempiricalMethod(
+            "semiempirical graph has duplicate primitive ids"
+        )
     identifiers = set(by_id)
     for node in nodes:
         missing = set(node.requires) - identifiers
@@ -291,7 +315,9 @@ def _canonical_nodes(nodes: tuple[PrimitiveNode, ...]) -> tuple[PrimitiveNode, .
 
     incoming = {node_id: set(node.requires) for node_id, node in by_id.items()}
     ordered: list[PrimitiveNode] = []
-    ready = sorted(node_id for node_id, dependencies in incoming.items() if not dependencies)
+    ready = sorted(
+        node_id for node_id, dependencies in incoming.items() if not dependencies
+    )
     while ready:
         node_id = ready.pop(0)
         ordered.append(by_id[node_id])
@@ -308,7 +334,9 @@ def _canonical_nodes(nodes: tuple[PrimitiveNode, ...]) -> tuple[PrimitiveNode, .
                 ready.append(candidate)
                 ready.sort()
     if len(ordered) != len(nodes):
-        raise InvalidSemiempiricalMethod("semiempirical primitive graph contains a cycle")
+        raise InvalidSemiempiricalMethod(
+            "semiempirical primitive graph contains a cycle"
+        )
     return tuple(ordered)
 
 
@@ -330,7 +358,9 @@ class SemiempiricalMethodIR:
         _text(self.model, "semiempirical model")
         _text(self.reference, "semiempirical reference")
         if self.version != SEMIEMPIRICAL_METHOD_IR_VERSION:
-            raise InvalidSemiempiricalMethod("unsupported SemiempiricalMethodIR version")
+            raise InvalidSemiempiricalMethod(
+                "unsupported SemiempiricalMethodIR version"
+            )
         if not isinstance(self.parameter_set, ParameterSetRef):
             raise TypeError("SemiempiricalMethodIR requires a ParameterSetRef")
 
@@ -348,7 +378,9 @@ class SemiempiricalMethodIR:
         resource_roles = {resource.role for resource in self.parameter_set.resources}
         produced: dict[str, str] = {}
         for node in nodes:
-            missing_states = (set(node.state_reads) | set(node.state_writes)) - state_names_set
+            missing_states = (
+                set(node.state_reads) | set(node.state_writes)
+            ) - state_names_set
             if missing_states:
                 raise InvalidSemiempiricalMethod(
                     f"{node.node_id} references unknown states {sorted(missing_states)!r}"
@@ -368,18 +400,26 @@ class SemiempiricalMethodIR:
                 produced[output] = node.node_id
         object.__setattr__(self, "primitives", nodes)
 
-        if not isinstance(self.requested_products, tuple) or not self.requested_products:
+        if (
+            not isinstance(self.requested_products, tuple)
+            or not self.requested_products
+        ):
             raise InvalidSemiempiricalMethod(
                 "requested products must be a non-empty immutable tuple"
             )
-        if not all(isinstance(product, ProductSpec) for product in self.requested_products):
+        if not all(
+            isinstance(product, ProductSpec) for product in self.requested_products
+        ):
             raise InvalidSemiempiricalMethod("unsupported requested product")
         product_keys = tuple(
-            (product.name, product.derivative_order) for product in self.requested_products
+            (product.name, product.derivative_order)
+            for product in self.requested_products
         )
         if len(product_keys) != len(set(product_keys)):
             raise InvalidSemiempiricalMethod("requested products contain duplicates")
-        object.__setattr__(self, "requested_products", tuple(sorted(self.requested_products)))
+        object.__setattr__(
+            self, "requested_products", tuple(sorted(self.requested_products))
+        )
 
     def to_payload(self) -> dict:
         return {
@@ -402,7 +442,7 @@ class SemiempiricalMethodIR:
 
 def _gfn_parameter_resources(parameter_set: object) -> tuple[ParameterResource, ...]:
     resources: list[ParameterResource] = []
-    parameter_identity = getattr(parameter_set, "identity")
+    parameter_identity = parameter_set.identity
     for domain in ("basis", "orbital", "correction", "spin"):
         tables = getattr(parameter_set, f"{domain}_tables")
         for table in tables:
