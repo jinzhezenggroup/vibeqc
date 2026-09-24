@@ -12,7 +12,12 @@ from vibeqc import assemble_fixed_density_exchange
 from vibeqc.ks import KsOptions, native_ks_options, resolve_ks_options
 from vibeqc.mean_field import compile_fixed_density_method
 from vibeqc_compiler.dft.grid import GridSpec
-from vibeqc_compiler.method import MethodSpec, compile_ks_execution_plan, resolve_method
+from vibeqc_compiler.method import (
+    MethodIR,
+    MethodSpec,
+    compile_ks_execution_plan,
+    resolve_method,
+)
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -21,17 +26,13 @@ from vibeqc_compiler.method.stationary_gradient import (
 from vibeqc_compiler.tensor import execute
 
 
-@pytest.mark.parametrize(
-    "name,fraction", (("PBE0", Fraction(1, 4)), ("B3LYP", Fraction(1, 5)))
-)
-@pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
-def test_public_hybrid_exchange_uses_one_coefficient_across_consumers(
-    name: str, fraction: Fraction, spin: str
+def _assert_full_range_exchange_contract(
+    method: MethodIR, fraction: Fraction, selector: str
 ) -> None:
-    method = resolve_method(name, spin=spin)
     ks = compile_ks_execution_plan(method)
     provider = compile_fixed_density_method(method)
     gradient = StationaryGradientPlan(method, StationaryMeanField(SCF_POINT_MODEL))
+    spin = method.spin
     expected_fock = -fraction / (2 if spin == "unpolarized" else 1)
 
     assert method.full_range_exact_exchange == fraction
@@ -43,7 +44,6 @@ def test_public_hybrid_exchange_uses_one_coefficient_across_consumers(
     assert gradient.source_names.count("exact_exchange") == 1
     assert provider.method.identity == ks.method.identity == gradient.method.identity
 
-    selector = f"{name.lower()}-{'rks' if spin == 'unpolarized' else 'uks'}"
     options = resolve_ks_options(
         selector, KsOptions(composition=method, grid=GridSpec())
     )
@@ -103,6 +103,18 @@ def test_public_hybrid_exchange_uses_one_coefficient_across_consumers(
     np.testing.assert_allclose(weight, independent)
 
 
+@pytest.mark.parametrize(
+    "name,fraction", (("PBE0", Fraction(1, 4)), ("B3LYP", Fraction(1, 5)))
+)
+@pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
+def test_public_hybrid_exchange_uses_one_coefficient_across_consumers(
+    name: str, fraction: Fraction, spin: str
+) -> None:
+    method = resolve_method(name, spin=spin)
+    selector = f"{name.lower()}-{'rks' if spin == 'unpolarized' else 'uks'}"
+    _assert_full_range_exchange_contract(method, fraction, selector)
+
+
 @pytest.mark.parametrize("spin", ("unpolarized", "polarized"))
 def test_zero_and_changed_exchange_keep_provider_and_gradient_in_sync(
     spin: str,
@@ -125,6 +137,9 @@ def test_zero_and_changed_exchange_keep_provider_and_gradient_in_sync(
         assert provider.fock_spec.exchange.coefficient == float(
             -fraction / (2 if spin == "unpolarized" else 1)
         )
+        if fraction:
+            selector = "pbe0-rks" if spin == "unpolarized" else "pbe0-uks"
+            _assert_full_range_exchange_contract(method, fraction, selector)
 
     hybrid = resolve_method("PBE0", spin=spin)
     density = np.eye(2) if spin == "unpolarized" else np.stack((np.eye(2), np.eye(2)))
