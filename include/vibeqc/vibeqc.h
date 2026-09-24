@@ -1163,10 +1163,8 @@ VIBEQC_API vibeqc_status vibeqc_calculation_get_ks_transport_diagnostic(
  * - After a normal execution return (converged or not) the resolved record is
  *   copied into \p out and SUCCESS is returned.
  *
- * The out-parameter must carry the current abi_version. struct_size may be the
- * legacy prefix ending at refinement_iterations or the current larger record;
- * fields beyond the supplied size are never written. A NULL \p out is a cheap
- * availability probe that never writes.
+ * The out-parameter must carry the current complete descriptor size and
+ * abi_version. A NULL \p out is a cheap availability probe that never writes.
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
     const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
@@ -1296,7 +1294,7 @@ VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
 VIBEQC_API vibeqc_status vibeqc_batch_get_scf_diagnostic(const vibeqc_batch* batch, uint32_t index,
                                                          vibeqc_scf_diagnostic* out);
 
-/** Input-ordered correlated-method diagnostic. The caller-size compatibility
+/** Input-ordered correlated-method diagnostic. The current complete descriptor
  * contract matches vibeqc_calculation_get_correlation_diagnostic. A rejected
  * or backend-failed item has no record; a normal NOT_CONVERGED item may retain
  * its last finite correlation state and physical residual diagnostics. */
