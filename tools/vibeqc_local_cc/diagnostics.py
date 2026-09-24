@@ -115,7 +115,9 @@ def evaluate_pair_residuals(
         space.reference_id != reference_id or space.localization_id != localization_id
         for space in pair_spaces
     ):
-        raise ValueError("pair residuals must share one reference/localized occupied frame")
+        raise ValueError(
+            "pair residuals must share one reference/localized occupied frame"
+        )
 
     pairs = tuple(space.pair for space in pair_spaces)
     if len(set(pairs)) != len(pairs):
