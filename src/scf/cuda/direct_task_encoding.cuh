@@ -186,6 +186,7 @@ __device__ __forceinline__ void populate_generated_shell_task(const DeviceBatch&
   task.shell_pair[0] = shell_pairs[0];
   task.shell_pair[1] = shell_pairs[1];
   task.reversed_shell_pair_mask = reversed_shell_pair_mask;
+  task.fock_consumer = detail::GeneratedFockConsumer::HartreeFock;
 }
 
 /** Read the runtime exact-class mask used by the bounded generated routes. */

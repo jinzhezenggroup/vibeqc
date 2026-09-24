@@ -87,7 +87,7 @@ vibeqc_method_descriptor descriptor(const vibeqc_ks_options& ks) {
   vibeqc_method_descriptor method{};
   method.struct_size = sizeof(method);
   method.abi_version = VIBEQC_ABI_VERSION;
-  method.method = VIBEQC_METHOD_WB97M_V;
+  method.method = ks.spin_channels == 2 ? VIBEQC_METHOD_WB97M_V_UKS : VIBEQC_METHOD_WB97M_V;
   method.max_iterations = 180;
   method.diis_history = 8;
   method.energy_tolerance = 1e-12;
@@ -400,8 +400,8 @@ int main(int argc, char** argv) {
       require(argc == 1, "usage: vibeqc_wb97mv_scf_tests [oracle-input.jsonl]");
     int32_t available = 1;
     require(vibeqc_method_available(VIBEQC_METHOD_WB97M_V, &available) == VIBEQC_STATUS_SUCCESS &&
-                !available,
-            "internal composition test promoted public WB97M-V");
+                available,
+            "WB97M-V composition is missing its public energy admission");
     nonlocal_density_domain();
     run_case(0, false, output.is_open() ? &output : nullptr);
     run_case(0, true, output.is_open() ? &output : nullptr);

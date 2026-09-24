@@ -156,11 +156,23 @@ def tile_triples_vjp(
         max_elements=max_elements,
     )
     program = optimize(derivative.program) if optimize_graph else derivative.program
-    a_end = nvir if vir_chunk is None else vir_chunk[1]
-    feeds = _tile_input_feeds(
+    return _execute_tile_vjp(
+        program,
         _arrays(ovvv, ovoo, ovov, fov, t1, t2, eps_o, eps_v),
-        a_end,
+        nvir if vir_chunk is None else vir_chunk[1],
+        selected,
+        executor,
     )
+
+
+def _execute_tile_vjp(
+    program: Any,
+    arrays: dict[str, np.ndarray],
+    a_end: int,
+    selected: tuple[str, ...],
+    executor: Any,
+) -> dict[str, np.ndarray]:
+    feeds = _tile_input_feeds(arrays, a_end)
     run_feeds = {**feeds, "bar_triples_energy": np.asarray(1.0, dtype=np.float64)}
     result = (
         execute(program, run_feeds).outputs
@@ -226,25 +238,46 @@ def accumulate_tile_triples_vjp(
         name: np.zeros_like(np.asarray(arrays[name]), dtype=np.float64)
         for name in selected
     }
-    enumerator = TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size)
-    for tile in enumerator:
-        local = tile_triples_vjp(
-            nocc,
-            nvir,
-            ovvv,
-            ovoo,
-            ovov,
-            fov,
-            t1,
-            t2,
-            eps_o,
-            eps_v,
-            vir_chunk=(tile.a_start, tile.a_end),
-            inputs=selected,
-            denominator_threshold=denominator_threshold,
-            optimize_graph=optimize_graph,
-            max_elements=max_elements,
-            executor=executor,
+    tiles = tuple(TriplesTileEnumerator(nocc, nvir, vir_chunk_size=vir_chunk_size))
+    if executor is not None and hasattr(executor, "prewarm"):
+        # Compile only the exact tile set this request will execute. Keep the
+        # generated objects so prewarm and execution use identical programs.
+        pending = []
+        for tile in tiles:
+            program = build_tile_triples_vjp(
+                nocc,
+                nvir,
+                vir_chunk=(tile.a_start, tile.a_end),
+                inputs=selected,
+                max_elements=max_elements,
+            ).program
+            pending.append(optimize(program) if optimize_graph else program)
+        programs = tuple(pending)
+        executor.prewarm(programs)
+    else:
+        programs = ()
+    for index, tile in enumerate(tiles):
+        local = (
+            _execute_tile_vjp(programs[index], arrays, tile.a_end, selected, executor)
+            if programs
+            else tile_triples_vjp(
+                nocc,
+                nvir,
+                ovvv,
+                ovoo,
+                ovov,
+                fov,
+                t1,
+                t2,
+                eps_o,
+                eps_v,
+                vir_chunk=(tile.a_start, tile.a_end),
+                inputs=selected,
+                denominator_threshold=denominator_threshold,
+                optimize_graph=optimize_graph,
+                max_elements=max_elements,
+                executor=executor,
+            )
         )
         for name in selected:
             _scatter_prefix(totals[name], local[name], name, tile.a_end)

@@ -30,14 +30,26 @@ struct ChargeScale {
   double derivative;
 };
 
-VIBEQC_D4_MATH_HD inline ChargeScale charge_scale(double a, double c, double qref, double qmod) {
+template <bool NeedDerivative>
+VIBEQC_D4_MATH_HD inline ChargeScale charge_scale_impl(double a, double c, double qref,
+                                                       double qmod) {
   ChargeScale result{exp(a), 0.0};
   if (qmod <= 0.0) return result;
   const double inner = exp(c * (1.0 - qref / qmod));
   result.value = exp(a * (1.0 - inner));
-  if (inner != 0.0 && result.value != 0.0)
-    result.derivative = -a * c * inner * result.value * (qref / qmod) / qmod;
+  if constexpr (NeedDerivative) {
+    if (inner != 0.0 && result.value != 0.0)
+      result.derivative = -a * c * inner * result.value * (qref / qmod) / qmod;
+  }
   return result;
+}
+
+VIBEQC_D4_MATH_HD inline ChargeScale charge_scale(double a, double c, double qref, double qmod) {
+  return charge_scale_impl<true>(a, c, qref, qmod);
+}
+
+VIBEQC_D4_MATH_HD inline double charge_scale_value(double a, double c, double qref, double qmod) {
+  return charge_scale_impl<false>(a, c, qref, qmod).value;
 }
 
 struct CoordinationPair {
@@ -45,23 +57,46 @@ struct CoordinationPair {
   double derivative;
 };
 
-VIBEQC_D4_MATH_HD inline CoordinationPair coordination_pair(const data::D4ElementData& first,
-                                                            const data::D4ElementData& second,
-                                                            double distance) {
+struct CoordinationParameters {
+  double radius;
+  double electronegativity_factor;
+};
+
+template <class FirstElement, class SecondElement>
+VIBEQC_D4_MATH_HD inline CoordinationParameters coordination_parameters(
+    const FirstElement& first, const SecondElement& second) {
   const double radius = first.covalent_radius + second.covalent_radius;
   const double den =
       fabs(first.electronegativity - second.electronegativity) + kElectronegativityShift;
   const double en = kElectronegativityScale *
                     exp(-(den * den) / (2.0 * kElectronegativityWidth * kElectronegativityWidth));
-  const double x = kCoordinationSteepness * (distance - radius) / radius;
-  return {0.5 * en * (1.0 + erf(-x)),
-          -en * kCoordinationSteepness * exp(-x * x) * kInverseSqrtPi / radius};
+  return {radius, en};
 }
 
-VIBEQC_D4_MATH_HD inline double damping_radius(const data::D4ElementData& first,
-                                               const data::D4ElementData& second, double a1,
-                                               double a2) {
-  return a1 * sqrt(3.0 * first.r4r2 * second.r4r2) + a2;
+VIBEQC_D4_MATH_HD inline CoordinationPair coordination_pair(CoordinationParameters parameters,
+                                                            double distance) {
+  const double x = kCoordinationSteepness * (distance - parameters.radius) / parameters.radius;
+  return {0.5 * parameters.electronegativity_factor * (1.0 + erf(-x)),
+          -parameters.electronegativity_factor * kCoordinationSteepness * exp(-x * x) *
+              kInverseSqrtPi / parameters.radius};
+}
+
+template <class FirstElement, class SecondElement>
+VIBEQC_D4_MATH_HD inline CoordinationPair coordination_pair(const FirstElement& first,
+                                                            const SecondElement& second,
+                                                            double distance) {
+  return coordination_pair(coordination_parameters(first, second), distance);
+}
+
+template <class FirstElement, class SecondElement>
+VIBEQC_D4_MATH_HD inline double pair_rr(const FirstElement& first, const SecondElement& second) {
+  return 3.0 * first.r4r2 * second.r4r2;
+}
+
+template <class FirstElement, class SecondElement>
+VIBEQC_D4_MATH_HD inline double damping_radius(const FirstElement& first,
+                                               const SecondElement& second, double a1, double a2) {
+  return a1 * sqrt(pair_rr(first, second)) + a2;
 }
 
 struct PairDamping {
@@ -69,12 +104,8 @@ struct PairDamping {
   double derivative;
 };
 
-VIBEQC_D4_MATH_HD inline PairDamping pair_damping(const data::D4ElementData& first,
-                                                  const data::D4ElementData& second,
-                                                  double distance_squared, double s6, double s8,
-                                                  double a1, double a2) {
-  const double rr = 3.0 * first.r4r2 * second.r4r2;
-  const double r0 = damping_radius(first, second, a1, a2);
+VIBEQC_D4_MATH_HD inline PairDamping pair_damping(double distance_squared, double rr, double r0,
+                                                  double s6, double s8) {
   const double r2_squared = distance_squared * distance_squared;
   const double r2_cubed = r2_squared * distance_squared;
   const double r0_squared = r0 * r0;
@@ -86,11 +117,21 @@ VIBEQC_D4_MATH_HD inline PairDamping pair_damping(const data::D4ElementData& fir
           -6.0 * s6 * r2_squared * t6 * t6 - 8.0 * s8 * rr * r2_cubed * t8 * t8};
 }
 
-VIBEQC_D4_MATH_HD inline void atom_weights(const data::D4ElementData& element,
-                                           const data::D4ReferenceData* references,
-                                           double coordination, double charge, bool zero_charge,
-                                           double ga, double gc, double* weights,
-                                           double* cn_derivatives, double* charge_derivatives) {
+template <class FirstElement, class SecondElement>
+VIBEQC_D4_MATH_HD inline PairDamping pair_damping(const FirstElement& first,
+                                                  const SecondElement& second,
+                                                  double distance_squared, double s6, double s8,
+                                                  double a1, double a2) {
+  const double rr = pair_rr(first, second);
+  return pair_damping(distance_squared, rr, damping_radius(first, second, a1, a2), s6, s8);
+}
+
+template <class ElementData, class ReferenceData>
+VIBEQC_D4_MATH_HD inline void atom_weights(const ElementData& element,
+                                           const ReferenceData* references, double coordination,
+                                           double charge, bool zero_charge, double ga, double gc,
+                                           double* weights, double* cn_derivatives,
+                                           double* charge_derivatives) {
   for (int local = 0; local < kMaximumReferences; ++local) {
     weights[local] = 0.0;
     if (cn_derivatives != nullptr) cn_derivatives[local] = 0.0;
@@ -135,12 +176,18 @@ VIBEQC_D4_MATH_HD inline void atom_weights(const data::D4ElementData& element,
             ? inverse_normalization * (numerator_derivative -
                                        numerator * normalization_derivative * inverse_normalization)
             : 0.0;
-    const auto scale =
-        charge_scale(ga, gc * element.hardness, reference.charge + element.effective_charge, qmod);
-    weights[local] = cn_weight * scale.value;
-    if (cn_derivatives != nullptr) cn_derivatives[local] = cn_derivative * scale.value;
-    if (charge_derivatives != nullptr)
+    const double charge_steepness = gc * element.hardness;
+    const double reference_charge = reference.charge + element.effective_charge;
+    if (charge_derivatives != nullptr) {
+      const auto scale = charge_scale(ga, charge_steepness, reference_charge, qmod);
+      weights[local] = cn_weight * scale.value;
+      if (cn_derivatives != nullptr) cn_derivatives[local] = cn_derivative * scale.value;
       charge_derivatives[local] = zero_charge ? 0.0 : cn_weight * scale.derivative;
+    } else {
+      const double scale = charge_scale_value(ga, charge_steepness, reference_charge, qmod);
+      weights[local] = cn_weight * scale;
+      if (cn_derivatives != nullptr) cn_derivatives[local] = cn_derivative * scale;
+    }
   }
 }
 
@@ -169,9 +216,10 @@ struct DenseReferenceC6 {
   }
 };
 
-template <class ReferenceC6>
-VIBEQC_D4_MATH_HD inline Coefficient coefficient(
-    const data::D4ElementData& first_element, const data::D4ElementData& second_element,
+template <bool NeedC6, bool NeedCn, bool NeedCharge, class FirstElement, class SecondElement,
+          class ReferenceC6>
+VIBEQC_D4_MATH_HD inline Coefficient coefficient_selected(
+    const FirstElement& first_element, const SecondElement& second_element,
     ReferenceC6 reference_c6, const double* first_weights, const double* first_cn_derivatives,
     const double* first_charge_derivatives, const double* second_weights,
     const double* second_cn_derivatives, const double* second_charge_derivatives) {
@@ -179,25 +227,42 @@ VIBEQC_D4_MATH_HD inline Coefficient coefficient(
   for (int first_ref = 0; first_ref < first_element.reference_count; ++first_ref) {
     const int global_first = first_element.reference_offset + first_ref;
     const double first_value = first_weights[first_ref];
-    const double first_cn = first_cn_derivatives == nullptr ? 0.0 : first_cn_derivatives[first_ref];
-    const double first_charge =
-        first_charge_derivatives == nullptr ? 0.0 : first_charge_derivatives[first_ref];
+    const double first_cn =
+        NeedCn && first_cn_derivatives != nullptr ? first_cn_derivatives[first_ref] : 0.0;
+    const double first_charge = NeedCharge && first_charge_derivatives != nullptr
+                                    ? first_charge_derivatives[first_ref]
+                                    : 0.0;
     for (int second_ref = 0; second_ref < second_element.reference_count; ++second_ref) {
       const int global_second = second_element.reference_offset + second_ref;
       const double reference = reference_c6(global_first, global_second);
       const double second_value = second_weights[second_ref];
-      const double second_cn =
-          second_cn_derivatives == nullptr ? 0.0 : second_cn_derivatives[second_ref];
-      const double second_charge =
-          second_charge_derivatives == nullptr ? 0.0 : second_charge_derivatives[second_ref];
-      result.c6 += first_value * second_value * reference;
-      result.first_cn += first_cn * second_value * reference;
-      result.second_cn += first_value * second_cn * reference;
-      result.first_charge += first_charge * second_value * reference;
-      result.second_charge += first_value * second_charge * reference;
+      if constexpr (NeedC6) result.c6 += first_value * second_value * reference;
+      if constexpr (NeedCn) {
+        const double second_cn =
+            second_cn_derivatives == nullptr ? 0.0 : second_cn_derivatives[second_ref];
+        result.first_cn += first_cn * second_value * reference;
+        result.second_cn += first_value * second_cn * reference;
+      }
+      if constexpr (NeedCharge) {
+        const double second_charge =
+            second_charge_derivatives == nullptr ? 0.0 : second_charge_derivatives[second_ref];
+        result.first_charge += first_charge * second_value * reference;
+        result.second_charge += first_value * second_charge * reference;
+      }
     }
   }
   return result;
+}
+
+template <class FirstElement, class SecondElement, class ReferenceC6>
+VIBEQC_D4_MATH_HD inline Coefficient coefficient(
+    const FirstElement& first_element, const SecondElement& second_element,
+    ReferenceC6 reference_c6, const double* first_weights, const double* first_cn_derivatives,
+    const double* first_charge_derivatives, const double* second_weights,
+    const double* second_cn_derivatives, const double* second_charge_derivatives) {
+  return coefficient_selected<true, true, true>(
+      first_element, second_element, reference_c6, first_weights, first_cn_derivatives,
+      first_charge_derivatives, second_weights, second_cn_derivatives, second_charge_derivatives);
 }
 
 VIBEQC_D4_MATH_HD inline double atm_radial(double target, double other_first, double other_second,

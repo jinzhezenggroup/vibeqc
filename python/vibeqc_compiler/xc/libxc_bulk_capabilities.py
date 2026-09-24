@@ -12,13 +12,14 @@ public-method claim is inferred from an earlier stage.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any
 
 from vibeqc_compiler.common import paths
 from vibeqc_compiler.common.evidence import canonical_hash, validate_outcome
 
-from . import libxc_bulk
+from . import libxc_bulk, libxc_production_domain
 from .libxc_maple import MapleImportError
 
 CAPABILITY_SCHEMA = "vibeqc.libxc-bulk-capability.v2"
@@ -70,14 +71,18 @@ class StageEvidence:
     status: str
     evidence: str | None
     reason: str | None
+    qualification: dict[str, Any] | None = None
 
     def to_payload(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "stage": self.stage,
             "status": self.status,
             "evidence": self.evidence,
             "reason": self.reason,
         }
+        if self.qualification is not None:
+            payload["qualification"] = deepcopy(self.qualification)
+        return payload
 
 
 @dataclass(frozen=True)
@@ -108,12 +113,17 @@ class BulkFunctionalCapability:
 
     @property
     def ready_stages(self) -> tuple[str, ...]:
-        """Return unqualified stages whose prerequisite groups are satisfied."""
+        """Return evidence-ready stages while retaining structural blockers."""
         qualified = set(self.qualified_stages)
         return tuple(
             stage
             for stage in CAPABILITY_STAGES
-            if stage not in qualified and _requirements_met(stage, qualified)
+            if stage not in qualified
+            and _requirements_met(stage, qualified)
+            and not (
+                stage == "production-domain"
+                and not self.production_domain_profile.eligible
+            )
         )
 
     @property
@@ -124,14 +134,16 @@ class BulkFunctionalCapability:
     @property
     def required_ingredients(self) -> tuple[str, ...]:
         """Return physical feature families required by the Libxc registration."""
-        ingredients = ["rho"]
-        if self.family in ("gga", "mgga"):
-            ingredients.append("sigma")
-        if "XC_FLAGS_NEEDS_LAPLACIAN" in self.flags:
-            ingredients.append("laplacian")
-        if "XC_FLAGS_NEEDS_TAU" in self.flags:
-            ingredients.append("tau")
-        return tuple(ingredients)
+        return _required_ingredients(self.family, self.flags)
+
+    @property
+    def production_domain_profile(
+        self,
+    ) -> libxc_production_domain.ProductionDomainProfile:
+        """Return the exact boundary matrix required for domain promotion."""
+        return libxc_production_domain.qualification_profile(
+            self.family, self.required_ingredients
+        )
 
     def to_payload(self) -> dict[str, Any]:
         """Return a detached, JSON-serializable capability record."""
@@ -145,6 +157,7 @@ class BulkFunctionalCapability:
             "owner": self.owner,
             "flags": self.flags,
             "required_ingredients": list(self.required_ingredients),
+            "production_domain_profile": self.production_domain_profile.to_payload(),
             "domain": self.domain,
             "claim_level": self.claim_level,
             "qualified_stages": list(self.qualified_stages),
@@ -215,6 +228,17 @@ def _capability_identity(record: Mapping[str, Any], source_identity: str) -> str
     )
 
 
+def _required_ingredients(family: str, flags: str) -> tuple[str, ...]:
+    ingredients = ["rho"]
+    if family in ("gga", "mgga"):
+        ingredients.append("sigma")
+    if "XC_FLAGS_NEEDS_LAPLACIAN" in flags:
+        ingredients.append("laplacian")
+    if "XC_FLAGS_NEEDS_TAU" in flags:
+        ingredients.append("tau")
+    return tuple(ingredients)
+
+
 def _requirements_met(stage: str, qualified: set[str]) -> bool:
     return all(
         any(prerequisite in qualified for prerequisite in alternatives)
@@ -223,7 +247,10 @@ def _requirements_met(stage: str, qualified: set[str]) -> bool:
 
 
 def _normalize_stage_evidence(
-    identity: str, evidence: Mapping[str, Any] | None
+    identity: str,
+    evidence: Mapping[str, Any] | None,
+    *,
+    production_profile: libxc_production_domain.ProductionDomainProfile,
 ) -> tuple[StageEvidence, ...]:
     if evidence is None:
         return ()
@@ -259,12 +286,24 @@ def _normalize_stage_evidence(
             not isinstance(evidence_ref, str) or not evidence_ref.strip()
         ):
             raise ValueError(f"{stage} pass requires a non-empty evidence reference")
+        qualification = payload.get("qualification")
+        if stage == "production-domain" and (
+            payload["status"] == "pass" or qualification is not None
+        ):
+            libxc_production_domain.validate_qualification(
+                qualification, production_profile
+            )
         normalized.append(
             StageEvidence(
                 stage=stage,
                 status=payload["status"],
                 evidence=evidence_ref,
                 reason=payload.get("reason"),
+                qualification=(
+                    deepcopy(dict(qualification))
+                    if isinstance(qualification, Mapping)
+                    else None
+                ),
             )
         )
     return tuple(normalized)
@@ -290,7 +329,12 @@ def _functional_capability(
     record: Mapping[str, Any], source_identity: str, evidence: Mapping[str, Any] | None
 ) -> BulkFunctionalCapability:
     identity = _capability_identity(record, source_identity)
-    stage_evidence = _normalize_stage_evidence(identity, evidence)
+    production_profile = libxc_production_domain.qualification_profile(
+        record["family"], _required_ingredients(record["family"], record["flags"])
+    )
+    stage_evidence = _normalize_stage_evidence(
+        identity, evidence, production_profile=production_profile
+    )
     return BulkFunctionalCapability(
         name=record["name"],
         family=record["family"],

@@ -46,6 +46,29 @@ def test_gfn2_cuda_reuses_canonical_d4_data() -> None:
     assert not (RUNTIME / "data/parameters/d4.hpp").exists()
 
 
+def test_gfn2_cuda_d4_reuses_shared_scalar_math() -> None:
+    source = (RUNTIME / "src/backends/cuda/gfn2_d4.cu").read_text(encoding="utf-8")
+    assert '#include "dft/dispersion/d4_math.hpp"' in source
+    for helper in (
+        "d4_math::atom_weights",
+        "d4_math::coefficient",
+        "d4_math::coordination_pair",
+        "d4_math::pair_damping",
+        "d4_math::damping_radius",
+    ):
+        assert helper in source
+    for retired in (
+        "__device__ double charge_scale(",
+        "kReferenceWeightFactor",
+        "kMinimumWeightNorm",
+        "kCoordinationSteepness",
+        "kEnK4",
+        "kEnK5",
+        "kEnK6",
+    ):
+        assert retired not in source
+
+
 def test_gfn2_cuda_kernels_do_not_take_reference_parameters() -> None:
     import re
 

@@ -13,7 +13,8 @@
     "src/backends/cuda/gfn2_h0_force.cu": "Consume compiler-generated TensorIR H0 Pulay seed, Cartesian distance/pullback, pair factors, CN/radial reverse response, and AO contraction arithmetic while retaining CUDA topology, validation, reductions, atomics, thresholds, and failure semantics.",
     "src/backends/cuda/gfn2_integrals.cu": "Consume compiler-generated S/D/Q primitive values and coordinate derivatives; retain CUDA screening, contraction, spherical transforms, translation, reduction, and publication ownership. H0 values consume the same generated pair primal as CPU/CUDA forces.",
     "src/backends/cuda/gfn2_es2.cu": "Consume compiler-generated TensorIR/AD ES2 scalar science and coordinate-VJP algebra; retain CUDA topology, validation, reductions, cache/publication, and error ownership.",
-    "src/backends/cuda/gfn2_spin.cu": "Consume shared compiler TensorIR FMA potential/energy updates and symmetric-energy AD identity; retain ragged admission, restricted zero branch and scratch publication."
+    "src/backends/cuda/gfn2_spin.cu": "Consume shared compiler TensorIR FMA potential/energy updates and symmetric-energy AD identity; retain ragged admission, restricted zero branch and scratch publication.",
+    "src/backends/cuda/gfn2_d4.cu": "Consume shared VibeQC D4 scalar coordination, charge interpolation, C6 coefficient, and damping mathematics while retaining CUDA topology, cutoff, validation, reduction, error, and publication ownership."
   },
   "backports": {
     "9881f3ef1c63364cecfc3c1226101b96fc38fd96": "fix(cuda): pass kernel descriptors by value (#487)"
@@ -107,7 +108,7 @@
     "src/backends/cuda/gfn2_d4.cu": {
       "adapted": true,
       "upstream_sha256": "9e3982dbf865f64d9c7969a6dd4410bfa39fe6c532edb0124063a28d1be5fbb5",
-      "vendored_sha256": "ff5473259dfd3cebce9e59a60cecd8f8070370bb3a102881692f5e534ac5cc4b"
+      "vendored_sha256": "ed959f5522582fd49a1a8f53c23328b0e68e73195adec36d88030e5a93bbaec4"
     },
     "src/backends/cuda/gfn2_d4.cuh": {
       "adapted": true,

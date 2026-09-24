@@ -12,10 +12,11 @@
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_resources.cuh"
 
 namespace {
 using namespace vibeqc::dft;
-void require(bool condition, const char* message) {
+void require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 void check(cudaError_t status) {
@@ -57,15 +58,19 @@ struct Fixture {
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
-          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64)
+          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+          bool response = false)
       : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision)) {
     try {
+      if (response)
+        layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
+                                      functional, uks, tile, true, ao_precision);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
-      plan = std::make_unique<CudaXcPlan>(basis, grid, functional, uks, tile, arena,
-                                          layout.device_bytes, stream, ao_precision);
+      plan = std::make_unique<CudaXcPlan>(layout, basis.packed, grid.points(), grid.weights(),
+                                          arena, layout.device_bytes, stream);
     } catch (...) {
       cleanup();
       throw;
@@ -118,7 +123,12 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
              const std::vector<double>& d, const std::vector<double>& empty_spin_reference = {}) {
   fixture.submit(d);
   const auto result = fixture.scalars();
-  require(result.error == 0, "valid density failed device XC evaluation");
+  require(result.error == 0,
+          "valid density failed device XC evaluation: n=" + std::to_string(basis.nao) +
+              " functional=" + std::to_string(fixture.layout.functional) +
+              " spins=" + std::to_string(fixture.layout.spins) +
+              " tile=" + std::to_string(fixture.layout.tile_points) +
+              " error=" + std::to_string(result.error));
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
@@ -232,8 +242,8 @@ __global__ void halve_density(double* d, std::size_t n) {
 }
 
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
-                           std::uint32_t functional) {
-  Fixture good(basis, grid, functional, true, 7), bad(basis, grid, functional, true, 11);
+                           std::uint32_t functional, std::size_t tile = 7) {
+  Fixture good(basis, grid, functional, true, tile), bad(basis, grid, functional, true, tile + 4);
   auto d = density(basis.nao, 2);
   good.submit(d);
   auto invalid = d;
@@ -294,9 +304,10 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   bad.canary();
 }
 
-void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
-  Fixture captured(basis, grid, 1U, false, 9);
-  const auto d = density(basis.nao, 1);
+void graph_capture(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                   bool unrestricted, std::size_t tile = 9) {
+  Fixture captured(basis, grid, functional, unrestricted, tile);
+  auto d = density(basis.nao, unrestricted ? 2 : 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
   check(cudaStreamSynchronize(captured.stream));
@@ -308,10 +319,24 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
     captured.plan->enqueue(captured.density, d.size(), ++captured.generation);
     check(cudaStreamEndCapture(captured.stream, &graph));
     check(cudaGraphInstantiate(&executable, graph, 0));
-    check(cudaGraphLaunch(executable, captured.stream));
-    check(cudaStreamSynchronize(captured.stream));
-    require(captured.scalars().error == 0, "captured XC result was invalid");
-    captured.canary();
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      // The immutable consumer survives graph replay, but the density does not.
+      // Compare its complete outputs against a fresh independently checked plan.
+      check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, captured.stream));
+      check(cudaGraphLaunch(executable, captured.stream));
+      check(cudaStreamSynchronize(captured.stream));
+      const auto result = captured.scalars();
+      require(result.error == 0, "captured XC result was invalid");
+      Fixture fresh(basis, grid, functional, unrestricted, 7);
+      compare(fresh, basis, grid, d);
+      close(result.energy, fresh.scalars().energy, "captured XC energy");
+      const auto actual = captured.potential(), expected = fresh.potential();
+      for (std::size_t i = 0; i < actual.size(); ++i)
+        close(actual[i], expected[i], "captured XC potential");
+      captured.canary();
+      for (double& value : d) value *= 0.7;
+    }
   } catch (...) {
     if (executable) cudaGraphExecDestroy(executable);
     if (graph) cudaGraphDestroy(graph);
@@ -320,16 +345,131 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
   check(cudaGraphExecDestroy(executable));
   check(cudaGraphDestroy(graph));
 }
+
+/** Exercise both response consumers through the production pipeline, including
+ * a captured signed direction changed between replays. CPU physical-potential
+ * differences at two steps provide an oracle independent of response AD. */
+void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                          bool unrestricted, std::size_t tile) {
+  Fixture response(basis, grid, functional, unrestricted, tile, CudaXcAoPrecision::Fp64, true);
+  const auto d = density(basis.nao, unrestricted ? 2 : 1);
+  std::vector<double> direction(d.size());
+  const auto n = basis.nao, matrix = n * n, spins = response.layout.spins;
+  for (std::size_t spin = 0; spin < spins; ++spin) {
+    direction[spin * matrix] = -0.013 * (spin + 1);
+    direction[spin * matrix + 1] = direction[spin * matrix + n] = 0.007 * (spin + 1);
+  }
+  vibeqc::runtime::OwnedCudaBuffer<double> device_direction(0, d.size(), response.stream);
+  check(cudaMemcpy(response.density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice));
+  const auto independent = [&](double step) {
+    auto perturbed = d;
+    for (std::size_t i = 0; i < d.size(); ++i) perturbed[i] += step * direction[i];
+    if (!unrestricted)
+      return functional ? integrate_pbe_rks_with_tail(basis, grid, perturbed, 23).potential
+                        : integrate_lda_xc_pw_rks(basis, grid, perturbed, 23).potential;
+    const std::vector<double> a(perturbed.begin(), perturbed.begin() + matrix),
+        b(perturbed.begin() + matrix, perturbed.end());
+    const auto ref = functional ? integrate_pbe_uks(basis, grid, a, b, 23)
+                                : integrate_lda_xc_pw_uks(basis, grid, a, b, 23);
+    auto potential = ref.potential[0];
+    potential.insert(potential.end(), ref.potential[1].begin(), ref.potential[1].end());
+    return potential;
+  };
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  try {
+    check(cudaStreamBeginCapture(response.stream, cudaStreamCaptureModeGlobal));
+    response.plan->enqueue_response(response.density, device_direction.get(), d.size(),
+                                    ++response.generation);
+    check(cudaStreamEndCapture(response.stream, &graph));
+    check(cudaGraphInstantiate(&executable, graph, 0));
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      check(cudaMemcpyAsync(device_direction.get(), direction.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, response.stream));
+      check(cudaGraphLaunch(executable, response.stream));
+      require(response.scalars().error == 0, "signed matrix response was rejected");
+      const auto actual = response.potential();
+      for (double step : {1e-4, 3e-5}) {
+        const auto plus = independent(step), minus = independent(-step);
+        for (std::size_t i = 0; i < actual.size(); ++i)
+          close(actual[i], (plus[i] - minus[i]) / (2 * step),
+                "signed matrix response versus independent potential difference", 1e-7);
+      }
+      response.canary();
+      for (double& value : direction) value *= -0.4;
+    }
+    // Exact vacuum with zero tangent has an independently known zero response.
+    // Reusing the same captured entry also catches stale point coefficients.
+    check(cudaMemsetAsync(response.density, 0, d.size() * sizeof(double), response.stream));
+    check(cudaMemsetAsync(device_direction.get(), 0, d.size() * sizeof(double), response.stream));
+    check(cudaGraphLaunch(executable, response.stream));
+    require(response.scalars().error == 0, "vacuum matrix response was rejected");
+    for (double value : response.potential())
+      require(value == 0.0, "vacuum matrix response retained a stale coefficient");
+    response.canary();
+  } catch (...) {
+    if (executable) cudaGraphExecDestroy(executable);
+    if (graph) cudaGraphDestroy(graph);
+    throw;
+  }
+  check(cudaGraphExecDestroy(executable));
+  check(cudaGraphDestroy(graph));
+}
+
+void matrix_schedule_cases() {
+  // Cross the generated matrix-tile boundary with two distinct f shells.
+  // Cartesian/spherical shapes and partial point tiles exercise both matrix
+  // tails and the final scalar fallback, using the independent CPU integrator.
+  for (bool cooperative : {false, true})
+    for (bool spherical : {false, true}) {
+      auto large = system(3, spherical);
+      large.shells.push_back({0, 3, {{0.51, 1.0}}});
+      large.shells.push_back({0, 0, {{0.22, 1.0}}});
+      if (cooperative) {
+        // Cross the warp-reduction boundary with partial final AO groups.
+        large.shells.push_back({0, 3, {{0.39, 1.0}}});
+        large.shells.push_back({1, 3, {{0.32, 1.0}}});
+        large.shells.push_back({1, 2, {{0.27, 1.0}}});
+      }
+      const AoBasis large_basis(large);
+      require(!cooperative || large_basis.nao > 32, "cooperative fixture must span a warp");
+      require(large_basis.nao >= 16 && large_basis.nao % 16 != 0,
+              "matrix schedule fixture must have a partial AO block");
+      const MolecularGrid large_grid(large, {1, 3, 3, 4, 3, 1e-12});
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        for (bool uks : {false, true})
+          for (std::size_t tile : {17U, 31U, 64U}) {
+            Fixture test(large_basis, large_grid, functional, uks, tile);
+            compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+          }
+      graph_capture(large_basis, large_grid, 1U, false, 33);
+      for (unsigned functional : {0U, 1U})
+        matrix_response_case(large_basis, large_grid, functional, true, 19);
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        variational_and_state(large_basis, large_grid, functional, 17);
+    }
+}
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    matrix_schedule_cases();
+    if (argc == 2 && std::string(argv[1]) == "--matrix-schedule") {
+      std::cout << "CUDA XC matrix-tail, spin, functional, variational and capture gates passed\n";
+      return 0;
+    }
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
-    graph_capture(basis, grid);
+    for (unsigned functional : {0U, 1U, 2U})
+      for (bool unrestricted : {false, true}) {
+        graph_capture(basis, grid, functional, unrestricted);
+        if (functional < 2U)
+          for (std::size_t tile : {1U, 7U, 129U})
+            matrix_response_case(basis, grid, functional, unrestricted, tile);
+      }
     {
       for (bool unrestricted : {false, true})
         for (std::uint32_t functional : {0U, 1U}) {

@@ -95,6 +95,10 @@ history.
 
 ## Performance qualification checklist
 
+The [RCCSD(T) CPU response bundle qualification](ccsdt_cpu_bundle_qualification.md)
+records the complete force-endpoint comparator and its cold/warm artifact and
+semantic-work gates.
+
 The batch comparator records the loaded native binary hash and selected kernel
 profile in `native_build`. Acceptance-matrix runs also write a per-point
 `.progress.jsonl` journal before cold execution, so preparation/runtime failures

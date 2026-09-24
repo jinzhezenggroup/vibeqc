@@ -44,10 +44,12 @@ class Diis {
       std::vector<double> gram(n * n);
       double scale = 0.0;
       for (std::size_t i = 0; i < n; ++i)
-        for (std::size_t j = 0; j < n; ++j) {
-          gram[i * n + j] =
+        for (std::size_t j = i; j < n; ++j) {
+          const double dot =
               std::inner_product(errors_[i].begin(), errors_[i].end(), errors_[j].begin(), 0.0);
-          scale = std::max(scale, std::abs(gram[i * n + j]));
+          gram[i * n + j] = dot;
+          gram[j * n + i] = dot;
+          scale = std::max(scale, std::abs(dot));
         }
       if (scale == 0.0) return vector;
 
