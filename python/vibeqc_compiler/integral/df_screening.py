@@ -9,7 +9,7 @@ retain strict evaluation until separately derived bounds are available.
 import typing
 from fractions import Fraction
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_derivatives_cuda import emit_df_geometry_cuda
 from .df_rys_shell import build_df_rys_sss_ir
 from .expr import Graph, Node
@@ -75,7 +75,7 @@ def emit_sss_force_screening_cuda() -> typing.Any:
             for axis in range(3)
         }
     )
-    emitter = CudaEmitter(graph, variables)
+    emitter = ScalarCEmitter(graph, variables)
     emitter.emit((output,))
     return "\n".join(
         [
