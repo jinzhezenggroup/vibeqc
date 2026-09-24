@@ -280,6 +280,7 @@ class BoundCCSDTGradient(BoundCCSDGradient):
                 "orbital_backend": self.response.baseline.response_backend.identity,
                 "orbital_solver": "shared-response-gmres",
                 "response_execution": self.response.response_execution,
+                "resident_response_diagnostics": self.response.resident_response_diagnostics,
                 "dense_orbital_curvature_check": True,
                 "dense_cc_jacobian": False,
                 "dense_mo_eri_and_weights": True,
