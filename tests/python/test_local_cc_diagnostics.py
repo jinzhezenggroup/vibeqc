@@ -162,7 +162,7 @@ def test_pair_residuals_fail_closed_on_incompatible_state(
 
 def test_pair_residuals_require_canonical_pair_spaces() -> None:
     with pytest.raises(TypeError, match="canonical PairSpace"):
-        evaluate_pair_residuals([object()], [np.zeros((1, 1))], tolerance=1e-7)  # type: ignore[list-item]
+        evaluate_pair_residuals([object()], [np.zeros((1, 1))], tolerance=1e-7)
 
 
 @pytest.mark.parametrize("tolerance", [0.0, -1.0, np.inf, True])
