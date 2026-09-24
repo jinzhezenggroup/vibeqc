@@ -39,9 +39,11 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     streamed = producer.split("if (streamed_occupied) {", 1)[1].split(
         "if (single_fitted_tensor)", 1
     )[0]
-    assert "read_fitted || packed_pairs" not in streamed
-    assert "consume, packed_pairs, auxiliary_shell_offsets" in streamed
-    assert "read_values,\n        factorized_exchange" in streamed
+    # Check argument/guard semantics, not clang-format's line wrapping.
+    streamed = "".join(streamed.split())
+    assert "read_fitted||packed_pairs" not in streamed
+    assert "consume,packed_pairs,auxiliary_shell_offsets" in streamed
+    assert "read_values,factorized_exchange" in streamed
     assert (
         '!borrow && plan->integral_source && metric.full_rank && space != "dense"'
         in force_owner
