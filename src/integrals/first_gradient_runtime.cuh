@@ -200,20 +200,27 @@ void append(Plan& p, const double* records, std::size_t count, const Mapping& ma
         throw std::invalid_argument("invalid first-gradient primitive");
   }
   if (count) {
-    vibeqc_tensor::cuda_check(cudaMemcpyAsync(p.data() + p.record_offset, records,
-                                              count * stride * sizeof(double),
-                                              cudaMemcpyHostToDevice, p.context.stream));
-    // The Python owner reuses its host record buffer as soon as append returns.
-    // Fence only that H2D lifetime, not the generated device contraction that
-    // follows it on the same stream. Later appends remain stream-ordered behind
-    // the prior contraction before reusing the device record staging region.
-    vibeqc_tensor::cuda_check(cudaEventRecord(p.context.begin, p.context.stream));
-    const auto work = count * Program::components;
-    execute<Program><<<vibeqc_tensor::blocks(work, 64), 64, 0, p.context.stream>>>(
-        p.data() + p.record_offset, count, mapping, p.nbf, p.data(), p.data() + p.output_offset,
-        p.context.error);
-    vibeqc_tensor::cuda_check(cudaGetLastError());
-    vibeqc_tensor::cuda_check(cudaEventSynchronize(p.context.begin));
+    try {
+      vibeqc_tensor::cuda_check(cudaMemcpyAsync(p.data() + p.record_offset, records,
+                                                count * stride * sizeof(double),
+                                                cudaMemcpyHostToDevice, p.context.stream));
+      // The Python owner reuses its host record buffer as soon as append returns.
+      // Fence only that H2D lifetime, not the generated device contraction that
+      // follows it on the same stream. Later appends remain stream-ordered behind
+      // the prior contraction before reusing the device record staging region.
+      vibeqc_tensor::cuda_check(cudaEventRecord(p.context.begin, p.context.stream));
+      const auto work = count * Program::components;
+      execute<Program><<<vibeqc_tensor::blocks(work, 64), 64, 0, p.context.stream>>>(
+          p.data() + p.record_offset, count, mapping, p.nbf, p.data(), p.data() + p.output_offset,
+          p.context.error);
+      vibeqc_tensor::cuda_check(cudaGetLastError());
+      vibeqc_tensor::cuda_check(cudaEventSynchronize(p.context.begin));
+    } catch (...) {
+      // Event recording or launch failure may leave H2D borrowing records.
+      // Retire that input before returning the original error to its owner.
+      (void)cudaStreamSynchronize(p.context.stream);
+      throw;
+    }
   }
   p.valid = true;
 }
