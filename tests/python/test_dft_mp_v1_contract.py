@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import sys
 import time
 from typing import TYPE_CHECKING
@@ -671,6 +672,8 @@ def test_optional_nonpass_never_replaces_required_final_row(
 ) -> None:
     monkeypatch.setattr(contract_validator, "_check_run", lambda *_: None)
     monkeypatch.setattr(contract_validator, "_performance_gate", lambda *_: [])
+    monkeypatch.setattr(contract_validator, "_official_master_oid", lambda *_: "e" * 40)
+    monkeypatch.setattr(contract_validator, "_git_is_ancestor", lambda *_: True)
 
     def git_result(argv: list[str], **_: object) -> object:
         output = (
@@ -746,17 +749,9 @@ def test_optional_nonpass_never_replaces_required_final_row(
     assert audit(path, final=True)["product_status"] == "BLOCKED"
     receipt["rows"][optional_indices[0]]["status"] = "unsupported"
     path.write_bytes(canonical(receipt))
-    monkeypatch.setattr(
-        contract_validator.subprocess,
-        "run",
-        lambda argv, **kwargs: (
-            type("Done", (), {"returncode": 1, "stdout": b""})()
-            if argv[1] == "fetch"
-            else git_result(argv, **kwargs)
-        ),
-    )
+    monkeypatch.setattr(contract_validator, "_official_master_oid", lambda *_: None)
     assert audit(path, final=True)["product_status"] == "BLOCKED"
-    monkeypatch.setattr(contract_validator.subprocess, "run", git_result)
+    monkeypatch.setattr(contract_validator, "_official_master_oid", lambda *_: "e" * 40)
     receipt["rows"][0] = {
         "id": contract["rows"][0]["id"],
         "status": "not-run",
@@ -764,3 +759,108 @@ def test_optional_nonpass_never_replaces_required_final_row(
     }
     path.write_bytes(canonical(receipt))
     assert audit(path, final=True)["product_status"] == "BLOCKED"
+
+
+def _git(repository: Path, *arguments: str) -> str:
+    return subprocess.check_output(
+        ["git", *arguments], cwd=repository, text=True
+    ).strip()
+
+
+@pytest.mark.parametrize(
+    ("advertisement", "expected"),
+    (
+        (b"a" * 40 + b"\trefs/heads/master\n", "a" * 40),
+        (b"", None),
+        (b"a" * 39 + b"\trefs/heads/master\n", None),
+        (b"g" * 40 + b"\trefs/heads/master\n", None),
+        (b"a" * 40 + b"\trefs/heads/main\n", None),
+        (
+            b"a" * 40 + b"\trefs/heads/master\n" + b"b" * 40 + b"\trefs/heads/master\n",
+            None,
+        ),
+    ),
+)
+def test_official_master_advertisement_is_exact(
+    advertisement: bytes, expected: str | None
+) -> None:
+    assert contract_validator._parse_official_master_oid(advertisement) == expected
+
+
+def test_official_master_fetch_failure_is_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    oid = "a" * 40
+
+    def failed_fetch(argv: list[str], **_: object) -> object:
+        if argv[1] == "ls-remote":
+            return type(
+                "Done",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": f"{oid}\trefs/heads/master\n".encode("ascii"),
+                },
+            )()
+        return type("Done", (), {"returncode": 1, "stdout": b""})()
+
+    monkeypatch.setattr(contract_validator.subprocess, "run", failed_fetch)
+    assert contract_validator._official_master_oid(tmp_path) is None
+
+
+def test_official_upstream_rejects_fork_only_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    official = tmp_path / "official.git"
+    seed = tmp_path / "seed"
+    fork = tmp_path / "fork.git"
+    checkout = tmp_path / "checkout"
+    subprocess.run(
+        ["git", "init", "--bare", str(official)], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "init", "-b", "master", str(seed)], check=True, capture_output=True
+    )
+    _git(seed, "config", "user.name", "fixture")
+    _git(seed, "config", "user.email", "fixture@example.invalid")
+    (seed / "base.txt").write_text("official\n", encoding="utf-8")
+    _git(seed, "add", "base.txt")
+    _git(seed, "commit", "-m", "official base")
+    official_base = _git(seed, "rev-parse", "HEAD")
+    _git(seed, "remote", "add", "official", str(official))
+    _git(seed, "push", "official", "master")
+    subprocess.run(
+        ["git", "clone", "--bare", str(official), str(fork)],
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "clone", str(fork), str(checkout)],
+        check=True,
+        capture_output=True,
+    )
+    _git(checkout, "config", "user.name", "fixture")
+    _git(checkout, "config", "user.email", "fixture@example.invalid")
+    (checkout / "fork-only.txt").write_text("fork\n", encoding="utf-8")
+    _git(checkout, "add", "fork-only.txt")
+    _git(checkout, "commit", "-m", "fork only")
+    fork_only = _git(checkout, "rev-parse", "HEAD")
+    _git(checkout, "push", "origin", "master")
+    assert (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", fork_only, "origin/master"],
+            cwd=checkout,
+            check=False,
+        ).returncode
+        == 0
+    )
+    fetch_head = checkout / ".git" / "FETCH_HEAD"
+    fetch_head.write_text("sentinel\n", encoding="utf-8")
+    monkeypatch.setattr(contract_validator, "OFFICIAL_UPSTREAM_URL", str(official))
+
+    official_oid = contract_validator._official_master_oid(checkout)
+
+    assert official_oid == official_base
+    assert contract_validator._git_is_ancestor(checkout, official_base, official_oid)
+    assert not contract_validator._git_is_ancestor(checkout, fork_only, official_oid)
+    assert fetch_head.read_text(encoding="utf-8") == "sentinel\n"

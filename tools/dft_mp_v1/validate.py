@@ -16,6 +16,9 @@ from pathlib import Path
 
 from .freeze_contract import REPO, ROOT, build, canonical, digest, source_digest
 
+OFFICIAL_UPSTREAM_URL = "https://github.com/jinzhezenggroup/vibeqc.git"
+OFFICIAL_UPSTREAM_MASTER_REF = "refs/heads/master"
+
 STATUSES = {
     "unknown",
     "unsupported",
@@ -46,6 +49,93 @@ class InvalidEvidence(ValueError):
 def require(condition: bool, message: str) -> None:
     if not condition:
         raise InvalidEvidence(message)
+
+
+def _parse_official_master_oid(advertisement: bytes) -> str | None:
+    """Accept exactly one canonical SHA-1 advertisement for upstream master."""
+
+    lines = advertisement.splitlines()
+    if len(lines) != 1:
+        return None
+    fields = lines[0].split(b"\t")
+    if len(fields) != 2 or fields[1] != OFFICIAL_UPSTREAM_MASTER_REF.encode("ascii"):
+        return None
+    try:
+        oid = fields[0].decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    if (
+        len(oid) != 40
+        or oid != oid.lower()
+        or any(c not in "0123456789abcdef" for c in oid)
+    ):
+        return None
+    return oid
+
+
+def _official_master_oid(repository: Path = REPO) -> str | None:
+    """Fetch the advertised official master object without updating local refs/FETCH_HEAD."""
+
+    try:
+        advertised = subprocess.run(
+            [
+                "git",
+                "ls-remote",
+                "--exit-code",
+                OFFICIAL_UPSTREAM_URL,
+                OFFICIAL_UPSTREAM_MASTER_REF,
+            ],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if advertised.returncode != 0:
+        return None
+    oid = _parse_official_master_oid(advertised.stdout)
+    if oid is None:
+        return None
+    try:
+        fetched = subprocess.run(
+            [
+                "git",
+                "fetch",
+                "--quiet",
+                "--no-write-fetch-head",
+                OFFICIAL_UPSTREAM_URL,
+                oid,
+            ],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            timeout=60,
+        )
+        verified = subprocess.run(
+            ["git", "cat-file", "-e", f"{oid}^{{commit}}"],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return oid if fetched.returncode == 0 and verified.returncode == 0 else None
+
+
+def _git_is_ancestor(repository: Path, ancestor: str, descendant: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
 
 
 def read_json(path: Path) -> dict:
@@ -889,30 +979,15 @@ def audit(receipt_path: Path, *, final: bool = False) -> dict:
                 and raw_acceptance.get("status") == "PASS",
                 "#1190 raw receipt mismatch",
             )
-        try:
-            refresh = subprocess.run(
-                ["git", "fetch", "origin", "master", "--quiet"],
-                cwd=REPO,
-                check=False,
-                capture_output=True,
-                timeout=60,
-            )
-        except (OSError, subprocess.TimeoutExpired):
-            refresh = None
-        if refresh is None or refresh.returncode != 0:
-            failures.append("could not refresh upstream master for final acceptance")
-        else:
-            result = subprocess.run(
-                ["git", "merge-base", "--is-ancestor", source, "origin/master"],
-                cwd=REPO,
-                check=False,
-                capture_output=True,
-            )
-            if result.returncode != 0:
-                failures.append(
-                    "source revision is not in freshly fetched upstream master"
-                )
-        if refresh is not None and refresh.returncode == 0 and result.returncode == 0:
+        official_master = _official_master_oid(REPO)
+        source_is_official = official_master is not None and _git_is_ancestor(
+            REPO, source, official_master
+        )
+        if official_master is None:
+            failures.append("could not resolve and fetch official upstream master")
+        elif not source_is_official:
+            failures.append("source revision is not in official upstream master")
+        if source_is_official:
             source_contract = subprocess.run(
                 ["git", "show", f"{source}:tools/dft_mp_v1/manifest.json"],
                 cwd=REPO,

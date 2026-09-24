@@ -24,6 +24,8 @@ not a statement of each method's default grid. Optional B3LYP/O2 stress rows
 remain visible and cannot replace mandatory RKS/UKS coverage.
 Versioned text input and basis hashes use LF-normalized Git-blob bytes so a
 Windows CRLF checkout and a Linux checkout retain the same contract identity.
+Final merged-source acceptance resolves the official repository's advertised
+master OID directly; remote aliases such as `origin` are not trusted identity.
 The runner records an in-flight row before starting external work; every
 attempt retains hashed stdout, stderr and a per-sample progress ledger. A
 crash leaves the campaign stopped until the old process tree is independently

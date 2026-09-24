@@ -110,9 +110,12 @@ including losses and timeouts. The declared 20 GiB simultaneous memory budget
 is part of this first RTX 5090/sm_120 contract; a different allocation must be
 versioned before measurement.
 
-`--final` additionally requires the #1190 reviewed raw receipt, fetches current
-upstream `master`, and checks that the exact source commit is its ancestor
-and contains this exact manifest blob.
+`--final` additionally requires the #1190 reviewed raw receipt. It resolves
+`refs/heads/master` from the explicit official URL
+`https://github.com/jinzhezenggroup/vibeqc.git`, fetches that immutable OID
+without updating local remotes or `FETCH_HEAD`, and checks that the exact
+source commit is its ancestor and contains this exact manifest blob. A fork's
+arbitrary `origin/master` cannot satisfy this gate.
 The build record must bind that source to the installed binary and AOT artifact.
 An adapter can still lie in JSON or a build record can be forged; human review
 and independent reproduction of retained raw evidence remain mandatory. A
