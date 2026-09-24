@@ -86,7 +86,9 @@ def _validated_weighted_density_program() -> typing.Any:
         raise ValueError("SCF CUDA weighted density requires one expected output")
     contraction = program.outputs["weighted_density"]
     if contraction.op != "einsum" or contraction.attrs.get("coefficient") != (1, 1):
-        raise ValueError("SCF CUDA weighted density must be one unit-coefficient einsum")
+        raise ValueError(
+            "SCF CUDA weighted density must be one unit-coefficient einsum"
+        )
     if _kind_signature(contraction) != ("batch", "spin", "ao", "ao"):
         raise ValueError("SCF CUDA weighted-density output domains changed")
     if contraction.attrs.get("labels") != (

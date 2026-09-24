@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from vibeqc_compiler.array_api.scf import (
     density_program as array_density_program,
+)
+from vibeqc_compiler.array_api.scf import (
     weighted_density_program as array_weighted_density_program,
 )
 from vibeqc_compiler.tensor.scf_cuda import (
@@ -51,9 +53,7 @@ def test_cuda_weighted_density_is_generated_but_keeps_full_square_order() -> Non
 
     assert "if (row > column) return;" not in weighted
     assert "weighted_density[element] = value;" in weighted
-    assert (
-        "2.0 * orbital_energies[eigen_offset + orbital] *" in weighted
-    )
+    assert "2.0 * orbital_energies[eigen_offset + orbital] *" in weighted
 
     assert "__global__ void build_weighted_density_kernel" not in source
     assert "__global__ void build_spin_weighted_density_kernel" not in source
