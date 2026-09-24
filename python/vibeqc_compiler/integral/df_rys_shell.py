@@ -10,7 +10,7 @@ eligibility is mathematical availability, never automatic production promotion.
 import typing
 from itertools import product
 
-from .cuda import CudaEmitter
+from .scalar_c import ScalarCEmitter
 from .df_derivatives_cuda import emit_df_geometry_cuda
 from .df_values import build_df_axis_moment
 from .expr import Graph, Node
@@ -278,7 +278,7 @@ def emit_df_rys_shell_cuda(
                 }
             )
             variables.update(root="g.f[root]", root_weight=f"g.f[root+{roots}]")
-            emitter = CudaEmitter(graph, variables)
+            emitter = ScalarCEmitter(graph, variables)
             emitter.emit(outputs)
             lines += [
                 f"    case {item}: {{",
@@ -354,7 +354,7 @@ def _emit_cooperative_shell(angular: typing.Any) -> typing.Any:
     variables = {name: f"g.{name}" for name in ("sx", "sy", "ip", "iq")}
     variables.update({name: f"g.{name}[axis]" for name in ("pa", "pb", "dx")})
     variables["root"] = "g.f[root]"
-    emitter = CudaEmitter(graph, variables)
+    emitter = ScalarCEmitter(graph, variables)
     emitter.emit(outputs)
     a, b, c = angular
     return [
