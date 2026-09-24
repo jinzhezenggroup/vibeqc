@@ -32,8 +32,12 @@ def _safe_repository_path(
     if candidate.is_absolute() or ".." in candidate.parts:
         errors.append(f"{field} must stay inside the repository: {value!r}")
         return None
-    resolved_root = root.resolve()
-    resolved = (resolved_root / candidate).resolve()
+    try:
+        resolved_root = root.resolve()
+        resolved = (resolved_root / candidate).resolve()
+    except (OSError, RuntimeError, ValueError) as exc:
+        errors.append(f"{field} cannot resolve repository path {value!r}: {exc}")
+        return None
     try:
         resolved.relative_to(resolved_root)
     except ValueError:
@@ -181,12 +185,15 @@ def validate_repository(root: Path) -> list[str]:
                 errors.append(f"duplicate constant symbol {symbol!r}")
             seen_symbols.add(symbol)
         classification = entry.get("classification")
-        if classification not in _ALLOWED_REMAINING_CLASSIFICATIONS:
+        if (
+            not isinstance(classification, str)
+            or classification not in _ALLOWED_REMAINING_CLASSIFICATIONS
+        ):
             errors.append(
                 f"{field}.classification is not recognized: {classification!r}"
             )
         state = entry.get("state")
-        if state not in _ALLOWED_REMAINING_STATES:
+        if not isinstance(state, str) or state not in _ALLOWED_REMAINING_STATES:
             errors.append(f"{field}.state is not recognized: {state!r}")
         for required in ("current_owner", "intended_owner", "retirement_condition"):
             if not isinstance(entry.get(required), str) or not entry[required].strip():
@@ -239,7 +246,10 @@ def validate_repository(root: Path) -> list[str]:
                 errors.append(f"duplicate constant symbol {symbol!r}")
             seen_symbols.add(symbol)
         classification = raw_entry.get("classification")
-        if classification not in _ALLOWED_EXCLUDED_CLASSIFICATIONS:
+        if (
+            not isinstance(classification, str)
+            or classification not in _ALLOWED_EXCLUDED_CLASSIFICATIONS
+        ):
             errors.append(
                 f"{field}.classification is not recognized: {classification!r}"
             )
