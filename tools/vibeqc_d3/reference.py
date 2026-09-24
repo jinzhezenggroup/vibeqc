@@ -22,26 +22,33 @@ from tools import source_registry
 
 _ROOT = Path(__file__).resolve().parents[2]
 _SOURCE_ID = "xtbloom-gfn1-d3"
+_MODEL_SOURCE_ID = "xtbloom-gfn1-parameters"
 _REQUIRED_SOURCE_FILES = frozenset({"gfn1_d3.json", "gfn1.json"})
 _MANIFEST = _ROOT / "manifests" / "xtbloom-d3.json"
 _POINTER = np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags="C_CONTIGUOUS")
 
 
 def _registered_source_texts() -> dict[str, str]:
-    """Load exact D3/GFN1 source texts through the common source registry."""
+    """Load exact D3/GFN1 source texts through their common-registry owners."""
     registry = source_registry._load(source_registry.REGISTRY)
-    source = registry["sources"].get(_SOURCE_ID)
-    if not isinstance(source, dict):
-        raise source_registry.SourceRegistryError(
-            f"source registry is missing {_SOURCE_ID!r}"
-        )
-    texts = source_registry.read_source_texts(_SOURCE_ID, source)
-    missing = _REQUIRED_SOURCE_FILES - texts.keys()
-    if missing:
-        raise source_registry.SourceRegistryError(
-            f"{_SOURCE_ID!r} is missing required files: {sorted(missing)}"
-        )
-    return {name: texts[name] for name in sorted(_REQUIRED_SOURCE_FILES)}
+    result: dict[str, str] = {}
+    for source_id, required in (
+        (_SOURCE_ID, ("gfn1_d3.json",)),
+        (_MODEL_SOURCE_ID, ("gfn1.json",)),
+    ):
+        source = registry["sources"].get(source_id)
+        if not isinstance(source, dict):
+            raise source_registry.SourceRegistryError(
+                f"source registry is missing {source_id!r}"
+            )
+        texts = source_registry.read_source_texts(source_id, source)
+        missing = set(required) - texts.keys()
+        if missing:
+            raise source_registry.SourceRegistryError(
+                f"{source_id!r} is missing required files: {sorted(missing)}"
+            )
+        result.update({name: texts[name] for name in required})
+    return {name: result[name] for name in sorted(_REQUIRED_SOURCE_FILES)}
 
 
 @lru_cache(maxsize=1)
