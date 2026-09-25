@@ -34,9 +34,7 @@ class XcMatrixSchedule:
         # All three totals channels need an x lane; larger tiles can exceed
         # CUDA block/shared-memory limits. Direct emitters share this boundary.
         if self.tile not in (8, 16, 32):
-            raise ValueError(
-                "XC matrix tile must be a supported candidate (8, 16, 32)"
-            )
+            raise ValueError("XC matrix tile must be a supported candidate (8, 16, 32)")
 
     @property
     def threads(self) -> int:

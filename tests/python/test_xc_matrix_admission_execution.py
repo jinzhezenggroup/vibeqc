@@ -86,8 +86,7 @@ def test_native_admission_matches_model_at_all_launch_boundaries(
     completed = subprocess.run(
         [str(admission_probe)],
         input="".join(
-            f"{tile} {n} {count} {spins} {jets}\n"
-            for n, count, spins, jets in cases
+            f"{tile} {n} {count} {spins} {jets}\n" for n, count, spins, jets in cases
         ),
         check=True,
         capture_output=True,
