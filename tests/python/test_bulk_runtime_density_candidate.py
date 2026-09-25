@@ -120,8 +120,9 @@ def test_density_threshold_is_bound_to_pinned_registration_metadata() -> None:
     )
     expected = float(record["bindings"]["p_a_dens_threshold"])
 
+    interior = build_bulk_runtime_program(name, spin="unpolarized", order=1)
+
     assert program.spec.density_threshold == expected
     assert program.spec.to_payload()["density_threshold"] == expected
-    assert PRODUCTION_DENSITY_CANDIDATE_DOMAIN in program.expression_hash or (
-        program.spec.to_payload()["domain"] == PRODUCTION_DENSITY_CANDIDATE_DOMAIN
-    )
+    assert program.spec.to_payload()["domain"] == PRODUCTION_DENSITY_CANDIDATE_DOMAIN
+    assert program.expression_hash != interior.expression_hash
