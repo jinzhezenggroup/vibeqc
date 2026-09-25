@@ -134,12 +134,26 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
           if (radial == 0) continue;
           for (unsigned t = 0; t < static_cast<unsigned>(record[3]); ++t) {
             const double weighted_radial = radial * record[7 + 4 * t];
-            for (std::size_t jet = 0; jet < JetCount; ++jet) {
+            if constexpr (JetCount == 1) {
               double term = weighted_radial;
               for (unsigned k = 0; k < 3; ++k)
-                term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]),
-                                             JetCount == 1 ? 0U : derivatives[jet][k], alpha, r[k]);
-              values[jet] += term;
+                term *= differentiated_power(static_cast<unsigned>(record[4 + 4 * t + k]), 0U,
+                                             alpha, r[k]);
+              values[0] += term;
+            } else {
+              constexpr unsigned MaxDerivative =
+                  JetCount == 4 ? 1U : (JetCount == 10 ? 2U : 3U);
+              std::array<std::array<double, MaxDerivative + 1>, 3> axis{};
+              for (unsigned k = 0; k < 3; ++k) {
+                const auto l = static_cast<unsigned>(record[4 + 4 * t + k]);
+                for (unsigned derivative = 0; derivative <= MaxDerivative; ++derivative)
+                  axis[k][derivative] = differentiated_power(l, derivative, alpha, r[k]);
+              }
+              for (std::size_t jet = 0; jet < JetCount; ++jet) {
+                double term = weighted_radial;
+                for (unsigned k = 0; k < 3; ++k) term *= axis[k][derivatives[jet][k]];
+                values[jet] += term;
+              }
             }
           }
         }
