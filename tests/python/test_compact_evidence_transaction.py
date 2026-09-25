@@ -8,10 +8,12 @@ import typing
 from pathlib import Path
 
 import pytest
-from test_compact_evidence_safety import publication as publication
-from test_compact_evidence_safety import snapshot
+from test_compact_evidence_safety import publication, snapshot
 
 from tools import compact_evidence_publications as compact
+
+# Explicitly re-export the fixture so pytest can discover it in this module.
+__all__ = ["publication"]
 
 
 def large_samples(root: Path) -> None:
