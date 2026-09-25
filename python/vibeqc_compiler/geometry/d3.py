@@ -8,7 +8,6 @@ native reference/runtime; no second scientific table copy is maintained here.
 from __future__ import annotations
 
 import functools
-import hashlib
 import math
 import typing
 from dataclasses import dataclass
@@ -16,6 +15,7 @@ from itertools import pairwise
 
 import numpy as np
 
+from vibeqc_compiler.common.d3_data import load_d3_production_data
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor import (
@@ -189,62 +189,18 @@ class _D3Tables:
     reference_c6: tuple[float, ...]
 
 
-def _sha256(path: typing.Any) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
 @functools.lru_cache(maxsize=1)
 def _d3_tables() -> _D3Tables:
-    import json
-
-    root = "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-    table_path = asset_path(f"{root}/gfn1_d3.json")
-    model_path = asset_path(f"{root}/gfn1.json")
-    if _sha256(table_path) != D3_TABLE_SHA256:
+    raw = load_d3_production_data(asset_path("data/parameters/d3_production.bin"))
+    if raw.table_sha256 != D3_TABLE_SHA256:
         raise ValueError("pinned D3 table digest does not match compiler identity")
-    raw = json.loads(table_path.read_text())
-    model = json.loads(model_path.read_text())
-    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
-        raise ValueError("pinned xTBloom GFN1 element order changed")
-    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
-    radii_bytes = (json.dumps(radii, indent=2) + "\n").encode()
-    if hashlib.sha256(radii_bytes).hexdigest() != D3_RADII_SHA256:
+    if raw.radii_sha256 != D3_RADII_SHA256:
         raise ValueError("derived D3 radii digest does not match compiler identity")
-    if (
-        len(raw["elements"]) != 86
-        or len(raw["pair_records"]) != 3741
-        or len(raw["coordination_numbers"]) != 237
-        or len(raw["c6"]) != 28455
-        or len(raw["r4r2"]) != 86
-        or len(radii) != 86
-    ):
-        raise ValueError("pinned D3 table shape changed")
-    elements = tuple(
-        _ElementRecord(
-            int(record["reference_count"]),
-            int(record["reference_offset"]),
-            float(raw["r4r2"][index]),
-            float(radii[index]),
-        )
-        for index, record in enumerate(raw["elements"])
-    )
-    pairs = tuple(
-        _PairRecord(
-            int(record["c6_offset"]),
-            int(record["first_reference_count"]),
-            int(record["second_reference_count"]),
-        )
-        for record in raw["pair_records"]
-    )
+    elements = tuple(_ElementRecord(x.reference_count, x.reference_offset, raw.r4r2[i], raw.covalent_radii[i]) for i, x in enumerate(raw.elements))
+    pairs = tuple(_PairRecord(x.c6_offset, x.first_reference_count, x.second_reference_count) for x in raw.pairs)
     if any(not 1 <= item.reference_count <= D3_REFERENCE_SLOTS for item in elements):
         raise ValueError("unsupported D3 reference count")
-    return _D3Tables(
-        elements,
-        pairs,
-        tuple(float(value) for value in raw["coordination_numbers"]),
-        tuple(float(value) for value in raw["c6"]),
-    )
-
+    return _D3Tables(elements, pairs, raw.coordination_numbers, raw.c6)
 
 def _pair_record_index(first_z: int, second_z: int) -> int:
     low, high = sorted((first_z, second_z))

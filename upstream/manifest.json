@@ -207,6 +207,21 @@
       "outputs": {
         "python/vibeqc_compiler/integral/rys_high_accuracy_data.py": "51f97cfdf2c750fff11a5f09b9435cb7d541c7153eea1826fe521ec248cae079"
       }
+    },
+    "d3-production-data": {
+      "canonical_inputs": {
+        "manifests/xtbloom-d3.json": "8a34095d48b8c539acde7f848a1f737df127fbe1edc600b37d8c00956b65a44c"
+      },
+      "generator": "tools/vibeqc_d3/generate_compact_data.py",
+      "generator_sha256": "57afd9a68481bea5b856d4566fa71065ed7232f965f6d72451b82b42b308d59a",
+      "input_identity_sha256": "4c3fda2836fc9c81ecede2ed9c073b18799c329d1231ecb88ba93abd98079ca7",
+      "inputs": [
+        "xtbloom-gfn1-d3",
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "data/parameters/d3_production.bin": "19aed2b11b39a29f6e1c9a8cb442cb78ef3772488edc0c003e7640a5b198e945"
+      }
     }
   },
   "schema": "vibeqc.scientific-source-registry",
@@ -3556,9 +3571,8 @@
           "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
         }
       },
-      "kind": "snapshot",
+      "kind": "remote-file-set",
       "license": "LGPL-3.0-or-later",
-      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     },
@@ -3589,9 +3603,8 @@
           "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
         }
       },
-      "kind": "snapshot",
+      "kind": "remote-file-set",
       "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }
