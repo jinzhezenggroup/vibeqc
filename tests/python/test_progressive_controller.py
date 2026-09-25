@@ -231,6 +231,20 @@ def test_target_problem_identity_binds_atom_count() -> None:
         replace(PROBLEM, atom_count=True)
 
 
+def test_stage_plan_rejects_missing_or_ambiguous_provider_hashes() -> None:
+    source, _ = stages()
+    with pytest.raises(ValueError, match="stage provider hashes"):
+        replace(source, provider_hashes=())
+    with pytest.raises(ValueError, match="duplicate stage provider hash names"):
+        replace(
+            source,
+            provider_hashes=(
+                ("orbital.mathematical_identity", "d" * 64),
+                ("orbital.mathematical_identity", "e" * 64),
+            ),
+        )
+
+
 def test_plan_rejects_substituted_target_and_unbounded_work() -> None:
     source, target = stages()
     with pytest.raises(ValueError, match="exact TargetProblem"):
