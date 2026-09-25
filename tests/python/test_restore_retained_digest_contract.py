@@ -35,13 +35,25 @@ def archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, str]
         ["init", "--quiet"],
         ["add", "--", MEMBER],
         [
-            "-c", "user.name=Test", "-c", "user.email=test@example.invalid",
-            "-c", "commit.gpgSign=false", "commit", "--quiet", "-m", "fixture",
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "commit.gpgSign=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture",
         ],
     ):
         subprocess.run(["git", *arguments], cwd=repo, check=True, capture_output=True)
     revision = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
     source.unlink()
     monkeypatch.setattr(restore, "ROOT", repo)
