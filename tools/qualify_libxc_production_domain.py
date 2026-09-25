@@ -13,12 +13,14 @@ import argparse
 import json
 from itertools import combinations_with_replacement
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
-from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 from vibeqc_compiler.xc.production_domain_cases import (
     ProductionDomainCase,
     control_case_ids,
@@ -141,7 +143,7 @@ def _run_numeric_case(
 
     try:
         expected = _reference(name, case, family=family, libxc=libxc)
-    except Exception as exc:
+    except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
         reason = f"independent oracle failed: {type(exc).__name__}: {exc}"
         return {**row, "status": "fail", "reason": reason}, {
             **detail,
@@ -166,7 +168,7 @@ def _run_numeric_case(
         observed = program.evaluate(
             np.asarray(feature_values, dtype=np.float64).reshape(-1, 1)
         )[:, 0]
-    except Exception as exc:
+    except (ArithmeticError, RuntimeError, TypeError, ValueError) as exc:
         reason = f"production candidate failed: {type(exc).__name__}: {exc}"
         return {**row, "status": "fail", "reason": reason}, {
             **detail,
