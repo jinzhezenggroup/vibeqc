@@ -143,6 +143,16 @@ satisfy the `production-domain` stage. A finite value by itself is not a
 correctness claim. Oracle-nonfinite points remain unqualified instead of being
 coerced into a pass.
 
+The receipt additionally binds the exact order-2 execution programs used by the
+campaign for both spin layouts: executor kind, runtime domain, imported source
+identity, expression identity, optimization mode, feature ABI, and the complete
+energy/vxc/fxc output contract. This binding is content-addressed and included in
+the receipt hash. A matrix cannot be retained as production-domain evidence
+without naming the exact mathematical execution that produced its candidate
+values. Backend compilation/runtime qualification remains a separate stage; the
+current B1 campaign explicitly records the shared array-Graph executor rather
+than pretending that interpreted evidence is a compiled-CPU or CUDA result.
+
 `vibeqc_compiler.xc.production_domain_cases` instantiates every numerical
 rho/sigma/tau row in the exact v2 cases-by-spin matrix from finite physical
 density, Cartesian-gradient, and kinetic-density coordinates.
