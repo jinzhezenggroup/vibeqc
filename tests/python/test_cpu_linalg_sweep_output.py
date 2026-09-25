@@ -10,7 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from benchmarks import _retention, cpu_linalg_sweep as sweep
+from benchmarks import _retention
+from benchmarks import cpu_linalg_sweep as sweep
 
 
 @pytest.mark.parametrize("kind", ["direct", "alias", "traversal"])
