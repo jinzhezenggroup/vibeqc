@@ -40,8 +40,13 @@ def record(provider: str = "scalar", resolved: str = "scalar") -> dict[str, obje
 
 
 @pytest.mark.parametrize("field", ["seconds", "gflops"])
-@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), float("-inf"), True, False, 0, -1, "1", 10**400])
-def test_measurements_must_be_finite_positive_real_numbers(field: str, invalid: object) -> None:
+@pytest.mark.parametrize(
+    "invalid",
+    [float("nan"), float("inf"), float("-inf"), True, False, 0, -1, "1", 10**400],
+)
+def test_measurements_must_be_finite_positive_real_numbers(
+    field: str, invalid: object
+) -> None:
     payload = record()
     payload[field] = invalid
     with pytest.raises(ValueError, match=field):
@@ -73,25 +78,61 @@ def test_identity_requires_nonempty_strings(field: str, invalid: object) -> None
         sweep._validated(payload, size=16, provider="scalar", repeats=1, threads=1)
 
 
-@pytest.mark.parametrize("requested,resolved", [("scalar", "openblas"), ("openblas", "scalar"), ("auto", "automatic"), ("auto", "unknown")])
-def test_resolved_provider_cannot_contradict_request(requested: str, resolved: str) -> None:
+@pytest.mark.parametrize(
+    "requested,resolved",
+    [
+        ("scalar", "openblas"),
+        ("openblas", "scalar"),
+        ("auto", "automatic"),
+        ("auto", "unknown"),
+    ],
+)
+def test_resolved_provider_cannot_contradict_request(
+    requested: str, resolved: str
+) -> None:
     with pytest.raises(ValueError, match="provider"):
-        sweep._validated(record(requested, resolved), size=16, provider=requested, repeats=1, threads=1)
+        sweep._validated(
+            record(requested, resolved),
+            size=16,
+            provider=requested,
+            repeats=1,
+            threads=1,
+        )
 
 
-@pytest.mark.parametrize("requested,resolved", [("scalar", "scalar"), ("openblas", "openblas"), ("auto", "scalar"), ("auto", "openblas")])
-def test_legal_provider_results_are_copied_without_changes(requested: str, resolved: str) -> None:
+@pytest.mark.parametrize(
+    "requested,resolved",
+    [
+        ("scalar", "scalar"),
+        ("openblas", "openblas"),
+        ("auto", "scalar"),
+        ("auto", "openblas"),
+    ],
+)
+def test_legal_provider_results_are_copied_without_changes(
+    requested: str, resolved: str
+) -> None:
     payload = record(requested, resolved)
     before = deepcopy(payload)
-    output = sweep._validated(payload, size=16, provider=requested, repeats=1, threads=1)
+    output = sweep._validated(
+        payload, size=16, provider=requested, repeats=1, threads=1
+    )
     assert output == before == payload
     assert output is not payload
 
 
-def test_malformed_json_observation_is_rejected_by_complete_sweep(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_malformed_json_observation_is_rejected_by_complete_sweep(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = record()
     payload["seconds"] = float("nan")
-    monkeypatch.setattr(sweep.subprocess, "run", lambda command, **kwargs: subprocess.CompletedProcess(command, 0, json.dumps(payload), ""))
+    monkeypatch.setattr(
+        sweep.subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command, 0, json.dumps(payload), ""
+        ),
+    )
     with pytest.raises(ValueError, match="seconds"):
         sweep.run_sweep(Path("probe"), sizes=(16,), providers=("scalar",), repeats=1)
 
