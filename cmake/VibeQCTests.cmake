@@ -23,6 +23,7 @@ endfunction()
 macro(vibeqc_add_native_tests)
   enable_testing()
   if(VIBEQC_ENABLE_CUDA)
+    vibeqc_native_test(vibeqc_hf_resource_layout_tests tests/native/test_hf_resource_layout.cpp)
     vibeqc_native_test(vibeqc_mean_field_setup_cuda_tests tests/native/test_mean_field_setup_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_cuda_quadrature_tests tests/native/test_cuda_quadrature.cpp

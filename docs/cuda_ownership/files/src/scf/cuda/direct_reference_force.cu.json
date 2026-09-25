@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_reference_force.cu",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
+  "reason": "Matrix-direct RHF/UHF force fallback retained only for unsupported non-quartet shell domains. Small-HF persistent-ERI force consumers were retired in favor of compiler-owned generated quartet derivatives.",
   "regions": []
 }

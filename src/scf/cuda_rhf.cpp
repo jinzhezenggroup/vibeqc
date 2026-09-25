@@ -555,8 +555,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       static_cast<std::size_t>(host.system_shell_pair_block_offsets.back());
   const std::size_t total_shell_pair_block_quartets =
       static_cast<std::size_t>(host.system_shell_pair_block_quartet_offsets.back());
+  // Force requests use the compiler-owned quartet derivative consumers even for
+  // small HF systems. Persistent ERIs remain an energy-only profitability path;
+  // keeping their handwritten force consumer would duplicate generated science.
   const bool requested_persistent_eri =
-      !options.export_physical_reference && nbf <= kPersistentEriAoLimit;
+      !options.compute_forces && !options.export_physical_reference && nbf <= kPersistentEriAoLimit;
   const bool requested_quartet_direct =
       !options.export_physical_reference && !requested_persistent_eri &&
       std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
@@ -676,13 +679,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   std::size_t force_coordinate_count = 0;
   std::size_t force_matrix_elements = 0;
-  std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
   if (!vibeqc::runtime::checked_multiply(total_atoms, 3, force_coordinate_count) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, matrix_size,
                                          force_matrix_elements) ||
-      !vibeqc::runtime::checked_multiply(force_coordinate_count, eri_size,
-                                         persistent_force_elements) ||
       !vibeqc::runtime::checked_multiply(force_matrix_elements, pair_count,
                                          direct_force_elements)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
@@ -4327,10 +4327,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   } else if (bounded_direct_fock_only_diagnostic && bounded_direct_streaming) {
     // Nuclear and one-electron forces above remain in the timing so this
     // diagnostic isolates only the bounded two-electron force tail.
-  } else if (unrestricted && persistent_eri) {
-    launch_two_electron_uhf_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                         resources.stream_, device_batch, final_density, active,
-                                         forces);
   } else if (unrestricted && quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening
@@ -4378,10 +4374,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         blocks_for(direct_force_elements), threads, 0, resources.stream_, device_batch,
         options.screening_tolerance, ao_pair_first, ao_pair_second, pair_count, schwarz_bounds,
         final_density, active, forces);
-  } else if (persistent_eri) {
-    launch_two_electron_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                     resources.stream_, device_batch, final_density, active,
-                                     forces);
   } else if (quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening

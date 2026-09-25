@@ -1,11 +1,7 @@
 #include <cuda_runtime.h>
 
-#include <algorithm>
-#include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 
 #include "scf/cuda/direct_native_contraction.cuh"
 #include "scf/cuda/direct_reference_force.hpp"
@@ -13,78 +9,6 @@
 #include "scf/cuda/packed_basis.hpp"
 
 namespace vibeqc::scf::cuda_execution {
-
-__global__ void two_electron_force_kernel(DeviceBatch batch, const double* density,
-                                          const std::uint8_t* active, double* forces) {
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t quartet_count = matrix_size * matrix_size;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const std::size_t coordinate_count = static_cast<std::size_t>(batch.total_atoms) * 3;
-  if (element >= coordinate_count * quartet_count) return;
-  const std::int64_t coordinate = static_cast<std::int64_t>(element / quartet_count);
-  std::size_t local = element % quartet_count;
-  const std::size_t l = local % n;
-  local /= n;
-  const std::size_t k = local % n;
-  local /= n;
-  const std::size_t j = local % n;
-  const std::size_t i = local / n;
-  const std::int64_t atom = coordinate / 3;
-  const std::int32_t system = batch.atom_systems[atom];
-  if (active[system] == 0) return;
-  const std::size_t matrix_offset = static_cast<std::size_t>(system) * matrix_size;
-  const double coefficient = 0.5 * density[matrix_offset + matrix_index(i, j, n)] *
-                                 density[matrix_offset + matrix_index(k, l, n)] -
-                             0.25 * density[matrix_offset + matrix_index(i, k, n)] *
-                                 density[matrix_offset + matrix_index(j, l, n)];
-  if (coefficient == 0.0) return;
-  const Dual derivative = contracted_eri<Dual>(
-      batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
-      static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), coordinate);
-  atomicAdd(forces + coordinate, -coefficient * derivative.derivative);
-}
-
-__global__ void two_electron_uhf_force_kernel(DeviceBatch batch, const double* spin_density,
-                                              const std::uint8_t* active, double* forces) {
-  const std::size_t n = static_cast<std::size_t>(batch.nbf);
-  const std::size_t matrix_size = n * n;
-  const std::size_t quartet_count = matrix_size * matrix_size;
-  const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const std::size_t coordinate_count = static_cast<std::size_t>(batch.total_atoms) * 3;
-  if (element >= coordinate_count * quartet_count) return;
-  const std::int64_t coordinate = static_cast<std::int64_t>(element / quartet_count);
-  std::size_t local = element % quartet_count;
-  const std::size_t l = local % n;
-  local /= n;
-  const std::size_t k = local % n;
-  local /= n;
-  const std::size_t j = local % n;
-  const std::size_t i = local / n;
-  const std::int64_t atom = coordinate / 3;
-  const std::int32_t system = batch.atom_systems[atom];
-  if (active[system] == 0) return;
-  const std::size_t alpha_offset = static_cast<std::size_t>(system) * 2 * matrix_size;
-  const std::size_t beta_offset = alpha_offset + matrix_size;
-  const std::size_t ij = matrix_index(i, j, n);
-  const std::size_t kl = matrix_index(k, l, n);
-  const double alpha_ij = spin_density[alpha_offset + ij];
-  const double beta_ij = spin_density[beta_offset + ij];
-  const double alpha_kl = spin_density[alpha_offset + kl];
-  const double beta_kl = spin_density[beta_offset + kl];
-  const double total_ij = alpha_ij + beta_ij;
-  const double total_kl = alpha_kl + beta_kl;
-  const double coefficient = 0.5 * total_ij * total_kl -
-                             0.5 * spin_density[alpha_offset + matrix_index(i, k, n)] *
-                                 spin_density[alpha_offset + matrix_index(j, l, n)] -
-                             0.5 * spin_density[beta_offset + matrix_index(i, k, n)] *
-                                 spin_density[beta_offset + matrix_index(j, l, n)];
-  if (coefficient == 0.0) return;
-  const Dual derivative = contracted_eri<Dual>(
-      batch, system, static_cast<std::int32_t>(i), static_cast<std::int32_t>(j),
-      static_cast<std::int32_t>(k), static_cast<std::int32_t>(l), coordinate);
-  atomicAdd(forces + coordinate, -coefficient * derivative.derivative);
-}
 
 __global__ void two_electron_force_direct_kernel(
     DeviceBatch batch, double screening_tolerance, const std::int32_t* pair_first,
@@ -216,20 +140,6 @@ __global__ void two_electron_uhf_force_direct_kernel(
   if (energy_derivative != 0.0) {
     atomicAdd(forces + coordinate, -energy_derivative);
   }
-}
-
-void launch_two_electron_force_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                      cudaStream_t stream, DeviceBatch batch, const double* density,
-                                      const std::uint8_t* active, double* forces) {
-  two_electron_force_kernel<<<grid, block, shared_bytes, stream>>>(batch, density, active, forces);
-}
-
-void launch_two_electron_uhf_force_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                          cudaStream_t stream, DeviceBatch batch,
-                                          const double* spin_density, const std::uint8_t* active,
-                                          double* forces) {
-  two_electron_uhf_force_kernel<<<grid, block, shared_bytes, stream>>>(batch, spin_density, active,
-                                                                       forces);
 }
 
 void launch_two_electron_force_direct_kernel(
