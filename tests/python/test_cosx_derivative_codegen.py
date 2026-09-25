@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
 from vibeqc_compiler.method.cosx_derivative_runtime import (
     build_cosx_bidirectional_update_program,
     build_cosx_esp_derivative_update_program,
@@ -39,7 +38,9 @@ def test_cosx_scalar_contractions_match_retired_formulas() -> None:
         left=-0.3,
         right=0.4,
     )
-    np.testing.assert_allclose(projection["updated"], 0.7 + (-0.3) * 0.4, rtol=0, atol=0)
+    np.testing.assert_allclose(
+        projection["updated"], 0.7 + (-0.3) * 0.4, rtol=0, atol=0
+    )
 
     esp = _run(
         build_cosx_esp_derivative_update_program(),
@@ -73,8 +74,12 @@ def test_cosx_scalar_contractions_match_retired_formulas() -> None:
         projected=0.5,
         symmetric_projection=0.6,
     )
-    np.testing.assert_allclose(bidirectional["right_updated"], 0.1 + 0.3 * 0.5, rtol=0, atol=0)
-    np.testing.assert_allclose(bidirectional["left_updated"], -0.2 + -0.4 * 0.6, rtol=0, atol=0)
+    np.testing.assert_allclose(
+        bidirectional["right_updated"], 0.1 + 0.3 * 0.5, rtol=0, atol=0
+    )
+    np.testing.assert_allclose(
+        bidirectional["left_updated"], -0.2 + -0.4 * 0.6, rtol=0, atol=0
+    )
 
     point = _run(
         build_cosx_point_gradient_update_program(),
@@ -104,8 +109,10 @@ def test_cosx_scalar_contractions_match_retired_formulas() -> None:
         left_potential=0.9,
     )
     np.testing.assert_allclose(
-        molecular["from_left_updated"], 0.2 + (0.5 * (0.3 + 0.5)) * -0.7,
-        rtol=0, atol=1e-16,
+        molecular["from_left_updated"],
+        0.2 + (0.5 * (0.3 + 0.5)) * -0.7,
+        rtol=0,
+        atol=1e-16,
     )
     np.testing.assert_allclose(
         molecular["from_right_updated"], -0.1 + 0.3 * 0.9, rtol=0, atol=1e-16
@@ -127,10 +134,14 @@ def test_cosx_scalar_contractions_match_retired_formulas() -> None:
         build_cosx_pair_scale_program(), first=-0.25, second=0.8, value=0.3
     )
     np.testing.assert_allclose(scale["scaled"], -0.25 * 0.8, rtol=0, atol=0)
-    np.testing.assert_allclose(pair_scale["scaled"], (-0.25 * 0.8) * 0.3, rtol=0, atol=0)
+    np.testing.assert_allclose(
+        pair_scale["scaled"], (-0.25 * 0.8) * 0.3, rtol=0, atol=0
+    )
 
 
-def test_generated_header_retires_native_cosx_contraction_formulas(tmp_path: Path) -> None:
+def test_generated_header_retires_native_cosx_contraction_formulas(
+    tmp_path: Path,
+) -> None:
     output = tmp_path / "generated_cosx_derivative_contractions.cuh"
     subprocess.run(
         [
