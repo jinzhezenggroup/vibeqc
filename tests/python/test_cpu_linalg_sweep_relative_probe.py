@@ -25,7 +25,9 @@ def test_relative_probe_executes_from_calling_directory(
     )
     subprocess.run(
         [compiler, str(source), "-o", str(probe)],
-        check=True, capture_output=True, timeout=30,
+        check=True,
+        capture_output=True,
+        timeout=30,
     )
     spec = importlib.util.spec_from_file_location(
         "cpu_sweep_relative", ROOT / "benchmarks/cpu_linalg_sweep.py"
