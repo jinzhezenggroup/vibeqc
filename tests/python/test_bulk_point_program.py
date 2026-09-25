@@ -9,7 +9,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.xc import bulk_point_program
-from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
+from vibeqc_compiler.xc.bulk_runtime import (
+    PRODUCTION_CANDIDATE_DOMAIN,
+    build_bulk_runtime_program,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -43,9 +46,7 @@ def test_runtime_aot_binding_uses_compact_native_feature_abi(
 ) -> None:
     program = build_bulk_runtime_program(name, spin="polarized", order=1)
     variant = bulk_point_program.inspect_runtime_program(program)
-    binding = bulk_point_program.bind_runtime_semilocal_point_program(
-        program, domain_version=1
-    )
+    binding = bulk_point_program.bind_runtime_semilocal_point_program(program)
 
     assert variant.features == features
     assert binding.ingredient_mask == ingredient_mask
@@ -60,11 +61,32 @@ def test_runtime_aot_binding_uses_compact_native_feature_abi(
     assert "production" not in payload and "public" not in payload
 
 
+def test_native_domain_version_is_derived_from_runtime_domain() -> None:
+    interior = build_bulk_runtime_program(
+        "GGA_X_PBE_SOL", spin="polarized", order=1
+    )
+    candidate = build_bulk_runtime_program(
+        "GGA_X_PBE_SOL",
+        spin="polarized",
+        order=1,
+        domain=PRODUCTION_CANDIDATE_DOMAIN,
+    )
+
+    interior_binding = bulk_point_program.bind_runtime_semilocal_point_program(interior)
+    candidate_binding = bulk_point_program.bind_runtime_semilocal_point_program(candidate)
+
+    assert interior_binding.domain_version == 1
+    assert candidate_binding.domain_version == 2
+    assert interior_binding.to_payload()["domain"] != candidate_binding.to_payload()["domain"]
+    assert interior_binding.identity != candidate_binding.identity
+
+    with pytest.raises(ValueError, match="unsupported native XC domain"):
+        bulk_point_program.native_domain_version("unknown-domain")
+
+
 def test_adapter_source_binds_all_identities_and_tau_convention() -> None:
     program = build_bulk_runtime_program("MGGA_X_R2SCAN01", spin="polarized", order=1)
-    binding = bulk_point_program.bind_runtime_semilocal_point_program(
-        program, domain_version=3
-    )
+    binding = bulk_point_program.bind_runtime_semilocal_point_program(program)
     source = binding.emit_source()
 
     assert binding.identity in source
@@ -76,7 +98,7 @@ def test_adapter_source_binds_all_identities_and_tau_convention() -> None:
     assert "out.kinetic[0] = 0.5 * outputs[6];" in source
     assert "out.kinetic[1] = 0.5 * outputs[7];" in source
     assert "SemilocalPointProgram kPointProgram" in source
-    assert ", 15U, 3U, evaluate_point};" in source
+    assert ", 15U, 1U, evaluate_point};" in source
 
 
 def test_binding_rejects_nonpolarized_or_partial_point_contract() -> None:
@@ -84,23 +106,13 @@ def test_binding_rejects_nonpolarized_or_partial_point_contract() -> None:
         "GGA_X_PBE_SOL", spin="unpolarized", order=1
     )
     with pytest.raises(ValueError, match="polarized"):
-        bulk_point_program.bind_runtime_semilocal_point_program(
-            unpolarized, domain_version=1
-        )
+        bulk_point_program.bind_runtime_semilocal_point_program(unpolarized)
 
     partial = build_bulk_runtime_program(
         "GGA_X_PBE_SOL", spin="polarized", order=1, outputs=((), (0,))
     )
     with pytest.raises(ValueError, match="complete E/vxc"):
-        bulk_point_program.bind_runtime_semilocal_point_program(
-            partial, domain_version=1
-        )
-
-    with pytest.raises(ValueError, match="positive integer"):
-        bulk_point_program.bind_runtime_semilocal_point_program(
-            build_bulk_runtime_program("GGA_X_PBE_SOL", spin="polarized", order=1),
-            domain_version=0,
-        )
+        bulk_point_program.bind_runtime_semilocal_point_program(partial)
 
 
 def test_noncurated_gga_adapter_executes_projected_graph_exactly(
@@ -111,9 +123,7 @@ def test_noncurated_gga_adapter_executes_projected_graph_exactly(
         pytest.skip("C++ compiler unavailable")
 
     program = build_bulk_runtime_program("GGA_X_PBE_SOL", spin="polarized", order=1)
-    binding = bulk_point_program.bind_runtime_semilocal_point_program(
-        program, domain_version=1
-    )
+    binding = bulk_point_program.bind_runtime_semilocal_point_program(program)
 
     rho = np.array([0.7, 0.4], dtype=np.float64)
     gradient = np.array([[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64)
