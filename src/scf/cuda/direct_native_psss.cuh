@@ -17,9 +17,9 @@
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda/scalar_math.cuh"
 
-// Retained direct integral arithmetic for psss.
-// Shared definitions use ordinary inline linkage; host plans and queue policy
-// remain outside this numerical owner.
+// Runtime-only psss force geometry/schedule adapter.
+// The coordinate-derivative algebra is compiler-owned by generated_weighted_eri::psss_force;
+// this helper retains resident-bra reuse, primitive traversal, normalization transport and accumulation.
 namespace vibeqc::scf::cuda_execution {
 
 /**
