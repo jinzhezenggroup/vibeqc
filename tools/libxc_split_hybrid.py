@@ -21,6 +21,17 @@ from tools.libxc_method_metadata import extract_method_registrations
 
 
 @dataclass(frozen=True)
+class LibxcWorkPolicy:
+    """Pinned work_gga/work_mgga boundary policy for one component owner."""
+
+    density_threshold: float
+    sigma_threshold: float
+    tau_threshold: float
+    needs_tau: bool
+    enforce_fhc: bool
+
+
+@dataclass(frozen=True)
 class SplitGlobalHybridProgram:
     identifier: str
     exact_exchange: Fraction
@@ -28,6 +39,8 @@ class SplitGlobalHybridProgram:
     correlation_registration: str
     exchange: libxc_bulk.BulkProgram
     correlation: libxc_bulk.BulkProgram
+    exchange_policy: LibxcWorkPolicy
+    correlation_policy: LibxcWorkPolicy
 
 
 def _root() -> Path:
@@ -111,6 +124,28 @@ def _bound_component(
     return {**row, "entry": skeleton["entry"], "owner": skeleton["owner"]}
 
 
+def _work_policy(record: dict[str, Any]) -> LibxcWorkPolicy:
+    bindings = record.get("bindings")
+    flags = record.get("flags")
+    if not isinstance(bindings, dict) or not isinstance(flags, str):
+        raise MapleImportError("split-hybrid component lacks Libxc work metadata")
+    try:
+        density = float(bindings["p_a_dens_threshold"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise MapleImportError("split-hybrid component lacks density threshold") from error
+    if not density > 0.0:
+        raise MapleImportError("split-hybrid production policy requires positive density threshold")
+    sigma = density ** (4.0 / 3.0)
+    needs_tau = "XC_FLAGS_NEEDS_TAU" in flags
+    return LibxcWorkPolicy(
+        density_threshold=density,
+        sigma_threshold=sigma,
+        tau_threshold=1.0e-20 if needs_tau else 0.0,
+        needs_tau=needs_tau,
+        enforce_fhc="XC_FLAGS_ENFORCE_FHC" in flags,
+    )
+
+
 def build_split_global_hybrid(
     identifier: str, *, spin: str = "polarized"
 ) -> SplitGlobalHybridProgram:
@@ -158,4 +193,6 @@ def build_split_global_hybrid(
         correlation_registration=correlation_name,
         exchange=exchange,
         correlation=correlation,
+        exchange_policy=_work_policy(exchange_record),
+        correlation_policy=_work_policy(correlation_record),
     )
