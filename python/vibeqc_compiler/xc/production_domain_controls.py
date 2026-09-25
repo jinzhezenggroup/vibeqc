@@ -26,7 +26,9 @@ _LAZY_CASE = "control/lazy-inactive-branch"
 _NONFINITE_CASE = "control/invalid-nonfinite"
 
 
-def _pass_row(name: str, spin: str, case_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _pass_row(
+    name: str, spin: str, case_id: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
     capability = functional_capability(name)
     outputs = list(capability.production_domain_profile.outputs)
     row = {
@@ -135,9 +137,7 @@ def _lazy_inactive_branch(
     return row, detail
 
 
-def _invalid_nonfinite(
-    name: str, spin: str
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def _invalid_nonfinite(name: str, spin: str) -> tuple[dict[str, Any], dict[str, Any]]:
     """Require every nonfinite feature to fail before mathematical evaluation."""
     program = build_bulk_runtime_program(name, spin=spin, order=2)
     feature_count = len(program.spec.features)
@@ -162,7 +162,12 @@ def _invalid_nonfinite(
                     )
                 else:
                     rejected += 1
-            except (ArithmeticError, FloatingPointError, RuntimeError, ValueError) as exc:
+            except (
+                ArithmeticError,
+                FloatingPointError,
+                RuntimeError,
+                ValueError,
+            ) as exc:
                 failures.append(
                     f"{feature}:{label}: escaped validator as "
                     f"{type(exc).__name__}: {exc}"
