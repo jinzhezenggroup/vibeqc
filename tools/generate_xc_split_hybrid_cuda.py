@@ -10,7 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "python"), str(ROOT)]
 
-from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.common.paths import asset_path
+from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.integral.cuda import CudaEmitter
 from vibeqc_compiler.xc.libxc_maple import MapleImportError
 
@@ -18,6 +19,16 @@ from tools.libxc_split_hybrid import build_split_global_hybrid
 
 _GGA_FEATURES = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb")
 _MGGA_FEATURES = (*_GGA_FEATURES, "tau_a", "tau_b")
+_LIBXC_WORK_ASSETS = (
+    "upstream/libxc/7.0.0/work_mgga_inc.c",
+    "upstream/libxc-fulltree/7.0.0/src/functionals.c",
+)
+
+
+def _work_policy_identity() -> str:
+    return canonical_hash(
+        {name: file_hash(asset_path(name)) for name in _LIBXC_WORK_ASSETS}
+    )
 
 
 def _selected_features(program) -> tuple[str, ...]:
@@ -169,6 +180,8 @@ def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str,
     function_name = f"{function_stem}_device"
     identity_name = f"k{type_stem}DeviceExpressionIdentity"
     exact_name = f"k{type_stem}ExactExchange"
+    work_identity_name = f"k{type_stem}LibxcWorkPolicyIdentity"
+    work_identity = _work_policy_identity()
     expression_identity = canonical_hash(
         {
             "schema": "split-global-hybrid-cuda-point/v2",
@@ -177,6 +190,7 @@ def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str,
             "correlation": method.correlation.identity,
             "exact_exchange": str(method.exact_exchange),
             "features": selected,
+            "libxc_work_policy_identity": _work_policy_identity(),
             "exchange_work_policy": {
                 "density_threshold": method.exchange_work_policy.density_threshold.hex(),
                 "tau_threshold": method.exchange_work_policy.tau_threshold.hex(),
@@ -212,6 +226,7 @@ def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str,
             f"  double feature_derivative[{len(selected)}]{{}};",
             "};",
             f'inline constexpr const char* {identity_name} = "{expression_identity}";',
+            f'inline constexpr const char* {work_identity_name} = "{work_identity}";',
             f"inline constexpr double {exact_name} = {float(method.exact_exchange).hex()};",
             exchange.rstrip("\n"),
             correlation.rstrip("\n"),
