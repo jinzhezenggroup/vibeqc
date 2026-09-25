@@ -566,15 +566,17 @@ jobs:
               'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
               --deselect
               'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
-              # The coarse-grid WB97M-V water and OH-doublet finite-difference
-              # replays are qualification-scale on hosted runners (~9.5 and
-              # ~12.8 minutes in recent successful runs). Keep the higher-grid
-              # RKS/UKS cases on routine CI and move these redundant coarse-grid
-              # replays to scheduled/manual qualification.
+              # WB97M-V reconverged finite-difference replays are qualification
+              # scale on hosted runners. The coarse-grid water/OH cases take
+              # ~9.5/~12.8 minutes, and the production-grid water RKS case took
+              # 772 s in PR #1225. Keep the faster production-grid UKS endpoint
+              # on routine CI and run these long replays scheduled/manual.
               --deselect
               'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape0-water-rks]'
               --deselect
               'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape0-oh-doublet-uks]'
+              --deselect
+              'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape1-water-rks]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
