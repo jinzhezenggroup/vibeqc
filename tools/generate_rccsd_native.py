@@ -1048,6 +1048,10 @@ def _cuda_program(
         ]
     elif output_type == "DeviceLambdaOutputs":
         returned = [outputs["bar_t1"], outputs["bar_t2"]]
+    elif output_type == "DeviceParameterOutput":
+        if len(outputs) != 1:
+            raise ValueError("RCCSD CUDA parameter VJP must expose exactly one output")
+        returned = [next(iter(outputs.values()))]
     else:
         raise ValueError(f"unsupported RCCSD generated CUDA output type {output_type}")
     lines.append("  return {" + ",".join(returned) + "};")
@@ -1064,8 +1068,17 @@ def cuda_source() -> str:
     lambda_transpose = lambda_programs.residual_vjp.program
     independent_rhs = lambda_independent.energy_vjp.program
     independent_transpose = lambda_independent.residual_vjp.program
+    parameter_vjps = {
+        parameter: build_parameter_vjp(lambda_programs.primal, parameter).program
+        for parameter in PARAMETERS
+    }
     energy_seed = {"bar_correlation_energy": "s.bar_correlation_energy"}
     residual_seed = {
+        "bar_singles_residual": "s.bar_singles_residual",
+        "bar_doubles_residual": "s.bar_doubles_residual",
+    }
+    response_seed_overrides = {
+        "bar_correlation_energy": "s.bar_correlation_energy",
         "bar_singles_residual": "s.bar_singles_residual",
         "bar_doubles_residual": "s.bar_doubles_residual",
     }
@@ -1101,12 +1114,31 @@ def cuda_source() -> str:
                 "DeviceLambdaOutputs",
                 input_overrides=residual_seed,
             ),
+            *[
+                _cuda_program(
+                    program,
+                    f"parameter_{parameter}",
+                    "DeviceParameterOutput",
+                    input_overrides=response_seed_overrides,
+                )
+                for parameter, program in parameter_vjps.items()
+            ],
             "DeviceIterationOutputs run_iteration_cuda(CudaState& state){return run_iteration(state);}",
             "DeviceReplayOutputs run_replay_cuda(CudaState& state){return run_replay(state);}",
             "DeviceLambdaOutputs run_lambda_rhs_cuda(CudaState& state){return run_lambda_rhs(state);}",
             "DeviceLambdaOutputs run_lambda_transpose_cuda(CudaState& state){return run_lambda_transpose(state);}",
             "DeviceLambdaOutputs run_lambda_independent_rhs_cuda(CudaState& state){return run_lambda_independent_rhs(state);}",
             "DeviceLambdaOutputs run_lambda_independent_transpose_cuda(CudaState& state){return run_lambda_independent_transpose(state);}",
+            "DeviceParameterOutput run_parameter_foo_cuda(CudaState& state){return run_parameter_foo(state);}",
+            "DeviceParameterOutput run_parameter_fov_cuda(CudaState& state){return run_parameter_fov(state);}",
+            "DeviceParameterOutput run_parameter_fvv_cuda(CudaState& state){return run_parameter_fvv(state);}",
+            "DeviceParameterOutput run_parameter_ovov_cuda(CudaState& state){return run_parameter_ovov(state);}",
+            "DeviceParameterOutput run_parameter_ovvo_cuda(CudaState& state){return run_parameter_ovvo(state);}",
+            "DeviceParameterOutput run_parameter_oovv_cuda(CudaState& state){return run_parameter_oovv(state);}",
+            "DeviceParameterOutput run_parameter_ovvv_cuda(CudaState& state){return run_parameter_ovvv(state);}",
+            "DeviceParameterOutput run_parameter_ovoo_cuda(CudaState& state){return run_parameter_ovoo(state);}",
+            "DeviceParameterOutput run_parameter_oooo_cuda(CudaState& state){return run_parameter_oooo(state);}",
+            "DeviceParameterOutput run_parameter_vvvv_cuda(CudaState& state){return run_parameter_vvvv(state);}",
             "}",
             "",
         ]
