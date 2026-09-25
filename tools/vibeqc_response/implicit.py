@@ -174,9 +174,34 @@ def checked_transpose_solve(
         if transpose_solver_contract(solver) != contract:
             raise ResponseCompatibilityError("implicit solver contract changed")
 
+    source_engine = getattr(operator, "_krylov_engine", None)
+
+    class CheckedKrylovEngine:
+        """Preserve resident vector execution while keeping action checks outside it."""
+
+        def __init__(self, engine: typing.Any) -> None:
+            self._engine = engine
+
+        def __getattr__(self, name: str) -> typing.Any:
+            return getattr(self._engine, name)
+
+        def apply(self, checked_operator: typing.Any, vector: typing.Any) -> typing.Any:
+            del checked_operator
+            nonlocal actions
+            check()
+            actions += 1
+            value = self._engine.apply(operator, vector)
+            check()
+            return value
+
     class CheckedOperator:
         def __init__(self) -> None:
             self.dimension = dimension
+            if source_engine is not None:
+                self._krylov_engine = CheckedKrylovEngine(source_engine)
+
+        def validate_current(self) -> None:
+            check()
 
         def apply(self, vector: typing.Any) -> typing.Any:
             nonlocal actions

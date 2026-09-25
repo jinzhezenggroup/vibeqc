@@ -45,7 +45,9 @@ from tools.vibeqc_response.implicit import (
     BoundImplicitState,
     ImplicitSolveError,
     ResponseGMRES,
+    checked_transpose_solve,
 )
+from tools.vibeqc_response.krylov import _HostKrylovEngine
 
 
 def _rhf_equation(
@@ -263,6 +265,64 @@ def test_native_response_operator_is_bound_to_generated_implicit_vjp(
         live["reference"] = "stale-reference"
         with pytest.raises(ResponseCompatibilityError, match="reference"):
             bound.vjp(-rhs.response_rhs, reference_identity=reference.identity)
+
+
+def test_checked_transpose_solve_preserves_resident_engine_and_final_check() -> None:
+    matrix = np.diag(np.array([1.5, 2.0, 3.0], dtype=np.float64))
+    counters = {"resident": 0, "host": 0, "checks": 0}
+
+    class ResidentEngine:
+        resident = True
+        vector_slots = 128
+
+        def __init__(self) -> None:
+            self.dimension = 3
+            self._host = _HostKrylovEngine(self.dimension)
+
+        def __getattr__(self, name: str) -> typing.Any:
+            return getattr(self._host, name)
+
+        def apply(self, operator: typing.Any, value: typing.Any) -> np.ndarray:
+            del operator
+            counters["resident"] += 1
+            return matrix @ np.asarray(value, dtype=np.float64)
+
+    class Operator:
+        dimension = 3
+
+        def __init__(self) -> None:
+            self._krylov_engine = ResidentEngine()
+
+        def apply(self, vector: typing.Any) -> np.ndarray:
+            counters["host"] += 1
+            return matrix @ np.asarray(vector, dtype=np.float64)
+
+    def current() -> None:
+        counters["checks"] += 1
+
+    rhs = np.array([0.25, -0.5, 0.75], dtype=np.float64)
+    result = checked_transpose_solve(
+        Operator(),
+        rhs,
+        solver=ResponseGMRES(
+            3,
+            GMRESOptions(
+                rtol=0.0,
+                atol=1e-12,
+                restart=3,
+                max_iterations=8,
+            ),
+        ),
+        assert_current=current,
+    )
+
+    np.testing.assert_allclose(
+        result.solution, np.linalg.solve(matrix, rhs), atol=1e-12
+    )
+    assert counters["resident"] > 0
+    assert counters["host"] == 1
+    assert result.operator_actions == counters["resident"] + counters["host"]
+    assert counters["checks"] >= 2 * counters["resident"] + 2
 
 
 def test_response_operator_binding_rejects_wrong_operator_identity() -> None:
