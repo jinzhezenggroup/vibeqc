@@ -49,7 +49,7 @@ class BulkRuntimeSpec:
 
     def to_payload(self) -> dict[str, typing.Any]:
         """Return semantic identity without implying production admission."""
-        return {
+        payload = {
             "identifier": self.identifier,
             "family": self.family,
             "spin": self.spin,
@@ -58,11 +58,13 @@ class BulkRuntimeSpec:
             "domain": self.domain,
             "capability_identity": self.capability_identity,
             "source_identity": self.source_identity,
-            "density_threshold": self.density_threshold,
             "qualification": "pointwise-validated",
             "runtime_candidate": True,
             "production_admitted": False,
         }
+        if self.density_threshold is not None:
+            payload["density_threshold"] = self.density_threshold
+        return payload
 
     def validate_features(
         self,
