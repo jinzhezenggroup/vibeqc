@@ -1292,98 +1292,98 @@ int main() {
       // Reuse the actual fleet cache across option changes. This catches a
       // stale default budget even when geometry and generated mapping match.
       for (auto run : {vibeqc::scf::run_rhf_density_fitting_cuda_bucket_cached,
-                         vibeqc::scf::run_uhf_density_fitting_cuda_bucket_cached}) {
-          struct PlanGuard {
-            vibeqc::scf::CudaDensityFittingJkPlan* plan{};
-            ~PlanGuard() { vibeqc::scf::destroy_cuda_density_fitting_jk_plan(plan); }
-          } cached;
-          std::vector<std::optional<vibeqc::scf::DensityFittingScfData>> prepared_cache;
-          std::vector<vibeqc::scf::initial_guess::OverlapOrthogonalizer> overlap_owners(2);
-          const std::vector<vibeqc::scf::initial_guess::OverlapOrthogonalizer*> overlap_views{
-              &overlap_owners[0], &overlap_owners[1]};
-          std::vector<double> initial_forces;
-          for (std::size_t budget :
-               {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U, 4U * 1024U * 1024U,
-                8U * 1024U * 1024U, 12U * 1024U * 1024U, 16U * 1024U * 1024U}) {
-            bucket_options.density_fitting_memory_budget_bytes = budget;
+                       vibeqc::scf::run_uhf_density_fitting_cuda_bucket_cached}) {
+        struct PlanGuard {
+          vibeqc::scf::CudaDensityFittingJkPlan* plan{};
+          ~PlanGuard() { vibeqc::scf::destroy_cuda_density_fitting_jk_plan(plan); }
+        } cached;
+        std::vector<std::optional<vibeqc::scf::DensityFittingScfData>> prepared_cache;
+        std::vector<vibeqc::scf::initial_guess::OverlapOrthogonalizer> overlap_owners(2);
+        const std::vector<vibeqc::scf::initial_guess::OverlapOrthogonalizer*> overlap_views{
+            &overlap_owners[0], &overlap_owners[1]};
+        std::vector<double> initial_forces;
+        for (std::size_t budget :
+             {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U, 4U * 1024U * 1024U,
+              8U * 1024U * 1024U, 12U * 1024U * 1024U, 16U * 1024U * 1024U}) {
+          bucket_options.density_fitting_memory_budget_bytes = budget;
+          const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
+                                  bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
+          if (budget != 0 && budget <= 8U * 1024U * 1024U) {
+            // These budgets cannot fit the solver owners and DIIS
+            // together with this sp batch's source/SCF buffers under the
+            // resolved hard-cap value allowance.
+            // A stale default cache used to bypass that active limit.
+            require(replay.size() == 2 && replay[0].status == VIBEQC_STATUS_OUT_OF_MEMORY &&
+                        replay[1].status == VIBEQC_STATUS_OUT_OF_MEMORY && !cached.plan,
+                    "DF cache bypassed an infeasible replacement budget");
+            continue;
+          }
+          require(replay.size() == 2 && replay[0].status == VIBEQC_STATUS_SUCCESS &&
+                      replay[1].status == VIBEQC_STATUS_SUCCESS,
+                  ("generated DF cache budget replay failed at " + std::to_string(budget) +
+                   " bytes; status=" + std::to_string(replay[0].status))
+                      .c_str());
+          for (const auto& item : prepared_cache) {
+            require(
+                item && item->one_electron_gradient_system.has_value() &&
+                    item->one_electron_gradient_budget == item->resolved_budget.response_bytes &&
+                    item->resolved_budget.requested_bytes == budget &&
+                    item->resolved_budget.value_bytes + item->resolved_budget.response_bytes <=
+                        item->resolved_budget.total_bytes &&
+                    (!budget || item->resolved_budget.total_bytes == budget),
+                "generated DF cache retained the previous response budget");
+          }
+          if (initial_forces.empty()) initial_forces = replay[0].scf.forces;
+          require_matrix_close(replay[0].scf.forces, initial_forces, 5.0e-9,
+                               "DF cache budget change altered forces");
+        }
+        // A post-plan overlap failure must shrink the runnable subset,
+        // preserve source ordering and release the incompatible fixed stride.
+        require(prepared_cache.size() == 2 && prepared_cache[1], "missing fault-injection cache");
+        auto& bad_overlap = prepared_cache[1]->one_electron.overlap;
+        std::fill(bad_overlap.begin(), bad_overlap.end(), 0.0);
+        const auto isolated = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
+                                  bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
+        require(isolated[0].status == VIBEQC_STATUS_SUCCESS &&
+                    isolated[1].status == VIBEQC_STATUS_NUMERICAL_FAILURE &&
+                    vibeqc::scf::cuda_density_fitting_jk_plan_batch_size(cached.plan) == 1,
+                "failed device setup poisoned its neighbor or kept the old stride");
+        require_matrix_close(isolated[0].scf.forces, initial_forces, 5e-9,
+                             "failed setup changed a neighbor's complete forces");
+        require(prepared_cache.empty() && overlap_owners[1].numeric_capacity_bytes() == 0,
+                "failed subset published stale prepared state");
+        const auto recovered = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
+                                   bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
+        require(recovered[0].status == VIBEQC_STATUS_SUCCESS &&
+                    recovered[1].status == VIBEQC_STATUS_SUCCESS,
+                "device setup subset did not recover its original source map");
+        // A changed metric cutoff is a changed Hamiltonian even at fixed
+        // geometry. Compare cached replay with an independently built plan
+        // in both resident and source-backed storage modes.
+        require(vibeqc::scf::factor_density_fitting_metric(integrals.metric, integrals.naux, 0.05)
+                        .effective_rank < integrals.naux,
+                "cache cutoff regression must discard a metric direction");
+        for (std::size_t budget : {0U, 12U * 1024U * 1024U}) {
+          bucket_options.density_fitting_memory_budget_bytes = budget;
+          for (double cutoff : {1.0e-10, 0.05, 1.0e-10}) {
+            bucket_options.density_fitting_relative_threshold = cutoff;
             const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
                                     bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-            if (budget != 0 && budget <= 8U * 1024U * 1024U) {
-              // These budgets cannot fit the solver owners and DIIS
-              // together with this sp batch's source/SCF buffers under the
-              // resolved hard-cap value allowance.
-              // A stale default cache used to bypass that active limit.
-              require(replay.size() == 2 && replay[0].status == VIBEQC_STATUS_OUT_OF_MEMORY &&
-                          replay[1].status == VIBEQC_STATUS_OUT_OF_MEMORY && !cached.plan,
-                      "DF cache bypassed an infeasible replacement budget");
-              continue;
-            }
-            require(replay.size() == 2 && replay[0].status == VIBEQC_STATUS_SUCCESS &&
-                        replay[1].status == VIBEQC_STATUS_SUCCESS,
-                    ("generated DF cache budget replay failed at " + std::to_string(budget) +
-                     " bytes; status=" + std::to_string(replay[0].status))
-                        .c_str());
-            for (const auto& item : prepared_cache) {
-              require(
-                  item && item->one_electron_gradient_system.has_value() &&
-                      item->one_electron_gradient_budget == item->resolved_budget.response_bytes &&
-                      item->resolved_budget.requested_bytes == budget &&
-                      item->resolved_budget.value_bytes + item->resolved_budget.response_bytes <=
-                          item->resolved_budget.total_bytes &&
-                      (!budget || item->resolved_budget.total_bytes == budget),
-                  "generated DF cache retained the previous response budget");
-            }
-            if (initial_forces.empty()) initial_forces = replay[0].scf.forces;
-            require_matrix_close(replay[0].scf.forces, initial_forces, 5.0e-9,
-                                 "DF cache budget change altered forces");
-          }
-          // A post-plan overlap failure must shrink the runnable subset,
-          // preserve source ordering and release the incompatible fixed stride.
-          require(prepared_cache.size() == 2 && prepared_cache[1], "missing fault-injection cache");
-          auto& bad_overlap = prepared_cache[1]->one_electron.overlap;
-          std::fill(bad_overlap.begin(), bad_overlap.end(), 0.0);
-          const auto isolated = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
-                                    bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-          require(isolated[0].status == VIBEQC_STATUS_SUCCESS &&
-                      isolated[1].status == VIBEQC_STATUS_NUMERICAL_FAILURE &&
-                      vibeqc::scf::cuda_density_fitting_jk_plan_batch_size(cached.plan) == 1,
-                  "failed device setup poisoned its neighbor or kept the old stride");
-          require_matrix_close(isolated[0].scf.forces, initial_forces, 5e-9,
-                               "failed setup changed a neighbor's complete forces");
-          require(prepared_cache.empty() && overlap_owners[1].numeric_capacity_bytes() == 0,
-                  "failed subset published stale prepared state");
-          const auto recovered = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
-                                     bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-          require(recovered[0].status == VIBEQC_STATUS_SUCCESS &&
-                      recovered[1].status == VIBEQC_STATUS_SUCCESS,
-                  "device setup subset did not recover its original source map");
-          // A changed metric cutoff is a changed Hamiltonian even at fixed
-          // geometry. Compare cached replay with an independently built plan
-          // in both resident and source-backed storage modes.
-          require(vibeqc::scf::factor_density_fitting_metric(integrals.metric, integrals.naux, 0.05)
-                          .effective_rank < integrals.naux,
-                  "cache cutoff regression must discard a metric direction");
-          for (std::size_t budget : {0U, 12U * 1024U * 1024U}) {
-            bucket_options.density_fitting_memory_budget_bytes = budget;
-            for (double cutoff : {1.0e-10, 0.05, 1.0e-10}) {
-              bucket_options.density_fitting_relative_threshold = cutoff;
-              const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
-                                      bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);
-              PlanGuard fresh;
-              const auto expected = run(&fresh.plan, bucket_systems, auxiliary, bucket_options,
-                                        bucket_initial, 0, nullptr, nullptr, nullptr);
-              for (std::size_t i = 0; i < bucket_systems.size(); ++i) {
-                require(replay[i].status == VIBEQC_STATUS_SUCCESS &&
-                            expected[i].status == VIBEQC_STATUS_SUCCESS,
-                        "metric cutoff replay failed");
-                require_close(replay[i].scf.energy, expected[i].scf.energy, 1.0e-10,
-                              "DF cache retained the previous metric Hamiltonian");
-                require_matrix_close(replay[i].scf.forces, expected[i].scf.forces, 5.0e-9,
-                                     "DF cache retained the previous metric response");
-              }
+            PlanGuard fresh;
+            const auto expected = run(&fresh.plan, bucket_systems, auxiliary, bucket_options,
+                                      bucket_initial, 0, nullptr, nullptr, nullptr);
+            for (std::size_t i = 0; i < bucket_systems.size(); ++i) {
+              require(replay[i].status == VIBEQC_STATUS_SUCCESS &&
+                          expected[i].status == VIBEQC_STATUS_SUCCESS,
+                      "metric cutoff replay failed");
+              require_close(replay[i].scf.energy, expected[i].scf.energy, 1.0e-10,
+                            "DF cache retained the previous metric Hamiltonian");
+              require_matrix_close(replay[i].scf.forces, expected[i].scf.forces, 5.0e-9,
+                                   "DF cache retained the previous metric response");
             }
           }
         }
+      }
 
       std::vector<double> second_metric = plus.metric;
       const std::size_t dependent = plus.naux - 1;
