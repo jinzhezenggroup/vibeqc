@@ -38,9 +38,7 @@ constexpr const char* semilocal_family_name(SemilocalFamily family) noexcept {
 }
 
 constexpr std::uint32_t semilocal_family_domain_version(SemilocalFamily family) noexcept {
-  return family == SemilocalFamily::Wb97mv ? 3U
-         : family == SemilocalFamily::B3lyp ? 2U
-                                            : 1U;
+  return family == SemilocalFamily::Wb97mv ? 3U : family == SemilocalFamily::B3lyp ? 2U : 1U;
 }
 
 constexpr bool semilocal_family_has_cuda_ks(SemilocalFamily family) noexcept {

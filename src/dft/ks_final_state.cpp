@@ -27,9 +27,8 @@ bool valid_model(const KsFinalStateIdentity& identity) {
   }
   const bool b3lyp = family == SemilocalFamily::B3lyp;
   const bool wb97mv = family == SemilocalFamily::Wb97mv;
-  if (model.version != 1 ||
-      model.scf_domain_version != semilocal_family_domain_version(family) || !model.tile_points ||
-      !model.owner || (model.spins != 1 && model.spins != 2) ||
+  if (model.version != 1 || model.scf_domain_version != semilocal_family_domain_version(family) ||
+      !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||

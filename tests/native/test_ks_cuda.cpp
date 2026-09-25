@@ -450,7 +450,7 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
     }
     require(stale, "CUDA SCF accepted a same-shape old grid");
     dft::CudaKsPlan changed(new_gpu, new_basis, new_grid, options,
-                          dft::semilocal_family_from_code(functional));
+                            dft::semilocal_family_from_code(functional));
     auto seed = plan.warm_density();
     for (auto& value : seed) value *= 1.3;
     const auto moved_warm = changed.run(&seed), moved_cold = changed.run(nullptr, false);

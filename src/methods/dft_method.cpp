@@ -359,11 +359,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (execution_plan.range_exchange && backend != VIBEQC_BACKEND_CPU_REFERENCE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "native KS range-separated exchange currently requires CPU");
-  if (execution_plan.range_exchange && execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
+  if (execution_plan.range_exchange &&
+      execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "native KS range exchange has no lowerer for this semilocal graph");
-  if (backend == VIBEQC_BACKEND_CUDA && execution_plan.semilocal_family == dft::SemilocalFamily::B3lyp)
+  if (backend == VIBEQC_BACKEND_CUDA &&
+      execution_plan.semilocal_family == dft::SemilocalFamily::B3lyp)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "B3LYP CPU execution only");
 
   if (options.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE) {
