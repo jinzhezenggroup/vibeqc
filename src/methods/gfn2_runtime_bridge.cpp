@@ -79,30 +79,39 @@ bool convert_cpu_orbitals(const Gfn2RuntimeRequest& request,
     return false;
   }
 
+  const double rounded_electrons = std::round(snapshot.electron_count);
+  if (!std::isfinite(snapshot.electron_count) ||
+      !std::isfinite(snapshot.alpha_electron_count) ||
+      !std::isfinite(snapshot.beta_electron_count) || snapshot.electron_count < 0.0 ||
+      snapshot.alpha_electron_count < 0.0 || snapshot.beta_electron_count < 0.0 ||
+      std::abs(snapshot.alpha_electron_count + snapshot.beta_electron_count -
+               snapshot.electron_count) > 1.0e-8 ||
+      std::abs(rounded_electrons - snapshot.electron_count) > 1.0e-8 ||
+      rounded_electrons > static_cast<double>(std::numeric_limits<int>::max())) {
+    error = "GFN2 orbital source has inconsistent valence electron metadata";
+    return false;
+  }
+
   Gfn2RuntimeOrbitals converted;
+  converted.electron_count = snapshot.electron_count;
+  converted.alpha_electron_count = snapshot.alpha_electron_count;
+  converted.beta_electron_count = snapshot.beta_electron_count;
   auto& source = converted.source_system;
   source.charge = request.charge;
   source.multiplicity = request.multiplicity;
+  source.electron_count = static_cast<int>(rounded_electrons);
   source.basis_representation = VIBEQC_BASIS_SPHERICAL;
   source.atoms.reserve(request.atomic_numbers.size());
-  std::int64_t electrons = -static_cast<std::int64_t>(request.charge);
   for (std::size_t atom = 0; atom < request.atomic_numbers.size(); ++atom) {
     const auto atomic_number = request.atomic_numbers[atom];
-    if (atomic_number <= 0 ||
-        electrons > std::numeric_limits<std::int64_t>::max() - atomic_number) {
+    if (atomic_number <= 0) {
       error = "GFN2 orbital source has an invalid nuclear charge";
       return false;
     }
-    electrons += atomic_number;
     source.atoms.push_back({atomic_number,
                             {request.positions[3u * atom], request.positions[3u * atom + 1u],
                              request.positions[3u * atom + 2u]}});
   }
-  if (electrons <= 0 || electrons > std::numeric_limits<int>::max()) {
-    error = "GFN2 orbital source has an invalid electron count";
-    return false;
-  }
-  source.electron_count = static_cast<int>(electrons);
 
   source.shells.reserve(shell_count);
   std::vector<std::size_t> new_to_old(n, n);
