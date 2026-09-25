@@ -19,6 +19,45 @@ repo-wide unless a nested `AGENTS.md` adds more specific constraints.
 - Preserve durable rationale for non-trivial architecture, numerics, performance,
   and compatibility decisions as Agent Notes under `.agents/notes/`.
 
+## Mandatory PR workflow
+
+- Before implementation, continuation, review, or merge, read the current root
+  `AGENTS.md` and applicable ancestor/scoped instructions. Fetch upstream and
+  record the exact base/head, issue acceptance, existing changes, active owners,
+  and running validation jobs. Use an isolated worktree per mutable workstream;
+  do not overwrite another owner or restart a valid experiment to appear active.
+- The implementer must inspect the complete diff, run the required validation,
+  and publish an exact-head self-check with commands, results, findings, and
+  limits. An author self-check is a `COMMENT`, never an independent approval.
+- Every PR needs a substantive recorded review approving its exact final head
+  by a reviewer who did not implement the change. Formally request an eligible
+  non-author reviewer; an `@mention` can explain scope but is not a completed
+  review. Record reviewer identity, head SHA, inspected scope, findings and their
+  resolution, test/device evidence, and unverified limits. Do not impersonate
+  another account or treat a second session as independent if it implemented
+  the change. A bot name alone does not establish reviewer independence.
+- For #1191 work, request `njzjz-bot` by default after self-check and required CI.
+  If that reviewer authored or implemented the change, request another independent
+  reviewer instead (for example, `njzjz`). Do not trigger `@codex review` or enable
+  additional automatic review services without separate user authorization.
+  This routing preference never waives the independence gate.
+- A new commit requires delta re-review tied to the new head. Green CI, bot
+  status, mergeability, a pending request, or an unsupported LGTM does not replace
+  review. Scientific/precision/performance changes also need their applicable
+  independent-reference, device, and complete-endpoint gates; compilation or a
+  microbenchmark cannot stand in for those gates.
+- Do not merge, enable auto-merge, or enter a merge queue before the review,
+  required checks, and applicable acceptance gates pass and all blocking findings
+  are resolved. Immediately before the authorized action, re-read the head,
+  reviews, checks, target branch, and intended closing issues. Bind the expected
+  head where supported. Use normal protected-branch procedures; never bypass
+  checks, push directly to the default branch, or force-push shared work.
+- A queue entry is not a merge. Observe the resulting merge SHA and verify issue
+  closure. Partial work must reference its parent without closing it; in
+  particular, infrastructure alone cannot complete #1190 or #1191. A finding
+  discovered after merge needs an explicitly post-merge audit and corrective PR,
+  not backdated approval. These rules grant no merge or release authority.
+
 ## Release authority
 
 - Repository cleanup, benchmark evidence retention, fixes, PRs and merges do
