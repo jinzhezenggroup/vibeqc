@@ -73,6 +73,9 @@ struct Candidate {
   double xtb_seconds{};
   double seed_seconds{};
   double scf_seconds{};
+  std::size_t source_occupied{};
+  std::size_t added_core_orbitals{};
+  double projection_residual{};
 };
 
 Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan& plan,
@@ -103,16 +106,24 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
     throw std::runtime_error("GFN2 orbital seed did not converge: " + xtb.detail);
   if (!xtb.orbitals)
     throw std::runtime_error("GFN2 orbital seed did not return its occupied frame");
-  if (system.multiplicity != 1 || (system.electron_count & 1) != 0 ||
-      xtb.orbitals->source_system.electron_count != system.electron_count)
-    throw std::runtime_error("GFN2 orbital seed requires a matched closed-shell electron space");
+  if (system.multiplicity != 1 || (system.electron_count & 1) != 0)
+    throw std::runtime_error("GFN2 orbital seed first slice requires closed-shell RKS");
 
   const std::size_t source_n = molecule::ao_count(xtb.orbitals->source_system);
-  const std::size_t occupied = static_cast<std::size_t>(system.electron_count / 2);
+  const std::size_t target_occupied = static_cast<std::size_t>(system.electron_count / 2);
+  const double rounded_source_alpha = std::round(xtb.orbitals->alpha_electron_count);
   if (source_n == 0 || xtb.orbitals->overlap.size() != source_n * source_n ||
       xtb.orbitals->coefficients.size() != source_n * source_n ||
-      xtb.orbitals->occupations.size() != 2u * source_n)
+      xtb.orbitals->occupations.size() != 2u * source_n ||
+      std::abs(xtb.orbitals->alpha_electron_count - xtb.orbitals->beta_electron_count) >
+          1.0e-8 ||
+      std::abs(rounded_source_alpha - xtb.orbitals->alpha_electron_count) > 1.0e-8 ||
+      rounded_source_alpha < 0.0 ||
+      rounded_source_alpha > static_cast<double>(source_n))
     throw std::runtime_error("GFN2 orbital seed returned inconsistent source dimensions");
+  const std::size_t source_occupied = static_cast<std::size_t>(rounded_source_alpha);
+  if (source_occupied > target_occupied)
+    throw std::runtime_error("GFN2 valence occupied space exceeds the target occupied space");
 
   // The bridge translates GFN2's native spherical AO convention into VibeQC's
   // public source-basis convention. Verify that translation independently with
@@ -134,8 +145,8 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
     const double alpha = xtb.orbitals->occupations[orbital];
     const double beta = xtb.orbitals->occupations[source_n + orbital];
     if (std::abs(alpha - beta) > 1.0e-8 ||
-        (orbital < occupied && alpha <= 0.5 + 1.0e-6) ||
-        (orbital >= occupied && alpha >= 0.5 - 1.0e-6))
+        (orbital < source_occupied && alpha <= 0.5 + 1.0e-6) ||
+        (orbital >= source_occupied && alpha >= 0.5 - 1.0e-6))
       throw std::runtime_error("GFN2 occupied subspace is fractional or spin-ambiguous");
   }
 
@@ -145,14 +156,24 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
   std::vector<double> cross(ints.nbf * source_n);
   integrals::cross_overlap(system, xtb.orbitals->source_system, cross);
   const auto projection = scf::initial_guess::project_occupied_density(
-      ints, x, xtb.orbitals->overlap, cross, source_n, xtb.orbitals->coefficients, occupied);
-  const auto& seed = projection.density;
+      ints, x, xtb.orbitals->overlap, cross, source_n, xtb.orbitals->coefficients,
+      source_occupied);
+
+  std::optional<scf::reference::EigenResult> core_frame;
+  (void)scf::initial_guess::prepare_initial_density(
+      system, ints, x, target_occupied, nullptr, core_frame);
+  if (!core_frame)
+    throw std::runtime_error("target core frame was not produced for orbital completion");
+  const auto completion = scf::initial_guess::complete_occupied_density(
+      ints, projection.coefficients, source_occupied, core_frame->vectors, target_occupied);
+  const auto& seed = completion.density;
   const double seed_elapsed = seconds(started);
 
   started = Clock::now();
   auto result = scf::run_pbe_rks(plan, basis, grid, options, &seed);
   const double scf_elapsed = seconds(started);
-  return {std::move(result), xtb_elapsed, seed_elapsed, scf_elapsed};
+  return {std::move(result), xtb_elapsed, seed_elapsed, scf_elapsed, source_occupied,
+          completion.added_orbitals, projection.projection_residual};
 }
 
 int main() {
@@ -167,6 +188,7 @@ int main() {
 
   std::cout << "case,repeat,baseline_iterations,candidate_iterations,baseline_seconds,"
                "xtb_seconds,seed_seconds,candidate_scf_seconds,candidate_total_seconds,"
+               "source_occupied,added_core_orbitals,projection_residual,"
                "energy_difference,baseline_residual,candidate_residual\n";
   for (const auto& [name, system] : cases) {
     scf::FockBuildSpec spec;
@@ -205,7 +227,9 @@ int main() {
                 << candidate.xtb_seconds << ',' << candidate.seed_seconds << ','
                 << candidate.scf_seconds << ','
                 << candidate.xtb_seconds + candidate.seed_seconds + candidate.scf_seconds << ','
-                << energy_difference << ',' << baseline.physical_residual_rms << ','
+                << candidate.source_occupied << ',' << candidate.added_core_orbitals << ','
+                << candidate.projection_residual << ',' << energy_difference << ','
+                << baseline.physical_residual_rms << ','
                 << candidate.result.physical_residual_rms << '\n';
     }
   }
