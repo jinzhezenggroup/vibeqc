@@ -74,6 +74,9 @@ struct Force {
   } lambda;
   double independent_orbital_residual{1e-12};
   std::uint64_t numeric_capacity_bytes{256};
+  std::uint64_t response_owned_device_bytes{192};
+  std::uint64_t response_h2d_bytes{}, response_d2h_bytes{}, response_synchronizations{};
+  bool cuda_response_actions{};
   std::string response_operator_hash{"force"};
 };
 template<class... T> Force rccsdt_force_cpu(T&&...) {
@@ -90,6 +93,7 @@ template<class... T> Force rccsdt_force_cuda(T&&...) {
   if (failure_mode==5) throw std::runtime_error("force solve");
   Force result;
   result.lambda.cuda_actions=true;
+  result.cuda_response_actions=true;
   return result;
 }
 }
