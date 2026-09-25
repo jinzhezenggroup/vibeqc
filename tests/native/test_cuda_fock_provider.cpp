@@ -254,8 +254,8 @@ void range_exchange_provider() {
   require(execute_cuda_direct_jk(screened.get(), range_spec, alpha, {}, j, ka, kb, detail) ==
               VIBEQC_STATUS_SUCCESS,
           detail.c_str());
-  const auto screened_expected = reference_range_exchange(
-      system, alpha, vibeqc::integrals::CoulombRange::Long, omega);
+  const auto screened_expected =
+      reference_range_exchange(system, alpha, vibeqc::integrals::CoulombRange::Long, omega);
   require(j.empty() && kb.empty() && ka.size() == screened_expected.size(),
           "screened CUDA range exchange returned the wrong matrix set");
   for (std::size_t i = 0; i < ka.size(); ++i)

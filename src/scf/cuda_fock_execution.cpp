@@ -23,8 +23,7 @@ bool exact_value_exchange(const FockTermSpec& term) noexcept {
 PreparedCudaFockBinding prepared_cuda_fock_binding(const PreparedFockPlan& plan) noexcept {
   const auto& strategy = plan.strategy();
   if (strategy.backend != FockBackend::Cuda || strategy.spec.derivative_order != 0 ||
-      !exact_full_range(strategy.spec.coulomb) ||
-      !exact_value_exchange(strategy.spec.exchange))
+      !exact_full_range(strategy.spec.coulomb) || !exact_value_exchange(strategy.spec.exchange))
     return {};
 
   auto* source = plan.cuda_direct_source();
