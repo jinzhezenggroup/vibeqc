@@ -6,6 +6,7 @@ import shutil
 
 import pytest
 from vibeqc_compiler.xc.bulk_point_program import (
+    SemilocalPointBinding,
     bind_runtime_semilocal_point_program,
 )
 from vibeqc_compiler.xc.bulk_runtime import (
@@ -25,7 +26,7 @@ from tools.qualify_libxc_compiled_cpu import qualify_compiled_cpu
 NAME = "GGA_X_PBE_SOL"
 
 
-def _binding(*, candidate: bool = True):
+def _binding(*, candidate: bool = True) -> SemilocalPointBinding:
     program = build_bulk_runtime_program(
         NAME,
         spin="polarized",
