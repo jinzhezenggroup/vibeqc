@@ -313,6 +313,12 @@ void range_exchange_provider() {
                 alpha[k * n + l] * range_eri[((i * n + k) * n + j) * n + l];
           }
     require(skipped > 0 && retained > 0, "range-screening fixture did not exercise both paths");
+    const auto unscreened_expected = reference_range_exchange(system, alpha, radial, omega);
+    double screening_effect = 0.0;
+    for (std::size_t i = 0; i < matrix; ++i)
+      screening_effect =
+          std::max(screening_effect, std::abs(screened_expected[i] - unscreened_expected[i]));
+    require(screening_effect > 1e-7, "range-screening fixture has no measurable skipped work");
     require(j.empty() && kb.empty() && ka.size() == screened_expected.size(),
             "screened CUDA range exchange returned the wrong matrix set");
     for (std::size_t i = 0; i < ka.size(); ++i)
