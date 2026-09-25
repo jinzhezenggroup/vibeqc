@@ -110,7 +110,12 @@ Matrix normalized_warm_density(const core::System& system, const integrals::Inte
     throw std::invalid_argument("initial density has an invalid electron trace");
   }
   const double trace_scale = static_cast<double>(system.electron_count) / electron_trace;
-  for (double& value : density) value *= trace_scale;
+  for (double& value : density) {
+    value *= trace_scale;
+    if (!std::isfinite(value)) {
+      throw std::invalid_argument("initial density normalization produced a non-finite AO matrix");
+    }
+  }
   return density;
 }
 
