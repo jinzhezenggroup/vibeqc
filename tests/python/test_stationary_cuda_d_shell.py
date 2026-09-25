@@ -186,16 +186,13 @@ def test_stationary_cuda_d_shell_work_cap_is_explicit() -> None:
     )
 
 
-def test_prepared_d_shell_execution_selects_sharded_jit(
+def test_prepared_d_shell_execution_selects_component_aot(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from vibeqc import _stationary_cuda
     from vibeqc._stationary_cuda import PreparedStationaryCudaExecution
-    from vibeqc_compiler.integral.first_derivative_schedule import (
-        CUDA_REQUESTS_PER_UNIT,
-    )
 
-    class StopAfterStationaryCompile(Exception):
+    class StopAfterStationaryLoad(Exception):
         pass
 
     captured = {}
@@ -203,29 +200,34 @@ def test_prepared_d_shell_execution_selects_sharded_jit(
     monkeypatch.setattr(owner, "_request", lambda **kwargs: object())
     monkeypatch.setattr(
         _stationary_cuda,
-        "derivative_cuda_sources",
-        lambda domain: (((), "shard-0"), ((), "shard-1")),
+        "compile_stationary_cuda",
+        lambda *args, **kwargs: pytest.fail(
+            "prepared component AOT path must not JIT-compile stationary CUDA"
+        ),
     )
 
-    def compile_stationary(primitive_source: object, **kwargs: object) -> object:
-        captured["primitive_source"] = primitive_source
-        captured["shard_width"] = kwargs["primitive_shard_width"]
+    def load_stationary(aot_directory: object, **kwargs: object) -> object:
+        captured["aot_directory"] = aot_directory
+        captured.update(kwargs)
         return object()
 
-    monkeypatch.setattr(_stationary_cuda, "compile_stationary_cuda", compile_stationary)
+    monkeypatch.setattr(
+        _stationary_cuda, "load_stationary_aot_artifact", load_stationary
+    )
 
     def stop(*args: object, **kwargs: object) -> None:
-        raise StopAfterStationaryCompile
+        raise StopAfterStationaryLoad
 
     monkeypatch.setattr(_stationary_cuda, "compile_grid", stop)
     target = SimpleNamespace(architecture="sm_90")
+    plan = SimpleNamespace(spin_blocks=1)
 
-    with pytest.raises(StopAfterStationaryCompile):
+    with pytest.raises(StopAfterStationaryLoad):
         owner.ensure(
             state=object(),
             basis=_d_shell_basis(),
-            contract=object(),
-            plan=SimpleNamespace(spin_blocks=1),
+            contract=SimpleNamespace(spin=0),
+            plan=plan,
             tensor_plans={},
             compiler=object(),
             cache=tmp_path,
@@ -248,6 +250,11 @@ def test_prepared_d_shell_execution_selects_sharded_jit(
         )
 
     assert captured == {
-        "primitive_source": ("shard-0", "shard-1"),
-        "shard_width": CUDA_REQUESTS_PER_UNIT,
+        "aot_directory": tmp_path,
+        "functional": 0,
+        "spin": 0,
+        "plan": plan,
+        "architecture": "sm_90",
+        "iterations": 3,
+        "component_domain": ("", "xx", "yy"),
     }
