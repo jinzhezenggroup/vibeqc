@@ -256,9 +256,7 @@ def main() -> int:
         "native_direct_vs_whitened_maximum": maximum(
             j_native_raw_metric - j_native_raw_metric_whitened
         ),
-        "raw_effect_schedule_delta_maximum": maximum(
-            raw_effect - whitened_raw_effect
-        ),
+        "raw_effect_schedule_delta_maximum": maximum(raw_effect - whitened_raw_effect),
         "metric_effect_schedule_delta_maximum": maximum(
             metric_effect - whitened_metric_effect
         ),

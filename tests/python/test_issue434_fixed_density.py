@@ -75,13 +75,11 @@ def test_issue434_whitened_schedule_tracks_tiny_source_perturbations() -> None:
     perturbed_metric[0, 1] += 1.0e-12
     perturbed_metric[1, 0] += 1.0e-12
 
-    direct_delta = (
-        coulomb_from_raw(perturbed_raw, perturbed_metric, density)
-        - coulomb_from_raw(raw, metric, density)
-    )
-    whitened_delta = (
-        coulomb_from_whitened_raw(perturbed_raw, perturbed_metric, density)
-        - coulomb_from_whitened_raw(raw, metric, density)
-    )
+    direct_delta = coulomb_from_raw(
+        perturbed_raw, perturbed_metric, density
+    ) - coulomb_from_raw(raw, metric, density)
+    whitened_delta = coulomb_from_whitened_raw(
+        perturbed_raw, perturbed_metric, density
+    ) - coulomb_from_whitened_raw(raw, metric, density)
 
     np.testing.assert_allclose(whitened_delta, direct_delta, atol=5e-15, rtol=5e-3)
