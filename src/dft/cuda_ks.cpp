@@ -903,9 +903,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     }
   }
 
-  CudaXcView stage_xc(
-      std::uint64_t next_generation,
-      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
+  CudaXcView stage_xc(std::uint64_t next_generation,
+                      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
       if (!xc) throw std::logic_error("device-fused XC owner is unavailable");
       if (!device_nonlocal) {

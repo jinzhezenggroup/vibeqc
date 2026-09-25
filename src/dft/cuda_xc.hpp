@@ -159,9 +159,9 @@ void enqueue(const CudaXcLayout& layout, CudaXcPointLauncher point_launcher, cud
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
-             int* error, CudaXcDensityPrecision precision,
-             const double* direction = nullptr, double* delta_features = nullptr,
-             double* total_density = nullptr, double* total_gradient = nullptr);
+             int* error, CudaXcDensityPrecision precision, const double* direction = nullptr,
+             double* delta_features = nullptr, double* total_density = nullptr,
+             double* total_gradient = nullptr);
 void enqueue_nonlocal_potential(const CudaXcLayout& layout, cudaStream_t stream,
                                 const double* basis, const double* points,
                                 const double* effective_weights, const double* total_gradient,

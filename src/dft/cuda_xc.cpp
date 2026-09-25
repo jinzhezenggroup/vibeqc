@@ -223,8 +223,8 @@ void CudaXcPlan::enqueue_density_features(const double* density, std::size_t ele
     throw std::invalid_argument("XC response plan cannot publish physical features");
   if (total_density == nullptr || total_gradient == nullptr)
     throw std::invalid_argument("CUDA XC density-feature export requires both output buffers");
-  enqueue_impl(density, nullptr, elements, generation, CudaXcDensityPrecision::Fp64,
-               total_density, total_gradient);
+  enqueue_impl(density, nullptr, elements, generation, CudaXcDensityPrecision::Fp64, total_density,
+               total_gradient);
 }
 
 void CudaXcPlan::enqueue_response(const double* density, const double* direction,
