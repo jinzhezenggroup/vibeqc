@@ -782,7 +782,8 @@ int main() {
         method = lda_method();
         method.method = ks;
         const std::array<vibeqc_ks_semilocal_component, 2> pbe0_components{{
-            {"GGA_C_PBE", 1.0}, {"GGA_X_PBE", 0.75},
+            {"GGA_C_PBE", 1.0},
+            {"GGA_X_PBE", 0.75},
         }};
         const std::array<vibeqc_ks_semilocal_component, 4> b3lyp_components{{
             {"LDA_X", 0.08},
@@ -798,9 +799,8 @@ int main() {
         if (pbe0 || b3lyp) {
           hybrid_options.struct_size = sizeof(hybrid_options);
           hybrid_options.abi_version = VIBEQC_ABI_VERSION;
-          hybrid_options.scf_domain =
-              b3lyp ? "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
-                    : "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+          hybrid_options.scf_domain = b3lyp ? "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
+                                            : "semilocal-scaled-v1/pbe-spin-c2-1e-18";
           hybrid_options.grid_version = 1;
           hybrid_options.radial_points = 64;
           hybrid_options.angular_polar = 12;

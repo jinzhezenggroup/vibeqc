@@ -370,10 +370,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
     stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
-    xc_layout =
-        cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile,
-                       CudaXcAoPrecision::Fp64, options.semilocal_exchange_scale,
-                       options.semilocal_correlation_scale);
+    xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile,
+                               CudaXcAoPrecision::Fp64, options.semilocal_exchange_scale,
+                               options.semilocal_correlation_scale);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
     if (host_unfused &&

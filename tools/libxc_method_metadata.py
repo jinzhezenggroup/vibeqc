@@ -490,7 +490,8 @@ def extract_method_registrations(
                 ]
             elif split_exchange:
                 prefix = (
-                    "HYB_MGGA_X_" if registration.startswith("HYB_MGGA_X_")
+                    "HYB_MGGA_X_"
+                    if registration.startswith("HYB_MGGA_X_")
                     else "HYB_GGA_X_"
                 )
                 family_prefix = "MGGA" if prefix == "HYB_MGGA_X_" else "GGA"
