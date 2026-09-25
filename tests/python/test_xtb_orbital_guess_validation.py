@@ -176,7 +176,73 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
           completion.added_orbitals, projection.projection_residual};
 }
 
+
+void validate_transition_metal_d_shell_translation() {
+  const std::array<std::int32_t, 3> atomic_numbers{30, 1, 1};
+  const std::array<double, 9> positions{
+      0.0, 0.0, 0.0,
+      2.7, 0.8, -0.4,
+      -1.9, 2.2, 1.1,
+  };
+
+  methods::detail::Gfn2RuntimeBridge runtime(methods::detail::Gfn2RuntimeBackend::kCpu, 0);
+  methods::detail::Gfn2RuntimeRequest request;
+  request.atomic_numbers = atomic_numbers;
+  request.positions = positions;
+  request.charge = 0;
+  request.multiplicity = 1;
+  request.compute_orbitals = true;
+  request.maximum_iterations = 150;
+  request.mixer_history = 8;
+  request.energy_tolerance = 1.0e-10;
+  request.charge_tolerance = 1.0e-8;
+
+  const auto xtb = runtime.execute(request);
+  if (xtb.status != methods::detail::Gfn2RuntimeStatus::kSuccess || !xtb.converged ||
+      !xtb.orbitals)
+    throw std::runtime_error("ZnH2 GFN2 d-shell translation probe did not converge");
+
+  const auto& source = xtb.orbitals->source_system;
+  const std::size_t source_n = molecule::ao_count(source);
+  if (source_n == 0 || xtb.orbitals->overlap.size() != source_n * source_n)
+    throw std::runtime_error("ZnH2 GFN2 d-shell translation probe returned invalid dimensions");
+
+  std::size_t ao_offset = 0;
+  std::size_t d_begin = source_n;
+  std::size_t ligand_s = source_n;
+  for (const auto& shell : source.shells) {
+    const std::size_t shell_size = 2u * shell.angular_momentum + 1u;
+    if (shell.atom_index == 0u && shell.angular_momentum == 2u && d_begin == source_n)
+      d_begin = ao_offset;
+    if (shell.atom_index != 0u && shell.angular_momentum == 0u && ligand_s == source_n)
+      ligand_s = ao_offset;
+    ao_offset += shell_size;
+  }
+  if (d_begin == source_n || ligand_s == source_n)
+    throw std::runtime_error("ZnH2 GFN2 source basis did not expose the expected d/s shells");
+
+  // This inter-center block is deliberately required to be nonzero: a same-center
+  // identity overlap would not detect an incorrect d-harmonic ordering.
+  double native_d_ligand = 0.0;
+  for (std::size_t component = 0; component < 5u; ++component)
+    native_d_ligand =
+        std::max(native_d_ligand,
+                 std::abs(xtb.orbitals->overlap[(d_begin + component) * source_n + ligand_s]));
+  if (!(native_d_ligand > 1.0e-8))
+    throw std::runtime_error("ZnH2 d/s overlap block is too small to qualify AO ordering");
+
+  std::vector<double> rebuilt(source_n * source_n);
+  integrals::cross_overlap(source, source, rebuilt);
+  double maximum_error = 0.0;
+  for (std::size_t i = 0; i < rebuilt.size(); ++i)
+    maximum_error = std::max(maximum_error, std::abs(rebuilt[i] - xtb.orbitals->overlap[i]));
+  if (maximum_error > 1.0e-9)
+    throw std::runtime_error("GFN2 d-shell AO translation changed its overlap metric");
+}
+
 int main() {
+  validate_transition_metal_d_shell_translation();
+
   const std::vector<std::pair<std::string, core::System>> cases{
       {"water", oxygen_hydrogens({{{0, -1.43233673, 1.10715266}},
                                    {{0, 1.43233673, 1.10715266}}}, 0)},
