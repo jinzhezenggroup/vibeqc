@@ -729,7 +729,6 @@ def _run_eri(
     loc = state.offsets
 
     def shell_weights(slots: tuple[int, int, int, int]) -> np.ndarray:
-        a, b, cc, d = slots
         sa, sb, sc, sd = (slice(loc[i], loc[i + 1]) for i in slots)
         w4 = 0.5 * np.einsum("uv,wx->uvwx", density[sa, sb], density[sc, sd])
         w4 -= 0.25 * np.einsum("uw,vx->uvwx", density[sa, sc], density[sb, sd])
