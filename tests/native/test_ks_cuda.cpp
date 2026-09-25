@@ -141,16 +141,15 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
           "CUDA endpoint gate does not detect XC double counting");
 }
 
-
 void run_exact_exchange_case(bool restricted) {
   const auto system = hydrogens(restricted ? 2U : 3U, restricted);
   const dft::AoBasis basis(system);
   const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
   const dft::MolecularGrid grid(system, grid_spec);
-  const scf::PreparedFockPlan cpu(
-      system, nullptr, exact_exchange_strategy(restricted, scf::FockBackend::Cpu));
-  const scf::PreparedFockPlan gpu(
-      system, nullptr, exact_exchange_strategy(restricted, scf::FockBackend::Cuda), 0);
+  const scf::PreparedFockPlan cpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cpu));
+  const scf::PreparedFockPlan gpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cuda), 0);
   scf::ScfOptions options;
   options.compute_forces = false;
   options.energy_tolerance = 1e-12;
@@ -159,8 +158,7 @@ void run_exact_exchange_case(bool restricted) {
 
   const unsigned spins = restricted ? 1U : 2U;
   const auto plain_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history);
-  const auto hybrid_bytes =
-      dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true);
+  const auto hybrid_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true);
   require(hybrid_bytes == plain_bytes + spins * basis.nao * basis.nao * sizeof(double),
           "CUDA KS exact-exchange buffer is missing from state admission");
 

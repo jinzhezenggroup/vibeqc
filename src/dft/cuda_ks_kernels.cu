@@ -171,9 +171,9 @@ void diagnostics(cudaStream_t stream, std::size_t n, unsigned spins, const doubl
                  double exchange_coefficient, const double* xc_totals, const int* xc_error,
                  const int* jk_error, const int* solver_info, const std::uint8_t* enabled,
                  Scalars* output) {
-  diagnostic_kernel<<<1, 1, 0, stream>>>(
-      n * n, spins, density, proposal, residual, hcore, overlap, coulomb, exchange,
-      exchange_coefficient, xc_totals, xc_error, jk_error, solver_info, enabled, output);
+  diagnostic_kernel<<<1, 1, 0, stream>>>(n * n, spins, density, proposal, residual, hcore, overlap,
+                                         coulomb, exchange, exchange_coefficient, xc_totals,
+                                         xc_error, jk_error, solver_info, enabled, output);
 }
 
 void advance(cudaStream_t stream, std::size_t n, unsigned spins, double nuclear_repulsion,

@@ -34,8 +34,8 @@ void diagnostics(cudaStream_t stream, std::size_t n, unsigned spins, const doubl
                  const double* proposal, const double* residual, const double* hcore,
                  const double* overlap, const double* coulomb, const double* exchange,
                  double exchange_coefficient, const double* xc_totals, const int* xc_error,
-                 const int* jk_error, const int* solver_info,
-                 const std::uint8_t* enabled, Scalars* output);
+                 const int* jk_error, const int* solver_info, const std::uint8_t* enabled,
+                 Scalars* output);
 void advance(cudaStream_t stream, std::size_t n, unsigned spins, double nuclear_repulsion,
              int occupied_alpha, int occupied_beta, double energy_tolerance,
              double density_tolerance, unsigned max_iterations, bool warm_updates, Scalars* current,
