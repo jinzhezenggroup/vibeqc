@@ -59,13 +59,15 @@ def main(argv: list[str] | None = None) -> int:
         args.cuda_max_shared_bytes,
         args.cuda_max_spill_bytes,
     )
-    if any(value is not None for value in resource_bounds):
-        if any(value is None for value in resource_bounds):
-            parser.error("all --cuda-max-* resource limits must be supplied together")
-        cuda_resource_limits = bulk_aot.CudaResourceLimits(*resource_bounds)
-    else:
-        cuda_resource_limits = None
     try:
+        if any(value is not None for value in resource_bounds):
+            if any(value is None for value in resource_bounds):
+                parser.error(
+                    "all --cuda-max-* resource limits must be supplied together"
+                )
+            cuda_resource_limits = bulk_aot.CudaResourceLimits(*resource_bounds)
+        else:
+            cuda_resource_limits = None
         plan = bulk_aot.census_catalog(
             names=args.name,
             spins=args.spin or ("polarized", "unpolarized"),
