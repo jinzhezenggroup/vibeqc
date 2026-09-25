@@ -252,7 +252,14 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                             out,
                             _capture(out, safe),
                         )
-                    except (InvalidEvidence, KeyError, TypeError, ValueError) as error:
+                    except (
+                        InvalidEvidence,
+                        AttributeError,
+                        KeyError,
+                        OverflowError,
+                        TypeError,
+                        ValueError,
+                    ) as error:
                         entry = {
                             "id": key,
                             "status": "failed",
