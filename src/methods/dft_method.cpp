@@ -820,21 +820,14 @@ class KsPreparedCalculation final : public PreparedCalculation {
       native = unrestricted(execution_plan_)
                    ? scf::run_b3lyp_uks(fock_, basis_, grid_, options_, seed)
                    : scf::run_b3lyp_rks(fock_, basis_, grid_, options_, seed);
-    else if (execution_plan_.semilocal_family == dft::SemilocalFamily::R2scan)
-      native = unrestricted(execution_plan_)
-                   ? scf::run_r2scan_uks(fock_, basis_, grid_, options_, seed)
-                   : scf::run_r2scan_rks(fock_, basis_, grid_, options_, seed);
     else if (execution_plan_.semilocal_family == dft::SemilocalFamily::Pbe && nonlocal_)
       native = unrestricted(execution_plan_)
                    ? scf::run_pbe_uks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_)
                    : scf::run_pbe_rks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_);
-    else if (unrestricted(execution_plan_))
-      native = scf::run_uks(fock_, basis_, grid_, options_,
-                            execution_plan_.semilocal_family == dft::SemilocalFamily::Pbe, seed);
-    else if (execution_plan_.semilocal_family == dft::SemilocalFamily::Pbe)
-      native = scf::run_pbe_rks(fock_, basis_, grid_, options_, seed);
     else
-      native = scf::run_lda_rks(fock_, basis_, grid_, options_, seed);
+      native = scf::run_curated_semilocal_ks(
+          fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
+          execution_plan_.spin_channels, seed);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
