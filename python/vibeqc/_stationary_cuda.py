@@ -16,6 +16,7 @@ import typing
 from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import asdict
 from hashlib import sha256
+from itertools import product
 from pathlib import Path
 from time import perf_counter
 from types import MappingProxyType
@@ -43,9 +44,17 @@ from vibeqc_compiler.dft.cuda import (
 )
 from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
+from vibeqc_compiler.integral.first_derivative_schedule import (
+    COMPONENT_LABELS,
+    CUDA_REQUESTS_PER_UNIT,
+    derivative_binding,
+    derivative_cuda_sources,
+    derivative_requests,
+)
 from vibeqc_compiler.method.stationary_cuda import (
     STATIONARY_RUNTIME_SOURCE_NAMES,
     compile_stationary_cuda,
+    encode_stationary_derivative_kind,
     load_stationary_aot_artifact,
     qualified_sp_requests,
 )
@@ -68,6 +77,7 @@ from .ks import resolve_ks_method
 _DOUBLE = ct.POINTER(ct.c_double)
 _INT = ct.POINTER(ct.c_int64)
 _SOURCE_NAMES = STATIONARY_RUNTIME_SOURCE_NAMES
+_DEFAULT_MAX_PRIMITIVE_RECORDS = 16_000_000
 
 
 class _ExclusiveWallTimeline:
@@ -159,18 +169,50 @@ def _basis_topology_identity(basis: typing.Any) -> str:
     return digest.hexdigest()
 
 
+def _component_mode(expansions: typing.Any) -> bool:
+    """Return whether public AOs need Cartesian component expansion."""
+
+    return any(
+        len(expansion) != 1 or len(expansion[0][0]) > 1 for expansion in expansions
+    )
+
+
+def _component_domain(expansions: typing.Any) -> tuple[str, ...]:
+    labels = {component for expansion in expansions for component, _ in expansion}
+    domain = tuple(component for component in COMPONENT_LABELS if component in labels)
+    if len(domain) != len(labels):
+        raise ValueError("stationary CUDA component domain exceeds s/p/d labels")
+    return domain
+
+
 def _layout(basis: typing.Any) -> typing.Any:
-    """Read the native normalized basis records without evaluating integrals."""
-    if any(s.angular_momentum > 1 for s in basis.shells):
-        raise NotImplementedError("CUDA gradient diagnostic admits s/p bases only")
+    """Read normalized s/p/d public-AO records without evaluating integrals."""
+    if any(s.angular_momentum > 2 for s in basis.shells):
+        raise NotImplementedError("CUDA gradient diagnostic admits s/p/d bases only")
     start = 3 * basis.natom
     primitives = basis.packed[start : start + 2 * basis.nprimitive].reshape(-1, 2)
     aos = basis.packed[start + 2 * basis.nprimitive :].reshape(-1, 16)
-    if any(int(r[3]) != 1 for r in aos):
-        raise NotImplementedError("CUDA diagnostic requires single-component AOs")
-    components = tuple("".join(a * int(l) for a, l in zip("xyz", r[4:7])) for r in aos)
-    requests = qualified_sp_requests()
-    return primitives, aos, components, requests
+    if any(int(row[3]) not in (1, 2, 3) for row in aos):
+        raise ValueError("public AOs require one to three Cartesian components")
+    expansions = tuple(
+        tuple(
+            (
+                "".join(
+                    axis * int(power)
+                    for axis, power in zip("xyz", row[4 + 4 * term : 7 + 4 * term])
+                ),
+                float(row[7 + 4 * term]),
+            )
+            for term in range(int(row[3]))
+        )
+        for row in aos
+    )
+    requests = (
+        derivative_requests(_component_domain(expansions))
+        if _component_mode(expansions)
+        else qualified_sp_requests()
+    )
+    return primitives, aos, expansions, requests
 
 
 class _CudaSources:
@@ -187,7 +229,7 @@ class _CudaSources:
         budget: typing.Any,
         spin_blocks: typing.Any = 1,
         target: typing.Any = None,
-        work_budget: typing.Any = 2_000_000,
+        work_budget: typing.Any = _DEFAULT_MAX_PRIMITIVE_RECORDS,
         timeline: _ExclusiveWallTimeline | None = None,
         profile_device: bool = False,
     ) -> None:
@@ -211,10 +253,16 @@ class _CudaSources:
             basis.packed[: 3 * basis.natom].reshape(-1, 3)
         )
         self.ao_atoms = np.ascontiguousarray(_native_ao_atoms(basis), dtype=np.int64)
-        self.primitives, self.aos, self.components, requests = _layout(basis)
+        self.primitives, self.aos, expansions, requests = _layout(basis)
+        self.expansions = tuple(expansions)
+        self.component_mode = _component_mode(self.expansions)
+        self.components = tuple(expansion[0][0] for expansion in self.expansions)
         self.primitive_table = np.ascontiguousarray(self.primitives, dtype=np.float64)
         self.ao_ranges = np.ascontiguousarray(self.aos[:, 1:3], dtype=np.int64)
-        self.ao_norms = np.ascontiguousarray(self.aos[:, 7], dtype=np.float64)
+        self.ao_norms = np.ascontiguousarray(
+            np.ones(len(self.aos)) if self.component_mode else self.aos[:, 7],
+            dtype=np.float64,
+        )
         self.topology_identity = _basis_topology_identity(basis)
         self.bound_basis_identity = basis.identity
         self.kinds = {key: i for i, key in enumerate(requests)}
@@ -378,16 +426,54 @@ class _CudaSources:
         nucleus: typing.Any = None,
         charge: typing.Any = 1.0,
     ) -> None:
-        """Append one AO task; primitive Cartesian products are traversed natively."""
+        """Append public-AO tasks while Cartesian primitive products stay native."""
         indices = tuple(int(i) for i in indices)
         rank = len(indices)
         if rank not in (2, 4):
             raise ValueError("stationary CUDA task rank must be two or four")
-        kind = self.kinds[operator, tuple(self.components[i] for i in indices)]
         rows = self.aos[list(indices)]
         primitive_work = 1
         for row in rows:
             primitive_work *= int(row[2])
+        if self.component_mode:
+            for terms in product(*(self.expansions[i] for i in indices)):
+                binding = derivative_binding(
+                    operator, tuple(component for component, _ in terms)
+                )
+                kind = encode_stationary_derivative_kind(
+                    self.kinds[binding.request],
+                    binding,
+                    rank=rank,
+                    has_nucleus=nucleus is not None,
+                )
+                coefficient = float(charge) * float(
+                    np.prod([value for _, value in terms])
+                )
+                self._append_task(
+                    kind,
+                    source,
+                    rank,
+                    indices,
+                    primitive_work,
+                    nucleus,
+                    coefficient,
+                )
+            return
+        kind = self.kinds[operator, tuple(self.components[i] for i in indices)]
+        self._append_task(
+            kind, source, rank, indices, primitive_work, nucleus, float(charge)
+        )
+
+    def _append_task(
+        self,
+        kind: int,
+        source: int,
+        rank: int,
+        indices: tuple[int, ...],
+        primitive_work: int,
+        nucleus: typing.Any,
+        charge: float,
+    ) -> None:
         if self.used == len(self.tasks):
             self.flush()
         task = self.tasks[self.used]
@@ -405,10 +491,18 @@ class _CudaSources:
 
     def nuclear(self, a: typing.Any, b: typing.Any, charges: typing.Any) -> None:
         self.flush()
+        kind = self.kinds["nuclear", ()]
+        if self.component_mode:
+            kind = encode_stationary_derivative_kind(
+                kind,
+                derivative_binding("nuclear", ()),
+                rank=2,
+                has_nucleus=False,
+            )
         self._call(
             "stationary_nuclear",
             self.handle,
-            self.kinds["nuclear", ()],
+            kind,
             int(a),
             int(b),
             float(charges[a]),
@@ -555,6 +649,24 @@ def _native_grid_artifact(library: typing.Any, architecture: str) -> CudaArtifac
             "artifact_kind": "native-build-aot",
         },
     )
+
+
+def _unique_prepared_artifacts(
+    artifacts: tuple[typing.Any, ...],
+) -> tuple[typing.Any, ...]:
+    """Bind shared compiled kernels once while keeping each tensor slot separate."""
+    unique: dict[str, typing.Any] = {}
+    for artifact in artifacts:
+        key = artifact.metadata["key"]
+        previous = unique.get(key)
+        if previous is not None:
+            if previous.metadata["binary_sha256"] != artifact.metadata["binary_sha256"]:
+                raise ValueError(
+                    "stationary CUDA artifact key has conflicting binaries"
+                )
+            continue
+        unique[key] = artifact
+    return tuple(unique.values())
 
 
 class PreparedStationaryCudaTopologyMismatch(ValueError):
@@ -763,16 +875,30 @@ class PreparedStationaryCudaExecution:
 
         started = perf_counter()
         cache = Path(cache)
+        _, _, expansions, _ = _layout(basis)
+        component_mode = _component_mode(expansions)
         stationary_artifact = (
             compile_stationary_cuda(
-                emit_first_derivative_cuda(requests),
+                (
+                    tuple(
+                        source
+                        for _, source in derivative_cuda_sources(
+                            _component_domain(expansions)
+                        )
+                    )
+                    if component_mode
+                    else emit_first_derivative_cuda(requests)
+                ),
                 functional=functional,
                 plan=plan,
                 iterations=spec.partition_iterations,
                 compiler=compiler,
                 cache=cache,
+                primitive_shard_width=(
+                    CUDA_REQUESTS_PER_UNIT if component_mode else None
+                ),
             )
-            if aot_directory is None or ecp
+            if aot_directory is None or ecp or component_mode
             else load_stationary_aot_artifact(
                 aot_directory,
                 functional=functional,
@@ -832,12 +958,14 @@ class PreparedStationaryCudaExecution:
         except Exception:
             stack.close()
             raise
-        artifacts = (
-            stationary_artifact,
-            grid_artifact,
-            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
-        )
         try:
+            artifacts = _unique_prepared_artifacts(
+                (
+                    stationary_artifact,
+                    grid_artifact,
+                    *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+                )
+            )
             self._lease.install(
                 request,
                 tuple(PreparedArtifactBinding.from_artifact(a) for a in artifacts),
@@ -997,7 +1125,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,
-    max_primitive_records: typing.Any = 2_000_000,
+    max_primitive_records: typing.Any = _DEFAULT_MAX_PRIMITIVE_RECORDS,
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
     prepared: PreparedStationaryCudaExecution | None = None,
@@ -1071,8 +1199,16 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("CUDA diagnostic small-domain atom/AO cap exceeded")
     if not 1 <= basis.nprimitive <= 4096:
         raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
-    _, aos, _, requests = _layout(basis)
-    primitive_sum = sum(int(r[2]) for r in aos)
+    _, aos, expansions, requests = _layout(basis)
+    component_mode = _component_mode(expansions)
+    if component_mode and compiler is None:
+        raise TypeError(
+            "d-shell stationary CUDA requires an explicit CUDA compiler adapter"
+        )
+    primitive_sum = sum(
+        int(row[2]) * len(expansion)
+        for row, expansion in zip(aos, expansions, strict=True)
+    )
     records = primitive_sum**4 + (na + 2) * primitive_sum**2 + na * (na - 1) // 2
     pair_visits = (1 + 2 * len(state.grid.points)) * na * (na - 1) // 2
     if records > max_primitive_records:
@@ -1218,14 +1354,26 @@ def _complete_rks_cuda_gradient_diagnostic(
         with timeline.phase("artifact_lookup_compile"):
             artifact = (
                 compile_stationary_cuda(
-                    emit_first_derivative_cuda(requests),
+                    (
+                        tuple(
+                            source
+                            for _, source in derivative_cuda_sources(
+                                _component_domain(expansions)
+                            )
+                        )
+                        if component_mode
+                        else emit_first_derivative_cuda(requests)
+                    ),
                     functional=functional,
                     plan=plan,
                     iterations=spec.partition_iterations,
                     compiler=compiler,
                     cache=cache,
+                    primitive_shard_width=(
+                        CUDA_REQUESTS_PER_UNIT if component_mode else None
+                    ),
                 )
-                if aot_directory is None or ecp
+                if aot_directory is None or ecp or component_mode
                 else load_stationary_aot_artifact(
                     aot_directory,
                     functional=functional,
@@ -1578,7 +1726,7 @@ def complete_rks_cuda_gradient_diagnostic(
     max_device_bytes: typing.Any = 512 << 20,
     max_host_bytes: typing.Any = 256 << 20,
     max_grid_points: typing.Any = 1_000_000,
-    max_primitive_records: typing.Any = 2_000_000,
+    max_primitive_records: typing.Any = _DEFAULT_MAX_PRIMITIVE_RECORDS,
     max_grid_pair_visits: typing.Any = 100_000_000,
     max_ecp_pair_samples: int = 100_000_000,
     prepared: PreparedStationaryCudaExecution | None = None,

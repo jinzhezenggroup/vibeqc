@@ -13,7 +13,7 @@ a different method identity. The first supported element domain is Z=1..18.
 | Path | Energy | Forces | Batch/replay | Notes |
 | --- | --- | --- | --- | --- |
 | CPU RKS/UKS | yes | not promoted | yes | exact canonical basis; D4 and gCP are explicit components |
-| CUDA RKS/UKS | yes | gated | yes | electronic/D4 execution may use CUDA; gCP remains a disclosed CPU component |
+| CUDA RKS/UKS | yes | gated | yes | s/p force uses packaged AOT; all-electron s/p/d force uses bounded JIT when NVCC is available; gCP remains a disclosed CPU component |
 
 method_capabilities() intentionally reports the conservative backend-neutral
 surface (energy plus batch support). Force availability is resolved by
@@ -27,3 +27,15 @@ correction twice.
 
 The method remains fail-closed outside H-Ar, for a changed defining basis, or
 when a requested backend/property combination has not been qualified.
+The first CUDA s/p/d stationary-force domain admits at most 32 atoms, 128 AOs,
+16,000,000 ordered primitive records, 1,000,000 grid points and 100,000,000
+grid-pair visits. These are execution bounds, not a claim that every H-Ar
+system has a qualified total force. A resource or compiler precondition that
+fails produces an explicit item failure rather than an incomplete total.
+
+Open-shell forces are conditional on the converged spin-density state. In
+linear OH, a prepared changed-geometry run and a fresh run can converge to
+different stationary states with nearly equal energy and different transverse
+forces. The current method does not promise automatic root following across
+that case; compare the final states before interpreting a cross-run force
+difference as an error in one state's analytic force.

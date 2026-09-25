@@ -185,7 +185,9 @@ class NativeKsSnapshot:
         handle = ct.c_void_p()
         try:
             _native.check(
-                lib, create(batch._batch, index, ct.byref(handle), metadata, 16)
+                lib,
+                create(batch._batch, index, ct.byref(handle), metadata, 16),
+                context=batch._context,
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
@@ -213,6 +215,7 @@ class NativeKsSnapshot:
                     values.ctypes.data_as(ct.POINTER(ct.c_double)),
                     values.size,
                 ),
+                context=batch._context,
             )
             self.values = immutable(values)
         except Exception:

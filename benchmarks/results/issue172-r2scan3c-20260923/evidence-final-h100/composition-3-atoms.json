@@ -1,0 +1,12 @@
+{
+  "atomic_numbers": [
+    8,
+    1,
+    1
+  ],
+  "allocation": "issue-0172-final-h100-0e6350ac-20260923",
+  "basis_identity": "11c25a32851c1fd54ca318162d46a1c436280c53c75df931e51b2520153a2c2f",
+  "dispersion_backend": "cuda+cpu",
+  "energy_composition_error": 4.737855073544406e-15,
+  "force_composition_max_error": 1.9613217300262775e-16
+}
