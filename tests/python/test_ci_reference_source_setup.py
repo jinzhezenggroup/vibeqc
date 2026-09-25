@@ -26,16 +26,22 @@ def _preparation() -> tuple[str, str]:
 
 def test_reference_setup_is_after_build_and_before_core_tests() -> None:
     workflow, commands = _preparation()
-    python_job = workflow.split("\n  python:\n", 1)[1].split("\n  cpu-benchmark:\n", 1)[0]
+    python_job = workflow.split("\n  python:\n", 1)[1].split("\n  cpu-benchmark:\n", 1)[
+        0
+    ]
     names = re.findall(r"^      - name: (.+)$", python_job, flags=re.MULTILINE)
-    assert names.index("Build the CPU native library") < names.index(
-        "Prepare pinned GFN1 and D3 reference inputs"
-    ) < names.index("Run Python tests with coverage")
+    assert (
+        names.index("Build the CPU native library")
+        < names.index("Prepare pinned GFN1 and D3 reference inputs")
+        < names.index("Run Python tests with coverage")
+    )
     assert commands.splitlines() == [
         ".venv/bin/python tools/source_registry.py sync xtbloom-gfn1-parameters",
         ".venv/bin/python tools/source_registry.py sync xtbloom-gfn1-d3",
     ]
-    cache = python_job.split("      - name: Cache pinned GFN1 and D3 reference inputs\n", 1)[1].split("      - name:", 1)[0]
+    cache = python_job.split(
+        "      - name: Cache pinned GFN1 and D3 reference inputs\n", 1
+    )[1].split("      - name:", 1)[0]
     assert "if: matrix.shard == 'core'" in cache
     assert "upstream/manifest.json" in cache and "tools/source_registry.py" in cache
     assert ".cache/vibeqc-sources/xtbloom-gfn1-parameters" in cache
@@ -45,7 +51,9 @@ def test_reference_setup_is_after_build_and_before_core_tests() -> None:
     assert "source_registry.py sync" not in other_jobs
 
 
-@pytest.mark.parametrize("failed_source", ["", "xtbloom-gfn1-parameters", "xtbloom-gfn1-d3"])
+@pytest.mark.parametrize(
+    "failed_source", ["", "xtbloom-gfn1-parameters", "xtbloom-gfn1-d3"]
+)
 def test_sync_commands_propagate_failure_before_testing(
     tmp_path: Path, failed_source: str
 ) -> None:
