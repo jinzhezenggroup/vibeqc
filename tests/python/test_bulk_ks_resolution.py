@@ -34,6 +34,23 @@ def _qualified_resolution(name: str) -> tuple[object, CapabilityResolution]:
     return capability, qualified
 
 
+def _candidate_resolution(name: str) -> tuple[object, CapabilityResolution]:
+    capability = functional_capability(name)
+    qualified = CapabilityResolution(
+        name=capability.name,
+        identity=capability.identity,
+        required_stages=("compiled-cpu", "production-domain"),
+        qualified_stages=(
+            "graph-imported",
+            "pointwise-validated",
+            "compiled-cpu",
+            "production-domain",
+        ),
+        public_dft=False,
+    )
+    return capability, qualified
+
+
 def test_bulk_ks_fails_closed_without_molecular_evidence() -> None:
     with pytest.raises(CapabilityNotQualified) as exc:
         bulk_ks.resolve_bulk_ks("GGA_X_PBE_SOL")
@@ -41,6 +58,35 @@ def test_bulk_ks_fails_closed_without_molecular_evidence() -> None:
     assert "compiled-cpu" in exc.value.missing_stages
     assert "production-domain" in exc.value.missing_stages
     assert "molecular-scf" in exc.value.missing_stages
+
+
+def test_bulk_ks_candidate_breaks_molecular_scf_evidence_cycle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capability, qualified = _candidate_resolution("GGA_X_PBE_SOL")
+    requests: list[tuple[str, ...]] = []
+
+    def fake_resolve(
+        name: str,
+        *,
+        required_stages: tuple[str, ...],
+        evidence: dict[str, object] | None = None,
+    ) -> CapabilityResolution:
+        assert name == capability.name
+        requests.append(tuple(required_stages))
+        return qualified
+
+    monkeypatch.setattr(bulk_ks, "resolve_capability", fake_resolve)
+    result = bulk_ks.resolve_bulk_ks_candidate(capability.name)
+
+    assert requests == [("compiled-cpu", "production-domain")]
+    assert result.capability.required_stages == (
+        "compiled-cpu",
+        "production-domain",
+    )
+    assert "molecular-scf" not in result.capability.qualified_stages
+    assert result.plan.required_lowerers == ("semilocal-xc",)
+    assert not result.to_payload()["public_dft"]
 
 
 def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(

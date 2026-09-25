@@ -874,8 +874,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
       throw std::invalid_argument(
           "unknown DF derivative pairs (use auto, full, symmetric or packed)");
     // Only the trusted occupied producer supplies folded packed AO weights.
-    // Unsupported/corrected states retain the dense response, folding its two
-    // ordered adjoints when a generated shell consumer is available.
+    // Unsupported states retain dense response, folding its two ordered
+    // adjoints when a generated shell consumer is available.
     const bool packed_pairs = pair_policy == "packed" && shell_execution && full_shell_domain &&
                               borrowed && borrowed->occupied_response;
     const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed

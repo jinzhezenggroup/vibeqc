@@ -324,6 +324,30 @@ int main() {
             "PBE fixed-density integral is invalid");
     for (double value : pbe.potential)
       require(std::isfinite(value), "PBE fixed-density potential is nonfinite");
+    const auto ao_cache_bytes = vibeqc::dft::rks_ao_cache_bytes(basis, grid, 1);
+    auto ao_cache = vibeqc::dft::prepare_rks_ao_cache(basis, grid, 1);
+    require(ao_cache_bytes == 4 * grid.point_count() * basis.nao * sizeof(double) &&
+                ao_cache.numeric_capacity_bytes() == ao_cache_bytes && ao_cache.order == 1 &&
+                ao_cache.points == grid.point_count() && ao_cache.nao == basis.nao,
+            "prepared RKS AO cache has the wrong bounded layout");
+    const auto streamed_tail = vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
+    const auto cached_tail = vibeqc::dft::integrate_pbe_rks_with_tail_scaled_cached(
+        basis, grid, density, 5, {}, 1.0, 1.0, ao_cache);
+    require(cached_tail.energy == streamed_tail.energy &&
+                cached_tail.electrons == streamed_tail.electrons &&
+                cached_tail.potential == streamed_tail.potential,
+            "prepared RKS AO cache changed PBE energy/electrons/potential");
+    // The optimized triangular contraction must retain the established
+    // tolerance for slightly asymmetric caller storage by consuming D_uv+D_vu,
+    // rather than silently trusting only one triangle.
+    const std::vector<double> near_symmetric_density{0.8, 0.2 + 5.0e-12, 0.2 - 5.0e-12, 0.6};
+    const auto near_symmetric =
+        vibeqc::dft::integrate_pbe_rks(basis, grid, near_symmetric_density, 5);
+    require(std::abs(near_symmetric.energy - pbe.energy) < 2.0e-14,
+            "triangular PBE contraction changed accepted near-symmetric density semantics");
+    for (std::size_t i = 0; i < pbe.potential.size(); ++i)
+      require(std::abs(near_symmetric.potential[i] - pbe.potential[i]) < 2.0e-14,
+              "triangular PBE potential changed accepted near-symmetric density semantics");
     // #237 Slice A: delta-D may be signed/indefinite. Contract its
     // *linear* rho/grad-rho features separately, then recompute nonlinear PBE
     // from the reconstructed total features. The exact incremental result must
