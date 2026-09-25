@@ -480,10 +480,10 @@ jobs:
           # Exercise the public autograd contracts on every PR without pulling
           # CUDA wheels into this CPU job.
           uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
-      # Only the core reference tests need the external oracle inputs. Native
-      # builds and installed production paths above remain completely offline.
+      # Core and compiler-heavy reference tests need the external oracle inputs.
+      # Builds and installed production paths above remain completely offline.
       - name: Cache pinned GFN1 and D3 reference inputs
-        if: matrix.shard == 'core'
+        if: matrix.shard == 'core' || matrix.shard == 'compiler-heavy'
         id: gfn1_reference_sources
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -492,7 +492,7 @@ jobs:
             .cache/vibeqc-sources/xtbloom-gfn1-d3
           key: gfn1-reference-inputs-v1-${{ hashFiles('upstream/manifest.json', 'tools/source_registry.py') }}
       - name: Prepare pinned GFN1 and D3 reference inputs
-        if: matrix.shard == 'core' && steps.gfn1_reference_sources.outputs.cache-hit != 'true'
+        if: (matrix.shard == 'core' || matrix.shard == 'compiler-heavy') && steps.gfn1_reference_sources.outputs.cache-hit != 'true'
         run: |
           .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-parameters
           .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-d3
