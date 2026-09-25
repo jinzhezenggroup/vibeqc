@@ -53,6 +53,8 @@ overlap/Pulay, nuclear, and final source reduction.
    differences of reconverged native XC analytic-gradient sources.
 3. The HVP path asserts zero additional response solves and identity/Becke
    branch compatibility.
+4. Repository CI is the execution gate for the formatted PR head; no green
+   result from an earlier head is treated as qualification evidence.
 
 Refs #180 #1251 #964 #958
 
