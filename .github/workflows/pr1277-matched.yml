@@ -1,0 +1,190 @@
+name: PR 1277 matched CPU acceptance
+
+on:
+  push:
+    branches:
+      - bench/pr1277-matched-20260925
+
+permissions:
+  contents: read
+
+jobs:
+  matched:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      BASE_SHA: c057ec6e7cacdcb1e264c6daf0fbdba3ae6f5323
+      HEAD_SHA: 9a6c4daffadea5a7a64542deac5f02a69cd4c2c6
+    steps:
+      - name: Checkout head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.HEAD_SHA }}
+          path: head
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.BASE_SHA }}
+          path: base
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libopenblas-dev ninja-build
+          echo "CPU:"
+          lscpu | grep -E 'Model name|Socket|Core|Thread|CPU\(s\)' || true
+
+      - name: Set up Python
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: "0.10.7"
+          python-version: "3.11"
+          enable-cache: true
+
+      - name: Build matched base and head
+        run: |
+          cmake -S base -B base/build -G Ninja             -DVIBEQC_ENABLE_CUDA=OFF             -DVIBEQC_BUILD_TESTS=OFF             -DCMAKE_BUILD_TYPE=Release
+          cmake --build base/build --target vibeqc --parallel 2
+          cmake -S head -B head/build -G Ninja             -DVIBEQC_ENABLE_CUDA=OFF             -DVIBEQC_BUILD_TESTS=OFF             -DCMAKE_BUILD_TYPE=Release
+          cmake --build head/build --target vibeqc --parallel 2
+          echo "=== base BLAS cache ==="
+          grep -Ei 'openblas|blas' base/build/CMakeCache.txt || true
+          echo "=== head BLAS cache ==="
+          grep -Ei 'openblas|blas' head/build/CMakeCache.txt || true
+          echo "=== base linked BLAS ==="
+          ldd base/build/libvibeqc.so | grep -Ei 'openblas|blas' || true
+          echo "=== head linked BLAS ==="
+          ldd head/build/libvibeqc.so | grep -Ei 'openblas|blas' || true
+
+      - name: Install head Python package
+        run: |
+          uv venv --python 3.11 .venv
+          uv pip install --python .venv/bin/python --editable head
+
+      - name: Write matched endpoint benchmark
+        run: |
+          cat > /tmp/pr1277_bench.py <<'PY'
+          import json
+          import statistics
+          import sys
+          import time
+
+          from vibeqc import Calculator
+
+          # Two non-identical waters in bohr, separated enough to avoid overlap while
+          # giving def2-SVP a materially larger exact-J contraction than the tiny
+          # CodSpeed water/STO-3G smoke case.
+          atoms = (
+              ("O", (0.00000000, 0.00000000, 0.00000000)),
+              ("H", (1.43233673, 0.00000000, 1.10715266)),
+              ("H", (-1.43233673, 0.00000000, 1.10715266)),
+              ("O", (5.25000000, 0.35000000, 0.20000000)),
+              ("H", (6.59500000, 0.65000000, 1.18000000)),
+              ("H", (4.04000000, 0.05000000, 1.36000000)),
+          )
+
+          calc = Calculator(
+              method="pbe-rks",
+              basis="def2-svp",
+              device="cpu",
+              density_fitting="none",
+              energy_tolerance=1.0e-10,
+              density_tolerance=1.0e-8,
+              max_iterations=160,
+          )
+
+          warm = calc.singlepoint(atoms, properties=("energy",))
+          if not warm.converged:
+              raise SystemExit("warmup did not converge")
+
+          samples = []
+          records = []
+          for _ in range(7):
+              started = time.perf_counter()
+              result = calc.singlepoint(atoms, properties=("energy",))
+              elapsed = time.perf_counter() - started
+              if not result.converged:
+                  raise SystemExit("timed endpoint did not converge")
+              samples.append(elapsed)
+              records.append(
+                  {
+                      "seconds": elapsed,
+                      "energy": result.energy,
+                      "iterations": result.iterations,
+                      "energy_change": result.energy_change,
+                      "density_rms": result.density_rms,
+                  }
+              )
+
+          print(
+              json.dumps(
+                  {
+                      "label": sys.argv[1],
+                      "warm_energy": warm.energy,
+                      "warm_iterations": warm.iterations,
+                      "samples": samples,
+                      "median_seconds": statistics.median(samples),
+                      "min_seconds": min(samples),
+                      "max_seconds": max(samples),
+                      "records": records,
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+
+      - name: Run interleaved matched A/B endpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}/head/python
+        run: |
+          set -euo pipefail
+          : > /tmp/pr1277-results.jsonl
+          run_one () {
+            label="$1"
+            lib="$2"
+            echo "=== ${label} ==="
+            VIBEQC_LIBRARY="$lib" .venv/bin/python /tmp/pr1277_bench.py "$label" | tee -a /tmp/pr1277-results.jsonl
+          }
+          run_one base-1 "${GITHUB_WORKSPACE}/base/build/libvibeqc.so"
+          run_one head-1 "${GITHUB_WORKSPACE}/head/build/libvibeqc.so"
+          run_one head-2 "${GITHUB_WORKSPACE}/head/build/libvibeqc.so"
+          run_one base-2 "${GITHUB_WORKSPACE}/base/build/libvibeqc.so"
+
+      - name: Summarize matched result
+        run: |
+          .venv/bin/python - <<'PY'
+          import json
+          import statistics
+
+          rows = [json.loads(line) for line in open("/tmp/pr1277-results.jsonl") if line.lstrip().startswith("{")]
+          base = [row["median_seconds"] for row in rows if row["label"].startswith("base")]
+          head = [row["median_seconds"] for row in rows if row["label"].startswith("head")]
+          base_median = statistics.median(base)
+          head_median = statistics.median(head)
+          speedup = base_median / head_median
+          improvement = (base_median - head_median) / base_median * 100.0
+
+          energies = [record["energy"] for row in rows for record in row["records"]]
+          iterations = sorted({record["iterations"] for row in rows for record in row["records"]})
+
+          print("PR1277_MATCHED_BASE_MEDIAN_SECONDS=", base_median)
+          print("PR1277_MATCHED_HEAD_MEDIAN_SECONDS=", head_median)
+          print("PR1277_MATCHED_SPEEDUP_X=", speedup)
+          print("PR1277_MATCHED_IMPROVEMENT_PERCENT=", improvement)
+          print("PR1277_ENERGY_SPREAD_HARTREE=", max(energies) - min(energies))
+          print("PR1277_ITERATION_COUNTS=", iterations)
+
+          if max(energies) - min(energies) > 1.0e-10:
+              raise SystemExit("energy mismatch exceeds 1e-10 Ha")
+          if len(iterations) != 1:
+              raise SystemExit("SCF iteration count changed across matched runs")
+          PY
