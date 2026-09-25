@@ -22,8 +22,8 @@ from .libxc_bulk_capabilities import (
 if TYPE_CHECKING:
     from .bulk_runtime import BulkRuntimeProgram
 
-RESULT_SCHEMA = "vibeqc.libxc-production-domain-result.v2"
-EXECUTION_SCHEMA = "vibeqc.libxc-production-domain-execution/v1"
+RESULT_SCHEMA = "vibeqc.libxc-production-domain-result.v3"
+EXECUTION_SCHEMA = "vibeqc.libxc-production-domain-execution/v2"
 EXECUTOR = "bulk-runtime-array-graph/v1"
 CASE_STATUSES = ("pass", "fail", "not-run")
 
@@ -41,18 +41,14 @@ def required_matrix(
 
 
 def _expected_outputs(size: int) -> tuple[tuple[int, ...], ...]:
-    return (
-        (),
-        *((index,) for index in range(size)),
-        *combinations_with_replacement(range(size), 2),
-    )
+    return ((), *((index,) for index in range(size)))
 
 
 def build_execution_binding(
     name: str,
     programs: Mapping[str, BulkRuntimeProgram],
 ) -> dict[str, Any]:
-    """Bind the exact two-spin order-2 programs used by a numerical campaign."""
+    """Bind the exact two-spin first-order programs used by a campaign."""
     capability = functional_capability(name)
     profile = capability.production_domain_profile
     if not isinstance(programs, Mapping):
@@ -71,11 +67,11 @@ def build_execution_binding(
             raise ValueError("production-domain execution capability identity mismatch")
         if program.spec.spin != spin:
             raise ValueError("production-domain execution spin mismatch")
-        if program.order != 2 or program.outputs != _expected_outputs(
+        if program.order != 1 or program.outputs != _expected_outputs(
             len(program.spec.features)
         ):
             raise ValueError(
-                "production-domain execution requires complete E/vxc/fxc outputs"
+                "production-domain execution requires complete E/vxc outputs"
             )
         records.append(
             {
@@ -151,7 +147,7 @@ def _normalize_execution(
         expected_outputs = [list(output) for output in _expected_outputs(len(features))]
         if outputs != expected_outputs:
             raise ValueError(
-                "production-domain execution must cover complete E/vxc/fxc outputs"
+                "production-domain execution must cover complete E/vxc outputs"
             )
         records[spin] = {
             "spin": spin,
