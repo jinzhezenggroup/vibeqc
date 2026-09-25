@@ -56,6 +56,7 @@ __global__ void damped_advance(const double* current, const double* undamped, st
 __global__ void gram_kernel(const double* errors, std::size_t elements, int history, double* gram) {
   const int pair = static_cast<int>(blockIdx.x);
   const int row = pair / history, col = pair % history;
+  if (row > col) return;
   __shared__ double values[256];
   double sum = 0.0;
   for (std::size_t i = threadIdx.x; i < elements; i += blockDim.x)
@@ -68,7 +69,10 @@ __global__ void gram_kernel(const double* errors, std::size_t elements, int hist
       values[threadIdx.x] = __dadd_rn(values[threadIdx.x], values[threadIdx.x + stride]);
     __syncthreads();
   }
-  if (!threadIdx.x) gram[std::size_t(row) * history + col] = values[0];
+  if (!threadIdx.x) {
+    gram[std::size_t(row) * history + col] = values[0];
+    if (row != col) gram[std::size_t(col) * history + row] = values[0];
+  }
 }
 
 struct Layout {
