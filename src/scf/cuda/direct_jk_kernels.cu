@@ -11,6 +11,18 @@ using namespace cuda_execution;
 
 namespace {
 
+vibeqc::integrals::CoulombRange integral_range(DirectCoulombRange range) {
+  switch (range) {
+    case DirectCoulombRange::Full:
+      return vibeqc::integrals::CoulombRange::Full;
+    case DirectCoulombRange::Long:
+      return vibeqc::integrals::CoulombRange::Long;
+    case DirectCoulombRange::Short:
+      return vibeqc::integrals::CoulombRange::Short;
+  }
+  return vibeqc::integrals::CoulombRange::Full;
+}
+
 __global__ void independent_jk_finite_kernel(const double* values, std::size_t count,
                                              int* failure) {
   for (std::size_t i = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
@@ -154,18 +166,18 @@ void launch_independent_jk_bounds_kernel(dim3 grid, dim3 block, std::size_t shar
 void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, DeviceBatch batch, std::size_t system_begin,
                                   bool want_j, bool want_k, bool unrestricted, bool mixed_j,
-                                  vibeqc::integrals::CoulombRange exchange_range,
+                                  DirectCoulombRange exchange_range,
                                   double exchange_omega, double screening, const double* bounds,
                                   const double* density, const double* beta, double* j_out,
                                   double* ka_out, double* kb_out) {
   if (mixed_j)
     independent_jk_kernel<true><<<grid, block, shared_bytes, stream>>>(
-        batch, system_begin, want_j, want_k, unrestricted, exchange_range, exchange_omega,
-        screening, bounds, density, beta, j_out, ka_out, kb_out);
+        batch, system_begin, want_j, want_k, unrestricted, integral_range(exchange_range),
+        exchange_omega, screening, bounds, density, beta, j_out, ka_out, kb_out);
   else
     independent_jk_kernel<false><<<grid, block, shared_bytes, stream>>>(
-        batch, system_begin, want_j, want_k, unrestricted, exchange_range, exchange_omega,
-        screening, bounds, density, beta, j_out, ka_out, kb_out);
+        batch, system_begin, want_j, want_k, unrestricted, integral_range(exchange_range),
+        exchange_omega, screening, bounds, density, beta, j_out, ka_out, kb_out);
 }
 
 void launch_independent_jk_derivative_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

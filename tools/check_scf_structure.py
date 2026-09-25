@@ -304,7 +304,13 @@ CUDA_MODULES["cuda_integral_numerics"] = (
 )
 CUDA_ALLOWED["cuda_integral_numerics"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_integral_numerics"]
-) + ("scf/cuda/packed_basis.", "molecule/basis.hpp")
+) + (
+    "scf/cuda/packed_basis.",
+    "molecule/basis.hpp",
+    # Range moments are the shared CPU/CUDA scientific primitive. Keep this
+    # exception exact so CUDA numerics cannot acquire the broader integral layer.
+    "integrals/range_moments.hpp",
+)
 CUDA_MODULES["cuda_one_electron_native"] = (
     "one_electron_reference",
     "one_electron_force_reference",
