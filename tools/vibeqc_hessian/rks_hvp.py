@@ -2,8 +2,8 @@
 
 This is the first native LDA/PBE RKS composition of the MethodIR-derived
 StationaryHVPPlan, one real CPKS nuclear response, generated first/second
-integral providers, analytic Becke mixed response and generated XC feature
-Hessian contractions.  It remains a tools endpoint: direct all-electron
+integral providers, analytic Becke mixed response and native SCF-domain XC
+Hessian contractions. It remains a tools endpoint: direct all-electron
 Cartesian CPU RKS, at most 12 AOs/four atoms, with no public Calculator Hessian
 capability inferred.
 """
@@ -18,13 +18,10 @@ from pathlib import Path
 from types import MappingProxyType
 
 import numpy as np
-from vibeqc._dft_gradient import _native_ao_atoms
 from vibeqc.profiles import canonical_hash
 from vibeqc_compiler.method import StationaryHVPPlan, StationaryMeanField
 from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
 from vibeqc_compiler.tensor import execute
-from vibeqc_compiler.xc.contractions import ExternalPointContraction
-from vibeqc_compiler.xc.grid_response import partition_mixed_response
 
 from tools.vibeqc_posthf.reference import immutable
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse
@@ -39,8 +36,8 @@ from .first_order import (
 )
 from .rks_directional import (
     DirectionalRKSResponse,
-    _validate_partition_provenance,
     directional_rks_response,
+    native_rks_xc_hvp_components,
 )
 from .stationary_executor import (
     StationaryHVPContributor,
@@ -235,132 +232,11 @@ def _xc_hvp_components(
     response: DirectionalRKSResponse,
     direction: np.ndarray,
 ) -> dict[str, np.ndarray]:
-    """Differentiate each left XC gradient owner along one full RKS direction."""
-    operator.validate_current()
-    state = operator.state
-    source = state._source
-    if source.atomic_weights is None or source.grid_spec is None:
-        raise ValueError("semilocal RKS HVP requires retained grid provenance")
-    basis = operator.xc_kernel.basis
-    spec = operator.xc_kernel.spec
-    if spec.spin != "unpolarized" or spec.ingredients not in (
-        ("rho",),
-        ("rho", "sigma"),
-    ):
-        raise NotImplementedError("semilocal RKS HVP supports LDA/GGA only")
-
-    contraction = ExternalPointContraction(spec, "geometry")
-    order = contraction.contract.ingredients.ao_order
-    grid = state.grid
-    all_points = np.asarray(grid.points)
-    all_owners = np.asarray(grid.owners, dtype=np.int64)
-    atomic_weights = np.asarray(source.atomic_weights, dtype=np.float64)
-    centers = np.asarray([atom.position for atom in basis.atoms], dtype=np.float64)
-    natom = basis.natom
-    if (
-        all_owners.shape != (len(all_points),)
-        or atomic_weights.shape != (len(all_points),)
-        or np.any(all_owners < 0)
-        or np.any(all_owners >= natom)
-    ):
-        raise ValueError("semilocal RKS HVP grid provenance is malformed")
-    ao_atoms = _native_ao_atoms(basis)
-    delta_density = np.asarray(response.response.density_derivative)
-    result = {
-        "xc_ao": np.zeros((natom, 3), dtype=np.float64),
-        "xc_grid": np.zeros((natom, 3), dtype=np.float64),
-        "xc_weight": np.zeros((natom, 3), dtype=np.float64),
-    }
-    grid_spec = source.grid_spec
-    tile_points = int(getattr(operator.xc_kernel, "tile_points", 256))
-    zero_centers = np.zeros((natom, 3), dtype=np.float64)
-
-    for begin in range(0, len(all_points), tile_points):
-        end = min(begin + tile_points, len(all_points))
-        points = all_points[begin:end]
-        owners = all_owners[begin:end]
-        weights = np.asarray(grid.weights[begin:end], dtype=np.float64)
-        atomic = atomic_weights[begin:end]
-        jets = basis.evaluate(points, order + 2)
-        right_points = direction[owners]
-        zero_points = np.zeros_like(points)
-        zero_weights = np.zeros(end - begin, dtype=np.float64)
-
-        for atom in range(natom):
-            for axis in range(3):
-                left = np.zeros((natom, 3), dtype=np.float64)
-                left[atom, axis] = 1.0
-                left_points = left[owners]
-                partition = partition_mixed_response(
-                    points,
-                    centers,
-                    left_point_motion=left_points,
-                    left_center_motion=left,
-                    right_point_motion=right_points,
-                    right_center_motion=direction,
-                    iterations=grid_spec.partition_iterations,
-                    coincident_tolerance=grid_spec.coincident_tolerance,
-                )
-                if partition.branch_identity != response.grid_branch_identity:
-                    raise ValueError("RKS HVP changed the qualified Becke branch")
-                selected = (np.arange(end - begin), owners)
-                _validate_partition_provenance(
-                    atomic, weights, partition.weights[selected]
-                )
-                left_weight = atomic * partition.left[selected]
-                right_weight = atomic * partition.right[selected]
-                mixed_weight = atomic * partition.mixed[selected]
-
-                ao = contraction.mixed_geometry_directional(
-                    jets,
-                    state.density[0],
-                    weights,
-                    ao_atoms=ao_atoms,
-                    left_centers=left,
-                    left_points=zero_points,
-                    left_weights=zero_weights,
-                    right_centers=direction,
-                    right_points=right_points,
-                    right_weights=right_weight,
-                    mixed_weights=zero_weights,
-                    delta_density=delta_density,
-                )
-                point = contraction.mixed_geometry_directional(
-                    jets,
-                    state.density[0],
-                    weights,
-                    ao_atoms=ao_atoms,
-                    left_centers=zero_centers,
-                    left_points=left_points,
-                    left_weights=zero_weights,
-                    right_centers=direction,
-                    right_points=right_points,
-                    right_weights=right_weight,
-                    mixed_weights=zero_weights,
-                    delta_density=delta_density,
-                )
-                weight = contraction.mixed_geometry_directional(
-                    jets,
-                    state.density[0],
-                    weights,
-                    ao_atoms=ao_atoms,
-                    left_centers=zero_centers,
-                    left_points=zero_points,
-                    left_weights=left_weight,
-                    right_centers=direction,
-                    right_points=right_points,
-                    right_weights=right_weight,
-                    mixed_weights=mixed_weight,
-                    delta_density=delta_density,
-                )
-                result["xc_ao"][atom, axis] += ao.total
-                result["xc_grid"][atom, axis] += point.total
-                result["xc_weight"][atom, axis] += weight.total
-
-    operator.validate_current()
-    if not all(np.isfinite(value).all() for value in result.values()):
-        raise FloatingPointError("nonfinite semilocal XC HVP source")
-    return {name: immutable(value) for name, value in result.items()}
+    """Reuse the native SCF point model and the already solved CPKS direction."""
+    if not np.array_equal(response.direction, direction):
+        raise ValueError("XC HVP direction does not match the solved response")
+    sources = native_rks_xc_hvp_components(operator, response)
+    return {name: getattr(sources, name) for name in ("xc_ao", "xc_grid", "xc_weight")}
 
 
 def rks_hvp(
@@ -374,8 +250,8 @@ def rks_hvp(
 
     The MethodIR-derived plan owns source inventory and integral weights. Exactly
     one real nuclear CPKS solve supplies D'(v)/W'(v). Integral contributors use
-    generated first/second derivative providers, while XC contributors use the
-    generated feature Hessian plus analytic AO/grid/Becke mixed directions.
+    generated first/second derivative providers, while XC contributors reuse the
+    native SCF point response plus analytic AO/grid/Becke mixed directions.
     """
     if not isinstance(operator, NativeRKSResponse):
         raise TypeError("RKS molecular HVP requires NativeRKSResponse")
@@ -423,12 +299,12 @@ def rks_hvp(
             "native-rks-plan-weighted-coulomb-v1",
             integral("coulomb"),
         ),
-        StationaryHVPContributor("xc_ao", "native-rks-xc-mixed-ao-v1", xc("xc_ao")),
+        StationaryHVPContributor("xc_ao", "native-rks-xc-scf-domain-ao-v2", xc("xc_ao")),
         StationaryHVPContributor(
-            "xc_grid", "native-rks-xc-mixed-grid-v1", xc("xc_grid")
+            "xc_grid", "native-rks-xc-scf-domain-grid-v2", xc("xc_grid")
         ),
         StationaryHVPContributor(
-            "xc_weight", "native-rks-xc-mixed-weight-v1", xc("xc_weight")
+            "xc_weight", "native-rks-xc-scf-domain-weight-v2", xc("xc_weight")
         ),
         StationaryHVPContributor(
             "overlap_pulay",
@@ -484,10 +360,10 @@ def rks_hvp(
             "response_iterations": directional.response.solve_result.iterations,
             "response_residual_norm": directional.response.solve_result.residual_norm,
             "integral_providers": deepcopy(provider_diagnostics),
-            "xc_second_order": "generated-feature-hessian/analytic-grid-mixed",
+            "xc_second_order": "native-scf-point-response/analytic-grid-mixed",
             "full_molecular_hessian_allocated": False,
             "full_ao_rank_four_weights": False,
-            "execution": "bounded-cpu-native-rks-hvp-v1",
+            "execution": "bounded-cpu-native-rks-hvp-v2",
         }
     )
     return RKSHVPResult(

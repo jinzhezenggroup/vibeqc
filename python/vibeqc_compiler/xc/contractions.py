@@ -969,6 +969,165 @@ class ExternalPointContraction(ContractionProgram):
         """Return the canonical feature-major scalar ABI for an external provider."""
         return _pack(self.spec, features)
 
+    def mixed_geometry_from_rks_cartesian_coefficients(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        left_centers: typing.Any,
+        left_points: typing.Any,
+        left_weights: typing.Any,
+        right_centers: typing.Any,
+        right_points: typing.Any,
+        right_weights: typing.Any,
+        mixed_weights: typing.Any,
+        energy: typing.Any,
+        rho_coefficients: typing.Any,
+        directional_rho_coefficients: typing.Any,
+        gradient_coefficients: typing.Any = None,
+        directional_gradient_coefficients: typing.Any = None,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Contract an RKS XC Hessian bilinear from provider-owned point data.
+
+        The external point owner supplies the SCF-domain energy, Cartesian
+        density/gradient potential coefficients, and their derivative along the
+        right geometry+density direction. AO/grid mixed motion stays under the
+        shared contraction owner. This is sufficient for an LDA/GGA Hessian
+        bilinear; no third XC derivative or scalar-Graph substitution is needed.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("mixed RKS geometry requires a geometry contraction")
+        if self.spec.spin != "unpolarized":
+            raise UnsupportedXC("external mixed RKS geometry requires unpolarized XC")
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("external mixed RKS geometry supports LDA/GGA only")
+
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 2))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError("mixed RKS geometry requires AO jets through order+2")
+        npoint, nao = raw_jets.shape[1:]
+        weights = immutable(weights, shape=(npoint,))
+        left_points = immutable(left_points, shape=(npoint, 3))
+        right_points = immutable(right_points, shape=(npoint, 3))
+        left_weights = immutable(left_weights, shape=(npoint,))
+        right_weights = immutable(right_weights, shape=(npoint,))
+        mixed_weights = immutable(mixed_weights, shape=(npoint,))
+        left_centers = immutable(left_centers)
+        right_centers = immutable(right_centers, shape=left_centers.shape)
+        if left_centers.ndim != 2 or left_centers.shape[1:] != (3,):
+            raise ValueError("mixed RKS geometry requires [atom,3] center directions")
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(left_centers))
+        ):
+            raise ValueError("mixed RKS geometry requires one valid atom per AO")
+
+        d = spin_densities(density, nao)
+        if not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("mixed RKS geometry requires an equal-spin density")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "mixed RKS geometry requires an equal-spin density direction"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        extended_count = len(jet_indices(ingredient_order + 1))
+        left_extended = directional_ao_jets(
+            raw_jets,
+            ingredient_order + 1,
+            ao_atoms=atoms,
+            point_motion=left_points,
+            center_motion=left_centers,
+        )
+        left_jets = left_extended[:base_count]
+        right_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        mixed_jets = directional_ao_jets(
+            left_extended[:extended_count],
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        base_jets = raw_jets[:base_count]
+        features = self.features(base_jets, d)
+        left, right, mixed = _geometry_feature_directions(
+            features,
+            base_jets,
+            left_jets,
+            right_jets,
+            mixed_jets,
+            d,
+            dd,
+            family,
+        )
+
+        energy = immutable(energy, shape=(npoint,))
+        rho = immutable(rho_coefficients, shape=(npoint,))
+        drho = immutable(directional_rho_coefficients, shape=(npoint,))
+        arrays = [energy, rho, drho]
+        gradient = dgradient = None
+        if family == "gga":
+            gradient = immutable(gradient_coefficients, shape=(npoint, 3))
+            dgradient = immutable(directional_gradient_coefficients, shape=(npoint, 3))
+            arrays.extend((gradient, dgradient))
+        elif (
+            gradient_coefficients is not None
+            or directional_gradient_coefficients is not None
+        ):
+            raise ValueError("LDA mixed RKS geometry does not consume gradients")
+        if not all(np.isfinite(value).all() for value in arrays):
+            raise ValueError("nonfinite external RKS XC coefficient")
+
+        def feature_energy(
+            value: typing.Any,
+            rho_value: np.ndarray,
+            gradient_value: np.ndarray | None,
+        ) -> np.ndarray:
+            result = rho_value * value["rho"].sum(axis=0)
+            if family == "gga":
+                assert gradient_value is not None
+                result = result + np.sum(
+                    gradient_value * value["gradient"].sum(axis=0), axis=1
+                )
+            return result
+
+        left_energy = feature_energy(left, rho, gradient)
+        right_energy = feature_energy(right, rho, gradient)
+        mixed_feature_energy = feature_energy(mixed, rho, gradient)
+        mixed_feature_energy += feature_energy(left, drho, dgradient)
+
+        result = XCMixedDirectional(
+            mixed_measure=float(mixed_weights @ energy),
+            left_measure_right_feature=float(left_weights @ right_energy),
+            right_measure_left_feature=float(right_weights @ left_energy),
+            feature_mixed=float(weights @ mixed_feature_energy),
+        )
+        if not np.isfinite(result.total):
+            raise ArithmeticError("nonfinite external mixed RKS XC contraction")
+        return result
+
     def geometry_from_feature_rows(
         self,
         jets: typing.Any,
