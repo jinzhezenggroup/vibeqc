@@ -27,9 +27,12 @@ def test_required_merge_group_jobs_use_the_liveness_gate() -> None:
         assert "active=false" in gate
         for job in jobs:
             section = _job(source, job)
-            assert "needs: merge_queue_liveness" in section
-            assert "if: needs.merge_queue_liveness.outputs.active != 'false'" in section
-            assert "always()" not in section
+            job_header = section.split("\n    steps:\n", 1)[0]
+            assert "needs: merge_queue_liveness" in job_header
+            assert (
+                "if: needs.merge_queue_liveness.outputs.active != 'false'" in job_header
+            )
+            assert "always()" not in job_header
 
 
 def test_merge_group_concurrency_cancels_superseded_same_ref_runs() -> None:
