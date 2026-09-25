@@ -101,6 +101,10 @@ SHARED_INFRASTRUCTURE = {
         "owner": "solver/diis_history.hpp",
         "required_consumer_areas": ("cc", "scf"),
     },
+    "dense_linear": {
+        "owner": "solver/dense_linear.hpp",
+        "required_consumer_areas": ("cc", "scf"),
+    },
     "electronic_reference": {
         "owner": "core/electronic_reference.hpp",
         "required_consumer_areas": ("dft", "scf"),

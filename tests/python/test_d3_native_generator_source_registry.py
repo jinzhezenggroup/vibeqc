@@ -1,115 +1,64 @@
-"""Common source-registry ownership for the production D3 table generator."""
+"""Remote source ownership and checked-in compact D3 production data."""
 
 from __future__ import annotations
 
-import copy
 import hashlib
-import sys
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.d3_data import load_d3_production_data
 
 from tools import source_registry
-from tools.vibeqc_d3 import generate_native_data
-
-_SOURCE_OWNERS = {
-    "gfn1_d3.json": "xtbloom-gfn1-d3",
-    "gfn1.json": "xtbloom-gfn1-parameters",
-}
+from tools.vibeqc_d3 import generate_compact_data, generate_native_data
 
 
-def test_d3_native_generator_reads_exact_sources_from_common_registry() -> None:
+def test_checked_in_compact_d3_product_matches_registry() -> None:
     registry = source_registry._load(source_registry.REGISTRY)
-    texts, revision = generate_native_data._registered_source_texts()
-    implementation = Path(generate_native_data.__file__).read_text(encoding="utf-8")
-
+    product = registry["products"][generate_compact_data.PRODUCT_ID]
+    output = generate_compact_data.DEFAULT_OUTPUT
     assert (
-        set(texts) == generate_native_data._REQUIRED_SOURCE_FILES == set(_SOURCE_OWNERS)
+        hashlib.sha256(output.read_bytes()).hexdigest()
+        == product["outputs"]["data/parameters/d3_production.bin"]
     )
-    for name, text in texts.items():
-        source = registry["sources"][_SOURCE_OWNERS[name]]
-        assert source["revision"] == revision
-        assert (
-            hashlib.sha256(text.encode("utf-8")).hexdigest()
-            == source["files"][name]["sha256"]
-        )
-        assert source["revision"] not in implementation
+    data = load_d3_production_data(output)
+    assert (
+        data.table_sha256
+        == "9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e"
+    )
+    assert (
+        data.radii_sha256
+        == "92b32fada844a337204b84f2d961473bad5737240765eb8d0727a62827de5111"
+    )
+    assert len(data.pairs) == 3741
+    assert len(data.c6) == 28455
+
+
+def test_native_d3_generator_consumes_only_compact_product() -> None:
+    implementation = Path(generate_native_data.__file__).read_text(encoding="utf-8")
+    assert "source_registry" not in implementation
     assert "upstream/xtbloom/" not in implementation
+    assert "d3_production.bin" in implementation
+    rendered = generate_native_data.render()
+    assert "kReferenceC6" in rendered
+    assert "kPairs" in rendered
 
 
-def test_d3_native_generator_writes_requested_product(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    output = tmp_path / "generated" / "d3_data.hpp"
-    monkeypatch.setattr(
-        sys, "argv", ["generate_native_data.py", "--output", str(output)]
-    )
-
-    generate_native_data.main()
-
-    assert output.read_text(encoding="utf-8") == generate_native_data.render()
-
-
-@pytest.mark.parametrize("source_id", _SOURCE_OWNERS.values())
-def test_d3_native_generator_fails_closed_when_registered_source_is_missing(
-    monkeypatch: pytest.MonkeyPatch, source_id: str
-) -> None:
+def test_compact_generator_binds_remote_sources() -> None:
     registry = source_registry._load(source_registry.REGISTRY)
-    broken = copy.deepcopy(registry)
-    broken["sources"].pop(source_id)
-    monkeypatch.setattr(source_registry, "_load", lambda _path: broken)
+    product = registry["products"][generate_compact_data.PRODUCT_ID]
+    assert product["inputs"] == list(generate_compact_data.PRODUCT_INPUTS)
+    for source_id in generate_compact_data.PRODUCT_INPUTS:
+        source = registry["sources"][source_id]
+        assert source["kind"] == "remote-file-set"
+        assert "local_root" not in source
 
-    with pytest.raises(source_registry.SourceRegistryError, match="missing"):
-        generate_native_data._registered_source_texts()
 
-
-def test_d3_native_generator_rejects_split_upstream_revisions(
+def test_compact_generator_propagates_registry_integrity_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    registry = source_registry._load(source_registry.REGISTRY)
-    broken = copy.deepcopy(registry)
-    broken["sources"][generate_native_data._MODEL_SOURCE_ID]["revision"] = "deadbeef"
-    monkeypatch.setattr(source_registry, "_load", lambda _path: broken)
+    def fail(*_args: object, **_kwargs: object) -> dict[str, str]:
+        raise source_registry.SourceRegistryError("injected digest mismatch")
 
-    def read(source_id: str, _source: object) -> dict[str, str]:
-        return {
-            name: "{}" for name, owner in _SOURCE_OWNERS.items() if owner == source_id
-        }
-
-    monkeypatch.setattr(source_registry, "read_source_texts", read)
-    with pytest.raises(
-        source_registry.SourceRegistryError, match="same upstream revision"
-    ):
-        generate_native_data._registered_source_texts()
-
-
-@pytest.mark.parametrize("missing", _SOURCE_OWNERS)
-def test_d3_native_generator_requires_both_registered_input_files(
-    monkeypatch: pytest.MonkeyPatch, missing: str
-) -> None:
-    def read(source_id: str, _source: object) -> dict[str, str]:
-        return {
-            name: "{}"
-            for name, owner in _SOURCE_OWNERS.items()
-            if owner == source_id and name != missing
-        }
-
-    monkeypatch.setattr(source_registry, "read_source_texts", read)
-    with pytest.raises(source_registry.SourceRegistryError, match="required files"):
-        generate_native_data._registered_source_texts()
-
-
-@pytest.mark.parametrize("failed_owner", _SOURCE_OWNERS.values())
-def test_d3_native_generator_propagates_registered_integrity_failure(
-    monkeypatch: pytest.MonkeyPatch, failed_owner: str
-) -> None:
-    def read(source_id: str, _source: object) -> dict[str, str]:
-        if source_id == failed_owner:
-            raise source_registry.SourceRegistryError("injected digest mismatch")
-        return {
-            name: "{}" for name, owner in _SOURCE_OWNERS.items() if owner == source_id
-        }
-
-    monkeypatch.setattr(source_registry, "read_source_texts", read)
+    monkeypatch.setattr(source_registry, "read_source_texts", fail)
     with pytest.raises(source_registry.SourceRegistryError, match="digest mismatch"):
-        generate_native_data._registered_source_texts()
+        generate_compact_data.render()

@@ -29,11 +29,11 @@ def test_admitted_point_consumers(tmp_path: Path) -> None:
         + emit_native_xc_point_dispatch()
         + r"""
 int main() {
-  CudaXcPointLauncher entries[5]{};
+  CudaXcPointLauncher entries[6]{};
   unsigned count = 0;
-  for (unsigned f = 0; f < 5; ++f) {
+  for (unsigned f = 0; f < 6; ++f) {
     for (unsigned r = 0; r < 2; ++r) {
-      const bool admitted = r ? f < 2 : f < 3;
+      const bool admitted = r ? f < 2 : (f < 3 || f == 4);
       try {
         auto launch = resolve_point_launcher(f, r);
         if (!admitted || !launch) return 1;
@@ -47,7 +47,7 @@ int main() {
       }
     }
   }
-  if (count != 5) return 5;
+  if (count != 6) return 5;
   try {
     resolve_point_launcher(std::numeric_limits<std::uint32_t>::max(), false);
     return 6;

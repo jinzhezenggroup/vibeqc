@@ -57,6 +57,43 @@ def test_r2scan_cpu_cuda_wrappers_share_expression_identity(tmp_path: Path) -> N
     assert "__device__ inline R2scanDeviceValue r2scan_device(" in cuda
 
 
+def test_wb97mv_cpu_cuda_wrappers_share_expression_identity(tmp_path: Path) -> None:
+    cpu_path = tmp_path / "xc_cpu.hpp"
+    cuda_path = tmp_path / "wb97mv_device.cuh"
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(ROOT / "tools/generate_xc_cpu.py"),
+            "--output",
+            str(cpu_path),
+        ],
+        check=True,
+        cwd=tmp_path,
+    )
+    subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            str(ROOT / "tools/generate_xc_wb97mv_cuda.py"),
+            "--output",
+            str(cuda_path),
+        ],
+        check=True,
+        cwd=tmp_path,
+    )
+    cpu, cuda = cpu_path.read_text(), cuda_path.read_text()
+
+    assert _identity(cpu, "kWb97mvSemilocalExpressionIdentity") == _identity(
+        cuda, "kWb97mvDeviceExpressionIdentity"
+    )
+    assert "inline Wb97mvPolarizedValue wb97mv_polarized(" in cpu
+    assert "__device__ inline Wb97mvDeviceValue wb97mv_device(" in cuda
+    assert "kWb97mvDeviceDensityThreshold" in cuda
+    assert "kWb97mvDeviceSigmaThreshold" in cuda
+    assert "kWb97mvDeviceTauThreshold" in cuda
+
+
 @pytest.mark.parametrize(
     ("name", "features"),
     (("PBE", 5), ("SCAN", 7), ("R2SCAN", 7)),
@@ -137,6 +174,7 @@ def test_bulk_tau_mgga_stays_explicitly_blocked_until_feature_projection_lands()
 def test_generator_tools_do_not_reown_semilocal_differentiation() -> None:
     cpu = (ROOT / "tools/generate_xc_cpu.py").read_text()
     cuda = (ROOT / "tools/generate_xc_r2scan_cuda.py").read_text()
+    wb97mv_cuda = (ROOT / "tools/generate_xc_wb97mv_cuda.py").read_text()
 
     assert "def build_roots(" not in cpu
     assert "from vibeqc_compiler.xc.semilocal_codegen import" in cpu
@@ -144,6 +182,10 @@ def test_generator_tools_do_not_reown_semilocal_differentiation() -> None:
     assert "build_roots" not in cuda
     assert "tools.generate_xc_cpu" not in cuda
     assert "emit_r2scan_program" in cuda
+    assert "ScalarCEmitter" not in wb97mv_cuda
+    assert "build_roots" not in wb97mv_cuda
+    assert "tools.generate_xc_cpu" not in wb97mv_cuda
+    assert "emit_polarized_semilocal" in wb97mv_cuda
 
 
 def test_unpolarized_spec_is_not_a_native_polarized_abi() -> None:

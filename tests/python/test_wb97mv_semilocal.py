@@ -17,6 +17,7 @@ from vibeqc_compiler.method import (
 )
 from vibeqc_compiler.xc.cuda_emit import XCSchedule, emit_cuda
 from vibeqc_compiler.xc.program import build_program
+from vibeqc_compiler.xc.semilocal_codegen import build_roots
 from vibeqc_compiler.xc.spec import FunctionalSpec, UnsupportedXC
 from vibeqc_compiler.xc.wb97mv_maple import (
     energy_expression as production_energy_expression,
@@ -207,6 +208,37 @@ def test_wb97mv_production_maple_preserves_interior_and_large_a_tail() -> None:
     tail_value, _ = _production_first_derivatives(spec, tail)
     assert np.all(np.isfinite(tail_value))
     assert any(node.operation == "select_le" for node in graph.nodes)
+
+
+@pytest.mark.parametrize("swap_spins", (False, True))
+def test_wb97mv_empty_spin_work_point_matches_independent_quad_oracle(
+    swap_spins: bool,
+) -> None:
+    """Guard the Stoll cancellation at a captured, floored CUDA work point.
+
+    Reference values come from the original pinned Libxc 7.0.0 Maple C
+    evaluated in libquadmath (tools/qualify_wb97mv_tail.py, point 11113).
+    """
+    spec = resolve_method("WB97M-V", spin="polarized").primitives[0].functional
+    point = (
+        0.03283928360431155,
+        1e-13,
+        0.0036369242335227894,
+        0.0,
+        2.1544346900318932e-35,
+        0.02265827832448588,
+        1e-20,
+    )
+    if swap_spins:
+        point = (point[1], point[0], point[4], point[3], point[2], point[6], point[5])
+    minority = 0 if swap_spins else 1
+    kinetic = 5 if swap_spins else 6
+    graph, roots, _ = build_roots(spec, ((), (minority,), (kinetic,)), production=True)
+    variables = dict(zip(spec.features, point, strict=True))
+    actual = tuple(graph.evaluate(root, variables) for root in roots)
+    expected = (-0.005195313331621749, -0.14552535052309215, -42743.40113431417)
+    np.testing.assert_allclose(actual[:2], expected[:2], rtol=3e-11, atol=3e-12)
+    np.testing.assert_allclose(actual[2], expected[2], rtol=2e-12)
 
 
 def test_wb97mv_generated_cuda_uses_same_tau_expression_graph() -> None:

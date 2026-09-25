@@ -6,10 +6,10 @@
 
 #include "generated_scf_array_native.hpp"
 #include "runtime/resource_usage.hpp"
+#include "solver/dense_linear.hpp"
 
 namespace vibeqc::scf::solver {
 using reference::index;
-using reference::solve_linear;
 Diis::Diis(std::size_t capacity, bool normalize_metric)
     : history_(capacity), normalize_metric_(normalize_metric) {}
 
@@ -42,7 +42,7 @@ Matrix Diis::update(const Matrix& fock, const Matrix& residual) {
         for (std::size_t j = 0; j < m; ++j) b[index(i, j, dim)] /= scale;
     }
     std::vector<double> coefficients;
-    if (!solve_linear(std::move(b), std::move(rhs), coefficients, dim)) {
+    if (!::vibeqc::solver::solve_dense_linear(std::move(b), std::move(rhs), coefficients)) {
       if (!normalize_metric_ || m <= 2) return fock;
       // Keep the most recent physical states when old, nearly dependent errors
       // make the augmented solve singular. Both spin blocks retire together.

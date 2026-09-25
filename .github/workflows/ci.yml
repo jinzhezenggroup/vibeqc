@@ -6,6 +6,9 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Run required CI checks against GitHub's synthetic merge-queue commit.
+  merge_group:
+    types: [checks_requested]
   # Keep the exhaustive water Cartesian MP2-gradient finite difference off the
   # ordinary feedback path while still exercising it regularly.
   schedule:
@@ -60,7 +63,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cpu-v2-${{ matrix.compiler }}-
             ccache-cpu-${{ matrix.compiler }}-
@@ -71,8 +74,8 @@ jobs:
           CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
           # Instrument only the GCC leg so the existing compiler matrix still
           # exercises an ordinary non-instrumented Clang build.
-          COVERAGE_COMPILE_FLAGS: ${{ matrix.compiler == 'gcc' && '-fprofile-arcs -ftest-coverage -fprofile-update=atomic' || '' }}
-          COVERAGE_LINK_FLAGS: ${{ matrix.compiler == 'gcc' && '--coverage' || '' }}
+          COVERAGE_COMPILE_FLAGS: ${{ matrix.compiler == 'gcc' && github.event_name != 'merge_group' && '-fprofile-arcs -ftest-coverage -fprofile-update=atomic' || '' }}
+          COVERAGE_LINK_FLAGS: ${{ matrix.compiler == 'gcc' && github.event_name != 'merge_group' && '--coverage' || '' }}
         run: >-
           cmake -S . -B build -G Ninja
           -DVIBEQC_ENABLE_CUDA=OFF
@@ -107,14 +110,14 @@ jobs:
           path: .artifacts/cuda-ownership-current.json
           retention-days: 14
       - name: Collect C++ coverage
-        if: matrix.compiler == 'gcc'
+        if: matrix.compiler == 'gcc' && github.event_name != 'merge_group'
         run: |
           sudo apt-get install --yes lcov
           lcov --capture --directory build --output-file coverage-cpp.info \
             --exclude '/usr/*' --exclude '*/tests/*' \
             --ignore-errors mismatch,unused
       - name: Preserve C++ coverage for the upload-only job
-        if: matrix.compiler == 'gcc'
+        if: matrix.compiler == 'gcc' && github.event_name != 'merge_group'
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -125,6 +128,9 @@ jobs:
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 25
     env:
       CUDACXX: /usr/local/cuda-12.9/bin/nvcc
@@ -175,12 +181,95 @@ jobs:
             "/tmp/ccache-${CCACHE_VERSION}-linux-x86_64-glibc/ccache" \
             /usr/local/bin/ccache
           ccache --version
+      # GitHub scopes actions/cache entries created by merge_group to the
+      # temporary gh-readonly-queue ref, so they cannot seed later queue runs.
+      # Publish a bounded snapshot from trusted master pushes and consume it
+      # cross-run here; keep actions/cache as a fallback for rollout/reruns.
+      - name: Locate trusted master CUDA ccache snapshot
+        id: trusted_cuda_ccache
+        if: github.event_name == 'merge_group' || (github.event_name == 'push' && github.ref == 'refs/heads/master')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          run_id=""
+          created_at=""
+          publish=false
+          artifact_name='cuda-ccache-master-12.9-sm120-v2'
+
+          # Trust only artifacts produced by successful pushes of this CI workflow
+          # on master. A repository-wide artifact-name lookup is insufficient
+          # provenance because another ref/workflow could publish the same name.
+          runs_payload=""
+          if runs_payload="$(gh api --method GET \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+              -f branch=master -f event=push -f status=success -f per_page=20)"; then
+            while read -r candidate_run_id; do
+              [[ -n "$candidate_run_id" ]] || continue
+              artifacts_payload=""
+              if ! artifacts_payload="$(gh api --method GET \
+                  "/repos/${GITHUB_REPOSITORY}/actions/runs/${candidate_run_id}/artifacts" \
+                  -f name="${artifact_name}" -f per_page=10)"; then
+                echo "::warning::Unable to inspect CUDA ccache artifacts for trusted run ${candidate_run_id}; trying the next run."
+                continue
+              fi
+              candidate_created_at="$(jq -r \
+                '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .created_at // empty' \
+                <<<"${artifacts_payload}")"
+              if [[ -n "$candidate_created_at" ]]; then
+                run_id="$candidate_run_id"
+                created_at="$candidate_created_at"
+                break
+              fi
+            done < <(
+              jq -r '
+                .workflow_runs[]
+                | select(
+                    .event == "push"
+                    and .head_branch == "master"
+                    and .conclusion == "success"
+                  )
+                | .id
+              ' <<<"${runs_payload}"
+            )
+          else
+            echo "::warning::Unable to discover trusted master CUDA ccache snapshot; falling back to actions/cache or a cold compile."
+          fi
+
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/master" ]]; then
+            if [[ -z "$created_at" ]]; then
+              # Discovery is acceleration-only. Try to heal a missing/unavailable
+              # snapshot, but publication below is also explicitly non-gating.
+              publish=true
+            else
+              created_epoch="$(date -u -d "$created_at" +%s)"
+              now_epoch="$(date -u +%s)"
+              if (( now_epoch - created_epoch >= 10800 )); then
+                publish=true
+              fi
+            fi
+          fi
+
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+      - name: Restore trusted master CUDA ccache snapshot
+        id: trusted_cuda_ccache_download
+        if: github.event_name == 'merge_group' && steps.trusted_cuda_ccache.outputs.run_id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: cuda-ccache-master-12.9-sm120-v2
+          path: ~/.cache/ccache
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.trusted_cuda_ccache.outputs.run_id }}
       - name: Restore CUDA ccache
         id: cuda_ccache
+        if: github.event_name != 'merge_group' || steps.trusted_cuda_ccache_download.outcome != 'success'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cuda-v2-12.9-sm120-
             ccache-cuda-12.9-sm120-
@@ -200,11 +289,10 @@ jobs:
         run: >-
           cmake --build --preset cuda-release-sm120
           --target vibeqc_cuda_runtime_tests --parallel 3
-      # Persist the expensive native compile cache here so the next queued
-      # master run can reuse it without waiting for the cache action's
-      # end-of-job post step.
+      # Merge-group refs are ephemeral, so saving actions/cache there cannot
+      # accelerate the next queue group. Stable PR/master refs still benefit.
       - name: Save CUDA ccache immediately after build
-        if: steps.cuda_ccache.outputs.cache-hit != 'true'
+        if: github.event_name != 'merge_group' && steps.cuda_ccache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
@@ -218,14 +306,32 @@ jobs:
             -R '^vibeqc_(fock_build|scf_proposal)_tests$' --output-on-failure
       - name: Show CUDA ccache statistics
         run: ccache --show-stats
+      - name: Publish trusted master CUDA ccache snapshot
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.trusted_cuda_ccache.outputs.publish == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: cuda-ccache-master-12.9-sm120-v2
+          path: ~/.cache/ccache
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 1
       # This is release resource evidence. The production compile-only step
       # above uses fast compilation and cannot supply acceptance resources.
       - name: Restore f-shell release objects
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/f-shell-cache
-          key: f-shell-cuda-12.9-sm120-${{ hashFiles('include/**', 'python/vibeqc_compiler/**', 'tools/**') }}
+          # The validator compiles source emitted by the common/integral compiler
+          # stack. Do not invalidate this multi-minute release cache for unrelated
+          # XC, method, tensor, include, or tooling changes on merge-group commits.
+          # The validator's inner cache still keys generated bytes, toolchain,
+          # target, schedule, and generator ABI, so a stale restored snapshot is
+          # safe and recompiles only identities that actually changed.
+          key: f-shell-cuda-v2-12.9-sm120-${{ hashFiles('python/vibeqc_compiler/common/**', 'python/vibeqc_compiler/integral/**', 'tools/validate_f_shells.py', 'tools/vibeqc_validation/f_shell.py') }}
           restore-keys: |
+            f-shell-cuda-v2-12.9-sm120-
             f-shell-cuda-12.9-sm120-
       - name: Compile five representative f classes with release resources
         run: >-
@@ -327,7 +433,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-python-v2-
             ccache-python-
@@ -374,6 +480,22 @@ jobs:
           # Exercise the public autograd contracts on every PR without pulling
           # CUDA wheels into this CPU job.
           uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
+      # Core and compiler-heavy reference tests need the external oracle inputs.
+      # Builds and installed production paths above remain completely offline.
+      - name: Cache pinned GFN1 and D3 reference inputs
+        if: matrix.shard == 'core' || matrix.shard == 'compiler-heavy'
+        id: gfn1_reference_sources
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/vibeqc-sources/xtbloom-gfn1-parameters
+            .cache/vibeqc-sources/xtbloom-gfn1-d3
+          key: gfn1-reference-inputs-v1-${{ hashFiles('upstream/manifest.json', 'tools/source_registry.py') }}
+      - name: Prepare pinned GFN1 and D3 reference inputs
+        if: (matrix.shard == 'core' || matrix.shard == 'compiler-heavy') && steps.gfn1_reference_sources.outputs.cache-hit != 'true'
+        run: |
+          .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-parameters
+          .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-d3
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Run Python tests with coverage
@@ -381,6 +503,10 @@ jobs:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
         run: |
           extra_args=()
+          coverage_args=()
+          if [[ "${{ github.event_name }}" != "merge_group" ]]; then
+            coverage_args+=(--cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml")
+          fi
           if [[ "${{ github.event_name }}" != "schedule" && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
             # Keep exhaustive qualification matrices on scheduled/manual CI.
             # Routine PR/master CI retains one complete CPU HF endpoint for
@@ -456,13 +582,15 @@ jobs:
               'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
               --deselect
               'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
-              # The coarse-grid WB97M-V water finite-difference replay is
-              # qualification-scale on hosted runners (~9.5 minutes in the
-              # latest successful PR run). The higher-grid water RKS case and
-              # both open-shell UKS cases remain on routine CI; keep this
-              # redundant grid-shape replay for scheduled/manual qualification.
+              # The coarse-grid WB97M-V water and OH-doublet finite-difference
+              # replays are qualification-scale on hosted runners (~9.5 and
+              # ~12.8 minutes in recent successful runs). Keep the higher-grid
+              # RKS/UKS cases on routine CI and move these redundant coarse-grid
+              # replays to scheduled/manual qualification.
               --deselect
               'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape0-water-rks]'
+              --deselect
+              'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape0-oh-doublet-uks]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
@@ -664,7 +792,7 @@ jobs:
           .venv/bin/python -m pytest "${test_targets[@]}" -q \
             -n 4 --dist="$dist_mode" --durations=25 \
             --junitxml=".artifacts/pytest-${{ matrix.shard }}.xml" \
-            --cov --cov-report="xml:coverage-python-${{ matrix.shard }}.xml" \
+            "${coverage_args[@]}" \
             "${extra_args[@]}"
       - name: Preserve transient benchmark/debug artifacts
         if: always()
@@ -676,6 +804,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - name: Preserve Python coverage for the upload-only job
+        if: github.event_name != 'merge_group'
         continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -686,10 +815,13 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    # PRs run only the bounded representative tier; master/manual runs the full
-    # endpoint set. Scheduled qualification already has expensive numerical
-    # coverage and does not need duplicate performance instrumentation.
-    if: github.event_name != 'schedule'
+    # PRs always run two representative endpoints and add targeted coverage when
+    # changed paths touch advanced DFT machinery; master/manual runs the full
+    # endpoint set. Merge-group CI revalidates correctness only: performance was
+    # already measured on the PR and should not consume queue runner capacity.
+    # Scheduled qualification already has expensive numerical coverage and does
+    # not need duplicate performance instrumentation.
+    if: github.event_name != 'schedule' && github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -704,6 +836,21 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Select change-aware PR CodSpeed coverage
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          changed_files="$(
+            git diff --name-only --no-renames \
+              "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" --
+          )"
+          extra_cases=""
+          if grep -Eq \
+            '^(benchmarks/test_cpu_codspeed\.py$|\.github/workflows/ci\.yml$|src/dft/|src/scf/|src/methods/|src/integrals/|include/vibeqc([./])|python/vibeqc/|python/vibeqc_compiler/(dft|xc)/|python/vibeqc_compiler/(method|integral)/|manifests/|upstream/libxc/|tools/(generate_xc|libxc))' \
+            <<<"$changed_files"; then
+            extra_cases="wb97mv"
+          fi
+          echo "VIBEQC_CODSPEED_EXTRA_CASES=${extra_cases}" >> "$GITHUB_ENV"
       - name: Install uv and Python 3.11
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
         with:
@@ -724,7 +871,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cpu-benchmark-v2-
             ccache-cpu-benchmark-
@@ -752,15 +899,15 @@ jobs:
         with:
           # Hosted GitHub runners are noisy for wall-clock gating; simulation
           # provides the stable PR/master regression signal without Macro Runner quota.
-          # VIBEQC_CODSPEED_TIER keeps PR instrumentation to two representative
-          # endpoints while master/manual records the broader trend set.
+          # PRs keep two always-on endpoints and can add a targeted advanced-DFT
+          # endpoint through VIBEQC_CODSPEED_EXTRA_CASES.
           mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 
   upload-coverage:
     timeout-minutes: 8
     needs: [cpu, python]
-    if: ${{ !cancelled() && needs.cpu.result == 'success' && needs.python.result == 'success' }}
+    if: ${{ github.event_name != 'merge_group' && !cancelled() && needs.cpu.result == 'success' && needs.python.result == 'success' }}
     # Coverage reporting is observability rather than a correctness gate. A
     # Codecov or artifact-service outage must not fail the workflow.
     continue-on-error: true

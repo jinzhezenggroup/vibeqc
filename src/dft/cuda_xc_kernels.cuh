@@ -30,8 +30,6 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
              int* error, const double* direction, double* delta_features) {
   const I matrices = l.spins * l.nao * l.nao;
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
-  cuda_check(cudaMemsetAsync(totals, 0, 3 * sizeof(double), stream));
-  cuda_check(cudaMemsetAsync(potential, 0, matrices * sizeof(double), stream));
   validate_density<<<blocks(matrices, 128), 128, 0, stream>>>(density, l.nao, l.spins, error);
   cuda_check(cudaGetLastError());
   if (direction) {
@@ -73,8 +71,10 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     // reuse those same panels for weighted symmetric potential assembly. The
     // tiled schedule also folds the deterministic three-channel total reduction
     // into this launch; its scalar fallback retains the historical reducer.
+    // The first point tile initializes its outputs directly; later tiles accumulate.
     scheduled_potential(stream, ao, coefficients, weights + begin, l.nao, count, l.spins,
-                        l.feature_terms, l.work_jets, work, point_totals, potential, totals, error);
+                        l.feature_terms, l.work_jets, work, point_totals, potential, totals,
+                        begin != 0, error);
     cuda_check(cudaGetLastError());
   }
 }

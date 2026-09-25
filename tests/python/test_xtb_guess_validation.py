@@ -14,6 +14,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+# Pin the CI-selected native library at collection time. Other tests may exercise
+# benchmark CLIs that mutate VIBEQC_LIBRARY inside the worker process.
+_SESSION_VIBEQC_LIBRARY = os.environ.get("VIBEQC_LIBRARY")
 
 BRIDGE = r"""
 #include <algorithm>
@@ -85,31 +88,41 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
   }
 
   auto started = Clock::now();
-  methods::detail::Gfn2RuntimeBridge runtime(methods::detail::Gfn2RuntimeBackend::kCpu, 0);
-  methods::detail::Gfn2RuntimeRequest request;
-  request.atomic_numbers = atomic_numbers;
-  request.positions = positions;
-  request.charge = system.charge;
-  request.multiplicity = system.multiplicity;
-  request.compute_atomic_charges = true;
-  request.maximum_iterations = 100;
-  request.mixer_history = 8;
-  request.energy_tolerance = 1.0e-10;
-  request.charge_tolerance = 1.0e-8;
-  const auto xtb = runtime.execute(request);
-  const double xtb_elapsed = seconds(started);
-  if (xtb.status != methods::detail::Gfn2RuntimeStatus::kSuccess || !xtb.converged)
-    throw std::runtime_error("GFN2 charge seed did not converge: " + xtb.detail);
-
-  started = Clock::now();
   const auto& ints = plan.one_electron();
   const auto x = scf::reference::symmetric_orthogonalizer(ints.overlap, ints.nbf);
+  double xtb_elapsed = 0.0;
+  bool provider_used = false;
+  scf::initial_guess::RestrictedInitialDensityProvider provider =
+      [&](const scf::initial_guess::RestrictedInitialDensityRequest& context)
+      -> std::optional<scf::reference::Matrix> {
+    provider_used = true;
+    const auto xtb_started = Clock::now();
+    methods::detail::Gfn2RuntimeBridge runtime(methods::detail::Gfn2RuntimeBackend::kCpu, 0);
+    methods::detail::Gfn2RuntimeRequest request;
+    request.atomic_numbers = atomic_numbers;
+    request.positions = positions;
+    request.charge = system.charge;
+    request.multiplicity = system.multiplicity;
+    request.compute_atomic_charges = true;
+    request.maximum_iterations = 100;
+    request.mixer_history = 8;
+    request.energy_tolerance = 1.0e-10;
+    request.charge_tolerance = 1.0e-8;
+    const auto xtb = runtime.execute(request);
+    xtb_elapsed = seconds(xtb_started);
+    if (xtb.status != methods::detail::Gfn2RuntimeStatus::kSuccess || !xtb.converged)
+      throw std::runtime_error("GFN2 charge seed did not converge: " + xtb.detail);
+    return scf::initial_guess::charge_guided_lowdin_density(
+        context.system, context.integrals, context.orthogonalizer, context.core_density,
+        xtb.atomic_charges);
+  };
   std::optional<scf::reference::EigenResult> frame;
-  const auto core = scf::initial_guess::prepare_initial_density(
-      system, ints, x, static_cast<std::size_t>(system.electron_count / 2), nullptr, frame);
-  const auto seed = scf::initial_guess::charge_guided_lowdin_density(
-      system, ints, x, core, xtb.atomic_charges);
-  const double seed_elapsed = seconds(started);
+  const auto seed = scf::initial_guess::prepare_initial_density(
+      system, ints, x, static_cast<std::size_t>(system.electron_count / 2), nullptr, frame,
+      scf::initial_guess::InitialOrbitalRequest::ColdDensityOnly, {}, provider);
+  const double seed_elapsed = seconds(started) - xtb_elapsed;
+  if (!provider_used || frame)
+    throw std::runtime_error("GFN2 charge provider was rejected and fell back to the core seed");
 
   started = Clock::now();
   auto result = scf::run_pbe_rks(plan, basis, grid, options, &seed);
@@ -179,7 +192,7 @@ def _compile_bridge(tmp_path: Path) -> Path:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
-    library = Path(os.environ["VIBEQC_LIBRARY"]).resolve()
+    library = Path(_SESSION_VIBEQC_LIBRARY or os.environ["VIBEQC_LIBRARY"]).resolve()
     source = tmp_path / "xtb_guess_validation.cpp"
     source.write_text(BRIDGE)
     executable = tmp_path / "xtb_guess_validation"

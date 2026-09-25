@@ -85,7 +85,7 @@ wheel.py-api = "py3"
 "manifests/libxc/7.0.0" = "vibeqc_compiler/assets/manifests/libxc/7.0.0"
 "upstream/libxc/7.0.0" = "vibeqc_compiler/assets/upstream/libxc/7.0.0"
 "upstream/libxc-fulltree/7.0.0" = "vibeqc_compiler/assets/upstream/libxc-fulltree/7.0.0"
-"upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3" = "vibeqc_compiler/assets/upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+"data/parameters/d3_production.bin" = "vibeqc_compiler/assets/data/parameters/d3_production.bin"
 
 [tool.scikit-build.cmake.define]
 VIBEQC_ENABLE_CUDA = { env = "VIBEQC_ENABLE_CUDA", default = "ON" }

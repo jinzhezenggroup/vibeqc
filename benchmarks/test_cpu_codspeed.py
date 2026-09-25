@@ -28,6 +28,7 @@ class _Case:
     basis: str
     atoms: tuple[Atom, ...]
     pr_fast: bool = False
+    pr_extra: str | None = None
     grid_shape: tuple[int, int, int] | None = None
 
 
@@ -55,6 +56,7 @@ _CASES = (
         "wb97m-v-rks",
         "sto-3g",
         _WATER,
+        pr_extra="wb97mv",
         grid_shape=(12, 4, 8),
     ),
 )
@@ -65,7 +67,20 @@ def _active_cases() -> tuple[_Case, ...]:
     if tier == "full":
         return _CASES
     if tier == "pr":
-        return tuple(case for case in _CASES if case.pr_fast)
+        extras = frozenset(
+            item.strip()
+            for item in os.environ.get("VIBEQC_CODSPEED_EXTRA_CASES", "").split(",")
+            if item.strip()
+        )
+        supported = frozenset(
+            case.pr_extra for case in _CASES if case.pr_extra is not None
+        )
+        unknown = extras - supported
+        if unknown:
+            raise RuntimeError(
+                "unknown VIBEQC_CODSPEED_EXTRA_CASES=" + ",".join(sorted(unknown))
+            )
+        return tuple(case for case in _CASES if case.pr_fast or case.pr_extra in extras)
     raise RuntimeError(f"unknown VIBEQC_CODSPEED_TIER={tier!r}")
 
 

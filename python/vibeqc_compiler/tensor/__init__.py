@@ -9,6 +9,8 @@ complete solver.
 from importlib import import_module
 from typing import TYPE_CHECKING
 
+from vibeqc_compiler.common.layout import DenseLayout
+
 from .ad_program import (
     GENERATION_VERSION,
     JVPProgram,
@@ -49,7 +51,6 @@ from .ir import (
     sqrt,
     transpose,
 )
-from .layout import DenseLayout
 from .optimize import PASSES, optimize, rewrite
 from .precision import (
     CastBoundary,
@@ -68,6 +69,7 @@ from .scf import (
     diis_gram_program,
     energy_program,
     fock_composition_program,
+    hf_force_program,
     weighted_density_program,
 )
 from .types import Index, IndexSpace, Symmetry, TensorSpec
@@ -167,6 +169,7 @@ __all__ = [
     "exp",
     "fock_composition_program",
     "gather",
+    "hf_force_program",
     "indexed_gather",
     "input_tensor",
     "jvp",
