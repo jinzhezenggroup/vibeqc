@@ -13,6 +13,8 @@ from functools import cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+import numpy as np
+from vibeqc_compiler.common.array_graph import evaluate_array_graph
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.xc import libxc_bulk
 from vibeqc_compiler.xc.libxc_maple import MapleImportError
@@ -172,6 +174,78 @@ def _work_policy(record: dict[str, Any]) -> LibxcWorkPolicy:
         needs_tau=needs_tau,
         enforce_fhc="XC_FLAGS_ENFORCE_FHC" in flags,
     )
+
+
+def _production_component_values(
+    program: libxc_bulk.BulkProgram,
+    policy: LibxcWorkPolicy,
+    values: tuple[float, ...],
+) -> np.ndarray:
+    """Evaluate one component through pinned Libxc work_gga/work_mgga semantics."""
+
+    if program.spin != "polarized":
+        raise MapleImportError(
+            "split-hybrid production qualification currently requires polarized Graphs"
+        )
+    physical = dict(zip(program.features, values, strict=True))
+    total_density = physical["rho_a"] + physical["rho_b"]
+    roots = program.roots(1)
+    if total_density < policy.density_threshold:
+        return np.zeros(len(roots), dtype=np.float64)
+
+    work = dict(physical)
+    work["rho_a"] = max(policy.density_threshold, physical["rho_a"])
+    work["rho_b"] = max(policy.density_threshold, physical["rho_b"])
+    sigma_floor = policy.sigma_threshold * policy.sigma_threshold
+    work["sigma_aa"] = max(sigma_floor, physical["sigma_aa"])
+    work["sigma_bb"] = max(sigma_floor, physical["sigma_bb"])
+    if policy.needs_tau:
+        work["tau_a"] = max(policy.tau_threshold, physical["tau_a"])
+        work["tau_b"] = max(policy.tau_threshold, physical["tau_b"])
+        if policy.enforce_fhc:
+            work["sigma_aa"] = min(
+                work["sigma_aa"], 8.0 * work["rho_a"] * work["tau_a"]
+            )
+            work["sigma_bb"] = min(
+                work["sigma_bb"], 8.0 * work["rho_b"] * work["tau_b"]
+            )
+    sigma_average = 0.5 * (work["sigma_aa"] + work["sigma_bb"])
+    work["sigma_ab"] = max(
+        -sigma_average, min(sigma_average, physical["sigma_ab"])
+    )
+    raw = np.asarray(
+        evaluate_array_graph(program.graph, roots, work), dtype=np.float64
+    )
+    if raw.shape != (len(roots),) or not np.isfinite(raw).all():
+        raise MapleImportError(
+            f"nonfinite split-hybrid production Graph output: {program.name}"
+        )
+    work_density = work["rho_a"] + work["rho_b"]
+    raw[0] *= total_density / work_density
+    return raw
+
+
+def evaluate_split_global_hybrid_production(
+    identifier: str, values: tuple[float, ...]
+) -> tuple[tuple[str, ...], np.ndarray]:
+    """Evaluate production semilocal E/vxc for qualification and oracle tests.
+
+    Exact exchange is intentionally absent.  The returned feature order is the
+    bulk physical coordinate order, including laplacian entries when present.
+    """
+
+    method = build_split_global_hybrid(identifier, spin="polarized")
+    if method.exchange.features != method.correlation.features:
+        raise MapleImportError("split-hybrid production feature mismatch")
+    if not isinstance(values, tuple) or len(values) != len(method.exchange.features):
+        raise ValueError("split-hybrid production values do not match feature layout")
+    exchange = _production_component_values(
+        method.exchange, method.exchange_policy, values
+    )
+    correlation = _production_component_values(
+        method.correlation, method.correlation_policy, values
+    )
+    return method.exchange.features, exchange + correlation
 
 
 def build_split_global_hybrid(
