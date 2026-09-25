@@ -19,9 +19,9 @@ SPEC.loader.exec_module(CHECKER)
 
 def _inventory() -> dict[str, object]:
     return json.loads(
-        (REPOSITORY_ROOT / "manifests/maintenance/direct_jk_tuning_inventory.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            REPOSITORY_ROOT / "manifests/maintenance/direct_jk_tuning_inventory.json"
+        ).read_text(encoding="utf-8")
     )
 
 
