@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from .libxc_production_domain import ProductionDomainProfile
+if TYPE_CHECKING:
+    from .libxc_production_domain import ProductionDomainProfile
 
 Vector3 = tuple[float, float, float]
 CONTROL_PREFIX = "control/"
