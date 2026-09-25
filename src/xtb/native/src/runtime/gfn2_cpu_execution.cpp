@@ -1557,8 +1557,18 @@ vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
 
+    if (system.wavefunction_layout.electron_counts.size() != 1u ||
+        system.wavefunction_layout.alpha_electron_counts.size() != 1u ||
+        system.wavefunction_layout.beta_electron_counts.size() != 1u) {
+      error = "GFN2 orbital snapshot is missing valence electron metadata";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+
     Gfn2CpuOrbitalSnapshot candidate;
     candidate.orbital_count = orbital_count64;
+    candidate.electron_count = system.wavefunction_layout.electron_counts[0];
+    candidate.alpha_electron_count = system.wavefunction_layout.alpha_electron_counts[0];
+    candidate.beta_electron_count = system.wavefunction_layout.beta_electron_counts[0];
     candidate.shell_orbital_offsets = system.basis.shell_orbital_offsets;
     candidate.shell_primitive_offsets = system.basis.shell_primitive_offsets;
     candidate.shell_to_atom = system.basis.shell_to_atom;
@@ -1571,8 +1581,10 @@ vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
     candidate.occupations.assign(system.wavefunction.occupations,
                                  system.wavefunction.occupations + 2u * n);
 
-    if (!all_finite(candidate.overlap) || !all_finite(candidate.coefficients) ||
-        !all_finite(candidate.occupations)) {
+    if (!std::isfinite(candidate.electron_count) ||
+        !std::isfinite(candidate.alpha_electron_count) ||
+        !std::isfinite(candidate.beta_electron_count) || !all_finite(candidate.overlap) ||
+        !all_finite(candidate.coefficients) || !all_finite(candidate.occupations)) {
       error = "GFN2 converged orbital snapshot contains NaN or infinity";
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
