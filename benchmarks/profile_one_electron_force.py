@@ -35,9 +35,6 @@ def main() -> None:
     parser.add_argument(
         "--mode",
         choices=(
-            "scalar",
-            "reference",
-            "cooperative",
             "generated_thread",
             "generated_shell_warp",
             "generated_nucleus_cooperative",
@@ -76,17 +73,8 @@ def main() -> None:
                 "coordinate-wise DF response was retired; use an archived source checkout"
             )
 
-    if args.mode == "scalar":
-        parser.error(
-            "the scalar one-electron force path was retired by #357; "
-            "use an archived pre-#357 checkout to reproduce it"
-        )
-    generated = args.mode.startswith("generated_")
-    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = (
-        "generated" if generated else "reference"
-    )
-    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"] = (
-        args.mode.removeprefix("generated_") if generated else "thread"
+    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"] = args.mode.removeprefix(
+        "generated_"
     )
 
     # The profiler needs only the runtime API, avoiding a second array runtime

@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_force_order3.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Native Direct-HF total-order-three queue/screening/density/atom-scatter adapter around compiler-generated Weighted IntegralIR force helpers; it retains no independent ERI recurrence or hand-derived coordinate-response formula.",
+  "reason": "Order-three force adapters consume generated PPPS/DSPS/DPSS/FSSS roots but retain handwritten Gaussian geometry, prefactors, decay derivatives and coordinate recovery. Generated scalar roots do not retire this operator-specific scientific composition.",
   "regions": []
 }
