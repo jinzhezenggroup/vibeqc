@@ -22,7 +22,11 @@ def _dot(left: Vector3, right: Vector3) -> float:
 
 
 def _scale(vector: Vector3, factor: float) -> Vector3:
-    return tuple(factor * value for value in vector)  # type: ignore[return-value]
+    return (
+        factor * vector[0],
+        factor * vector[1],
+        factor * vector[2],
+    )
 
 
 def _tau_uniform(rho: float, *, polarized: bool) -> float:
@@ -61,8 +65,12 @@ class ProductionDomainCase:
         ]
         if any(not math.isfinite(value) for value in values):
             raise ValueError("production-domain physical cases must remain finite")
-        if any(value < 0.0 for value in self.rho) or any(value < 0.0 for value in self.tau):
-            raise ValueError("production-domain rho/tau coordinates must be nonnegative")
+        if any(value < 0.0 for value in self.rho) or any(
+            value < 0.0 for value in self.tau
+        ):
+            raise ValueError(
+                "production-domain rho/tau coordinates must be nonnegative"
+            )
 
     def runtime_features(
         self, profile: ProductionDomainProfile
@@ -107,9 +115,9 @@ class ProductionDomainCase:
 
 
 def _polarized_case(case_id: str) -> ProductionDomainCase:
-    rho = (0.47, 0.31)
-    gradient = ((0.20, -0.08, 0.05), (-0.07, 0.14, 0.03))
-    tau = (0.32, 0.21)
+    rho: tuple[float, ...] = (0.47, 0.31)
+    gradient: tuple[Vector3, ...] = ((0.20, -0.08, 0.05), (-0.07, 0.14, 0.03))
+    tau: tuple[float, ...] = (0.32, 0.21)
 
     if case_id == "density/vacuum":
         rho, gradient, tau = (0.0, 0.0), ((0.0, 0.0, 0.0),) * 2, (0.0, 0.0)
@@ -122,13 +130,17 @@ def _polarized_case(case_id: str) -> ProductionDomainCase:
         gradient = ((0.16, -0.04, 0.06), (0.16, -0.04, 0.06))
         tau = (0.26, 0.26)
     elif case_id == "spin/zero-a":
-        rho, gradient, tau = (0.0, 0.62), ((0.0, 0.0, 0.0), gradient[1]), (0.0, 0.36)
+        rho = (0.0, 0.62)
+        gradient = ((0.0, 0.0, 0.0), gradient[1])
+        tau = (0.0, 0.36)
     elif case_id == "spin/zero-b":
-        rho, gradient, tau = (0.62, 0.0), (gradient[0], (0.0, 0.0, 0.0)), (0.36, 0.0)
+        rho = (0.62, 0.0)
+        gradient = (gradient[0], (0.0, 0.0, 0.0))
+        tau = (0.36, 0.0)
     elif case_id == "spin/near-zero-a":
         tiny = 0.62e-14
         rho = (tiny, 0.62)
-        gradient = ((_scale((0.2, -0.08, 0.05), 1.0e-14)), gradient[1])
+        gradient = (_scale((0.2, -0.08, 0.05), 1.0e-14), gradient[1])
         tau = (0.7 * tiny, 0.36)
     elif case_id == "spin/near-zero-b":
         tiny = 0.62e-14
@@ -136,9 +148,13 @@ def _polarized_case(case_id: str) -> ProductionDomainCase:
         gradient = (gradient[0], _scale((-0.07, 0.14, 0.03), 1.0e-14))
         tau = (0.36, 0.7 * tiny)
     elif case_id == "spin/full-a":
-        rho, gradient, tau = (0.8, 0.0), ((0.24, -0.06, 0.08), (0.0, 0.0, 0.0)), (0.48, 0.0)
+        rho = (0.8, 0.0)
+        gradient = ((0.24, -0.06, 0.08), (0.0, 0.0, 0.0))
+        tau = (0.48, 0.0)
     elif case_id == "spin/full-b":
-        rho, gradient, tau = (0.0, 0.8), ((0.0, 0.0, 0.0), (-0.24, 0.06, -0.08)), (0.0, 0.48)
+        rho = (0.0, 0.8)
+        gradient = ((0.0, 0.0, 0.0), (-0.24, 0.06, -0.08))
+        tau = (0.0, 0.48)
     elif case_id == "sigma/zero":
         gradient = ((0.0, 0.0, 0.0),) * 2
     elif case_id == "sigma/near-zero":
@@ -168,9 +184,9 @@ def _polarized_case(case_id: str) -> ProductionDomainCase:
 
 
 def _unpolarized_case(case_id: str) -> ProductionDomainCase:
-    rho = (0.78,)
-    gradient = ((0.13, -0.11, 0.07),)
-    tau = (0.48,)
+    rho: tuple[float, ...] = (0.78,)
+    gradient: tuple[Vector3, ...] = ((0.13, -0.11, 0.07),)
+    tau: tuple[float, ...] = (0.48,)
 
     if case_id == "density/vacuum":
         rho, gradient, tau = (0.0,), ((0.0, 0.0, 0.0),), (0.0,)
