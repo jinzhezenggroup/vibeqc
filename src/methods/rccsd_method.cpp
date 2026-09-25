@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <limits>
 #include <mutex>
 #include <numeric>
@@ -24,8 +23,6 @@
 
 namespace vibeqc::methods::detail {
 namespace {
-
-bool present(const vibeqc_method_descriptor& d, std::size_t end) { return d.struct_size >= end; }
 
 std::vector<std::size_t> range(std::size_t begin, std::size_t end) {
   std::vector<std::size_t> result(end - begin);
@@ -73,29 +70,13 @@ vibeqc_status item_exception_status() {
 cc::SolverOptions cc_options(const vibeqc_method_descriptor& d, std::size_t budget) {
   cc::SolverOptions options;
   options.max_bytes = budget;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_max_iterations) +
-                     sizeof(d.ccsd_max_iterations)) &&
-      d.ccsd_max_iterations)
-    options.max_iterations = d.ccsd_max_iterations;
-  if (present(d,
-              offsetof(vibeqc_method_descriptor, ccsd_diis_history) + sizeof(d.ccsd_diis_history)))
-    options.diis_size = d.ccsd_diis_history;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_energy_tolerance) +
-                     sizeof(d.ccsd_energy_tolerance)) &&
-      d.ccsd_energy_tolerance)
-    options.energy_tolerance = d.ccsd_energy_tolerance;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_residual_tolerance) +
-                     sizeof(d.ccsd_residual_tolerance)) &&
-      d.ccsd_residual_tolerance)
-    options.residual_tolerance = d.ccsd_residual_tolerance;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_denominator_threshold) +
-                     sizeof(d.ccsd_denominator_threshold)) &&
-      d.ccsd_denominator_threshold)
-    options.denominator_threshold = d.ccsd_denominator_threshold;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_damping) + sizeof(d.ccsd_damping)))
-    options.damping = d.ccsd_damping;
-  if (present(d, offsetof(vibeqc_method_descriptor, ccsd_level_shift) + sizeof(d.ccsd_level_shift)))
-    options.level_shift = d.ccsd_level_shift;
+  if (d.ccsd_max_iterations) options.max_iterations = d.ccsd_max_iterations;
+  options.diis_size = d.ccsd_diis_history;
+  if (d.ccsd_energy_tolerance) options.energy_tolerance = d.ccsd_energy_tolerance;
+  if (d.ccsd_residual_tolerance) options.residual_tolerance = d.ccsd_residual_tolerance;
+  if (d.ccsd_denominator_threshold) options.denominator_threshold = d.ccsd_denominator_threshold;
+  options.damping = d.ccsd_damping;
+  options.level_shift = d.ccsd_level_shift;
   cc::validate_options(options);
   return options;
 }
@@ -120,16 +101,11 @@ scf::ScfOptions reference_options(const vibeqc_method_descriptor& d, std::size_t
 }
 
 std::size_t correlation_budget(const vibeqc_method_descriptor& d) {
-  std::size_t budget = 256ULL << 20;
-  if (present(d, offsetof(vibeqc_method_descriptor, correlation_memory_budget_bytes) +
-                     sizeof(d.correlation_memory_budget_bytes))) {
-    const auto requested = d.correlation_memory_budget_bytes;
-    if (requested > static_cast<std::uint64_t>(INT64_MAX) ||
-        requested > std::numeric_limits<std::size_t>::max())
-      throw std::invalid_argument("RCCSD budget exceeds numeric capacity");
-    if (requested) budget = static_cast<std::size_t>(requested);
-  }
-  return budget;
+  const auto requested = d.correlation_memory_budget_bytes;
+  if (requested > static_cast<std::uint64_t>(INT64_MAX) ||
+      requested > std::numeric_limits<std::size_t>::max())
+    throw std::invalid_argument("RCCSD budget exceeds numeric capacity");
+  return requested ? static_cast<std::size_t>(requested) : 256ULL << 20;
 }
 
 void validate_descriptor(const vibeqc_method_descriptor& d,
@@ -137,25 +113,17 @@ void validate_descriptor(const vibeqc_method_descriptor& d,
   if (d.screening_tolerance != 0)
     throw std::invalid_argument(
         "canonical RCCSD requires unscreened integrals (screening_tolerance=0)");
-  if (present(d, offsetof(vibeqc_method_descriptor, density_fitting_mode) +
-                     sizeof(d.density_fitting_mode)) &&
-      d.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
+  if (d.density_fitting_mode != VIBEQC_DENSITY_FITTING_NONE)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "RCCSD density-fitted reference/integrals are not implemented");
-  if (present(d, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis) +
-                     sizeof(d.density_fitting_auxiliary_basis)) &&
-      d.density_fitting_auxiliary_basis)
+  if (d.density_fitting_auxiliary_basis)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "conventional RCCSD does not accept an auxiliary basis");
-  if (present(d, offsetof(vibeqc_method_descriptor, precision_mode) + sizeof(d.precision_mode))) {
-    if (d.precision_mode != VIBEQC_PRECISION_FP64 && d.precision_mode != VIBEQC_PRECISION_AUTO)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
-    if (d.precision_mode != VIBEQC_PRECISION_FP64)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "RCCSD requires FP64 precision");
-  }
-  if (present(d,
-              offsetof(vibeqc_method_descriptor, ccsd_frozen_core) + sizeof(d.ccsd_frozen_core)) &&
-      d.ccsd_frozen_core != 0)
+  if (d.precision_mode != VIBEQC_PRECISION_FP64 && d.precision_mode != VIBEQC_PRECISION_AUTO)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
+  if (d.precision_mode != VIBEQC_PRECISION_FP64)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "RCCSD requires FP64 precision");
+  if (d.ccsd_frozen_core != 0)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "RCCSD frozen-core references are not implemented");
   if (execution.backend() != VIBEQC_BACKEND_CPU_REFERENCE &&
@@ -433,8 +401,7 @@ class RccsdPreparedBatch final : public PreparedBatch {
         execution_(context),
         context_(&context),
         systems_(std::move(systems)) {
-    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
-    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_ = descriptor;
     descriptor_.density_fitting_auxiliary_basis = nullptr;
     descriptor_.ks_options = nullptr;
     owners_.reserve(systems_.size());

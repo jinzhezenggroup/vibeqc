@@ -121,11 +121,6 @@ const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
   }
 }
 
-bool field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
-                   std::size_t width) noexcept {
-  return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
-}
-
 std::optional<double> semilocal_component(const vibeqc_ks_options& input,
                                           std::string_view component_id) {
   std::optional<double> value;
@@ -221,9 +216,7 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   const auto legacy_plan = legacy_ks_execution_plan(descriptor.method);
   const vibeqc_ks_options* ks_input = nullptr;
   SemilocalAdmission semilocal;
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
-                    sizeof(descriptor.ks_options)) &&
-      descriptor.ks_options) {
+  if (descriptor.ks_options) {
     ks_input = descriptor.ks_options;
     if (ks_input->struct_size < sizeof(vibeqc_ks_options) ||
         ks_input->abi_version != VIBEQC_ABI_VERSION)
@@ -248,48 +241,34 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     semilocal = {execution_plan.semilocal_family, 1.0, 1.0};
   }
 
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
-                    sizeof(descriptor.density_fitting_mode))) {
-    const auto mode = descriptor.density_fitting_mode;
-    if (mode != VIBEQC_DENSITY_FITTING_NONE && mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
-        mode != VIBEQC_DENSITY_FITTING_CUDA && mode != VIBEQC_DENSITY_FITTING_AUTO)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown density-fitting execution mode");
-    options.density_fitting_mode = mode;
-    if ((mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE && backend != VIBEQC_BACKEND_CPU_REFERENCE) ||
-        (mode == VIBEQC_DENSITY_FITTING_CUDA && backend != VIBEQC_BACKEND_CUDA))
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
-                        "DFT density-fitting backend must match the calculation backend");
-  }
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
-                    sizeof(descriptor.density_fitting_auxiliary_basis)) &&
-      descriptor.density_fitting_auxiliary_basis != nullptr &&
+  const auto mode = descriptor.density_fitting_mode;
+  if (mode != VIBEQC_DENSITY_FITTING_NONE && mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
+      mode != VIBEQC_DENSITY_FITTING_CUDA && mode != VIBEQC_DENSITY_FITTING_AUTO)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown density-fitting execution mode");
+  options.density_fitting_mode = mode;
+  if ((mode == VIBEQC_DENSITY_FITTING_CPU_REFERENCE && backend != VIBEQC_BACKEND_CPU_REFERENCE) ||
+      (mode == VIBEQC_DENSITY_FITTING_CUDA && backend != VIBEQC_BACKEND_CUDA))
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
+                      "DFT density-fitting backend must match the calculation backend");
+  if (descriptor.density_fitting_auxiliary_basis != nullptr &&
       options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
                       "DFT auxiliary basis requires density fitting");
-  if (field_present(descriptor,
-                    offsetof(vibeqc_method_descriptor, density_fitting_relative_threshold),
-                    sizeof(descriptor.density_fitting_relative_threshold)) &&
-      descriptor.density_fitting_relative_threshold != 0.0)
+  if (descriptor.density_fitting_relative_threshold != 0.0)
     options.density_fitting_relative_threshold = descriptor.density_fitting_relative_threshold;
-  if (field_present(descriptor,
-                    offsetof(vibeqc_method_descriptor, density_fitting_memory_budget_bytes),
-                    sizeof(descriptor.density_fitting_memory_budget_bytes)))
-    options.density_fitting_memory_budget_bytes = descriptor.density_fitting_memory_budget_bytes;
-  if (field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
-                    sizeof(descriptor.precision_mode))) {
-    if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
-        descriptor.precision_mode != VIBEQC_PRECISION_AUTO)
-      throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "DFT automatic precision currently requires CUDA");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.d4_correction)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
-    if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
-        execution_plan.semilocal_family == kKsSemilocalR2scan)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
-    options.precision_mode = descriptor.precision_mode;
-  }
+  options.density_fitting_memory_budget_bytes = descriptor.density_fitting_memory_budget_bytes;
+  if (descriptor.precision_mode != VIBEQC_PRECISION_FP64 &&
+      descriptor.precision_mode != VIBEQC_PRECISION_AUTO)
+    throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
+  if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && backend != VIBEQC_BACKEND_CUDA)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                      "DFT automatic precision currently requires CUDA");
+  if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.d4_correction)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
+  if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
+      execution_plan.semilocal_family == kKsSemilocalR2scan)
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
+  options.precision_mode = descriptor.precision_mode;
 
   scf::FockBuildSpec fock;
   fock.spin =
@@ -434,18 +413,14 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   return options;
 }
 
-/** Copy every pointee before constructing scientific owners. Legacy method
- * descriptors that omit KS options retain the original v1 unit-radius GridSpec
- * and 256-point tiles strictly as an ABI/reference compatibility boundary.
- * Modern production callers pass the compiler-resolved GridSpec v2 here; C++
- * does not own a second production profile/default policy. */
+/** Copy every pointee before constructing scientific owners. The public entry
+ * has already admitted a complete current descriptor. A null KS-options pointer
+ * retains the existing default GridSpec and tile values; production callers pass
+ * the compiler-resolved grid, not a second native production profile. */
 dft::GridSpec ks_grid_options(const vibeqc_method_descriptor& descriptor, scf::ScfOptions& options,
                               const NativeKsExecutionPlan& execution_plan) {
   dft::GridSpec grid;
-  if (!field_present(descriptor, offsetof(vibeqc_method_descriptor, ks_options),
-                     sizeof(descriptor.ks_options)) ||
-      !descriptor.ks_options)
-    return grid;
+  if (!descriptor.ks_options) return grid;
   const auto& input = *descriptor.ks_options;
   if (input.struct_size < sizeof(vibeqc_ks_options) || input.abi_version != VIBEQC_ABI_VERSION)
     throw MethodError(VIBEQC_STATUS_ABI_MISMATCH, "KS execution-plan ABI mismatch");
@@ -554,11 +529,7 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
  * owner copies the result, so descriptor/temporary system lifetimes never leak
  * into a prepared calculation. An omitted auxiliary basis means the orbital basis. */
 std::optional<core::System> ks_auxiliary_template(const vibeqc_method_descriptor& descriptor) {
-  if (!field_present(descriptor,
-                     offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
-                     sizeof(descriptor.density_fitting_auxiliary_basis)) ||
-      !descriptor.density_fitting_auxiliary_basis)
-    return std::nullopt;
+  if (!descriptor.density_fitting_auxiliary_basis) return std::nullopt;
   return descriptor.density_fitting_auxiliary_basis->data;
 }
 

@@ -140,6 +140,9 @@ int main() {
     return vibeqc::xtb::detail::validate_molecular_request(batch, options, error);
   };
   assert(validate() == VIBEQC_XTB_STATUS_SUCCESS);
+  options.flags |= VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES;
+  assert(validate() == VIBEQC_XTB_STATUS_SUCCESS);
+  options.flags &= ~VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES;
   const auto original = batch;
   const vibeqc_xtb_const_buffer_t poison{reinterpret_cast<void*>(1), 8,
                                        VIBEQC_XTB_MEMORY_HOST, 0};
