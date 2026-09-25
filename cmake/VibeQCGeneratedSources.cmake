@@ -239,6 +239,24 @@ macro(vibeqc_register_host_generated_sources target)
       vibeqc_gfn2_cuda PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
   endif()
 
+  set(VIBEQC_GFN2_SCC_FREE_ENERGY_NATIVE_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_scc_free_energy_native.hpp")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_gfn2_scc_free_energy_codegen
+    TARGET ${target}
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gfn2_scc_free_energy_native.py"
+    OUTPUTS "${VIBEQC_GFN2_SCC_FREE_ENERGY_NATIVE_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/gfn2_scc_free_energy_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+    ARGS --output "${VIBEQC_GFN2_SCC_FREE_ENERGY_NATIVE_HEADER}"
+    COMMENT "Generating compiler-owned GFN2 SCC internal/free-energy composition")
+  if(TARGET vibeqc_gfn2_cuda)
+    add_dependencies(vibeqc_gfn2_cuda vibeqc_gfn2_scc_free_energy_codegen)
+    target_include_directories(
+      vibeqc_gfn2_cuda PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  endif()
+
   set(VIBEQC_GFN2_ELECTRONIC_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_electronic_native.hpp")
   vibeqc_register_generated_sources(
