@@ -153,6 +153,8 @@ def _basis_record(
         "cartesian_nbf": checked_bytes(cartesian),
         "shells": len(shells),
         "primitives": sum(len(s.primitives) for s in shells),
+        "shell_angular": tuple(int(s.angular_momentum) for s in shells),
+        "shell_primitive_counts": tuple(len(s.primitives) for s in shells),
         "maximum_angular": max(s.angular_momentum for s in shells),
         "representation": mode,
         "basis_hash": metadata["mathematical_identity"],
@@ -266,37 +268,84 @@ def _cpu_item_inventory(item: typing.Any, diis_history: typing.Any) -> typing.An
 
 
 def _small_cuda_item_inventory(
-    library: typing.Any, item: typing.Any, diis_history: typing.Any
+    library: typing.Any,
+    item: typing.Any,
+    diis_history: typing.Any,
+    precision: typing.Any,
+    energy_tolerance: typing.Any,
+    screening_tolerance: typing.Any,
 ) -> typing.Any:
-    """Query the existing small native route without constructing a CUDA plan.
+    """Query the topology-aware small CUDA HF energy/force envelope.
 
-    Its exact numeric arena needs no external eigensolver workspace. Packed
-    host metadata and staging use a conservative LP64 capacity allowance; the
-    opaque plan's real C++ object size comes from the same native contract.
+    v2 receives shell angular momenta and contraction lengths so the native
+    query can reproduce the quartet-direct force layout without constructing a
+    CUDA plan or selecting a device profile. The aggregate v1 query is not a
+    safe fallback because it cannot represent the force-route topology.
     """
-    query = getattr(library, "vibeqc_resource_small_hf_cuda_v1", None)
+    query = getattr(library, "vibeqc_resource_small_hf_cuda_v2", None)
     if query is None:
         raise NotImplementedError(
-            "native library has no CUDA HF allocation inventory v1"
+            "native library has no topology-aware CUDA HF allocation inventory v2"
         )
     orbital = item["orbital"]
-    args = (
+    scalar_args = (
         orbital["nbf"],
         orbital["cartesian_nbf"],
         item["atoms"],
         orbital["shells"],
-        orbital["primitives"],
         diis_history,
         item["spins"],
     )
-    if any(value > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1 for value in args):
+    if any(
+        value > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1
+        for value in scalar_args
+    ):
         raise ValueError("CUDA resource shape exceeds this host's size_t ABI")
-    query.argtypes = [ctypes.c_size_t] * 7 + [ctypes.POINTER(ctypes.c_uint64)]
+    angular_values = tuple(orbital["shell_angular"])
+    primitive_values = tuple(orbital["shell_primitive_counts"])
+    if (
+        len(angular_values) != orbital["shells"]
+        or len(primitive_values) != orbital["shells"]
+    ):
+        raise ValueError("CUDA resource shell topology is incomplete")
+    angular = (ctypes.c_uint8 * len(angular_values))(*angular_values)
+    primitive_counts = (ctypes.c_size_t * len(primitive_values))(*primitive_values)
+    query.argtypes = [
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.POINTER(ctypes.c_uint8),
+        ctypes.POINTER(ctypes.c_size_t),
+        ctypes.c_size_t,
+        ctypes.c_size_t,
+        ctypes.c_int,
+        ctypes.c_double,
+        ctypes.c_double,
+        ctypes.POINTER(ctypes.c_uint64),
+        ctypes.c_size_t,
+    ]
     query.restype = ctypes.c_int
     output = (ctypes.c_uint64 * 2)()
-    if query(*args, output):
+    status = query(
+        orbital["nbf"],
+        orbital["cartesian_nbf"],
+        item["atoms"],
+        orbital["shells"],
+        angular,
+        primitive_counts,
+        diis_history,
+        item["spins"],
+        0 if precision == "fp64" else 1,
+        energy_tolerance,
+        screening_tolerance,
+        output,
+        2,
+    )
+    if status:
         raise NotImplementedError(
-            "CUDA HF inventory v1 requires a CUDA library, <=16 public AOs and DIIS history <=64"
+            "CUDA HF inventory v2 requires an ordinary <=16-AO s/p/d/f topology "
+            "with the small native eigensolver"
         )
     pairs = orbital["shells"] * (orbital["shells"] + 1) // 2
     # Four copies allow vector growth, HostBatch staging, the cached topology
@@ -530,7 +579,14 @@ def hf_resource_request(
                 ),
             )
             inventories = tuple(
-                _small_cuda_item_inventory(library, item, diis_history)
+                _small_cuda_item_inventory(
+                    library,
+                    item,
+                    diis_history,
+                    precision,
+                    energy_tolerance,
+                    screening_tolerance,
+                )
                 for item in items
             )
             if fitted:

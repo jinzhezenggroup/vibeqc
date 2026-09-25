@@ -1,9 +1,13 @@
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <limits>
 #include <new>
 #include <optional>
 #include <stdexcept>
 #include <vector>
 
+#include "generated_direct_resident_psss_schedule.cuh"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/cuda/direct_constants.hpp"
@@ -56,6 +60,175 @@ bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std:
                    false, false, false, false, layout))
     return false;
   arena_bytes = layout.bytes;
+  plan_object_bytes = sizeof(CudaRhfBucketPlan);
+  return true;
+}
+
+bool small_hf_cuda_resource_layout_v2(
+    std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+    const std::uint8_t* shell_angular_values, const std::size_t* shell_primitive_counts,
+    std::size_t shells, std::size_t diis_history, std::size_t spins, int precision_mode,
+    double energy_tolerance, double screening_tolerance, std::size_t& arena_bytes,
+    std::size_t& plan_object_bytes) {
+  using namespace cuda_execution;
+  if (shell_angular_values == nullptr || shell_primitive_counts == nullptr || nbf == 0 ||
+      nbf > kPersistentEriAoLimit || nbf > kSmallEigensolverLimit || direct_nbf < nbf ||
+      direct_nbf > 2 * nbf || atoms == 0 || shells == 0 || shells > nbf || diis_history > 64 ||
+      (spins != 1 && spins != 2) ||
+      (precision_mode != VIBEQC_PRECISION_FP64 && precision_mode != VIBEQC_PRECISION_AUTO) ||
+      !std::isfinite(energy_tolerance) || energy_tolerance <= 0.0 ||
+      !std::isfinite(screening_tolerance) || screening_tolerance <= 0.0) {
+    return false;
+  }
+
+  // The current dry-run contract is for ordinary production execution. These
+  // diagnostics either select a different topology schedule or own additional
+  // allocations outside the normal arena, so fail closed instead of guessing.
+  if (cuda_policy::bounded_direct_streaming_override_requested() ||
+      cuda_policy::bounded_fock_class_timing_requested() ||
+      cuda_policy::resolve_direct_tile_validation_policy().requested ||
+      cuda_policy::graph_native_eigensolver_override_requested()) {
+    return false;
+  }
+
+  const cuda_policy::SmallHfWorkload small_hf_workload{nbf, spins, 1U, spins};
+  const auto small_hf_profitability =
+      cuda_policy::resolve_small_hf_profitability(runtime::CudaTargetInfo{}, small_hf_workload);
+  if (small_hf_profitability.use_cublas) return false;
+
+  std::vector<std::uint8_t> shell_angular(shell_angular_values,
+                                          shell_angular_values + shells);
+  std::vector<std::int64_t> shell_direct_ao_offsets(shells + 1, 0);
+  std::vector<std::int32_t> shell_pair_first;
+  std::vector<std::int32_t> shell_pair_second;
+  std::vector<std::int64_t> system_shell_pair_offsets{0};
+  shell_pair_first.reserve(shells * (shells + 1) / 2);
+  shell_pair_second.reserve(shell_pair_first.capacity());
+
+  std::size_t primitive_count = 0;
+  std::size_t direct_ao_count = 0;
+  for (std::size_t shell = 0; shell < shells; ++shell) {
+    if (shell_angular[shell] > kMaximumAngularMomentum || shell_primitive_counts[shell] == 0)
+      return false;
+    const std::size_t shell_direct_aos = molecule::cartesian_count(shell_angular[shell]);
+    if (!runtime::checked_add(direct_ao_count, shell_direct_aos, direct_ao_count) ||
+        direct_ao_count > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) ||
+        !runtime::checked_add(primitive_count, shell_primitive_counts[shell], primitive_count)) {
+      return false;
+    }
+    shell_direct_ao_offsets[shell + 1] = static_cast<std::int64_t>(direct_ao_count);
+  }
+  if (direct_ao_count != direct_nbf || primitive_count == 0) return false;
+
+  std::size_t shell_pair_primitive_count = 0;
+  std::size_t psss_bra_pair_count = 0;
+  std::size_t psss_resident_ket_pair_count = 0;
+  for (std::size_t first = 0; first < shells; ++first) {
+    for (std::size_t second = 0; second <= first; ++second) {
+      if (first > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()) ||
+          second > static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max())) {
+        return false;
+      }
+      shell_pair_first.push_back(static_cast<std::int32_t>(first));
+      shell_pair_second.push_back(static_cast<std::int32_t>(second));
+      std::size_t pair_primitives = 0;
+      if (!runtime::checked_multiply(shell_primitive_counts[first],
+                                     shell_primitive_counts[second], pair_primitives) ||
+          !runtime::checked_add(shell_pair_primitive_count, pair_primitives,
+                                shell_pair_primitive_count)) {
+        return false;
+      }
+      const unsigned pair_order =
+          static_cast<unsigned>(shell_angular[first]) + static_cast<unsigned>(shell_angular[second]);
+      if (pair_order == 1U) ++psss_bra_pair_count;
+      if (shell_angular[first] == 0U && shell_angular[second] == 0U)
+        ++psss_resident_ket_pair_count;
+    }
+  }
+  const std::size_t shell_pair_count = shell_pair_first.size();
+  if (shell_pair_count > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()))
+    return false;
+  system_shell_pair_offsets.push_back(static_cast<std::int64_t>(shell_pair_count));
+  const std::size_t shell_pair_block_count =
+      detail::bounded_direct_queue_refill_count(shell_pair_count,
+                                                detail::kBoundedDirectShellPairBlockSize);
+
+  std::size_t psss_chunks_per_bra = 0;
+  if (psss_resident_ket_pair_count != 0) {
+    psss_chunks_per_bra =
+        (psss_resident_ket_pair_count + kResidentPsssThreads - 1) / kResidentPsssThreads;
+  }
+  std::size_t psss_resident_task_count = 0;
+  if (!runtime::checked_multiply(psss_bra_pair_count, psss_chunks_per_bra,
+                                 psss_resident_task_count)) {
+    return false;
+  }
+
+  detail::DirectQuartetTaskLayout direct_task_layout{};
+  if (!detail::make_direct_quartet_task_layout(
+          shell_direct_ao_offsets, shell_angular, system_shell_pair_offsets, shell_pair_first,
+          shell_pair_second, kMixedFockMinimumAngularOrder, direct_task_layout)) {
+    return false;
+  }
+
+  // <=16-AO production shapes are fixed-topology. If that invariant ever
+  // changes, refuse this v2 contract until the bounded schedule has its own
+  // device-free capacity query rather than silently undercounting it.
+  if (detail::direct_topology_requires_bounded_streaming(direct_task_layout.shell_quartet_count) ||
+      direct_task_layout.exact_tile_count > detail::kDirectFixedTopologyTileLimit) {
+    return false;
+  }
+
+  ArenaLayout energy_layout{};
+  if (!make_layout(1, nbf, direct_nbf, atoms, shells, shell_pair_count, shell_pair_block_count, 0,
+                   shell_pair_primitive_count, 0, 0, 0, 0, 0, 0, 0, primitive_count,
+                   std::max<std::size_t>(1, diis_history), 0, spins, true, false, false, false,
+                   false, false, false, energy_layout)) {
+    return false;
+  }
+
+  const auto mixed_policy = cuda_policy::resolve_mixed_precision_fock_policy(
+      static_cast<vibeqc_precision_mode>(precision_mode), energy_tolerance, screening_tolerance,
+      direct_task_layout.system_mixed_capable_tile_counts.empty()
+          ? 0.0
+          : static_cast<double>(direct_task_layout.system_mixed_capable_tile_counts.front()));
+  const bool mixed_precision_fock = mixed_policy.threshold.has_value();
+  std::size_t fp32_shell_quartet_tile_count = 0;
+  if (mixed_precision_fock) {
+    for (std::size_t order = kMixedFockMinimumAngularOrder;
+         order < detail::kDirectQuartetAngularOrderCount; ++order) {
+      if (!runtime::checked_add(fp32_shell_quartet_tile_count,
+                                direct_task_layout.angular_order_tile_counts[order],
+                                fp32_shell_quartet_tile_count)) {
+        return false;
+      }
+    }
+  }
+
+  // The runtime-selected AOT profile consumes a subset of these exact tiles.
+  // Charging every compiler-valid tile is the profile-independent structural
+  // upper bound, so the dry-run can stay device-free without undercounting a
+  // future compatible profile.
+  const std::size_t generated_shell_task_capacity = direct_task_layout.exact_tile_count;
+  const std::size_t ppps_resident_ket_task_capacity =
+      direct_task_layout.shell_class_tile_counts[kPppsShellClass];
+  constexpr std::size_t kGenericOrderFive = 5;
+  const std::size_t generic_order5_tile_capacity =
+      direct_task_layout.angular_order_tile_counts[kGenericOrderFive];
+
+  ArenaLayout force_layout{};
+  if (!make_layout(
+          1, nbf, direct_nbf, atoms, shells, shell_pair_count, shell_pair_block_count, 0,
+          shell_pair_primitive_count, psss_resident_task_count, psss_resident_ket_pair_count,
+          direct_task_layout.exact_tile_count, fp32_shell_quartet_tile_count,
+          generated_shell_task_capacity, ppps_resident_ket_task_capacity,
+          generic_order5_tile_capacity, primitive_count, std::max<std::size_t>(1, diis_history), 0,
+          spins, false, direct_nbf != nbf, false, false, false, false, mixed_precision_fock,
+          force_layout)) {
+    return false;
+  }
+
+  arena_bytes = std::max(energy_layout.bytes, force_layout.bytes);
   plan_object_bytes = sizeof(CudaRhfBucketPlan);
   return true;
 }
