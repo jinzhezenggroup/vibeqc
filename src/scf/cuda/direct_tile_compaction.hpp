@@ -16,7 +16,8 @@ void launch_clear_active_shell_quartet_tile_counts_kernel(
     std::uint32_t* active_shell_quartet_tile_counts, std::uint32_t* persistent_fock_task_heads,
     std::uint32_t* fp32_shell_quartet_tile_counts, std::uint32_t* fp32_persistent_fock_task_heads);
 
-/** Forward resolved queue policy with unchanged geometry, stream and buffers. */
+/** Forward resolved queue policy; grid.y == batch_size selects system-major equal-count traversal.
+ */
 void launch_compact_active_shell_quartet_tiles_kernel(
     bool unrestricted, DirectScreeningPurpose purpose, dim3 grid, dim3 block,
     std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch, double screening_tolerance,
