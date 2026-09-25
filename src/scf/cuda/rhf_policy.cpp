@@ -385,6 +385,23 @@ bool bounded_direct_fock_only_diagnostic_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC", "fock");
 }
 
+std::optional<std::uint64_t> bounded_direct_primary_streaming_fock_mask_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK");
+  if (selection == nullptr || *selection == '\0' || std::strcmp(selection, "0") == 0 ||
+      std::strcmp(selection, "none") == 0 || *selection == '-') {
+    return std::nullopt;
+  }
+  if (std::strcmp(selection, "all") == 0) {
+    return std::numeric_limits<std::uint64_t>::max();
+  }
+  char* end = nullptr;
+  const unsigned long long value = std::strtoull(selection, &end, 0);
+  if (end == selection || end == nullptr || *end != '\0' || value == 0ULL) {
+    return std::nullopt;
+  }
+  return static_cast<std::uint64_t>(value);
+}
+
 bool bounded_fock_class_timing_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_CLASS_PROFILE", "profile");
 }
