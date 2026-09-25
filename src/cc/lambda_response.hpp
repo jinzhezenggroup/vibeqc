@@ -79,6 +79,22 @@ LambdaResult solve_lambda_cuda_with_energy_source(const Problem& problem,
                                                   std::span<const double> t1_source,
                                                   std::span<const double> t2_source, int device,
                                                   const LambdaOptions& options = {});
+
+/** Corrected Lambda plus fixed-orbital RCCSD parameter VJPs from one CUDA state.
+ *
+ * The converged Problem/T1/T2 inputs are staged once. Lambda RHS/J^T actions and
+ * all ten parameter VJPs then reuse that device state. Host GMRES control remains
+ * unchanged; parameter outputs are detached to host for the later Hamiltonian
+ * response owner.
+ */
+struct CudaFixedOrbitalResponseResult {
+  LambdaResult lambda;
+  std::vector<double> foo, fov, fvv, ovov, ovvo, oovv, ovvv, ovoo, oooo, vvvv;
+};
+
+CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_source(
+    const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
+    std::span<const double> t2_source, int device, const LambdaOptions& options = {});
 #endif
 
 }  // namespace vibeqc::cc
