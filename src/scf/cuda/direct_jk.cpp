@@ -432,17 +432,20 @@ static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, 
         direct_jk_check(cudaGetLastError());
       }
     if (spec.coulomb.present || spec.exchange.present) {
-      if (plan->generated_coulomb && spec.coulomb.present && !spec.exchange.present && !mixed_j) {
+      const auto dispatch =
+          direct_jk_value_dispatch(plan->generated_coulomb != nullptr, spec.coulomb.present,
+                                   spec.exchange.present, mixed_j);
+      if (dispatch.generated_coulomb)
         direct_jk_check(
             enqueue_generated_coulomb(*plan->generated_coulomb, density, beta, coulomb));
-      } else {
+      if (dispatch.generic_coulomb || dispatch.generic_exchange) {
         launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
-                                     plan->stream, plan->batch, 0, spec.coulomb.present,
-                                     spec.exchange.present, unrestricted, mixed_j,
+                                     plan->stream, plan->batch, 0, dispatch.generic_coulomb,
+                                     dispatch.generic_exchange, unrestricted, mixed_j,
                                      plan->screening_tolerance, plan->bounds, density, beta,
                                      coulomb, alpha_exchange, beta_exchange);
+        direct_jk_check(cudaGetLastError());
       }
-      direct_jk_check(cudaGetLastError());
       for (const auto* output : outputs)
         if (output) {
           launch_independent_jk_finite_kernel(plan->stream, output, elements, numerical_error);
