@@ -136,14 +136,13 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
-    const auto ref =
-        l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
-        : l.functional == 3U ? integrate_b3lyp_rks(basis, grid, d, 17)
-        : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
-        : l.functional == 1U
-            ? integrate_pbe_rks_with_tail_scaled(basis, grid, d, 17, {}, l.exchange_scale,
-                                                 l.correlation_scale)
-            : integrate_lda_xc_pw_rks(basis, grid, d, 17);
+    const auto ref = l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
+                     : l.functional == 3U ? integrate_b3lyp_rks(basis, grid, d, 17)
+                     : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
+                     : l.functional == 1U
+                         ? integrate_pbe_rks_with_tail_scaled(basis, grid, d, 17, {},
+                                                              l.exchange_scale, l.correlation_scale)
+                         : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
     close(result.electrons[0] + result.electrons[1], ref.electrons, "RKS electrons");
     for (std::size_t i = 0; i < v.size(); ++i)
@@ -151,13 +150,13 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   } else {
     const auto elements = l.nao * l.nao;
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-    const auto ref = l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
-                     : l.functional == 3U ? integrate_b3lyp_uks(basis, grid, a, b, 17)
-                     : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
-                     : l.functional == 1U
-                         ? integrate_pbe_uks_scaled(basis, grid, a, b, 17, l.exchange_scale,
-                                                    l.correlation_scale)
-                         : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
+    const auto ref =
+        l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
+        : l.functional == 3U ? integrate_b3lyp_uks(basis, grid, a, b, 17)
+        : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
+        : l.functional == 1U
+            ? integrate_pbe_uks_scaled(basis, grid, a, b, 17, l.exchange_scale, l.correlation_scale)
+            : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
     for (unsigned s = 0; s < 2; ++s) {
       close(result.electrons[s], ref.electrons[s], "UKS electrons");
@@ -603,10 +602,9 @@ int main(int argc, char** argv) {
                   "unused AO jets were allocated");
           require(test.layout.work_jets == ((functional == 2U || functional == 4U) ? 4U : 1U),
                   "unused density-work jets were allocated");
-          require(
-              test.layout.feature_terms ==
-                  (functional == 0U ? 1U : ((functional == 2U || functional == 4U) ? 5U : 4U)),
-              "CUDA XC feature layout does not match the functional");
+          require(test.layout.feature_terms ==
+                      (functional == 0U ? 1U : ((functional == 2U || functional == 4U) ? 5U : 4U)),
+                  "CUDA XC feature layout does not match the functional");
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
