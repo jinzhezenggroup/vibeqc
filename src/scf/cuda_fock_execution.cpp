@@ -15,7 +15,7 @@ bool exact_value_exchange(const FockTermSpec& term, double screening) noexcept {
   if (term.approximation != FockApproximation::Exact) return false;
   if (term.op == FockOperator::FullRange) return true;
   return (term.op == FockOperator::ShortRange || term.op == FockOperator::LongRange) &&
-         term.omega > 0.0 && screening == 0.0;
+         term.omega >= 0.0 && screening == 0.0;
 }
 
 }  // namespace
