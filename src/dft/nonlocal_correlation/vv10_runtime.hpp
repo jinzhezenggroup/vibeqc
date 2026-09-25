@@ -100,6 +100,17 @@ void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters
                               double* vsigma, double* point_derivative, double* weight_derivative,
                               int* numerical_error);
 
+/** Apply the molecular fixed-grid domain policy without changing point extent.
+ * Inputs are validated before screening. rho<threshold becomes zero weight,
+ * rho=1 and grad-rho=0 so inactive points disappear from both pair domains
+ * while local scales remain finite. No allocation, transfer or fence occurs.
+ */
+void enqueue_vv10_molecular_domain_cuda(cudaStream_t stream, std::size_t point_count,
+                                        double density_threshold, const double* weights,
+                                        const double* density, const double* density_gradient,
+                                        double* effective_weights, double* effective_density,
+                                        double* effective_density_gradient, int* numerical_error);
+
 void execute_vv10_cuda(const double* coordinates, const double* weights, const double* density,
                        const double* density_gradient, std::size_t point_count,
                        std::size_t tile_points, Vv10Parameters parameters, int device_id,
