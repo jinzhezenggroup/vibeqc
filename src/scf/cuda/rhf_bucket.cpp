@@ -9,7 +9,6 @@
 
 #include "generated_direct_resident_psss_schedule.cuh"
 #include "molecule/basis.hpp"
-#include "runtime/bounded_workspace.hpp"
 #include "runtime/resource_usage.hpp"
 #include "scf/cuda/direct_constants.hpp"
 #include "scf/cuda/direct_tile_validation.hpp"
@@ -33,6 +32,18 @@ using cuda_policy::reuse_converged_fock_requested;
 
 void fill_global_failure(std::vector<RhfBucketItem>& outputs, vibeqc_status status) {
   for (RhfBucketItem& output : outputs) output.status = status;
+}
+
+bool checked_size_add(std::size_t first, std::size_t second, std::size_t& result) noexcept {
+  if (second > std::numeric_limits<std::size_t>::max() - first) return false;
+  result = first + second;
+  return true;
+}
+
+bool checked_size_multiply(std::size_t first, std::size_t second, std::size_t& result) noexcept {
+  if (first != 0 && second > std::numeric_limits<std::size_t>::max() / first) return false;
+  result = first * second;
+  return true;
 }
 
 }  // namespace
@@ -112,9 +123,9 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
     if (shell_angular[shell] > kMaximumAngularMomentum || shell_primitive_counts[shell] == 0)
       return false;
     const std::size_t shell_direct_aos = molecule::cartesian_count(shell_angular[shell]);
-    if (!runtime::checked_add(direct_ao_count, shell_direct_aos, direct_ao_count) ||
+    if (!checked_size_add(direct_ao_count, shell_direct_aos, direct_ao_count) ||
         direct_ao_count > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) ||
-        !runtime::checked_add(primitive_count, shell_primitive_counts[shell], primitive_count)) {
+        !checked_size_add(primitive_count, shell_primitive_counts[shell], primitive_count)) {
       return false;
     }
     shell_direct_ao_offsets[shell + 1] = static_cast<std::int64_t>(direct_ao_count);
@@ -133,9 +144,9 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
       shell_pair_first.push_back(static_cast<std::int32_t>(first));
       shell_pair_second.push_back(static_cast<std::int32_t>(second));
       std::size_t pair_primitives = 0;
-      if (!runtime::checked_multiply(shell_primitive_counts[first], shell_primitive_counts[second],
+      if (!checked_size_multiply(shell_primitive_counts[first], shell_primitive_counts[second],
                                      pair_primitives) ||
-          !runtime::checked_add(shell_pair_primitive_count, pair_primitives,
+          !checked_size_add(shell_pair_primitive_count, pair_primitives,
                                 shell_pair_primitive_count)) {
         return false;
       }
@@ -158,7 +169,7 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
         (psss_resident_ket_pair_count + kResidentPsssThreads - 1) / kResidentPsssThreads;
   }
   std::size_t psss_resident_task_count = 0;
-  if (!runtime::checked_multiply(psss_bra_pair_count, psss_chunks_per_bra,
+  if (!checked_size_multiply(psss_bra_pair_count, psss_chunks_per_bra,
                                  psss_resident_task_count)) {
     return false;
   }
@@ -196,7 +207,7 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
   if (mixed_precision_fock) {
     for (std::size_t order = kMixedFockMinimumAngularOrder;
          order < detail::kDirectQuartetAngularOrderCount; ++order) {
-      if (!runtime::checked_add(fp32_shell_quartet_tile_count,
+      if (!checked_size_add(fp32_shell_quartet_tile_count,
                                 direct_task_layout.angular_order_tile_counts[order],
                                 fp32_shell_quartet_tile_count)) {
         return false;
