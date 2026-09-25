@@ -87,9 +87,12 @@ def coulomb_from_whitened_raw(
 ) -> np.ndarray:
     """Recompose J after explicit Cholesky whitening of the three-center columns."""
     matrix = raw.reshape(-1, metric.shape[0])
-    factor = scipy.linalg.cholesky(metric, lower=True, check_finite=False)
+    # Match the upper triangle used by the direct SPD solve. Otherwise tiny
+    # storage asymmetries would be misreported as whitening-arithmetic effects.
+    # For M = U.T @ U, solve U.T @ B.T = A.T so B @ B.T = A @ inv(M) @ A.T.
+    factor = scipy.linalg.cholesky(metric, lower=False, check_finite=False)
     whitened = scipy.linalg.solve_triangular(
-        factor, matrix.T, lower=True, check_finite=False
+        factor, matrix.T, lower=False, trans="T", check_finite=False
     ).T
     density_flat = density.reshape(-1)
     return (whitened @ (whitened.T @ density_flat)).reshape(density.shape)
