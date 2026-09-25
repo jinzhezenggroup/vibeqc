@@ -15,6 +15,9 @@ namespace vibeqc::xtb::detail {
 
 struct Gfn2CpuOrbitalSnapshot {
   std::int64_t orbital_count = 0;
+  double electron_count = 0.0;
+  double alpha_electron_count = 0.0;
+  double beta_electron_count = 0.0;
   std::vector<std::int64_t> shell_orbital_offsets;
   std::vector<std::int64_t> shell_primitive_offsets;
   std::vector<std::int64_t> shell_to_atom;
