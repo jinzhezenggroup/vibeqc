@@ -923,15 +923,13 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ctypes.c_uint64),
     ]
     library.vibeqc_batch_get_last_fock_builds.restype = ctypes.c_int
-    # Optional queries preserve loading of libraries built before provenance.
     for name, arguments in (
         ("vibeqc_calculation_get_precision_provenance", [ctypes.c_void_p]),
         ("vibeqc_batch_get_precision_provenance", [ctypes.c_void_p, ctypes.c_uint32]),
     ):
-        getter = getattr(library, name, None)
-        if getter is not None:
-            getter.argtypes = [*arguments, ctypes.POINTER(PrecisionProvenance)]
-            getter.restype = ctypes.c_int
+        getter = getattr(library, name)
+        getter.argtypes = [*arguments, ctypes.POINTER(PrecisionProvenance)]
+        getter.restype = ctypes.c_int
     library.vibeqc_calculation_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.c_void_p,
@@ -945,18 +943,17 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ResultDescriptor),
     ]
     library.vibeqc_calculation_execute.restype = ctypes.c_int
-    scf_diagnostic = getattr(library, "vibeqc_calculation_get_scf_diagnostic", None)
-    if scf_diagnostic is not None:
-        scf_diagnostic.argtypes = [ctypes.c_void_p, ctypes.POINTER(ScfDiagnostic)]
-        scf_diagnostic.restype = ctypes.c_int
-    batch_scf_diagnostic = getattr(library, "vibeqc_batch_get_scf_diagnostic", None)
-    if batch_scf_diagnostic is not None:
-        batch_scf_diagnostic.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_uint32,
-            ctypes.POINTER(ScfDiagnostic),
-        ]
-        batch_scf_diagnostic.restype = ctypes.c_int
+    library.vibeqc_calculation_get_scf_diagnostic.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ScfDiagnostic),
+    ]
+    library.vibeqc_calculation_get_scf_diagnostic.restype = ctypes.c_int
+    library.vibeqc_batch_get_scf_diagnostic.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.POINTER(ScfDiagnostic),
+    ]
+    library.vibeqc_batch_get_scf_diagnostic.restype = ctypes.c_int
     library.vibeqc_batch_prepare.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(ctypes.c_void_p),
@@ -984,15 +981,14 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ("vibeqc_calculation_get_ks_diagnostic", [ctypes.c_void_p]),
         ("vibeqc_batch_get_ks_diagnostic", [ctypes.c_void_p, ctypes.c_uint32]),
     ):
-        ks_query = getattr(library, name, None)
-        if ks_query is not None:
-            ks_query.argtypes = [
-                *prefix,
-                ctypes.POINTER(KsDiagnosticDescriptor),
-                ctypes.POINTER(KsIterationDescriptor),
-                ctypes.c_uint32,
-            ]
-            ks_query.restype = ctypes.c_int
+        ks_query = getattr(library, name)
+        ks_query.argtypes = [
+            *prefix,
+            ctypes.POINTER(KsDiagnosticDescriptor),
+            ctypes.POINTER(KsIterationDescriptor),
+            ctypes.c_uint32,
+        ]
+        ks_query.restype = ctypes.c_int
     for name, prefix in (
         ("vibeqc_calculation_get_ks_transport_diagnostic", [ctypes.c_void_p]),
         (
@@ -1000,13 +996,12 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             [ctypes.c_void_p, ctypes.c_uint32],
         ),
     ):
-        transport_query = getattr(library, name, None)
-        if transport_query is not None:
-            transport_query.argtypes = [
-                *prefix,
-                ctypes.POINTER(KsTransportDiagnosticDescriptor),
-            ]
-            transport_query.restype = ctypes.c_int
+        transport_query = getattr(library, name)
+        transport_query.argtypes = [
+            *prefix,
+            ctypes.POINTER(KsTransportDiagnosticDescriptor),
+        ]
+        transport_query.restype = ctypes.c_int
 
     library.vibeqc_batch_get_last_eigensolver_diagnostics.argtypes = [
         ctypes.c_void_p,
@@ -1031,16 +1026,8 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
         ctypes.POINTER(ctypes.c_uint32),
     ]
     library.vibeqc_batch_get_last_inactive_eigensolver_profile.restype = ctypes.c_int
-    detail_getter = getattr(library, "vibeqc_context_get_last_detail", None)
-    if detail_getter is None:
-        detail_getter = getattr(library, "vibeqc_context_last_error", None)
-    if detail_getter is not None:
-        detail_getter.argtypes = [ctypes.c_void_p]
-        detail_getter.restype = ctypes.c_char_p
-        # Keep the canonical Python call site compatible with ABI-0 libraries
-        # that exported only the pre-#193 alias.
-        if not hasattr(library, "vibeqc_context_get_last_detail"):
-            library.vibeqc_context_get_last_detail = detail_getter
+    library.vibeqc_context_get_last_detail.argtypes = [ctypes.c_void_p]
+    library.vibeqc_context_get_last_detail.restype = ctypes.c_char_p
     for name, prefix in (
         ("vibeqc_calculation_get_correlation_diagnostic", [ctypes.c_void_p]),
         (
@@ -1048,18 +1035,12 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
             [ctypes.c_void_p, ctypes.c_uint32],
         ),
     ):
-        correlation_diagnostic = getattr(library, name, None)
-        if correlation_diagnostic is not None:
-            correlation_diagnostic.argtypes = [
-                *prefix,
-                ctypes.POINTER(CorrelationDiagnostic),
-            ]
-            correlation_diagnostic.restype = ctypes.c_int
-    # Keep the pre-#193 name available when an older native library exports it.
-    legacy_last_error = getattr(library, "vibeqc_context_last_error", None)
-    if legacy_last_error is not None:
-        legacy_last_error.argtypes = [ctypes.c_void_p]
-        legacy_last_error.restype = ctypes.c_char_p
+        correlation_diagnostic = getattr(library, name)
+        correlation_diagnostic.argtypes = [
+            *prefix,
+            ctypes.POINTER(CorrelationDiagnostic),
+        ]
+        correlation_diagnostic.restype = ctypes.c_int
     library.vibeqc_batch_get_hf_warm_state.argtypes = [
         ctypes.c_void_p,
         ctypes.c_uint32,
@@ -1200,11 +1181,8 @@ def load_library(*, device: str | None = None, device_id: int = 0) -> ctypes.CDL
 def check(library: ctypes.CDLL, status: int, *, context: typing.Any = None) -> None:
     if status != STATUS_SUCCESS:
         message = library.vibeqc_status_message(status).decode("utf-8")
-        getter = getattr(library, "vibeqc_context_get_last_detail", None)
-        if context is not None and getter is not None:
-            getter.argtypes = [ctypes.c_void_p]
-            getter.restype = ctypes.c_char_p
-            detail = getter(context)
+        if context is not None:
+            detail = library.vibeqc_context_get_last_detail(context)
             if detail:
                 message = detail.decode("utf-8")
         if status == STATUS_NOT_IMPLEMENTED:

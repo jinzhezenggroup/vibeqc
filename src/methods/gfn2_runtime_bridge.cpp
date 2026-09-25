@@ -124,7 +124,10 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   options.model = VIBEQC_XTB_MODEL_GFN2_XTB;
   options.flags =
       static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_ENERGY) |
-      (request.compute_forces ? static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_FORCES) : 0u);
+      (request.compute_forces ? static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_FORCES) : 0u) |
+      (request.compute_atomic_charges
+           ? static_cast<std::uint32_t>(VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES)
+           : 0u);
   options.max_scc_iterations = request.maximum_iterations;
   options.charge_tolerance = request.charge_tolerance;
   options.energy_tolerance = request.energy_tolerance;
@@ -136,11 +139,14 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
 
   std::vector<double> energies(1u);
   std::vector<double> forces(request.compute_forces ? 3u * request.atomic_numbers.size() : 0u);
+  std::vector<double> atomic_charges(request.compute_atomic_charges ? request.atomic_numbers.size()
+                                                                    : 0u);
   std::vector<std::int32_t> iterations(1u);
   std::vector<std::uint8_t> converged(1u);
   std::vector<std::int32_t> statuses(1u);
   output.energies = output_buffer(energies);
   output.forces = output_buffer(forces);
+  output.atomic_charges = output_buffer(atomic_charges);
   output.scc_iterations = output_buffer(iterations);
   output.scc_converged = output_buffer(converged);
   output.per_system_status = output_buffer(statuses);
@@ -181,6 +187,7 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   result.status = Gfn2RuntimeStatus::kSuccess;
   result.energy = energies[0];
   result.forces = std::move(forces);
+  result.atomic_charges = std::move(atomic_charges);
   result.iterations = iterations[0] < 0 ? 0u : static_cast<unsigned>(iterations[0]);
   result.converged = system_status == VIBEQC_XTB_STATUS_SUCCESS && converged[0] != 0u;
   return result;

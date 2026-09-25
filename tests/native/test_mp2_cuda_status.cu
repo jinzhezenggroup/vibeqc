@@ -16,7 +16,7 @@
 #include "posthf/mp2_force.hpp"
 #include "posthf/raw_source.hpp"
 #include "posthf/ri_mp2_cuda.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "tensor/cuda_runtime.cuh"
 
 namespace {

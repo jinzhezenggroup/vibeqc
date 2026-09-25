@@ -74,9 +74,9 @@ namespace vibeqc::cc::triples {{
 namespace {{
 {_device_arrays()}
 void cuda_check(cudaError_t error, const char* what) {{
+  if (error == cudaErrorMemoryAllocation) throw std::bad_alloc();
   if (error != cudaSuccess)
-    if (error == cudaErrorMemoryAllocation) throw std::bad_alloc();
-    else throw std::runtime_error(std::string(what) + ": " + cudaGetErrorString(error));
+    throw std::runtime_error(std::string(what) + ": " + cudaGetErrorString(error));
 }}
 
 std::size_t checked_add(std::size_t a, std::size_t b) {{
@@ -220,6 +220,12 @@ __global__ void triples_kernel(
     const std::size_t triple[3] = {{a, b, c}};
     const double degeneracy = (a == c) ? 6.0 : ((a == b || b == c) ? 2.0 : 1.0);
     const double denominator = physical_denominator * degeneracy;
+    // A finite physical gap can overflow after its multiplicity is applied.
+    // Fail closed instead of dividing by infinity and publishing zero energy.
+    if (!isfinite(denominator)) {{
+      fail_once(error, 3);
+      continue;
+    }}
     double contribution = 0.0;
 
     for (int zp = 0; zp < 6; ++zp) {{
@@ -346,6 +352,13 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
   DeviceScope scope(device);
   cudaStream_t stream = nullptr;
   unsigned char* base = nullptr;
+  // Async copies may still be pending when a later CUDA operation fails.
+  // Keep every borrowed host scalar alive through the catch-path stream drain.
+  const double zero = 0.0;
+  const double infinity = std::numeric_limits<double>::infinity();
+  const int no_error = 0;
+  CudaResult result;
+  int host_error = 0;
   try {{
     cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking),
                "cudaStreamCreateWithFlags");
@@ -363,9 +376,6 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
     auto* energy = reinterpret_cast<double*>(base + energy_offset);
     auto* minimum = reinterpret_cast<double*>(base + minimum_offset);
     auto* error = reinterpret_cast<int*>(base + error_offset);
-    const double zero = 0.0;
-    const double infinity = std::numeric_limits<double>::infinity();
-    const int no_error = 0;
     cuda_check(cudaMemcpyAsync(energy, &zero, sizeof(double), cudaMemcpyHostToDevice, stream),
                "cudaMemcpyAsync RCCSD(T) energy init");
     cuda_check(cudaMemcpyAsync(minimum, &infinity, sizeof(double),
@@ -384,8 +394,6 @@ CudaResult evaluate_cuda(std::size_t o, std::size_t v, const double* ovvv,
     reduce_energy<<<1, threads, 0, stream>>>(partials, blocks, energy);
     cuda_check(cudaGetLastError(), "RCCSD(T) triples reduction launch");
 
-    CudaResult result;
-    int host_error = 0;
     cuda_check(cudaMemcpyAsync(&result.energy, energy, sizeof(double),
                                cudaMemcpyDeviceToHost, stream),
                "cudaMemcpyAsync RCCSD(T) energy result");

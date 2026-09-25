@@ -26,3 +26,4 @@ Historical benchmark snapshots, migration narratives, discarded designs, and one
 - Keep measured evidence in docs only when it is a current acceptance criterion or reproducible qualification procedure.
 - Prefer stable repository-relative links and commands.
 - Do not manually copy generated method/capability tables into prose; link the authoritative reference.
+- Keep machine-readable checker inputs and repository inventories under `manifests/` unless they are themselves rendered reference documentation.

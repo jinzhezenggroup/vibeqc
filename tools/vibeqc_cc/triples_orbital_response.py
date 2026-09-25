@@ -9,6 +9,7 @@ or complete CCSD(T) analytic gradient is published here.
 from __future__ import annotations
 
 import typing
+from contextlib import ExitStack
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -291,56 +292,55 @@ class BoundCCSDTOrbitalResponse:
         owner = baseline
         resident_owner = None
         resident_diagnostics = None
-        if response_execution == "cuda-resident":
-            backend = baseline.response_backend
-            prepare_resident = getattr(backend, "resident_response", None)
-            retained_provider = getattr(backend, "device_resident_bytes", None)
-            if not callable(prepare_resident) or type(retained_provider) is not int:
-                raise TypeError(
-                    "cuda-resident Z response requires a backend with "
-                    "resident_response() and device_resident_bytes"
+        with ExitStack() as resident_leases:
+            if response_execution == "cuda-resident":
+                backend = baseline.response_backend
+                prepare_resident = getattr(backend, "resident_response", None)
+                retained_provider = getattr(backend, "device_resident_bytes", None)
+                if not callable(prepare_resident) or type(retained_provider) is not int:
+                    raise TypeError(
+                        "cuda-resident Z response requires a backend with "
+                        "resident_response() and device_resident_bytes"
+                    )
+                if not 0 <= retained_provider < response_device_budget_bytes:
+                    raise ImplicitSolveError(
+                        "RHF response backend leaves no device budget for resident Z"
+                    )
+                slots = resident_vector_slots(operator.dimension, options.z_options)
+                resident_owner = prepare_resident(
+                    operator.problem,
+                    vector_slots=slots,
+                    device_budget_bytes=response_device_budget_bytes
+                    - retained_provider,
                 )
-            if not 0 <= retained_provider < response_device_budget_bytes:
-                raise ImplicitSolveError(
-                    "RHF response backend leaves no device budget for resident Z"
-                )
-            slots = resident_vector_slots(operator.dimension, options.z_options)
-            resident_owner = prepare_resident(
-                operator.problem,
-                vector_slots=slots,
-                device_budget_bytes=response_device_budget_bytes - retained_provider,
-            )
-            if getattr(resident_owner, "dimension", None) != operator.dimension:
-                close = getattr(resident_owner, "close", None)
-                if callable(close):
-                    close()
-                raise ResponseCompatibilityError(
-                    "resident RHF response dimension differs from physical Z problem"
-                )
-            if (
-                type(getattr(resident_owner, "workspace_bytes", None)) is not int
-                or retained_provider + resident_owner.workspace_bytes
-                > response_device_budget_bytes
-            ):
-                close = getattr(resident_owner, "close", None)
-                if callable(close):
-                    close()
-                raise ImplicitSolveError(
-                    "combined RHF J/K and resident Z storage exceeds device budget"
-                )
+                # Register ownership before reading metadata or constructing the
+                # solver: either can fail after native storage has been allocated.
+                resident_leases.callback(resident_owner.close)
+                if getattr(resident_owner, "dimension", None) != operator.dimension:
+                    raise ResponseCompatibilityError(
+                        "resident RHF response dimension differs from physical Z problem"
+                    )
+                workspace = getattr(resident_owner, "workspace_bytes", None)
+                if (
+                    type(workspace) is not int
+                    or workspace < 0
+                    or retained_provider + workspace > response_device_budget_bytes
+                ):
+                    raise ImplicitSolveError(
+                        "combined RHF J/K and resident Z storage exceeds device budget"
+                    )
 
-        class Transpose:
-            dimension = operator.dimension
+            class Transpose:
+                dimension = operator.dimension
 
-            def __init__(self, engine: typing.Any = None) -> None:
-                if engine is not None:
-                    self._krylov_engine = engine
+                def __init__(self, engine: typing.Any = None) -> None:
+                    if engine is not None:
+                        self._krylov_engine = engine
 
-            def apply(self, vector: typing.Any) -> typing.Any:
-                return operator.apply_transpose(vector)
+                def apply(self, vector: typing.Any) -> typing.Any:
+                    return operator.apply_transpose(vector)
 
-        solver = ResponseGMRES(operator.dimension, options.z_options)
-        try:
+            solver = ResponseGMRES(operator.dimension, options.z_options)
             z = checked_transpose_solve(
                 Transpose(resident_owner),
                 rhs,
@@ -349,9 +349,6 @@ class BoundCCSDTOrbitalResponse:
             )
             if resident_owner is not None:
                 resident_diagnostics = dict(resident_owner.diagnostics)
-        finally:
-            if resident_owner is not None:
-                resident_owner.close()
         independent_z_residual = _vector_norm(
             baseline.orbital_matrix.T @ z.solution - rhs
         )

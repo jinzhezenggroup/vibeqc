@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
+import vibeqc_compiler.dft.features as feature_module
 from vibeqc import Atom
 from vibeqc_compiler.common.evidence import block_error
 from vibeqc_compiler.dft import (
@@ -295,6 +296,30 @@ def test_grid_identity_motion_and_atom_order() -> None:
         )
         == 4
     )
+
+
+def test_prevalidated_density_feature_block_skips_density_revalidation(
+    monkeypatch: typing.Any,
+) -> None:
+    meta, data = load_fixture("h2")
+    with NativeAO(**basis_arguments(meta)) as basis:
+        jets = basis.evaluate(data["points"][:5], 1)
+        density = feature_module.spin_densities(data["density"], basis.nao)
+    ingredients = ("rho", "gradient", "sigma", "tau")
+    expected = feature_module.density_feature_block(
+        jets, density, ingredients=ingredients
+    )
+
+    def repeated_validation(*_args: typing.Any, **_kwargs: typing.Any) -> typing.Any:
+        raise AssertionError("prevalidated tile repeated spin-density validation")
+
+    monkeypatch.setattr(feature_module, "spin_densities", repeated_validation)
+    actual = feature_module._density_feature_block_from_spin_densities(
+        jets, density, ingredients=ingredients
+    )
+    np.testing.assert_array_equal(actual.scalar, expected.scalar)
+    np.testing.assert_array_equal(actual.gradient, expected.gradient)
+    assert actual.requested == expected.requested
 
 
 def test_density_factor_validation_and_native_lifetime() -> None:

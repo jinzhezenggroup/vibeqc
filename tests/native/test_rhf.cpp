@@ -318,19 +318,16 @@ void verify_precision_provenance_gate() {
                 foreign_abi.mixed_precision_reserved_error == 0.0 &&
                 foreign_abi.refinement_iterations == 0,
             "a rejected descriptor must not be modified");
-    constexpr std::uint32_t legacy_precision_size =
+    constexpr std::uint32_t truncated_precision_size =
         static_cast<std::uint32_t>(offsetof(vibeqc_precision_provenance, mixed_stage_fock_builds));
-    vibeqc_precision_provenance legacy_prefix{legacy_precision_size, VIBEQC_ABI_VERSION};
-    legacy_prefix.mixed_stage_fock_builds = 4242U;
-    require(vibeqc_calculation_get_precision_provenance(he.calculation, &legacy_prefix) ==
-                    VIBEQC_STATUS_SUCCESS &&
-                legacy_prefix.struct_size == legacy_precision_size &&
-                legacy_prefix.mixed_stage_fock_builds == 4242U,
-            "legacy precision-provenance prefix was not preserved");
-    vibeqc_precision_provenance short_size{legacy_precision_size - 1U, VIBEQC_ABI_VERSION};
-    require(vibeqc_calculation_get_precision_provenance(he.calculation, &short_size) ==
+    vibeqc_precision_provenance truncated{truncated_precision_size, VIBEQC_ABI_VERSION};
+    truncated.mixed_stage_fock_builds = 4242U;
+    require(vibeqc_calculation_get_precision_provenance(he.calculation, &truncated) ==
                 VIBEQC_STATUS_ABI_MISMATCH,
-            "a descriptor shorter than the legacy precision prefix must be rejected");
+            "a truncated precision-provenance descriptor must be rejected");
+    require(truncated.struct_size == truncated_precision_size &&
+                truncated.mixed_stage_fock_builds == 4242U,
+            "a rejected truncated precision descriptor must not be modified");
     vibeqc_calculation_destroy(he.calculation);
     vibeqc_system_destroy(he.system);
     vibeqc_context_destroy(he.context);

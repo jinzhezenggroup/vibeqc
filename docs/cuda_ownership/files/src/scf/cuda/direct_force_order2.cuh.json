@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_force_order2.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+  "reason": "Order-two force adapters consume generated PSPS/PPSS/DSSS roots but retain handwritten Gaussian geometry, prefactors, decay derivatives and coordinate recovery. Generated scalar roots do not retire this operator-specific scientific composition.",
   "regions": []
 }

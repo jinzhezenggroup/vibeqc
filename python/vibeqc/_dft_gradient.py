@@ -15,11 +15,15 @@ from vibeqc_compiler.dft.ao import NativeAO
 from vibeqc_compiler.dft.grid import ExplicitGrid, MolecularGrid, checked_int
 from vibeqc_compiler.dft.nonlocal_integration import NonlocalGeometry
 from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
-from vibeqc_compiler.xc.contractions import ContractionProgram, GeometryPartials
+from vibeqc_compiler.xc.contractions import (
+    ContractionProgram,
+    ExternalPointContraction,
+    GeometryPartials,
+)
 from vibeqc_compiler.xc.grid_response import grid_response_tiles
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
-from .ks import native_xc_functional_code, resolve_ks_method, scf_domain_for_method
+from .ks import resolve_ks_method, scf_domain_for_method
 
 _METHODS = (
     "lda-rks",
@@ -59,11 +63,48 @@ class StationaryKsIdentity:
     density_generation: int
     fock_generation: int
     orbital_generation: int
+    spin: str | None = None
+    ingredients: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
-        if self.method not in _METHODS:
+        if not isinstance(self.method, str) or not self.method:
+            raise ValueError("stationary identity requires a nonempty method")
+        expected_spin = expected_ingredients = None
+        if self.method in _METHODS:
+            method_ir, functional = resolve_ks_method(self.method)
+            expected_spin = method_ir.spin
+            expected_ingredients = functional.ingredients
+        if self.spin is None:
+            if expected_spin is None:
+                raise ValueError(
+                    "non-curated stationary identity requires explicit spin provenance"
+                )
+            object.__setattr__(self, "spin", expected_spin)
+        elif self.spin not in ("unpolarized", "polarized"):
+            raise ValueError("stationary identity has unsupported spin provenance")
+        elif expected_spin is not None and self.spin != expected_spin:
+            raise ValueError("stationary identity spin disagrees with named method")
+
+        if self.ingredients is None:
+            if expected_ingredients is None:
+                raise ValueError(
+                    "non-curated stationary identity requires explicit ingredient provenance"
+                )
+            object.__setattr__(self, "ingredients", expected_ingredients)
+        elif self.ingredients not in (
+            ("rho",),
+            ("rho", "sigma"),
+            ("rho", "sigma", "tau"),
+        ):
             raise ValueError(
-                "stationary derivatives support LDA/PBE/r2SCAN/global-hybrid RKS/UKS only"
+                "stationary identity requires rho, rho/sigma, or rho/sigma/tau"
+            )
+        elif (
+            expected_ingredients is not None
+            and self.ingredients != expected_ingredients
+        ):
+            raise ValueError(
+                "stationary identity ingredients disagree with named method"
             )
         for name in (
             "model_identity",
@@ -90,7 +131,7 @@ class StationaryKsIdentity:
 
     def to_payload(self) -> typing.Any:
         return {
-            "schema": "vibeqc.stationary-ks-state/v1",
+            "schema": "vibeqc.stationary-ks-state/v2",
             **{name: getattr(self, name) for name in self.__dataclass_fields__},
         }
 
@@ -201,19 +242,18 @@ class StationaryDerivativeContract:
 
     @property
     def spin(self) -> typing.Any:
-        method_ir, _ = resolve_ks_method(self.state_identity.method)
-        return method_ir.spin
+        return self.state_identity.spin
 
     @property
     def family(self) -> typing.Any:
-        _, functional = resolve_ks_method(self.state_identity.method)
-        if functional.ingredients == ("rho",):
+        ingredients = self.state_identity.ingredients
+        if ingredients == ("rho",):
             return "lda"
-        return "mgga" if "tau" in functional.ingredients else "gga"
+        return "mgga" if ingredients == ("rho", "sigma", "tau") else "gga"
 
     def to_payload(self) -> typing.Any:
         return {
-            "schema": "vibeqc.stationary-dft-derivative/v1",
+            "schema": "vibeqc.stationary-dft-derivative/v2",
             "state": self.state_identity.to_payload(),
             "spin": self.spin,
             "family": self.family,
@@ -432,9 +472,7 @@ class GeneratedXcGeometry(FixedDensityXcGeometry):
         super().__post_init__()
         contract = StationaryDerivativeContract(self.state_identity)
         contract.validate(self.state)
-        if self.regularization_identity != scf_regularization_identity(
-            self.state_identity.method
-        ):
+        if self.regularization_identity != self.state_identity.regularization_identity:
             raise ValueError("stationary regularization identity mismatch")
 
     def directional(self, motion: typing.Any) -> typing.Any:
@@ -613,15 +651,7 @@ def _scf_domain_xc_geometry(
     )
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
-    _, expected_functional = resolve_ks_method(state.identity.method)
-    if functional.identity != expected_functional.identity:
-        raise ValueError(
-            "stationary "
-            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
-        )
-    regularization_identity = scf_regularization_identity(state.identity.method)
-    if state.identity.regularization_identity != regularization_identity:
-        raise ValueError("stationary regularization identity mismatch")
+    regularization_identity = state.identity.regularization_identity
     for name, actual in (
         ("basis_identity", basis.identity),
         ("geometry_identity", native_ao_geometry_identity(basis)),
@@ -631,7 +661,7 @@ def _scf_domain_xc_geometry(
         if actual != getattr(state.identity, name):
             raise ValueError(f"stationary {name.replace('_', ' ')} mismatch")
 
-    program = ContractionProgram(functional, "geometry")
+    program = ExternalPointContraction(functional, "geometry")
     density = state.density[0] if contract.spin == "unpolarized" else state.density
     jets = basis.evaluate(grid.points, program.contract.ao_order)
     features = program.features(jets, density)
@@ -639,9 +669,8 @@ def _scf_domain_xc_geometry(
     point_gradient = (
         np.zeros((2, len(grid.points), 3)) if gradient is None else gradient
     )
-    functional_code = native_xc_functional_code(state.identity.method)
     point_values = state._source.evaluate_xc_points(
-        functional_code,
+        functional,
         features["rho"],
         point_gradient,
         features.get("tau"),
@@ -663,7 +692,7 @@ def _scf_domain_xc_geometry(
             {
                 "schema": "vibeqc.stationary-scf-xc-geometry/v1",
                 "functional": functional.identity,
-                "scf_domain": scf_domain_for_method(state.identity.method),
+                "regularization_identity": regularization_identity,
                 "point_coefficients": (
                     "rho-gradient-kinetic-cartesian-v1"
                     if contract.family == "mgga"
@@ -713,12 +742,6 @@ def _fixed_density_xc_geometry(
     )
     if family != contract.family:
         raise ValueError("stationary functional family mismatch")
-    _, expected_functional = resolve_ks_method(state.identity.method)
-    if functional.identity != expected_functional.identity:
-        raise ValueError(
-            "stationary "
-            f"{contract.family.upper()} requires canonical {expected_functional.identifier}"
-        )
     if state.identity.regularization_identity != xc_regularization_identity(functional):
         raise ValueError("stationary regularization identity mismatch")
     for name, actual in (
