@@ -110,8 +110,10 @@ def run_sweep(
         raise ValueError("sizes must be positive, unique integers")
     if (
         not providers
-        or any(type(provider) is not str or provider not in {"auto", "scalar", "openblas"}
-               for provider in providers)
+        or any(
+            type(provider) is not str or provider not in {"auto", "scalar", "openblas"}
+            for provider in providers
+        )
         or len(set(providers)) != len(providers)
     ):
         raise ValueError("providers must be nonempty, supported and unique")
@@ -178,7 +180,9 @@ def main() -> int:
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--threads", type=int, default=1)
     parser.add_argument(
-        "--timeout-seconds", type=float, default=120.0,
+        "--timeout-seconds",
+        type=float,
+        default=120.0,
         help="finite positive wall-time limit for each probe invocation (default: 120)",
     )
     parser.add_argument("--output", type=raw_output_path)

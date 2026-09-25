@@ -56,18 +56,28 @@ def test_default_sweep_applies_deadline_to_every_observation(
 ) -> None:
     calls = []
 
-    def observe(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+    def observe(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
         assert kwargs.get("timeout") == 120.0
         calls.append(command)
         size, repeats, provider, threads = command[1:]
         payload = {
-            "schema": sweep.PROBE_SCHEMA, "operation": "gemm",
-            "m": int(size), "n": int(size), "k": int(size),
-            "repeats": int(repeats), "provider_threads": int(threads),
-            "transpose_a": "N", "transpose_b": "N",
+            "schema": sweep.PROBE_SCHEMA,
+            "operation": "gemm",
+            "m": int(size),
+            "n": int(size),
+            "k": int(size),
+            "repeats": int(repeats),
+            "provider_threads": int(threads),
+            "transpose_a": "N",
+            "transpose_b": "N",
             "requested_provider": "automatic" if provider == "auto" else provider,
-            "provider": "scalar", "cpu_target": "test-cpu",
-            "thread_ownership": "task_parallel", "seconds": 0.001, "gflops": 1.0,
+            "provider": "scalar",
+            "cpu_target": "test-cpu",
+            "thread_ownership": "task_parallel",
+            "seconds": 0.001,
+            "gflops": 1.0,
         }
         return subprocess.CompletedProcess(command, 0, json.dumps(payload), "")
 
@@ -98,21 +108,37 @@ def test_real_stalled_probe_does_not_publish_evidence(tmp_path: Path) -> None:
         pytest.skip("requires a host C++ compiler")
     source, probe = tmp_path / "slow.cpp", tmp_path / "slow"
     source.write_text(
-        '#include <chrono>\n#include <thread>\n#include <iostream>\n'
-        'int main() { std::this_thread::sleep_for(std::chrono::seconds(1)); '
+        "#include <chrono>\n#include <thread>\n#include <iostream>\n"
+        "int main() { std::this_thread::sleep_for(std::chrono::seconds(1)); "
         'std::cout << "{}\\n"; }\n',
         encoding="utf-8",
     )
     subprocess.run(
         [compiler, "-std=c++17", str(source), "-o", str(probe)],
-        check=True, capture_output=True, text=True, timeout=30,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
     output = tmp_path / "evidence.json"
     completed = subprocess.run(
-        [sys.executable, str(ROOT / "benchmarks/cpu_linalg_sweep.py"),
-         "--probe", str(probe), "--sizes", "16", "--providers", "scalar",
-         "--timeout-seconds", "0.05", "--output", str(output)],
-        capture_output=True, text=True, timeout=10,
+        [
+            sys.executable,
+            str(ROOT / "benchmarks/cpu_linalg_sweep.py"),
+            "--probe",
+            str(probe),
+            "--sizes",
+            "16",
+            "--providers",
+            "scalar",
+            "--timeout-seconds",
+            "0.05",
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     assert completed.returncode != 0
     assert "probe timed out for provider=scalar size=16" in completed.stderr
