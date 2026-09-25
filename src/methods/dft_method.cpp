@@ -341,16 +341,15 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
 
   const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
                                 options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
-  const double pbe0_fock_coefficient =
-      fock.spin == scf::FockSpin::Restricted ? -0.125 : -0.25;
-  const bool cuda_pbe0 =
-      backend == VIBEQC_BACKEND_CUDA &&
-      execution_plan.semilocal_family == dft::SemilocalFamily::Pbe &&
-      options.semilocal_exchange_scale == 0.75 && options.semilocal_correlation_scale == 1.0 &&
-      fock.exchange.present && fock.exchange.coefficient == pbe0_fock_coefficient &&
-      !execution_plan.range_exchange && !execution_plan.nonlocal_correlation &&
-      options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE &&
-      options.precision_mode != VIBEQC_PRECISION_AUTO;
+  const double pbe0_fock_coefficient = fock.spin == scf::FockSpin::Restricted ? -0.125 : -0.25;
+  const bool cuda_pbe0 = backend == VIBEQC_BACKEND_CUDA &&
+                         execution_plan.semilocal_family == dft::SemilocalFamily::Pbe &&
+                         options.semilocal_exchange_scale == 0.75 &&
+                         options.semilocal_correlation_scale == 1.0 && fock.exchange.present &&
+                         fock.exchange.coefficient == pbe0_fock_coefficient &&
+                         !execution_plan.range_exchange && !execution_plan.nonlocal_correlation &&
+                         options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE &&
+                         options.precision_mode != VIBEQC_PRECISION_AUTO;
   if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_pbe0)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "CUDA scaled/global-hybrid KS composition is not qualified");

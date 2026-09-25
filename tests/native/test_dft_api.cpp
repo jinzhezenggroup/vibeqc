@@ -779,7 +779,8 @@ int main() {
         method = lda_method();
         method.method = ks;
         const std::array<vibeqc_ks_semilocal_component, 2> pbe0_components{{
-            {"GGA_C_PBE", 1.0}, {"GGA_X_PBE", 0.75},
+            {"GGA_C_PBE", 1.0},
+            {"GGA_X_PBE", 0.75},
         }};
         std::array<vibeqc_ks_exchange_term, 1> pbe0_exchange{{
             {VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, uks ? -0.25 : -0.125},
