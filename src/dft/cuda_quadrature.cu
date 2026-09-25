@@ -23,7 +23,7 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
   const auto [zn, zw] = legendre_rule(spec.angular_polar);
   // These small shared quadrature tables are input rules, not a CPU molecular
   // grid. The generated kernels own coordinates and every partition weight.
-  std::vector<double> input(l.polar, 0.0);
+  std::vector<double> input(l.radial, 0.0);
   for (std::size_t a = 0; a < l.atoms; ++a) {
     std::copy(system.atoms[a].position.begin(), system.atoms[a].position.end(),
               input.begin() + 3 * a);
@@ -49,6 +49,10 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
   check(cudaMemcpyAsync(data, input.data(), input.size() * sizeof(double), cudaMemcpyHostToDevice,
                         stream.get()));
   check(cudaMemsetAsync(invalid.get(), 0, sizeof(int), stream.get()));
+  q::radial_kernel<<<q::blocks(l.atoms * spec.radial_points), 128, 0, stream.get()>>>(
+      l.atoms, spec.radial_points, data + 3 * l.atoms, data + l.rules, data + l.rules + 512,
+      data + l.radial);
+  check(cudaGetLastError());
   q::polar_kernel<<<q::blocks(spec.angular_polar), 128, 0, stream.get()>>>(
       spec.angular_polar, data + l.rules + 1024, data + l.rules + 1280, data + l.polar);
   check(cudaGetLastError());
@@ -62,8 +66,7 @@ MolecularGrid MolecularGrid::from_cuda(const core::System& system, GridSpec spec
     const auto count = std::min(l.tile, l.points - begin);
     q::points_kernel<<<q::blocks(count), 128, 0, stream.get()>>>(
         begin, count, spec.radial_points, spec.angular_polar, spec.angular_azimuth, data,
-        data + 3 * l.atoms, data + l.rules, data + l.rules + 512, data + l.polar, data + l.azimuth,
-        data + l.xyz, data + l.weights);
+        data + l.radial, data + l.polar, data + l.azimuth, data + l.xyz, data + l.weights);
     check(cudaGetLastError());
     q::distances_kernel<<<q::atom_point_grid(count, l.atoms), 128, 0, stream.get()>>>(
         count, l.atoms, data + l.xyz, data, data + l.distances);
