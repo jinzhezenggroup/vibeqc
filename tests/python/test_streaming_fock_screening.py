@@ -141,7 +141,6 @@ int main() {
     subprocess.run([str(executable)], check=True, timeout=10)
 
 
-
 @pytest.mark.parametrize("name", ["ssss", "dppp"])
 def test_row_streaming_binary_searches_monotonic_coarse_tail(name: str) -> None:
     """Packed/subgroup streaming should not linearly probe the Schwarz tail."""
@@ -159,5 +158,8 @@ def test_row_streaming_binary_searches_monotonic_coarse_tail(name: str) -> None:
     worker_marker = f"__device__ __forceinline__ void {prefix}_streaming_fock("
     worker_start = source.index(worker_marker)
     worker = source[worker_start:]
-    assert f"const std::uint32_t coarse_ket_end = {prefix}_stream_coarse_ket_end(" in worker
+    assert (
+        f"const std::uint32_t coarse_ket_end = {prefix}_stream_coarse_ket_end("
+        in worker
+    )
     assert "ket_base < coarse_ket_end" in worker
