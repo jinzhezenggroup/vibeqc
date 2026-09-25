@@ -350,8 +350,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     // Do not build complete raw metric/three-center tensors just to discard
     // them before plan creation; retaining only dimensions and one-electron
     // response data keeps setup peak bounded by the resolved resource envelope.
-    if (data.resolved_budget.value_bytes != 0U ||
-        df_packed_pairs(requested_df_pair_storage())) {
+    if (data.resolved_budget.value_bytes != 0U || df_packed_pairs(requested_df_pair_storage())) {
       integrals::DensityFittingIntegralData metadata;
       metadata.nbf = molecule::ao_count(system);
       metadata.naux = molecule::ao_count(auxiliary_system);
@@ -1565,8 +1564,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
     return prepared;
   }
   trace_df_resolved_budget(resolved);
-  const bool source_values =
-      resolved.value_bytes != 0U || df_packed_pairs(pair_storage);
+  const bool source_values = resolved.value_bytes != 0U || df_packed_pairs(pair_storage);
   std::vector<DfPreparationStorage> storage(count);
   std::size_t retained_host_bytes = 0;
   if (resolved.total_bytes != 0U) {

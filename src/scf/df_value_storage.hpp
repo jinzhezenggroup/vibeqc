@@ -17,8 +17,7 @@ namespace vibeqc::scf {
 enum class DfPairStorage { Dense, SymmetricLower, SymmetricLowerSingle };
 
 inline bool df_packed_pairs(DfPairStorage storage) noexcept {
-  return storage == DfPairStorage::SymmetricLower ||
-         storage == DfPairStorage::SymmetricLowerSingle;
+  return storage == DfPairStorage::SymmetricLower || storage == DfPairStorage::SymmetricLowerSingle;
 }
 
 inline bool df_retains_packed_raw(DfPairStorage storage) noexcept {
@@ -35,7 +34,8 @@ inline DfPairStorage requested_df_pair_storage() {
     return DfPairStorage::Dense;
   if (std::strcmp(value, "packed") == 0) return DfPairStorage::SymmetricLower;
   if (std::strcmp(value, "packed-single") == 0) return DfPairStorage::SymmetricLowerSingle;
-  throw std::invalid_argument("VIBEQC_DF_VALUE_STORAGE must be auto, dense, packed or packed-single");
+  throw std::invalid_argument(
+      "VIBEQC_DF_VALUE_STORAGE must be auto, dense, packed or packed-single");
 }
 
 /** A lower-pair address cannot be mistaken for mu*nbf+nu. The owning shape

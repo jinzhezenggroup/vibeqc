@@ -158,8 +158,7 @@ vibeqc_status select_corrected_occupied_response_factor(
   if (!requested || !state || state->unrestricted || !state->occupied_exchange ||
       !state->final_frames_available ||
       (!plan.streamed && plan.value_storage.pairs != DfPairStorage::SymmetricLowerSingle) ||
-      !plan.integral_source ||
-      plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
+      !plan.integral_source || plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
       terms[0].density.size() != plan.matrix_elements || terms[0].coulomb_coefficient != 1.0 ||
       terms[0].exchange_coefficient != .25 || requested->identity.occupied.size() != 1 ||
       !requested->identity.occupied[0] ||
@@ -288,8 +287,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
       plan->auxiliary_tile_values && plan->exchange_intermediate && plan->exchange_contributions;
   const bool packed_resident = !host_weights && plan->integral_source && !plan->streamed &&
-                               df_packed_pairs(plan->value_storage.pairs) &&
-                               plan->packed_raw && plan->row_tile == plan->nbf;
+                               df_packed_pairs(plan->value_storage.pairs) && plan->packed_raw &&
+                               plan->row_tile == plan->nbf;
   const char* space_control = std::getenv("VIBEQC_DF_RESPONSE_SPACE");
   const std::string_view space = space_control ? space_control : "auto";
   if (space != "auto" && space != "dense" && space != "occupied") {
@@ -471,9 +470,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     }
     CudaDfOccupiedResponseView streamed_factors;
     if (!borrow && plan->integral_source &&
-        (plan->streamed ||
-         (plan->value_storage.pairs == DfPairStorage::SymmetricLowerSingle &&
-          space == "occupied")) &&
+        (plan->streamed || (plan->value_storage.pairs == DfPairStorage::SymmetricLowerSingle &&
+                            space == "occupied")) &&
         metric.full_rank && space != "dense") {
       // Neither streamed nor single-factor values own raw A for response.
       // Lend only validated canonical C; the bridge projects the physical

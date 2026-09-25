@@ -73,7 +73,8 @@ def test_single_packed_factor_cold_warm_and_force_replay(
             np.testing.assert_allclose(item.forces, forces, atol=1e-7, rtol=0)
             records = read_trace(trace)
             occupied_responses += sum(
-                record["counters"].get("response_owned_occupied_projection_bytes", 0) > 0
+                record["counters"].get("response_owned_occupied_projection_bytes", 0)
+                > 0
                 for record in records
                 if record["operation"] == "force_response"
             )

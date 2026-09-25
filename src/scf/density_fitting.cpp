@@ -1239,8 +1239,8 @@ static DensityFittingTilePlan plan_packed_density_fitting_tiles_impl(
     // replace only the representation's actual simultaneous tensor allocations.
     const long double dense = static_cast<long double>(batch) * matrix * a * sizeof(double) +
                               3.0L * matrix * q * sizeof(double);
-    const long double packed = (retain_raw ? 2.0L : 1.0L) * capacity.factor_bytes +
-                               capacity.scratch_bytes;
+    const long double packed =
+        (retain_raw ? 2.0L : 1.0L) * capacity.factor_bytes + capacity.scratch_bytes;
     const long double total = static_cast<long double>(legacy) - dense + packed;
     if (total < 0 || total >= static_cast<long double>(std::numeric_limits<std::size_t>::max()))
       throw std::overflow_error("packed DF reservation overflows size_t");
@@ -1281,9 +1281,8 @@ DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std:
   if (df_occupied_exchange_auto_requested() && automatic_rhf_rank <= rank &&
       df_occupied_exchange_requested(nbf, naux, batch, automatic_rhf_rank)) {
     try {
-      auto plan =
-          plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed, true,
-                                                 retain_raw);
+      auto plan = plan_packed_density_fitting_tiles_impl(batch, nbf, naux, rank, budget, fixed,
+                                                         true, retain_raw);
       plan.automatic_rhf_rank = automatic_rhf_rank;
       return plan;
     } catch (const DensityFittingBudgetError&) {
@@ -1297,8 +1296,7 @@ DensityFittingTilePlan plan_packed_density_fitting_tiles(std::size_t batch, std:
     if (retain_raw || !rank || !df_occupied_exchange_auto_requested()) throw;
     // A single fitted B may fit when a complete occupied U does not. Drop
     // only that optional SCF scratch: J/K remains exact via bounded panels.
-    return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, 0, budget, fixed, false,
-                                                  false);
+    return plan_packed_density_fitting_tiles_impl(batch, nbf, naux, 0, budget, fixed, false, false);
   }
 }
 

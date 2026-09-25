@@ -29,9 +29,8 @@ bool qualified_resident_rhf_exchange(const CudaDensityFittingJkPlan& plan,
   // Q panel. Dense generated sources use the same contract only after the
   // complete raw owner has been validated during setup; that owner is also
   // required by the exact force-response borrow below.
-  const bool packed_resident = df_packed_pairs(plan.value_storage.pairs) &&
-                               plan.integral_source && plan.packed_raw &&
-                               rank <= plan.value_storage.rank_capacity;
+  const bool packed_resident = df_packed_pairs(plan.value_storage.pairs) && plan.integral_source &&
+                               plan.packed_raw && rank <= plan.value_storage.rank_capacity;
   const bool dense_resident = plan.value_storage.pairs == DfPairStorage::Dense &&
                               plan.auxiliary_tile == plan.naux &&
                               (!plan.integral_source || plan.resident_raw_valid);
@@ -70,8 +69,8 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
   rank = 0;
   // Reuse the existing singleton RHF solver/scratch. Streamed value factors
   // need a profitable full-rank source schedule, but never a resident lease.
-  const bool packed = df_packed_pairs(plan.value_storage.pairs) && plan.integral_source &&
-                      plan.three_center;
+  const bool packed =
+      df_packed_pairs(plan.value_storage.pairs) && plan.integral_source && plan.three_center;
   const bool source_dense_resident = plan.integral_source && !packed && plan.resident_raw_valid;
   const bool resident = !plan.streamed &&
                         (!plan.integral_source || packed || source_dense_resident) &&
