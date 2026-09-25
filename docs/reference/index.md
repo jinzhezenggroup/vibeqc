@@ -10,3 +10,15 @@ Reference is for exact lookup rather than teaching.
 - [GFN1 parameters](gfn1_parameters.md)
 
 Machine-generated `codegen_capabilities.json` and `cuda_ownership/` remain at the docs root because repository tooling currently consumes those paths.
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+../public_methods
+capabilities
+units
+cosx_reference
+d4_reference
+gfn1_parameters
+```

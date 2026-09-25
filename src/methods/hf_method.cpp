@@ -21,16 +21,7 @@
 namespace vibeqc::methods::detail {
 namespace {
 
-bool method_field_present(const vibeqc_method_descriptor& descriptor, std::size_t offset,
-                          std::size_t width) noexcept {
-  return descriptor.struct_size >= offset && descriptor.struct_size - offset >= width;
-}
-
 vibeqc_density_fitting_mode density_fitting_mode(const vibeqc_method_descriptor& descriptor) {
-  if (!method_field_present(descriptor, offsetof(vibeqc_method_descriptor, density_fitting_mode),
-                            sizeof(descriptor.density_fitting_mode))) {
-    return VIBEQC_DENSITY_FITTING_NONE;
-  }
   const auto mode = descriptor.density_fitting_mode;
   if (mode != VIBEQC_DENSITY_FITTING_NONE && mode != VIBEQC_DENSITY_FITTING_CPU_REFERENCE &&
       mode != VIBEQC_DENSITY_FITTING_CUDA && mode != VIBEQC_DENSITY_FITTING_AUTO) {
@@ -40,41 +31,22 @@ vibeqc_density_fitting_mode density_fitting_mode(const vibeqc_method_descriptor&
 }
 
 double density_fitting_threshold(const vibeqc_method_descriptor& descriptor) {
-  if (!method_field_present(descriptor,
-                            offsetof(vibeqc_method_descriptor, density_fitting_relative_threshold),
-                            sizeof(descriptor.density_fitting_relative_threshold)) ||
-      descriptor.density_fitting_relative_threshold == 0.0) {
-    return 1.0e-10;
-  }
-  return descriptor.density_fitting_relative_threshold;
+  return descriptor.density_fitting_relative_threshold == 0.0
+             ? 1.0e-10
+             : descriptor.density_fitting_relative_threshold;
 }
 
 std::size_t density_fitting_memory_budget(const vibeqc_method_descriptor& descriptor) {
-  if (!method_field_present(descriptor,
-                            offsetof(vibeqc_method_descriptor, density_fitting_memory_budget_bytes),
-                            sizeof(descriptor.density_fitting_memory_budget_bytes))) {
-    return 0;
-  }
   return static_cast<std::size_t>(descriptor.density_fitting_memory_budget_bytes);
 }
 
 std::optional<core::System> density_fitting_auxiliary_template(
     const vibeqc_method_descriptor& descriptor) {
-  if (!method_field_present(descriptor,
-                            offsetof(vibeqc_method_descriptor, density_fitting_auxiliary_basis),
-                            sizeof(descriptor.density_fitting_auxiliary_basis)) ||
-      descriptor.density_fitting_auxiliary_basis == nullptr) {
-    return std::nullopt;
-  }
+  if (descriptor.density_fitting_auxiliary_basis == nullptr) return std::nullopt;
   return descriptor.density_fitting_auxiliary_basis->data;
 }
 
 std::optional<vibeqc_precision_mode> precision_mode(const vibeqc_method_descriptor& descriptor) {
-  if (!method_field_present(descriptor, offsetof(vibeqc_method_descriptor, precision_mode),
-                            sizeof(descriptor.precision_mode))) {
-    // Callers built before this field kept the legacy diagnostic switch.
-    return std::nullopt;
-  }
   const auto mode = descriptor.precision_mode;
   if (mode != VIBEQC_PRECISION_FP64 && mode != VIBEQC_PRECISION_AUTO) {
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "unknown floating-point precision mode");
@@ -106,7 +78,7 @@ scf::ScfOptions scf_options(const vibeqc_method_descriptor& descriptor) {
   return options;
 }
 
-// Translate the legacy public selection exactly once. AUTO selects a backend
+// Resolve the public selection exactly once. AUTO selects a backend
 // within the explicitly requested DF approximation; it never switches exact/DF.
 void resolve_hf_options(scf::ScfOptions& options, vibeqc_method method,
                         const runtime::ExecutionContext& execution) {

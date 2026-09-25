@@ -9,7 +9,7 @@ floor(n/2)`). This margin is a workload heuristic, not a promise of a twofold
 latency improvement on every device. It uses the ordinary FP64 BLAS backend
 and has no GPU product-name, architecture, exact AO/rank or equal-basis gate.
 
-Execution additionally requires a single RHF system, a non-streamed resident
+Resident execution additionally requires a single RHF system, a non-streamed resident
 plan, full AO rows, reserved factors, native BLAS index bounds and sufficient
 actual projection capacity. Host-raw plans need full auxiliary scratch;
 explicit packed-source plans need retained raw storage and enough rank capacity.
@@ -18,6 +18,19 @@ storage retain their checked fallback. `dense` and `occupied` remain explicit
 comparison overrides. All factor, density and final-state checks still apply.
 The [selection decision](../../.agents/notes/implemented/performance/2026-09-18-general-occupied-df-policy.md)
 records the work model, validation and performance limitations.
+
+Generated streamed singleton RHF value execution has a separate compiler-owned
+schedule in `vibeqc_compiler.method.df_exchange_schedule`. When the metric is
+full rank and the existing four scratch buffers can reduce source work, project
+raw AO rows into occupied space before metric whitening. Two buffers retain
+projections; raw input and metric projection use the other two. In triangular
+K, alternate the retained slots between output rows and visit columns in
+descending order. This consumes the preceding row's projection before its slot
+is overwritten. For `b` balanced blocks of width `h`, the generated AO-row count
+is `n + h*(b-1)*max(0,b-2)/2`; one or two blocks need exactly one raw tensor pass.
+The explicit full-matrix traversal retains its `n*b` row count. Admission compares
+these counts against the dense fallback, without increasing buffer capacity.
+The value schedule grants no final-state or force-response projection lease.
 
 For one spin, `D = w C C^T` with canonical occupation w=2 (RHF) or w=1 (UHF).
 On a full resident plan, project the existing pair-major tensor directly:
@@ -68,10 +81,11 @@ densities have no trustworthy orbital factor, but a checked algebraic factor
 can replace its dense K. `VIBEQC_DF_SEED_EXCHANGE=dense|factor|auto` controls this
 choice; `factor` enables guarded factorization and `auto` uses the same
 resident capacity and occupied-work policy as SCF.
-Factorization requires an occupied-SCF singleton resident RHF plan
-with full AO/auxiliary tiles and existing factor capacity. The experimental
+Factorization requires an occupied-SCF singleton RHF plan with existing factor
+capacity and either a qualified resident layout or the streamed value schedule
+above. The experimental
 packed resident constructor below also supports the explicit `factor` override.
-UHF, batch, streamed and other generated-source plans keep dense seeds.
+UHF, batch and other unqualified generated-source plans keep dense seeds.
 
 The seed reuses the compact GPU eigensolver and transient Fock/eigenvalue
 scratch to form `L = V sqrt(lambda)`, then builds occupied K with weight one.
@@ -186,8 +200,20 @@ The method passes its verified final-state token. The response owner checks
 source identity, solve epoch, system, model, occupations, exact canonical device
 density, and each device factor generation before borrowing C. Missing/stale
 tokens, corrected determinants, external densities, unreserved plans and
-unsupported factors keep dense response. UHF additionally verifies the exact
-sum of its spin densities and admits both rank-squared projections together.
+unsupported factors keep dense response under `auto`. UHF additionally verifies
+the exact sum of its spin densities and admits both rank-squared projections
+together.
+
+On singleton, full-rank streamed RHF plans only, an explicit
+`VIBEQC_DF_RESPONSE_SPACE=occupied` request may reconstruct a *new* algebraic
+factor from a corrected final density. It requires the same source/model/solve
+epoch/occupation, bounded matching density and orbital generation advances,
+and the charged occupied value-plan reservation. A GPU eigensolve and full
+density reconstruction gate reject indefinite, non-finite, excess-rank or
+inexact densities; the existing bounded dense response remains the fallback.
+Before overwriting factor scratch, the response revokes the previous SCF
+generation, so this factor is never advertised as a canonical SCF factor.
+`auto`, UHF, batch and truncated-metric response policies are unchanged.
 
 The response computes `T_Q=C^T A_Q C` and `U_P=sum_Q V_PQ T_Q` from raw
 three-center values, preserving finite discarded metric directions. In the

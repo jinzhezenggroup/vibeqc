@@ -38,18 +38,15 @@ def tetramer_reference() -> typing.Any:
     return case, energy, forces
 
 
-@pytest.mark.parametrize("provider", ["tensor", "generated"])
 @pytest.mark.parametrize("budget", [24 << 20, 32 << 20, 64 << 20])
 def test_property_replay_replans_value_storage_with_complete_forces(
     tetramer_reference: typing.Any,
-    provider: typing.Any,
     budget: typing.Any,
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID")
     case, energy, forces = tetramer_reference
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", provider)
     calc = Calculator(
         basis=case.vibeqc_basis,
         basis_representation="spherical",

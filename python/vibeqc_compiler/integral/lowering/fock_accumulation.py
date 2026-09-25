@@ -1,4 +1,4 @@
-"""Emit the compiler-owned RHF/UHF Direct-Fock scatter contraction."""
+"""Emit the shared Coulomb and RHF/UHF Direct-Fock scatter contractions."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ def emit_fock_accumulation_cuda(
     density_offset: str,
     spin_offset: str,
     description: str,
+    coulomb_only: str,
     unroll_permutations: bool = True,
 ) -> str:
     """Emit one canonical-ERI-to-Fock scatter with shared spin semantics."""
@@ -39,26 +40,30 @@ __device__ __forceinline__ void {function_name}(
             fock + {spin_offset} + matrix_size + ab,
             total_cd * integral);
       }}
-      const double alpha_bd = density[{spin_offset} + bd];
-      const double beta_bd = density[{spin_offset} + matrix_size + bd];
-      if (alpha_bd != 0.0) {{
-        atomicAdd(fock + {spin_offset} + ac, -alpha_bd * integral);
-      }}
-      if (beta_bd != 0.0) {{
-        atomicAdd(
-            fock + {spin_offset} + matrix_size + ac,
-            -beta_bd * integral);
+      if (!({coulomb_only})) {{
+        const double alpha_bd = density[{spin_offset} + bd];
+        const double beta_bd = density[{spin_offset} + matrix_size + bd];
+        if (alpha_bd != 0.0) {{
+          atomicAdd(fock + {spin_offset} + ac, -alpha_bd * integral);
+        }}
+        if (beta_bd != 0.0) {{
+          atomicAdd(
+              fock + {spin_offset} + matrix_size + ac,
+              -beta_bd * integral);
+        }}
       }}
     }} else {{
       const double density_cd = density[{density_offset} + cd];
-      const double density_bd = density[{density_offset} + bd];
       if (density_cd != 0.0) {{
         atomicAdd(fock + {density_offset} + ab, density_cd * integral);
       }}
-      if (density_bd != 0.0) {{
-        atomicAdd(
-            fock + {density_offset} + ac,
-            -0.5 * density_bd * integral);
+      if (!({coulomb_only})) {{
+        const double density_bd = density[{density_offset} + bd];
+        if (density_bd != 0.0) {{
+          atomicAdd(
+              fock + {density_offset} + ac,
+              -0.5 * density_bd * integral);
+        }}
       }}
     }}
   }}
@@ -86,6 +91,7 @@ def emit_generated_shell_fock_accumulation() -> str:
         matrix_index="generated_dppp_matrix_index",
         density_offset="task.density_offset",
         spin_offset="task.spin_offset",
+        coulomb_only="task.fock_consumer == GeneratedDpppFockConsumer::Coulomb",
         description=(
             "Scatter one canonical integral using VIBEQC's existing RHF/UHF convention."
         ),
@@ -99,7 +105,7 @@ def emit_direct_fock_accumulation_header() -> str:
         function_name="accumulate_direct_fock_integral",
         parameters="""    std::size_t n, std::size_t physical_offset, std::size_t spin_offset,
     const double* density, double* fock, std::size_t i, std::size_t j,
-    std::size_t k, std::size_t l, double integral""",
+    std::size_t k, std::size_t l, double integral, bool coulomb_only = false""",
         setup="  const std::size_t matrix_size = n * n;",
         permutation_setup="""    if (!unique_eri_symmetry_permutation(permutation, i, j, k, l)) {
       continue;
@@ -112,6 +118,7 @@ def emit_direct_fock_accumulation_header() -> str:
         matrix_index="matrix_index",
         density_offset="physical_offset",
         spin_offset="spin_offset",
+        coulomb_only="coulomb_only",
         description="Scatter one symmetry-canonical ERI into the direct RHF/UHF Fock matrix.",
         unroll_permutations=False,
     )

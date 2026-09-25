@@ -511,14 +511,22 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "0022f434446e26538c16d7dcfce032490470abb293c44489a85a5fe89f246e08",
-    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "7d21ed9d8d1a2665c61f1766cf2d0f477230f868d74613128b2265a65eba0fd3",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "0f0b18c85239337eeee086355d08295b6c4ca351a57b677ce15f3fef7d463050",
-    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "15de768b835687674add560f032bf73cdabdadf44e0e67d5e3e9903679a90245",
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "dc57b43f958951eed08df8b89c22161ae560425004e44f76c12ed4eb3f2bbb39",
+    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "86f63490e0bbc09eb96fd0c909b4c1f5fa1d07cc61492b75a21c0b6f13c20696",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "bf177d29ff6fefde6e68f104045f3b4099d98135a3a1ca1c51f9d0d331f61c2e",
+    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "c42413573c65f8a96f13b225b9362d4520eb487741b7dd1eca8f3408aed5ce3f",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
-    "vibeqc_generated_shell_registry.cu": "207c71f8077aa7817d155f9de76f2370e5a6f1eebb01106944464b0e50bd70e9"
+    "vibeqc_generated_shell_registry.cu": "f17aaa673a1637345ab1d8d4c548fe470b38683b6e0ed0824f8b6f8d1a2fdd1b"
   },
   "artifact_corrections": [
+    {
+      "issue": 888,
+      "source_revision": "2cf3dec31100b0cda0b5267dc4364f75ccad9682",
+      "reason": "Expose the selected packed Fock queue-claim width as registry metadata so runtime grids count claims rather than individual tasks. Only the registry source fingerprint changes; all eight sm_120/sm_90 CUDA shards, the registry header, manifest and shell catalog remain byte-identical. Both single- and multiple-profile metadata paths and explicit Fock schedule overrides have dedicated tests.",
+      "paths": [
+        "vibeqc_generated_shell_registry.cu"
+      ]
+    },
     {
       "issue": 136,
       "reason": "Value-only Coulomb tables use their pruned IR stride; common geometry scratch retains the force-order extent. Verified exact PPPS/PSPS native objects against independent RHF/UHF direct/persistent fixtures.",
@@ -567,10 +575,13 @@
       ]
     },
     {
-      "issue": 1095,
-      "reason": "Keep screened candidates distinct from exhausted global pair-product domains in component-lane Fock workers. Only the sm_120 ddpp shard changes; equations, screening gates, manifest, catalog, registry, and portable artifacts are unchanged. Executed emitted-control-flow regression verifies complete retained work.",
+      "issue": 1077,
+      "reason": "Typed HartreeFock/Coulomb task consumer deliberately extends generated scatter and streaming task binding. The four sm_120 shards change; portable sm_90 shards, registry and shell catalog remain unchanged. Independent dense scatter and allocated through-d J / through-f fallback matrix tests pass.",
       "paths": [
-        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu"
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
       ]
     }
   ]

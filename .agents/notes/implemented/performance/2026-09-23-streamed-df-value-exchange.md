@@ -40,6 +40,11 @@ and must not be exported or borrowed as if resident.
 
 ## Work and memory
 
+The counts below record the original implementation. The subsequent
+[two-slot reuse decision](2026-09-23-df-projection-slot-reuse.md) removes repeated
+generation of the adjacent triangular row while preserving this admission and
+response-ownership boundary.
+
 For the original capacity `768*768*580` doubles per buffer and rank 160:
 
 - Dense K requests seven raw tensors, 15,325,986,816 values.

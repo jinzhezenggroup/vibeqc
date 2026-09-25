@@ -147,9 +147,7 @@ def _read_correlation_result(
         if index is None
         else "vibeqc_batch_get_correlation_diagnostic"
     )
-    getter = getattr(library, name, None)
-    if getter is None:
-        return None
+    getter = getattr(library, name)
     diag = _native.CorrelationDiagnostic()
     diag.struct_size = ctypes.sizeof(diag)
     diag.abi_version = _native.ABI_VERSION
@@ -707,19 +705,7 @@ class Calculator:
         ):
             raise NotImplementedError("PBE-D4 currently requires strict FP64")
         self._ks_options = None
-        if self._method_name in (
-            "lda-rks",
-            "pbe-rks",
-            "lda-uks",
-            "pbe-uks",
-            "pbe0-rks",
-            "pbe0-uks",
-            "r2scan-rks",
-            "r2scan-uks",
-            "b3lyp-rks",
-            "b3lyp-uks",
-            "pbe-d4-rks",
-        ):
+        if self._method in _method_manifest.NATIVE_DFT_METHOD_IDS:
             from .ks import KsOptions, resolve_ks_options
 
             if supplied_method_ir is None and isinstance(ks_options, KsOptions):
@@ -903,10 +889,9 @@ class Calculator:
         self._library = _native.load_library(device=device, device_id=self._device_id)
         self._ks_options_version = 0
         if self._ks_options is not None:
-            query = getattr(self._library, "vibeqc_ks_options_version", None)
-            if query is not None:
-                query.argtypes, query.restype = [], ctypes.c_uint32
-                self._ks_options_version = query()
+            query = self._library.vibeqc_ks_options_version
+            query.argtypes, query.restype = [], ctypes.c_uint32
+            self._ks_options_version = query()
             from .ks import resolve_ks_options
 
             if self._ks_options_version != 1:
@@ -934,7 +919,16 @@ class Calculator:
         named_cpu_all_electron_force = (
             self._device_name == "cpu"
             and self._method_name
-            in ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks", "pbe-d4-rks")
+            in (
+                "pbe0-rks",
+                "pbe0-uks",
+                "b3lyp-rks",
+                "b3lyp-uks",
+                "pbe-d4-rks",
+                "wb97m-v",
+                "wb97m-v-rks",
+                "wb97m-v-uks",
+            )
             and not basis_has_ecp
             and self._ks_options is not None
             and (
@@ -945,6 +939,16 @@ class Calculator:
                 )
             )
         )
+        if self._method_name.startswith("wb97m-v"):
+            named_cpu_all_electron_force = named_cpu_all_electron_force and (
+                self._basis == "sto-3g"
+                if isinstance(self._basis, str)
+                else all(
+                    shell.angular_momentum <= 1
+                    for element in self._basis.elements
+                    for shell in element.shells
+                )
+            )
         semilocal_force = (
             self._ks_options is not None
             and self._ks_options.coefficients == (1.0, 1.0, 0.0)
@@ -985,9 +989,11 @@ class Calculator:
                 | {"forces"},
             )
         if self._method in _COUPLED_CLUSTER_METHODS:
-            if self._method == _native.METHOD_RCCSD_T and device != "cpu":
-                raise NotImplementedError(
-                    "native RCCSD(T) CUDA owner is not promoted yet; use device='cpu'"
+            if self._method == _native.METHOD_RCCSD_T and device == "cuda":
+                self._capabilities = replace(
+                    self._capabilities,
+                    supported_properties=self._capabilities.supported_properties
+                    - {"forces"},
                 )
             if density_fitting_mode != _native.DENSITY_FITTING_NONE:
                 raise NotImplementedError(
@@ -1122,19 +1128,16 @@ class Calculator:
     ) -> dict | None:
         """Read a calculation's policy, or an input-indexed batch item's policy.
 
-        Returns ``None`` when the loaded library predates the query or when no
-        completed execution has populated the record yet (the native getter
-        reports :data:`STATUS_PRECISION_UNAVAILABLE`), so older builds and
-        pre-run queries both degrade to ``None`` instead of an error.
+        Returns ``None`` only when no completed execution has populated the
+        record yet (the native getter reports
+        :data:`STATUS_PRECISION_UNAVAILABLE`).
         """
         name = (
             "vibeqc_calculation_get_precision_provenance"
             if index is None
             else "vibeqc_batch_get_precision_provenance"
         )
-        getter = getattr(self._library, name, None)
-        if getter is None:
-            return None
+        getter = getattr(self._library, name)
         provenance = _native.PrecisionProvenance(
             ctypes.sizeof(_native.PrecisionProvenance), _native.ABI_VERSION
         )
@@ -2096,17 +2099,15 @@ class Calculator:
                 else None
             )
             physical_residual_rms = None
-            scf_getter = getattr(
-                self._library, "vibeqc_calculation_get_scf_diagnostic", None
+            scf_diag = _native.ScfDiagnostic(
+                ctypes.sizeof(_native.ScfDiagnostic), _native.ABI_VERSION
             )
-            if scf_getter is not None:
-                scf_diag = _native.ScfDiagnostic(
-                    ctypes.sizeof(_native.ScfDiagnostic), _native.ABI_VERSION
-                )
-                scf_status = scf_getter(calculation, ctypes.byref(scf_diag))
-                if scf_status != _native.STATUS_NOT_IMPLEMENTED:
-                    _native.check(self._library, scf_status, context=context)
-                    physical_residual_rms = scf_diag.physical_residual_rms
+            scf_status = self._library.vibeqc_calculation_get_scf_diagnostic(
+                calculation, ctypes.byref(scf_diag)
+            )
+            if scf_status != _native.STATUS_NOT_IMPLEMENTED:
+                _native.check(self._library, scf_status, context=context)
+                physical_residual_rms = scf_diag.physical_residual_rms
             backend = (
                 "cuda"
                 if result_descriptor.executed_backend == _native.BACKEND_CUDA

@@ -4,6 +4,8 @@ on:
   push:
     branches: [master]
   pull_request:
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
   schedule:
     - cron: "30 18 * * *"
@@ -80,7 +82,7 @@ jobs:
           # Include every family that can alter generated/native compilation.
           # The previous key omitted compiler/CMake inputs, so an immutable
           # exact cache could stay permanently half-stale after codegen changes.
-          key: ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
             ccache-cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
@@ -253,10 +255,10 @@ jobs:
 
   cumetal-benchmark:
     name: CuMetal performance (CodSpeed / Apple GPU)
-    # The required CuMetal runtime correctness job still runs on every PR.
-    # Keep performance telemetry on master/manual qualification to avoid
-    # competing with that required Apple-GPU check for PR runner capacity.
-    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
+    # The required CuMetal runtime correctness job still runs on every PR and
+    # merge group. Keep performance telemetry on master/manual qualification to
+    # avoid competing with that required Apple-GPU check for queue runner capacity.
+    if: github.event_name != 'pull_request' && github.event_name != 'merge_group' && github.event_name != 'schedule'
     runs-on: macos-15
     timeout-minutes: 15
     env:

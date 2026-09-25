@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "dft/semilocal_family.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
@@ -28,6 +29,7 @@ class PreparedFockPlan;
 namespace vibeqc::dft {
 class AoBasis;
 class MolecularGrid;
+struct SemilocalPointProgram;
 namespace nlc {
 class Vv10Plan;
 struct Vv10Parameters;
@@ -73,6 +75,14 @@ ScfResult run_pbe_rsh_rks(const PreparedFockPlan& primary,
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
+
+/** CPU qualification entry for one evidence-bound compiled semilocal point
+ * program. It reuses the ordinary RKS loop and does not register a public
+ * method or infer production admission from the descriptor. */
+ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density = nullptr);
 
 /** Generic RSH lowering. Fractions are physical exact-exchange weights. */
 FockBuildSpec make_global_hybrid_fock_spec(FockSpin spin, double exact_exchange);
@@ -130,6 +140,20 @@ ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
+
+/** Common CPU entry for curated LDA/PBE/r2SCAN semilocal execution. The typed
+ * family is shared with the prepared CUDA owner; composed B3/RSH/VV10 paths
+ * retain their dedicated composition checks. */
+ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                                   const dft::MolecularGrid& grid, const ScfOptions& options,
+                                   dft::SemilocalFamily family, unsigned spin_channels,
+                                   const std::vector<double>* initial_density = nullptr);
+
+/** UKS counterpart of run_semilocal_rks for qualification execution. */
+ScfResult run_semilocal_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density = nullptr);
 
 ScfResult run_b3lyp_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,

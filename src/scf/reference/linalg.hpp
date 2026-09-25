@@ -40,8 +40,6 @@ Matrix symmetric_orthogonalizer(const Matrix& overlap, std::size_t n);
 EigenResult generalized_eigen(const Matrix& fock, const Matrix& orthogonalizer, std::size_t n);
 /** Euclidean inner product of equally sized flattened matrices/vectors. */
 double dot(const Matrix& a, const Matrix& b);
-/** Pivoted dense solve. Return false at a pivot below 1e-14, leaving x unchanged. */
-bool solve_linear(Matrix a, std::vector<double> b, std::vector<double>& x, std::size_t n);
 
 }  // namespace vibeqc::scf::reference
 #endif

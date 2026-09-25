@@ -181,6 +181,41 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
   }
 }
 
+vibeqc_status vibeqc_ks_snapshot_wb97mv_model_v1(const vibeqc_batch* batch,
+                                                 const vibeqc_ks_snapshot* snapshot, double* values,
+                                                 std::size_t count) {
+  if (!batch || !snapshot || !values || count != 9) return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  try {
+    const auto status = check_current(*batch, *snapshot);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    const auto& identity = snapshot->token.identity;
+    const auto& model = identity.model;
+    const auto& primary = identity.determinant.model;
+    if (!snapshot->all_electron || primary.backend != vibeqc::scf::FockBackend::Cpu ||
+        model.functional != 4 || !model.range_correction || !model.nonlocal_correlation)
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
+    const double spin_factor = model.spins == 1 ? -0.5 : -1.0;
+    const double short_exchange = primary.spec.exchange.coefficient / spin_factor;
+    const auto& range = *model.range_correction;
+    const auto& nonlocal = *model.nonlocal_correlation;
+    const std::array<double, 9> proof{
+        short_exchange,
+        short_exchange + range.spec.exchange.coefficient / spin_factor,
+        range.spec.exchange.omega,
+        static_cast<double>(nonlocal.variant),
+        nonlocal.b,
+        nonlocal.c,
+        nonlocal.coefficient,
+        static_cast<double>(model.nonlocal_density_domain),
+        primary.screening_tolerance};
+    std::copy(proof.begin(), proof.end(), values);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
 vibeqc_status vibeqc_ks_snapshot_hamiltonian_v1(const vibeqc_batch* batch,
                                                 const vibeqc_ks_snapshot* snapshot,
                                                 std::uint32_t* kind) {
@@ -510,7 +545,7 @@ vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange
   constexpr std::size_t stride = 11;
   if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0 ||
       correlation_scale < 0 ||
-      (functional != 1 && (exchange_scale != 1.0 || correlation_scale != 1.0)) || functional > 3 ||
+      (functional != 1 && (exchange_scale != 1.0 || correlation_scale != 1.0)) || functional > 4 ||
       !rho || !gradient || !tau || !values || point_count == 0 ||
       point_count > std::numeric_limits<std::size_t>::max() / stride ||
       value_count != stride * point_count)
@@ -535,8 +570,11 @@ vibeqc_status vibeqc_xc_point_batch_v3(std::uint32_t functional, double exchange
           for (std::size_t axis = 0; axis < 3; ++axis)
             output[3 + spin * 3 + axis] = xc.gradient[spin][axis];
         output[9] = output[10] = 0.0;
-      } else if (functional == 2) {
-        const auto xc = vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
+      } else if (functional == 2 || functional == 4) {
+        const auto xc =
+            functional == 4
+                ? vibeqc::dft::evaluate_wb97mv_point(local_rho, local_gradient, local_tau)
+                : vibeqc::dft::evaluate_r2scan_point(local_rho, local_gradient, local_tau);
         output[0] = xc.energy;
         output[1] = xc.rho[0];
         output[2] = xc.rho[1];

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -12,10 +14,11 @@
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
+#include "runtime/cuda_resources.cuh"
 
 namespace {
 using namespace vibeqc::dft;
-void require(bool condition, const char* message) {
+void require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 void check(cudaError_t status) {
@@ -57,15 +60,19 @@ struct Fixture {
   std::unique_ptr<CudaXcPlan> plan;
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
-          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64)
+          std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
+          bool response = false)
       : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision)) {
     try {
+      if (response)
+        layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
+                                      functional, uks, tile, true, ao_precision);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
       check(cudaMalloc(&density, layout.spins * layout.nao * layout.nao * sizeof(double)));
-      plan = std::make_unique<CudaXcPlan>(basis, grid, functional, uks, tile, arena,
-                                          layout.device_bytes, stream, ao_precision);
+      plan = std::make_unique<CudaXcPlan>(layout, basis.packed, grid.points(), grid.weights(),
+                                          arena, layout.device_bytes, stream);
     } catch (...) {
       cleanup();
       throw;
@@ -118,11 +125,17 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
              const std::vector<double>& d, const std::vector<double>& empty_spin_reference = {}) {
   fixture.submit(d);
   const auto result = fixture.scalars();
-  require(result.error == 0, "valid density failed device XC evaluation");
+  require(result.error == 0,
+          "valid density failed device XC evaluation: n=" + std::to_string(basis.nao) +
+              " functional=" + std::to_string(fixture.layout.functional) +
+              " spins=" + std::to_string(fixture.layout.spins) +
+              " tile=" + std::to_string(fixture.layout.tile_points) +
+              " error=" + std::to_string(result.error));
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
-    const auto ref = l.functional == 2U   ? integrate_r2scan_rks(basis, grid, d, 17)
+    const auto ref = l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
+                     : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
                      : l.functional == 1U ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
                                           : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
@@ -132,7 +145,8 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   } else {
     const auto elements = l.nao * l.nao;
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-    const auto ref = l.functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b, 17)
+    const auto ref = l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
+                     : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
                      : l.functional == 1U ? integrate_pbe_uks(basis, grid, a, b, 17)
                                           : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
@@ -147,35 +161,42 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
         // Stable compiler coordinates restore the full endpoint gate even
         // when independently evaluated AO features differ by a few ulps.
         const double expected = ref.potential[s][i];
-        close(v[s * elements + i], expected, "UKS CPU/CUDA V", 2e-11 + 2e-12 * std::abs(expected));
         if (empty && !empty_spin_reference.empty()) {
           const double same_input = empty_spin_reference[s * elements + i];
+          if (std::abs(v[s * elements + i] - same_input) > 2e-11 + 2e-12 * std::abs(same_input))
+            std::cerr << "functional=" << l.functional << " spin=" << s << " matrix=" << i
+                      << " tile=" << l.tile_points << " points=" << grid.point_count() << '\n';
           close(v[s * elements + i], same_input, "UKS same-input minority V",
                 2e-11 + 2e-12 * std::abs(same_input));
         }
+        const double tolerance = 2e-11 + 2e-12 * std::abs(expected);
+        if (std::abs(v[s * elements + i] - expected) > tolerance)
+          std::cerr << "functional=" << l.functional << " spin=" << s << " matrix=" << i
+                    << " tile=" << l.tile_points << " points=" << grid.point_count() << '\n';
+        close(v[s * elements + i], expected, "UKS CPU/CUDA V", tolerance);
       }
     }
   }
   fixture.canary();
 }
 
-/** Independently check AO/features and integrate the host point evaluator on
- * identical device inputs, in addition to the complete CPU endpoint gate.
- * This diagnostic separated feature-rounding sensitivity from point emission
- * before the stable spin-coordinate repair. Keep both checks so neither
- * same-input agreement nor endpoint agreement can conceal a separate defect.
- * Independent wide Libxc/one-ulp fixtures live in test_r2scan_boundary_codegen.
+/** Check AO/features against independent host contractions, then evaluate
+ * r2SCAN or WB97M-V on the captured device features. This distinguishes point
+ * math disagreements from feature-rounding sensitivity without relaxing the
+ * complete CPU endpoint gate. The independent r2SCAN boundary fixtures live
+ * in test_r2scan_boundary_codegen.
  */
-std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
-                                                const std::vector<double>& d) {
+std::vector<double> empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
+                                         const std::vector<double>& d, std::uint32_t functional) {
   const auto count = grid.point_count(), n = basis.nao;
   // A test-only full tile retains the inputs after enqueue. Production and the
   // endpoint checked against this reference keep their bounded 257-point tile.
-  Fixture capture(basis, grid, 2U, true, count);
+  Fixture capture(basis, grid, functional, true, count);
   capture.submit(d);
-  require(capture.scalars().error == 0, "r2SCAN reference capture failed");
+  require(capture.scalars().error == 0, "meta-GGA reference capture failed");
   const auto& l = capture.layout;
   std::vector<double> ao(l.jets * count * n), features(l.spins * l.feature_terms * count);
+  std::vector<double> coefficients(functional == 4U ? features.size() : 0U);
   // Mirror the borrowed arena's packed basis/grid, AO, density-work, features
   // order. No production inspection API or host transfer is introduced.
   const auto* device = static_cast<const double*>(capture.arena) + l.packed_elements + 4 * count;
@@ -183,10 +204,26 @@ std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const Mole
   device += (l.jets + l.spins * l.work_jets) * count * n;
   check(cudaMemcpy(features.data(), device, features.size() * sizeof(double),
                    cudaMemcpyDeviceToHost));
+  if (functional == 4U)
+    check(cudaMemcpy(coefficients.data(), device + features.size(),
+                     coefficients.size() * sizeof(double), cudaMemcpyDeviceToHost));
+  if (functional == 4U && std::getenv("VIBEQC_WB97MV_DIAGNOSTIC_FILE")) {
+    std::ofstream output(std::getenv("VIBEQC_WB97MV_DIAGNOSTIC_FILE"), std::ios::binary);
+    const std::uint64_t header[]{count, n};
+    output.write(reinterpret_cast<const char*>(header), sizeof(header));
+    for (const auto& values : {ao, features, coefficients, grid.weights()})
+      output.write(reinterpret_cast<const char*>(values.data()),
+                   static_cast<std::streamsize>(values.size() * sizeof(double)));
+    require(static_cast<bool>(output), "unable to capture WB97M-V point diagnostics");
+  }
   std::vector<double> cpu_ao(ao.size()), expected(l.spins * n * n);
+  double max_point_difference = 0.0;
+  std::size_t worst_point = 0;
+  double worst_cpu = 0.0, worst_gpu = 0.0, worst_density = 0.0;
+  double worst_sigma = 0.0, worst_tau = 0.0;
   basis.evaluate(grid.points().data(), count, 1, 0, n, cpu_ao.data(), cpu_ao.size());
   for (std::size_t i = 0; i < ao.size(); ++i)
-    close(ao[i], cpu_ao[i], "captured r2SCAN AO", 2e-15 + 2e-13 * std::abs(cpu_ao[i]));
+    close(ao[i], cpu_ao[i], "captured meta-GGA AO", 2e-15 + 2e-13 * std::abs(cpu_ao[i]));
   for (std::size_t p = 0; p < count; ++p) {
     const auto phi = [&](unsigned jet, std::size_t mu) { return ao[(jet * count + p) * n + mu]; };
     double rho[2]{}, gradient[2][3]{}, tau[2]{};
@@ -204,25 +241,49 @@ std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const Mole
           }
         }
       for (unsigned k = 0; k < 5; ++k)
-        close(features[(spin * 5 + k) * count + p], reference[k], "captured r2SCAN feature",
+        close(features[(spin * 5 + k) * count + p], reference[k], "captured meta-GGA feature",
               2e-15 + 2e-13 * std::abs(reference[k]));
       rho[spin] = features[spin * 5 * count + p];
       for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[(spin * 5 + k + 1) * count + p];
       tau[spin] = features[(spin * 5 + 4) * count + p];
     }
-    const auto xc = evaluate_r2scan_point(rho, gradient, tau);
-    for (unsigned spin = 0; spin < 2; ++spin)
-      for (std::size_t mu = 0; mu < n; ++mu)
-        for (std::size_t nu = 0; nu < n; ++nu) {
-          double value = xc.rho[spin] * phi(0, mu) * phi(0, nu);
-          for (unsigned k = 0; k < 3; ++k) {
-            value +=
-                xc.gradient[spin][k] * (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
-            value += xc.kinetic[spin] * phi(k + 1, mu) * phi(k + 1, nu);
+    const auto accumulate = [&](const auto& xc) {
+      for (unsigned spin = 0; spin < 2; ++spin)
+        for (std::size_t mu = 0; mu < n; ++mu)
+          for (std::size_t nu = 0; nu < n; ++nu) {
+            double value = xc.rho[spin] * phi(0, mu) * phi(0, nu);
+            for (unsigned k = 0; k < 3; ++k) {
+              value += xc.gradient[spin][k] *
+                       (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
+              value += xc.kinetic[spin] * phi(k + 1, mu) * phi(k + 1, nu);
+            }
+            expected[(spin * n + mu) * n + nu] += grid.weights()[p] * value;
           }
-          expected[(spin * n + mu) * n + nu] += grid.weights()[p] * value;
-        }
+    };
+    if (functional == 4U) {
+      const auto xc = evaluate_wb97mv_point(rho, gradient, tau);
+      const double gpu = coefficients[5 * count + p];
+      const double difference = std::abs(gpu - xc.rho[1]);
+      if (difference > max_point_difference) {
+        max_point_difference = difference;
+        worst_point = p;
+        worst_cpu = xc.rho[1];
+        worst_gpu = gpu;
+        worst_density = rho[0];
+        worst_sigma = gradient[0][0] * gradient[0][0] + gradient[0][1] * gradient[0][1] +
+                      gradient[0][2] * gradient[0][2];
+        worst_tau = tau[0];
+      }
+      accumulate(xc);
+    } else {
+      accumulate(evaluate_r2scan_point(rho, gradient, tau));
+    }
   }
+  if (functional == 4U && max_point_difference > 2e-11 + 2e-12 * std::abs(worst_cpu))
+    std::cerr << std::setprecision(17) << "worst WB97M point=" << worst_point
+              << " rho_a=" << worst_density << " v_b cpu=" << worst_cpu
+              << " sigma_aa=" << worst_sigma << " tau_a=" << worst_tau << " gpu=" << worst_gpu
+              << " diff=" << max_point_difference << '\n';
   capture.canary();
   return expected;
 }
@@ -232,8 +293,8 @@ __global__ void halve_density(double* d, std::size_t n) {
 }
 
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
-                           std::uint32_t functional) {
-  Fixture good(basis, grid, functional, true, 7), bad(basis, grid, functional, true, 11);
+                           std::uint32_t functional, std::size_t tile = 7) {
+  Fixture good(basis, grid, functional, true, tile), bad(basis, grid, functional, true, tile + 4);
   auto d = density(basis.nao, 2);
   good.submit(d);
   auto invalid = d;
@@ -272,7 +333,8 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   require(bad.scalars().error == 0, "device-produced density was rejected");
   for (auto& x : d) x *= 0.5;
   const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
-  const auto ref = functional == 2U   ? integrate_r2scan_uks(basis, grid, a, b)
+  const auto ref = functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b)
+                   : functional == 2U ? integrate_r2scan_uks(basis, grid, a, b)
                    : functional == 1U ? integrate_pbe_uks(basis, grid, a, b)
                                       : integrate_lda_xc_pw_uks(basis, grid, a, b);
   close(bad.scalars().energy, ref.energy, "XC ignored the current device density");
@@ -294,9 +356,10 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   bad.canary();
 }
 
-void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
-  Fixture captured(basis, grid, 1U, false, 9);
-  const auto d = density(basis.nao, 1);
+void graph_capture(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                   bool unrestricted, std::size_t tile = 9) {
+  Fixture captured(basis, grid, functional, unrestricted, tile);
+  auto d = density(basis.nao, unrestricted ? 2 : 1);
   check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
                         cudaMemcpyHostToDevice, captured.stream));
   check(cudaStreamSynchronize(captured.stream));
@@ -308,10 +371,24 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
     captured.plan->enqueue(captured.density, d.size(), ++captured.generation);
     check(cudaStreamEndCapture(captured.stream, &graph));
     check(cudaGraphInstantiate(&executable, graph, 0));
-    check(cudaGraphLaunch(executable, captured.stream));
-    check(cudaStreamSynchronize(captured.stream));
-    require(captured.scalars().error == 0, "captured XC result was invalid");
-    captured.canary();
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      // The immutable consumer survives graph replay, but the density does not.
+      // Compare its complete outputs against a fresh independently checked plan.
+      check(cudaMemcpyAsync(captured.density, d.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, captured.stream));
+      check(cudaGraphLaunch(executable, captured.stream));
+      check(cudaStreamSynchronize(captured.stream));
+      const auto result = captured.scalars();
+      require(result.error == 0, "captured XC result was invalid");
+      Fixture fresh(basis, grid, functional, unrestricted, 7);
+      compare(fresh, basis, grid, d);
+      close(result.energy, fresh.scalars().energy, "captured XC energy");
+      const auto actual = captured.potential(), expected = fresh.potential();
+      for (std::size_t i = 0; i < actual.size(); ++i)
+        close(actual[i], expected[i], "captured XC potential");
+      captured.canary();
+      for (double& value : d) value *= 0.7;
+    }
   } catch (...) {
     if (executable) cudaGraphExecDestroy(executable);
     if (graph) cudaGraphDestroy(graph);
@@ -320,16 +397,131 @@ void graph_capture(const AoBasis& basis, const MolecularGrid& grid) {
   check(cudaGraphExecDestroy(executable));
   check(cudaGraphDestroy(graph));
 }
+
+/** Exercise both response consumers through the production pipeline, including
+ * a captured signed direction changed between replays. CPU physical-potential
+ * differences at two steps provide an oracle independent of response AD. */
+void matrix_response_case(const AoBasis& basis, const MolecularGrid& grid, unsigned functional,
+                          bool unrestricted, std::size_t tile) {
+  Fixture response(basis, grid, functional, unrestricted, tile, CudaXcAoPrecision::Fp64, true);
+  const auto d = density(basis.nao, unrestricted ? 2 : 1);
+  std::vector<double> direction(d.size());
+  const auto n = basis.nao, matrix = n * n, spins = response.layout.spins;
+  for (std::size_t spin = 0; spin < spins; ++spin) {
+    direction[spin * matrix] = -0.013 * (spin + 1);
+    direction[spin * matrix + 1] = direction[spin * matrix + n] = 0.007 * (spin + 1);
+  }
+  vibeqc::runtime::OwnedCudaBuffer<double> device_direction(0, d.size(), response.stream);
+  check(cudaMemcpy(response.density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice));
+  const auto independent = [&](double step) {
+    auto perturbed = d;
+    for (std::size_t i = 0; i < d.size(); ++i) perturbed[i] += step * direction[i];
+    if (!unrestricted)
+      return functional ? integrate_pbe_rks_with_tail(basis, grid, perturbed, 23).potential
+                        : integrate_lda_xc_pw_rks(basis, grid, perturbed, 23).potential;
+    const std::vector<double> a(perturbed.begin(), perturbed.begin() + matrix),
+        b(perturbed.begin() + matrix, perturbed.end());
+    const auto ref = functional ? integrate_pbe_uks(basis, grid, a, b, 23)
+                                : integrate_lda_xc_pw_uks(basis, grid, a, b, 23);
+    auto potential = ref.potential[0];
+    potential.insert(potential.end(), ref.potential[1].begin(), ref.potential[1].end());
+    return potential;
+  };
+  cudaGraph_t graph{};
+  cudaGraphExec_t executable{};
+  try {
+    check(cudaStreamBeginCapture(response.stream, cudaStreamCaptureModeGlobal));
+    response.plan->enqueue_response(response.density, device_direction.get(), d.size(),
+                                    ++response.generation);
+    check(cudaStreamEndCapture(response.stream, &graph));
+    check(cudaGraphInstantiate(&executable, graph, 0));
+    for (unsigned replay = 0; replay < 2; ++replay) {
+      check(cudaMemcpyAsync(device_direction.get(), direction.data(), d.size() * sizeof(double),
+                            cudaMemcpyHostToDevice, response.stream));
+      check(cudaGraphLaunch(executable, response.stream));
+      require(response.scalars().error == 0, "signed matrix response was rejected");
+      const auto actual = response.potential();
+      for (double step : {1e-4, 3e-5}) {
+        const auto plus = independent(step), minus = independent(-step);
+        for (std::size_t i = 0; i < actual.size(); ++i)
+          close(actual[i], (plus[i] - minus[i]) / (2 * step),
+                "signed matrix response versus independent potential difference", 1e-7);
+      }
+      response.canary();
+      for (double& value : direction) value *= -0.4;
+    }
+    // Exact vacuum with zero tangent has an independently known zero response.
+    // Reusing the same captured entry also catches stale point coefficients.
+    check(cudaMemsetAsync(response.density, 0, d.size() * sizeof(double), response.stream));
+    check(cudaMemsetAsync(device_direction.get(), 0, d.size() * sizeof(double), response.stream));
+    check(cudaGraphLaunch(executable, response.stream));
+    require(response.scalars().error == 0, "vacuum matrix response was rejected");
+    for (double value : response.potential())
+      require(value == 0.0, "vacuum matrix response retained a stale coefficient");
+    response.canary();
+  } catch (...) {
+    if (executable) cudaGraphExecDestroy(executable);
+    if (graph) cudaGraphDestroy(graph);
+    throw;
+  }
+  check(cudaGraphExecDestroy(executable));
+  check(cudaGraphDestroy(graph));
+}
+
+void matrix_schedule_cases() {
+  // Cross the generated matrix-tile boundary with two distinct f shells.
+  // Cartesian/spherical shapes and partial point tiles exercise both matrix
+  // tails and the final scalar fallback, using the independent CPU integrator.
+  for (bool cooperative : {false, true})
+    for (bool spherical : {false, true}) {
+      auto large = system(3, spherical);
+      large.shells.push_back({0, 3, {{0.51, 1.0}}});
+      large.shells.push_back({0, 0, {{0.22, 1.0}}});
+      if (cooperative) {
+        // Cross the warp-reduction boundary with partial final AO groups.
+        large.shells.push_back({0, 3, {{0.39, 1.0}}});
+        large.shells.push_back({1, 3, {{0.32, 1.0}}});
+        large.shells.push_back({1, 2, {{0.27, 1.0}}});
+      }
+      const AoBasis large_basis(large);
+      require(!cooperative || large_basis.nao > 32, "cooperative fixture must span a warp");
+      require(large_basis.nao >= 16 && large_basis.nao % 16 != 0,
+              "matrix schedule fixture must have a partial AO block");
+      const MolecularGrid large_grid(large, {1, 3, 3, 4, 3, 1e-12});
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        for (bool uks : {false, true})
+          for (std::size_t tile : {17U, 31U, 64U}) {
+            Fixture test(large_basis, large_grid, functional, uks, tile);
+            compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+          }
+      graph_capture(large_basis, large_grid, 1U, false, 33);
+      for (unsigned functional : {0U, 1U})
+        matrix_response_case(large_basis, large_grid, functional, true, 19);
+      for (std::uint32_t functional : {0U, 1U, 2U})
+        variational_and_state(large_basis, large_grid, functional, 17);
+    }
+}
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   int devices = 0;
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
+    matrix_schedule_cases();
+    if (argc == 2 && std::string(argv[1]) == "--matrix-schedule") {
+      std::cout << "CUDA XC matrix-tail, spin, functional, variational and capture gates passed\n";
+      return 0;
+    }
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
-    graph_capture(basis, grid);
+    for (unsigned functional : {0U, 1U, 2U, 4U})
+      for (bool unrestricted : {false, true}) {
+        graph_capture(basis, grid, functional, unrestricted);
+        if (functional < 2U)
+          for (std::size_t tile : {1U, 7U, 129U})
+            matrix_response_case(basis, grid, functional, unrestricted, tile);
+      }
     {
       for (bool unrestricted : {false, true})
         for (std::uint32_t functional : {0U, 1U}) {
@@ -379,13 +571,13 @@ int main() {
       }
       require(response_rejected, "unqualified response FP32-compute AO candidate was accepted");
     }
-    for (std::uint32_t functional : {0U, 1U, 2U}) {
+    for (std::uint32_t functional : {0U, 1U, 2U, 4U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
           Fixture test(basis, grid, functional, uks, tile);
           require(test.layout.jets == (functional == 0U ? 1U : 4U),
                   "unused AO jets were allocated");
-          require(test.layout.work_jets == (functional == 2U ? 4U : 1U),
+          require(test.layout.work_jets == ((functional == 2U || functional == 4U) ? 4U : 1U),
                   "unused density-work jets were allocated");
           require(
               test.layout.feature_terms == (functional == 0U ? 1U : (functional == 1U ? 4U : 5U)),
@@ -398,8 +590,8 @@ int main() {
       Fixture tail(basis, tail_grid, functional, true, 257);
       auto fully = density(basis.nao, 2);
       std::fill(fully.begin() + basis.nao * basis.nao, fully.end(), 0.0);
-      const auto same_input = functional == 2U
-                                  ? r2scan_empty_spin_reference(basis, tail_grid, fully)
+      const auto same_input = (functional == 2U || functional == 4U)
+                                  ? empty_spin_reference(basis, tail_grid, fully, functional)
                                   : std::vector<double>{};
       compare(tail, basis, tail_grid, fully, same_input);
       if (functional == 2U) {
@@ -462,7 +654,8 @@ int main() {
       stale = true;
     }
     require(stale, "same-shape stale grid identity was accepted");
-    std::cout << "Native device-buffer LDA/PBE/r2SCAN RKS/UKS E/V and state gates passed\n";
+    std::cout << "Native device-buffer LDA/PBE/r2SCAN/WB97M-V semilocal RKS/UKS E/V and state "
+                 "gates passed\n";
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

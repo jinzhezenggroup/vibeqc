@@ -53,8 +53,9 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points, bool response,
                                   CudaXcAoPrecision ao_precision) {
+  const bool supported_functional = functional <= 2U || functional == 4U;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
-      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
+      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
   if (response && functional > 1U)
     throw std::invalid_argument("CUDA XC response supports LDA/PBE only");
@@ -62,15 +63,16 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
       ao_precision != CudaXcAoPrecision::Fp32ComputeFp64Storage)
     throw std::invalid_argument("unknown CUDA XC AO precision");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && functional > 1U)
-    throw std::invalid_argument("r2SCAN currently requires strict FP64 AO evaluation");
+    throw std::invalid_argument("meta-GGA CUDA XC currently requires strict FP64 AO evaluation");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && response)
     throw std::invalid_argument("CUDA XC response currently requires strict FP64 AO evaluation");
   constexpr auto overflow = "CUDA XC storage overflow";
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
+  const bool meta_gga = functional == 2U || functional == 4U;
   const auto ao_jets = functional == 0U ? 1U : 4U;
-  const auto work_jets = functional == 2U ? 4U : 1U;
+  const auto work_jets = meta_gga ? 4U : 1U;
   const auto feature_terms = functional == 0U ? 1U : (functional == 1U ? 4U : 5U);
   CudaXcLayout out{atoms,
                    primitives,
@@ -116,6 +118,7 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
     : layout_(cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
                                    layout.functional, layout.spins == 2, layout.tile_points,
                                    layout.response, layout.ao_precision)),
+      point_launcher_(cuda_xc_detail::resolve_point_launcher(layout_.functional, layout_.response)),
       arena_(arena),
       stream_(stream) {
   if (layout.spins != 1 && layout.spins != 2)
@@ -232,9 +235,9 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
     fail_next_xc_status = cudaSuccess;
     vibeqc_tensor::cuda_check(injected);
 #endif
-    cuda_xc_detail::enqueue(layout_, stream_, basis_, points_, weights_, density, ao_, work_,
-                            features_, coefficients_, point_totals_, potential_, totals_, error_,
-                            direction, delta_features_);
+    cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
+                            ao_, work_, features_, coefficients_, point_totals_, potential_,
+                            totals_, error_, direction, delta_features_);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.

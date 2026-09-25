@@ -35,6 +35,8 @@ from .elements import electron_state
 from .ks import resolve_ks_options
 from .resources_hf import _basis_record, _cuda_library_identity, _ecp_workspace
 
+_CPU_AO_GRID_CACHE_CAP = 64 << 20
+
 _METHODS = (
     "lda-rks",
     "pbe-rks",
@@ -103,6 +105,18 @@ def _item_host_inventory(
         if backend == "cpu" or host_unfused
         else 0
     )
+    # run_rks owns this optional cache only for the current serialized solve.
+    # Reserve its full eligible footprint even when an experimental XC route
+    # declines it; never charge all batch caches as persistent/coexisting state.
+    ao_grid_cache = 0
+    if (
+        backend == "cpu"
+        and pbe
+        and spins == 1
+        and n > 0
+        and points <= _CPU_AO_GRID_CACHE_CAP // 32 // n
+    ):
+        ao_grid_cache = byte_product(32, points, n)
     # Match CudaKsPlan's retained host staging exactly. Host-unfused owns one
     # density and one Vxc matrix per spin; UKS additionally owns split alpha/
     # beta matrices for the audited CPU integrator.
@@ -156,9 +170,10 @@ def _item_host_inventory(
             "solver_host": solver_host,
             "xc_schedule_staging": xc_schedule_staging,
             "nonlocal_provider": nonlocal_provider,
+            "ao_grid_cache": ao_grid_cache,
             "retained": retained,
             "setup_workspace": setup,
-            "scf_workspace": matrix_work + xc_tile + nonlocal_work,
+            "scf_workspace": matrix_work + xc_tile + nonlocal_work + ao_grid_cache,
         }.items()
     }
 
@@ -369,6 +384,8 @@ def ks_resource_request(
         if backend == "cuda"
         else "serialized-native",
     }
+    if backend == "cpu":
+        controls["ao_grid_cache_cap"] = _CPU_AO_GRID_CACHE_CAP
     if backend == "cuda":
         controls.update(
             device_id=device_id,
@@ -467,10 +484,9 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            options_version = getattr(library, "vibeqc_ks_options_version", None)
-            if options_version is not None:
-                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
-            if options_version is None or options_version() != 1:
+            options_version = library.vibeqc_ks_options_version
+            options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if options_version() != 1:
                 raise NotImplementedError(
                     "native library does not support the current semantic KS execution-plan ABI"
                 )

@@ -7,6 +7,7 @@
 #include <limits>
 
 #include "backends/cuda/gfn2_scc_free_energy.cuh"
+#include "generated_gfn2_scc_free_energy_native.hpp"
 
 namespace vibeqc::xtb::detail::cuda {
 namespace {
@@ -142,20 +143,18 @@ __global__ void compose_free_energy_kernel(Gfn2SccFreeEnergyDeviceBatch batch,
     return;
   }
 
-  double internal_energy = values[0];
-#pragma unroll
-  for (int component = 2; component < kGfn2SccFreeEnergyInputComponents + 1; ++component) {
-    const double updated = internal_energy + values[component];
-    if (!isfinite(updated)) {
-      record_system_error(system_errors, system, device_error,
-                          Gfn2SccFreeEnergyDeviceError::kNonfiniteInternalArithmetic);
-      return;
-    }
-    internal_energy = updated;
+  double internal_energy = 0.0;
+  if (!::vibeqc::xtb::generated::compose_gfn2_scc_internal_energy(
+          values[0], values[2], values[3], values[4], values[5], values[6], values[7], values[8],
+          values[9], internal_energy)) {
+    record_system_error(system_errors, system, device_error,
+                        Gfn2SccFreeEnergyDeviceError::kNonfiniteInternalArithmetic);
+    return;
   }
 
-  const double free_energy = fma(-batch.electronic_temperature, values[1], internal_energy);
-  if (!isfinite(free_energy)) {
+  double free_energy = 0.0;
+  if (!::vibeqc::xtb::generated::compose_gfn2_scc_free_energy(
+          batch.electronic_temperature, values[1], internal_energy, free_energy)) {
     record_system_error(system_errors, system, device_error,
                         Gfn2SccFreeEnergyDeviceError::kNonfiniteFreeEnergyArithmetic);
     return;

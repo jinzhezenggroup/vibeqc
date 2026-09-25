@@ -24,17 +24,18 @@ namespace {
 vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, std::size_t system,
                                                 const double* coefficients, std::size_t rank,
                                                 bool column_major, double weight, std::size_t rows,
-                                                double* exchange, std::string& detail) {
+                                                double* exchange, std::string& detail,
+                                                const double* charge_density = nullptr) {
   using namespace runtime::cuda_trace;
   const auto n = plan.nbf, a = plan.naux, capacity = plan.panel_capacity;
   const auto ar = a * rank;
   const double one = 1, zero = 0;
-  auto* left = plan.auxiliary_tile_values;
-  auto* right = plan.exchange_contributions;
+  double* projections[] = {plan.auxiliary_tile_values, plan.exchange_contributions};
   auto* raw = plan.exchange_intermediate;
   auto* transformed = plan.exchange_tile_output;
   auto* output = exchange + system * plan.matrix_elements;
-  const auto project = [&](std::size_t begin, std::size_t count, double* target) -> vibeqc_status {
+  const auto project = [&](std::size_t begin, std::size_t count, double* target,
+                           bool charge) -> vibeqc_status {
     const auto raw_tile = std::min(a, capacity / (count * n));
     trace_counter("raw_panel_source_auxiliary_evaluations", count * n * a);
     trace_counter("streamed_occupied_raw_generation_rows", count);
@@ -44,6 +45,14 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
           plan.integral_source, system, begin * n, count * n, p, q, -1,
           reinterpret_cast<void*>(plan.stream), raw, detail);
       if (status != VIBEQC_STATUS_SUCCESS) return status;
+      if (charge) {
+        launch_accumulate_streamed_auxiliary_density_kernel(
+            blocks_for(q), kThreads, 0, plan.stream, count * n, q, raw, charge_density + begin * n,
+            plan.auxiliary_density + p);
+        const auto error = cudaPeekAtLastError();
+        if (error != cudaSuccess)
+          return cuda_failure(error, "shared raw DF charge contraction", detail);
+      }
       // Raw [mu,nu,P] has contiguous P. Each mu projects its contracted nu
       // directly into U[mu,i,P]; lda=a preserves prior raw-auxiliary blocks.
       const auto blas = trace_call("streamed_occupied_raw_projection", plan.stream, [&] {
@@ -58,6 +67,7 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
       trace_counter("occupied_projection_products", count);
       trace_counter("occupied_projection_flops", 2 * q * count * n * rank);
     }
+    if (charge) trace_counter("shared_coulomb_charge_rows", count);
     // Keep eigendirections separate until after division. Orthogonal rotation
     // back to symmetric whitening cancels in the complete K Gram. These
     // private factors are never published as a final symmetric-C projection.
@@ -69,46 +79,61 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
     });
     if (blas != CUBLAS_STATUS_SUCCESS)
       return blas_failure(blas, "whiten streamed occupied DF factors", detail);
-    launch_scale_metric_projection(plan.stream, a, count * rank,
-                                   plan.metric_eigenvalues + system * a, true, transformed);
-    auto error = cudaPeekAtLastError();
-    if (error == cudaSuccess)
-      error = cudaMemcpyAsync(target, transformed, count * ar * sizeof(double),
-                              cudaMemcpyDeviceToDevice, plan.stream);
+    // The scale pass already touches every transformed element once. Store the
+    // divided value straight into the retained slot instead of launching a
+    // second device-to-device copy over the same projection payload.
+    launch_scale_metric_projection_to(plan.stream, a, count * rank,
+                                      plan.metric_eigenvalues + system * a, true, transformed,
+                                      target);
+    const auto error = cudaPeekAtLastError();
     if (error != cudaSuccess)
-      return cuda_failure(error, "retain streamed occupied DF factors", detail);
+      return cuda_failure(error, "scale and retain streamed occupied DF factors", detail);
     trace_counter("streamed_whitening_factor_gemms", 1);
     trace_counter("streamed_whitening_factor_flops", 2 * a * a * count * rank);
-    trace_counter("streamed_occupied_projection_copy_bytes", count * ar * sizeof(double));
+    trace_counter("streamed_occupied_projection_copy_bytes_avoided", count * ar * sizeof(double));
     return VIBEQC_STATUS_SUCCESS;
   };
-  for (std::size_t r = 0; r < n; r += rows) {
-    const auto nr = std::min(rows, n - r);
-    auto status = project(r, nr, left);
-    if (status != VIBEQC_STATUS_SUCCESS) return status;
-    for (std::size_t c = 0; c < (plan.triangular_exchange ? r + 1 : n); c += rows) {
-      const auto nc = std::min(rows, n - c);
-      const auto* column = left;
-      if (c != r) {
-        status = project(c, nc, right);
-        if (status != VIBEQC_STATUS_SUCCESS) return status;
-        column = right;
-      } else {
-        trace_counter("occupied_panel_cache_hits", 1);
-      }
-      // Columns of each (a*rank,rows) panel are output AO rows. Every matrix
-      // block is produced exactly once, including partial row/column tails.
-      const auto blas = trace_call("streamed_occupied_exchange_gemm", plan.stream, [&] {
-        return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(nr),
-                           static_cast<int>(nc), static_cast<int>(ar), &weight, left,
-                           static_cast<int>(ar), column, static_cast<int>(ar), &zero,
-                           output + r + c * n, static_cast<int>(n));
-      });
-      if (blas != CUBLAS_STATUS_SUCCESS)
-        return blas_failure(blas, "contract streamed occupied DF factors", detail);
-      trace_counter("occupied_exchange_products", 1);
-      trace_counter("occupied_exchange_flops", 2 * nr * nc * ar);
+  vibeqc_status status = VIBEQC_STATUS_SUCCESS;
+  // The compiler owns visit order and the two-slot lifetime. Raw input and
+  // metric scratch remain disjoint from both retained projections; native
+  // callbacks bind the existing buffers and enqueue all work on plan.stream.
+  const auto project_visit = [&](std::size_t begin, std::size_t count, std::size_t slot,
+                                 bool charge) {
+    status = project(begin, count, projections[slot], charge);
+    return status == VIBEQC_STATUS_SUCCESS;
+  };
+  const auto contract_visit = [&](std::size_t r, std::size_t nr, std::size_t c, std::size_t nc,
+                                  std::size_t left, std::size_t right, bool retained) {
+    if (retained) trace_counter("occupied_panel_cache_hits", 1);
+    // Columns of each (a*rank,rows) panel are output AO rows. Every matrix
+    // block is produced exactly once, including partial row/column tails.
+    const auto blas = trace_call("streamed_occupied_exchange_gemm", plan.stream, [&] {
+      return cublasDgemm(plan.blas, CUBLAS_OP_T, CUBLAS_OP_N, static_cast<int>(nr),
+                         static_cast<int>(nc), static_cast<int>(ar), &weight, projections[left],
+                         static_cast<int>(ar), projections[right], static_cast<int>(ar), &zero,
+                         output + r + c * n, static_cast<int>(n));
+    });
+    if (blas != CUBLAS_STATUS_SUCCESS) {
+      status = blas_failure(blas, "contract streamed occupied DF factors", detail);
+      return false;
     }
+    trace_counter("occupied_exchange_products", 1);
+    trace_counter("occupied_exchange_flops", 2 * nr * nc * ar);
+    return true;
+  };
+  const auto completed = charge_density
+                             ? generated::visit_shared_projected_exchange(
+                                   n, rows, plan.triangular_exchange, project_visit, contract_visit)
+                             : generated::visit_projected_exchange(
+                                   n, rows, plan.triangular_exchange,
+                                   [&](std::size_t begin, std::size_t count, std::size_t slot) {
+                                     return project_visit(begin, count, slot, false);
+                                   },
+                                   contract_visit);
+  if (!completed) {
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    detail = "invalid compiler projected exchange traversal";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   if (plan.triangular_exchange) {
     launch_mirror_exchange_triangle(blocks_for(plan.matrix_elements), kThreads, plan.stream, n,
@@ -127,6 +152,41 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
 }
 }  // namespace
 
+vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& plan,
+                                                     const double* density,
+                                                     const double* coefficients, std::size_t rank,
+                                                     double weight, std::string& detail) {
+  plan.final_projection_token.reset();
+  if (plan.batch_size != 1 || !plan.streamed || !plan.integral_source ||
+      !plan.triangular_exchange || plan.metric_full_rank.size() != 1 || !plan.metric_full_rank[0] ||
+      !density || !coefficients || !rank ||
+      rank > static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux ||
+      plan.row_tile * plan.nbf * plan.auxiliary_tile < plan.naux) {
+    detail = "shared DF J/K source requires admitted streamed RHF factor-first traversal";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const auto schedule =
+      df_projected_exchange_schedule(plan.nbf, plan.naux, rank, plan.panel_capacity, true);
+  if (!schedule.rows || schedule.blocks > 2) {
+    detail = "shared DF J/K source lacks bounded projection capacity";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  auto error = cudaMemsetAsync(plan.auxiliary_density, 0, plan.naux * sizeof(double), plan.stream);
+  if (error == cudaSuccess)
+    error =
+        cudaMemsetAsync(plan.alpha_exchange, 0, plan.matrix_elements * sizeof(double), plan.stream);
+  if (error != cudaSuccess) return cuda_failure(error, "zero shared DF J/K outputs", detail);
+  runtime::cuda_trace::TraceOperation trace("ri_jk_shared", plan.stream,
+                                            {1, plan.nbf, plan.naux, true, true});
+  const auto status =
+      build_streamed_projected_exchange(plan, 0, coefficients, rank, true, weight, schedule.rows,
+                                        plan.alpha_exchange, detail, density);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  runtime::cuda_trace::trace_counter("shared_raw_source_values",
+                                     schedule.generated_rows * plan.nbf * plan.naux);
+  return build_coulomb(plan, density, detail, true);
+}
+
 vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_t system,
                                       const double* coefficients, std::size_t rank,
                                       bool column_major, double weight, double* exchange,
@@ -140,12 +200,15 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
     detail = "invalid occupied DF exchange dimensions";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
-  auto error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
-                               plan.matrix_elements * sizeof(double), plan.stream);
-  if (error != cudaSuccess) return cuda_failure(error, "zero occupied DF exchange", detail);
   trace_counter("occupied_rank", rank);
   trace_counter("occupied_factor_bytes", plan.nbf * rank * sizeof(double));
-  if (!rank) return VIBEQC_STATUS_SUCCESS;
+  if (!rank) {
+    const auto error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
+                                       plan.matrix_elements * sizeof(double), plan.stream);
+    return error == cudaSuccess ? VIBEQC_STATUS_SUCCESS
+                                : cuda_failure(error, "zero occupied DF exchange", detail);
+  }
+  cudaError_t error = cudaSuccess;
 
   if (plan.integral_source && plan.streamed && plan.metric_full_rank[system] &&
       rank <= static_cast<std::size_t>(std::numeric_limits<int>::max()) / plan.naux) {
@@ -242,6 +305,13 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
                ? VIBEQC_STATUS_SUCCESS
                : blas_failure(status, "resident occupied DF K product", detail);
   }
+
+  // Only the tiled fallback accumulates partial auxiliary products into K.
+  // Fast projected and resident Gram routes use beta=0 for every output block,
+  // so pre-zeroing the whole matrix is pure device traffic on each Fock build.
+  error = cudaMemsetAsync(exchange + system * plan.matrix_elements, 0,
+                          plan.matrix_elements * sizeof(double), plan.stream);
+  if (error != cudaSuccess) return cuda_failure(error, "zero occupied DF exchange", detail);
 
   // Rank never exceeds nbf, so both T panels fit the dense plan's buffers.
   // Source-backed execution uses exactly the dense raw-work policy; host

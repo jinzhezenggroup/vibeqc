@@ -40,7 +40,9 @@ from vibeqc_compiler.method.stationary_gradient import (
 )
 from vibeqc_compiler.tensor import execute
 from vibeqc_compiler.tensor.cpu import NativeTensorProgram
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import (
+    ExternalPointContraction,
+)
 from vibeqc_compiler.xc.grid_native import NativeGridContraction
 from vibeqc_compiler.xc.grid_response import partition_response
 from vibeqc_compiler.xc.native import NativeContractionProgram
@@ -51,7 +53,6 @@ from ._dft_gradient import (
     native_ao_geometry_identity,
 )
 from ._stationary_rsh_cpu import RangeExchangeExecutor
-from .ks import native_xc_functional_code
 from .nonlocal_runtime import NativeNonlocalPairProvider
 
 
@@ -422,13 +423,6 @@ def complete_rks_gradient_diagnostic(
     if max_host_bytes is not None:
         from ._cpu_force_resources import cpu_force_inventory
 
-        if any(
-            type(p) is RangeSeparatedExchangePrimitive
-            for p in state._source.method_ir.primitives
-        ):
-            raise NotImplementedError(
-                "CPU RSH stationary gradients do not yet have a combined endpoint host budget"
-            )
         if execution != "native":
             raise ValueError("CPU host budget requires the compiled native consumer")
         if type(max_host_bytes) is not int or not 1 <= max_host_bytes <= 1 << 40:
@@ -464,7 +458,9 @@ def complete_rks_gradient_diagnostic(
     plan = StationaryGradientPlan(
         method,
         StationaryMeanField(
-            SCF_POINT_MODEL,
+            state._source._batch._calculator._ks_options.scf_domain
+            if state.identity.method.startswith("wb97m-v")
+            else SCF_POINT_MODEL,
             hamiltonian=state._source.hamiltonian,
         ),
     )
@@ -630,7 +626,7 @@ def complete_rks_gradient_diagnostic(
     program = (
         NativeContractionProgram(functional, "geometry", compiler=compiler, cache=cache)
         if execution == "native"
-        else ContractionProgram(functional, "geometry")
+        else ExternalPointContraction(functional, "geometry")
     )
     grid, spec = state.grid, state._source.grid_spec
     grid_consumer = (
@@ -641,7 +637,6 @@ def complete_rks_gradient_diagnostic(
         else None
     )
     ao_atoms = _native_ao_atoms(basis)
-    functional_code = native_xc_functional_code(state.identity.method)
     for begin in range(0, len(grid.points), tile_points):
         end = min(begin + tile_points, len(grid.points))
         points, weights, atoms = (
@@ -652,7 +647,7 @@ def complete_rks_gradient_diagnostic(
         jets = basis.evaluate(points, program.contract.ao_order)
         features = program.features(jets, density)
         coefficients = state._source.evaluate_xc_points(
-            functional_code,
+            functional,
             features["rho"],
             features.get("gradient", np.zeros((2, end - begin, 3))),
             features.get("tau"),
@@ -723,6 +718,7 @@ def complete_rks_gradient_diagnostic(
             nonlocal_primitive.spec,
             coefficient=nonlocal_primitive.coefficient,
             pair_provider=provider,
+            density_policy=state._source.nonlocal_density_policy,
         ).geometry(basis, grid, density, tile_points=tile_points)
         components["nonlocal_ao"] += np.asarray(geometry.centers)
         owners = np.asarray(grid.owners, dtype=np.int64)

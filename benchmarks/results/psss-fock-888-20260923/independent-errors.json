@@ -1,0 +1,98 @@
+{
+  "test_bounded_psss_registry_gap_matches_libcint[rhf-1-1]/0/energy": {
+    "passed": true,
+    "atol": 2e-10,
+    "rtol": 0,
+    "max_absolute_error": 3.019806626980426e-14,
+    "max_scaled_error": 0.0001509903313490213,
+    "rms_error": 3.019806626980426e-14,
+    "shape": [
+      1
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[rhf-1-1]/0/forces": {
+    "passed": true,
+    "atol": 6e-09,
+    "rtol": 0,
+    "max_absolute_error": 1.3483866800889643e-12,
+    "max_scaled_error": 0.00022473111334816073,
+    "rms_error": 7.783792485572099e-13,
+    "shape": [
+      1,
+      2,
+      3
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[rhf-1-1]/1/energy": {
+    "passed": true,
+    "atol": 2e-10,
+    "rtol": 0,
+    "max_absolute_error": 2.398081733190338e-14,
+    "max_scaled_error": 0.0001199040866595169,
+    "rms_error": 2.398081733190338e-14,
+    "shape": [
+      1
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[rhf-1-1]/1/forces": {
+    "passed": true,
+    "atol": 6e-09,
+    "rtol": 0,
+    "max_absolute_error": 1.3488862804500457e-12,
+    "max_scaled_error": 0.00022481438007500762,
+    "rms_error": 7.787478089820014e-13,
+    "shape": [
+      1,
+      2,
+      3
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[uhf-0-2]/0/energy": {
+    "passed": true,
+    "atol": 2e-10,
+    "rtol": 0,
+    "max_absolute_error": 3.108624468950438e-14,
+    "max_scaled_error": 0.00015543122344752192,
+    "rms_error": 3.108624468950438e-14,
+    "shape": [
+      1
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[uhf-0-2]/0/forces": {
+    "passed": true,
+    "atol": 6e-09,
+    "rtol": 0,
+    "max_absolute_error": 4.264699704492614e-12,
+    "max_scaled_error": 0.0007107832840821023,
+    "rms_error": 2.4621774488273427e-12,
+    "shape": [
+      1,
+      2,
+      3
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[uhf-0-2]/1/energy": {
+    "passed": true,
+    "atol": 2e-10,
+    "rtol": 0,
+    "max_absolute_error": 3.108624468950438e-14,
+    "max_scaled_error": 0.00015543122344752192,
+    "rms_error": 3.108624468950438e-14,
+    "shape": [
+      1
+    ]
+  },
+  "test_bounded_psss_registry_gap_matches_libcint[uhf-0-2]/1/forces": {
+    "passed": true,
+    "atol": 6e-09,
+    "rtol": 0,
+    "max_absolute_error": 4.266698105936939e-12,
+    "max_scaled_error": 0.0007111163509894899,
+    "rms_error": 2.463251105860531e-12,
+    "shape": [
+      1,
+      2,
+      3
+    ]
+  }
+}

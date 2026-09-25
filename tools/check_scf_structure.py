@@ -240,10 +240,24 @@ CUDA_ALLOWED["cuda_direct_queues"] = tuple(
 )
 # Provider host APIs own staging and lifetime while borrowing kernel launches.
 # A retained recurrence fragment must not enter a host implementation.
-CUDA_MODULES["cuda_direct_provider_host"] = ("direct_jk", "direct_jk_plan")
+CUDA_MODULES["cuda_direct_provider_host"] = (
+    "direct_jk",
+    "direct_jk_plan",
+    "direct_coulomb",
+)
 CUDA_ALLOWED["cuda_direct_provider_host"] = (
     "scf/cuda/direct_jk.",
     "scf/cuda/direct_jk_plan.",
+    "scf/cuda/direct_coulomb.",
+    "scf/cuda/basis_transform_kernels.hpp",
+    "scf/cuda/df_jk_kernels.hpp",
+    "scf/cuda/direct_bounded_dddd.hpp",
+    "scf/cuda/direct_constants.hpp",
+    "scf/cuda/direct_pair_cache.hpp",
+    "scf/cuda/direct_schwarz_kernels.hpp",
+    "scf/cuda/queue_plan.hpp",
+    "scf/direct_task_layout.hpp",
+    "scf/aot_shell_registry.hpp",
     "scf/cuda/direct_jk_kernels.hpp",
     "scf/cuda/packed_basis.",
     "scf/cuda/checked_layout.",
@@ -293,13 +307,9 @@ CUDA_ALLOWED["cuda_integral_numerics"] = tuple(
 ) + ("scf/cuda/packed_basis.", "molecule/basis.hpp")
 CUDA_MODULES["cuda_one_electron_native"] = (
     "one_electron_reference",
-    "one_electron_force_reference",
-    "one_electron_force_workspace",
     "one_electron_native_overlap",
     "one_electron_native_attraction",
-    "one_electron_native_attraction_gradient",
     "one_electron_native_contraction",
-    "one_electron_native_force",
 )
 CUDA_ALLOWED["cuda_one_electron_native"] = (
     tuple("scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_one_electron_native"])
@@ -354,7 +364,6 @@ CUDA_MODULES["cuda_direct_contractions"] = (
     "direct_eri_symmetry",
     "direct_fock_accumulation",
     "direct_fock_quartet",
-    "direct_fock_psss",
     "direct_fock_order2",
     "direct_force_density",
     "direct_force_low_order",
@@ -492,8 +501,6 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda/nuclear_kernels.hpp",
     "scf/cuda/one_electron_derivatives.cuh",
     "scf/cuda/one_electron_export_kernels.hpp",
-    "scf/cuda/one_electron_force_reference.hpp",
-    "scf/cuda/one_electron_force_workspace.hpp",
     "scf/cuda/one_electron_values.cuh",
     "scf/cuda/one_electron_view.hpp",
     "scf/cuda/packed_basis.hpp",
@@ -515,8 +522,7 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda_weighted_eri.hpp",
     "scf/direct_task_layout.hpp",
     "scf/generated_shell_task.hpp",
-    "scf/rhf.hpp",
-    "scf/solver/iteration_control.hpp",
+    "solver/iteration_control.hpp",
 )
 # Upstream physical-reference export is a host bridge for post-HF clients.
 CUDA_ALLOWED["cuda_hf_driver"] += (

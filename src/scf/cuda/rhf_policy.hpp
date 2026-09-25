@@ -85,7 +85,7 @@ struct DirectJkFixedTopologyTaskProfile {
 
 struct DirectJkBoundedStreamingTaskProfile {
   std::size_t maximum_task_capacity{8U * 1024U * 1024U};
-  // The qualified 8M GeneratedShellTask page is 1.5 GiB at the current ABI.
+  // Keep the qualified 1.5-GiB page cap; task capacity follows the current ABI.
   std::size_t maximum_arena_bytes{std::size_t{3} << 29};
 };
 
@@ -267,8 +267,6 @@ OneElectronValuePolicy resolve_one_electron_value_policy(
     const runtime::CudaProviderCapabilities& provider) noexcept;
 /** Mapping selected for the active configured CUDA provider. */
 unsigned one_electron_value_mapping_requested() noexcept;
-/** Generated derivatives default; reference/none/0 selects the retained native exception. */
-bool generated_one_electron_derivatives_requested() noexcept;
 /** 0: AO threads; 1: shell-pair/component warp lanes;
  * 2: deterministic serial diagnostics; 3: AO-pair warp with nucleus lanes (default). */
 unsigned one_electron_derivative_mapping_requested() noexcept;
