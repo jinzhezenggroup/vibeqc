@@ -28,6 +28,9 @@ enum class Gfn2RuntimeStatus : std::uint8_t {
 
 struct Gfn2RuntimeOrbitals {
   core::System source_system;
+  double electron_count = 0.0;
+  double alpha_electron_count = 0.0;
+  double beta_electron_count = 0.0;
   std::vector<double> overlap;
   /** Row-major C[source AO, orbital], with orbitals stored in ascending energy order. */
   std::vector<double> coefficients;
