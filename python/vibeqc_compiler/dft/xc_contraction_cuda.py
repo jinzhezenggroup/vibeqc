@@ -97,10 +97,12 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
 // pair; all 256 lanes then execute the unchanged symmetric contraction. The
 // first block of spin zero also performs the historical serial-per-channel
 // point-total reduction after its matrix work, preserving the exact arithmetic
-// order while avoiding a separate kernel launch for every point tile.
+// order while avoiding a separate kernel launch for every point tile. The first
+// point tile owns output initialization, so admitted tiled execution needs no
+// matrix-sized or totals memset before every XC evaluation.
 __global__ void tiled_potential(const double* ao, const double* work, I n, I count,
                                 I work_jets, const double* point_totals, double* potential,
-                                double* totals, int* error) {
+                                double* totals, bool accumulate, int* error) {
   __shared__ I tile_mu, tile_nu;
   if (threadIdx.x == 0 && threadIdx.y == 0) {
     const I pair = blockIdx.x;
@@ -137,7 +139,8 @@ __global__ void tiled_potential(const double* ao, const double* work, I n, I cou
   }
   if (mu < n && nu < n && mu <= nu) {
     const I index = (spin*n+mu)*n+nu;
-    value = finite(potential[index]+value, error, 3);
+    const double prior = accumulate ? potential[index] : 0.0;
+    value = finite(prior+value, error, 3);
     potential[index] = value;
     potential[(spin*n+nu)*n+mu] = value;
   }
@@ -145,7 +148,7 @@ __global__ void tiled_potential(const double* ao, const double* work, I n, I cou
     const I channel = threadIdx.x;
     double sum = 0.0;
     for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];
-    totals[channel] = finite(totals[channel]+sum,error,3);
+    totals[channel] = finite((accumulate ? totals[channel] : 0.0)+sum,error,3);
   }
 }
 
@@ -168,15 +171,19 @@ inline void scheduled_density_product(cudaStream_t stream, const double* density
 inline void scheduled_potential(cudaStream_t stream, const double* ao,
     const double* coefficients, const double* weights, I n, I count, I spins,
     I terms, I work_jets, double* work, const double* point_totals,
-    double* potential, double* totals, int* error) {
+    double* potential, double* totals, bool accumulate, int* error) {
   if (tiled_xc_admitted(n, count)) {
     compact_potential_panels<<<vibeqc_tensor::blocks(spins*count*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,work_jets,work,error);
     vibeqc_tensor::cuda_check(cudaGetLastError());
     const I tiles = (n+15)/16, tile_pairs = tiles*(tiles+1)/2;
     tiled_potential<<<dim3(tile_pairs,1,spins),dim3(16,16),0,stream>>>(
-        ao,work,n,count,work_jets,point_totals,potential,totals,error);
+        ao,work,n,count,work_jets,point_totals,potential,totals,accumulate,error);
   } else {
+    if (!accumulate) {
+      vibeqc_tensor::cuda_check(cudaMemsetAsync(potential,0,spins*n*n*sizeof(double),stream));
+      vibeqc_tensor::cuda_check(cudaMemsetAsync(totals,0,3*sizeof(double),stream));
+    }
     assemble_potential<<<vibeqc_tensor::blocks(spins*n*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,potential,error);
     vibeqc_tensor::cuda_check(cudaGetLastError());

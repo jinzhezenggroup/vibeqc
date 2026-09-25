@@ -1,5 +1,7 @@
 """Independent compact-factor gates with signed weights and arbitrary AO jets."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
@@ -7,6 +9,8 @@ from vibeqc_compiler.dft.xc_contraction_cuda import (
     compact_panel_program,
     emit_native_xc_matrix_schedule,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.parametrize(
@@ -63,13 +67,50 @@ def test_tiled_potential_fuses_point_total_reduction() -> None:
     assert (
         "for (I p = 0; p < count; ++p) sum += point_totals[channel*count+p];" in source
     )
-    assert "totals[channel] = finite(totals[channel]+sum,error,3);" in source
+    assert (
+        "totals[channel] = finite((accumulate ? totals[channel] : 0.0)+sum,error,3);"
+        in source
+    )
     # Tiny/out-of-domain shapes keep the historical reducer rather than changing
     # their arithmetic or launch contract merely to share the production path.
     assert (
         "accumulate_totals<<<1,32,0,stream>>>(point_totals,count,totals,error);"
         in source
     )
+
+
+def test_tiled_first_point_tile_initializes_outputs_without_global_clears() -> None:
+    """Admitted tiled XC must overwrite first-tile outputs instead of pre-clearing them."""
+    schedule = emit_native_xc_matrix_schedule()
+    assert "double* totals, bool accumulate, int* error" in schedule
+    assert "const double prior = accumulate ? potential[index] : 0.0;" in schedule
+    assert "if (!accumulate) {" in schedule
+    assert "cudaMemsetAsync(potential,0,spins*n*n*sizeof(double),stream)" in schedule
+    assert "cudaMemsetAsync(totals,0,3*sizeof(double),stream)" in schedule
+
+    glue = (ROOT / "src/dft/cuda_xc_kernels.cuh").read_text()
+    setup = glue[: glue.index("for (std::size_t begin")]
+    assert "cudaMemsetAsync(potential" not in setup
+    assert "cudaMemsetAsync(totals" not in setup
+    assert "begin != 0, error" in glue
+
+
+@pytest.mark.parametrize(
+    "nao,spins,expected_matrix_bytes,expected_removed_bytes",
+    [
+        (384, 1, 1_179_648, 1_179_672),
+        (384, 2, 2_359_296, 2_359_320),
+        (768, 1, 4_718_592, 4_718_616),
+        (768, 2, 9_437_184, 9_437_208),
+    ],
+)
+def test_first_tile_initialization_traffic_census(
+    nao: int, spins: int, expected_matrix_bytes: int, expected_removed_bytes: int
+) -> None:
+    """Pin the matrix and totals clear traffic removed per admitted XC evaluation."""
+    matrix_bytes = spins * nao * nao * 8
+    assert matrix_bytes == expected_matrix_bytes
+    assert matrix_bytes + 3 * 8 == expected_removed_bytes
 
 
 @pytest.mark.parametrize(
