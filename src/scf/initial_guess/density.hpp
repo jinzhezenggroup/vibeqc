@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_INITIAL_GUESS_DENSITY_HPP
 #define VIBEQC_SCF_INITIAL_GUESS_DENSITY_HPP
 
+#include <functional>
 #include <optional>
 #include <span>
 #include <utility>
@@ -19,6 +20,23 @@ namespace vibeqc::scf::initial_guess {
 
 using reference::EigenResult;
 using reference::Matrix;
+
+/** Immutable context for an optional restricted cold-start density provider.
+ *
+ * Providers run exactly once before the physical SCF loop. They may propose a
+ * target-basis AO density derived from a cheaper model, but do not own the
+ * target Hamiltonian, convergence policy, or final state. Returning nullopt or
+ * throwing a standard exception requests the canonical core-density fallback.
+ */
+struct RestrictedInitialDensityRequest {
+  const core::System& system;
+  const integrals::IntegralData& integrals;
+  const Matrix& orthogonalizer;
+  const Matrix& core_density;
+  std::size_t occupied{};
+};
+using RestrictedInitialDensityProvider =
+    std::function<std::optional<Matrix>(const RestrictedInitialDensityRequest&)>;
 
 /** Iterative callers need a core frame only to construct a cold density.
  * A noniterative consumer must explicitly request a frame for supplied D. */
@@ -67,7 +85,7 @@ Matrix prepare_initial_density(
     std::size_t occupied, const std::vector<double>* initial_density,
     std::optional<EigenResult>& orbitals,
     InitialOrbitalRequest request = InitialOrbitalRequest::ColdDensityOnly,
-    const EigenOperation& eigen = {});
+    const EigenOperation& eigen = {}, const RestrictedInitialDensityProvider& provider = {});
 /** Prepare independent unit-occupation spin guesses with the same warm-state contract. */
 std::pair<Matrix, Matrix> prepare_initial_uhf_density(
     const integrals::IntegralData& ints, const Matrix& orthogonalizer, std::size_t alpha_occupied,
