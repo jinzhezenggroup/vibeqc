@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-hvp = importlib.import_module("tools.vibeqc_hessian.rks_hvp")
+hvp = importlib.import_module("tools.vibeqc_hessian.rks_molecular")
 
 
 def test_xc_binding_reuses_response_and_native_sources(
