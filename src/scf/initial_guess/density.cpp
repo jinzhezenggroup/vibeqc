@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <new>
 #include <stdexcept>
 
 #include "core/types.hpp"
@@ -287,7 +288,8 @@ Matrix prepare_initial_density(const core::System& system, const integrals::Inte
                                const Matrix& orthogonalizer, std::size_t occupied,
                                const std::vector<double>* initial_density,
                                std::optional<EigenResult>& orbitals, InitialOrbitalRequest request,
-                               const EigenOperation& eigen) {
+                               const EigenOperation& eigen,
+                               const RestrictedInitialDensityProvider& provider) {
   const std::size_t n = ints.nbf;
   scf::reference::observation::Reason reason(scf::reference::observation::EigenReason::core_guess);
   scf::reference::observation::Scope trace("initial_density", n);
@@ -298,7 +300,23 @@ Matrix prepare_initial_density(const core::System& system, const integrals::Inte
   };
   if (initial_density == nullptr) {
     orbitals = core_frame();
-    return density_from_orbitals(orbitals->vectors, n, occupied);
+    Matrix core_density = density_from_orbitals(orbitals->vectors, n, occupied);
+    if (!provider) return core_density;
+    try {
+      auto candidate = provider({system, ints, orthogonalizer, core_density, occupied});
+      if (!candidate) return core_density;
+      Matrix density = normalized_warm_density(system, ints, *candidate);
+      // An accepted matrix-only proposal is not represented by the core
+      // orbitals. Keep that frame only for consumers that explicitly request it.
+      if (request == InitialOrbitalRequest::ColdDensityOnly) orbitals.reset();
+      return density;
+    } catch (const std::bad_alloc&) {
+      throw;
+    } catch (const std::exception&) {
+      // Initial-guess accelerators are optional. A rejected/failed proposal
+      // must preserve the canonical core start and its already-built frame.
+      return core_density;
+    }
   }
   Matrix density = normalized_warm_density(system, ints, *initial_density);
   if (request == InitialOrbitalRequest::RequireCoreFrame) orbitals = core_frame();
