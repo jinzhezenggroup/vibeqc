@@ -193,6 +193,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool mixed_j{}, strict_refinement{}, pending_mixed_j{}, mixed_j_executed{};
   double exchange_coefficient{}, range_exchange_coefficient{};
   std::optional<scf::ResolvedFockBuild> range_correction;
+  nlc::Vv10Plan* nonlocal_correlation{};
+  nlc::Vv10DensityDomain nonlocal_domain{nlc::Vv10DensityDomain::StrictPositive};
   unsigned final_corrections{}, refinement_iterations{};
   SemilocalFamily functional{SemilocalFamily::Lda};
   bool final_state_ready{}, final_frame_ready{};
@@ -324,14 +326,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
        const scf::ScfOptions& control, SemilocalFamily functional, std::size_t tile,
-       const scf::ResolvedFockBuild* range)
+       const scf::ResolvedFockBuild* range, nlc::Vv10Plan* nonlocal, nlc::Vv10DensityDomain domain)
       : provider(plan),
         basis(basis),
         grid(grid),
         options(control),
         grid_spec(grid.spec()),
         functional(functional),
-        range_correction(range ? std::optional<scf::ResolvedFockBuild>(*range) : std::nullopt) {
+        range_correction(range ? std::optional<scf::ResolvedFockBuild>(*range) : std::nullopt),
+        nonlocal_correlation(nonlocal),
+        nonlocal_domain(domain) {
     if (!semilocal_family_has_cuda_ks(functional))
       throw std::invalid_argument(
           "CUDA KS semilocal family has no qualified device implementation");
@@ -378,6 +382,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
       throw std::invalid_argument("CUDA exact-exchange KS currently requires strict FP64");
     if (mixed_j && (functional == SemilocalFamily::R2scan || functional == SemilocalFamily::Wb97mv))
       throw std::invalid_argument("meta-GGA CUDA KS currently requires strict FP64");
+    if (nonlocal_correlation) {
+      if (options.xc_execution_schedule != scf::ScfOptions::XcExecutionSchedule::HostUnfused)
+        throw std::invalid_argument(
+            "CUDA KS nonlocal composition currently requires the host-unfused AO bridge");
+      if (functional != SemilocalFamily::Pbe && functional != SemilocalFamily::Wb97mv)
+        throw std::invalid_argument("CUDA KS nonlocal composition requires a PBE-family graph");
+      if (mixed_j)
+        throw std::invalid_argument("CUDA KS nonlocal composition currently requires strict FP64");
+    }
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
         !std::isfinite(options.density_tolerance) || options.energy_tolerance <= 0.0 ||
         options.density_tolerance <= 0.0 || options.diis_history > 64)
@@ -409,6 +422,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
     history = std::max(1U, options.diis_history);
     device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
     stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
+    if (nonlocal_correlation &&
+        (nonlocal_correlation->backend() != VIBEQC_BACKEND_CUDA ||
+         nonlocal_correlation->device_id() != device ||
+         nonlocal_correlation->resources().point_count != grid.point_count()))
+      throw std::invalid_argument("CUDA KS nonlocal owner is incompatible with the grid or device");
     current_device();
     xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile);
     const bool host_unfused =
@@ -827,6 +845,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
         throw std::runtime_error("host-unfused RKS XC potential size changed");
       std::copy(value.potential.begin(), value.potential.end(), host_xc_potential.begin());
       host_xc_totals = {value.energy, 0.5 * value.electrons, 0.5 * value.electrons};
+      if (nonlocal_correlation) {
+        const auto nonlocal =
+            nlc::integrate_vv10_rks(basis, grid, host_xc_density, *nonlocal_correlation,
+                                    xc_layout.tile_points, {}, nonlocal_domain);
+        if (nonlocal.potential.size() != matrix)
+          throw std::runtime_error("host-unfused RKS nonlocal potential size changed");
+        for (std::size_t i = 0; i < matrix; ++i) host_xc_potential[i] += nonlocal.potential[i];
+        host_xc_totals[0] += nonlocal.energy;
+      }
     } else {
       std::copy_n(host_xc_density.begin(), matrix, host_xc_alpha.begin());
       std::copy_n(host_xc_density.begin() + matrix, matrix, host_xc_beta.begin());
@@ -848,6 +875,18 @@ struct CudaKsPlan::Impl : KsStateStorage {
       std::copy(value.potential[1].begin(), value.potential[1].end(),
                 host_xc_potential.begin() + matrix);
       host_xc_totals = {value.energy, value.electrons[0], value.electrons[1]};
+      if (nonlocal_correlation) {
+        const auto nonlocal =
+            nlc::integrate_vv10_uks(basis, grid, host_xc_alpha, host_xc_beta, *nonlocal_correlation,
+                                    xc_layout.tile_points, nonlocal_domain);
+        if (nonlocal.potential[0].size() != matrix || nonlocal.potential[1].size() != matrix)
+          throw std::runtime_error("host-unfused UKS nonlocal potential size changed");
+        for (std::size_t i = 0; i < matrix; ++i) {
+          host_xc_potential[i] += nonlocal.potential[0][i];
+          host_xc_potential[matrix + i] += nonlocal.potential[1][i];
+        }
+        host_xc_totals[0] += nonlocal.energy;
+      }
     }
 
     check(cudaMemcpyAsync(tmp1, host_xc_potential.data(), bytes, cudaMemcpyHostToDevice, stream));
@@ -1122,10 +1161,19 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {
-        1,     1,      grid_spec, xc_layout.tile_points, semilocal_family_code(functional),
-        spins, device, owner};
+    identity.model = {1,
+                      semilocal_family_domain_version(functional),
+                      grid_spec,
+                      xc_layout.tile_points,
+                      semilocal_family_code(functional),
+                      spins,
+                      device,
+                      owner};
     if (range_correction) identity.model.range_correction = *range_correction;
+    if (nonlocal_correlation) {
+      identity.model.nonlocal_correlation = nonlocal_correlation->parameters();
+      identity.model.nonlocal_density_domain = nonlocal_domain;
+    }
     return identity;
   }
 
@@ -1258,9 +1306,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
 CudaKsPlan::CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis,
                        const MolecularGrid& grid, const scf::ScfOptions& options,
                        SemilocalFamily functional, std::size_t tile_points,
-                       const scf::ResolvedFockBuild* range_correction)
+                       const scf::ResolvedFockBuild* range_correction,
+                       nlc::Vv10Plan* nonlocal_correlation, nlc::Vv10DensityDomain nonlocal_domain)
     : impl_(std::make_unique<Impl>(fock, basis, grid, options, functional, tile_points,
-                                   range_correction)) {}
+                                   range_correction, nonlocal_correlation, nonlocal_domain)) {}
 CudaKsPlan::~CudaKsPlan() = default;
 void CudaKsPlan::begin(const std::vector<double>* seed, bool reuse_warm) {
   impl_->begin(seed, reuse_warm);
