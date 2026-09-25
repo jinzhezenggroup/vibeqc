@@ -94,11 +94,10 @@ vibeqc_status direct_jk_guard(CudaDirectJkPlan* plan, std::string& detail, Funct
   }
 }
 
-vibeqc::integrals::CoulombRange direct_exchange_range(const FockTermSpec& term) {
-  if (!term.present || term.op == FockOperator::FullRange)
-    return vibeqc::integrals::CoulombRange::Full;
-  if (term.op == FockOperator::ShortRange) return vibeqc::integrals::CoulombRange::Short;
-  if (term.op == FockOperator::LongRange) return vibeqc::integrals::CoulombRange::Long;
+DirectCoulombRange direct_exchange_range(const FockTermSpec& term) {
+  if (!term.present || term.op == FockOperator::FullRange) return DirectCoulombRange::Full;
+  if (term.op == FockOperator::ShortRange) return DirectCoulombRange::Short;
+  if (term.op == FockOperator::LongRange) return DirectCoulombRange::Long;
   throw std::invalid_argument("unknown exact-exchange radial operator");
 }
 FockBuildSpec direct_jk_strategy(const CudaDirectJkPlan* plan, FockBuildSpec spec,
