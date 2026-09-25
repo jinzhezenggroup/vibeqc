@@ -13,7 +13,11 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
-from .bulk_point_program import SemilocalPointBinding
+from .bulk_point_program import (
+    POINT_PROGRAM_BINDING_SCHEMA,
+    SemilocalPointBinding,
+    native_domain_version,
+)
 from .bulk_runtime import PRODUCTION_CANDIDATE_DOMAIN
 from .libxc_bulk_capabilities import STAGE_EVIDENCE_SCHEMA, functional_capability
 
@@ -86,6 +90,70 @@ def _smoke(value: Any, *, required: bool) -> dict[str, Any] | None:
         "absolute_tolerance": float(tolerance),
         "maximum_absolute_error": float(max_error),
     }
+
+
+def _binding_payload(
+    value: Mapping[str, Any],
+    *,
+    capability_name: str,
+    capability_identity: str,
+) -> dict[str, Any]:
+    if value.get("schema") != POINT_PROGRAM_BINDING_SCHEMA:
+        raise ValueError("compiled-CPU binding has unsupported schema")
+    if value.get("name") != capability_name:
+        raise ValueError("compiled-CPU binding functional mismatch")
+    if value.get("capability_identity") != capability_identity:
+        raise ValueError("compiled-CPU binding capability identity mismatch")
+    domain = value.get("domain")
+    if domain != PRODUCTION_CANDIDATE_DOMAIN:
+        raise ValueError("compiled-CPU binding domain mismatch")
+    if value.get("domain_version") != native_domain_version(domain):
+        raise ValueError("compiled-CPU binding native domain version mismatch")
+
+    features = value.get("features")
+    layouts = {
+        ("rho_a", "rho_b"): 1,
+        ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb"): 7,
+        (
+            "rho_a",
+            "rho_b",
+            "sigma_aa",
+            "sigma_ab",
+            "sigma_bb",
+            "tau_a",
+            "tau_b",
+        ): 15,
+    }
+    if (
+        not isinstance(features, Sequence)
+        or isinstance(features, (str, bytes))
+        or tuple(features) not in layouts
+    ):
+        raise ValueError("compiled-CPU binding has unsupported feature layout")
+    feature_tuple = tuple(features)
+    if value.get("ingredient_mask") != layouts[feature_tuple]:
+        raise ValueError("compiled-CPU binding ingredient mask mismatch")
+
+    payload = {
+        "schema": POINT_PROGRAM_BINDING_SCHEMA,
+        "name": capability_name,
+        "capability_identity": capability_identity,
+        "point_expression_identity": _sha(
+            value.get("point_expression_identity"), "point expression identity"
+        ),
+        "artifact_emission_identity": _sha(
+            value.get("artifact_emission_identity"), "artifact emission identity"
+        ),
+        "artifact_source_sha256": _sha(
+            value.get("artifact_source_sha256"), "artifact source"
+        ),
+        "import_identity": _sha(value.get("import_identity"), "import identity"),
+        "domain": domain,
+        "domain_version": value["domain_version"],
+        "features": list(feature_tuple),
+        "ingredient_mask": value["ingredient_mask"],
+    }
+    return payload
 
 
 def build_result(
@@ -162,18 +230,19 @@ def validate_result(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
     """Validate one stored result against current capability/binding semantics."""
     if not isinstance(value, Mapping) or value.get("schema") != RESULT_SCHEMA:
         raise ValueError("unsupported compiled-CPU result schema")
-    binding_payload = value.get("binding")
-    if not isinstance(binding_payload, Mapping):
+    raw_binding = value.get("binding")
+    if not isinstance(raw_binding, Mapping):
         raise TypeError("compiled-CPU result requires binding payload")
 
     capability = functional_capability(name)
     if value.get("subject_identity") != capability.identity:
         raise ValueError("compiled-CPU result subject identity mismatch")
-    if binding_payload.get("capability_identity") != capability.identity:
-        raise ValueError("compiled-CPU result binding capability mismatch")
-    if binding_payload.get("domain") != PRODUCTION_CANDIDATE_DOMAIN:
-        raise ValueError("compiled-CPU result binding domain mismatch")
-    if value.get("binding_identity") != canonical_hash(dict(binding_payload)):
+    binding_payload = _binding_payload(
+        raw_binding,
+        capability_name=capability.name,
+        capability_identity=capability.identity,
+    )
+    if value.get("binding_identity") != canonical_hash(binding_payload):
         raise ValueError("compiled-CPU result binding identity mismatch")
 
     status = value.get("status")
@@ -223,7 +292,7 @@ def validate_result(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
         "schema": RESULT_SCHEMA,
         "subject_identity": capability.identity,
         "binding_identity": value["binding_identity"],
-        "binding": dict(binding_payload),
+        "binding": binding_payload,
         "evidence": value.get("evidence"),
         "status": status,
         "reason": reason,
