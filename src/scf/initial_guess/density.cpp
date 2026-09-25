@@ -439,10 +439,12 @@ OccupiedProjectionResult project_occupied_density(
   return result;
 }
 
-OccupiedCompletionResult complete_occupied_density(
-    const integrals::IntegralData& target, std::span<const double> seeded_coefficients,
-    std::size_t seeded_occupied, std::span<const double> reference_coefficients,
-    std::size_t target_occupied, double occupation, double minimum_complement_norm) {
+OccupiedCompletionResult complete_occupied_density(const integrals::IntegralData& target,
+                                                   std::span<const double> seeded_coefficients,
+                                                   std::size_t seeded_occupied,
+                                                   std::span<const double> reference_coefficients,
+                                                   std::size_t target_occupied, double occupation,
+                                                   double minimum_complement_norm) {
   const std::size_t n = target.nbf;
   const auto finite = [](std::span<const double> values) {
     return std::all_of(values.begin(), values.end(),
@@ -450,14 +452,12 @@ OccupiedCompletionResult complete_occupied_density(
   };
   if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n ||
       seeded_occupied > target_occupied || target_occupied > n ||
-      (seeded_occupied != 0 &&
-       (n > std::numeric_limits<std::size_t>::max() / seeded_occupied ||
-        seeded_coefficients.size() != n * seeded_occupied)) ||
+      (seeded_occupied != 0 && (n > std::numeric_limits<std::size_t>::max() / seeded_occupied ||
+                                seeded_coefficients.size() != n * seeded_occupied)) ||
       reference_coefficients.size() != n * n || target.overlap.size() != n * n ||
-      !(occupation > 0.0) || !std::isfinite(occupation) ||
-      !(minimum_complement_norm > 0.0) || !std::isfinite(minimum_complement_norm) ||
-      !finite(target.overlap) || !finite(seeded_coefficients) ||
-      !finite(reference_coefficients)) {
+      !(occupation > 0.0) || !std::isfinite(occupation) || !(minimum_complement_norm > 0.0) ||
+      !std::isfinite(minimum_complement_norm) || !finite(target.overlap) ||
+      !finite(seeded_coefficients) || !finite(reference_coefficients)) {
     throw std::invalid_argument("occupied completion has inconsistent or non-finite inputs");
   }
 
@@ -473,8 +473,8 @@ OccupiedCompletionResult complete_occupied_density(
     for (std::size_t orbital = 0; orbital < seeded_occupied; ++orbital) {
       double value = 0.0;
       for (std::size_t nu = 0; nu < n; ++nu)
-        value += target.overlap[index(mu, nu, n)] *
-                 result.coefficients[nu * target_occupied + orbital];
+        value +=
+            target.overlap[index(mu, nu, n)] * result.coefficients[nu * target_occupied + orbital];
       metric_coefficients[mu * target_occupied + orbital] = value;
     }
   }
@@ -491,8 +491,7 @@ OccupiedCompletionResult complete_occupied_density(
   for (std::size_t first = 0; first < seeded_occupied; ++first) {
     for (std::size_t second = 0; second < seeded_occupied; ++second) {
       const double expected = first == second ? 1.0 : 0.0;
-      seeded_error =
-          std::max(seeded_error, std::abs(metric_column_dot(first, second) - expected));
+      seeded_error = std::max(seeded_error, std::abs(metric_column_dot(first, second) - expected));
     }
   }
   if (!std::isfinite(seeded_error) || seeded_error > 1.0e-7)
@@ -515,8 +514,7 @@ OccupiedCompletionResult complete_occupied_density(
         for (std::size_t mu = 0; mu < n; ++mu)
           projection += metric_coefficients[mu * target_occupied + previous] * residual[mu];
         for (std::size_t mu = 0; mu < n; ++mu)
-          residual[mu] -=
-              projection * result.coefficients[mu * target_occupied + previous];
+          residual[mu] -= projection * result.coefficients[mu * target_occupied + previous];
       }
     }
 
@@ -537,8 +535,7 @@ OccupiedCompletionResult complete_occupied_density(
     const double inverse_norm = 1.0 / norm;
     for (std::size_t mu = 0; mu < n; ++mu) {
       result.coefficients[mu * target_occupied + accepted] = residual[mu] * inverse_norm;
-      metric_coefficients[mu * target_occupied + accepted] =
-          metric_residual[mu] * inverse_norm;
+      metric_coefficients[mu * target_occupied + accepted] = metric_residual[mu] * inverse_norm;
     }
     ++accepted;
   }
@@ -546,16 +543,14 @@ OccupiedCompletionResult complete_occupied_density(
     throw std::invalid_argument("target reference orbitals cannot complete the occupied subspace");
 
   result.added_orbitals = target_occupied - seeded_occupied;
-  result.minimum_added_norm =
-      result.added_orbitals == 0 ? 1.0 : minimum_added_norm;
+  result.minimum_added_norm = result.added_orbitals == 0 ? 1.0 : minimum_added_norm;
 
   double orthogonality_error = 0.0;
   for (std::size_t first = 0; first < target_occupied; ++first) {
     for (std::size_t second = 0; second < target_occupied; ++second) {
       const double expected = first == second ? 1.0 : 0.0;
       orthogonality_error =
-          std::max(orthogonality_error,
-                   std::abs(metric_column_dot(first, second) - expected));
+          std::max(orthogonality_error, std::abs(metric_column_dot(first, second) - expected));
     }
   }
   result.metric_orthogonality_error = orthogonality_error;
