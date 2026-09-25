@@ -70,9 +70,9 @@ std::size_t sum(std::size_t a, std::size_t b) {
 }
 /** Numeric arena view shared by allocation and metadata-only planning. */
 struct KsStateStorage {
-  double *hcore{}, *overlap{}, *x{}, *j{}, *density{}, *proposal{}, *warm{}, *fock{}, *residual{},
-      *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{}, *gram{}, *weights{},
-      *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{}, *cold_seed{};
+  double *hcore{}, *overlap{}, *x{}, *j{}, *exchange{}, *density{}, *proposal{}, *warm{}, *fock{},
+      *residual{}, *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{}, *gram{},
+      *weights{}, *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{}, *cold_seed{};
   std::int32_t* occupied{};
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
@@ -83,7 +83,8 @@ struct KsStateStorage {
   cuda_ks_detail::Scalars* scalar_records{};
   /** The dry run and actual partition share one checked, typed layout. All
    * persistent and phase-local numeric buffers are explicitly charged. */
-  std::size_t partition(std::size_t n, unsigned spins, unsigned history, void* storage) {
+  std::size_t partition(std::size_t n, unsigned spins, unsigned history, bool exact_exchange,
+                        void* storage) {
     const auto matrix = product(n, n), elements = product(spins, matrix);
     std::size_t bytes = 0;
     const auto reserve = [&](auto*& pointer, std::size_t count) {
@@ -94,6 +95,10 @@ struct KsStateStorage {
       bytes = sum(bytes, product(count, sizeof(T)));
     };
     for (auto** pointer : {&hcore, &overlap, &x, &j}) reserve(*pointer, matrix);
+    if (exact_exchange)
+      reserve(exchange, elements);
+    else
+      exchange = nullptr;
     for (auto** pointer : {&density, &proposal, &warm, &fock, &residual, &tmp1, &tmp2, &effective})
       reserve(*pointer, elements);
     // The generated cold guess stays resident across cold retries. It cannot
@@ -134,12 +139,13 @@ std::uint64_t next_ks_owner() noexcept {
 }
 }  // namespace
 
-std::size_t cuda_ks_state_bytes(std::size_t n, unsigned spins, unsigned history) {
+std::size_t cuda_ks_state_bytes(std::size_t n, unsigned spins, unsigned history,
+                                bool exact_exchange) {
   if (!n || n > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
       (spins != 1 && spins != 2) || history > 64)
     throw std::invalid_argument("invalid CUDA KS resource shape");
   KsStateStorage layout;
-  return sum(layout.partition(n, spins, std::max(1U, history), nullptr),
+  return sum(layout.partition(n, spins, std::max(1U, history), exact_exchange, nullptr),
              n <= kSmallEigensolverLimit ? 0 : scf::ordinary_eigensolver_workspace_allowance(n));
 }
 
@@ -172,8 +178,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
   scf::ScfResult output;
   bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
   bool warm_updates{true}, device_chunk_mode{};
-  bool stabilize_occupations{}, final_closure{};
+  bool stabilize_occupations{}, final_closure{}, has_exchange{};
   bool mixed_j{}, strict_refinement{}, pending_mixed_j{}, mixed_j_executed{};
+  double exchange_coefficient{};
   unsigned final_corrections{}, refinement_iterations{};
   std::uint32_t functional{};
   bool final_state_ready{}, final_frame_ready{};
@@ -304,6 +311,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
+    has_exchange = strategy.spec.exchange.present;
+    exchange_coefficient = has_exchange ? strategy.spec.exchange.coefficient : 0.0;
     fock_binding = scf::prepared_cuda_fock_binding(provider);
     fitted = provider.cuda_fitted_source();
     if (!owner || strategy.backend != scf::FockBackend::Cuda ||
@@ -311,9 +320,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
         strategy.spec.coulomb.coefficient != 1.0 ||
         (strategy.spec.coulomb.approximation != scf::FockApproximation::Exact &&
          strategy.spec.coulomb.approximation != scf::FockApproximation::DensityFitted) ||
-        strategy.spec.exchange.present || (!fock_binding && !fitted) || (fock_binding && fitted))
+        (has_exchange &&
+         (strategy.spec.exchange.approximation != scf::FockApproximation::Exact ||
+          strategy.spec.exchange.op != scf::FockOperator::FullRange)) ||
+        (has_exchange && fitted) || (!fock_binding && !fitted) || (fock_binding && fitted))
       throw std::invalid_argument(
-          "CUDA KS requires a prepared exact or fitted Coulomb-only strategy");
+          "CUDA KS requires prepared Coulomb and optional exact full-range exchange");
     if (options.compute_forces || options.hooks || options.export_physical_reference ||
         options.xc_density_route != XcDensityRoute::DensityMatrix ||
         (options.precision_mode && *options.precision_mode != VIBEQC_PRECISION_FP64 &&
@@ -321,6 +333,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
     if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
+    if (mixed_j && has_exchange)
+      throw std::invalid_argument("CUDA exact-exchange KS currently requires strict FP64");
     if (mixed_j && functional > 1U)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
@@ -366,7 +380,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
         host_xc_beta.resize(matrix);
       }
     }
-    resource.state_device_bytes = partition(n, spins, history, nullptr);
+    resource.state_device_bytes = partition(n, spins, history, has_exchange, nullptr);
     resource.xc_device_bytes = host_unfused ? 0 : xc_layout.device_bytes;
     resource.provider_device_bytes = provider.diagnostic().device_bytes;
     const auto diagnostic_iterations =
@@ -382,7 +396,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
         sizeof(host_all_spins) + sizeof(host_one);
     try {
       check(runtime::resource_cuda_malloc(&arena, resource.state_device_bytes));
-      partition(n, spins, history, arena);
+      partition(n, spins, history, has_exchange, arena);
       if (resource.xc_device_bytes)
         check(runtime::resource_cuda_malloc(&xc_arena, resource.xc_device_bytes));
       check(cudaMemsetAsync(arena, 0, resource.state_device_bytes, stream));
@@ -481,7 +495,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !fitted && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
+        !fitted && !has_exchange && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
         configured_chunk_width() == kCudaKsChunkCapacity;
     if (device_chunk_mode) {
       const auto binding = device_chunk_binding();
@@ -564,14 +578,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (generation == std::numeric_limits<std::uint64_t>::max())
       throw std::overflow_error("CUDA KS density generation exhausted");
     std::string detail;
-    check(scf::enqueue_prepared_cuda_fock(provider, density, nullptr, matrix, j, nullptr, nullptr,
+    check(scf::enqueue_prepared_cuda_fock(provider, density, nullptr, matrix, j, exchange, nullptr,
                                           jk_error, false, detail),
           detail);
     xc->enqueue(density, elements, ++generation);
     pending_generations[slot] = generation;
     ++movement.submitted_iterations;
     const auto potential = xc->view(generation);
-    cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
+    cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, exchange, exchange_coefficient,
+                                  potential.potential, enabled, fock);
     check(cudaGetLastError());
     const auto blocks = static_cast<unsigned>((elements + 127) / 128);
     const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
@@ -600,8 +615,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     check(cudaGetLastError());
     auto* record = scalar_records + slot;
     cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
-                                potential.totals, potential.error, jk_error, solver_info, enabled,
-                                record);
+                                exchange, exchange_coefficient, potential.totals, potential.error,
+                                jk_error, solver_info, enabled, record);
     check(cudaGetLastError());
     cuda_ks_detail::advance(stream, n, spins, provider.one_electron().nuclear_repulsion,
                             static_cast<int>(occupations[0]), static_cast<int>(occupations[1]),
@@ -675,7 +690,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       ++output.iterations;
       ++output.fock_builds;
       diagnostic.components = {provider.one_electron().nuclear_repulsion, item.one_electron,
-                               item.hartree, item.xc};
+                               item.hartree, item.xc, item.exact_exchange};
       diagnostic.physical_residual = item.residual;
       diagnostic.electrons = {item.electrons[0], item.electrons[1]};
       diagnostic.density_change = item.density_change;
@@ -789,14 +804,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                      scf::FockMatrixLayout::RowMajor))
                  : scf::enqueue_prepared_cuda_fock(
                        provider, density, spins == 2 ? density + matrix : nullptr, matrix, j,
-                       nullptr, nullptr, jk_error, pending_mixed_j, detail);
+                       exchange, has_exchange && spins == 2 ? exchange + matrix : nullptr, jk_error,
+                       pending_mixed_j, detail);
       check(jk_status, detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
       const auto potential = stage_xc(++generation);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
       pending_iterations = 1;
-      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, potential.potential, enabled, fock);
+      cuda_ks_detail::assemble_fock(stream, n, spins, hcore, j, exchange, exchange_coefficient,
+                                    potential.potential, enabled, fock);
       check(cudaGetLastError());
       const auto blocks = static_cast<unsigned>((elements + 127) / 128);
       const auto multiply = [&](const double* a, bool a_spin, bool transpose, const double* b,
@@ -848,8 +865,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                          enabled, proposal);
       check(cudaGetLastError());
       cuda_ks_detail::diagnostics(stream, n, spins, density, proposal, residual, hcore, overlap, j,
-                                  potential.totals, potential.error, jk_error, solver_info, enabled,
-                                  scalar_records);
+                                  exchange, exchange_coefficient, potential.totals, potential.error,
+                                  jk_error, solver_info, enabled, scalar_records);
       check(cudaGetLastError());
     } catch (...) {
       cudaStreamSynchronize(stream);
@@ -892,7 +909,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.precision.refinement_iterations = refinement_iterations;
     auto& diagnostic = output.dft_diagnostic;
     diagnostic.components = {provider.one_electron().nuclear_repulsion, physical.one_electron,
-                             physical.hartree, physical.xc};
+                             physical.hartree, physical.xc, physical.exact_exchange};
     diagnostic.physical_residual = physical.residual;
     diagnostic.electrons = {physical.electrons[0], physical.electrons[1]};
     diagnostic.density_change = physical.density_change;
