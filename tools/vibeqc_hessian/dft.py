@@ -28,10 +28,8 @@ from vibeqc_compiler.method.stationary_gradient import (
 )
 from vibeqc_compiler.method.stationary_hvp import StationaryHVPPlan
 from vibeqc_compiler.xc.contractions import (
-    _geometry_feature_direction,
     _geometry_feature_directions,
 )
-from vibeqc_compiler.xc.potential import assemble_coefficients_directional
 from vibeqc_compiler.xc.grid_response import (
     partition_mixed_response,
     partition_response,
@@ -52,9 +50,9 @@ from .first_order import (
     generated_coulomb_relaxation_components,
     generated_directional_semilocal_rks_integral_first_order,
 )
-from .rks_directional import _native_rks_xc_geometry_direction
 from .native import NativeRHFState
 from .perturbation import solve_stationary_nuclear_perturbation
+from .rks_directional import _native_rks_xc_geometry_direction
 from .stationary_executor import (
     StationaryHVPContributor,
     StationaryPerturbationProvider,
@@ -131,8 +129,7 @@ class _NativeRKSIntegralState(NativeRHFState):
         if not np.allclose(self.P0, density, atol=2e-11, rtol=2e-11):
             raise ValueError("RKS HVP density/reference mismatch")
         expected_weighted = (
-            self.C[:, : self.nocc]
-            * (2.0 * self.eps[: self.nocc])[None, :]
+            self.C[:, : self.nocc] * (2.0 * self.eps[: self.nocc])[None, :]
         ) @ self.C[:, : self.nocc].T
         if not np.allclose(expected_weighted, weighted, atol=2e-11, rtol=2e-11):
             raise ValueError("RKS HVP weighted-density/reference mismatch")
@@ -220,9 +217,7 @@ def _native_point_state(
         "rho": immutable(0.5 * point["rho"].sum(axis=0)[None]),
     }
     if family == "gga":
-        compact["gradient"] = immutable(
-            0.5 * point["gradient"].sum(axis=0)[None]
-        )
+        compact["gradient"] = immutable(0.5 * point["gradient"].sum(axis=0)[None])
     return features, point, compact
 
 
@@ -261,9 +256,7 @@ def _total_feature_direction(
 ) -> tuple[np.ndarray, np.ndarray | None]:
     rho = np.asarray(direction["rho"]).sum(axis=0)
     gradient = (
-        None
-        if family == "lda"
-        else np.asarray(direction["gradient"]).sum(axis=0)
+        None if family == "lda" else np.asarray(direction["gradient"]).sum(axis=0)
     )
     return rho, gradient
 
@@ -351,8 +344,7 @@ def _native_mixed_geometry_directional(
     mixed_feature_energy = _directional_energy(coefficients, mixed, family)
     left_rho, left_gradient = _total_feature_direction(left, family)
     mixed_feature_energy = (
-        mixed_feature_energy
-        + directional_coefficients["rho"][0] * left_rho
+        mixed_feature_energy + directional_coefficients["rho"][0] * left_rho
     )
     if family == "gga":
         assert left_gradient is not None
@@ -412,6 +404,7 @@ def _build_perturbation(
         ),
     )
 
+
 def _second_integral_components(
     state: _NativeRKSIntegralState,
     direction: np.ndarray,
@@ -422,12 +415,8 @@ def _second_integral_components(
     density = state.P0
     one_electron = _run_one_electron(
         data, "kinetic", density, direction=direction
-    ) + _run_one_electron(
-        data, "nuclear_attraction", density, direction=direction
-    )
-    overlap = -_run_one_electron(
-        data, "overlap", data["W_e"], direction=direction
-    )
+    ) + _run_one_electron(data, "nuclear_attraction", density, direction=direction)
+    overlap = -_run_one_electron(data, "overlap", data["W_e"], direction=direction)
     coulomb = _run_eri(
         data,
         density,
@@ -533,20 +522,22 @@ def _xc_mixed_components(
                 )
                 left_weights = atom_weights * mixed_partition.left[selected]
                 mixed_weights = atom_weights * mixed_partition.mixed[selected]
-                components["xc_weight"][atom, axis] += _native_mixed_geometry_directional(
-                    state,
-                    jets,
-                    density,
-                    weights,
-                    ao_atoms=ao_atoms,
-                    left_centers=zero_centers,
-                    left_points=zero_points,
-                    left_weights=left_weights,
-                    right_centers=direction,
-                    right_points=right_points,
-                    right_weights=right_weights,
-                    mixed_weights=mixed_weights,
-                    delta_density=delta_density,
+                components["xc_weight"][atom, axis] += (
+                    _native_mixed_geometry_directional(
+                        state,
+                        jets,
+                        density,
+                        weights,
+                        ao_atoms=ao_atoms,
+                        left_centers=zero_centers,
+                        left_points=zero_points,
+                        left_weights=left_weights,
+                        right_centers=direction,
+                        right_points=right_points,
+                        right_weights=right_weights,
+                        mixed_weights=mixed_weights,
+                        delta_density=delta_density,
+                    )
                 )
                 branch_pairs.append(
                     (
@@ -566,6 +557,7 @@ def _xc_mixed_components(
         "point_derivative": "native-scaled-scf-directional-v1",
         "dense_molecular_hessian_allocated": False,
     }
+
 
 def _resolve_direction(
     state: _NativeRKSIntegralState,
@@ -671,10 +663,7 @@ def rks_hvp(
     """
     if type(tile_points) is not int or not 1 <= tile_points <= 4096:
         raise ValueError("tile_points must be an integer in [1,4096]")
-    if (
-        type(second_budget_bytes) is not int
-        or not 1 <= second_budget_bytes < 2**63
-    ):
+    if type(second_budget_bytes) is not int or not 1 <= second_budget_bytes < 2**63:
         raise ValueError("second_budget_bytes must be a positive int64")
     state = _NativeRKSIntegralState.from_response(response, cache=cache)
     vector = checked_direction(direction, state.nat)
@@ -690,9 +679,7 @@ def rks_hvp(
                 "functional": response.xc_kernel.spec.identity,
             }
         ),
-        lambda value: _build_perturbation(
-            state, value, tile_points=tile_points
-        ),
+        lambda value: _build_perturbation(state, value, tile_points=tile_points),
     )
     response_driver = StationaryResponseDriver(
         canonical_hash(

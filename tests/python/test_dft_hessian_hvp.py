@@ -36,9 +36,7 @@ def _calculator(method: str) -> Calculator:
     )
 
 
-def _gradient(
-    method: str, atoms: typing.Any, cache: typing.Any
-) -> np.ndarray:
+def _gradient(method: str, atoms: typing.Any, cache: typing.Any) -> np.ndarray:
     with _calculator(method).prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
         batch.execute(strict=True)
         state = StationaryKsState.from_native(batch, basis)
@@ -61,9 +59,7 @@ def _gradient(
 def test_complete_rks_hvp_matches_reconverged_gradient_difference(
     method: str, tmp_path: typing.Any
 ) -> None:
-    direction = np.array(
-        [[0.13, -0.21, 0.31], [-0.17, 0.09, -0.05]], dtype=np.float64
-    )
+    direction = np.array([[0.13, -0.21, 0.31], [-0.17, 0.09, -0.05]], dtype=np.float64)
     direction /= np.linalg.norm(direction)
     with _calculator(method).prepare_batch([H2]) as batch, NativeAO(H2) as basis:
         batch.execute(strict=True)
@@ -98,9 +94,7 @@ def test_complete_rks_hvp_matches_reconverged_gradient_difference(
                 (symbol, position)
                 for (symbol, _), position in zip(H2, displaced, strict=True)
             ]
-            gradients.append(
-                _gradient(method, atoms, tmp_path / f"gradient-{method}")
-            )
+            gradients.append(_gradient(method, atoms, tmp_path / f"gradient-{method}"))
         numeric = (gradients[0] - gradients[1]) / (2.0 * step)
         errors.append(float(np.max(np.abs(numeric - actual.value))))
     assert errors[-1] < 2e-4, errors
