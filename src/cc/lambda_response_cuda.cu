@@ -51,6 +51,21 @@ struct DeviceScope {
   }
 };
 
+/** Drain queued host transfers before their borrowed buffers leave scope.
+ * Successful paths dismiss this after their existing fence; only unwinding
+ * adds a best-effort drain. Declare after every local transfer destination.
+ */
+struct HostTransferFence {
+  explicit HostTransferFence(cudaStream_t value) : stream(value) {}
+  ~HostTransferFence() noexcept {
+    if (stream) (void)cudaStreamSynchronize(stream);
+  }
+  HostTransferFence(const HostTransferFence&) = delete;
+  HostTransferFence& operator=(const HostTransferFence&) = delete;
+  void complete() noexcept { stream = nullptr; }
+  cudaStream_t stream;
+};
+
 struct AmplitudeLayout {
   std::size_t o{}, v{}, n1{}, n2{};
   std::vector<std::size_t> representatives;
@@ -530,7 +545,7 @@ struct CudaHamiltonianResponseOwner::Impl {
 
   Impl(std::size_t occupied, std::size_t virtuals, CudaRawHamiltonianView raw, int device,
        std::size_t max_device_bytes)
-      : scope(checked_device(device)), o(occupied), v(virtuals), n(checked_add(o, v)) {
+      : device_id(checked_device(device)), o(occupied), v(virtuals), n(checked_add(o, v)) {
     if (!o || !v || !max_device_bytes)
       throw std::invalid_argument(
           "RCCSD CUDA Hamiltonian response requires nonzero dimensions and budget");
@@ -572,6 +587,7 @@ struct CudaHamiltonianResponseOwner::Impl {
     if (layout.total > max_device_bytes)
       throw std::length_error("RCCSD CUDA Hamiltonian response exceeds device budget");
 
+    DeviceScope active_device(device_id);
     try {
       cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       cuda_check(cudaMalloc(reinterpret_cast<void**>(&base), layout.total));
@@ -608,6 +624,7 @@ struct CudaHamiltonianResponseOwner::Impl {
 
   CudaHamiltonianResponseResult hamiltonian(CudaParameterResponseView parameters,
                                             double reference_seed) {
+    DeviceScope active_device(device_id);
     if (!std::isfinite(reference_seed))
       throw std::invalid_argument("nonfinite RCCSD CUDA Hamiltonian reference seed");
     const std::array<std::span<const double>, 10> values = {
@@ -626,35 +643,45 @@ struct CudaHamiltonianResponseOwner::Impl {
     std::array<double*, 10> fields = {
         state.bar_foo,  state.bar_fov,  state.bar_fvv,  state.bar_ovov, state.bar_ovvo,
         state.bar_oovv, state.bar_ovvv, state.bar_ovoo, state.bar_oooo, state.bar_vvvv};
-    for (std::size_t index = 0; index < values.size(); ++index) {
+    for (std::size_t index = 0; index < values.size(); ++index)
       validate_values(values[index], sizes[index], "parameter response");
+    HostTransferFence transfers(stream);
+    for (std::size_t index = 0; index < values.size(); ++index)
       upload(values[index], fields[index]);
-    }
     cuda_check(cudaMemcpyAsync(state.bar_reference_electronic_energy, &reference_seed,
                                sizeof(double), cudaMemcpyHostToDevice, stream));
     h2d = checked_add(h2d, sizeof(double));
     clear_error();
-    return detach(generated::run_hamiltonian_weights_cuda(state));
+    auto result = detach(generated::run_hamiltonian_weights_cuda(state));
+    transfers.complete();
+    return result;
   }
 
   CudaHamiltonianResponseResult fock(std::span<const double> bar_fock) {
+    DeviceScope active_device(device_id);
     validate_values(bar_fock, n2, "Fock response");
+    HostTransferFence transfers(stream);
     upload(bar_fock, state.bar_fock);
     clear_error();
-    return detach(generated::run_fock_weights_cuda(state));
+    auto result = detach(generated::run_fock_weights_cuda(state));
+    transfers.complete();
+    return result;
   }
 
   std::vector<double> orbital_jvp(std::span<const double> d_rotation) {
+    DeviceScope active_device(device_id);
     validate_values(d_rotation, n2, "orbital JVP");
+    std::vector<double> result(ov);
+    int error = 0;
+    HostTransferFence transfers(stream);
     upload(d_rotation, state.d_rotation);
     clear_error();
     const auto output = generated::run_orbital_jvp_cuda(state);
-    std::vector<double> result(ov);
-    int error = 0;
     cuda_check(
         cudaMemcpyAsync(result.data(), output.d_fov, bytes(ov), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaStreamSynchronize(stream));
+    transfers.complete();
     d2h = checked_add(d2h, checked_add(bytes(ov), sizeof(int)));
     ++syncs;
     check_error(error);
@@ -692,6 +719,7 @@ struct CudaHamiltonianResponseOwner::Impl {
     result.stationarity.resize(n2);
     result.orbital_rhs.resize(ov);
     int error = 0;
+    HostTransferFence transfers(stream);
     cuda_check(cudaMemcpyAsync(result.hcore.data(), output.hcore, bytes(n2), cudaMemcpyDeviceToHost,
                                stream));
     cuda_check(
@@ -706,6 +734,7 @@ struct CudaHamiltonianResponseOwner::Impl {
                                cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaStreamSynchronize(stream));
+    transfers.complete();
     const auto output_bytes = bytes(checked_add(n4, checked_add(checked_mul(4, n2), ov)));
     d2h = checked_add(d2h, checked_add(output_bytes, sizeof(int)));
     ++syncs;
@@ -720,14 +749,18 @@ struct CudaHamiltonianResponseOwner::Impl {
   }
 
   void cleanup() noexcept {
+    if (!stream && !base) return;
+    int previous = -1;
+    if (cudaGetDevice(&previous) != cudaSuccess || cudaSetDevice(device_id) != cudaSuccess) return;
     if (stream) (void)cudaStreamSynchronize(stream);
     if (base) (void)cudaFree(base);
     if (stream) (void)cudaStreamDestroy(stream);
     base = nullptr;
     stream = nullptr;
+    if (previous >= 0) (void)cudaSetDevice(previous);
   }
 
-  DeviceScope scope;
+  int device_id;
   std::size_t o{}, v{}, n{}, n2{}, n4{}, ov{};
   Layout layout;
   cudaStream_t stream{};
