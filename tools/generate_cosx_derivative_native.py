@@ -33,6 +33,7 @@ from vibeqc_compiler.method.cosx_derivative_runtime import (
     build_cosx_scale_program,
     build_cosx_symmetric_projection_update_program,
 )
+from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
 
 
@@ -44,7 +45,7 @@ def _device(source: str, function_name: str) -> str:
     return source.replace(needle, replacement, 1)
 
 
-def _emit(program, name: str, inputs: tuple[str, ...], outputs: tuple[str, ...]) -> str:
+def _emit(program: Program, name: str, inputs: tuple[str, ...], outputs: tuple[str, ...]) -> str:
     return _device(
         emit_scalar_cpp(
             program,

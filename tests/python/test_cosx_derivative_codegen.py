@@ -19,11 +19,12 @@ from vibeqc_compiler.method.cosx_derivative_runtime import (
     build_cosx_symmetric_projection_update_program,
 )
 from vibeqc_compiler.tensor import execute
+from vibeqc_compiler.tensor.program import Program
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _run(program, **feeds: float) -> dict[str, float]:
+def _run(program: Program, **feeds: float) -> dict[str, float]:
     outputs = execute(
         program,
         {name: np.asarray(value, dtype=np.float64) for name, value in feeds.items()},
