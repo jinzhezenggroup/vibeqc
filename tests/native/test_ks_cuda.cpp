@@ -265,6 +265,64 @@ void run_range_exchange_case(bool restricted) {
           "CUDA range-separated final state lost correction identity or energy");
 }
 
+RshStrategies wb97mv_rsh_strategies(bool restricted, scf::FockBackend backend) {
+  const auto spin = restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted;
+  constexpr double short_exchange = 0.15;
+  constexpr double long_exchange = 1.0;
+  constexpr double omega = 0.3;
+  return {scf::resolve_fock_build(scf::make_rsh_primary_fock_spec(spin, short_exchange), backend,
+                                  1e-12),
+          scf::resolve_fock_build(
+              scf::make_rsh_correction_fock_spec(spin, short_exchange, long_exchange, omega),
+              backend, 1e-12)};
+}
+
+void run_wb97mv_semilocal_rsh_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const auto model = wb97mv_rsh_strategies(restricted, scf::FockBackend::Cuda);
+
+  auto solve = [&](scf::ScfOptions::XcExecutionSchedule schedule) {
+    const scf::PreparedFockPlan gpu(system, nullptr, model.primary, 0);
+    scf::ScfOptions options;
+    options.compute_forces = false;
+    options.energy_tolerance = 1e-12;
+    options.density_tolerance = 1e-10;
+    options.max_iterations = 200;
+    options.xc_execution_schedule = schedule;
+    dft::CudaKsPlan plan(gpu, basis, grid, options, dft::SemilocalFamily::Wb97mv, 257,
+                         &model.correction);
+    const auto result = plan.run(nullptr, false);
+    require(result.converged && !plan.failed(),
+            "CUDA WB97M-V semilocal/RSH qualification solve did not converge");
+    const auto movement = plan.transfers();
+    require(movement.execution_region_bindings == 0 &&
+                movement.iteration_synchronizations == movement.iterations,
+            "WB97M-V semilocal/RSH entered an unqualified CUDA KS chunk path");
+    dft::CudaKsFinalStateToken token;
+    std::string detail;
+    require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS,
+            "converged internal WB97M-V semilocal/RSH state lacks an owner token");
+    dft::VerifiedKsFinalState rejected;
+    require(
+        plan.read_final_state(token, false, rejected, detail) == VIBEQC_STATUS_NUMERICAL_FAILURE,
+        "incomplete WB97M-V composition escaped the final-state fail-closed gate");
+    return result;
+  };
+
+  const auto device = solve(scf::ScfOptions::XcExecutionSchedule::DeviceFused);
+  const auto host = solve(scf::ScfOptions::XcExecutionSchedule::HostUnfused);
+  require(std::abs(device.energy - host.energy) < 1e-8,
+          "CUDA WB97M-V semilocal live KS endpoint disagrees with the host semilocal oracle");
+  require(
+      std::abs(device.dft_diagnostic.components.xc - host.dft_diagnostic.components.xc) < 1e-8 &&
+          std::abs(device.dft_diagnostic.components.exact_exchange -
+                   host.dft_diagnostic.components.exact_exchange) < 1e-10,
+      "CUDA WB97M-V semilocal/RSH components disagree with the host-unfused route");
+}
+
 void compare_rks_chunk_history(bool pbe) {
   const auto system = hydrogens(2, true);
   const dft::AoBasis basis(system);
@@ -768,6 +826,8 @@ int main() {
     run_exact_exchange_case(false);
     run_range_exchange_case(true);
     run_range_exchange_case(false);
+    run_wb97mv_semilocal_rsh_case(true);
+    run_wb97mv_semilocal_rsh_case(false);
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);
       run_hydroxyl(pbe);

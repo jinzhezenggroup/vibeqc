@@ -46,9 +46,11 @@ struct SpinXcIntegral { std::array<std::vector<double>,2> potential{
 template<class... T> XcIntegral integrate_lda_xc_pw_rks(T&&...) { selected_route=0; return {}; }
 template<class... T> XcIntegral integrate_pbe_rks_with_tail(T&&...) { selected_route=1; return {}; }
 template<class... T> XcIntegral integrate_r2scan_rks(T&&...) { selected_route=2; return {}; }
+template<class... T> XcIntegral integrate_wb97mv_rks(T&&...) { selected_route=6; return {}; }
 template<class... T> SpinXcIntegral integrate_lda_xc_pw_uks(T&&...) { selected_route=3; return {}; }
 template<class... T> SpinXcIntegral integrate_pbe_uks(T&&...) { selected_route=4; return {}; }
 template<class... T> SpinXcIntegral integrate_r2scan_uks(T&&...) { selected_route=5; return {}; }
+template<class... T> SpinXcIntegral integrate_wb97mv_uks(T&&...) { selected_route=7; return {}; }
 constexpr int cudaMemcpyDeviceToHost=1,cudaMemcpyHostToDevice=2;
 struct Region { std::uintptr_t begin; std::size_t size; };
 std::vector<Region> owned;
@@ -87,7 +89,7 @@ struct Owner {
  CudaXcView stage_xc(STAGE_BODY
 };
 int main() {
- for(unsigned spins:{1U,2U}) for(unsigned functional:{0U,1U,2U}) {
+ for(unsigned spins:{1U,2U}) for(unsigned functional:{0U,1U,2U,4U}) {
   auto owner=std::make_unique<Owner>();
   owner->spins=spins; owner->elements=4*spins; owner->functional=semilocal_family_from_code(functional);
   selected_route=-1;
@@ -97,7 +99,9 @@ int main() {
    owner->host_xc_potential.size()*sizeof(double)});
   try {
    const auto result=owner->stage_xc(7);
-   if(selected_route!=static_cast<int>(functional+3*(spins-1)))
+   const int expected_route = functional == 4U ? (spins == 1 ? 6 : 7)
+                                               : static_cast<int>(functional + 3 * (spins - 1));
+   if(selected_route!=expected_route)
     throw std::runtime_error("wrong semilocal route");
    for(auto copy:queued) std::memcpy(copy.destination,copy.source,copy.bytes);
    if(result.generation!=7 || result.totals[0]!=2.5 || result.totals[1]!=1 ||

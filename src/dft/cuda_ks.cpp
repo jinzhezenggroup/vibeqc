@@ -376,8 +376,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
     if (mixed_j && (has_exchange || has_range_correction))
       throw std::invalid_argument("CUDA exact-exchange KS currently requires strict FP64");
-    if (mixed_j && functional == SemilocalFamily::R2scan)
-      throw std::invalid_argument("r2SCAN currently requires strict FP64");
+    if (mixed_j && (functional == SemilocalFamily::R2scan || functional == SemilocalFamily::Wb97mv))
+      throw std::invalid_argument("meta-GGA CUDA KS currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
         !std::isfinite(options.density_tolerance) || options.energy_tolerance <= 0.0 ||
         options.density_tolerance <= 0.0 || options.diis_history > 64)
@@ -544,7 +544,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
         !fitted && !has_exchange && !has_range_correction && !mixed_j && spins == 1 &&
-        provider.system().ecp_terms.empty() && configured_chunk_width() == kCudaKsChunkCapacity;
+        functional != SemilocalFamily::Wb97mv && provider.system().ecp_terms.empty() &&
+        configured_chunk_width() == kCudaKsChunkCapacity;
     if (device_chunk_mode) {
       const auto binding = device_chunk_binding();
       if (!device_chunk_region.matches(binding))
@@ -818,6 +819,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         value = integrate_lda_xc_pw_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       else if (functional == SemilocalFamily::Pbe)
         value = integrate_pbe_rks_with_tail(basis, grid, host_xc_density, xc_layout.tile_points);
+      else if (functional == SemilocalFamily::Wb97mv)
+        value = integrate_wb97mv_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       else
         value = integrate_r2scan_rks(basis, grid, host_xc_density, xc_layout.tile_points);
       if (value.potential.size() != matrix)
@@ -833,6 +836,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                                         xc_layout.tile_points);
       else if (functional == SemilocalFamily::Pbe)
         value = integrate_pbe_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
+      else if (functional == SemilocalFamily::Wb97mv)
+        value =
+            integrate_wb97mv_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
       else
         value =
             integrate_r2scan_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
