@@ -1,7 +1,8 @@
-"""Audit the six qualified stationary CUDA AOT artifacts in a package directory.
+"""Audit all qualified stationary CUDA AOT artifacts in a package directory.
 
 This tool performs no CUDA initialization and never discovers NVCC. It validates
-the same plan/source/target/binary contract used by public forces, reports exact
+both the legacy s/p artifacts and component-expanded s/p/d artifacts against the
+same plan/source/target/binary contract used by public forces, reports exact
 binary/package footprint, and can compare a checkout build directory with an
 installed/wheel directory byte-for-byte.
 """
@@ -24,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from vibeqc_compiler.method.stationary_cuda import (
+    QUALIFIED_SPD_COMPONENTS,
     _qualified_aot_plan,
     load_stationary_aot_artifact,
 )
@@ -37,12 +39,21 @@ QUALIFIED_STATIONARY_AOT = (
     (2, "polarized", "r2scan_uks"),
 )
 
+QUALIFIED_STATIONARY_PACKAGE = tuple(
+    (functional, spin, name, None)
+    for functional, spin, name in QUALIFIED_STATIONARY_AOT
+) + tuple(
+    (functional, spin, f"{name}_spd", QUALIFIED_SPD_COMPONENTS)
+    for functional, spin, name in QUALIFIED_STATIONARY_AOT
+)
+
 
 @dataclass(frozen=True, slots=True)
 class ArtifactAudit:
     name: str
     functional: int
     spin: str
+    component_domain: tuple[str, ...] | None
     library: str
     binary_bytes: int
     binary_sha256: str
@@ -79,7 +90,7 @@ def audit_stationary_aot_directory(
     architecture: str,
     native_library: Path | None = None,
 ) -> PackageAudit:
-    """Validate and size one checkout/install directory with all six artifacts."""
+    """Validate and size one checkout/install directory with the full package inventory."""
 
     directory = Path(directory).resolve()
     if not directory.is_dir():
@@ -89,7 +100,7 @@ def audit_stationary_aot_directory(
 
     records = []
     manifest_bytes = 0
-    for functional, spin, name in QUALIFIED_STATIONARY_AOT:
+    for functional, spin, name, component_domain in QUALIFIED_STATIONARY_PACKAGE:
         plan = _qualified_aot_plan(functional, spin)
         artifact = load_stationary_aot_artifact(
             directory,
@@ -97,6 +108,7 @@ def audit_stationary_aot_directory(
             spin=spin,
             plan=plan,
             architecture=architecture,
+            component_domain=component_domain,
         )
         metadata = artifact.metadata
         manifest = directory / f"vibeqc_stationary_{name}.json"
@@ -107,6 +119,7 @@ def audit_stationary_aot_directory(
                 name=name,
                 functional=functional,
                 spin=spin,
+                component_domain=component_domain,
                 library=str(Path(artifact.library).resolve()),
                 binary_bytes=Path(artifact.library).stat().st_size,
                 binary_sha256=metadata["binary_sha256"],
