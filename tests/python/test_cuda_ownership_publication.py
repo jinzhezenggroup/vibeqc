@@ -12,6 +12,7 @@ import pytest
 
 from tools.publish_cuda_ownership import compact_comparison, validate_resources, write
 from tools.vibeqc_validation.publication import validate_publication
+from tools.vibeqc_validation.record import load_json
 
 BUNDLE = (
     Path(__file__).resolve().parents[2]
@@ -23,7 +24,7 @@ def restore_workers(
     directory: typing.Any, *, one_case: typing.Any = False, bundle: typing.Any = BUNDLE
 ) -> typing.Any:
     """Reconstruct original workers solely from permanent retained records."""
-    compact = json.loads((bundle / "samples.json").read_text())
+    compact = load_json(bundle / "samples.json.gz")
     records = compact["records"]
     for entry in compact["runs"]:
         run = dict(records[entry["provenance"]])
@@ -127,7 +128,8 @@ def test_published_checksums_and_decision(bundle: typing.Any) -> None:
     evidence = json.loads(files["evidence.json"])
     assert evidence["performance"]["status"] == "not-run"
     assert evidence["stages"]["production"]["status"] == "not-run"
-    files["samples.json"] += b" "
+    sample_path = next(e["path"] for e in manifest["files"] if e["role"] == "samples")
+    files[sample_path] += b" "
     with pytest.raises(ValueError, match="checksum/size mismatch"):
         validate_publication(manifest, files)
 
@@ -174,7 +176,7 @@ def test_final_df_validation_is_bound_to_the_endpoint_library() -> None:
         assert len(data) == row["bytes"]
         assert hashlib.sha256(data).hexdigest() == row["sha256"]
     validation = json.loads((bundle / "validation.json").read_text())
-    compact = json.loads((bundle / "samples.json").read_text())
+    compact = load_json(bundle / "samples.json.gz")
     for run in compact["runs"]:
         if run["selection"] == "candidate":
             worker = compact["records"][run["provenance"]]

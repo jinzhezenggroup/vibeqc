@@ -1,12 +1,13 @@
 """Partitioned storage must preserve scientific values and reject corrupt parts."""
 
+import gzip
 import json
 import typing
 from pathlib import Path
 
 import pytest
 
-from tools.vibeqc_validation.record import decode_record, load_record
+from tools.vibeqc_validation.record import decode_json, decode_record, load_json, load_record
 from tools.vibeqc_validation.retention import digest
 
 
@@ -83,3 +84,32 @@ def test_part_symlink_cannot_escape_directory(tmp_path: typing.Any) -> None:
     (directory / "evidence.json").write_text(json.dumps(record(b"[]")))
     with pytest.raises(ValueError, match="escapes"):
         load_record(directory / "evidence.json")
+
+
+def test_gzip_json_and_record_parts_restore_exact_values(tmp_path: typing.Any) -> None:
+    values = [{"seconds": 0.12345678901234567}, {"seconds": 1e-14}]
+    plain_part = json.dumps(values).encode()
+    compressed_part = gzip.compress(plain_part, mtime=0)
+    main = {
+        "schema": "example",
+        "record_parts": {
+            "timings": [
+                {
+                    "path": "water.json.gz",
+                    "bytes": len(compressed_part),
+                    "sha256": digest(compressed_part),
+                }
+            ]
+        },
+    }
+    compressed_main = gzip.compress(json.dumps(main).encode(), mtime=0)
+    assert decode_json(compressed_main, path="evidence.json.gz") == main
+    assert decode_record(
+        compressed_main,
+        {"water.json.gz": compressed_part},
+        path="evidence.json.gz",
+    ) == {"schema": "example", "timings": values}
+    (tmp_path / "evidence.json.gz").write_bytes(compressed_main)
+    (tmp_path / "water.json.gz").write_bytes(compressed_part)
+    assert load_json(tmp_path / "evidence.json.gz") == main
+    assert load_record(tmp_path / "evidence.json.gz")["timings"] == values

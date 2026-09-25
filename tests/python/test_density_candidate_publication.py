@@ -23,7 +23,7 @@ def publication(request: typing.Any) -> typing.Any:
     files = {r["path"]: (directory / r["path"]).read_bytes() for r in manifest["files"]}
     validate_publication(manifest, files)
     filename = next(r["path"] for r in manifest["files"] if r["role"] == "evidence")
-    return request.param, decode_record(files[filename], files), files
+    return request.param, decode_record(files[filename], files, path=filename), files
 
 
 def test_retained_summary_reconstructs_and_has_complete_matrix(
@@ -98,7 +98,7 @@ def test_summary_rejects_incomparable_or_incomplete_pairs(
 def test_matrix_gate_inventory_rejects_missing_or_reused_keys(
     rename: typing.Any,
 ) -> None:
-    report = load_record(ROOT / "gpu/evidence.json")
+    report = load_record(ROOT / "gpu/evidence.json.gz")
     key = next(iter(report["block_errors"]))
     record = report["block_errors"].pop(key)
     if rename:
