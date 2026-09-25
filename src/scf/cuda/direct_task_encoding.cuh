@@ -185,8 +185,9 @@ __device__ __forceinline__ void populate_generated_shell_task(const DeviceBatch&
   task.matrix_order = static_cast<std::uint32_t>(matrix_order);
   task.shell_pair[0] = shell_pairs[0];
   task.shell_pair[1] = shell_pairs[1];
+  // Direct HF is the zero-valued consumer encoding; pure-J streaming adds
+  // kGeneratedShellTaskCoulombConsumerBit in its own producer.
   task.reversed_shell_pair_mask = reversed_shell_pair_mask;
-  task.fock_consumer = detail::GeneratedFockConsumer::HartreeFock;
 }
 
 /** Read the runtime exact-class mask used by the bounded generated routes. */
