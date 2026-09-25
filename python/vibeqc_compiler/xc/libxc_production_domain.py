@@ -18,8 +18,8 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
-SCHEMA = "vibeqc.libxc-production-domain-profile.v2"
-PROFILE = "semilocal-boundary-matrix/v2"
+SCHEMA = "vibeqc.libxc-production-domain-profile.v3"
+PROFILE = "semilocal-boundary-matrix/v3"
 SUPPORTED_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
 
 _DENSITY_CASES = (
@@ -55,7 +55,7 @@ _CONTROL_CASES = (
 
 @dataclass(frozen=True)
 class ProductionDomainProfile:
-    """Exact spin-aware boundary matrix required before production promotion."""
+    """Exact first-order spin-aware matrix required before production promotion."""
 
     family: str
     required_ingredients: tuple[str, ...]
@@ -64,7 +64,7 @@ class ProductionDomainProfile:
     schema: str = SCHEMA
     profile: str = PROFILE
     spin_layouts: tuple[str, ...] = ("polarized", "unpolarized")
-    outputs: tuple[str, ...] = ("energy", "vxc", "fxc")
+    outputs: tuple[str, ...] = ("energy", "vxc")
 
     @property
     def eligible(self) -> bool:
