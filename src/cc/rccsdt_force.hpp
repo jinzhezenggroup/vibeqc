@@ -48,6 +48,11 @@ struct RccsdtForceResult {
   double minimum_same_space_gap{};
   std::size_t triples_response_pages{};
   std::size_t numeric_capacity_bytes{};
+  std::size_t response_owned_device_bytes{};
+  std::size_t response_h2d_bytes{};
+  std::size_t response_d2h_bytes{};
+  std::size_t response_synchronizations{};
+  bool cuda_response_actions{};
   std::string response_operator_hash;
 };
 
@@ -73,8 +78,9 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
 
 /** Publish the qualified conventional RCCSD(T) force through a CUDA derivative consumer.
  *
- * Response/Lambda ownership remains the audited native host implementation in
- * this first public CUDA slice. device_id selects the CUDA derivative device;
+ * Generated Lambda actions plus Hamiltonian/Fock/orbital TensorIR execute on
+ * CUDA in the promoted response path, while the physical Z/GMRES control flow
+ * remains host-owned. device_id selects the CUDA response/derivative device;
  * derivative_stage_budget bounds each generated one-/two-electron derivative
  * consumer without authorizing a CPU fallback.
  */
