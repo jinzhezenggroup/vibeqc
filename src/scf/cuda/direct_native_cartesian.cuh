@@ -106,6 +106,73 @@ __device__ inline Scalar primitive_eri_cartesian(
                                              first_coefficients, second_coefficients);
 }
 
+
+template <unsigned MaximumAngular, typename FirstCoefficients, typename SecondCoefficients>
+__device__ inline __noinline__ double eri_cartesian_range_value(
+    double p, double q, double rho, const Vec3<double>& product_p, const Vec3<double>& product_q,
+    const Angular& angular_first, const Angular& angular_second, const Angular& angular_third,
+    const Angular& angular_fourth, const FirstCoefficients* first_coefficients,
+    const SecondCoefficients* second_coefficients, vibeqc::integrals::CoulombRange range,
+    double omega) {
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  CoulombAuxiliary<double, MaximumAngular> auxiliary;
+  if (!fill_range_coulomb<MaximumAngular>(rho, product_p, product_q, range, omega, auxiliary))
+    return NAN;
+
+  double value = 0.0;
+  for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
+    for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
+      for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
+        const double first_value =
+            first_coefficients[0].at(angular_first.x, angular_second.x, t) *
+            first_coefficients[1].at(angular_first.y, angular_second.y, u) *
+            first_coefficients[2].at(angular_first.z, angular_second.z, v);
+        for (unsigned tau = 0; tau <= angular_third.x + angular_fourth.x; ++tau) {
+          for (unsigned nu = 0; nu <= angular_third.y + angular_fourth.y; ++nu) {
+            for (unsigned phi = 0; phi <= angular_third.z + angular_fourth.z; ++phi) {
+              const double sign = ((tau + nu + phi) & 1U) == 0 ? 1.0 : -1.0;
+              value += sign * first_value *
+                       second_coefficients[0].at(angular_third.x, angular_fourth.x, tau) *
+                       second_coefficients[1].at(angular_third.y, angular_fourth.y, nu) *
+                       second_coefficients[2].at(angular_third.z, angular_fourth.z, phi) *
+                       auxiliary.at(0, t + tau, u + nu, v + phi);
+            }
+          }
+        }
+      }
+    }
+  }
+  const double prefactor = 2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
+  return prefactor * value;
+}
+
+template <unsigned MaximumAngular>
+__device__ inline double primitive_eri_cartesian_range(
+    double alpha, const Vec3<double>& first, const Angular& angular_first, double beta,
+    const Vec3<double>& second, const Angular& angular_second, double gamma,
+    const Vec3<double>& third, const Angular& angular_third, double delta,
+    const Vec3<double>& fourth, const Angular& angular_fourth,
+    vibeqc::integrals::CoulombRange range, double omega) {
+  const double p = alpha + beta;
+  const double q = gamma + delta;
+  const double rho = p * q / (p + q);
+  const Vec3<double> product_p = product_center(alpha, first, beta, second);
+  const Vec3<double> product_q = product_center(gamma, third, delta, fourth);
+  HermiteCoefficients<double> first_coefficients[3];
+  HermiteCoefficients<double> second_coefficients[3];
+  for (int axis = 0; axis < 3; ++axis) {
+    fill_hermite(angular_axis(angular_first, axis), angular_axis(angular_second, axis),
+                 vec_axis(product_p, axis), vec_axis(first, axis), vec_axis(second, axis), alpha,
+                 beta, first_coefficients[axis]);
+    fill_hermite(angular_axis(angular_third, axis), angular_axis(angular_fourth, axis),
+                 vec_axis(product_q, axis), vec_axis(third, axis), vec_axis(fourth, axis), gamma,
+                 delta, second_coefficients[axis]);
+  }
+  return eri_cartesian_range_value<MaximumAngular>(
+      p, q, rho, product_p, product_q, angular_first, angular_second, angular_third, angular_fourth,
+      first_coefficients, second_coefficients, range, omega);
+}
+
 /**
  * Closed first-order Hermite contraction for canonical (p s | s s).
  *
