@@ -462,7 +462,8 @@ def test_blocked_ingredient_cannot_be_promoted_with_forged_profile() -> None:
 
 
 @pytest.mark.parametrize(
-    "field", ("required_ingredients", "case_ids", "spin_layouts", "outputs")
+    "field",
+    ("required_ingredients", "case_ids", "cases_by_spin", "spin_layouts", "outputs"),
 )
 @pytest.mark.parametrize("origin", ("input", "output"))
 def test_production_qualification_is_detached_from_caller_lists(
@@ -484,7 +485,10 @@ def test_production_qualification_is_detached_from_caller_lists(
         if item["stage"] == "production-domain"
     )
     target = evidence if origin == "input" else published
-    target["qualification"][field].clear()
+    if field == "cases_by_spin":
+        target["qualification"][field]["polarized"].clear()
+    else:
+        target["qualification"][field].clear()
     assert stage.qualification == expected
     assert stage.to_payload()["qualification"] == expected
     assert "production-domain" in capability.qualified_stages
