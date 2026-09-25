@@ -17,7 +17,15 @@ import time
 from pathlib import Path
 
 from .freeze_contract import ROOT, digest
-from .validate import InvalidEvidence, audit, checked_file, manifest, read_json, require
+from .validate import (
+    InvalidEvidence,
+    _check_run,
+    audit,
+    checked_file,
+    manifest,
+    read_json,
+    require,
+)
 
 
 def _write(path: Path, value: dict) -> None:
@@ -235,10 +243,26 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                         "reason": "adapter JSON must be an object",
                     }
                 elif payload.get("status") == "pass":
-                    entry = {
-                        "id": key,
-                        "status": "pass",
-                    }
+                    try:
+                        _check_run(
+                            payload,
+                            campaign,
+                            row,
+                            contract,
+                            out,
+                            _capture(out, safe),
+                        )
+                    except (InvalidEvidence, KeyError, TypeError, ValueError) as error:
+                        entry = {
+                            "id": key,
+                            "status": "failed",
+                            "reason": f"adapter pass rejected: {error}",
+                        }
+                    else:
+                        entry = {
+                            "id": key,
+                            "status": "pass",
+                        }
                 else:
                     status = payload.get("status", "unknown")
                     if status not in (
