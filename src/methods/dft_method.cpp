@@ -344,7 +344,8 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "scaled/global-hybrid KS currently requires CPU");
-  if (execution_plan.nonlocal_correlation && execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
+  if (execution_plan.nonlocal_correlation &&
+      execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Wb97mv)
     throw MethodError(
         VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -741,7 +742,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
     invalidate_final_state();
     const char* method_name = semilocal_family_name(execution_plan_);
     if (compute_forces) {
-      const char* issue = execution_plan_.semilocal_family == dft::SemilocalFamily::R2scan ? "#164" : "#163";
+      const char* issue =
+          execution_plan_.semilocal_family == dft::SemilocalFamily::R2scan ? "#164" : "#163";
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         std::string(method_name) +
                             " KS nuclear gradients are tracked separately in issue " + issue);
