@@ -38,6 +38,16 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
                                       const Problem& problem, const SolverResult& cc_result,
                                       std::size_t max_bytes);
 
+using RccsdForcePlan = RccsdtForcePlan;
+
+/** Conventional RCCSD force plan using the same response/derivative owner
+ * without perturbative-triples response sources.
+ */
+RccsdForcePlan plan_rccsd_force_cpu(const core::System& system,
+                                    const scf::PhysicalReference& reference,
+                                    const Problem& problem, const SolverResult& cc_result,
+                                    std::size_t max_bytes);
+
 struct RccsdtForceResult {
   std::vector<double> forces;
   LambdaDiagnostic lambda;
@@ -50,6 +60,21 @@ struct RccsdtForceResult {
   std::size_t numeric_capacity_bytes{};
   std::string response_operator_hash;
 };
+
+using RccsdForceResult = RccsdtForceResult;
+
+/** Complete conventional closed-shell RCCSD analytic force.
+ *
+ * This reuses the native RCCSD(T) Hamiltonian pullback, RHF response, metric
+ * response, and conventional derivative consumer with the triples-specific
+ * response sources disabled. The first public domain remains conventional
+ * all-electron CPU references with at most 12 AOs.
+ */
+RccsdForceResult rccsd_force_cpu(const core::System& system,
+                                 const scf::PhysicalReference& reference,
+                                 const Problem& problem, const SolverResult& cc_result,
+                                 std::size_t max_bytes);
+
 
 /** Complete standard canonical closed-shell RCCSD(T) analytic force.
  *
