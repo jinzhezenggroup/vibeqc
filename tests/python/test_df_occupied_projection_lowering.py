@@ -145,7 +145,9 @@ def pointer(array: np.ndarray) -> ct.POINTER(ct.c_double):
     "n,r,a", [(1, 1, 1), (4, 1, 7), (7, 3, 9), (12, 5, 17), (16, 8, 13), (31, 7, 11)]
 )
 @pytest.mark.parametrize("width", [1, 2, 5, 64])
-def test_projected_panel_layout_and_tails(\n    native: ct.CDLL, n: int, r: int, a: int, width: int\n) -> None:
+def test_projected_panel_layout_and_tails(
+    native: ct.CDLL, n: int, r: int, a: int, width: int
+) -> None:
     rng = np.random.default_rng(20260925 + n + r + a)
     c = np.asfortranarray(rng.normal(size=(n, r)))
     values = rng.normal(size=(a, n, n))
@@ -181,7 +183,9 @@ def test_projected_panel_layout_and_tails(\n    native: ct.CDLL, n: int, r: int,
 
 @pytest.mark.parametrize("a,r", [(1, 1), (3, 2), (9, 3), (17, 5)])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6, 1e10])
-def test_small_metric_layout(\n    native: ct.CDLL, a: int, r: int, condition: float\n) -> None:
+def test_small_metric_layout(
+    native: ct.CDLL, a: int, r: int, condition: float
+) -> None:
     rng = np.random.default_rng(71 + a + r)
     eigenvectors = np.asfortranarray(np.linalg.qr(rng.normal(size=(a, a)))[0])
     eigenvalues = np.geomspace(1, condition, a)
@@ -221,7 +225,9 @@ def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
 @pytest.mark.parametrize("n,r,a", [(4, 1, 3), (7, 3, 9), (12, 5, 13), (16, 8, 17)])
 @pytest.mark.parametrize("scale", [1.0, 2.0])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6])
-def test_full_rank_adjoints_using_emitted_helpers(\n    native: ct.CDLL, n: int, r: int, a: int, scale: float, condition: float\n) -> None:
+def test_full_rank_adjoints_using_emitted_helpers(
+    native: ct.CDLL, n: int, r: int, a: int, scale: float, condition: float
+) -> None:
     rng = np.random.default_rng(800 + n + r + a)
     c = np.asfortranarray(np.linalg.qr(rng.normal(size=(n, r)))[0])
     raw = rng.normal(size=(a, n, n))
