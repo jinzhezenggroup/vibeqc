@@ -86,6 +86,7 @@ def test_direct_script_applies_guard_before_probe_execution(tmp_path: Path) -> N
             str(destination),
         ],
         cwd=tmp_path,
+        check=False,
         capture_output=True,
         text=True,
         timeout=10,

@@ -136,6 +136,7 @@ def test_real_stalled_probe_does_not_publish_evidence(tmp_path: Path) -> None:
             "--output",
             str(output),
         ],
+        check=False,
         capture_output=True,
         text=True,
         timeout=10,
