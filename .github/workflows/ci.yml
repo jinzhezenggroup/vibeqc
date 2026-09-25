@@ -482,7 +482,7 @@ jobs:
           uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
       - name: Show ccache statistics
         run: ccache --show-stats
-      - name: Run Python tests
+      - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
         run: |
