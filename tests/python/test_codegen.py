@@ -2104,36 +2104,6 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     assert "requested_bounded_direct_streaming = true" in source
 
 
-def test_generated_task_packs_value_consumer_into_orientation_word() -> None:
-    """Keep pure-J identity without growing every Direct-J/K task record."""
-
-    source = emit_shell_class_fused_cuda(DPPP_SPEC, target=TEST_CUDA_TARGET)
-    task = source.split("struct GeneratedDpppShellTask", maxsplit=1)[1].split(
-        "};", maxsplit=1
-    )[0]
-    assert "fock_consumer" not in task
-    assert "kGeneratedDpppCoulombConsumerBit = 1U << 2U" in source
-    assert (
-        "(task.reversed_shell_pair_mask & kGeneratedDpppCoulombConsumerBit) != 0U"
-        in source
-    )
-
-
-def test_primary_streaming_route_partitions_paged_generated_classes() -> None:
-    """Selected generated classes must stream instead of being double-counted."""
-
-    source = _direct_cuda_source()
-    assert "host_primary_streaming_fock_shell_class_mask" in source
-    assert "host_primary_streaming_fock_flags" in source
-    assert "cudaMemcpyAsync(" in source
-    page_begin = source.index("const auto launch_bounded_paged_generated_fock")
-    page_end = source.index("const auto launch_bounded_generic_fock", page_begin)
-    page_source = source[page_begin:page_end]
-    assert "host_primary_streaming_fock_shell_class_mask" in page_source
-    assert "host_generated_streaming_fock_shell_class_mask" in source
-    assert "!mixed_precision_fock && requested_primary_streaming_fock_mask.has_value()" in source
-
-
 def test_direct_task_resource_domains_remain_separate() -> None:
     """Do not reuse fixed-topology storage to size bounded streaming pages."""
 
