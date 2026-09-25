@@ -778,10 +778,12 @@ int main() {
         vibeqc_system* cuda_system = Fixture::create_system(cuda_context, uks ? 1 : 0, uks ? 2 : 1);
         method = lda_method();
         method.method = ks;
-        const std::array<vibeqc_ks_semilocal_component, 2> pbe0_components{
-            {{{"GGA_C_PBE", 1.0}, {"GGA_X_PBE", 0.75}}}};
-        std::array<vibeqc_ks_exchange_term, 1> pbe0_exchange{{{
-            VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, uks ? -0.25 : -0.125}}};
+        const std::array<vibeqc_ks_semilocal_component, 2> pbe0_components{{
+            {"GGA_C_PBE", 1.0}, {"GGA_X_PBE", 0.75},
+        }};
+        std::array<vibeqc_ks_exchange_term, 1> pbe0_exchange{{
+            {VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, uks ? -0.25 : -0.125},
+        }};
         vibeqc_ks_options pbe0_options{};
         if (pbe0) {
           pbe0_options.struct_size = sizeof(pbe0_options);
