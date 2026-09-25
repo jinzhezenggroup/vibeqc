@@ -256,7 +256,7 @@ def validate_inventory(root: Path, payload: dict[str, Any]) -> None:
 
 
 def check_repository(root: Path, inventory_path: Path | None = None) -> None:
-    path = inventory_path or root / "docs/periodic_asset_inventory.json"
+    path = inventory_path or root / "manifests/maintenance/periodic_asset_inventory.json"
     validate_inventory(root, load_inventory(path))
 
 

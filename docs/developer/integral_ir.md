@@ -145,12 +145,12 @@ source differences and the appropriate ABI/version decision.
 
 ## Reproducible examples
 
-[integral_ir_examples.json](../integral_ir_examples.json) contains a two-center
+`manifests/integral_ir_examples.json` contains a two-center
 overlap value, a three-center derivative, and a four-center external-weight
 request. Every example includes its unavailable CUDA status. Regenerate with:
 
 ```bash
-python tools/generate_integral_ir_examples.py --output docs/integral_ir_examples.json
+python tools/generate_integral_ir_examples.py --output manifests/integral_ir_examples.json
 python -m pytest tests/python/test_integral_contracts.py -q
 ```
 
