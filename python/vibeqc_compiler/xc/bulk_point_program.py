@@ -21,7 +21,8 @@ from .bulk_aot import BACKENDS, SourceVariant
 if TYPE_CHECKING:
     from .bulk_runtime import BulkRuntimeProgram
 
-POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v1"
+# v2 isolates adapter symbols per translation unit; scalar AOT identity is unchanged.
+POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v2"
 
 _POINT_LAYOUTS = {
     ("rho_a", "rho_b"): 1,
@@ -191,7 +192,7 @@ class SemilocalPointBinding:
 
         mapping = [
             f"  double outputs[{outputs}]{{}};",
-            "  ::bulk_xc_point(features, outputs);",
+            "  bulk_xc_point(features, outputs);",
             "  SemilocalPointValue out{};",
             "  out.energy = outputs[0];",
             "  out.rho[0] = outputs[1];",
@@ -218,10 +219,14 @@ class SemilocalPointBinding:
         mapping.append("  return out;")
 
         q = json.dumps
+        # Include dependencies globally, then keep the scalar implementation and
+        # adapter symbols private to this translation unit. Otherwise distinct
+        # registrations collide or coalesce when linked into the same program.
         return (
-            self.variant.source
-            + '\n#include "dft/xc.hpp"\n'
-            + "\nnamespace vibeqc::dft::bulk_generated {\n"
+            '#include <math.h>\n#include "dft/xc.hpp"\n'
+            + "\nnamespace vibeqc::dft::bulk_generated {\nnamespace {\n"
+            + self.variant.source
+            + "\n"
             + f"inline constexpr const char* kBindingIdentity = {q(self.identity)};\n"
             + f"inline constexpr const char* kCapabilityIdentity = {q(self.capability_identity)};\n"
             + f"inline constexpr const char* kArtifactEmissionIdentity = {q(self.variant.emission_identity)};\n"
@@ -234,7 +239,7 @@ class SemilocalPointBinding:
             + "inline constexpr SemilocalPointProgram kPointProgram{\n"
             + f"    {q(self.variant.name)}, kPointExpressionIdentity, {self.ingredient_mask}U, "
             + f"{self.domain_version}U, evaluate_point}};\n"
-            + "}  // namespace vibeqc::dft::bulk_generated\n"
+            + "}  // namespace\n}  // namespace vibeqc::dft::bulk_generated\n"
         )
 
 
