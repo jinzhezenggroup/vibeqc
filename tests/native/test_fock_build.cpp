@@ -300,9 +300,16 @@ void verify_preflight_and_approximation_identity() {
     const auto range_value = resolve_fock_build(range_exchange, FockBackend::Cpu);
     require(range_value.spec.exchange.op == op && range_value.spec.exchange.omega == 0.4,
             "value-only range exchange lost its operator identity");
+    const auto cuda_range_value = resolve_fock_build(range_exchange, FockBackend::Cuda, 0.0);
+    require(cuda_range_value.spec.exchange.op == op &&
+                cuda_range_value.spec.exchange.omega == 0.4 &&
+                cuda_range_value.schedule == FockSchedule::CudaIndependent,
+            "CUDA value-only range exchange lost its operator identity");
     range_exchange.derivative_order = 1;
     require_rejected([&] { (void)resolve_fock_build(range_exchange, FockBackend::Cpu); },
                      "range exchange incorrectly advertised common Fock derivatives");
+    require_rejected([&] { (void)resolve_fock_build(range_exchange, FockBackend::Cuda, 0.0); },
+                     "CUDA range exchange incorrectly advertised common Fock derivatives");
   }
   auto second_derivative = exact_spec;
   second_derivative.derivative_order = 2;

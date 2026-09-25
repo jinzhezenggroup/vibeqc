@@ -12,6 +12,35 @@
 
 namespace vibeqc::integrals {
 
+VIBEQC_RANGE_HD inline bool range_isfinite(double value) {
+#if defined(__CUDA_ARCH__)
+  return ::isfinite(value);
+#else
+  return std::isfinite(value);
+#endif
+}
+VIBEQC_RANGE_HD inline double range_sqrt(double value) {
+#if defined(__CUDA_ARCH__)
+  return ::sqrt(value);
+#else
+  return std::sqrt(value);
+#endif
+}
+VIBEQC_RANGE_HD inline double range_hypot(double a, double b) {
+#if defined(__CUDA_ARCH__)
+  return ::hypot(a, b);
+#else
+  return std::hypot(a, b);
+#endif
+}
+VIBEQC_RANGE_HD inline double range_exp(double value) {
+#if defined(__CUDA_ARCH__)
+  return ::exp(value);
+#else
+  return std::exp(value);
+#endif
+}
+
 /** Radial kernels in atomic units. Omega is finite, nonnegative, inverse Bohr.
  * Nuclear derivatives hold omega fixed. No omega derivatives or screening
  * bounds are provided by this primitive moment evaluator.
@@ -41,13 +70,13 @@ VIBEQC_RANGE_HD inline bool bounded_range_moments(unsigned maximum_order, double
                                                   double rho, CoulombRange range, double omega,
                                                   double* output) {
   static_assert(MaximumOrder <= 14, "the validated quadrature domain ends at order 14");
-  if (!output || maximum_order > MaximumOrder || !std::isfinite(argument) || argument < 0 ||
-      !std::isfinite(rho) || rho <= 0 || !std::isfinite(omega) || omega < 0 ||
+  if (!output || maximum_order > MaximumOrder || !range_isfinite(argument) || argument < 0 ||
+      !range_isfinite(rho) || rho <= 0 || !range_isfinite(omega) || omega < 0 ||
       static_cast<std::uint32_t>(range) > 2 || (range == CoulombRange::Full && omega != 0))
     return false;
 
-  const double root_rho = std::sqrt(rho);
-  const double radius = std::hypot(omega, root_rho);
+  const double root_rho = range_sqrt(rho);
+  const double radius = range_hypot(omega, root_rho);
   const double boundary = omega / radius;
   double lower = 0, width = 1;
   if (range == CoulombRange::Long) width = boundary;
@@ -61,9 +90,9 @@ VIBEQC_RANGE_HD inline bool bounded_range_moments(unsigned maximum_order, double
   const double cutoff = 90.0 + 2 * maximum_order;
   if (argument * width * (2 * lower + width) > cutoff) {
     const double scaled = cutoff / argument;
-    width = scaled / (std::hypot(lower, std::sqrt(scaled)) + lower);
+    width = scaled / (range_hypot(lower, range_sqrt(scaled)) + lower);
   }
-  const double decay = std::exp(-argument * lower * lower);
+  const double decay = range_exp(-argument * lower * lower);
   if (decay == 0) return true;
   const double upper = lower + width;
   // Positive roots and weights of P_64 on [-1,1], stored as exact FP64
@@ -91,7 +120,7 @@ VIBEQC_RANGE_HD inline bool bounded_range_moments(unsigned maximum_order, double
       const double delta = width * (0.5 + sign * 0.5 * rule[k][0]);
       const double unit = (lower + delta) / upper;
       const double squared = unit * unit;
-      double term = 0.5 * rule[k][1] * std::exp(-argument * delta * (2 * lower + delta));
+      double term = 0.5 * rule[k][1] * range_exp(-argument * delta * (2 * lower + delta));
       for (unsigned n = 0; n <= maximum_order; ++n) {
         output[n] += term;
         term *= squared;

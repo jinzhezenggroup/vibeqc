@@ -5,8 +5,10 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
 #include "scf/cuda/direct_jk_plan.hpp"
 #include "scf/cuda_density_fitting.hpp"
@@ -190,6 +192,91 @@ void device_selection() {
       da.verify(input_a);
       db.verify(input_b);
     }
+}
+
+std::vector<double> reference_range_exchange(const vibeqc::core::System& system,
+                                             const std::vector<double>& density,
+                                             vibeqc::integrals::CoulombRange range, double omega) {
+  const auto eri = vibeqc::integrals::build_range_eri(system, range, omega);
+  const std::size_t n = vibeqc::molecule::ao_count(system);
+  std::vector<double> exchange(n * n);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k)
+        for (std::size_t l = 0; l < n; ++l)
+          exchange[i * n + j] += density[k * n + l] * eri[((i * n + k) * n + j) * n + l];
+  return exchange;
+}
+
+void range_exchange_provider() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.1, -0.8}}, {1, {0.2, -0.1, 0.7}}};
+  system.shells = {{0, 0, {{0.9, 0.7}, {0.25, 0.3}}}, {1, 1, {{0.65, 1.0}}}};
+  system.electron_count = 2;
+  system.basis_representation = VIBEQC_BASIS_CARTESIAN;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  const std::size_t n = vibeqc::molecule::ao_count(system), matrix = n * n;
+  std::vector<double> alpha(matrix), beta(matrix);
+  for (std::size_t ij = 0; ij < matrix; ++ij) {
+    alpha[ij] = std::sin(0.41 * (ij / n) - 0.27 * (ij % n)) / n;
+    beta[ij] = std::cos(0.23 * (ij / n) + 0.31 * (ij % n)) / (2.0 * n);
+  }
+
+  CudaDirectJkPlan* raw{};
+  CudaDirectJkDiagnostic diagnostic;
+  require(create_cuda_direct_jk_plan(0, {system}, 0, 0.0, 32U * 1024U * 1024U, &raw, diagnostic,
+                                     detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+      raw, &destroy_cuda_direct_jk_plan);
+
+  constexpr double omega = 0.37;
+  for (const auto [op, radial] :
+       {std::pair{FockOperator::ShortRange, vibeqc::integrals::CoulombRange::Short},
+        std::pair{FockOperator::LongRange, vibeqc::integrals::CoulombRange::Long}}) {
+    const auto expected_alpha = reference_range_exchange(system, alpha, radial, omega);
+    const auto expected_beta = reference_range_exchange(system, beta, radial, omega);
+    for (const auto spin : {FockSpin::Restricted, FockSpin::Unrestricted}) {
+      FockBuildSpec spec;
+      spec.spin = spin;
+      spec.derivative_order = 0;
+      spec.coulomb.present = false;
+      spec.exchange = {true, -0.31, op, omega, FockApproximation::Exact};
+      std::vector<double> j, ka, kb;
+      require(execute_cuda_direct_jk(plan.get(), spec, alpha,
+                                     spin == FockSpin::Unrestricted ? beta : std::vector<double>{},
+                                     j, ka, kb, detail) == VIBEQC_STATUS_SUCCESS,
+              detail.c_str());
+      require(j.empty() && ka.size() == expected_alpha.size() &&
+                  kb.size() == (spin == FockSpin::Unrestricted ? expected_beta.size() : 0),
+              "range-separated CUDA exchange returned the wrong spin matrix set");
+      for (std::size_t i = 0; i < ka.size(); ++i)
+        require(std::isfinite(ka[i]) && std::abs(ka[i] - expected_alpha[i]) < 2e-10,
+                "range-separated CUDA alpha exchange differs from the CPU range-ERI oracle");
+      for (std::size_t i = 0; i < kb.size(); ++i)
+        require(std::isfinite(kb[i]) && std::abs(kb[i] - expected_beta[i]) < 2e-10,
+                "range-separated CUDA beta exchange differs from the CPU range-ERI oracle");
+    }
+  }
+
+  CudaDirectJkPlan* screened_raw{};
+  CudaDirectJkDiagnostic screened_diagnostic;
+  require(create_cuda_direct_jk_plan(0, {system}, 0, 1e-12, 32U * 1024U * 1024U, &screened_raw,
+                                     screened_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> screened(
+      screened_raw, &destroy_cuda_direct_jk_plan);
+  FockBuildSpec range_spec;
+  range_spec.spin = FockSpin::Restricted;
+  range_spec.derivative_order = 0;
+  range_spec.coulomb.present = false;
+  range_spec.exchange = {true, -0.31, FockOperator::LongRange, omega, FockApproximation::Exact};
+  std::vector<double> j, ka, kb;
+  require(execute_cuda_direct_jk(screened.get(), range_spec, alpha, {}, j, ka, kb, detail) ==
+              VIBEQC_STATUS_INVALID_ARGUMENT,
+          "unqualified screened CUDA range exchange was accepted");
 }
 
 void direct_providers(bool through_f_response) {
@@ -396,6 +483,7 @@ int main(int argc, char** argv) {
     const bool through_f_response = argc == 2;
     direct_value_dispatch_selection();
     device_selection();
+    range_exchange_provider();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "
               << (through_f_response ? "through-f" : "s/p") << " derivatives PASS\n";
