@@ -250,8 +250,9 @@ def test_public_native_rccsdt_cuda_batch_forces(
     with calc.prepare_batch([atoms, atoms]) as batch:
         result = batch.execute(properties=("energy", "forces"), strict=True)
     assert all(item.succeeded and item.forces is not None for item in result.items)
+    # Independent CUDA derivative reductions may differ by a few FP64 ulps.
     np.testing.assert_allclose(
-        result.items[0].forces, result.items[1].forces, atol=0, rtol=0
+        result.items[0].forces, result.items[1].forces, atol=1e-12, rtol=0
     )
     assert all(
         item.correlation is not None and item.correlation.force_provenance_flags & 0x8
