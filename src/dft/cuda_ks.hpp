@@ -9,6 +9,8 @@
 #include "dft/ao_grid.hpp"
 #include "dft/cuda_ks_final_state.hpp"
 #include "dft/grid.hpp"
+#include "dft/nonlocal_correlation/vv10_integration.hpp"
+#include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/semilocal_family.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/types.hpp"
@@ -71,7 +73,9 @@ class CudaKsPlan {
   CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
              const scf::ScfOptions& options, SemilocalFamily functional,
              std::size_t tile_points = 256,
-             const scf::ResolvedFockBuild* range_correction = nullptr);
+             const scf::ResolvedFockBuild* range_correction = nullptr,
+             nlc::Vv10Plan* nonlocal_correlation = nullptr,
+             nlc::Vv10DensityDomain nonlocal_domain = nlc::Vv10DensityDomain::StrictPositive);
   ~CudaKsPlan();
   CudaKsPlan(const CudaKsPlan&) = delete;
   CudaKsPlan& operator=(const CudaKsPlan&) = delete;
