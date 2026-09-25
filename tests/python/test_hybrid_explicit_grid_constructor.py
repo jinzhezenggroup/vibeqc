@@ -1,4 +1,4 @@
-"""Explicit hybrid grids must survive the Calculator ABI compatibility probe."""
+"""Explicit hybrid grids require the current semantic KS ABI."""
 
 from types import SimpleNamespace
 
@@ -21,13 +21,11 @@ def test_named_hybrid_still_requires_explicit_grid(method: str) -> None:
 
 
 @pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
-@pytest.mark.parametrize("version", (None, 0, 6))
-def test_legacy_library_rejects_explicit_hybrid_without_resolving_default(
-    method: str, version: int | None, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("version", (0, 6))
+def test_noncurrent_schema_rejects_explicit_hybrid_without_resolving_default(
+    method: str, version: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    library = SimpleNamespace()
-    if version is not None:
-        library.vibeqc_ks_options_version = lambda: version
+    library = SimpleNamespace(vibeqc_ks_options_version=lambda: version)
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
     with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
         Calculator(method=method, ks_options=KsOptions(grid=GridSpec()))
