@@ -306,27 +306,27 @@ inline void hf_stationary_forces(
     const std::array<const double*, SpinCount>& density,
     const std::array<const double*, SpinCount>& weighted_density,
     const double* hcore_derivative, const double* overlap_derivative,
-    const double* two_electron, const double* nuclear_repulsion_derivative) {
+    const double* two_electron, const double* nuclear_repulsion_derivative) {{
   static_assert(SpinCount == 1 || SpinCount == 2);
   const std::size_t matrix = nbf * nbf;
-  for (std::size_t coordinate = 0; coordinate < coordinate_count; ++coordinate) {
+  for (std::size_t coordinate = 0; coordinate < coordinate_count; ++coordinate) {{
     const double* ds = overlap_derivative + coordinate * matrix;
     const double* dh = hcore_derivative + coordinate * matrix;
     double derivative = nuclear_repulsion_derivative[coordinate];
-    for (std::size_t element = 0; element < matrix; ++element) {
-      if constexpr (SpinCount == 1) {
+    for (std::size_t element = 0; element < matrix; ++element) {{
+      if constexpr (SpinCount == 1) {{
         derivative += density[0][element] * dh[element];
         derivative -= weighted_density[0][element] * ds[element];
-      } else {
+      }} else {{
         derivative += (density[0][element] + density[1][element]) * dh[element];
         derivative -=
             (weighted_density[0][element] + weighted_density[1][element]) * ds[element];
-      }
-    }
+      }}
+    }}
     derivative += two_electron[coordinate];
     output[coordinate] = -derivative;
-  }
-}
+  }}
+}}
 
 template <class History>
 inline void diis_gram(double* output, std::size_t output_stride, const History& residual_history,
