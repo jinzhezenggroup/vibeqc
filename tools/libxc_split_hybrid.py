@@ -21,6 +21,16 @@ from tools.libxc_method_metadata import extract_method_registrations
 
 
 @dataclass(frozen=True)
+class LibxcWorkPolicy:
+    """Pinned Libxc worker thresholds required before Maple point evaluation."""
+
+    density_threshold: float
+    tau_threshold: float
+    needs_tau: bool
+    enforce_fhc: bool
+
+
+@dataclass(frozen=True)
 class SplitGlobalHybridProgram:
     identifier: str
     exact_exchange: Fraction
@@ -28,6 +38,8 @@ class SplitGlobalHybridProgram:
     correlation_registration: str
     exchange: libxc_bulk.BulkProgram
     correlation: libxc_bulk.BulkProgram
+    exchange_work_policy: LibxcWorkPolicy
+    correlation_work_policy: LibxcWorkPolicy
 
 
 def _root() -> Path:
@@ -111,6 +123,25 @@ def _bound_component(
     return {**row, "entry": skeleton["entry"], "owner": skeleton["owner"]}
 
 
+def _work_policy(record: dict[str, Any]) -> LibxcWorkPolicy:
+    """Mirror the worker thresholds initialized by pinned Libxc 7.0.0."""
+
+    bindings = record.get("bindings")
+    if not isinstance(bindings, dict) or "p_a_dens_threshold" not in bindings:
+        raise MapleImportError("split-hybrid component lacks a density threshold binding")
+    density = float(bindings["p_a_dens_threshold"])
+    if not 0.0 < density < 1.0:
+        raise MapleImportError("split-hybrid density threshold is outside the qualified range")
+    flags = set(str(record.get("flags", "")).split(" | "))
+    needs_tau = "XC_FLAGS_NEEDS_TAU" in flags
+    return LibxcWorkPolicy(
+        density_threshold=density,
+        tau_threshold=1.0e-20 if needs_tau else 0.0,
+        needs_tau=needs_tau,
+        enforce_fhc="XC_FLAGS_ENFORCE_FHC" in flags,
+    )
+
+
 def build_split_global_hybrid(
     identifier: str, *, spin: str = "polarized"
 ) -> SplitGlobalHybridProgram:
@@ -158,4 +189,6 @@ def build_split_global_hybrid(
         correlation_registration=correlation_name,
         exchange=exchange,
         correlation=correlation,
+        exchange_work_policy=_work_policy(exchange_record),
+        correlation_work_policy=_work_policy(correlation_record),
     )
