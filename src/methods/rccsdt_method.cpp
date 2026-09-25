@@ -102,9 +102,6 @@ class RccsdtPrepared final : public PreparedCalculation {
   Result execute(bool compute_forces) override {
     std::lock_guard<std::mutex> lock(mutex_);
     last_.reset();
-    if (compute_forces && execution_.cuda_requested())
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "native RCCSD(T) CUDA analytic forces are not promoted yet");
     if (compute_forces && molecule::ao_count(system_) > 12)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "native RCCSD(T) forces are qualified only through 12 AOs");
@@ -185,11 +182,18 @@ class RccsdtPrepared final : public PreparedCalculation {
       if (compute_forces) {
         if (!state.reference)
           throw std::runtime_error("RCCSD(T) force owner lost the converged RHF reference");
-        auto force = cc::rccsdt_force_cpu(system_, *state.reference, state.problem, state.solved,
-                                          state.eps_o, state.eps_v, state.budget,
-                                          descriptor_.ccsd_denominator_threshold
-                                              ? descriptor_.ccsd_denominator_threshold
-                                              : 1e-10);
+        const auto force_denominator_threshold =
+            descriptor_.ccsd_denominator_threshold ? descriptor_.ccsd_denominator_threshold : 1e-10;
+        constexpr std::size_t kCudaDerivativeStageBudget = 64ULL << 20;
+        auto force = execution_.cuda_requested()
+                         ? cc::rccsdt_force_cuda(system_, *state.reference, state.problem,
+                                                 state.solved, state.eps_o, state.eps_v,
+                                                 state.budget, execution_.device_id(),
+                                                 std::min(state.budget, kCudaDerivativeStageBudget),
+                                                 force_denominator_threshold)
+                         : cc::rccsdt_force_cpu(system_, *state.reference, state.problem,
+                                                state.solved, state.eps_o, state.eps_v,
+                                                state.budget, force_denominator_threshold);
         state.result.forces = std::move(force.forces);
         diagnostic.response_iterations = force.orbital_response.iterations;
         diagnostic.response_restarts = force.orbital_response.restarts;
@@ -203,7 +207,9 @@ class RccsdtPrepared final : public PreparedCalculation {
             force.orbital_response.workspace_allocation_count;
         diagnostic.planned_endpoint_peak_bytes = std::max<std::uint64_t>(
             diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
-        diagnostic.force_provenance_flags = 0x7;
+        // Bits 0-2 retain the qualified analytic-response provenance. Bit 3
+        // records that the final conventional nuclear derivative consumer ran on CUDA.
+        diagnostic.force_provenance_flags = execution_.cuda_requested() ? 0xf : 0x7;
         diagnostic.numeric_capacity_bytes = std::max<std::uint64_t>(
             diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
         execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Host,

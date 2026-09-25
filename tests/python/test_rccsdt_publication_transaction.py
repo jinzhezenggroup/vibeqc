@@ -53,9 +53,12 @@ struct State {
   Result result;
   struct { double total_energy{10}; } solved;
   std::optional<int> reference{1};
-  int problem{}, eps_o{}, eps_v{}, budget{};
+  int problem{}, eps_o{}, eps_v{};
+  std::size_t budget{1024};
 };
 int failure_mode{};
+bool cuda_mode{};
+int force_backend{};
 namespace cc {
 namespace triples::generated { constexpr char inventory_hash[]="triples"; }
 struct Force {
@@ -70,6 +73,14 @@ struct Force {
   std::string response_operator_hash{"force"};
 };
 template<class... T> Force rccsdt_force_cpu(T&&...) {
+  force_backend=1;
+  if (failure_mode==3) throw std::bad_alloc();
+  if (failure_mode==4) throw std::length_error("force budget");
+  if (failure_mode==5) throw std::runtime_error("force solve");
+  return {};
+}
+template<class... T> Force rccsdt_force_cuda(T&&...) {
+  force_backend=2;
   if (failure_mode==3) throw std::bad_alloc();
   if (failure_mode==4) throw std::length_error("force budget");
   if (failure_mode==5) throw std::runtime_error("force solve");
@@ -78,7 +89,8 @@ template<class... T> Force rccsdt_force_cpu(T&&...) {
 }
 namespace runtime { enum class ExecutionMemorySpace { Host, Device }; }
 struct Execution {
-  bool cuda_requested() const { return false; }
+  bool cuda_requested() const { return cuda_mode; }
+  int device_id() const { return 0; }
   template<class... T> void observe_workspace_peak(T...) {}
   template<class... T> void observe_numeric_peak(T...) {}
 };
@@ -100,14 +112,18 @@ struct Owner {
   }
 };
 int main(int argc,char** argv) {
-  if(argc!=2) return 99;
+  if(argc!=3) return 99;
   failure_mode=std::atoi(argv[1]);
+  cuda_mode=std::atoi(argv[2])!=0;
   Owner owner;
   try {
     const auto result=owner.run(failure_mode!=0);
     if(failure_mode>=2 || !owner.last_ || result.energy!=10.25) return 1;
     if(owner.last_->ccsd_t_virtual_triples!=7) return 2;
-    if(failure_mode==1 && (result.forces.size()!=3 || owner.last_->force_provenance_flags!=7))
+    if(failure_mode==1 &&
+       (result.forces.size()!=3 ||
+        owner.last_->force_provenance_flags!=(cuda_mode ? 15u : 7u) ||
+        force_backend!=(cuda_mode ? 2 : 1)))
       return 3;
   } catch(const std::exception&) {
     if(failure_mode<2 || !owner.last_) return 4;
@@ -137,12 +153,13 @@ int main(int argc,char** argv) {
     return executable
 
 
+@pytest.mark.parametrize("cuda", (False, True))
 @pytest.mark.parametrize("mode", range(6))
 def test_post_triples_diagnostic_is_published_only_after_success(
-    publication: Path, mode: int
+    publication: Path, mode: int, cuda: bool
 ) -> None:
     result = subprocess.run(
-        [str(publication), str(mode)],
+        [str(publication), str(mode), str(int(cuda))],
         check=False,
         capture_output=True,
         text=True,
