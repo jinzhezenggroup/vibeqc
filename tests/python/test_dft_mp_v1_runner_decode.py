@@ -45,7 +45,7 @@ def run_payload(
         "if row == 'fixture/first':\n"
         "    sys.stdout.buffer.write(Path('payload.bin').read_bytes())\n"
         "else:\n"
-        "    print('{\"status\":\"unsupported\",\"reason\":\"fixture only\"}')\n",
+        '    print(\'{"status":"unsupported","reason":"fixture only"}\')\n',
         encoding="utf-8",
     )
     record = {"path": str(raw), "sha256": digest(payload)}
