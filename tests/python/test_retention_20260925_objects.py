@@ -4,6 +4,19 @@ import pytest
 
 from tools import restore_retained_evidence as restore
 
+_RETAINED_PROFILER_EXPORTS = {
+    "benchmarks/results/df-derivatives-rtx5090/profile-generated-0.csv",
+    "benchmarks/results/df-derivatives-rtx5090/profile-generated-1048576.csv",
+    "benchmarks/results/df-derivatives-rtx5090/profile-reference-0.csv",
+    "benchmarks/results/df-derivatives-rtx5090/profile-reference-1048576.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-cooperative.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-df-generated_thread.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-df-scalar.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-generated_shell_warp.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-generated_thread.csv",
+    "benchmarks/results/one-electron-derivatives-rtx5090/profile-scalar.csv",
+}
+
 
 @pytest.mark.parametrize(
     "name,count,size",
@@ -24,7 +37,12 @@ def test_trimmed_members_remain_recoverable_offline(
     for entry in records:
         assert entry["revision"] == "49a2e664aaeef0deeb3860aa7c0912c8d078068a"
         assert entry["path"].startswith("benchmarks/results/")
-        removed = restore.ROOT / entry["path"]
-        assert not removed.exists() and not removed.is_symlink(), entry["path"]
+        path = restore.ROOT / entry["path"]
         # Checks bytes and every declared digest; network/lazy fetch is disabled.
-        assert len(restore._read(entry)) == entry["bytes"]
+        recovered = restore._read(entry)
+        assert len(recovered) == entry["bytes"]
+        if entry["path"] in _RETAINED_PROFILER_EXPORTS:
+            assert path.is_file() and not path.is_symlink(), entry["path"]
+            assert path.read_bytes() == recovered, entry["path"]
+        else:
+            assert not path.exists() and not path.is_symlink(), entry["path"]
