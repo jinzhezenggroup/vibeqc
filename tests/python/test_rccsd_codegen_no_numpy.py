@@ -87,7 +87,20 @@ def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
         "run_lambda_independent_transpose_cuda",
     ):
         assert entry in text
-    assert text.count("auto* arena=s.response_arena;") == 4
+    assert text.count("auto* arena=s.response_arena;") == 14
+    for parameter in (
+        "foo",
+        "fov",
+        "fvv",
+        "ovov",
+        "ovvo",
+        "oovv",
+        "ovvv",
+        "ovoo",
+        "oooo",
+        "vvvv",
+    ):
+        assert f"run_parameter_{parameter}_cuda" in text
     assert "s.bar_correlation_energy" in text
     assert "s.bar_singles_residual" in text
     assert "s.bar_doubles_residual" in text
