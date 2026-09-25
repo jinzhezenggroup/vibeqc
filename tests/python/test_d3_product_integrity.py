@@ -32,7 +32,10 @@ def test_changed_body_cannot_keep_trusted_header(
     original = synthetic()
     # A synthetic trusted product isolates the reader contract from chemistry.
     monkeypatch.setattr(
-        d3_data, "D3_PRODUCTION_SHA256", hashlib.sha256(original).hexdigest(), raising=False
+        d3_data,
+        "D3_PRODUCTION_SHA256",
+        hashlib.sha256(original).hexdigest(),
+        raising=False,
     )
     changed = bytearray(original)
     changed[offset] ^= 1
