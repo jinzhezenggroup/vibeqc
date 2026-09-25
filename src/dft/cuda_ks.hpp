@@ -9,6 +9,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/cuda_ks_final_state.hpp"
 #include "dft/grid.hpp"
+#include "dft/semilocal_family.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/types.hpp"
 #include "vibeqc/vibeqc.h"
@@ -63,7 +64,7 @@ std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_h
 class CudaKsPlan {
  public:
   CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
-             const scf::ScfOptions& options, std::uint32_t functional,
+             const scf::ScfOptions& options, SemilocalFamily functional,
              std::size_t tile_points = 256);
   ~CudaKsPlan();
   CudaKsPlan(const CudaKsPlan&) = delete;
