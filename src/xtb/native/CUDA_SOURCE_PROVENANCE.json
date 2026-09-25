@@ -422,7 +422,7 @@
     "src/backends/cuda/gfn2_scc_free_energy.cu": {
       "adapted": true,
       "upstream_sha256": "eefc52e4379f86889a4926218216e4276b07215de5abd33d02e321d4093b179b",
-      "vendored_sha256": "ec96875c9273c0f5a7debd89fb1eebdd10ca10da275e9f65f0da6d40dde4ac86"
+      "vendored_sha256": "5dce6eb5478dfd86dd379c629c43591b95cc03e82abad7644ec1dc8c50760e75"
     },
     "src/backends/cuda/gfn2_scc_free_energy.cuh": {
       "adapted": true,

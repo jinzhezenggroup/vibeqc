@@ -35,7 +35,8 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
     assert 'fusion_policy != "off" && fusion_policy != "factorized"' in bridge
     assert "factorized_exchange && packed_pairs && terms.size() == 1" in producer
     assert "response_factorized_exchange_panels" in producer
-    assert "packed_request && !packed_pairs && owned_occupied" in bridge
+    assert "const bool response_packed_pairs =" in bridge
+    assert "packed_pairs || (packed_request && owned_occupied)" in bridge
     streamed = producer.split("if (streamed_occupied) {", 1)[1].split(
         "if (single_fitted_tensor)", 1
     )[0]

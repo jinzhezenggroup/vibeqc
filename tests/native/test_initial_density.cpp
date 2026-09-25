@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -105,6 +106,30 @@ void check_initial_density_contract() {
   // A failed item cannot poison a subsequent independent cold request.
   prepare_initial_density(system, ints, x, 1, nullptr, a);
   require(solves == 1 && a, "cold retry did not rebuild a valid frame");
+}
+
+void check_charge_guided_lowdin_contract() {
+  core::System system;
+  system.atoms = {{1, {0, 0, 0}}, {1, {0, 0, 1}}};
+  system.shells = {{0, 0, {}}, {1, 0, {}}};
+  system.charge = 0;
+  system.electron_count = 2;
+
+  integrals::IntegralData ints;
+  ints.nbf = 2;
+  ints.overlap = {4, 0, 0, 1};
+  const Matrix x{.5, 0, 0, 1};
+  const Matrix base{.25, 0, 0, 1};
+
+  // The base has one Loewdin electron on each atom. A +0.5/-0.5 xTB charge
+  // target therefore moves half an electron from atom 0 to atom 1.
+  close(charge_guided_lowdin_density(system, ints, x, base, std::array{.5, -.5}),
+        {.125, 0, 0, 1.5});
+  close(charge_guided_lowdin_density(system, ints, x, base, std::array{0.0, 0.0}), base);
+
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{0.0}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{.2, .2}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2}); });
 }
 
 void check_overlap_cache_contract() {
@@ -224,6 +249,7 @@ int main() {
   observation::active = &observer;
   try {
     check_initial_density_contract();
+    check_charge_guided_lowdin_contract();
     check_overlap_cache_contract();
     check_borrowed_setup_operation();
     observation::active = nullptr;

@@ -212,7 +212,6 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/direct_native_gradient_types.cuh",
             "cuda/direct_native_order2_shell.cuh",
             "cuda/direct_native_pair_order2.cuh",
-            "cuda/direct_native_pair_order2_gradient.cuh",
             "cuda/direct_native_pair_order3.cuh",
             "cuda/direct_native_psss.cuh",
             "cuda/direct_native_shell_class.cuh",

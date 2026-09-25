@@ -274,6 +274,68 @@ def energy_program(
     )
 
 
+def hf_force_program(
+    batch_size: int,
+    nbf: int,
+    *,
+    spin_count: int = 1,
+    coordinate_count: int = 3,
+) -> Program:
+    """Build stationary HF forces from nuclear, one-/two-electron, and Pulay sources.
+
+    The supplied density and energy-weighted density are already occupation weighted:
+    restricted callers use one spin block with occupation two, while unrestricted
+    callers use separate alpha/beta blocks with occupation one. Integral/provider
+    response is upstream; this program owns only the final stationary contraction.
+
+    F_bc = -dE_nuc_bc - dE_2e_bc
+           - sum_spq D_bspq dH_bcpq
+           + sum_spq W_bspq dS_bcpq
+    """
+    if spin_count not in (1, 2):
+        raise ValueError("HF force assembly requires one or two spin blocks")
+    batch, spin, ao, _ = _orbital_spaces(batch_size, spin_count, nbf, nbf)
+    coordinate = IndexSpace(
+        "coordinate", "cartesian", _positive(coordinate_count, "coordinate_count")
+    )
+    b, s, p, q, c = (
+        Index("b", batch),
+        Index("s", spin),
+        Index("p", ao),
+        Index("q", ao),
+        Index("c", coordinate),
+    )
+    spin_matrix = TensorSpec((b, s, p, q), role="input")
+    derivative_matrix = TensorSpec((b, c, p, q), role="input")
+    derivative_vector = TensorSpec((b, c), role="input")
+
+    density = input_tensor("density", spin_matrix)
+    weighted_density = input_tensor("weighted_density", spin_matrix)
+    hcore_derivative = input_tensor("hcore_derivative", derivative_matrix)
+    overlap_derivative = input_tensor("overlap_derivative", derivative_matrix)
+    two_electron = input_tensor("two_electron", derivative_vector)
+    nuclear = input_tensor("nuclear_repulsion_derivative", derivative_vector)
+
+    one_electron = einsum("bspq,bcpq->bc", density, hcore_derivative)
+    pulay = einsum("bspq,bcpq->bc", weighted_density, overlap_derivative)
+    forces = add(
+        nuclear,
+        two_electron,
+        one_electron,
+        pulay,
+        coefficients=(-1, -1, -1, 1),
+    )
+    return Program(
+        {"forces": forces},
+        provenance={
+            "scf_tensor_version": SCF_TENSOR_VERSION,
+            "operation": "hf_force_assembly",
+            "spin_semantics": "occupation_weighted_blocks",
+            "convention": "force_is_negative_energy_gradient",
+        },
+    )
+
+
 def diis_gram_program(
     batch_size: int,
     history_size: int,

@@ -16,9 +16,11 @@
 #include "runtime/host_component_trace.hpp"
 #include "runtime/resource_cuda.cuh"
 #include "scf/cuda/df_derivatives.cuh"
+#include "scf/cuda/df_jk_kernels.hpp"
 #include "scf/cuda/df_metric_kernels.hpp"
 #include "scf/cuda/df_packed_values.hpp"
 #include "scf/cuda/df_response_weights.cuh"
+#include "scf/cuda/df_runtime.hpp"
 #include "scf/cuda/df_shell_derivatives.cuh"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_df_gradient.hpp"
@@ -725,10 +727,16 @@ vibeqc_status execute_cuda_df_hf_gradient(
       packed_raw->data != borrowed->staging_weights &&
       packed_raw->data != borrowed->raw_auxiliary_major &&
       packed_raw->data != borrowed->exchange_response && !borrowed->resident_raw.data;
+  // Full dense scratch can receive one source-generated raw tensor when the
+  // batch has no persistent raw owner or the reuse diagnostic disables it.
+  // Packed storage still requires its separately validated occupied lease.
+  const bool source_dense_borrow =
+      source && borrowed && !packed_raw && !borrowed->resident_packed_raw.data;
   const auto minimum_scratch = packed_borrow ? n * n : n * n * a;
   if (borrowed &&
       (!device_metric ||
-       ((source || packed_raw || borrowed->resident_packed_raw.data) && !packed_borrow) ||
+       ((source || packed_raw || borrowed->resident_packed_raw.data) && !packed_borrow &&
+        !source_dense_borrow) ||
        n * n * a > maximum / 3 || borrowed->staging_capacity() < minimum_scratch ||
        borrowed->raw_capacity() < minimum_scratch ||
        borrowed->exchange_capacity() < minimum_scratch ||
@@ -866,10 +874,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
       throw std::invalid_argument(
           "unknown DF derivative pairs (use auto, full, symmetric or packed)");
     // Only the trusted occupied producer supplies folded packed AO weights.
-    // Unsupported/corrected states retain the dense response, folding its two
-    // ordered adjoints when a generated shell consumer is available.
+    // Unsupported states retain dense response, folding its two ordered
+    // adjoints when a generated shell consumer is available.
+    const bool packed_pairs = pair_policy == "packed" && shell_execution && full_shell_domain &&
+                              borrowed && borrowed->occupied_response;
     const bool packed_request = pair_policy == "packed" && shell_execution && full_shell_domain;
-    bool packed_pairs = packed_request && borrowed && borrowed->occupied_response;
     const char* fusion_control = std::getenv("VIBEQC_DF_RESPONSE_FUSION");
     const std::string_view fusion_policy = fusion_control ? fusion_control : "off";
     if (fusion_policy != "off" && fusion_policy != "factorized")
@@ -878,11 +887,11 @@ vibeqc_status execute_cuda_df_hf_gradient(
       throw std::invalid_argument(
           "factorized DF response fusion requires a packed one-term occupied response");
     const bool factorized_exchange = fusion_policy == "factorized";
-    auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
-                            : pair_policy == "symmetric" || pair_policy == "packed" ||
-                                    (pair_policy == "auto" && promoted_default)
-                                ? DfDerivativePairs::symmetric
-                                : DfDerivativePairs::full;
+    const auto derivative_pairs = packed_pairs ? DfDerivativePairs::packed
+                                  : pair_policy == "symmetric" || pair_policy == "packed" ||
+                                          (pair_policy == "auto" && promoted_default)
+                                      ? DfDerivativePairs::symmetric
+                                      : DfDerivativePairs::full;
     const char* screening_feature_control = std::getenv("VIBEQC_DF_SCREENING_FEATURES");
     const std::string_view screening_feature_policy =
         screening_feature_control ? screening_feature_control : "off";
@@ -891,10 +900,10 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const bool screening_features = screening_feature_policy == "1";
     if (screening_features && (!shell_execution || !full_shell_domain))
       throw std::invalid_argument("DF screening feature diagnostic requires full shell execution");
-    // Factorized panels carry Coulomb only; the histogram requires full weights.
     if (screening_features && factorized_exchange)
       throw std::invalid_argument(
           "DF screening feature diagnostic does not support factorized response fusion");
+    const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
     const char* block_control = std::getenv("VIBEQC_DF_PACKED_AO_BLOCK_ROWS");
     // The 64-row experiment halved weight storage but paid for many small
     // GEMMs. 256 rows recover the complete endpoint while still skipping all
@@ -1038,6 +1047,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
         arena.stats.host_bytes += bytes;
         runtime::cuda_trace::trace_counter("shell_work_diagnostic_bytes", bytes);
         runtime::cuda_trace::trace_counter("shell_work_diagnostics_enabled", 1);
+        runtime::cuda_trace::trace_counter("shell_work_pair_mode",
+                                           static_cast<unsigned>(derivative_pairs));
       }
     }
     const auto* r = arena.upload(positions);
@@ -1080,21 +1091,18 @@ vibeqc_status execute_cuda_df_hf_gradient(
           (!requested_algebra || std::string_view(requested_algebra) == "blas") &&
           (!requested_dot || std::string_view(requested_dot) != "1") &&
           (!requested_scatter || !*requested_scatter);
-      // A streamed value plan owns no mutable J/K lease, but its validated
-      // canonical factors can still back bridge-owned packed response scratch.
-      // Upgrade the requested pair contract only after the exact local capacity
-      // gate succeeds; otherwise the established symmetric fallback is retained.
-      if (packed_request && !packed_pairs && owned_occupied) {
-        packed_pairs = true;
-        derivative_pairs = DfDerivativePairs::packed;
-      }
-      if (factorized_exchange && !packed_pairs)
+      // Keep the legacy packed admission predicate stable; a bridge-owned
+      // canonical-factor view may extend the explicit packed request only after
+      // the local projection/raw-slice capacity gate succeeds.
+      const bool response_packed_pairs =
+          packed_pairs || (packed_request && owned_occupied);
+      const auto response_derivative_pairs =
+          response_packed_pairs ? DfDerivativePairs::packed : derivative_pairs;
+      if (factorized_exchange && !response_packed_pairs)
         throw std::invalid_argument(
             "factorized DF response fusion requires an admitted packed occupied response owner");
-      const auto response_pair_stride = packed_pairs ? n * (n + 1) / 2 : n * n;
-      if (shell_diagnostics)
-        runtime::cuda_trace::trace_counter("shell_work_pair_mode",
-                                           static_cast<unsigned>(derivative_pairs));
+      const auto effective_response_pair_stride =
+          response_packed_pairs ? n * (n + 1) / 2 : response_pair_stride;
       // If two complete tensors do not fit, a streamed owner can still supply
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source
@@ -1155,7 +1163,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
       arena.stats.device_response = true;
       arena.stats.occupied_response = (borrowed && borrowed->occupied_response) || owned_occupied;
       arena.stats.auxiliary_weight_tile = consume_tile;
-      arena.stats.weight_tile_elements = consume_tile * response_pair_stride;
+      arena.stats.weight_tile_elements = consume_tile * effective_response_pair_stride;
       if (borrowed) {
         // These allocations remain owned and charged by the value plan. Keep
         // their capacity visible without double-counting it as new response
@@ -1233,14 +1241,45 @@ vibeqc_status execute_cuda_df_hf_gradient(
       const char* dot_policy = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
       const bool serial_dot = dot_policy && dot_policy[0] == '1' && dot_policy[1] == '\0';
       const char* algebra_control = std::getenv("VIBEQC_DF_RESPONSE_ALGEBRA");
-      const std::string_view algebra =
-          algebra_control ? algebra_control
-                          : (borrowed || owned_occupied || promoted_default ? "blas" : "scalar");
+      // Response algebra is independent of storage/resource ownership. Production
+      // always uses the compiler-qualified BLAS contractions; scalar remains an
+      // explicit diagnostic/ablation route only.
+      const std::string_view algebra = algebra_control ? algebra_control : "blas";
       if (algebra != "scalar" && algebra != "blas")
         throw std::invalid_argument("unknown DF response algebra (use scalar or blas)");
       if (borrowed && (algebra != "blas" || serial_dot || gradient_copies != 1))
         throw std::invalid_argument(
             "resident JK scratch requires BLAS response without serial/scatter probes");
+      CudaDfResponseBuffers generated_buffers;
+      const bool regenerate_raw = source_dense_borrow && !borrowed->resident_raw.data;
+      if (regenerate_raw) {
+        // Generation and transpose use only already-borrowed full buffers.
+        // The source index selects the current batch item; this temporary view
+        // is valid for this response only, not a cache shared between items.
+        const auto status = generate_cuda_density_fitting_raw_tile(
+            source, source_index, 0, n * n, 0, a, -1, stream_handle, borrowed->staging_weights,
+            detail);
+        if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+        if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+        cuda_df::launch_gather_auxiliary_tile_kernel(
+            dim3(cuda_df::blocks_for(n * n * a)), dim3(cuda_df::kThreads), 0, arena.stream, n * n,
+            a, 0, 0, a, borrowed->staging_weights, borrowed->raw_auxiliary_major);
+        check(cudaGetLastError());
+        generated_buffers = *borrowed;
+        generated_buffers.resident_raw = {borrowed->raw_auxiliary_major,
+                                          n,
+                                          a,
+                                          n * n,
+                                          n,
+                                          1,
+                                          device_metric->owner_identity,
+                                          *device_metric};
+        borrowed = &generated_buffers;
+        arena.stats.recomputed_value_bytes += n * n * a * sizeof(double);
+        arena.stats.value_slices += a;
+        runtime::cuda_trace::trace_counter("response_generated_raw_bytes",
+                                           n * n * a * sizeof(double));
+      }
       if (borrowed && !borrowed->resident_raw.data && !packed_borrow) {
         arena.stats.host_to_device_bytes += raw_a.size_bytes();
         arena.stats.tensor_host_to_device_bytes += raw_a.size_bytes();
@@ -1250,7 +1289,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
       if (borrowed && borrowed->resident_raw.data) {
         runtime::cuda_trace::trace_counter("raw_value_upload_bytes", 0);
         runtime::cuda_trace::trace_counter("raw_value_bulk_uploads", 0);
-        runtime::cuda_trace::trace_counter("raw_value_reused_bytes", n * n * a * sizeof(double));
+        runtime::cuda_trace::trace_counter("raw_value_reused_bytes",
+                                           regenerate_raw ? 0 : n * n * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity",
                                            borrowed->resident_raw.owner_identity);
       }
@@ -1479,7 +1519,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                                    count * sizeof(double));
                 runtime::cuda_trace::trace_counter("screening_feature_stream_drains", 1);
                 trace_df_weight_histogram(*shell_o, *shell_x, range.offset, panel_count, n,
-                                          std::span<const double>(features), derivative_pairs,
+                                          std::span<const double>(features), response_derivative_pairs,
                                           full_shell_domain);
               }
               if (shell_diagnostics) {
@@ -1509,14 +1549,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
                   check(launch_df_shell_derivative_packets(
                       orbital_groups, auxiliary_groups, r, range.offset, panel_count, weights,
                       derivative_output, shell_counters, arena.stream, full_shell_domain,
-                      shell_variant, derivative_pairs, shell_diagnostics, factorized));
+                      shell_variant, response_derivative_pairs, shell_diagnostics, factorized));
                 } else {
                   std::size_t signature_launches = 0;
                   for (std::size_t ga = 0; ga < shell_o->signature_groups.size(); ++ga) {
                     const auto& a_group = shell_o->signature_groups[ga];
                     for (std::size_t gb = 0; gb < shell_o->signature_groups.size(); ++gb) {
                       const auto& b_group = shell_o->signature_groups[gb];
-                      if (derivative_pairs != DfDerivativePairs::full &&
+                      if (response_derivative_pairs != DfDerivativePairs::full &&
                           (a_group.angular < b_group.angular ||
                            (a_group.angular == b_group.angular && ga < gb)))
                         continue;
@@ -1532,8 +1572,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
                         check(launch_df_shell_derivative_group(
                             first, second, auxiliary_groups[gc], r, range.offset, panel_count,
                             weights, derivative_output, shell_counters, arena.stream,
-                            full_shell_domain, shell_variant, derivative_pairs,
-                            derivative_pairs != DfDerivativePairs::full && ga == gb,
+                            full_shell_domain, shell_variant, response_derivative_pairs,
+                            response_derivative_pairs != DfDerivativePairs::full && ga == gb,
                             shell_diagnostics, factorized));
                         ++signature_launches;
                       }
@@ -1546,7 +1586,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
                 check(launch_df_shell_derivative_panel(
                     shell_o->view, shell_x->panel(range.offset, panel_count), r, range.offset,
                     panel_count, weights, derivative_output, shell_counters, arena.stream,
-                    full_shell_domain, shell_variant, derivative_pairs, shell_diagnostics,
+                    full_shell_domain, shell_variant, response_derivative_pairs, shell_diagnostics,
                     factorized));
               }
               runtime::cuda_trace::trace_counter("three_center_shell_panels", 1);
@@ -1558,8 +1598,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
             ++arena.stats.tiles;
             arena.stats.device_response_bytes += count * sizeof(double);
           },
-          borrowed, raw_a, packed_pairs,
-          packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
+          borrowed, raw_a, response_packed_pairs,
+          response_packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
                        : std::span<const std::int64_t>{},
           packed_block_rows, read_fitted, single_fitted_tensor,
           owned_occupied ? &owned_buffers : nullptr, factorized_exchange));

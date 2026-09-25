@@ -159,10 +159,9 @@ typedef struct vibeqc_d3_system_descriptor {
 /**
  * Explicit molecular D3 model.
  *
- * The historical typedef name and prefix through maximum_bytes are preserved
- * for ABI-0 two-body D3(BJ) callers. Zero damping and BJ+ATM require the
- * appended fields below and are accepted only by separately qualified
- * capability paths. Zero-damping+ATM is deliberately unsupported.
+ * Callers must provide the current complete descriptor layout. BJ, zero damping,
+ * and BJ+ATM are accepted only by their separately qualified capability paths.
+ * Zero-damping+ATM is deliberately unsupported.
  */
 typedef struct vibeqc_d3_bj_descriptor {
   uint32_t struct_size;
@@ -670,6 +669,7 @@ typedef struct vibeqc_ks_options {
 /** Current KS execution-plan ABI schema. No legacy prefix layouts are accepted. */
 VIBEQC_API uint32_t vibeqc_ks_options_version(void);
 
+/** Current method preparation descriptor. Callers must provide this complete layout. */
 typedef struct vibeqc_method_descriptor {
   uint32_t struct_size;
   uint32_t abi_version;
@@ -679,7 +679,7 @@ typedef struct vibeqc_method_descriptor {
   double energy_tolerance;
   double density_tolerance;
   double screening_tolerance;
-  /** Optional fields are ignored when struct_size ends before this member. */
+  /** Density-fitting execution mode. */
   vibeqc_density_fitting_mode density_fitting_mode;
   /** Optional prepared system carrying the auxiliary-basis shell topology. */
   const vibeqc_system* density_fitting_auxiliary_basis;
@@ -688,22 +688,19 @@ typedef struct vibeqc_method_descriptor {
   /** Planner budget in bytes. Positive values are hard upper bounds; zero
    * selects the workload/device-aware resource policy. */
   uint64_t density_fitting_memory_budget_bytes;
-  /**
-   * Optional floating-point execution policy. Absent or zero callers keep the
-   * double-precision default; \p auto enables the safe lower-precision route.
-   */
+  /** Floating-point execution policy. FP64 keeps the strict double-precision
+   * route; \p auto enables the qualified lower-precision route. */
   vibeqc_precision_mode precision_mode;
   /** Optional combined numeric capacity for correlated reference/energy phases.
    * Zero selects 256 MiB; this is not a process-RSS or CUDA-context bound. */
   uint64_t correlation_memory_budget_bytes;
   /** Positive MP2 absolute denominator threshold in Hartree; zero uses 1e-10. */
   double mp2_denominator_threshold;
-  /** Optional KS snapshot. NULL/absent preserves the original default model.
+  /** Optional KS snapshot. NULL preserves the method's built-in model.
    * The descriptor and pointees need only outlive the prepare call. */
   const vibeqc_ks_options* ks_options;
-  /** RCCSD controls. These are an additive struct-size-gated extension. An
-   * absent field preserves the documented default; zero also selects the
-   * default except ccsd_diis_history=0, which explicitly disables DIIS. */
+  /** RCCSD controls. Zero selects the documented default except
+   * ccsd_diis_history=0, which explicitly disables DIIS. */
   uint32_t ccsd_max_iterations;
   uint32_t ccsd_diis_history;
   double ccsd_energy_tolerance;
@@ -1165,10 +1162,8 @@ VIBEQC_API vibeqc_status vibeqc_calculation_get_ks_transport_diagnostic(
  * - After a normal execution return (converged or not) the resolved record is
  *   copied into \p out and SUCCESS is returned.
  *
- * The out-parameter must carry the current abi_version. struct_size may be the
- * legacy prefix ending at refinement_iterations or the current larger record;
- * fields beyond the supplied size are never written. A NULL \p out is a cheap
- * availability probe that never writes.
+ * The out-parameter must carry the current complete descriptor size and
+ * abi_version. A NULL \p out is a cheap availability probe that never writes.
  */
 VIBEQC_API vibeqc_status vibeqc_calculation_get_precision_provenance(
     const vibeqc_calculation* calculation, vibeqc_precision_provenance* out);
@@ -1298,7 +1293,7 @@ VIBEQC_API vibeqc_status vibeqc_batch_clear_warm_starts(vibeqc_batch* batch);
 VIBEQC_API vibeqc_status vibeqc_batch_get_scf_diagnostic(const vibeqc_batch* batch, uint32_t index,
                                                          vibeqc_scf_diagnostic* out);
 
-/** Input-ordered correlated-method diagnostic. The caller-size compatibility
+/** Input-ordered correlated-method diagnostic. The current complete descriptor
  * contract matches vibeqc_calculation_get_correlation_diagnostic. A rejected
  * or backend-failed item has no record; a normal NOT_CONVERGED item may retain
  * its last finite correlation state and physical residual diagnostics. */

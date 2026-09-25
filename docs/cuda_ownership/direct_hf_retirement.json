@@ -110,7 +110,7 @@
       "id": "native-high-order-force",
       "status": "performance-exception",
       "capability": "Order-4/5/6 Direct force canonicalization, primitive contraction, pair algebra, complete primitive ERI-gradient composition, and the bounded high-order Coulomb recurrence are compiler-generated.",
-      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer and its compiler-emitted high-order Coulomb recurrence while retaining the existing queue/runtime schedule and selector semantics.",
+      "current_selector": "Production order-4/5/6 force directly includes the build-time generated consumer and its compiler-emitted high-order Coulomb recurrence while retaining the existing queue/runtime schedule and selector semantics. The former order-two pair-gradient helper has no remaining production consumer.",
       "generated_alternative": "The compiler emits the complete order-4/5/6 force-side consumer together with its shared high-order Coulomb workspace and recurrence support; no native high-order Coulomb mathematical owner remains.",
       "schedule_requirements": "Use common multi-root sharing, live-range shortening, pressure-aware rematerialization/fission, and bounded pair-term storage; do not add an order-specific Direct optimizer.",
       "resource_profile": "High register/stack pressure and repeated combinatorial traversal are the critical measured risks; peak workspace and actual recurrence walks must be reported with endpoint timing.",
@@ -126,9 +126,8 @@
         "#832 live-range/rematerialization/fusion profitability",
         "#833 reusable schedule vocabulary"
       ],
-      "retirement_condition": "The order-4/5/6 consumer body and high-order Coulomb recurrence are retired from native scientific ownership. Remaining pair/source helpers stay tracked separately until their other production consumers have qualified generated replacements.",
+      "retirement_condition": "The order-4/5/6 consumer body, high-order Coulomb recurrence, and orphaned order-two pair-gradient helper are retired from native scientific ownership. The remaining source-contraction helper stays tracked until its other production consumers have qualified generated replacements.",
       "files": [
-        "src/scf/cuda/direct_native_pair_order2_gradient.cuh",
         "src/scf/cuda/direct_native_source_contraction.cuh"
       ]
     },

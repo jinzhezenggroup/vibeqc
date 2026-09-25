@@ -1,5 +1,3 @@
-#include "scf/rhf.hpp"
-
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -39,6 +37,7 @@
 #include "scf/fock_provider.hpp"
 #include "scf/initial_guess/density.hpp"
 #include "scf/initial_guess/overlap.hpp"
+#include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/mean_field_driver.hpp"

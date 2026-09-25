@@ -74,6 +74,7 @@
     "tools/generate_gfn2_pair_native.py",
     "tools/generate_gfn2_es2_native.py",
     "tools/generate_gfn2_es3_native.py",
+    "tools/generate_gfn2_scc_free_energy_native.py",
     "cmake/VibeQCGfn2Runtime.cmake",
     "tools/xtb/resolve-openblas-wheel.py",
     "tools/xtb/scipy_openblas32_manifest.json",

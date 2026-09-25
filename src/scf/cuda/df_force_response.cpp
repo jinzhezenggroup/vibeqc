@@ -145,6 +145,92 @@ vibeqc_status select_occupied_response_factors(CudaDensityFittingJkPlan& plan, s
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
 }
+
+/** A strict final-state correction has no SCF factor of its own. Reconstruct
+ * its exact density independently before lending the value plan's reserved
+ * factor scratch; revoke the previous SCF generation before overwriting it.
+ */
+vibeqc_status select_corrected_occupied_response_factor(
+    CudaDensityFittingJkPlan& plan, std::size_t system, const CudaDfFinalStateToken* requested,
+    std::span<const DensityFittingDensityResponse> terms, std::size_t maximum_bytes,
+    CudaDfOccupiedResponseView& view, std::string& detail) {
+  auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state);
+  if (!requested || !state || state->unrestricted || !state->occupied_exchange ||
+      !state->final_frames_available || !plan.streamed || !plan.integral_source ||
+      plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
+      terms[0].density.size() != plan.matrix_elements || terms[0].coulomb_coefficient != 1.0 ||
+      terms[0].exchange_coefficient != .25 || requested->identity.occupied.size() != 1 ||
+      !requested->identity.occupied[0] ||
+      !qualified_value_rhf_exchange(plan, requested->identity.occupied[0]))
+    return VIBEQC_STATUS_SUCCESS;
+  CudaDfFinalStateToken original;
+  const auto token_status = cuda_density_fitting_final_state_token(&plan, system, original, detail);
+  if (token_status == VIBEQC_STATUS_OUT_OF_MEMORY) return token_status;
+  if (token_status != VIBEQC_STATUS_SUCCESS) {
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  const auto& current = original.identity;
+  const auto& corrected = requested->identity;
+  const auto density_generation = corrected.factor.density_generation;
+  const auto orbital_generation = corrected.factor.orbital_generation;
+  if (requested->version != original.version || corrected.factor.basis != current.factor.basis ||
+      corrected.factor.reference != current.factor.reference ||
+      corrected.solve_epoch != current.solve_epoch || corrected.model != current.model ||
+      corrected.occupied != current.occupied ||
+      density_generation <= current.factor.density_generation ||
+      orbital_generation <= current.factor.orbital_generation ||
+      density_generation - current.factor.density_generation > 16 ||
+      density_generation - current.factor.density_generation !=
+          orbital_generation - current.factor.orbital_generation ||
+      !std::all_of(terms[0].density.begin(), terms[0].density.end(),
+                   [](double value) { return std::isfinite(value); }))
+    return VIBEQC_STATUS_SUCCESS;
+  runtime::cuda_trace::TraceOperation trace("corrected_response_factor", plan.stream,
+                                            {1, plan.nbf, plan.naux, true, true, system});
+  const auto bytes = plan.matrix_elements * sizeof(double);
+  auto error = cudaSetDevice(plan.device_id);
+  if (error != cudaSuccess) return cuda_failure(error, "select corrected response device", detail);
+  // A later enqueue, eigensolver or host allocation may fail after the H2D
+  // upload borrows terms[0].density. Drain before returning/rethrowing so the
+  // caller can release its density even when no response bridge is entered.
+  struct UploadDrain {
+    cudaStream_t stream;
+    bool active{true};
+    ~UploadDrain() {
+      if (active) (void)cudaStreamSynchronize(stream);
+    }
+  } upload_drain{plan.stream};
+  error = cudaMemcpyAsync(plan.primary_density, terms[0].density.data(), bytes,
+                          cudaMemcpyHostToDevice, plan.stream);
+  if (error == cudaSuccess)
+    error =
+        cudaMemsetAsync(state->d_alpha_factor_generation, 0, sizeof(std::uint32_t), plan.stream);
+  if (error != cudaSuccess)
+    return cuda_failure(error, "upload corrected response density and revoke SCF factor", detail);
+  bool accepted = false;
+  std::size_t rank = 0;
+  const auto status =
+      factor_density_for_exchange(plan, *state, plan.primary_density, accepted, rank, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  if (!accepted || rank != corrected.occupied[0] ||
+      rank * rank > maximum_bytes / plan.naux / view.factors.size()) {
+    runtime::cuda_trace::trace_counter("reconstruction_rejected", 1);
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  // Accepted reconstruction has already drained its spectrum and full-density
+  // checks. Do not add a synchronization to the successful occupied path.
+  upload_drain.active = false;
+  view.factors[0] = {state->d_alpha_factor, rank, 1.0};
+  view.nbf = plan.nbf;
+  view.naux = plan.naux;
+  view.owner_identity = plan.factor_basis_identity;
+  runtime::cuda_trace::trace_counter("accepted", 1);
+  runtime::cuda_trace::trace_counter("correction_generations",
+                                     density_generation - current.factor.density_generation);
+  runtime::cuda_trace::trace_counter("borrowed_factor_bytes", plan.nbf * rank * sizeof(double));
+  return VIBEQC_STATUS_SUCCESS;
+}
 }  // namespace
 
 // Both value providers borrow forward device factors and bounded bridge
@@ -162,6 +248,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "invalid generated DF force plan or batch index";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  if (plan->integral_source && !cuda_density_fitting_integral_source_geometry_matches(
+                                   plan->integral_source, system, orbital, auxiliary)) {
+    detail = "generated DF response source geometry or basis does not match";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   const auto elements = plan->naux * plan->naux, offset = system * elements;
   const char* host_policy = std::getenv("VIBEQC_DF_HOST_RESPONSE_WEIGHTS");
   const bool host_weights = host_policy && host_policy[0] == '1' && host_policy[1] == '\0';
@@ -171,12 +262,29 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "unknown DF response storage (use auto, panel or jk-scratch)";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  // Prepared generated-source metadata deliberately releases host A. In that
+  // case the integral source itself is the immutable geometry/metric owner;
+  // an empty raw span is therefore valid only after the exact per-item check
+  // above; it is not independently a geometry identity. This is not a
+  // missing owner. Materialized host routes still require every allocation
+  // identity below to match exactly.
+  const bool matching_source =
+      (plan->integral_source && !plan->response_host_raw && raw_a.empty()) ||
+      (plan->response_host_raw && plan->response_host_raw == raw_a.data() &&
+       plan->response_orbital_atoms == orbital.atoms.data() &&
+       plan->response_auxiliary_atoms == auxiliary.atoms.data() &&
+       plan->response_orbital_shells == orbital.shells.data() &&
+       plan->response_auxiliary_shells == auxiliary.shells.data() &&
+       plan->response_orbital_representation == orbital.basis_representation &&
+       plan->response_auxiliary_representation == auxiliary.basis_representation);
+  const bool source_dense_resident =
+      plan->integral_source && plan->value_storage.pairs == DfPairStorage::Dense && matching_source;
   // Retained B alone does not establish scratch capacity: generated resident
   // plans can retain B while their J/K temporaries cover only a small tile.
-  const bool full_scratch = !host_weights && !plan->integral_source && !plan->streamed &&
-                            plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
-                            plan->auxiliary_tile_values && plan->exchange_intermediate &&
-                            plan->exchange_contributions;
+  const bool full_scratch =
+      !host_weights && !plan->streamed && (!plan->integral_source || source_dense_resident) &&
+      plan->row_tile == plan->nbf && plan->auxiliary_tile == plan->naux &&
+      plan->auxiliary_tile_values && plan->exchange_intermediate && plan->exchange_contributions;
   const bool packed_resident = !host_weights && plan->integral_source && !plan->streamed &&
                                plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
                                plan->packed_raw && plan->row_tile == plan->nbf;
@@ -220,7 +328,10 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       // policy needs no occupied reservation or factor token. Keep this path
       // when occupied factors are unavailable, without any new allocation or
       // inferring full capacity from retained B alone.
-      if ((full_scratch && storage == "auto") || automatic_occupied) borrow = true;
+      if ((full_scratch && storage == "auto" &&
+           (!plan->integral_source || plan->resident_raw_valid)) ||
+          automatic_occupied)
+        borrow = true;
     }
   }
   CudaDfResponseBuffers buffers;
@@ -236,14 +347,6 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                    plan->metric_eigenvalues + system * plan->naux, plan->metric_relative_threshold,
                    plan->metric_full_rank[system] != 0, plan->factor_basis_identity}};
   }
-  const bool matching_source =
-      plan->response_host_raw && plan->response_host_raw == raw_a.data() &&
-      plan->response_orbital_atoms == orbital.atoms.data() &&
-      plan->response_auxiliary_atoms == auxiliary.atoms.data() &&
-      plan->response_orbital_shells == orbital.shells.data() &&
-      plan->response_auxiliary_shells == auxiliary.shells.data() &&
-      plan->response_orbital_representation == orbital.basis_representation &&
-      plan->response_auxiliary_representation == auxiliary.basis_representation;
   const auto enabled = [](const char* name) {
     const char* value = std::getenv(name);
     return !value || std::string_view(value) == "auto";
@@ -261,7 +364,7 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     // the next replay. Never infer capacity from retained B alone: generated
     // resident plans can retain B while their K scratch is only a small tile.
     if (!full_scratch && !packed_resident) {
-      detail = "JK-scratch response requires a resident host-raw plan with full J/K tensors";
+      detail = "JK-scratch response requires a resident plan with full J/K tensors";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
     buffers = {plan->auxiliary_tile_values, plan->exchange_contributions,
@@ -367,13 +470,18 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     CudaDfOccupiedResponseView owned_factors;
     if (!borrow && plan->integral_source && metric.full_rank && space != "dense") {
       // Canonical occupied factors are an immutable owner view, independent of
-      // mutable J/K tensor storage. This lets both retained-whitened and streamed
-      // source-backed plans lend C while the response bridge budgets its own
-      // projected-factor/raw-slice scratch. The token/density/generation checks
-      // above remain the authority; a label alone never establishes this view.
+      // mutable J/K tensor storage. Retained-whitened and streamed source-backed
+      // plans can lend C while the response bridge owns the bounded projection
+      // and raw-slice scratch. Token, density and generation checks remain the
+      // authority; a response-space label alone never establishes ownership.
       const auto selected = select_occupied_response_factors(*plan, system, final_state, terms,
                                                              maximum_bytes, owned_factors, detail);
       if (selected != VIBEQC_STATUS_SUCCESS) return selected;
+      if (!owned_factors.owner_identity && plan->streamed && space == "occupied") {
+        const auto corrected = select_corrected_occupied_response_factor(
+            *plan, system, final_state, terms, maximum_bytes, owned_factors, detail);
+        if (corrected != VIBEQC_STATUS_SUCCESS) return corrected;
+      }
     }
     // The diagnostic upload route writes the former raw scratch buffer.
     // Revoke its immutable view before submission, so an interrupted copy

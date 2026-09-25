@@ -5,9 +5,9 @@ integral providers. RCCSD supports CPU, ordinary-stream CUDA and resident CUDA;
 RCCSD(T) composes CPU or resident CUDA RCCSD with audited bounded triples tiles
 and offers isolated homogeneous Python batch helpers. #155 additionally binds
 the validated complete RCCSD(T) analytic-gradient owner as an internal force API.
-These APIs still do not register Calculator methods or a native CCSD(T) prepared
-owner; the C ABI remains fail-closed until the generated response graph has that
-owner.
+#157 additionally exposes an explicit energy-only correlation-DF RCCSD(T) source
+facade. That DF facade does not register a native Calculator method and never
+borrows the conventional RCCSD(T) force capability.
 """
 
 from .api import (
@@ -42,6 +42,11 @@ from .complete_gradient import (
     complete_gradient_validation,
     gradient_capabilities,
 )
+from .df_api import (
+    DFRCCSDTCapabilities,
+    df_rccsd_t_energy,
+    df_rccsd_t_method_capabilities,
+)
 from .df_factorized import (
     DFCCSDResult,
     FactorizedDFIntegralState,
@@ -72,6 +77,7 @@ from .lambda_equations import (
 )
 from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
+from .native_tensor_cuda import CudaCCTensorExecutor
 from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
 from .state_transport import (
@@ -149,12 +155,14 @@ __all__ = [
     "CCSDTParameterWeight",
     "Capabilities",
     "CorrectedLambdaResult",
+    "CudaCCTensorExecutor",
     "CudaTriplesResponseResult",
     "CudaTriplesResponseTiles",
     "CudaTriplesResult",
     "CudaTriplesTiles",
     "DFCCSDResult",
     "DFCCSDTResult",
+    "DFRCCSDTCapabilities",
     "DFThreeIndexCotangent",
     "DFThreeIndexPullback",
     "FactorizedDFIntegralState",
@@ -194,6 +202,8 @@ __all__ = [
     "complete_ccsdt_gradient_validation",
     "complete_gradient_validation",
     "cpu_triples_tiles",
+    "df_rccsd_t_energy",
+    "df_rccsd_t_method_capabilities",
     "energy",
     "evaluate",
     "factorized_triples_energy",
