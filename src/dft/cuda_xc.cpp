@@ -12,10 +12,17 @@
 #if defined(VIBEQC_TEST_HOOKS)
 namespace {
 thread_local cudaError_t fail_next_xc_status = cudaSuccess;
+thread_local cudaError_t fail_next_nonlocal_xc_status = cudaSuccess;
 }  // namespace
 extern "C" void xc_cuda_fail_next_runtime_for_test_v1() { fail_next_xc_status = cudaErrorUnknown; }
 extern "C" void xc_cuda_fail_next_allocation_for_test_v1() {
   fail_next_xc_status = cudaErrorMemoryAllocation;
+}
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1() {
+  fail_next_nonlocal_xc_status = cudaErrorUnknown;
+}
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1() {
+  fail_next_nonlocal_xc_status = cudaErrorMemoryAllocation;
 }
 #endif
 
@@ -53,8 +60,9 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points, bool response,
                                   CudaXcAoPrecision ao_precision) {
+  const bool supported_functional = functional <= 2U || functional == 4U;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
-      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || functional > 2U)
+      atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
   if (response && functional > 1U)
     throw std::invalid_argument("CUDA XC response supports LDA/PBE only");
@@ -62,15 +70,16 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
       ao_precision != CudaXcAoPrecision::Fp32ComputeFp64Storage)
     throw std::invalid_argument("unknown CUDA XC AO precision");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && functional > 1U)
-    throw std::invalid_argument("r2SCAN currently requires strict FP64 AO evaluation");
+    throw std::invalid_argument("meta-GGA CUDA XC currently requires strict FP64 AO evaluation");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && response)
     throw std::invalid_argument("CUDA XC response currently requires strict FP64 AO evaluation");
   constexpr auto overflow = "CUDA XC storage overflow";
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
+  const bool meta_gga = functional == 2U || functional == 4U;
   const auto ao_jets = functional == 0U ? 1U : 4U;
-  const auto work_jets = functional == 2U ? 4U : 1U;
+  const auto work_jets = meta_gga ? 4U : 1U;
   const auto feature_terms = functional == 0U ? 1U : (functional == 1U ? 4U : 5U);
   CudaXcLayout out{atoms,
                    primitives,
@@ -196,10 +205,26 @@ void CudaXcPlan::check_device() const {
   if (current != device_) throw std::invalid_argument("CUDA XC current device changed");
 }
 
+CudaXcGridView CudaXcPlan::grid_view() const {
+  check_device();
+  return {points_, weights_, layout_.npoint, stream_};
+}
+
 void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation,
                          CudaXcDensityPrecision precision) {
   if (layout_.response) throw std::invalid_argument("XC response plan requires a direction");
   enqueue_impl(density, nullptr, elements, generation, precision);
+}
+
+void CudaXcPlan::enqueue_density_features(const double* density, std::size_t elements,
+                                          std::uint64_t generation, double* total_density,
+                                          double* total_gradient) {
+  if (layout_.response)
+    throw std::invalid_argument("XC response plan cannot publish physical features");
+  if (total_density == nullptr || total_gradient == nullptr)
+    throw std::invalid_argument("CUDA XC density-feature export requires both output buffers");
+  enqueue_impl(density, nullptr, elements, generation, CudaXcDensityPrecision::Fp64,
+               total_density, total_gradient);
 }
 
 void CudaXcPlan::enqueue_response(const double* density, const double* direction,
@@ -208,8 +233,63 @@ void CudaXcPlan::enqueue_response(const double* density, const double* direction
   enqueue_impl(density, direction, elements, generation, CudaXcDensityPrecision::Fp64);
 }
 
+void CudaXcPlan::enqueue_nonlocal_potential(std::uint64_t generation,
+                                            const double* effective_weights,
+                                            const double* total_gradient, const double* vrho,
+                                            const double* vsigma, const double* nonlocal_energy) {
+  check_device();
+  if (layout_.response)
+    throw std::invalid_argument("XC response plan cannot accumulate a physical nonlocal potential");
+  if (layout_.feature_terms < 4 || layout_.ao_precision != CudaXcAoPrecision::Fp64)
+    throw std::invalid_argument("CUDA nonlocal AO assembly requires strict-FP64 GGA ingredients");
+  generations_.require(generation);
+  if (!effective_weights || !total_gradient || !vrho || !vsigma || !nonlocal_energy)
+    throw std::invalid_argument("CUDA nonlocal AO assembly received a null device input");
+  const auto scalar_bytes =
+      size_mul(layout_.npoint, sizeof(double), "CUDA nonlocal AO input size overflow");
+  const auto gradient_bytes =
+      size_mul(size_mul(3, layout_.npoint, "CUDA nonlocal AO input size overflow"), sizeof(double),
+               "CUDA nonlocal AO input size overflow");
+  for (const auto* pointer : {effective_weights, vrho, vsigma, nonlocal_energy})
+    device_pointer(pointer, device_);
+  device_pointer(total_gradient, device_);
+  const auto overlaps_arena = [&](const void* pointer, std::size_t bytes) {
+    return vibeqc::runtime::ranges_overlap(pointer, bytes, arena_, layout_.device_bytes);
+  };
+  if (overlaps_arena(effective_weights, scalar_bytes) ||
+      overlaps_arena(total_gradient, gradient_bytes) || overlaps_arena(vrho, scalar_bytes) ||
+      overlaps_arena(vsigma, scalar_bytes) || overlaps_arena(nonlocal_energy, sizeof(double)))
+    throw std::invalid_argument("CUDA nonlocal AO inputs alias the semilocal XC workspace");
+
+  // The nonlocal phase mutates the semilocal potential/totals in place.
+  // Revoke the generation before the first asynchronous mutation so a launch
+  // failure can never expose a partially accumulated result.
+  generations_.revoke(generation);
+  try {
+#if defined(VIBEQC_TEST_HOOKS)
+    const auto injected = fail_next_nonlocal_xc_status;
+    fail_next_nonlocal_xc_status = cudaSuccess;
+    vibeqc_tensor::cuda_check(injected);
+#endif
+    cuda_xc_detail::enqueue_nonlocal_potential(layout_, stream_, basis_, points_, effective_weights,
+                                               total_gradient, vrho, vsigma, nonlocal_energy, ao_,
+                                               coefficients_, potential_, totals_, error_);
+    generations_.commit(generation);
+  } catch (const vibeqc_tensor::DeviceAllocationError&) {
+    (void)cudaStreamSynchronize(stream_);
+    throw std::bad_alloc();
+  } catch (const vibeqc_tensor::DeviceRuntimeError& error) {
+    (void)cudaStreamSynchronize(stream_);
+    throw vibeqc::Error(VIBEQC_STATUS_CUDA_ERROR, error.what());
+  } catch (...) {
+    (void)cudaStreamSynchronize(stream_);
+    throw;
+  }
+}
+
 void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                              std::uint64_t generation, CudaXcDensityPrecision precision) {
+                              std::uint64_t generation, CudaXcDensityPrecision precision,
+                              double* total_density, double* total_gradient) {
   check_device();
   const auto matrix = size_mul(layout_.nao, layout_.nao, "CUDA XC density size overflow");
   const auto count = size_mul(layout_.spins, matrix, "CUDA XC density size overflow");
@@ -226,6 +306,26 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
   const auto input_bytes = size_mul(count, sizeof(double), "CUDA XC density size overflow");
   if (vibeqc::runtime::ranges_overlap(density, input_bytes, arena_, layout_.device_bytes))
     throw std::invalid_argument("CUDA XC density aliases its workspace");
+  if ((total_density == nullptr) != (total_gradient == nullptr))
+    throw std::invalid_argument("CUDA XC density-feature outputs must be provided together");
+  if (total_density) {
+    if (layout_.feature_terms < 4)
+      throw std::invalid_argument("CUDA XC density-gradient export requires GGA ingredients");
+    const auto rho_bytes =
+        size_mul(layout_.npoint, sizeof(double), "CUDA XC feature export size overflow");
+    const auto gradient_bytes =
+        size_mul(size_mul(3, layout_.npoint, "CUDA XC feature export size overflow"),
+                 sizeof(double), "CUDA XC feature export size overflow");
+    device_pointer(total_density, device_);
+    device_pointer(total_gradient, device_);
+    if (vibeqc::runtime::ranges_overlap(total_density, rho_bytes, arena_, layout_.device_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_gradient, gradient_bytes, arena_,
+                                        layout_.device_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_density, rho_bytes, density, input_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_gradient, gradient_bytes, density, input_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_density, rho_bytes, total_gradient, gradient_bytes))
+      throw std::invalid_argument("CUDA XC density-feature outputs alias live input/workspace");
+  }
   if (layout_.response) {
     device_pointer(direction, device_);
     if (vibeqc::runtime::ranges_overlap(direction, input_bytes, arena_, layout_.device_bytes))
@@ -242,7 +342,8 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
 #endif
     cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
                             ao_, work_, features_, coefficients_, point_totals_, potential_,
-                            totals_, error_, precision, direction, delta_features_);
+                            totals_, error_, precision, direction, delta_features_, total_density,
+                            total_gradient);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.

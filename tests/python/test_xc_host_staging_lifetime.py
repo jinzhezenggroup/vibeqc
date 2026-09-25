@@ -17,11 +17,11 @@ def test_host_xc_staging_keeps_copy_sources_alive(tmp_path: Path) -> None:
     body = source.split("  CudaXcView stage_xc(", 1)[1].split(
         "\n  void enqueue_legacy()", 1
     )[0]
-    header = (ROOT / "src/dft/cuda_xc.hpp").read_text()
-    precision = (
-        "enum class CudaXcDensityPrecision"
-        + header.split("enum class CudaXcDensityPrecision", 1)[1].split("};", 1)[0]
-        + "};"
+    # This probe executes the host route. Keep the extracted host body tied to
+    # production while excluding the independent resident VV10 enqueue path.
+    body = (
+        "std::uint64_t next_generation) {\n"
+        + body[body.index("    const auto bytes = elements * sizeof(double);") :]
     )
     harness = r"""
 #include <algorithm>
@@ -32,26 +32,36 @@ def test_host_xc_staging_keeps_copy_sources_alive(tmp_path: Path) -> None:
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include "dft/semilocal_family.hpp"
+using vibeqc::dft::SemilocalFamily;
+using vibeqc::dft::semilocal_family_from_code;
+int selected_route = -1;
 namespace scf { struct ScfOptions {
  enum class XcExecutionSchedule { DeviceFused, HostUnfused };
  XcExecutionSchedule xc_execution_schedule=XcExecutionSchedule::HostUnfused;
 }; }
 struct CudaXcView { std::uint64_t generation; std::size_t n; unsigned spins;
  double* potential; double* totals; int* error; int stream; };
-DENSITY_PRECISION_DECL
-struct DeviceXC { void enqueue(double*,std::size_t,std::uint64_t,CudaXcDensityPrecision) {}
+struct DeviceXC { void enqueue(double*,std::size_t,std::uint64_t) {}
  CudaXcView view(std::uint64_t) { return {}; } };
 struct XcIntegral { std::vector<double> potential=std::vector<double>(4,3);
  double energy=2.5, electrons=2; };
 struct SpinXcIntegral { std::array<std::vector<double>,2> potential{
  std::vector<double>(4,3),std::vector<double>(4,4)};
  double energy=2.5; std::array<double,2> electrons{1,1}; };
-template<class... T> XcIntegral integrate_lda_xc_pw_rks(T&&...) { return {}; }
-template<class... T> XcIntegral integrate_pbe_rks_with_tail(T&&...) { return {}; }
-template<class... T> XcIntegral integrate_r2scan_rks(T&&...) { return {}; }
-template<class... T> SpinXcIntegral integrate_lda_xc_pw_uks(T&&...) { return {}; }
-template<class... T> SpinXcIntegral integrate_pbe_uks(T&&...) { return {}; }
-template<class... T> SpinXcIntegral integrate_r2scan_uks(T&&...) { return {}; }
+template<class... T> XcIntegral integrate_lda_xc_pw_rks(T&&...) { selected_route=0; return {}; }
+template<class... T> XcIntegral integrate_pbe_rks_with_tail(T&&...) { selected_route=1; return {}; }
+template<class... T> XcIntegral integrate_r2scan_rks(T&&...) { selected_route=2; return {}; }
+template<class... T> SpinXcIntegral integrate_lda_xc_pw_uks(T&&...) { selected_route=3; return {}; }
+template<class... T> SpinXcIntegral integrate_pbe_uks(T&&...) { selected_route=4; return {}; }
+template<class... T> SpinXcIntegral integrate_r2scan_uks(T&&...) { selected_route=5; return {}; }
+template<class... T> XcIntegral integrate_wb97mv_rks(T&&...) { selected_route=6; return {}; }
+template<class... T> SpinXcIntegral integrate_wb97mv_uks(T&&...) { selected_route=7; return {}; }
+namespace nlc {
+XcIntegral integrate_vv10_rks(int,int,std::vector<double>&,int&,std::size_t,
+                              std::vector<int>,int) { return {}; }
+template<class... T> SpinXcIntegral integrate_vv10_uks(T&&...) { return {}; }
+}
 constexpr int cudaMemcpyDeviceToHost=1,cudaMemcpyHostToDevice=2;
 struct Region { std::uintptr_t begin; std::size_t size; };
 std::vector<Region> owned;
@@ -71,8 +81,11 @@ void check(int status) { if(status) throw std::runtime_error("cuda error"); }
 struct Owner {
  scf::ScfOptions options;
  DeviceXC* xc=nullptr;
+ int* nonlocal_correlation=nullptr;
+ int nonlocal_domain=0;
  int basis=0,grid=0,stream=0;
- unsigned spins=1,functional=0;
+ unsigned spins=1;
+ SemilocalFamily functional=SemilocalFamily::Lda;
  std::size_t n=2,matrix=4,elements=4;
  struct { std::size_t tile_points=2; } xc_layout;
  struct { std::uint64_t xc_host_d2h_bytes=0,xc_host_h2d_bytes=0,
@@ -89,15 +102,20 @@ struct Owner {
  CudaXcView stage_xc(STAGE_BODY
 };
 int main() {
- for(unsigned spins:{1U,2U}) for(unsigned functional:{0U,1U,2U}) {
+ for(unsigned spins:{1U,2U}) for(unsigned functional:{0U,1U,2U,4U}) {
   auto owner=std::make_unique<Owner>();
-  owner->spins=spins; owner->elements=4*spins; owner->functional=functional;
+  owner->spins=spins; owner->elements=4*spins; owner->functional=semilocal_family_from_code(functional);
+  selected_route=-1;
   owned.clear(); queued.clear();
   owned.push_back({reinterpret_cast<std::uintptr_t>(owner.get()),sizeof(Owner)});
   owned.push_back({reinterpret_cast<std::uintptr_t>(owner->host_xc_potential.data()),
    owner->host_xc_potential.size()*sizeof(double)});
   try {
    const auto result=owner->stage_xc(7);
+   const auto expected_route=functional==4U ? 6+static_cast<int>(spins-1)
+                                             : static_cast<int>(functional+3*(spins-1));
+   if(selected_route!=expected_route)
+    throw std::runtime_error("wrong semilocal route");
    for(auto copy:queued) std::memcpy(copy.destination,copy.source,copy.bytes);
    if(result.generation!=7 || result.totals[0]!=2.5 || result.totals[1]!=1 ||
       result.totals[2]!=1 || *result.error!=0 || result.potential[0]!=3 ||
@@ -108,13 +126,20 @@ int main() {
  }
 }
 """
-    harness = harness.replace("STAGE_BODY", body).replace(
-        "DENSITY_PRECISION_DECL", precision
-    )
+    harness = harness.replace("STAGE_BODY", body)
     cpp, binary = tmp_path / "staging.cpp", tmp_path / "staging"
     cpp.write_text(harness)
     subprocess.run(
-        [compiler, "-std=c++20", "-O2", str(cpp), "-o", str(binary)],
+        [
+            compiler,
+            "-std=c++20",
+            "-O2",
+            "-I",
+            str(ROOT / "src"),
+            str(cpp),
+            "-o",
+            str(binary),
+        ],
         check=True,
         capture_output=True,
         text=True,

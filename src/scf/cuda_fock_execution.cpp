@@ -59,4 +59,29 @@ vibeqc_status enqueue_prepared_cuda_fock(const PreparedFockPlan& plan, const dou
                                                        beta_exchange, numerical_error, detail);
 }
 
+vibeqc_status enqueue_prepared_cuda_exchange_correction(
+    const PreparedFockPlan& plan, const ResolvedFockBuild& correction, const double* density,
+    const double* beta, std::size_t matrix_elements, double* alpha_exchange, double* beta_exchange,
+    int* numerical_error, std::string& detail) {
+  const auto binding = prepared_cuda_fock_binding(plan);
+  const auto& primary = plan.strategy();
+  const auto& spec = correction.spec;
+  if (!binding || correction.backend != FockBackend::Cuda || spec.derivative_order != 0 ||
+      spec.spin != primary.spec.spin || spec.coulomb.present || !spec.exchange.present ||
+      spec.exchange.approximation != FockApproximation::Exact ||
+      spec.exchange.op != FockOperator::LongRange || spec.exchange.omega <= 0.0 ||
+      correction.screening_tolerance != primary.screening_tolerance) {
+    detail = "CUDA range correction is incompatible with the prepared primary Fock owner";
+    return VIBEQC_STATUS_NOT_IMPLEMENTED;
+  }
+
+  auto* source = plan.cuda_direct_source();
+  if (!source) {
+    detail = "prepared CUDA Fock source became unavailable";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  return enqueue_cuda_direct_jk_device(source, spec, density, beta, matrix_elements, nullptr,
+                                       alpha_exchange, beta_exchange, numerical_error, detail);
+}
+
 }  // namespace vibeqc::scf
