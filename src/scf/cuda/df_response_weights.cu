@@ -626,20 +626,27 @@ static cudaError_t contract_occupied_response(
     inverse_kernel<<<blocks(aa), threads, 0, stream>>>(a, metric.inverse_square_root, inverse);
   auto error = cudaMemsetAsync(bar_inverse, 0, aa * sizeof(double), stream);
   if (error != cudaSuccess) return error;
-  if (fitted_occupied) {
+  if (fitted_occupied || buffers.read_occupied_panels) {
+    // All raw/temporary matrices borrow the exchange interval before it is
+    // used by the small metric transform. S[aux,occ,occ] lives in the disjoint
+    // staging interval; subsequent spin factors cannot overwrite earlier ones.
     std::size_t largest_rank = 0;
     for (std::size_t t = 0; t < terms.size(); ++t)
       if (terms[t].exchange_coefficient != 0)
         largest_rank = std::max(largest_rank, buffers.occupied_factors[t].rank);
     const auto projection_tile = generated::df_occupied_projection_tile(
-        n, largest_rank, a, buffers.exchange_capacity(), tile, false);
+        n, largest_rank, a, buffers.exchange_capacity(), tile, !fitted_occupied);
     if (!projection_tile) return cudaErrorMemoryAllocation;
     auto* panels = buffers.exchange_response;
     auto* panel_temporary = panels + projection_tile * matrix;
+    auto* source_staging = panel_temporary + projection_tile * n * largest_rank;
     for (std::size_t begin = 0; begin < a; begin += projection_tile) {
       const auto count = std::min(projection_tile, a - begin);
-      cuda_df::launch_unpack_df_values(stream, n, a, 0, n, begin, count, true,
-                                       fitted_occupied->data, panels);
+      if (fitted_occupied)
+        cuda_df::launch_unpack_df_values(stream, n, a, 0, n, begin, count, true,
+                                         fitted_occupied->data, panels);
+      else
+        (*buffers.read_occupied_panels)(begin, count, panels, source_staging);
       error = cudaGetLastError();
       if (error != cudaSuccess) return error;
       checked(generated::df_rhf_charge_contract(
@@ -658,13 +665,23 @@ static cudaError_t contract_occupied_response(
         runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
         runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2 * count);
       }
-      runtime::cuda_trace::trace_counter("response_retained_fitted_projection_panels", 1);
-      runtime::cuda_trace::trace_counter("response_retained_fitted_projection_columns", count);
-      runtime::cuda_trace::trace_counter("response_retained_fitted_charge_blas_calls", 1);
+      runtime::cuda_trace::trace_counter(
+          fitted_occupied ? "response_retained_fitted_projection_panels"
+                          : "response_batched_raw_projection_panels", 1);
+      runtime::cuda_trace::trace_counter(
+          fitted_occupied ? "response_retained_fitted_projection_columns"
+                          : "response_batched_raw_projection_columns", count);
+      runtime::cuda_trace::trace_counter(
+          fitted_occupied ? "response_retained_fitted_charge_blas_calls"
+                          : "response_batched_raw_charge_blas_calls", 1);
     }
-    runtime::cuda_trace::trace_counter("response_retained_fitted_projection_passes", 1);
-    runtime::cuda_trace::trace_counter("response_retained_fitted_occupied_bytes",
-                                       fitted_occupied->pair_count * a * sizeof(double));
+    if (fitted_occupied) {
+      runtime::cuda_trace::trace_counter("response_retained_fitted_projection_passes", 1);
+      runtime::cuda_trace::trace_counter("response_retained_fitted_occupied_bytes",
+                                         fitted_occupied->pair_count * a * sizeof(double));
+    } else {
+      runtime::cuda_trace::trace_counter("response_streamed_occupied_raw_passes", 1);
+    }
   } else if (read_values) {
     // Source-driven projection: each raw AO slice feeds every charge and spin
     // before eviction. Keep C^T A_Q C, not A itself, across the auxiliary axis.

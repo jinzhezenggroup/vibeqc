@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <span>
 #include <string>
 #include <vector>
@@ -132,6 +133,10 @@ struct CudaDfResponseBuffers {
   // space before the second metric-root action. This is NOT a raw-A lease.
   // The synchronous bridge validates this view and keeps it alive to drain.
   const CudaDfWhitenedTensorView* fitted_occupied_source{};
+  // Explicit source-batching experiment. The callback writes auxiliary-major
+  // panels and may use the caller's disjoint pair-major staging interval.
+  // It enqueues on the owner's stream; the synchronous bridge owns its lifetime.
+  const std::function<void(std::size_t, std::size_t, double*, double*)>* read_occupied_panels{};
   std::size_t staging_capacity() const noexcept {
     return staging_elements ? staging_elements : elements_per_buffer;
   }
