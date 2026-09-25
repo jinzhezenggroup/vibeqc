@@ -1,6 +1,6 @@
 {
   "path": "src/cc/lambda_response_cuda.cu",
-  "reason": "Native bounded RCCSD Lambda CUDA action ownership and transfer control; replay, Lambda RHS, and transpose-response equations are emitted from the shared generated TensorIR.",
+  "reason": "Native bounded RCCSD Lambda and post-Lambda Hamiltonian/Fock/orbital CUDA response ownership and transfer control; scientific response equations are emitted from the shared generated TensorIR.",
   "regions": [],
   "role": "runtime",
   "subsystem": "runtime"
