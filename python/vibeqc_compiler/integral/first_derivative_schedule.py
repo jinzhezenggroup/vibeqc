@@ -10,11 +10,15 @@ from functools import lru_cache
 from itertools import permutations, product
 
 from .eri_weights import eri_weight_orbit
-from .first_derivative_native import emit_first_derivative_cpu
+from .first_derivative_native import (
+    emit_first_derivative_cpu,
+    emit_first_derivative_cuda,
+)
 
 AXES = tuple(permutations(range(3)))
 ERI_CENTERS = eri_weight_orbit((0, 1, 2, 3))
 REQUESTS_PER_UNIT = 8
+CUDA_REQUESTS_PER_UNIT = 16
 MAX_UNIT_BYTES = 4 << 20
 MAX_PROGRAM_BYTES = 64 << 20
 DerivativeRequest = tuple[str, tuple[str, ...]]
@@ -108,6 +112,27 @@ def derivative_sources(
         total += size
         if size > MAX_UNIT_BYTES or total > MAX_PROGRAM_BYTES:
             raise ValueError("first derivative generated source budget exceeded")
+        units.append((selected, source))
+    return tuple(units)
+
+
+@lru_cache(maxsize=4)
+def derivative_cuda_sources(
+    domain: tuple[str, ...],
+) -> tuple[tuple[tuple[DerivativeRequest, ...], str], ...]:
+    """Bound the s/p/d CUDA derivative inventory across relocatable objects."""
+
+    requests = derivative_requests(domain)
+    units, total = [], 0
+    for unit, begin in enumerate(range(0, len(requests), CUDA_REQUESTS_PER_UNIT)):
+        selected = requests[begin : begin + CUDA_REQUESTS_PER_UNIT]
+        source = emit_first_derivative_cuda(
+            selected, symbol=f"first_derivative_shard_{unit}"
+        )
+        size = len(source.encode("utf-8"))
+        total += size
+        if size > MAX_UNIT_BYTES or total > MAX_PROGRAM_BYTES:
+            raise ValueError("first derivative generated CUDA source budget exceeded")
         units.append((selected, source))
     return tuple(units)
 

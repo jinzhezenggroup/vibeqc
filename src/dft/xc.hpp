@@ -39,6 +39,22 @@ struct XcIntegral {
   XcDensityDiagnostic density_diagnostic;
 };
 
+/** Bounded prepared CPU AO-grid values for repeated fixed-geometry RKS builds.
+ * Layout matches AoBasis::evaluate over the complete grid: jet-major, then
+ * point, then AO. Scientific grid/basis identity remains owned by the caller. */
+struct RksAoCache {
+  unsigned order{};
+  std::size_t points{};
+  std::size_t nao{};
+  std::vector<double> jets;
+
+  [[nodiscard]] std::size_t numeric_capacity_bytes() const noexcept;
+};
+
+[[nodiscard]] std::size_t rks_ao_cache_bytes(const AoBasis& basis, const MolecularGrid& grid,
+                                             unsigned order);
+RksAoCache prepare_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid, unsigned order);
+
 struct SpinXcIntegral {
   double energy{};
   std::array<double, 2> electrons{};
@@ -82,6 +98,12 @@ XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const Molecu
                                               std::size_t tile_points, XcDensitySource source,
                                               double exchange_scale, double correlation_scale);
 
+/** Same PBE integration using an immutable prepared order-1 AO grid. */
+XcIntegral integrate_pbe_rks_with_tail_scaled_cached(
+    const AoBasis& basis, const MolecularGrid& grid, const std::vector<double>& density,
+    std::size_t tile_points, XcDensitySource source, double exchange_scale,
+    double correlation_scale, const RksAoCache& cache);
+
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density,
@@ -118,6 +140,35 @@ struct SemilocalPointValue {
   /** Coefficient of grad(phi_mu).grad(phi_nu), i.e. vtau/2 when tau is active. */
   double kinetic[2]{};
 };
+
+using SemilocalPointEvaluator = SemilocalPointValue (*)(const double rho[2],
+                                                        const double (&gradient)[2][3],
+                                                        const double tau[2]);
+
+/** One already-compiled semilocal point program. The identifier is diagnostic
+ * only; expression_identity binds the generated mathematics. ingredient_mask
+ * follows the native rho/sigma/tau feature bits (1, 7, or 15). This descriptor
+ * is executable plumbing and does not grant production capability by itself. */
+struct SemilocalPointProgram {
+  const char* identifier{};
+  const char* expression_identity{};
+  unsigned ingredient_mask{};
+  unsigned domain_version{};
+  SemilocalPointEvaluator evaluate{};
+};
+
+void validate_semilocal_point_program(const SemilocalPointProgram& program);
+
+XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
+                                   const std::vector<double>& density,
+                                   const SemilocalPointProgram& program,
+                                   std::size_t tile_points = 256, XcDensitySource source = {});
+SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,
+                                       const std::vector<double>& alpha_density,
+                                       const std::vector<double>& beta_density,
+                                       const SemilocalPointProgram& program,
+                                       std::size_t tile_points = 256);
+
 using GgaPointValue = SemilocalPointValue;
 using B3GgaPointValue = SemilocalPointValue;
 using B3lypPointValue = SemilocalPointValue;

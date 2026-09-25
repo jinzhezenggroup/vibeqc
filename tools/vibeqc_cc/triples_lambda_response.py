@@ -298,6 +298,7 @@ class BoundCCSDTResponse:
     corrected: CorrectedLambdaResult
     vir_chunk_size: int | None
     triples_response: typing.Any
+    parameter_executor: typing.Any
     corrected_lambda_identity: str
     response_identity: str
 
@@ -309,6 +310,7 @@ class BoundCCSDTResponse:
         *,
         vir_chunk_size: int | None = None,
         triples_response: typing.Any = None,
+        parameter_executor: typing.Any = None,
     ) -> None:
         if (
             not isinstance(bound, BoundCCSDLambda)
@@ -320,8 +322,17 @@ class BoundCCSDTResponse:
                 "and corrected Lambda result"
             )
         object.__setattr__(self, "bound", bound)
-        object.__setattr__(self, "baseline", BoundCCSDResponse(bound, baseline))
+        object.__setattr__(
+            self,
+            "baseline",
+            BoundCCSDResponse(
+                bound,
+                baseline,
+                tensor_executor=parameter_executor,
+            ),
+        )
         object.__setattr__(self, "triples_response", triples_response)
+        object.__setattr__(self, "parameter_executor", parameter_executor)
         if (
             corrected.reference_identity != bound.reference_identity
             or corrected.cc_state_identity != bound.cc_state_identity
@@ -431,11 +442,20 @@ class BoundCCSDTResponse:
         values = []
         for programs in (self.bound.programs, self.bound.independent):
             reverse = build_parameter_vjp(programs.primal, parameter)
-            outputs = self.bound._tensor_execute(
-                reverse.program,
-                {**self.bound.feeds, **extra},
+            outputs = (
+                self.bound._tensor_execute(
+                    reverse.program,
+                    {**self.bound.feeds, **extra},
+                )
+                if self.parameter_executor is None
+                else self.parameter_executor.execute(
+                    reverse.program,
+                    {**self.bound.feeds, **extra},
+                )
             )
-            values.append(np.asarray(outputs[f"bar_{parameter}"]))
+            # Executors may reuse output storage on their next call. Retain
+            # each graph's evidence before the independent replay overwrites it.
+            values.append(np.asarray(outputs[f"bar_{parameter}"]).copy())
         if not np.allclose(values[0], values[1], atol=1e-12, rtol=1e-10):
             raise ImplicitSolveError(
                 "independent corrected-Lambda parameter-weight check failed"
@@ -490,6 +510,11 @@ class BoundCCSDTResponse:
                     self.bound.tensor_backend
                     if self.triples_response is None
                     else self.triples_response.provenance["backend"]
+                ),
+                "parameter_response_backend": (
+                    self.bound.tensor_backend
+                    if self.parameter_executor is None
+                    else self.parameter_executor.backend
                 ),
                 "decomposition": "CCSD baseline + direct (T) + delta-Lambda * dR_CCSD/dq",
                 "orbital_response": "excluded",

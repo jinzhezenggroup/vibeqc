@@ -284,9 +284,13 @@ class StagePlan:
             raise TypeError("HF StagePlan requires a resolved RHF/UHF model")
         _identity(self.provider_identity, "stage provider identity", digest=True)
         hashes = tuple(tuple(pair) for pair in self.provider_hashes)
+        if not hashes or any(len(pair) != 2 for pair in hashes):
+            raise ValueError("stage provider hashes require named hash pairs")
         for name, value in hashes:
             _identity(name, "provider hash name")
             _identity(value, "provider hash", digest=True)
+        if len({name for name, _ in hashes}) != len(hashes):
+            raise ValueError("duplicate stage provider hash names")
         object.__setattr__(self, "provider_hashes", tuple(sorted(hashes)))
         if not isinstance(self.arithmetic, ArithmeticPolicy) or not isinstance(
             self.convergence, HFConvergence

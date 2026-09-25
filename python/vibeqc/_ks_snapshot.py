@@ -15,6 +15,7 @@ from types import MappingProxyType
 import numpy as np
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.xc.spec import FunctionalSpec
 
 from . import _native
 from .batch import PreparedBatch
@@ -184,7 +185,9 @@ class NativeKsSnapshot:
         handle = ct.c_void_p()
         try:
             _native.check(
-                lib, create(batch._batch, index, ct.byref(handle), metadata, 16)
+                lib,
+                create(batch._batch, index, ct.byref(handle), metadata, 16),
+                context=batch._context,
             )
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
@@ -212,6 +215,7 @@ class NativeKsSnapshot:
                     values.ctypes.data_as(ct.POINTER(ct.c_double)),
                     values.size,
                 ),
+                context=batch._context,
             )
             self.values = immutable(values)
         except Exception:
@@ -543,6 +547,8 @@ class NativeKsSnapshot:
             density_generation=density_generation,
             fock_generation=density_generation,
             orbital_generation=orbital_generation,
+            spin=self.method_ir.spin,
+            ingredients=spec.ingredients,
         )
         self._identity, self._arrays, self._residual = (
             identity,
@@ -568,11 +574,13 @@ class NativeKsSnapshot:
     ) -> typing.Any:
         """Return SCF-domain point energy and Cartesian first derivatives."""
         self.check_current()
-        expected = native_xc_functional_code(self._batch._calculator._method_name)
-        if functional != expected:
-            raise ValueError("XC point family disagrees with native composition")
+        if not isinstance(functional, FunctionalSpec):
+            raise TypeError("XC point evaluation requires a typed functional")
+        if functional.identity != self.functional.identity:
+            raise ValueError("XC point functional disagrees with native composition")
+        code = native_xc_functional_code(self._batch._calculator._method_name)
         values = _scf_xc_points(
-            self._library, functional, rho, gradient, tau, scales=self.coefficients[:2]
+            self._library, code, rho, gradient, tau, scales=self.coefficients[:2]
         )
         self.check_current()
         return values

@@ -12,7 +12,9 @@ public production-size, CUDA, DF, ECP, DFT or matrix-free molecular HVP endpoint
 from __future__ import annotations
 
 import shutil
+import typing
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
@@ -34,6 +36,7 @@ from vibeqc_compiler.integral.second_order_layout import (
     second_coordinate_tiles,
 )
 from vibeqc_compiler.integral.shell_spec import cartesian_components
+from vibeqc_compiler.integral.weight_pullback import normalized_radial_primitives
 
 from tools.vibeqc_response.backends import NativeJKBackend
 from tools.vibeqc_response.operators import RHFResponseOperator
@@ -47,8 +50,10 @@ __all__ = [
     "analytic_hessian",
     "build_reference",
     "cphf_relaxation",
+    "generated_weighted_second_integral_hvp",
     "nuclear_closed_form",
     "nuclear_hvp",
+    "nuclear_hvp_from_source",
     "provider_components",
     "provider_hvp_components",
 ]
@@ -466,6 +471,68 @@ def _provider_data(
     }
 
 
+def _provider_data_from_source(
+    source: typing.Any,
+    cache: typing.Any,
+    *,
+    backend: str = "cpu",
+    compiler: object = None,
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+) -> dict[str, object]:
+    """Bind the #178 second-integral provider to a live Cartesian AO source.
+
+    This method-neutral adapter intentionally carries geometry/integral topology
+    only. Stationary method weights are supplied by the caller, so an RKS
+    consumer never fabricates an RHF reference merely to reach generated second
+    derivatives.
+    """
+    check = getattr(source, "_check_open", None)
+    if not callable(check):
+        raise TypeError("weighted second derivatives require a native AO source")
+    check()
+    if (
+        source.representation != "cartesian"
+        or source.auxiliary_shells
+        or not 1 <= source.nbf <= 12
+        or not 1 <= len(source.atoms) <= 4
+    ):
+        raise ValueError(
+            "weighted second derivatives require direct Cartesian all-electron "
+            "sources bounded to 12 AOs and four atoms"
+        )
+    if any(shell.angular_momentum > 3 for shell in source.shells):
+        raise ValueError("second-derivative providers support s/p/d/f shells")
+    adapter, provider_device, resource_budget = _checked_second_hvp_options(
+        backend, compiler, device_id, budget_bytes
+    )
+    geometry = SimpleNamespace(
+        nat=len(source.atoms),
+        offsets=np.cumsum((0, *source.shell_sizes)),
+        Z=np.asarray([atom.atomic_number for atom in source.atoms], dtype=np.float64),
+        coords=np.asarray([atom.position for atom in source.atoms], dtype=np.float64),
+    )
+    primitives = tuple(
+        normalized_radial_primitives(
+            shell.angular_momentum,
+            tuple((p.exponent, p.coefficient) for p in shell.primitives),
+        )
+        for shell in source.shells
+    )
+    return {
+        "state": geometry,
+        "shells": source.shells,
+        "primitives": primitives,
+        "adapter": adapter,
+        "cache": Path(cache) / f"second-cache-{backend}",
+        "backend": backend,
+        "device_id": provider_device,
+        "budget_bytes": budget_bytes,
+        "resource_budget": resource_budget,
+        "second_executions": [],
+    }
+
+
 def _second_provider_diagnostics(data: dict[str, object]) -> dict[str, object]:
     """Summarize the generated #178 provider without claiming hidden residency."""
     executions = data["second_executions"]
@@ -590,51 +657,52 @@ def _run_one_electron(
     return total
 
 
-def _run_eri(
-    data: dict[str, object], density: np.ndarray, *, direction: np.ndarray | None = None
+def _run_eri_weighted(
+    data: dict[str, object],
+    shell_weights: typing.Callable[[tuple[int, int, int, int]], typing.Any],
+    *,
+    direction: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Provider output for four-center ERIs as Hessian or HVP."""
+    """Provider output for four-center ERIs with caller-owned shell weights."""
     state = data["state"]
     nat = state.nat
     adapter, cache = data["adapter"], data["cache"]
     shells = data["shells"]
     nbas = len(shells)
-    loc = state.offsets
     output = "weighted_hvp" if direction is not None else "weighted_hessian"
     total = np.zeros((nat, 3) if direction is not None else (nat, nat, 3, 3))
     for a in range(nbas):
         for b in range(nbas):
-            for c in range(nbas):
+            for cc in range(nbas):
                 for d in range(nbas):
                     la = shells[a].angular_momentum
                     lb = shells[b].angular_momentum
-                    lc = shells[c].angular_momentum
+                    lc = shells[cc].angular_momentum
                     ld = shells[d].angular_momentum
                     na = len(cartesian_components(la))
                     nb = len(cartesian_components(lb))
                     nc = len(cartesian_components(lc))
                     nd = len(cartesian_components(ld))
-                    sa, sb, sc, sd = (slice(loc[i], loc[i + 1]) for i in (a, b, c, d))
-                    w4 = 0.5 * np.einsum(
-                        "uv,wx->uvwx", density[sa, sb], density[sc, sd]
-                    )
-                    w4 -= 0.25 * np.einsum(
-                        "uw,vx->uvwx", density[sa, sc], density[sb, sd]
-                    )
-                    prims = tuple(data["primitives"][i] for i in (a, b, c, d))
-                    ca, cb, cc, cd = (shells[x].atom_index for x in (a, b, c, d))
+                    w4 = np.asarray(shell_weights((a, b, cc, d)), dtype=np.float64)
+                    if w4.shape != (na, nb, nc, nd) or not np.isfinite(w4).all():
+                        raise ValueError(
+                            "four-center shell weights must be finite with the "
+                            "ordered Cartesian shell shape"
+                        )
+                    prims = tuple(data["primitives"][i] for i in (a, b, cc, d))
+                    ca, cb, c_atom, cd = (shells[x].atom_index for x in (a, b, cc, d))
                     centers = np.array(
                         [
                             state.coords[ca],
                             state.coords[cb],
-                            state.coords[cc],
+                            state.coords[c_atom],
                             state.coords[cd],
                         ]
                     )
                     ir_extra = {
                         "angular": (la, lb, lc, ld),
                         "output": output,
-                        "_center_atoms": (ca, cb, cc, cd),
+                        "_center_atoms": (ca, cb, c_atom, cd),
                     }
                     key = ("eri", la, lb, lc, ld)
                     total += _run_kernel_summed(
@@ -651,6 +719,82 @@ def _run_eri(
                         direction=direction,
                     )
     return total
+
+
+def _run_eri(
+    data: dict[str, object], density: np.ndarray, *, direction: np.ndarray | None = None
+) -> np.ndarray:
+    """Provider output for RHF four-center ERIs as Hessian or HVP."""
+    state = data["state"]
+    loc = state.offsets
+
+    def shell_weights(slots: tuple[int, int, int, int]) -> np.ndarray:
+        sa, sb, sc, sd = (slice(loc[i], loc[i + 1]) for i in slots)
+        w4 = 0.5 * np.einsum("uv,wx->uvwx", density[sa, sb], density[sc, sd])
+        w4 -= 0.25 * np.einsum("uw,vx->uvwx", density[sa, sc], density[sb, sd])
+        return w4
+
+    return _run_eri_weighted(data, shell_weights, direction=direction)
+
+
+def generated_weighted_second_integral_hvp(
+    source: typing.Any,
+    source_name: str,
+    direction: typing.Any,
+    *,
+    pair_weights: typing.Any = None,
+    eri_shell_weights: typing.Any = None,
+    cache: typing.Any = ".artifacts",
+    backend: str = "cpu",
+    compiler: object = None,
+    device_id: int = 0,
+    budget_bytes: int = 64 << 20,
+) -> tuple[np.ndarray, dict[str, object]]:
+    """Execute one plan-owned fixed-weight second-integral HVP source.
+
+    The caller supplies already-generated stationary energy weights. Pair sources
+    use an AO matrix; the Coulomb source supplies one ordered shell-quartet block
+    at a time so no molecular AO-rank-four cotangent is materialized.
+    """
+    if source_name not in ("one_electron", "coulomb", "overlap_pulay"):
+        raise ValueError("unknown stationary second-integral source")
+    data = _provider_data_from_source(
+        source,
+        cache,
+        backend=backend,
+        compiler=compiler,
+        device_id=device_id,
+        budget_bytes=budget_bytes,
+    )
+    vector = checked_direction(direction, data["state"].nat)
+    nbf = source.nbf
+    if source_name == "coulomb":
+        if pair_weights is not None or not callable(eri_shell_weights):
+            raise ValueError("coulomb second HVP requires shell-local ERI weights")
+        value = _run_eri_weighted(data, eri_shell_weights, direction=vector)
+    else:
+        if eri_shell_weights is not None:
+            raise ValueError("pair second HVP cannot consume ERI shell weights")
+        weights = np.asarray(pair_weights)
+        if (
+            weights.shape != (nbf, nbf)
+            or weights.dtype.kind not in "iuf"
+            or not np.isfinite(weights).all()
+        ):
+            raise ValueError("pair second HVP requires a finite real AO matrix")
+        weights = np.asarray(weights, dtype=np.float64)
+        if source_name == "one_electron":
+            value = _run_one_electron(
+                data, "kinetic", weights, direction=vector
+            ) + _run_one_electron(data, "nuclear_attraction", weights, direction=vector)
+        else:
+            value = _run_one_electron(data, "overlap", weights, direction=vector)
+    diagnostic = _second_provider_diagnostics(data)
+    diagnostic.update(
+        source=source_name,
+        full_ao_rank_four_weights=False,
+    )
+    return value, diagnostic
 
 
 def provider_components(s: NativeRHFState) -> dict[str, np.ndarray]:
@@ -772,21 +916,40 @@ def nuclear_closed_form(s: NativeRHFState) -> np.ndarray:
     return H
 
 
-def nuclear_hvp(s: NativeRHFState, direction: np.ndarray) -> np.ndarray:
-    """Apply the exact nucleus-nucleus Hessian to one Cartesian direction."""
-    _validate_analytic_domain(s)
-    vector = checked_direction(direction, s.nat)
-    out = np.zeros((s.nat, 3))
-    for a in range(s.nat):
-        for b in range(a + 1, s.nat):
-            r = s.coords[a] - s.coords[b]
+def nuclear_hvp_from_source(source: typing.Any, direction: np.ndarray) -> np.ndarray:
+    """Apply the exact all-electron nucleus-nucleus Hessian from a live source."""
+    check = getattr(source, "_check_open", None)
+    if not callable(check):
+        raise TypeError("nuclear HVP requires a native AO source")
+    check()
+    nat = len(source.atoms)
+    vector = checked_direction(direction, nat)
+    coords = np.asarray([atom.position for atom in source.atoms], dtype=np.float64)
+    charges = np.asarray(
+        [atom.atomic_number for atom in source.atoms], dtype=np.float64
+    )
+    out = np.zeros((nat, 3))
+    for a in range(nat):
+        for b in range(a + 1, nat):
+            r = coords[a] - coords[b]
             d = np.linalg.norm(r)
             unit = r / d
-            block = s.Z[a] * s.Z[b] / d**3 * (3.0 * np.outer(unit, unit) - np.eye(3))
+            block = (
+                charges[a]
+                * charges[b]
+                / d**3
+                * (3.0 * np.outer(unit, unit) - np.eye(3))
+            )
             contribution = block @ (vector[a] - vector[b])
             out[a] += contribution
             out[b] -= contribution
     return out
+
+
+def nuclear_hvp(s: NativeRHFState, direction: np.ndarray) -> np.ndarray:
+    """Apply the exact nucleus-nucleus Hessian to one Cartesian direction."""
+    _validate_analytic_domain(s)
+    return nuclear_hvp_from_source(s.source, direction)
 
 
 # ---------------------------------------------------------------------------

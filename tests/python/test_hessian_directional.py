@@ -54,6 +54,36 @@ def test_directional_sources_match_independent_native_integral_derivatives(
     )
 
 
+def test_semilocal_rks_integral_direction_reuses_generated_closed_shell_sources(
+    case: typing.Any,
+) -> None:
+    """RKS frozen integrals are hcore + J, never the RHF exchange model."""
+    _, state, direction, rhf = case
+    frozen, overlap = (
+        first_order.generated_directional_semilocal_rks_integral_first_order(
+            state.source, state.P0, direction, cache=state.cache
+        )
+    )
+    integrals = state.source.integral_derivatives()
+    eri1 = np.einsum("a,apqrs->pqrs", direction.ravel(), integrals["eri"])
+    h1 = np.einsum("a,apq->pq", direction.ravel(), integrals["hcore"])
+    coulomb = np.einsum("pqrs,rs->pq", eri1, state.P0)
+    exchange = np.einsum("prqs,rs->pq", eri1, state.P0)
+    np.testing.assert_allclose(frozen, h1 + coulomb, atol=2e-10, rtol=2e-10)
+    np.testing.assert_allclose(
+        overlap,
+        np.einsum("a,apq->pq", direction.ravel(), integrals["overlap"]),
+        atol=2e-11,
+        rtol=2e-11,
+    )
+    np.testing.assert_allclose(
+        frozen - rhf.frozen_fock_derivative,
+        0.5 * exchange,
+        atol=2e-10,
+        rtol=2e-10,
+    )
+
+
 def test_does_not_materialize_all_coordinate_inputs_or_rerun_scf(
     case: typing.Any, monkeypatch: typing.Any
 ) -> None:

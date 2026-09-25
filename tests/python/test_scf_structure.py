@@ -43,18 +43,20 @@ def test_component_trace_cannot_depend_on_scf_provider(
     assert "forbidden cuda_component_trace dependency" in report["errors"][0]
 
 
-@pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
+@pytest.mark.parametrize(
+    "include", ['"scf/fleet.hpp"', '"../fleet.hpp"', "<scf/fleet.hpp>"]
+)
 @pytest.mark.parametrize("owner", ["reference", "solver", "gradient"])
 def test_method_dependency_cannot_hide_behind_include_spelling(
     tmp_path: typing.Any, include: typing.Any, owner: typing.Any
 ) -> None:
     source = tmp_path / "src/scf"
     (source / owner).mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / owner / "implementation.cpp").write_text(f"#include {include}\n")
     report = audit_scf_structure(tmp_path)
     assert len(report["errors"]) == 1
-    assert f"forbidden {owner} dependency on scf/rhf.hpp" in report["errors"][0]
+    assert f"forbidden {owner} dependency on scf/fleet.hpp" in report["errors"][0]
 
 
 def test_gradient_assembly_cannot_depend_on_solver_state(
@@ -90,10 +92,10 @@ def test_documented_forbidden_example_is_not_an_include(
 ) -> None:
     source = tmp_path / "src/scf"
     (source / "reference").mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / "reference/linalg.cpp").write_text(
-        '/* Forbidden example:\n#include "scf/rhf.hpp"\n*/\n'
-        '// #include "scf/rhf.hpp"\n#include <vector>\n'
+        '/* Forbidden example:\n#include "scf/fleet.hpp"\n*/\n'
+        '// #include "scf/fleet.hpp"\n#include <vector>\n'
     )
     assert not audit_scf_structure(tmp_path)["errors"]
 
@@ -112,17 +114,19 @@ def test_documented_forbidden_example_is_not_an_include(
         ("rhf_graph.cpp", "cuda_hf_graph"),
     ],
 )
-@pytest.mark.parametrize("include", ['"scf/rhf.hpp"', '"../rhf.hpp"', "<scf/rhf.hpp>"])
+@pytest.mark.parametrize(
+    "include", ['"scf/fleet.hpp"', '"../fleet.hpp"', "<scf/fleet.hpp>"]
+)
 def test_cuda_runtime_cannot_depend_on_method_driver(
     tmp_path: typing.Any, name: typing.Any, owner: typing.Any, include: typing.Any
 ) -> None:
     source = tmp_path / "src/scf"
     (source / "cuda").mkdir(parents=True)
-    (source / "rhf.hpp").write_text("// Method-owned state\n")
+    (source / "fleet.hpp").write_text("// Method-owned state\n")
     (source / "cuda" / name).write_text(f"#include {include}\n")
     errors = audit_scf_structure(tmp_path)["errors"]
     assert len(errors) == 1
-    assert f"forbidden {owner} dependency on scf/rhf.hpp" in errors[0]
+    assert f"forbidden {owner} dependency on scf/fleet.hpp" in errors[0]
 
 
 def test_eigensolver_cannot_acquire_direct_queue_policy(
@@ -184,7 +188,7 @@ def test_direct_queue_owners_cannot_acquire_plan_or_integral_state(
 )
 @pytest.mark.parametrize(
     "dependency",
-    ["direct_jk_kernels.cu", "one_electron_native_force.cuh", "resources.hpp"],
+    ["direct_jk_kernels.cu", "one_electron_native_contraction.cuh", "resources.hpp"],
 )
 def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
     tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
@@ -222,7 +226,7 @@ def test_provider_kernel_interfaces_cannot_acquire_plan_state(
         "scalar_math.cuh",
         "hermite_recurrence.cuh",
         "one_electron_reference.cu",
-        "one_electron_native_force.cuh",
+        "one_electron_native_contraction.cuh",
         "nuclear_kernels.cu",
         "direct_pair_cache.cu",
     ],
@@ -247,9 +251,11 @@ def test_shared_numerics_cannot_import_operator_contractions(
     """Adding a consumer must not make the shared recurrence depend on it."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
-    (source / "one_electron_native_force.cuh").write_text("// Force contraction\n")
+    (source / "one_electron_native_contraction.cuh").write_text(
+        "// Force contraction\n"
+    )
     (source / "coulomb_auxiliary.cuh").write_text(
-        '#include "one_electron_native_force.cuh"\n'
+        '#include "one_electron_native_contraction.cuh"\n'
     )
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 

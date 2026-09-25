@@ -15,12 +15,14 @@ from vibeqc._dft_gradient import StationaryKsState
 @pytest.mark.parametrize("method", ["lda-rks", "pbe-rks", "lda-uks", "pbe-uks"])
 @pytest.mark.parametrize("serialized", [False, True])
 @pytest.mark.parametrize(
-    "representation,d_shell",
+    "representation,d_shell,f_shell",
     [
-        ("cartesian", False),
-        ("spherical", False),
-        ("cartesian", True),
-        ("spherical", True),
+        ("cartesian", False, False),
+        ("spherical", False, False),
+        ("cartesian", True, False),
+        ("spherical", True, False),
+        ("cartesian", False, True),
+        ("spherical", False, True),
     ],
 )
 def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
@@ -30,8 +32,11 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     serialized: typing.Any,
     representation: typing.Any,
     d_shell: typing.Any,
+    f_shell: typing.Any,
 ) -> None:
-    atoms, record, _ = fixture(representation=representation, d_shell=d_shell)
+    atoms, record, _ = fixture(
+        representation=representation, d_shell=d_shell, f_shell=f_shell
+    )
     basis = record
     if serialized:
         path = tmp_path / "ecp-basis.json"
@@ -41,10 +46,10 @@ def test_cuda_ecp_public_force_capability_has_an_explicit_basis_domain(
     library = _native.load_library(device="cpu")
     monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
     calculator = Calculator(basis=basis, method=method, device="cuda")
-    admitted = not d_shell
+    admitted = not f_shell
     assert ("forces" in calculator._capabilities.supported_properties) == admitted
     cpu = Calculator(basis=basis, method=method, device="cpu")
-    assert "forces" in cpu._capabilities.supported_properties
+    assert ("forces" in cpu._capabilities.supported_properties) == admitted
 
     def forbidden(*args: typing.Any, **kwargs: typing.Any) -> None:
         pytest.fail("unqualified public ECP forces reached native preparation")
