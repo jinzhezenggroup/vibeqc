@@ -120,7 +120,7 @@ def _read(entry: dict) -> bytes:
         raise ValueError("historical evidence checksum/size mismatch")
     if "git_blob_sha1" in entry:
         header = f"blob {len(data)}\0".encode()
-        actual = hashlib.sha1(header + data).hexdigest()
+        actual = hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
         if actual != entry["git_blob_sha1"]:
             raise ValueError("historical evidence checksum/size mismatch")
     elif hashlib.sha256(data).hexdigest() != entry["sha256"]:
