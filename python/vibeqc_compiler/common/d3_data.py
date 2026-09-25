@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import struct
+import typing
 from dataclasses import dataclass
-from pathlib import Path
+
+if typing.TYPE_CHECKING:
+    from pathlib import Path
 
 MAGIC = b"VQD3BIN1"
 _HEADER = struct.Struct("<8s40s32s32s7I")

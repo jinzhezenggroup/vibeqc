@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Regenerate compact D3 production data from pinned remote source-registry inputs."""
 
 from __future__ import annotations

@@ -213,7 +213,7 @@
         "manifests/xtbloom-d3.json": "8a34095d48b8c539acde7f848a1f737df127fbe1edc600b37d8c00956b65a44c"
       },
       "generator": "tools/vibeqc_d3/generate_compact_data.py",
-      "generator_sha256": "c2e6f690a14ef44155d45b6e4ca1976ae89882982d53872376755db63e528dd8",
+      "generator_sha256": "f36d4e6faba4ffb67af1b069c702b763ef4be9bdbdae76a11704f1c2dec894aa",
       "input_identity_sha256": "4c3fda2836fc9c81ecede2ed9c073b18799c329d1231ecb88ba93abd98079ca7",
       "inputs": [
         "xtbloom-gfn1-d3",
