@@ -21,7 +21,8 @@ def cache_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     stop = source.index("  std::shared_ptr<const OccupiedDensityFactor> factor;", start)
     region = source[start:stop]
     directory = tmp_path_factory.mktemp("rks-ao-cache-failures")
-    program = r"""
+    program = (
+        r"""
 #include <cstddef>
 #include <new>
 #include <optional>
@@ -48,7 +49,9 @@ bool select() {
   const struct { bool cached_direct; } evaluate_xc{mode!=7};
   const int basis=0, grid=0;
   const struct { unsigned ao_order; } ks{1};
-""" + region + r"""
+"""
+        + region
+        + r"""
   if (ao_cache && ao_cache->value != 17) throw std::logic_error("changed cache");
   return ao_cache.has_value();
 }
@@ -69,6 +72,7 @@ int main(int argc, char** argv) {
     }
 }
 """
+    )
     path, executable = directory / "probe.cpp", directory / "probe"
     path.write_text(program, encoding="utf-8")
     subprocess.run(
