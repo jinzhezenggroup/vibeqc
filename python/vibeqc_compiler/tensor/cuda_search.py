@@ -239,6 +239,10 @@ def _fp64_accumulation_terms(plan: TensorPlan) -> int:
     """Count scalar contributions widened from FP32 into qualified FP64 reductions."""
     total = 0
     for step in plan.steps:
+        # Runtime index maps are integer controls, not floating-point values.
+        # Their deliberate absence from the precision plan is not an error.
+        if step.node.spec.dtype == "int64":
+            continue
         value = plan.precision_by_node[step.node]
         if value.compute_dtype == value.accumulation_dtype:
             continue
