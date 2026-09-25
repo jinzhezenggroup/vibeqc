@@ -75,14 +75,16 @@ def _sigma(gradient: typing.Any) -> typing.Any:
     )
 
 
-def _density_feature_arrays(
-    jets: typing.Any, density: typing.Any, ingredients: typing.Any
+def _contract_density_feature_arrays(
+    jets: typing.Any,
+    density: typing.Any,
+    requested: typing.Any,
+    need_gradient: typing.Any,
 ) -> typing.Any:
-    jets, requested, need_gradient = _feature_request(jets, ingredients)
-    d = spin_densities(density, jets.shape[2])
+    """Contract one already-normalized two-spin density without revalidating it."""
     value, derivatives = jets[0], jets[1:4]
     rho, gradient, tau = [], [], []
-    for spin in d:
+    for spin in density:
         if "rho" in requested or need_gradient:
             w = value @ spin
         if "rho" in requested:
@@ -103,6 +105,31 @@ def _density_feature_arrays(
                 )
             )
     return requested, np.asarray(rho), np.asarray(gradient), np.asarray(tau)
+
+
+def _spin_density_view(density: typing.Any, nao: typing.Any) -> typing.Any:
+    """Check only the O(1) shape/dtype contract of an enclosing validated owner."""
+    d = np.asarray(density)
+    if d.dtype != np.float64 or d.shape != (2, nao, nao):
+        raise ValueError("prevalidated spin density must be float64 [alpha,beta,AO,AO]")
+    return d
+
+
+def _density_feature_arrays(
+    jets: typing.Any, density: typing.Any, ingredients: typing.Any
+) -> typing.Any:
+    jets, requested, need_gradient = _feature_request(jets, ingredients)
+    d = spin_densities(density, jets.shape[2])
+    return _contract_density_feature_arrays(jets, d, requested, need_gradient)
+
+
+def _density_feature_arrays_from_spin_densities(
+    jets: typing.Any, density: typing.Any, ingredients: typing.Any
+) -> typing.Any:
+    """Consume density normalized once by the enclosing XC execution boundary."""
+    jets, requested, need_gradient = _feature_request(jets, ingredients)
+    d = _spin_density_view(density, jets.shape[2])
+    return _contract_density_feature_arrays(jets, d, requested, need_gradient)
 
 
 def _publish(
@@ -136,11 +163,10 @@ class DensityFeatureBlock:
         return result
 
 
-def density_feature_block(
-    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
-) -> typing.Any:
-    """Produce one canonical C-order scalar feature owner for compiled consumers."""
-    requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
+def _build_density_feature_block(
+    jets: typing.Any, arrays: typing.Any
+) -> DensityFeatureBlock:
+    requested, rho, gradient, tau = arrays
     npoint = np.asarray(jets).shape[1]
     scalar = np.zeros((len(DENSITY_FEATURE_SCALAR_ROWS), npoint))
     if "rho" in requested:
@@ -155,6 +181,24 @@ def density_feature_block(
         owned_gradient = np.ascontiguousarray(gradient, dtype=np.float64)
         owned_gradient.setflags(write=False)
     return DensityFeatureBlock(scalar, owned_gradient, requested)
+
+
+def density_feature_block(
+    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
+) -> typing.Any:
+    """Produce one canonical C-order scalar feature owner for compiled consumers."""
+    return _build_density_feature_block(
+        jets, _density_feature_arrays(jets, density, ingredients)
+    )
+
+
+def _density_feature_block_from_spin_densities(
+    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
+) -> typing.Any:
+    """Build a feature block from an enclosing execution's validated spin density."""
+    return _build_density_feature_block(
+        jets, _density_feature_arrays_from_spin_densities(jets, density, ingredients)
+    )
 
 
 def density_features(
@@ -172,6 +216,16 @@ def density_features(
     full diagnostic feature ABI.
     """
     requested, rho, gradient, tau = _density_feature_arrays(jets, density, ingredients)
+    return _publish(requested, rho, gradient, tau)
+
+
+def _density_features_from_spin_densities(
+    jets: typing.Any, density: typing.Any, *, ingredients: typing.Any = None
+) -> typing.Any:
+    """Contract features after density validation/symmetrization has already run."""
+    requested, rho, gradient, tau = _density_feature_arrays_from_spin_densities(
+        jets, density, ingredients
+    )
     return _publish(requested, rho, gradient, tau)
 
 

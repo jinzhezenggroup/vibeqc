@@ -11,3 +11,12 @@ Reserved documentation slots:
 - [Custom backends](custom-backend.md)
 
 Until these contracts are explicitly stabilized, internal Python/C++ classes are implementation details rather than public extension APIs.
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+custom-method
+custom-functional
+custom-backend
+```

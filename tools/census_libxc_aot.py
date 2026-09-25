@@ -46,8 +46,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--nvcc", help="CUDA compiler executable (default: nvcc)")
     parser.add_argument("--cuda-arch", default="sm_80")
     parser.add_argument("--compile-timeout", type=float, default=60)
+    parser.add_argument("--cuda-max-registers", type=int)
+    parser.add_argument("--cuda-max-stack-bytes", type=int)
+    parser.add_argument("--cuda-max-local-bytes", type=int)
+    parser.add_argument("--cuda-max-shared-bytes", type=int)
+    parser.add_argument("--cuda-max-spill-bytes", type=int)
     args = parser.parse_args(argv)
+    resource_bounds = (
+        args.cuda_max_registers,
+        args.cuda_max_stack_bytes,
+        args.cuda_max_local_bytes,
+        args.cuda_max_shared_bytes,
+        args.cuda_max_spill_bytes,
+    )
     try:
+        if any(value is not None for value in resource_bounds):
+            if any(value is None for value in resource_bounds):
+                parser.error(
+                    "all --cuda-max-* resource limits must be supplied together"
+                )
+            cuda_resource_limits = bulk_aot.CudaResourceLimits(
+                maximum_registers=int(args.cuda_max_registers),
+                maximum_stack_bytes=int(args.cuda_max_stack_bytes),
+                maximum_local_bytes=int(args.cuda_max_local_bytes),
+                maximum_shared_bytes=int(args.cuda_max_shared_bytes),
+                maximum_spill_bytes=int(args.cuda_max_spill_bytes),
+            )
+        else:
+            cuda_resource_limits = None
         plan = bulk_aot.census_catalog(
             names=args.name,
             spins=args.spin or ("polarized", "unpolarized"),
@@ -83,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
                 compilers={"cpu": args.cc, "cuda": args.nvcc},
                 timeout=args.compile_timeout,
                 cuda_arch=args.cuda_arch,
+                cuda_resource_limits=cuda_resource_limits,
             )
             atomic_json(args.output, plan)
     except (ValueError, OSError, RuntimeError) as error:
@@ -95,10 +122,17 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(plan['blocked_imports'])} graph-blocked registrations"
     )
     failures = sum(row["status"] != "emitted" for row in plan["observations"])
+    measurements = plan.get("measurements", {})
     failures += sum(
         row["status"] not in ("compiled", "not-selected")
-        for row in plan.get("measurements", {}).values()
+        for row in measurements.values()
     )
+    if cuda_resource_limits is not None:
+        failures += sum(
+            row.get("resource_gate", {}).get("status") != "passed"
+            for row in measurements.values()
+            if row["status"] == "compiled" and "resource_gate" in row
+        )
     if failures:
         print(
             f"{failures} requested emission/compile probes lack successful evidence",

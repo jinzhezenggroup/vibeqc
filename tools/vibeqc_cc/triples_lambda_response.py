@@ -78,16 +78,82 @@ def _triples_sources(
     inputs: tuple[str, ...],
     *,
     vir_chunk_size: int | None,
+    cuda_response: typing.Any = None,
 ) -> dict[str, np.ndarray]:
+    """Return exact (T) VJP blocks without relabeling a CPU replay as CUDA."""
+
     bound._assert_current(bound.reference_identity)
-    values = accumulate_tile_triples_vjp(
-        bound.reference.nocc,
-        bound.reference.nmo - bound.reference.nocc,
-        *_triples_arrays(bound),
-        vir_chunk_size=vir_chunk_size,
-        inputs=inputs,
-        executor=bound.tensor_executor,
+    if cuda_response is None:
+        values = accumulate_tile_triples_vjp(
+            bound.reference.nocc,
+            bound.reference.nmo - bound.reference.nocc,
+            *_triples_arrays(bound),
+            vir_chunk_size=vir_chunk_size,
+            inputs=inputs,
+            executor=bound.tensor_executor,
+        )
+        bound._assert_current(bound.reference_identity)
+        return values
+
+    # Local import avoids a module cycle: the CUDA owner imports the corrected-
+    # Lambda result and mathematical source-identity helpers from this module.
+    from .triples_response_cuda import CudaTriplesResponseResult
+
+    if not isinstance(cuda_response, CudaTriplesResponseResult):
+        raise TypeError("external triples response must be CudaTriplesResponseResult")
+    nocc = bound.reference.nocc
+    nvir = bound.reference.nmo - nocc
+    if cuda_response.nocc != nocc or cuda_response.nvir != nvir:
+        raise ResponseCompatibilityError(
+            "CUDA triples response shape belongs to another CC state"
+        )
+    if cuda_response.vir_chunk_size != vir_chunk_size:
+        raise ResponseCompatibilityError(
+            "CUDA triples response tile schedule differs from the bound response"
+        )
+    provenance = cuda_response.provenance
+    if (
+        provenance.get("backend") != "cuda-fp64-resident-triples-vjp"
+        or provenance.get("cpu_fallback") is not False
+    ):
+        raise ResponseCompatibilityError(
+            "CUDA triples response provenance permits an unsupported execution path"
+        )
+
+    arrays = _triples_arrays(bound)
+    expected_inputs = dict(
+        zip(
+            ("ovvv", "ovoo", "ovov", "fov", "t1", "t2", "eps_o", "eps_v"),
+            arrays,
+            strict=True,
+        )
     )
+    if cuda_response.input_identity != _feed_hash(expected_inputs):
+        raise ResponseCompatibilityError(
+            "CUDA triples response inputs belong to another CC state"
+        )
+    required = set(inputs)
+    missing = sorted(
+        (required - set(cuda_response.inputs)) | (required - set(cuda_response.sources))
+    )
+    if missing:
+        raise ResponseCompatibilityError(
+            f"CUDA triples response is missing required source blocks: {missing}"
+        )
+
+    values = {}
+    for name in inputs:
+        value = np.asarray(cuda_response.sources[name])
+        expected = np.asarray(expected_inputs[name])
+        if (
+            value.dtype != np.float64
+            or value.shape != expected.shape
+            or not np.isfinite(value).all()
+        ):
+            raise ResponseCompatibilityError(
+                f"CUDA triples response block {name!r} has invalid shape, dtype, or values"
+            )
+        values[name] = _immutable(value)
     bound._assert_current(bound.reference_identity)
     return values
 
@@ -231,6 +297,8 @@ class BoundCCSDTResponse:
     baseline: BoundCCSDResponse
     corrected: CorrectedLambdaResult
     vir_chunk_size: int | None
+    triples_response: typing.Any
+    parameter_executor: typing.Any
     corrected_lambda_identity: str
     response_identity: str
 
@@ -241,6 +309,8 @@ class BoundCCSDTResponse:
         corrected: CorrectedLambdaResult,
         *,
         vir_chunk_size: int | None = None,
+        triples_response: typing.Any = None,
+        parameter_executor: typing.Any = None,
     ) -> None:
         if (
             not isinstance(bound, BoundCCSDLambda)
@@ -252,7 +322,17 @@ class BoundCCSDTResponse:
                 "and corrected Lambda result"
             )
         object.__setattr__(self, "bound", bound)
-        object.__setattr__(self, "baseline", BoundCCSDResponse(bound, baseline))
+        object.__setattr__(
+            self,
+            "baseline",
+            BoundCCSDResponse(
+                bound,
+                baseline,
+                tensor_executor=parameter_executor,
+            ),
+        )
+        object.__setattr__(self, "triples_response", triples_response)
+        object.__setattr__(self, "parameter_executor", parameter_executor)
         if (
             corrected.reference_identity != bound.reference_identity
             or corrected.cc_state_identity != bound.cc_state_identity
@@ -270,7 +350,12 @@ class BoundCCSDTResponse:
         # Do not trust convergence flags or stored residual diagnostics. Rebuild
         # the triples amplitude source and independently replay both generated
         # CCSD transpose forms against the supplied total multipliers.
-        sources = _triples_sources(bound, ("t1", "t2"), vir_chunk_size=vir_chunk_size)
+        sources = _triples_sources(
+            bound,
+            ("t1", "t2"),
+            vir_chunk_size=vir_chunk_size,
+            cuda_response=triples_response,
+        )
         t2_layout = bound.layouts[1]
         projected_t2 = t2_layout.unpack(t2_layout.unpack_transpose(sources["t2"]))
         expected_source = _source_identity(
@@ -357,11 +442,20 @@ class BoundCCSDTResponse:
         values = []
         for programs in (self.bound.programs, self.bound.independent):
             reverse = build_parameter_vjp(programs.primal, parameter)
-            outputs = self.bound._tensor_execute(
-                reverse.program,
-                {**self.bound.feeds, **extra},
+            outputs = (
+                self.bound._tensor_execute(
+                    reverse.program,
+                    {**self.bound.feeds, **extra},
+                )
+                if self.parameter_executor is None
+                else self.parameter_executor.execute(
+                    reverse.program,
+                    {**self.bound.feeds, **extra},
+                )
             )
-            values.append(np.asarray(outputs[f"bar_{parameter}"]))
+            # Executors may reuse output storage on their next call. Retain
+            # each graph's evidence before the independent replay overwrites it.
+            values.append(np.asarray(outputs[f"bar_{parameter}"]).copy())
         if not np.allclose(values[0], values[1], atol=1e-12, rtol=1e-10):
             raise ImplicitSolveError(
                 "independent corrected-Lambda parameter-weight check failed"
@@ -384,6 +478,7 @@ class BoundCCSDTResponse:
                 self.bound,
                 (parameter,),
                 vir_chunk_size=self.vir_chunk_size,
+                cuda_response=self.triples_response,
             )[parameter]
             if dense_direct.shape != baseline.values.shape:
                 raise ResponseCompatibilityError(
@@ -411,6 +506,16 @@ class BoundCCSDTResponse:
             {
                 "baseline_response": baseline.response_identity,
                 "corrected_triples_source": self.corrected.triples_source_identity,
+                "triples_response_backend": (
+                    self.bound.tensor_backend
+                    if self.triples_response is None
+                    else self.triples_response.provenance["backend"]
+                ),
+                "parameter_response_backend": (
+                    self.bound.tensor_backend
+                    if self.parameter_executor is None
+                    else self.parameter_executor.backend
+                ),
                 "decomposition": "CCSD baseline + direct (T) + delta-Lambda * dR_CCSD/dq",
                 "orbital_response": "excluded",
                 "physical_rdm": False,
@@ -427,6 +532,7 @@ class BoundCCSDTResponse:
             self.bound,
             ("eps_o", "eps_v"),
             vir_chunk_size=self.vir_chunk_size,
+            cuda_response=self.triples_response,
         )
         result = MappingProxyType(
             {name: _immutable(np.asarray(sources[name])) for name in ("eps_o", "eps_v")}

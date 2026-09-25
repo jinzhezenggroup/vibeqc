@@ -5,16 +5,64 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-UPSTREAM = ROOT / "upstream" / "xtbloom" / "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools import source_registry
+
+_D3_SOURCE_ID = "xtbloom-gfn1-d3"
+_MODEL_SOURCE_ID = "xtbloom-gfn1-parameters"
+_REQUIRED_SOURCE_FILES = frozenset({"gfn1_d3.json", "gfn1.json"})
 MANIFEST = ROOT / "manifests" / "xtbloom-d3.json"
 DEFAULT_OUTPUT = ROOT / "src" / "dft" / "dispersion" / "d3_data.hpp"
 
 
-def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _registered_source_texts() -> tuple[dict[str, str], str]:
+    """Load exact D3/GFN1 texts through their common-registry owners."""
+    registry = source_registry._load(source_registry.REGISTRY)
+    result: dict[str, str] = {}
+    common_revision: str | None = None
+    for source_id, required in (
+        (_D3_SOURCE_ID, ("gfn1_d3.json",)),
+        (_MODEL_SOURCE_ID, ("gfn1.json",)),
+    ):
+        source = registry["sources"].get(source_id)
+        if not isinstance(source, dict):
+            raise source_registry.SourceRegistryError(
+                f"source registry is missing {source_id!r}"
+            )
+        revision = source.get("revision")
+        if not isinstance(revision, str) or not revision:
+            raise source_registry.SourceRegistryError(
+                f"source registry has invalid revision for {source_id!r}"
+            )
+        if common_revision is None:
+            common_revision = revision
+        elif revision != common_revision:
+            raise source_registry.SourceRegistryError(
+                "D3 and GFN1 source owners must pin the same upstream revision"
+            )
+        texts = source_registry.read_source_texts(source_id, source)
+        missing = set(required) - texts.keys()
+        if missing:
+            raise source_registry.SourceRegistryError(
+                f"{source_id!r} is missing required files: {sorted(missing)}"
+            )
+        result.update({name: texts[name] for name in required})
+    if common_revision is None:
+        raise source_registry.SourceRegistryError("registered D3 sources are empty")
+    return (
+        {name: result[name] for name in sorted(_REQUIRED_SOURCE_FILES)},
+        common_revision,
+    )
 
 
 def _real(value: float) -> str:
@@ -27,15 +75,16 @@ def _real(value: float) -> str:
 def render() -> str:
     manifest = json.loads(MANIFEST.read_text())
     expected = manifest["data"]
-    table_path = UPSTREAM / "gfn1_d3.json"
-    model_path = UPSTREAM / "gfn1.json"
-    if sha256(table_path) != expected["gfn1_d3.json"]:
+    source_texts, source_revision = _registered_source_texts()
+    table_raw = source_texts["gfn1_d3.json"].encode("utf-8")
+    model_raw = source_texts["gfn1.json"].encode("utf-8")
+    if sha256(table_raw) != expected["gfn1_d3.json"]:
         raise RuntimeError("gfn1_d3.json digest mismatch")
-    if sha256(model_path) != manifest["sources"]["data/parameters/gfn1.json"]["sha256"]:
+    if sha256(model_raw) != manifest["sources"]["data/parameters/gfn1.json"]["sha256"]:
         raise RuntimeError("gfn1.json digest mismatch")
 
-    source = json.loads(table_path.read_text())
-    model = json.loads(model_path.read_text())
+    source = json.loads(table_raw)
+    model = json.loads(model_raw)
     if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
         raise RuntimeError("upstream GFN1 element order changed")
     radii = [item["covalent_radius_bohr"] for item in model["elements"]]
@@ -68,7 +117,7 @@ def render() -> str:
         "namespace vibeqc::dft::dispersion::d3_data {",
         f'inline constexpr char kTableSha256[] = "{expected["gfn1_d3.json"]}";',
         f'inline constexpr char kRadiiSha256[] = "{expected["covalent_radii.json"]}";',
-        'inline constexpr char kVersion[] = "xtbloom-d3-2cbdf1d-production-v1";',
+        f'inline constexpr char kVersion[] = "xtbloom-d3-{source_revision[:7]}-production-v1";',
         "",
         "struct ElementData {",
         "  std::uint32_t reference_offset;",

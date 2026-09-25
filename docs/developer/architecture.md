@@ -53,9 +53,9 @@ properties come from capability discovery: HF requests energy and forces,
 whereas LDA/PBE RKS and UKS request energy only.
 
 SCF options and retained densities live under `scf/`, not `core/`. The core
-types describe only systems and runtime state. The HF compatibility umbrella
-`scf/rhf.hpp` includes the smaller `mean_field.hpp` and `cuda_batch.hpp`
-boundaries for existing internal callers.
+types describe only systems and runtime state. Internal callers include the
+specific `scf/mean_field.hpp` or `scf/cuda_batch.hpp` boundary they consume;
+there is no forwarding HF umbrella.
 
 ## Derivative policy
 
@@ -259,11 +259,12 @@ center derivatives from one shared set of Gaussian product and Boys values,
 then recover omitted centers from translational invariance; orders six and
 above retain the general three-component Dual path.
 The production one-electron force uses compiler-owned generated S/T/V
-derivatives and a shell-pair warp schedule. It contracts stationary density and
-energy-weighted-density inputs directly into atomic gradients without
-materializing coordinate derivative tensors. The previous cooperative native
-warp remains only behind `VIBEQC_ONE_ELECTRON_DERIVATIVES=reference` for
-independent/performance comparison; the scalar AO-pair worker is retired.
+derivatives and a generated schedule selected by
+`VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING` (nucleus-cooperative by default). It
+contracts stationary density and energy-weighted-density inputs directly into
+atomic gradients without materializing coordinate derivative tensors. The
+previous cooperative native force path and provider selector are retired;
+independent CPU/libcint/PySCF validation remains separate from CUDA scheduling.
 Coulomb auxiliary states are stored in
 a four-dimensional simplex (1,820 states through f) rather than a dense 13^4
 thread-local array.

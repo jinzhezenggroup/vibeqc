@@ -82,6 +82,22 @@ def coulomb_from_raw(
     return (matrix @ fitted).reshape(density.shape)
 
 
+def coulomb_from_whitened_raw(
+    raw: np.ndarray, metric: np.ndarray, density: np.ndarray
+) -> np.ndarray:
+    """Recompose J after explicit Cholesky whitening of the three-center columns."""
+    matrix = raw.reshape(-1, metric.shape[0])
+    # Match the upper triangle used by the direct SPD solve. Otherwise tiny
+    # storage asymmetries would be misreported as whitening-arithmetic effects.
+    # For M = U.T @ U, solve U.T @ B.T = A.T so B @ B.T = A @ inv(M) @ A.T.
+    factor = scipy.linalg.cholesky(metric, lower=False, check_finite=False)
+    whitened = scipy.linalg.solve_triangular(
+        factor, matrix.T, lower=False, trans="T", check_finite=False
+    ).T
+    density_flat = density.reshape(-1)
+    return (whitened @ (whitened.T @ density_flat)).reshape(density.shape)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--probe", type=Path, required=True)
@@ -214,6 +230,49 @@ def main() -> int:
             j_native_raw_metric - native["coulomb"]
         ),
     }
+
+    j_reference_raw_metric_whitened = coulomb_from_whitened_raw(
+        reference_raw, reference["metric"], reference["density"]
+    )
+    j_native_raw_reference_metric_whitened = coulomb_from_whitened_raw(
+        native_raw, reference["metric"], reference["density"]
+    )
+    j_reference_raw_native_metric_whitened = coulomb_from_whitened_raw(
+        reference_raw, native["metric"], reference["density"]
+    )
+    j_native_raw_metric_whitened = coulomb_from_whitened_raw(
+        native_raw, native["metric"], reference["density"]
+    )
+    whitened_raw_effect = (
+        j_native_raw_reference_metric_whitened - j_reference_raw_metric_whitened
+    )
+    whitened_metric_effect = (
+        j_reference_raw_native_metric_whitened - j_reference_raw_metric_whitened
+    )
+    whitened_combined_effect = (
+        j_native_raw_metric_whitened - j_reference_raw_metric_whitened
+    )
+    coulomb_arithmetic = {
+        "reference_direct_vs_whitened_maximum": maximum(
+            j_reference_raw_metric - j_reference_raw_metric_whitened
+        ),
+        "native_direct_vs_whitened_maximum": maximum(
+            j_native_raw_metric - j_native_raw_metric_whitened
+        ),
+        "raw_effect_schedule_delta_maximum": maximum(raw_effect - whitened_raw_effect),
+        "metric_effect_schedule_delta_maximum": maximum(
+            metric_effect - whitened_metric_effect
+        ),
+        "combined_effect_schedule_delta_maximum": maximum(
+            combined_effect - whitened_combined_effect
+        ),
+        "whitened_raw_only_effect_maximum": maximum(whitened_raw_effect),
+        "whitened_metric_only_effect_maximum": maximum(whitened_metric_effect),
+        "whitened_combined_effect_maximum": maximum(whitened_combined_effect),
+        "whitened_nonlinear_cross_term_maximum": maximum(
+            whitened_combined_effect - whitened_raw_effect - whitened_metric_effect
+        ),
+    }
     fock_delta = native["fock"] - reference["fock"]
     maximum_index = np.unravel_index(np.argmax(np.abs(fock_delta)), fock_delta.shape)
     maximum_fock_delta_components = {
@@ -240,6 +299,7 @@ def main() -> int:
         "cross_composition_residuals": cross,
         "native_fock_recomposition_error": fock_recomposition_error,
         "coulomb_cross_recomposition": coulomb_attribution,
+        "coulomb_arithmetic_schedule": coulomb_arithmetic,
         "maximum_fock_delta_components": maximum_fock_delta_components,
         "strict_1e12": {
             "native_commutator_pass": native_residual["commutator_maximum"] <= 1.0e-12,

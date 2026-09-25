@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class KernelResources:
-    """Static resources reported by CUDA 12.9 ``ptxas`` for one kernel."""
+    """Static PTXAS resources; stack_bytes bounds both frame and cumulative stack."""
 
     function: str
     registers: int
@@ -25,14 +25,19 @@ def parse_resources(diagnostics: str) -> tuple[KernelResources, ...]:
         r"ptxas info\s*: Used (?P<registers>\d+) registers(?P<rest>[^\n]*)"
     )
     result = []
-    for match in pattern.finditer(diagnostics):
+    # Windows compiler output uses CRLF even when the caller retains raw text.
+    for match in pattern.finditer(diagnostics.replace("\r\n", "\n")):
         shared = re.search(r"(\d+) bytes smem", match["rest"])
         local = re.search(r"(\d+) bytes lmem", match["rest"])
+        cumulative = re.search(r"(\d+) bytes cumulative stack size", match["rest"])
+        stack = int(match["stack"])
+        if cumulative is not None:
+            stack = max(stack, int(cumulative[1]))
         result.append(
             KernelResources(
                 function=match["function"],
                 registers=int(match["registers"]),
-                stack_bytes=int(match["stack"]),
+                stack_bytes=stack,
                 spill_store_bytes=int(match["stores"]),
                 spill_load_bytes=int(match["loads"]),
                 shared_bytes=int(shared[1]) if shared else 0,

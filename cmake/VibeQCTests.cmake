@@ -245,13 +245,15 @@ macro(vibeqc_add_native_tests)
     add_executable(vibeqc_dft_cuda_tests tests/native/test_dft_cuda.cu
       src/dft/cuda_xc.cpp "${VIBEQC_GRID_SOURCE}" src/dft/ao_grid.cpp
       src/dft/grid.cpp src/dft/xc.cpp src/scf/density_factor.cpp src/molecule/basis.cpp)
-    add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen)
+    add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen vibeqc_scf_array_cpu_codegen)
     target_include_directories(vibeqc_dft_cuda_tests PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft" "${CMAKE_CURRENT_BINARY_DIR}/generated")
     target_link_libraries(vibeqc_dft_cuda_tests PRIVATE CUDA::cudart CUDA::cublas)
     set_target_properties(vibeqc_dft_cuda_tests PROPERTIES CUDA_STANDARD 20)
     add_test(NAME vibeqc_dft_cuda_tests COMMAND vibeqc_dft_cuda_tests)
+    add_test(NAME vibeqc_dft_cuda_matrix_tests COMMAND vibeqc_dft_cuda_tests --matrix-schedule)
+    set_tests_properties(vibeqc_dft_cuda_matrix_tests PROPERTIES SKIP_RETURN_CODE 77)
     set_tests_properties(vibeqc_dft_cuda_tests PROPERTIES SKIP_RETURN_CODE 77)
     vibeqc_native_test(vibeqc_ks_cuda_tests tests/native/test_ks_cuda.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
@@ -261,6 +263,7 @@ macro(vibeqc_add_native_tests)
       src/dft/cuda_cosx_derivative.cu
       "${VIBEQC_ONE_ELECTRON_HEADER}"
       "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+      "${VIBEQC_COSX_DERIVATIVE_CONTRACTION_HEADER}"
       "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
       "${VIBEQC_DF_VALUE_CPU_HEADER}"
       "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"

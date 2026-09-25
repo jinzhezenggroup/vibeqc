@@ -1,7 +1,7 @@
 {
   "path": "src/scf/cuda/one_electron_native_attraction.cuh",
-  "reason": "Retained numerical support for the explicit cooperative/legacy reference derivative route after generated S/T/V production promotion; not selected by normal production.",
+  "reason": "Retained numerical support for the independent one-electron Dual derivative export oracle; production S/T/V force execution is compiler-generated.",
   "regions": [],
-  "role": "performance_exception",
+  "role": "oracle",
   "subsystem": "one_electron_derivatives"
 }
