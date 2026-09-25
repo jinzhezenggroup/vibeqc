@@ -63,9 +63,7 @@ __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begi
     if (want_k && bounds[offset + i * n + k] * bounds[offset + j * n + l] >= screening &&
         (a != 0.0 || b != 0.0)) {
       const double value =
-          exchange_range == vibeqc::integrals::CoulombRange::Full
-              ? contracted_eri<double>(batch, system, i, k, j, l, -1)
-              : contracted_range_eri(batch, system, i, k, j, l, exchange_range, exchange_omega);
+          contracted_eri<double>(batch, system, i, k, j, l, -1, exchange_range, exchange_omega);
       alpha_exchange += a * value;
       beta_exchange += b * value;
     }
