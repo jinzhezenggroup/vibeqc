@@ -1052,6 +1052,17 @@ def _cuda_program(
         if len(outputs) != 1:
             raise ValueError("RCCSD CUDA parameter VJP must expose exactly one output")
         returned = [next(iter(outputs.values()))]
+    elif output_type == "DeviceHamiltonianOutputs":
+        returned = [
+            outputs["hcore"],
+            outputs["eri"],
+            outputs["overlap"],
+            outputs["rotation_gradient"],
+            outputs["stationarity"],
+            outputs["orbital_rhs"],
+        ]
+    elif output_type == "DeviceOrbitalJvpOutput":
+        returned = [outputs["d_fov"]]
     else:
         raise ValueError(f"unsupported RCCSD generated CUDA output type {output_type}")
     lines.append("  return {" + ",".join(returned) + "};")
@@ -1072,6 +1083,25 @@ def cuda_source() -> str:
         parameter: build_parameter_vjp(lambda_programs.primal, parameter).program
         for parameter in PARAMETERS
     }
+    hamiltonian = build_hamiltonian_programs(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_weights = hamiltonian.weights
+    orbital_jvp = hamiltonian.orbital_jvp.program
+    fock_weights = build_fock_weight_program(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_input_names = tuple(
+        sorted(
+            n.attrs["name"] for n in hamiltonian_weights.live_nodes if n.op == "input"
+        )
+    )
+    orbital_jvp_input_names = tuple(
+        sorted(n.attrs["name"] for n in orbital_jvp.live_nodes if n.op == "input")
+    )
+    fock_weight_input_names = tuple(
+        sorted(n.attrs["name"] for n in fock_weights.live_nodes if n.op == "input")
+    )
     energy_seed = {"bar_correlation_energy": "s.bar_correlation_energy"}
     residual_seed = {
         "bar_singles_residual": "s.bar_singles_residual",
@@ -1123,6 +1153,30 @@ def cuda_source() -> str:
                 )
                 for parameter, program in parameter_vjps.items()
             ],
+            _cuda_program(
+                hamiltonian_weights,
+                "hamiltonian_weights",
+                "DeviceHamiltonianOutputs",
+                input_overrides={
+                    name: f"s.{name}" for name in hamiltonian_input_names
+                },
+            ),
+            _cuda_program(
+                fock_weights,
+                "fock_weights",
+                "DeviceHamiltonianOutputs",
+                input_overrides={
+                    name: f"s.{name}" for name in fock_weight_input_names
+                },
+            ),
+            _cuda_program(
+                orbital_jvp,
+                "orbital_jvp",
+                "DeviceOrbitalJvpOutput",
+                input_overrides={
+                    name: f"s.{name}" for name in orbital_jvp_input_names
+                },
+            ),
             "DeviceIterationOutputs run_iteration_cuda(CudaState& state){return run_iteration(state);}",
             "DeviceReplayOutputs run_replay_cuda(CudaState& state){return run_replay(state);}",
             "DeviceLambdaOutputs run_lambda_rhs_cuda(CudaState& state){return run_lambda_rhs(state);}",
@@ -1139,6 +1193,9 @@ def cuda_source() -> str:
             "DeviceParameterOutput run_parameter_ovoo_cuda(CudaState& state){return run_parameter_ovoo(state);}",
             "DeviceParameterOutput run_parameter_oooo_cuda(CudaState& state){return run_parameter_oooo(state);}",
             "DeviceParameterOutput run_parameter_vvvv_cuda(CudaState& state){return run_parameter_vvvv(state);}",
+            "DeviceHamiltonianOutputs run_hamiltonian_weights_cuda(CudaState& state){return run_hamiltonian_weights(state);}",
+            "DeviceHamiltonianOutputs run_fock_weights_cuda(CudaState& state){return run_fock_weights(state);}",
+            "DeviceOrbitalJvpOutput run_orbital_jvp_cuda(CudaState& state){return run_orbital_jvp(state);}",
             "}",
             "",
         ]
