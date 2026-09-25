@@ -34,14 +34,15 @@ ROOT = Path(__file__).resolve().parents[2]
 FULL_LIBXC = ROOT / "upstream" / "libxc-fulltree" / "7.0.0"
 
 
-def _fulltree_records(owner: str, maple: str, *, allow_hybrid_exchange: bool = False) -> list[dict]:
+def _fulltree_records(
+    owner: str, maple: str, *, allow_hybrid_exchange: bool = False
+) -> list[dict]:
     return extract_registrations(
         (FULL_LIBXC / "src" / owner).read_text(),
         (FULL_LIBXC / "maple" / "mgga_exc" / maple).read_text(),
         (FULL_LIBXC / "src" / "util.h").read_text(),
         allow_hybrid_exchange=allow_hybrid_exchange,
     )
-
 
 
 def record(source: str = SOURCE) -> dict:
