@@ -1,14 +1,22 @@
 """Real native LDA/PBE RKS nuclear response for the DFT Hessian path."""
 
 import typing
+from dataclasses import replace
 
 import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions
+from vibeqc._dft_gradient import _native_ao_atoms
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
+from vibeqc_compiler.xc.contractions import ExternalPointContraction
+from vibeqc_compiler.xc.grid_response import partition_response
 
-from tools.vibeqc_hessian import directional_rks_response, rks_hvp
+from tools.vibeqc_hessian import (
+    directional_rks_response,
+    native_rks_xc_hvp_components,
+    rks_hvp,
+)
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse
 
 H2 = [("H", (0.0, 0.0, -0.72)), ("H", (0.08, -0.03, 0.71))]
@@ -31,6 +39,66 @@ def _moved(atoms: typing.Any, direction: np.ndarray, scale: float) -> list:
         (symbol, np.asarray(position) + scale * delta)
         for (symbol, position), delta in zip(atoms, direction, strict=True)
     ]
+
+
+def _native_xc_gradient(operator: NativeRKSResponse) -> dict[str, np.ndarray]:
+    """Re-evaluate only the native semilocal XC first-gradient sources."""
+    operator.validate_current()
+    state = operator.state
+    source = state._source
+    basis = operator.xc_kernel.basis
+    spec = operator.xc_kernel.spec
+    grid = state.grid
+    points = np.asarray(grid.points)
+    owners = np.asarray(grid.owners, dtype=np.int64)
+    contraction = ExternalPointContraction(spec, "geometry")
+    jets = basis.evaluate(points, contraction.contract.ao_order)
+    features = contraction.features(jets, state.density[0])
+    zero_gradient = np.zeros((2, len(points), 3))
+    values = source.evaluate_xc_points(
+        spec,
+        features["rho"],
+        features.get("gradient", zero_gradient),
+    )
+    partials = contraction.geometry_from_cartesian_coefficients(
+        jets,
+        state.density[0],
+        grid.weights,
+        values["energy"],
+        values["rho"],
+        values["gradient"] if "sigma" in spec.ingredients else None,
+        ao_atoms=_native_ao_atoms(basis),
+        natom=basis.natom,
+    )
+    result = {
+        "xc_ao": np.array(partials.centers),
+        "xc_grid": np.zeros((basis.natom, 3)),
+        "xc_weight": np.zeros((basis.natom, 3)),
+    }
+    np.add.at(result["xc_grid"], owners, partials.points)
+
+    centers = np.asarray([atom.position for atom in basis.atoms], dtype=np.float64)
+    atomic_weights = np.asarray(source.atomic_weights)
+    grid_spec = source.grid_spec
+    assert grid_spec is not None
+    selected = (np.arange(len(points)), owners)
+    for atom in range(basis.natom):
+        for axis in range(3):
+            motion = np.zeros((basis.natom, 3))
+            motion[atom, axis] = 1.0
+            response = partition_response(
+                points,
+                centers,
+                point_motion=motion[owners],
+                center_motion=motion,
+                iterations=grid_spec.partition_iterations,
+                coincident_tolerance=grid_spec.coincident_tolerance,
+            )
+            result["xc_weight"][atom, axis] = np.dot(
+                partials.weights,
+                atomic_weights * response.directional[selected],
+            )
+    return result
 
 
 @pytest.fixture(params=("lda-rks", "pbe-rks"), scope="module")
@@ -117,6 +185,59 @@ def test_rks_nuclear_response_matches_reconverged_density_and_weighted_density(
     errors = np.asarray(errors)
     assert np.all(errors[-1] < 4e-5), errors
     assert np.all(errors[-1] < np.maximum(0.3 * errors[0], 8e-7)), errors
+
+
+def test_native_rks_xc_hvp_matches_reconverged_xc_gradient(
+    case: typing.Any,
+) -> None:
+    method, operator, direction, directional = case
+    actual = native_rks_xc_hvp_components(operator, directional)
+    assert actual.diagnostics["additional_response_solves"] == 0
+    assert actual.diagnostics["source_names"] == ("xc_ao", "xc_grid", "xc_weight")
+    np.testing.assert_allclose(
+        actual.total,
+        actual.xc_ao + actual.xc_grid + actual.xc_weight,
+        atol=0,
+        rtol=0,
+    )
+    assert np.max(np.abs(actual.total)) > 1e-7
+    for value in (actual.xc_ao, actual.xc_grid, actual.xc_weight, actual.total):
+        assert not value.flags.writeable
+
+    errors = []
+    for step in (1.5e-3, 5e-4, 1.7e-4):
+        displaced = []
+        for sign in (1, -1):
+            atoms = _moved(H2, direction, sign * step)
+            with (
+                _calculator(method).prepare_batch([atoms]) as batch,
+                NativeAO(atoms) as basis,
+            ):
+                batch.execute(strict=True)
+                with NativeRKSResponse.from_native(batch, basis) as current:
+                    displaced.append(_native_xc_gradient(current))
+        numeric = {
+            name: (displaced[0][name] - displaced[1][name]) / (2 * step)
+            for name in ("xc_ao", "xc_grid", "xc_weight")
+        }
+        numeric["total"] = sum(numeric.values())
+        errors.append(
+            [
+                float(np.max(np.abs(numeric["xc_ao"] - actual.xc_ao))),
+                float(np.max(np.abs(numeric["xc_grid"] - actual.xc_grid))),
+                float(np.max(np.abs(numeric["xc_weight"] - actual.xc_weight))),
+                float(np.max(np.abs(numeric["total"] - actual.total))),
+            ]
+        )
+    errors = np.asarray(errors)
+    assert np.all(errors[-1] < 3e-4), errors
+    assert np.all(errors[-1] < np.maximum(0.45 * errors[0], 2e-5)), errors
+
+    with pytest.raises(ValueError, match="does not belong"):
+        native_rks_xc_hvp_components(
+            operator,
+            replace(directional, identity="not-the-current-response"),
+        )
 
 
 def test_global_translation_has_zero_rks_nuclear_rhs(case: typing.Any) -> None:

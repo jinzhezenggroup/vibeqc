@@ -33,7 +33,10 @@ from vibeqc_compiler.common.resources import (
 from vibeqc_compiler.dft import DensitySource, ExplicitGrid, MolecularGrid, NativeAO
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.cuda import CudaGrid
-from vibeqc_compiler.dft.features import density_feature_block, spin_densities
+from vibeqc_compiler.dft.features import (
+    _density_feature_block_from_spin_densities,
+    spin_densities,
+)
 from vibeqc_compiler.dft.grid import checked_int
 from vibeqc_compiler.dft.spatial_prepared import PreparedSpatialGrid
 from vibeqc_compiler.dft.xc_schedule import (
@@ -742,7 +745,9 @@ class PreparedXCContractions:
                         if self.program.contract.ingredients.family == "mgga"
                         else ("rho", "gradient", "sigma")
                     )
-                    packed = density_feature_block(jets, local, ingredients=requested)
+                    packed = _density_feature_block_from_spin_densities(
+                        jets, local, ingredients=requested
+                    )
                     packed_features = packed.features()
                     rows = self.program.scalar_values_packed(
                         packed.scalar,
@@ -755,7 +760,9 @@ class PreparedXCContractions:
                     values = (
                         self.program.potential_tile(jets, features, quadrature)
                         if observable == "potential" and features is not None
-                        else self.program.evaluate(jets, local, quadrature, **options)
+                        else self.program._evaluate_prevalidated_density(
+                            jets, local, quadrature, **options
+                        )
                     )
                 evaluated_tiles += 1
                 result["energy"] += values["energy"]

@@ -3,6 +3,8 @@
 Status: implemented
 Date: 2026-09-23
 
+Update (2026-09-25): the generic placement of non-rendered checker inputs and repository inventories is superseded by [the manifest placement decision](2026-09-25-machine-readable-manifests.md). Generated or serialized documentation paths named below remain unchanged.
+
 ## Decision
 
 Organize reader-facing guides under audience directories, but retain generated

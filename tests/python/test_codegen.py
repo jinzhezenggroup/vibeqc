@@ -171,14 +171,10 @@ def _direct_cuda_source() -> typing.Any:
             "cuda/boys_table.cuh",
             "cuda/hermite_recurrence.cuh",
             "cuda/coulomb_auxiliary.cuh",
-            "cuda/one_electron_force_workspace.hpp",
             "cuda/one_electron_native_overlap.cuh",
             "cuda/one_electron_native_attraction.cuh",
-            "cuda/one_electron_native_attraction_gradient.cuh",
             "cuda/one_electron_native_contraction.cuh",
-            "cuda/one_electron_native_force.cuh",
             "cuda/one_electron_reference.cu",
-            "cuda/one_electron_force_reference.cu",
             "cuda/nuclear_kernels.cu",
             "cuda/direct_pair_cache.cu",
             "cuda/scf_constants.hpp",
@@ -1888,50 +1884,38 @@ def test_runtime_buckets_all_generated_classes_before_dispatch() -> None:
     assert source.count("classify_generated_shell_tasks_kernel<<<") == 1
 
 
-def test_one_electron_force_batches_point_charges_in_retained_reference_warp() -> None:
-    """Keep the explicit native exception batched without restoring scalar code."""
+def test_one_electron_force_uses_only_compiler_owned_derivatives() -> None:
+    """Retire the native derivative owner without removing schedule diagnostics."""
 
     source = _direct_cuda_source()
-    force_source = (
-        REPOSITORY_ROOT / "src/scf/cuda/one_electron_native_force.cuh"
-    ).read_text(encoding="utf-8")
-    cooperative_begin = force_source.index(
-        "void contracted_one_electron_force_pair_cooperative("
-    )
-    cooperative = force_source[cooperative_begin:]
-    assert "atom_base += warpSize" in cooperative
-    assert "shared_coefficients[axis]" in cooperative
-    assert "if (lane == 0U)" in cooperative
-    assert "__shfl_down_sync" in cooperative
-    assert source.count("one_electron_force_cooperative_kernel<<<") == 1
-    assert "one_electron_force_scalar_kernel" not in source
-    assert 'std::getenv("VIBEQC_ONE_ELECTRON_FORCE_SCALAR")' not in source
-
-
-def test_generated_one_electron_derivatives_are_the_production_default() -> None:
-    """Promote compiler-owned derivatives while retaining an explicit escape hatch."""
-
     policy = (REPOSITORY_ROOT / "src/scf/cuda/rhf_policy.cpp").read_text(
         encoding="utf-8"
     )
-    begin = policy.index("bool generated_one_electron_derivatives_requested()")
+    rhf = (REPOSITORY_ROOT / "src/scf/cuda_rhf.cpp").read_text(encoding="utf-8")
+    assert "VIBEQC_ONE_ELECTRON_DERIVATIVES" not in policy
+    assert "generated_one_electron_derivatives_requested" not in policy
+    assert "launch_generated_one_electron_gradient(" in rhf
+    assert "launch_one_electron_force_cooperative_kernel" not in rhf
+    assert "OneElectronDerivativeHermiteCoefficients" not in rhf
+    for retired in (
+        "one_electron_force_reference.cu",
+        "one_electron_force_reference.hpp",
+        "one_electron_force_workspace.hpp",
+        "one_electron_native_attraction_gradient.cuh",
+        "one_electron_native_force.cuh",
+    ):
+        assert not (REPOSITORY_ROOT / "src/scf/cuda" / retired).exists()
+    begin = policy.index("unsigned one_electron_derivative_mapping_requested()")
     end = policy.index("bool resident_psss_bra_requested()", begin)
-    selection = policy[begin:end]
-    assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES")' in selection
-    assert "selection == nullptr" in selection
-    assert 'std::strcmp(selection, "generated") == 0' in selection
-    assert 'std::strcmp(selection, "reference") == 0' in selection
-    assert 'std::strcmp(selection, "native") == 0' in selection
-    assert 'std::strcmp(selection, "tensor") == 0' in selection
-    assert "silently changing scientific owner" in selection
-    assert selection.count("return true;") >= 2
-    assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in selection
+    mapping = policy[begin:end]
+    assert 'std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING")' in mapping
     assert (
         "if (selection == nullptr) return NucleusCooperativeSchedule::schedule_code;"
-        in selection
+        in mapping
     )
-    assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in selection
-    assert "return NucleusCooperativeSchedule::schedule_code;" in selection
+    assert 'std::strcmp(selection, "nucleus_cooperative") == 0' in mapping
+    assert "return NucleusCooperativeSchedule::schedule_code;" in mapping
+    assert "one_electron_force_cooperative_kernel" not in source
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:

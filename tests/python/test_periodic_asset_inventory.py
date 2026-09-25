@@ -20,7 +20,7 @@ from check_periodic_asset_inventory import (
     validate_inventory,
 )
 
-INVENTORY = ROOT / "docs/periodic_asset_inventory.json"
+INVENTORY = ROOT / "manifests/maintenance/periodic_asset_inventory.json"
 
 
 def _fixture_repo(tmp_path: Path) -> tuple[Path, dict[str, Any]]:
