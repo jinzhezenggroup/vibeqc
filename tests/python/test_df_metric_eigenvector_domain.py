@@ -123,6 +123,10 @@ def probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
 )
 def test_eigenvector_launch_domain(probe: Path, args: tuple[int, ...]) -> None:
     completed = subprocess.run(
-        [str(probe), *map(str, args)], capture_output=True, text=True, timeout=15
+        [str(probe), *map(str, args)],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=15,
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
