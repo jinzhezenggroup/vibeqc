@@ -141,10 +141,13 @@ def validate_result(
         or not raw_cases
     ):
         raise TypeError("production-domain result cases must be a nonempty sequence")
+    evidence = value.get("evidence")
+    if not isinstance(evidence, str) or not evidence.strip():
+        raise ValueError("production-domain result requires an evidence reference")
     payload = _canonical_payload(
         capability,
         raw_cases,
-        evidence=value.get("evidence"),
+        evidence=evidence,
     )
     if value.get("identity") != canonical_hash(payload):
         raise ValueError("production-domain result identity mismatch")
