@@ -5,9 +5,7 @@ from vibeqc_compiler.common.cuda_resources import parse_resources
 
 
 def _record(frame: int, cumulative: int | None, newline: str = "\n") -> str:
-    suffix = (
-        "" if cumulative is None else f", {cumulative} bytes cumulative stack size"
-    )
+    suffix = "" if cumulative is None else f", {cumulative} bytes cumulative stack size"
     return newline.join(
         (
             "ptxas info : Function properties for bulk_xc_census_probe",
@@ -47,6 +45,8 @@ def test_cumulative_stack_stays_with_its_function() -> None:
 
 def test_incomplete_diagnostic_does_not_invent_a_resource_record() -> None:
     assert (
-        parse_resources("ptxas info : Used 32 registers, 256 bytes cumulative stack size")
+        parse_resources(
+            "ptxas info : Used 32 registers, 256 bytes cumulative stack size"
+        )
         == ()
     )
