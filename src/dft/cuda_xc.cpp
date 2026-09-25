@@ -83,9 +83,8 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
-  const bool meta_gga =
-      functional == 2U || functional == 4U ||
-      (generated_split_hybrid && generated::split_hybrid_is_mgga(functional));
+  const bool meta_gga = functional == 2U || functional == 4U ||
+                        (generated_split_hybrid && generated::split_hybrid_is_mgga(functional));
   const auto ao_jets = functional == 0U ? 1U : 4U;
   const auto work_jets = meta_gga ? 4U : 1U;
   const auto feature_terms = functional == 0U ? 1U : (meta_gga ? 5U : 4U);

@@ -36,14 +36,15 @@ def _manifest_methods(path: Path = MANIFEST) -> tuple[str, ...]:
         or any(not isinstance(name, str) or not name.strip() for name in methods)
         or len(set(methods)) != len(methods)
     ):
-        raise MapleImportError("split-hybrid CUDA manifest requires unique method names")
+        raise MapleImportError(
+            "split-hybrid CUDA manifest requires unique method names"
+        )
     return tuple(methods)
 
 
 def _records() -> dict[str, dict]:
     return {
-        record["name"]: record
-        for record in libxc_bulk.read_catalog()["registrations"]
+        record["name"]: record for record in libxc_bulk.read_catalog()["registrations"]
     }
 
 

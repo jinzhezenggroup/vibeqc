@@ -199,7 +199,9 @@ def parameter_layout(
             statement = raw_statement.strip()
             if not statement:
                 continue
-            declaration = re.fullmatch(r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL)
+            declaration = re.fullmatch(
+                r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL
+            )
             if declaration is None:
                 raise CMetadataError("non-double parameter layout")
             for field in split_fields(declaration[1]):
@@ -263,7 +265,10 @@ def extract_registrations(
                 and raw_family in ("XC_FAMILY_HYB_GGA", "XC_FAMILY_HYB_MGGA")
                 and fields[1] == "XC_EXCHANGE"
             )
-            if raw_family not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA") and not hybrid_exchange:
+            if (
+                raw_family not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA")
+                and not hybrid_exchange
+            ):
                 raise CMetadataError(
                     "non-semilocal family requires MethodIR composition"
                 )

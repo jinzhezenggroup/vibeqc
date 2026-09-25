@@ -525,10 +525,10 @@ int main(int argc, char** argv) {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
-    for (const auto functional : {generated::kM062XFunctionalCode,
-                                  generated::kMN15FunctionalCode}) {
-      const auto layout = cuda_xc_layout_shape(
-          basis.natom, basis.nprimitive, basis.nao, grid.point_count(), functional, false, 17);
+    for (const auto functional :
+         {generated::kM062XFunctionalCode, generated::kMN15FunctionalCode}) {
+      const auto layout = cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao,
+                                               grid.point_count(), functional, false, 17);
       require(layout.jets == 4 && layout.work_jets == 4 && layout.feature_terms == 5,
               "generated split-hybrid MGGA layout is inconsistent");
       require(cuda_xc_detail::resolve_point_launcher(functional, false) != nullptr,
@@ -536,9 +536,8 @@ int main(int argc, char** argv) {
     }
     bool unknown_split_hybrid_rejected = false;
     try {
-      (void)cuda_xc_layout_shape(
-          basis.natom, basis.nprimitive, basis.nao, grid.point_count(),
-          generated::kSplitHybridMggaCodeBase | 0xffffU, false, 17);
+      (void)cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(),
+                                 generated::kSplitHybridMggaCodeBase | 0xffffU, false, 17);
     } catch (const std::invalid_argument&) {
       unknown_split_hybrid_rejected = true;
     }

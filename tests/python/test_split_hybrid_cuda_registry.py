@@ -1,7 +1,5 @@
 """Generated native registry for qualified split global hybrids."""
 
-from pathlib import Path
-
 from tools.generate_xc_split_hybrid_registry import (
     GGA_CODE_BASE,
     MGGA_CODE_BASE,
