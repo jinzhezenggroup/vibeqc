@@ -15,9 +15,28 @@
 namespace vibeqc::scf::cuda_df {
 
 // Existing DF arithmetic and reduction order; host orchestration compiles separately.
-__global__ void symmetrize_metrics_kernel(std::size_t dimension, double* metrics) {
-  const std::size_t column = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const std::size_t row = static_cast<std::size_t>(blockIdx.y) * blockDim.y + threadIdx.y;
+__global__ void symmetrize_metrics_kernel(std::size_t dimension, std::size_t tiles,
+                                          double* metrics) {
+  // Enumerate only authoritative upper-triangle tiles. One lane decodes the
+  // compact tile pair; every lane then executes the unchanged elementwise
+  // average/mirror operation. Diagonal tiles still reject their lower half.
+  __shared__ std::size_t tile_row, tile_column;
+  if (threadIdx.x == 0 && threadIdx.y == 0) {
+    const auto pair = static_cast<std::size_t>(blockIdx.x);
+    std::size_t low = 0, high = tiles;
+    while (low + 1 < high) {
+      const auto mid = (low + high) / 2;
+      if (mid * (mid + 1) / 2 <= pair)
+        low = mid;
+      else
+        high = mid;
+    }
+    tile_column = low;
+    tile_row = pair - low * (low + 1) / 2;
+  }
+  __syncthreads();
+  const std::size_t column = tile_column * blockDim.x + threadIdx.x;
+  const std::size_t row = tile_row * blockDim.y + threadIdx.y;
   const std::size_t system = blockIdx.z;
   if (row >= dimension || column >= dimension || row > column) return;
   const std::size_t offset = system * dimension * dimension;
@@ -60,9 +79,34 @@ __global__ void scale_metric_projection_kernel(std::size_t dimension, std::size_
     projected[pair * dimension + direction] /= denominator;
 }
 
+// Preserve the caller's original domain when rectangular tiles or a clipped
+// launch cannot be represented by the compact square-tile enumeration.
+__global__ void symmetrize_metrics_fallback_kernel(std::size_t dimension, double* metrics) {
+  const std::size_t column = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  const std::size_t row = static_cast<std::size_t>(blockIdx.y) * blockDim.y + threadIdx.y;
+  const std::size_t system = blockIdx.z;
+  if (row >= dimension || column >= dimension || row > column) return;
+  const std::size_t offset = system * dimension * dimension;
+  const std::size_t first = offset + row * dimension + column;
+  const std::size_t second = offset + column * dimension + row;
+  const double symmetric = 0.5 * (metrics[first] + metrics[second]);
+  metrics[first] = symmetric;
+  metrics[second] = symmetric;
+}
+
 void launch_symmetrize_metrics_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t dimension, double* metrics) {
-  symmetrize_metrics_kernel<<<grid, block, shared_bytes, stream>>>(dimension, metrics);
+  // Widen before multiplying, including on a 32-bit host. The compact grid
+  // must fit CUDA's x dimension and preserve both axes of the original domain.
+  const auto tiles = static_cast<std::uint64_t>(grid.x);
+  const auto tile_pairs = tiles * (tiles + 1) / 2;
+  if (!grid.x || grid.x != grid.y || !block.x || block.x != block.y || block.z != 1 ||
+      tile_pairs > static_cast<std::uint64_t>(std::numeric_limits<int>::max())) {
+    symmetrize_metrics_fallback_kernel<<<grid, block, shared_bytes, stream>>>(dimension, metrics);
+    return;
+  }
+  symmetrize_metrics_kernel<<<dim3(static_cast<unsigned>(tile_pairs), 1, grid.z), block,
+                              shared_bytes, stream>>>(dimension, tiles, metrics);
 }
 void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t matrix_elements,
