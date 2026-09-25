@@ -65,4 +65,6 @@ def test_cache_is_charged_up_to_but_not_above_native_cap(n: int, offset: int) ->
 def test_unaffected_routes_do_not_reserve_cpu_rks_cache(
     backend: str, pbe: bool, spins: int
 ) -> None:
-    assert inventory(7, 1024, backend=backend, pbe=pbe, spins=spins)["ao_grid_cache"] == 0
+    assert (
+        inventory(7, 1024, backend=backend, pbe=pbe, spins=spins)["ao_grid_cache"] == 0
+    )
