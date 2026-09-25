@@ -466,8 +466,7 @@ OccupiedCompletionResult complete_occupied_density(const integrals::IntegralData
   };
   if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n ||
       seeded_occupied > target_occupied || target_occupied > n ||
-      (seeded_occupied != 0 && (n > std::numeric_limits<std::size_t>::max() / seeded_occupied ||
-                                seeded_coefficients.size() != n * seeded_occupied)) ||
+      seeded_coefficients.size() != n * seeded_occupied ||
       reference_coefficients.size() != n * n || target.overlap.size() != n * n ||
       !(occupation > 0.0) || !std::isfinite(occupation) || !(minimum_complement_norm > 0.0) ||
       !std::isfinite(minimum_complement_norm) || !finite(target.overlap) ||
@@ -498,6 +497,10 @@ OccupiedCompletionResult complete_occupied_density(const integrals::IntegralData
     for (std::size_t mu = 0; mu < n; ++mu)
       value += result.coefficients[mu * target_occupied + first] *
                metric_coefficients[mu * target_occupied + second];
+    // A NaN comparison would otherwise be hidden by std::max in both
+    // orthogonality checks, even when the diagonal trace stays finite.
+    if (!std::isfinite(value))
+      throw std::invalid_argument("occupied completion metric contraction is non-finite");
     return value;
   };
 
