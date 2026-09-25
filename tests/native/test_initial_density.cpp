@@ -94,9 +94,12 @@ void check_initial_density_contract() {
   RestrictedInitialDensityProvider provider =
       [&](const RestrictedInitialDensityRequest& request) -> std::optional<Matrix> {
     ++provider_calls;
+    const Matrix expected_core{1, 0, 0, 0, 0, 0, 0, 0, 0};
     provider_context_ok = &request.system == &system && &request.integrals == &ints &&
                           &request.orthogonalizer == &x && request.occupied == 1 &&
-                          request.core_density == Matrix({1, 0, 0, 0, 0, 0, 0, 0, 0});
+                          request.core_density.size() == expected_core.size();
+    for (std::size_t i = 0; provider_context_ok && i < expected_core.size(); ++i)
+      provider_context_ok = std::abs(request.core_density[i] - expected_core[i]) < 1e-13;
     return raw;
   };
   solves = 0;
