@@ -313,13 +313,9 @@ CUDA_ALLOWED["cuda_integral_numerics"] = tuple(
 )
 CUDA_MODULES["cuda_one_electron_native"] = (
     "one_electron_reference",
-    "one_electron_force_reference",
-    "one_electron_force_workspace",
     "one_electron_native_overlap",
     "one_electron_native_attraction",
-    "one_electron_native_attraction_gradient",
     "one_electron_native_contraction",
-    "one_electron_native_force",
 )
 CUDA_ALLOWED["cuda_one_electron_native"] = (
     tuple("scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_one_electron_native"])
@@ -511,8 +507,6 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda/nuclear_kernels.hpp",
     "scf/cuda/one_electron_derivatives.cuh",
     "scf/cuda/one_electron_export_kernels.hpp",
-    "scf/cuda/one_electron_force_reference.hpp",
-    "scf/cuda/one_electron_force_workspace.hpp",
     "scf/cuda/one_electron_values.cuh",
     "scf/cuda/one_electron_view.hpp",
     "scf/cuda/packed_basis.hpp",

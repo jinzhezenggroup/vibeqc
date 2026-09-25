@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER = ROOT / "docs" / "compiler_historical_optimization_ledger.json"
+LEDGER = ROOT / "manifests" / "maintenance" / "compiler_optimization_ledger.json"
 
 _SCHEMA = "vibeqc.compiler-historical-optimization-ledger"
 _SCHEMA_VERSION = 2

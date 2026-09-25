@@ -5,7 +5,6 @@ import os
 import typing
 from dataclasses import replace
 from fractions import Fraction
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -149,13 +148,9 @@ def test_production_grid_policy_is_resolved_element_aware_and_versioned() -> Non
 def test_production_grid_radii_match_pinned_provenance_and_unknowns_fail_closed() -> (
     None
 ):
-    root = Path(__file__).resolve().parents[2]
-    model = json.loads(
-        (
-            root / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
-        ).read_text()
-    )
-    source = [item["covalent_radius_bohr"] for item in model["elements"]]
+    from vibeqc_compiler.geometry._gfn1_data import GFN1_GEOMETRY_ELEMENT_ROWS
+
+    source = [row[1] for row in GFN1_GEOMETRY_ELEMENT_ROWS]
     policy = GridPolicy()
     spec = policy.resolve("lda-rks")
     assert GRID_POLICY_RADII_SOURCE.endswith(

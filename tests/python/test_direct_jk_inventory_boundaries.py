@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 def _fixture(root: Path) -> dict[str, Any]:
-    (root / "docs").mkdir()
+    (root / checker.INVENTORY_PATH).parent.mkdir(parents=True, exist_ok=True)
     (root / "note.md").write_text("synthetic #597 fixture\n", encoding="utf-8")
     (root / "constants.hpp").write_text(
         "constexpr unsigned kCandidate = 16;\nconstexpr unsigned kSafety = 1;\n",

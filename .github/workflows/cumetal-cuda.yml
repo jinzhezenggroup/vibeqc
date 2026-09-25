@@ -82,7 +82,7 @@ jobs:
           # Include every family that can alter generated/native compilation.
           # The previous key omitted compiler/CMake inputs, so an immutable
           # exact cache could stay permanently half-stale after codegen changes.
-          key: ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'include/**', 'src/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cumetal-v2-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-
             ccache-cumetal-${{ runner.os }}-${{ runner.arch }}-${{ env.CUMETAL_COMMIT }}-

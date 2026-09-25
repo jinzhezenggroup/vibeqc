@@ -7,8 +7,8 @@
     ".agents/notes/implemented/performance/2026-09-22-one-electron-derivative-schedule-contract.md"
   ],
   "generated_capability": "generated fixed-density S/T/V first derivatives and public spherical weights with target-legal nucleus-cooperative scheduling",
-  "missing_capability": "No missing S/T/V first-derivative formula or current production-performance capability. The generated nucleus-cooperative path matches or beats the retained native cooperative control across the #693 qualified 29-768 AO holdouts. Native/reference remains an explicit independent oracle/control pending a separate retirement decision.",
+  "missing_capability": "No missing S/T/V first-derivative formula or current production-performance capability. The generated nucleus-cooperative path is the sole CUDA force owner; the former native cooperative force exception and provider selector are retired. Independent validation remains in CPU/libcint/PySCF and explicit raw-derivative oracles.",
   "owner": "one_electron_derivatives",
-  "retirement_condition": "Completed for normal production; remove the retained native/reference control only after independent validation no longer requires it and a separate retirement decision preserves oracle coverage.",
+  "retirement_condition": "Completed for S/T/V force execution: generated derivatives own production and diagnostic schedules, while the legacy native force/reference family is removed. Nuclear repulsion remains a separately classified analytic term.",
   "status": "production"
 }
