@@ -52,7 +52,7 @@ def test_rks_hvp_export_is_independent_of_import_order(
     try:
         module = importlib.import_module(name)
         if order == "result":
-            getattr(module, "RKSHVPResult")
+            module.RKSHVPResult
         elif order == "implementation":
             importlib.import_module(f"{name}.{implementation}")
         for _ in range(repeat):
