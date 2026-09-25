@@ -900,8 +900,14 @@ def _cuda_kernel(
     size = _device_size(node.spec)
     arguments = [f"const double* a{i}" for i in range(len(node.inputs))]
     arguments += ["double* out", "std::size_t o", "std::size_t v", "int* error"]
+    uses_complete_orbital = any(
+        _dim(index) == "n"
+        for spec in (node.spec, *(source.spec for source in node.inputs))
+        for index in spec.indices
+    )
     lines = [
         f"__global__ void {prefix}_node_{number}({','.join(arguments)}){{",
+        *(["  const std::size_t n=o+v;"] if uses_complete_orbital else []),
         f"  const std::size_t count={size};",
         "  for(std::size_t flat=std::size_t(blockIdx.x)*blockDim.x+threadIdx.x;flat<count;flat+=std::size_t(blockDim.x)*gridDim.x){",
     ]

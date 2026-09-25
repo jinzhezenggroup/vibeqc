@@ -110,3 +110,5 @@ def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
     assert "s.bar_correlation_energy" in text
     assert "s.bar_singles_residual" in text
     assert "s.bar_doubles_residual" in text
+    assert "const std::size_t n=o+v;" in text
+    assert "const std::size_t count=n*n*n*n;" in text
