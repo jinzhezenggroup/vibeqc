@@ -5,9 +5,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 from vibeqc_compiler.common.array_graph import evaluate_array_graph
+from vibeqc_compiler.dft.ao_cuda import emit_grid_source
 from vibeqc_compiler.dft.xc_contraction_cuda import (
+    DEFAULT_XC_MATRIX_SCHEDULE,
+    XcMatrixSchedule,
     compact_panel_program,
     emit_native_xc_matrix_schedule,
+    qualified_xc_matrix_schedules,
+    select_xc_matrix_schedule,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -127,3 +132,60 @@ def test_tiled_total_reduction_launch_census(
     # Before this slice: one standalone accumulate_totals launch per point tile.
     # After this slice: zero standalone reduction launches in the admitted tiled path.
     assert expected_two_step_launches > 0
+
+
+def test_xc_matrix_candidates_are_resource_qualified() -> None:
+    candidates = qualified_xc_matrix_schedules(384, 256, spins=2, work_jets=4)
+    assert tuple(schedule.tile for schedule in candidates) == (8, 16, 32)
+    assert DEFAULT_XC_MATRIX_SCHEDULE in candidates
+    assert all(schedule.threads <= 1024 for schedule in candidates)
+    assert all(schedule.shared_bytes <= 48 * 1024 for schedule in candidates)
+    assert all(schedule.additional_workspace_bytes == 0 for schedule in candidates)
+
+
+def test_xc_matrix_selection_keeps_measured_default_without_profile() -> None:
+    selected = select_xc_matrix_schedule(384, 256)
+    assert selected == DEFAULT_XC_MATRIX_SCHEDULE
+    assert select_xc_matrix_schedule(384, 256, preferred_tile=32) == XcMatrixSchedule(
+        32
+    )
+
+    # An 8x8 candidate may be legal here, but no-profile production must retain
+    # the historical scalar fallback when the qualified 16x16 default is absent.
+    assert select_xc_matrix_schedule(8, 8) is None
+    with pytest.raises(ValueError, match="not qualified"):
+        select_xc_matrix_schedule(16, 16, preferred_tile=32)
+
+
+def test_xc_matrix_admission_charges_compact_triangle_grid_dimension() -> None:
+    schedule = XcMatrixSchedule(16)
+    assert schedule.admitted(361 * 16, 256)
+    assert not schedule.admitted(362 * 16, 256)
+    assert not schedule.admitted(16, 16, spins=2, work_jets=4, maximum_grid_dimension=7)
+
+    source = emit_native_xc_matrix_schedule()
+    assert "const I tile_pairs = tiles*(tiles+1)/2;" in source
+    assert "tile_pairs <= 65535;" in source
+
+
+def test_xc_matrix_emitter_materializes_explicit_tile_candidate() -> None:
+    source = emit_native_xc_matrix_schedule(XcMatrixSchedule(8))
+    assert "__shared__ double d[8][9], a[8][9];" in source
+    assert "dim3(8,8)" in source
+    assert "(n+7)/8" in source
+    assert "all 64 lanes" in source
+    assert "dim3(16,16)" not in source
+
+
+def test_xc_matrix_candidate_is_frozen_in_grid_source_identity() -> None:
+    source8, identity8, _ = emit_grid_source(
+        native_ks=True, xc_matrix_schedule=XcMatrixSchedule(8)
+    )
+    source16, identity16, _ = emit_grid_source(native_ks=True)
+
+    assert "dim3(8,8)" in source8
+    assert "dim3(16,16)" in source16
+    assert identity8 != identity16
+
+    with pytest.raises(ValueError, match="require native KS"):
+        emit_grid_source(native_ks=False, xc_matrix_schedule=XcMatrixSchedule(8))
