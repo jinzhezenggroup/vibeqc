@@ -55,6 +55,12 @@ scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
   return scf::resolve_fock_build(spec, backend, 1e-12);
 }
 
+scf::ResolvedFockBuild exact_exchange_strategy(bool restricted, scf::FockBackend backend) {
+  auto spec = scf::make_global_hybrid_fock_spec(
+      restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted, 0.25);
+  return scf::resolve_fock_build(spec, backend, 1e-12);
+}
+
 void prepared_cuda_fock_seam() {
   const auto system = hydrogens(2, true);
   const scf::PreparedFockPlan cpu(system, nullptr, strategy(true, scf::FockBackend::Cpu));
@@ -133,6 +139,59 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
     require(residual < 1e-9, "CUDA reported convergence above the physical gate");
   require(std::abs(energy - (result.energy + xc_energy)) > 0.05,
           "CUDA endpoint gate does not detect XC double counting");
+}
+
+void run_exact_exchange_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const scf::PreparedFockPlan cpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cpu));
+  const scf::PreparedFockPlan gpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cuda), 0);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+  options.max_iterations = 200;
+
+  const unsigned spins = restricted ? 1U : 2U;
+  const auto plain_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history);
+  const auto hybrid_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true);
+  require(hybrid_bytes == plain_bytes + spins * basis.nao * basis.nao * sizeof(double),
+          "CUDA KS exact-exchange buffer is missing from state admission");
+
+  dft::CudaKsPlan plan(gpu, basis, grid, options, dft::SemilocalFamily::Pbe, 257);
+  const auto result = plan.run(nullptr, false);
+  require(result.converged && !plan.failed(), "CUDA exact-exchange KS did not converge");
+  const auto reference = restricted ? scf::run_pbe_rks(cpu, basis, grid, options)
+                                    : scf::run_uks(cpu, basis, grid, options, true);
+  require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
+          "CUDA exact-exchange KS endpoint disagrees with CPU");
+  require(std::abs(result.dft_diagnostic.components.exact_exchange) > 1e-8 &&
+              std::abs(result.dft_diagnostic.components.exact_exchange -
+                       reference.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA exact-exchange energy component is absent or inconsistent");
+  const auto movement = plan.transfers();
+  require(movement.iteration_synchronizations == movement.iterations &&
+              movement.execution_region_bindings == 0,
+          "unqualified exact-exchange KS entered the device-chunk fast path");
+  physical_check(cpu, basis, grid, 1U, result);
+
+  // The converged exact-K endpoint must also survive the real device-to-host
+  // final-state validator; the host predicate probe alone cannot establish it.
+  dft::CudaKsFinalStateToken token;
+  std::string detail;
+  require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  dft::VerifiedKsFinalState snapshot;
+  require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  require(snapshot.density.size() == spins && snapshot.fock.size() == spins &&
+              snapshot.identity.determinant.model == gpu.strategy() &&
+              std::abs(snapshot.components.total() - result.energy) < 1e-10 &&
+              std::abs(snapshot.components.exact_exchange -
+                       result.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA exact-exchange final state lost the converged model or energy");
 }
 
 void compare_rks_chunk_history(bool pbe) {
@@ -634,6 +693,8 @@ int main() {
               "could not restore CUDA KS synchronization baseline");
     }
     rejected_api_requests_revoke_tokens();
+    run_exact_exchange_case(true);
+    run_exact_exchange_case(false);
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);
       run_hydroxyl(pbe);

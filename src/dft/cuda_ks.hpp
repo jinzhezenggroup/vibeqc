@@ -53,7 +53,8 @@ struct CudaKsTransfers {
 /** State arena plus bounded ordinary-eigensolver workspace admission. The
  * provider's actual host/device queries are checked before allocation. This
  * shape query performs no CUDA call and allocates no numeric buffers. */
-std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history);
+std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history,
+                                bool exact_exchange = false);
 
 /** Native ordinary-stream LDA/PBE RKS/UKS trajectory. The borrowed common
  * Fock plan must outlive it. Model/grid/functional identity is immutable;

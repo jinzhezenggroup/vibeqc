@@ -33,8 +33,16 @@ bool valid_model(const KsFinalStateIdentity& identity) {
                          fock.spec.exchange.present &&
                          fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
                          model.semilocal_exchange_scale == 0.75 &&
-                         model.semilocal_correlation_scale == 1.0 &&
+                         model.semilocal_correlation_scale == 1.0 && !model.range_correction &&
+                         !model.nonlocal_correlation &&
                          fock.spec.exchange.coefficient == (model.spins == 1 ? -0.125 : -0.25);
+  // Admit the prepared exact-K composition for the three CUDA semilocal
+  // families, while the separately qualified PBE0 scale keeps its own gate.
+  const bool cuda_primary_exchange =
+      fock.backend == scf::FockBackend::Cuda && semilocal_family_has_cuda_ks(family) &&
+      fock.spec.coulomb.approximation == scf::FockApproximation::Exact &&
+      fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
+      !model.range_correction && !model.nonlocal_correlation;
   if (model.version != 1 || model.scf_domain_version != semilocal_family_domain_version(family) ||
       !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
@@ -55,7 +63,7 @@ bool valid_model(const KsFinalStateIdentity& identity) {
         fock.spec.exchange.coefficient >= 0)) ||
       (!b3lyp && !wb97mv && (!pbe || (fock.backend == scf::FockBackend::Cuda && !cuda_pbe0)) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
-        fock.spec.exchange.present)) ||
+        (fock.spec.exchange.present && !cuda_primary_exchange))) ||
       (b3lyp && (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
                  !fock.spec.exchange.present ||
                  fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2) ||
