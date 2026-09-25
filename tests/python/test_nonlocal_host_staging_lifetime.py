@@ -47,6 +47,38 @@ def test_queued_downloads_outlive_host_staging(
     assert result.returncode == 0, result.stderr
 
 
+def test_molecular_domain_padding_is_resident_and_fail_closed() -> None:
+    source = (ROOT / "src/dft/nonlocal_correlation/vv10_runtime_cuda.cu").read_text()
+    body = source.split("void enqueue_vv10_molecular_domain_cuda(", 1)[1].split(
+        "Vv10CudaDeviceLayout vv10_cuda_device_layout(", 1
+    )[0]
+    forbidden = (
+        "OwnedCudaStream",
+        "OwnedCudaBuffer",
+        "cudaMemcpyAsync",
+        "cudaMemcpyHostToDevice",
+        "cudaMemcpyDeviceToHost",
+        "cudaStreamSynchronize",
+    )
+    assert all(token not in body for token in forbidden)
+    assert "cudaMemsetAsync" in body
+    kernel = (
+        source.split("__global__ void molecular_domain_kernel(", 1)[1].split(
+            "__global__ void reduce_energy_ordered_kernel(", 1
+        )[0]
+        if "__global__ void reduce_energy_ordered_kernel("
+        in source.split("__global__ void molecular_domain_kernel(", 1)[1]
+        else source.split("__global__ void molecular_domain_kernel(", 1)[1].split(
+            "}  // namespace", 1
+        )[0]
+    )
+    assert "rho < threshold" in kernel
+    assert "effective_weights[i] = inactive ? 0.0 : weight" in kernel
+    assert "effective_density[i] = inactive ? 1.0 : rho" in kernel
+    assert "inactive ? 0.0 : gx" in kernel
+    assert "if (!valid) atomicExch(failed, 1)" in kernel
+
+
 def test_resident_enqueue_has_no_hidden_allocation_transfer_or_fence() -> None:
     source = (ROOT / "src/dft/nonlocal_correlation/vv10_runtime_cuda.cu").read_text()
     body = source.split("void enqueue_vv10_cuda_device(", 1)[1].split(

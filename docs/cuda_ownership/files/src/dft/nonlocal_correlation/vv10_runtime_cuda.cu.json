@@ -3,10 +3,10 @@
   "reason": "First-class bounded VV10/rVV10 CUDA primitive: maintained FP64 local-scale and ordered-pair scientific algebra with O(N) device workspace; it remains distinct from semilocal XC and retains an independent direct CPU/reference oracle.",
   "regions": [
     {
-      "start": "Vv10CudaDeviceLayout vv10_cuda_device_layout(",
+      "start": "void enqueue_vv10_molecular_domain_cuda(",
       "stop": null,
       "role": "runtime",
-      "reason": "Caller-owned resident CUDA layout/enqueue plus the compatibility host wrapper share one local-scale/pair implementation, deterministic ordered device reduction, bounded O(N) scratch, explicit failure publication, and optional H2D/D2H staging only in the wrapper."
+      "reason": "Caller-owned MolecularV1 padding, resident CUDA layout/enqueue and the compatibility host wrapper share one bounded execution family: validation precedes screening, pair algebra remains unchanged, ordered device reduction is deterministic, and H2D/D2H staging exists only in the wrapper."
     }
   ],
   "role": "scientific",

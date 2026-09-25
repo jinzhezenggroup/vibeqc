@@ -155,7 +155,48 @@ __global__ void reduce_energy_ordered_kernel(std::size_t npoint, const double* e
   *energy = sum;
 }
 
+__global__ void molecular_domain_kernel(std::size_t npoint, double threshold, const double* weights,
+                                        const double* density, const double* gradient,
+                                        double* effective_weights, double* effective_density,
+                                        double* effective_gradient, int* failed) {
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < npoint;
+       i += std::size_t(blockDim.x) * gridDim.x) {
+    const double rho = density[i];
+    const double gx = gradient[3 * i];
+    const double gy = gradient[3 * i + 1];
+    const double gz = gradient[3 * i + 2];
+    const double weight = weights[i];
+    const bool valid = isfinite(rho) && rho >= 0.0 && isfinite(gx) && isfinite(gy) &&
+                       isfinite(gz) && isfinite(weight);
+    if (!valid) atomicExch(failed, 1);
+    const bool inactive = !valid || rho < threshold;
+    effective_weights[i] = inactive ? 0.0 : weight;
+    effective_density[i] = inactive ? 1.0 : rho;
+    effective_gradient[3 * i] = inactive ? 0.0 : gx;
+    effective_gradient[3 * i + 1] = inactive ? 0.0 : gy;
+    effective_gradient[3 * i + 2] = inactive ? 0.0 : gz;
+  }
+}
+
 }  // namespace
+
+void enqueue_vv10_molecular_domain_cuda(cudaStream_t stream, std::size_t point_count,
+                                        double density_threshold, const double* weights,
+                                        const double* density, const double* density_gradient,
+                                        double* effective_weights, double* effective_density,
+                                        double* effective_density_gradient, int* numerical_error) {
+  if (stream == nullptr || !point_count || !std::isfinite(density_threshold) ||
+      density_threshold <= 0.0 || weights == nullptr || density == nullptr ||
+      density_gradient == nullptr || effective_weights == nullptr || effective_density == nullptr ||
+      effective_density_gradient == nullptr || numerical_error == nullptr)
+    throw std::invalid_argument("invalid resident molecular VV10 domain request");
+  runtime::cuda_resource_check(cudaMemsetAsync(numerical_error, 0, sizeof(int), stream));
+  constexpr unsigned threads = 128;
+  molecular_domain_kernel<<<launch_blocks(point_count, threads), threads, 0, stream>>>(
+      point_count, density_threshold, weights, density, density_gradient, effective_weights,
+      effective_density, effective_density_gradient, numerical_error);
+  runtime::cuda_resource_check(cudaGetLastError());
+}
 
 Vv10CudaDeviceLayout vv10_cuda_device_layout(std::size_t point_count, std::size_t tile_points,
                                              bool features, bool geometry) {
