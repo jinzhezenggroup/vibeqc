@@ -8,6 +8,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from tools.vibeqc_validation.retention import safe_relative
+
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW = ROOT / "benchmarks/legacy-evidence-review.json"
 THRESHOLD = 128 << 10
@@ -67,10 +69,22 @@ def _update_storage_references(
 def compact_publication(
     relative: str, *, check: bool = False
 ) -> list[tuple[str, str, bytes]]:
-    manifest_path = ROOT / relative
+    manifest_path = ROOT / safe_relative(relative)
+    if not manifest_path.resolve().is_relative_to(ROOT.resolve()):
+        raise ValueError("publication manifest path escapes the checkout")
     directory = manifest_path.parent
     manifest = json.loads(manifest_path.read_text())
     entries = manifest["files"]
+    # Storage identities authenticate bytes, not paths. Validate every member
+    # before reads or writes so compaction cannot move/delete another bundle.
+    names = set()
+    for entry in entries:
+        name = safe_relative(entry["path"])
+        if name in names:
+            raise ValueError("duplicate publication member path")
+        names.add(name)
+        if not (directory / name).resolve().is_relative_to(directory.resolve()):
+            raise ValueError("publication member path escapes its directory")
 
     # Authenticate every original member before updating any storage identity.
     # Keep these exact bytes so compaction does not re-read unchecked content.
