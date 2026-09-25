@@ -50,7 +50,8 @@ def test_factorized_fusion_is_explicit_ablation_not_default() -> None:
         in force_owner
     )
     assert "owned_factors.owner_identity ? &owned_factors : nullptr" in force_owner
-    assert "whitened && !borrowed && !owned_occupied" in bridge
-    assert "!borrowed && !whitened && !owned_occupied" in bridge
+    compact_bridge = "".join(bridge.split())
+    assert "whitened&&!borrowed&&!owned_occupied" in compact_bridge
+    assert "!borrowed&&!whitened&&!owned_occupied" in compact_bridge
     assert "factorized.coefficients[lo + k * o.nbf]" in consumer
     assert "factorized.projected + panel * o.nbf * factorized.rank" in consumer
