@@ -84,5 +84,5 @@ partition motion plus all remaining molecular-gradient components, or when
 
 - Issue #163, slice A
 - Issue #236 generated XC geometry partials
-- `docs/superpowers/specs/2026-09-15-issue-0163-stationary-gradient-a-design.md`
-- `docs/methods.md`
+- `docs/user/methods.md`
+- `2026-09-16-stationary-native-handoff.md`
