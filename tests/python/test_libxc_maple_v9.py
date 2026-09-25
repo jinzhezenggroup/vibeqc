@@ -186,6 +186,7 @@ def test_v9_libxc_erf_smoothing_covers_direct_and_large_a_branches() -> None:
     )
     np.testing.assert_allclose(actual, expected, rtol=3e-13, atol=3e-15)
 
+
 def test_minnesota_mgga_series_w_matches_pinned_util_definition() -> None:
     module = import_maple_source(
         "f := t -> mgga_series_w(params, 3, t):",
@@ -204,8 +205,7 @@ def test_minnesota_mgga_series_w_matches_pinned_util_definition() -> None:
 
 def test_minnesota_fermi_d_helpers_match_pinned_util_definition() -> None:
     module = import_maple_source(
-        "f := (x,t) -> Fermi_D(x,t): "
-        "g := (x,t) -> Fermi_D_corrected(x,t):",
+        "f := (x,t) -> Fermi_D(x,t): g := (x,t) -> Fermi_D_corrected(x,t):",
         bindings={"params_a_Fermi_D_cnst": 0.4},
     )
     graph = Graph()
@@ -215,14 +215,14 @@ def test_minnesota_fermi_d_helpers_match_pinned_util_definition() -> None:
     values = {"x": np.array((0.2, 0.7, 1.1)), "t": np.array((0.8, 1.4, 2.0))}
     actual = np.asarray(evaluate_array_graph(graph, (f, g), values))
     base = 1.0 - values["x"] ** 2 / (8.0 * values["t"])
-    corrected = base * (
-        1.0 - np.exp(-4.0 * values["t"] ** 2 / (0.4**2))
-    )
+    corrected = base * (1.0 - np.exp(-4.0 * values["t"] ** 2 / (0.4**2)))
     np.testing.assert_allclose(actual[0], base, rtol=2e-14, atol=2e-15)
     np.testing.assert_allclose(actual[1], corrected, rtol=2e-14, atol=2e-15)
 
 
-def test_mgga_exchange_nsp_reduces_to_separable_exchange_when_shape_ignores_rs_z() -> None:
+def test_mgga_exchange_nsp_reduces_to_separable_exchange_when_shape_ignores_rs_z() -> (
+    None
+):
     module = import_maple_source(
         "g := (x,u,t) -> x + 2*u + 3*t: "
         "h := (rs,z,x,u,t) -> g(x,u,t): "
@@ -249,4 +249,3 @@ def test_mgga_exchange_nsp_reduces_to_separable_exchange_when_shape_ignores_rs_z
         "t1": 1.1,
     }
     assert graph.evaluate(value, data) == pytest.approx(0.0, abs=2e-14)
-
