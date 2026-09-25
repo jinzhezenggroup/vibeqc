@@ -8,7 +8,6 @@ evaluate XC mathematics and cannot promote partial coverage.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from itertools import combinations_with_replacement
 from typing import TYPE_CHECKING, Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
