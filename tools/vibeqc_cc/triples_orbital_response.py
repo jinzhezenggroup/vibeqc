@@ -133,6 +133,7 @@ class BoundCCSDTOrbitalResponse:
         provider: typing.Any,
         *,
         options: CCSDGradientOptions | None = None,
+        response_backend: typing.Any = None,
     ) -> None:
         if not isinstance(response, BoundCCSDTResponse):
             raise TypeError("RCCSD(T) orbital response requires BoundCCSDTResponse")
@@ -150,6 +151,7 @@ class BoundCCSDTOrbitalResponse:
             provider,
             options=options,
             tensor_executor=response.parameter_executor,
+            response_backend=response_backend,
         )
         reference = baseline.reference
         response.bound._assert_current(reference.identity)

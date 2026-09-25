@@ -303,6 +303,7 @@ class BoundCCSDOrbitalResponse:
         *,
         options: typing.Any = None,
         tensor_executor: typing.Any = None,
+        response_backend: typing.Any = None,
     ) -> None:
         started = time.perf_counter()
         options = CCSDGradientOptions() if options is None else options
@@ -320,6 +321,15 @@ class BoundCCSDOrbitalResponse:
         ):
             raise TypeError(
                 "external orbital-response tensor executor must expose execute() and backend"
+            )
+        if response_backend is not None and (
+            not callable(getattr(response_backend, "coulomb_exchange", None))
+            or not callable(getattr(response_backend, "validate_reference", None))
+            or not isinstance(getattr(response_backend, "identity", None), str)
+        ):
+            raise TypeError(
+                "external RHF response backend must expose identity, "
+                "validate_reference(), and coulomb_exchange()"
             )
         source = provider.source
         _validate_source(source)
@@ -353,6 +363,7 @@ class BoundCCSDOrbitalResponse:
             ("source_identity", source.identity),
             ("options", options),
             ("tensor_executor", tensor_executor),
+            ("response_backend", response_backend),
         ):
             put(name, value)
         self._assert_current()
@@ -412,11 +423,23 @@ class BoundCCSDOrbitalResponse:
                 "CC same-space orbital stationarity failed; no canonical-gap patch is applied"
             )
 
-        backend = NativeJKBackend(
-            source,
-            axis_tile=max(source.shell_sizes),
-            budget_bytes=options.provider_budget_bytes,
-        )
+        backend = response_backend
+        if backend is None:
+            backend = NativeJKBackend(
+                source,
+                axis_tile=max(source.shell_sizes),
+                budget_bytes=options.provider_budget_bytes,
+            )
+        else:
+            if getattr(backend, "hamiltonian_id", None) != reference.hamiltonian_id:
+                raise ResponseCompatibilityError(
+                    "external RHF response backend Hamiltonian mismatch"
+                )
+            backend.validate_reference(reference)
+            if getattr(backend, "nbf", reference.nmo) != reference.nmo:
+                raise ResponseCompatibilityError(
+                    "external RHF response backend AO dimension mismatch"
+                )
         problem = RHFResponseOperator.build_problem(
             reference,
             backend,
@@ -424,6 +447,7 @@ class BoundCCSDOrbitalResponse:
         )
         operator = RHFResponseOperator(problem, backend)
         put("operator", operator)
+        put("response_backend", backend)
         put("operator_identity", operator.identity)
 
         basis = np.eye(operator.dimension)
@@ -501,6 +525,12 @@ class BoundCCSDOrbitalResponse:
                 "CC orbital-response source/provider/reference is stale or closed"
             )
         self.response.bound._assert_current(self.reference_identity)
+        if hasattr(self, "operator") and hasattr(self, "response_backend"):
+            if self.operator.backend is not self.response_backend:
+                raise ResponseCompatibilityError(
+                    "CC orbital-response backend ownership changed"
+                )
+            self.response_backend.validate_reference(self.reference)
         if (
             hasattr(self, "operator_identity")
             and self.operator.identity != self.operator_identity
