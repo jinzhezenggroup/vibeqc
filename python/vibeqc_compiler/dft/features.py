@@ -111,9 +111,7 @@ def _spin_density_view(density: typing.Any, nao: typing.Any) -> typing.Any:
     """Check only the O(1) shape/dtype contract of an enclosing validated owner."""
     d = np.asarray(density)
     if d.dtype != np.float64 or d.shape != (2, nao, nao):
-        raise ValueError(
-            "prevalidated spin density must be float64 [alpha,beta,AO,AO]"
-        )
+        raise ValueError("prevalidated spin density must be float64 [alpha,beta,AO,AO]")
     return d
 
 

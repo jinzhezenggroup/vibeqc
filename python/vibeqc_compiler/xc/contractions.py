@@ -397,9 +397,7 @@ class ContractionProgram:
 
     def features(self, jets: typing.Any, density: typing.Any) -> typing.Any:
         """Perform only the ingredient reductions declared by this functional."""
-        return density_features(
-            jets, density, ingredients=self._feature_ingredients()
-        )
+        return density_features(jets, density, ingredients=self._feature_ingredients())
 
     def _features_from_spin_densities(
         self, jets: typing.Any, density: typing.Any
