@@ -359,58 +359,65 @@ void run_wb97mv_nonlocal_composition_case(bool restricted) {
   options.density_tolerance = 1e-8;
   options.max_iterations = 250;
   options.xc_tile_points = tile_points;
-  options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::HostUnfused;
-
-  {
-    auto rejected_options = options;
-    rejected_options.xc_execution_schedule = scf::ScfOptions::XcExecutionSchedule::DeviceFused;
-    bool rejected = false;
-    try {
-      dft::CudaKsPlan unsupported(gpu_primary, basis, grid, rejected_options,
-                                  dft::SemilocalFamily::Wb97mv, tile_points, &gpu_model.correction,
-                                  gpu_nonlocal.get(), dft::nlc::Vv10DensityDomain::MolecularV1);
-    } catch (const std::invalid_argument&) {
-      rejected = true;
-    }
-    require(
-        rejected,
-        "WB97M-V nonlocal composition bypassed the device-resident AO-bridge qualification gate");
-  }
-
-  dft::CudaKsPlan plan(gpu_primary, basis, grid, options, dft::SemilocalFamily::Wb97mv, tile_points,
-                       &gpu_model.correction, gpu_nonlocal.get(),
-                       dft::nlc::Vv10DensityDomain::MolecularV1);
-  const auto result = plan.run(nullptr, false);
-  require(result.converged && !plan.failed(),
-          "CUDA WB97M-V host-unfused nonlocal composition did not converge");
 
   const auto reference =
       restricted
           ? scf::run_wb97mv_rks(cpu_primary, cpu_correction, basis, grid, options, *cpu_nonlocal)
           : scf::run_wb97mv_uks(cpu_primary, cpu_correction, basis, grid, options, *cpu_nonlocal);
-  require(reference.converged && std::abs(reference.energy - result.energy) < 2e-8,
-          "CUDA WB97M-V complete composition endpoint disagrees with CPU");
-  require(std::abs(reference.dft_diagnostic.components.xc - result.dft_diagnostic.components.xc) <
-                  2e-8 &&
-              std::abs(reference.dft_diagnostic.components.exact_exchange -
-                       result.dft_diagnostic.components.exact_exchange) < 1e-10,
-          "CUDA WB97M-V complete physical components disagree with CPU");
+  require(reference.converged, "CPU WB97M-V composition reference did not converge");
 
-  dft::CudaKsFinalStateToken token;
-  std::string detail;
-  require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
-  dft::VerifiedKsFinalState snapshot;
-  require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
-  require(snapshot.identity.model.scf_domain_version ==
-                  dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
-              snapshot.identity.model.range_correction &&
-              *snapshot.identity.model.range_correction == gpu_model.correction &&
-              snapshot.identity.model.nonlocal_correlation &&
-              *snapshot.identity.model.nonlocal_correlation == gpu_nonlocal->parameters() &&
-              snapshot.identity.model.nonlocal_density_domain ==
-                  dft::nlc::Vv10DensityDomain::MolecularV1 &&
-              std::abs(snapshot.components.total() - result.energy) < 1e-10,
-          "CUDA WB97M-V final state lost domain, RSH, VV10 or energy identity");
+  struct Endpoint {
+    scf::ScfResult result;
+    dft::CudaKsTransfers transfers;
+    dft::CudaKsResources resources;
+    dft::VerifiedKsFinalState snapshot;
+  };
+  const auto solve = [&](scf::ScfOptions::XcExecutionSchedule schedule) {
+    auto configured = options;
+    configured.xc_execution_schedule = schedule;
+    dft::CudaKsPlan plan(gpu_primary, basis, grid, configured, dft::SemilocalFamily::Wb97mv,
+                         tile_points, &gpu_model.correction, gpu_nonlocal.get(),
+                         dft::nlc::Vv10DensityDomain::MolecularV1);
+    auto result = plan.run(nullptr, false);
+    require(result.converged && !plan.failed(),
+            "CUDA WB97M-V nonlocal composition did not converge");
+    dft::CudaKsFinalStateToken token;
+    std::string detail;
+    require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+    dft::VerifiedKsFinalState snapshot;
+    require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+    return Endpoint{std::move(result), plan.transfers(), plan.resources(), std::move(snapshot)};
+  };
+
+  const auto host = solve(scf::ScfOptions::XcExecutionSchedule::HostUnfused);
+  const auto device = solve(scf::ScfOptions::XcExecutionSchedule::DeviceFused);
+  for (const auto* endpoint : {&host, &device}) {
+    require(std::abs(reference.energy - endpoint->result.energy) < 2e-8,
+            "CUDA WB97M-V complete composition endpoint disagrees with CPU");
+    require(std::abs(reference.dft_diagnostic.components.xc -
+                     endpoint->result.dft_diagnostic.components.xc) < 2e-8 &&
+                std::abs(reference.dft_diagnostic.components.exact_exchange -
+                         endpoint->result.dft_diagnostic.components.exact_exchange) < 1e-10,
+            "CUDA WB97M-V complete physical components disagree with CPU");
+    const auto& snapshot = endpoint->snapshot;
+    require(snapshot.identity.model.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
+                snapshot.identity.model.range_correction &&
+                *snapshot.identity.model.range_correction == gpu_model.correction &&
+                snapshot.identity.model.nonlocal_correlation &&
+                *snapshot.identity.model.nonlocal_correlation == gpu_nonlocal->parameters() &&
+                snapshot.identity.model.nonlocal_density_domain ==
+                    dft::nlc::Vv10DensityDomain::MolecularV1 &&
+                std::abs(snapshot.components.total() - endpoint->result.energy) < 1e-10,
+            "CUDA WB97M-V final state lost domain, RSH, VV10 or energy identity");
+  }
+  require(std::abs(host.result.energy - device.result.energy) < 2e-8,
+          "resident and host-unfused CUDA WB97M-V endpoints disagree");
+  require(device.transfers.xc_host_d2h_bytes == 0 && device.transfers.xc_host_h2d_bytes == 0 &&
+              device.transfers.xc_host_synchronizations == 0,
+          "device-fused WB97M-V retained an iteration host XC/nonlocal bridge");
+  require(device.resources.state_device_bytes > host.resources.state_device_bytes,
+          "resident WB97M-V workspace is missing from CUDA KS resource admission");
 }
 
 void compare_rks_chunk_history(bool pbe) {

@@ -72,6 +72,12 @@ struct CudaXcScalars {
   int error{};
 };
 
+struct CudaXcGridView {
+  const double *points{}, *weights{};
+  std::size_t point_count{};
+  cudaStream_t stream{};
+};
+
 /** Immutable geometry/basis/grid/functional owner with borrowed device arena
  * and stream. Both must outlive this object; destruction drains the stream.
  * Input density remains caller-owned and must survive the enqueued work.
@@ -95,6 +101,8 @@ class CudaXcPlan {
 
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
+  /** Borrow immutable device quadrature owned by this plan. */
+  CudaXcGridView grid_view() const;
   void enqueue(const double* density, std::size_t elements, std::uint64_t generation);
   /** Execute the ordinary physical XC evaluation while also publishing total
    * rho and grad-rho to caller-owned full-grid device buffers. This adds no

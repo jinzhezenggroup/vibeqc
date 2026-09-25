@@ -198,6 +198,11 @@ void CudaXcPlan::check_device() const {
   if (current != device_) throw std::invalid_argument("CUDA XC current device changed");
 }
 
+CudaXcGridView CudaXcPlan::grid_view() const {
+  check_device();
+  return {points_, weights_, layout_.npoint, stream_};
+}
+
 void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation) {
   if (layout_.response) throw std::invalid_argument("XC response plan requires a direction");
   enqueue_impl(density, nullptr, elements, generation);
