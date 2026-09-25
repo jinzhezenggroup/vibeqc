@@ -38,10 +38,11 @@ not remove the attribution or change the licenses of retained source/data.
 
 The repository-only D3 tools under `tools/vibeqc_d3/native/` adapt GPL-3.0-or-later
 code from xTBloom commit `2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3`.
-The exact pinned GFN1/D3 source data are retained under
-`upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/`; implementation
-source hashes and the derived covalent-radii identity are recorded in
-`manifests/xtbloom-d3.json`. The original CUDA/MKL additional permission and
+The exact pinned GFN1/D3 source identities and remote URLs are registered in
+`upstream/manifest.json`; normal builds consume the deterministic compact
+`data/parameters/d3_production.bin` product instead of a checked-in xTBloom
+source tree. Implementation source hashes and the derived covalent-radii
+identity are recorded in `manifests/xtbloom-d3.json`. The original CUDA/MKL additional permission and
 relevant LGPL/Apache license texts are retained under `LICENSES/`.
 The D3 tables derive from simple-dftd3 v1.4.0 (LGPL-3.0-or-later); the extracted
 covalent radii retain the source's LGPL-3.0-or-later AND Apache-2.0 provenance.

@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cpu-v2-${{ matrix.compiler }}-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cpu-v2-${{ matrix.compiler }}-
             ccache-cpu-${{ matrix.compiler }}-
@@ -269,7 +269,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cuda-v2-12.9-sm120-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'CMakePresets.json', 'include/**', 'src/**', 'tests/native/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cuda-v2-12.9-sm120-
             ccache-cuda-12.9-sm120-
@@ -433,7 +433,7 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-python-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'pyproject.toml', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-python-v2-
             ccache-python-
@@ -480,6 +480,22 @@ jobs:
           # Exercise the public autograd contracts on every PR without pulling
           # CUDA wheels into this CPU job.
           uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cpu
+      # Core and compiler-heavy reference tests need the external oracle inputs.
+      # Builds and installed production paths above remain completely offline.
+      - name: Cache pinned GFN1 and D3 reference inputs
+        if: matrix.shard == 'core' || matrix.shard == 'compiler-heavy'
+        id: gfn1_reference_sources
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/vibeqc-sources/xtbloom-gfn1-parameters
+            .cache/vibeqc-sources/xtbloom-gfn1-d3
+          key: gfn1-reference-inputs-v1-${{ hashFiles('upstream/manifest.json', 'tools/source_registry.py') }}
+      - name: Prepare pinned GFN1 and D3 reference inputs
+        if: (matrix.shard == 'core' || matrix.shard == 'compiler-heavy') && steps.gfn1_reference_sources.outputs.cache-hit != 'true'
+        run: |
+          .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-parameters
+          .venv/bin/python tools/source_registry.py sync xtbloom-gfn1-d3
       - name: Show ccache statistics
         run: ccache --show-stats
       - name: Run Python tests with coverage
@@ -855,7 +871,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ccache
-          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_d3.json', 'upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json') }}
+          key: ccache-cpu-benchmark-v2-${{ hashFiles('cmake/**', 'python/vibeqc_compiler/**', 'python/vibeqc/**', 'CMakeLists.txt', 'include/**', 'src/**', 'tools/**', 'manifests/xtbloom-d3.json', 'data/parameters/d3_production.bin', 'python/vibeqc_compiler/common/d3_data.py') }}
           restore-keys: |
             ccache-cpu-benchmark-v2-
             ccache-cpu-benchmark-

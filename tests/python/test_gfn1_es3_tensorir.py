@@ -1,6 +1,5 @@
 import inspect
 import json
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -13,14 +12,8 @@ from vibeqc_compiler.method.gfn2_es3_runtime import build_gfn2_es3_primal
 from vibeqc_compiler.method.xtb import GFN1_PARAMETER_SET
 from vibeqc_compiler.tensor import execute
 
-ROOT = Path(__file__).resolve().parents[2]
-GFN1_JSON = (
-    ROOT
-    / "upstream"
-    / "xtbloom"
-    / "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
-    / "gfn1.json"
-)
+from tools import source_registry
+from tools.parameters import generate_gfn1
 
 
 @pytest.mark.parametrize(
@@ -34,7 +27,8 @@ GFN1_JSON = (
 def test_gfn1_es3_matches_pinned_atom_parameters(
     atomic_number: int, charge: float
 ) -> None:
-    parameters = json.loads(GFN1_JSON.read_text(encoding="utf-8"))
+    source_bytes, _ = generate_gfn1.load_registered_inputs()
+    parameters = json.loads(source_bytes)
     assert parameters["thirdorder"] == {"mode": "atom", "shell_resolved": False}
     gamma3 = float(parameters["elements"][atomic_number - 1]["gam3"])
 
@@ -89,3 +83,17 @@ def test_gfn1_and_gfn2_delegate_third_order_math_to_shared_owner() -> None:
     for source in (gfn1_source, gfn2_source):
         assert "build_onsite_third_order_primal" in source
         assert "multiply(" not in source
+
+
+@pytest.mark.parametrize(
+    "message", ("missing registered input", "source hash mismatch")
+)
+def test_gfn1_es3_propagates_reference_verification_failure(
+    monkeypatch: pytest.MonkeyPatch, message: str
+) -> None:
+    def reject_reference() -> tuple[bytes, dict]:
+        raise source_registry.SourceRegistryError(message)
+
+    monkeypatch.setattr(generate_gfn1, "load_registered_inputs", reject_reference)
+    with pytest.raises(source_registry.SourceRegistryError, match=message):
+        test_gfn1_es3_matches_pinned_atom_parameters(6, -1.3)

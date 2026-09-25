@@ -2,48 +2,27 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
-RAW = ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.toml"
-MANIFEST = (
-    ROOT
-    / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
-)
 HEADER = ROOT / "src/xtb/native/data/parameters/gfn1.hpp"
+REGISTRY = ROOT / "upstream/manifest.json"
 
 
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def test_gfn1_generated_header_matches_registered_product() -> None:
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    expected = registry["products"]["gfn1-parameter-header"]["outputs"][
+        "src/xtb/native/data/parameters/gfn1.hpp"
+    ]
+    assert hashlib.sha256(HEADER.read_bytes()).hexdigest() == expected
 
 
-def test_gfn1_snapshots_match_audited_manifest() -> None:
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    assert _sha256(RAW) == manifest["outputs"]["gfn1.toml"]["sha256"]
-    assert _sha256(SOURCE) == manifest["outputs"]["gfn1.json"]["sha256"]
-    # The sole native adaptation is the namespace; the upstream digest remains
-    # an independent byte-for-byte gate on all scientific parameters/schema.
-    upstream_header = HEADER.read_bytes().replace(
-        b"namespace vibeqc::xtb::parameters::gfn1",
-        b"namespace xtbloom::parameters::gfn1",
-    )
-    assert (
-        hashlib.sha256(upstream_header).hexdigest()
-        == manifest["outputs"]["gfn1.hpp"]["sha256"]
-    )
-    assert manifest["source"]["revision"] == "fa8a4416e8fe093d0075bc10ac875494c2a449a9"
-    assert manifest["mctc"]["revision"] == "e9de066d89f250d1cfb6de3a33f0c27c0e2f855d"
-
-
-def test_gfn1_generator_reproduces_audited_header() -> None:
-    subprocess.run(
-        [sys.executable, "tools/parameters/generate_gfn1.py", "--check"],
-        cwd=ROOT,
-        check=True,
-    )
+def test_gfn1_remote_sources_are_not_checked_in_vendor_data() -> None:
+    registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    for source_id in ("xtbloom-gfn1-parameters", "xtbloom-gfn1-d3"):
+        source = registry["sources"][source_id]
+        assert source["kind"] == "remote-file-set"
+        assert "local_root" not in source
 
 
 def test_gfn1_generated_header_shape_is_explicit() -> None:
