@@ -65,7 +65,7 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
       cuda_check(cudaGetLastError());
     }
     point_launcher(stream, features, weights + begin, count, l.spins, coefficients, point_totals,
-                   error, l.exchange_scale, l.correlation_scale, delta_features);
+                   error, l.functional, l.exchange_scale, l.correlation_scale, delta_features);
     cuda_check(cudaGetLastError());
     // Feature/response consumers have finished reading work. The compiler may
     // reuse those same panels for weighted symmetric potential assembly. The
