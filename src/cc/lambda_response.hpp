@@ -118,9 +118,8 @@ struct CudaHamiltonianResponseResult {
  */
 class CudaHamiltonianResponseOwner {
  public:
-  CudaHamiltonianResponseOwner(std::size_t nocc, std::size_t nvir,
-                               CudaRawHamiltonianView raw, int device,
-                               std::size_t max_device_bytes);
+  CudaHamiltonianResponseOwner(std::size_t nocc, std::size_t nvir, CudaRawHamiltonianView raw,
+                               int device, std::size_t max_device_bytes);
   ~CudaHamiltonianResponseOwner();
 
   CudaHamiltonianResponseOwner(const CudaHamiltonianResponseOwner&) = delete;
