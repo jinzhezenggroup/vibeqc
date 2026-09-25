@@ -18,9 +18,10 @@ composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
 the public native registry exposes qualified conventional small-system
 `RCCSD(T)` energy and analytic forces on CPU and CUDA through
 `VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`. Homogeneous prepared
-batches follow the selected backend capability. The CUDA force route retains
-the audited native host response/Lambda weights in this first publication slice
-and uses the CUDA conventional nuclear-derivative consumer for final contraction.
+batches follow the selected backend capability. The CUDA force route executes
+the generated corrected-Lambda RHS/J^T actions on CUDA with host GMRES control,
+retains later parameter/Hamiltonian and Z response stages on host, and uses the
+CUDA conventional nuclear-derivative consumer for final contraction.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
 `rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,
@@ -200,9 +201,10 @@ DF/frozen-core/open-shell:   no
 ```
 
 CUDA force publication never substitutes RCCSD/HF derivatives. The force owner
-builds the complete CCSD(T) relaxed response before publication and the final
-conventional nuclear derivative is executed by the CUDA consumer. This slice
-does not relabel the host-owned corrected-Lambda/Z response as device-resident.
+builds the complete CCSD(T) relaxed response before publication. Generated
+corrected-Lambda RHS/J^T actions execute on CUDA, their packed GMRES control is
+still host-owned, later response/Z stages remain on host, and the final
+conventional nuclear derivative is executed by the CUDA consumer.
 
 The internal #746 CPU force chain now executes its generated Lambda, parameter-
 response, `(T)` VJP, raw-Hamiltonian, canonicalization and AO back-transform
@@ -213,12 +215,12 @@ generic backend keeps its 4096-node default. The qualified CC response owner
 explicitly requests an 8192-node ceiling so the NH3 final triples-response tile
 (5258 nodes) is admitted without widening unrelated TensorIR consumers.
 
-The public C++ method-owner lifecycle now publishes this complete force on CPU
-and, for the qualified CUDA domain, dispatches the final conventional nuclear
-derivative to CUDA. The host-owned native response equations remain the same
-audited implementation. The fully CUDA-resident response stack from #1215-#1225
-is intentionally not duplicated in C++; a later residency/performance slice may
-replace those host execution stages only after real-device qualification.
+The public C++ method-owner lifecycle now publishes this complete force on CPU.
+For the CUDA domain it also dispatches corrected-Lambda generated actions and the
+final conventional nuclear derivative to CUDA. The remaining host response
+stages continue to reuse the same audited generated equations. The fully
+CUDA-resident response stack from #1215-#1225 remains the staged integration
+target; this slice does not claim that endpoint residency is complete.
 
 ## Validation
 
