@@ -29,5 +29,16 @@ def test_split_hybrid_cuda_codegen_uses_rho_sigma_tau_without_laplacian(
     assert not re.search(r"\b(?:torch|pyscf|libxc_eval)\b", source, re.IGNORECASE)
 
 
+def test_m062x_cuda_codegen_reproduces_component_work_mgga_thresholds() -> None:
+    source = emit_split_hybrid_device("M06-2X")
+    assert f"if (total_density < {float(1.0e-15).hex()}) return out;" in source
+    assert f"if (total_density < {float(1.0e-12).hex()}) return out;" in source
+    assert source.count(f"fmax({float(1.0e-20).hex()}, tau_a)") == 2
+    assert source.count("raw.energy_density * total_density / work_density") == 2
+    assert source.count(
+        "fmax(-sigma_average, fmin(sigma_average, sigma_ab))"
+    ) == 2
+
+
 def test_split_hybrid_cuda_codegen_is_deterministic() -> None:
     assert emit_split_hybrid_device("M06-2X") == emit_split_hybrid_device("M06-2X")
