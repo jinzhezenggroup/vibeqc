@@ -177,6 +177,44 @@ void check_charge_guided_lowdin_contract() {
   invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2}); });
 }
 
+void check_occupied_projection_contract() {
+  integrals::IntegralData target;
+  target.nbf = 2;
+  target.overlap = {1, 0, 0, 1};
+  const Matrix x{1, 0, 0, 1};
+  const Matrix source_overlap{1, 0, 0, 1};
+  const Matrix cross{1, 0, 0, 1};
+  const double inv_sqrt_two = 1.0 / std::sqrt(2.0);
+  // Coefficients are columns. The occupied source vector is a normalized
+  // 45-degree rotation; projecting into an identical target must preserve it.
+  const Matrix source_coefficients{inv_sqrt_two, -inv_sqrt_two, inv_sqrt_two, inv_sqrt_two};
+  const auto projected =
+      project_occupied_density(target, x, source_overlap, cross, 2, source_coefficients, 1);
+  close(projected.density, {1, 1, 1, 1});
+  require(std::abs(projected.minimum_projected_norm - 1.0) < 1e-13 &&
+              projected.projection_residual < 1e-13 &&
+              projected.source_metric_orthogonality_error < 1e-13 &&
+              projected.target_metric_orthogonality_error < 1e-13,
+          "identity occupied projection diagnostics changed");
+
+  const Matrix reference_coefficients{1, 0, 0, 1};
+  const auto completed =
+      complete_occupied_density(target, projected.coefficients, 1, reference_coefficients, 2);
+  close(completed.density, {2, 0, 0, 2});
+  require(completed.added_orbitals == 1 && completed.minimum_added_norm > 0.7 &&
+              completed.metric_orthogonality_error < 1e-13,
+          "occupied projection core completion changed");
+
+  const Matrix rank_lost_cross{0, 0, 0, 0};
+  invalid([&] {
+    project_occupied_density(target, x, source_overlap, rank_lost_cross, 2, source_coefficients, 1);
+  });
+  const Matrix nonorthogonal_coefficients{2, 0, 0, 1};
+  invalid([&] {
+    project_occupied_density(target, x, source_overlap, cross, 2, nonorthogonal_coefficients, 1);
+  });
+}
+
 void check_overlap_cache_contract() {
   core::System system;
   system.atoms.push_back({1, {0, 0, 0}});
@@ -295,6 +333,7 @@ int main() {
   try {
     check_initial_density_contract();
     check_charge_guided_lowdin_contract();
+    check_occupied_projection_contract();
     check_overlap_cache_contract();
     check_borrowed_setup_operation();
     observation::active = nullptr;
