@@ -82,8 +82,8 @@ void prepared_cuda_fock_seam() {
 
   const auto screened_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
   const scf::PreparedFockPlan screened_range(system, nullptr, screened_resolved, 0);
-  require(!scf::prepared_cuda_fock_binding(screened_range),
-          "screened CUDA range exchange bypassed the qualification gate");
+  require(static_cast<bool>(scf::prepared_cuda_fock_binding(screened_range)),
+          "screened CUDA range exchange lacks the prepared execution binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This

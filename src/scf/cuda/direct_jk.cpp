@@ -115,8 +115,9 @@ FockBuildSpec direct_jk_strategy(const CudaDirectJkPlan* plan, FockBuildSpec spe
   const bool range_exchange = spec.exchange.present && spec.exchange.op != FockOperator::FullRange;
   direct_jk_require(!range_exchange || spec.derivative_order == 0,
                     "range-separated CUDA exchange is value-only");
-  direct_jk_require(!range_exchange || plan->screening_tolerance == 0.0,
-                    "range-separated CUDA exchange screening is not yet qualified");
+  // The existing full-range Schwarz matrix is a conservative bound for both
+  // erf(omega r)/r and erfc(omega r)/r: their Fourier multipliers are
+  // nonnegative and bounded above by the full Coulomb multiplier.
   direct_jk_require(spec.derivative_order <= plan->derivative_order,
                     "direct source lacks requested derivative capability");
   return spec;
