@@ -5,10 +5,12 @@ non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
 generated native CPU energy evaluator, and generated response paths share that
 definition. `VIBEQC_METHOD_RCCSD_T` has native/public CPU and CUDA energy
 ownership and qualified analytic forces for the conventional closed-shell
-small-system domain, with homogeneous prepared-batch support. The first public
-CUDA force slice keeps the audited native host CCSD(T) response/Lambda owner and
-routes the final conventional nuclear derivative contraction through the CUDA
-consumer; it does not claim that the full response chain is device-resident.
+small-system domain, with homogeneous prepared-batch support. The CUDA force
+path executes the generated corrected-Lambda RHS/J^T actions on CUDA while
+retaining host GMRES orchestration for that solve; later parameter/Hamiltonian
+and physical Z response stages remain host-owned, and the final conventional
+nuclear derivative contraction runs on CUDA. This is not yet a fully resident
+response chain.
 PySCF is used only by pinned validation tooling and is never a runtime dependency.
 
 ## Mathematical contract
@@ -232,12 +234,12 @@ electron nuclear derivative contractions to the existing CUDA consumers.
 
 The existing MO provider retains its explicit host preparation/staging contract.
 Accepted CC amplitudes and MO blocks are host-owned between the resident CC solve
-and `(T)`; the triples owner stages those inputs once. In this first public
-CUDA-force slice the corrected-Lambda, parameter/Hamiltonian response and
-physical Z-vector remain host-owned in the native C++ force owner. The fully
-CUDA-resident response composition introduced by #1215-#1225 remains an
-independent qualification path until it is integrated and requalified in the
-public owner. Therefore this publication is a correctness/API promotion, not an
+and `(T)`; the triples owner stages those inputs once. The corrected-Lambda
+scientific RHS and transpose actions are now generated CUDA programs, with the
+symmetry-packed GMRES control flow still on host. Parameter/Hamiltonian response
+and the physical Z-vector remain host-owned in the native C++ force owner. The
+fully CUDA-resident response composition introduced by #1215-#1225 remains the
+qualification target for later slices. Therefore this path still does not make an
 end-to-end device-residency or performance claim.
 
 The generated evaluator shares the CPU audited permutation inventory, evaluates
