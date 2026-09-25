@@ -240,7 +240,7 @@ void range_exchange_provider() {
 
   CudaDirectJkPlan* screened_raw{};
   CudaDirectJkDiagnostic screened_diagnostic;
-  require(create_cuda_direct_jk_plan(0, {system}, 0, 1e-12, 32U * 1024U * 1024U, &screened_raw,
+  require(create_cuda_direct_jk_plan(0, {system}, 0, 1e-14, 32U * 1024U * 1024U, &screened_raw,
                                      screened_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
           detail.c_str());
   std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> screened(
@@ -252,8 +252,15 @@ void range_exchange_provider() {
   range_spec.exchange = {true, -0.31, FockOperator::LongRange, omega, FockApproximation::Exact};
   std::vector<double> j, ka, kb;
   require(execute_cuda_direct_jk(screened.get(), range_spec, alpha, {}, j, ka, kb, detail) ==
-              VIBEQC_STATUS_INVALID_ARGUMENT,
-          "unqualified screened CUDA range exchange was accepted");
+              VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  const auto screened_expected = reference_range_exchange(
+      system, alpha, vibeqc::integrals::CoulombRange::Long, omega);
+  require(j.empty() && kb.empty() && ka.size() == screened_expected.size(),
+          "screened CUDA range exchange returned the wrong matrix set");
+  for (std::size_t i = 0; i < ka.size(); ++i)
+    require(std::isfinite(ka[i]) && std::abs(ka[i] - screened_expected[i]) < 2e-10,
+            "screened CUDA range exchange differs from the unscreened CPU oracle");
 }
 
 void direct_providers(bool through_f_response) {
