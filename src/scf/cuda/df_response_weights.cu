@@ -665,15 +665,18 @@ static cudaError_t contract_occupied_response(
         runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
         runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2 * count);
       }
-      runtime::cuda_trace::trace_counter(
-          fitted_occupied ? "response_retained_fitted_projection_panels"
-                          : "response_batched_raw_projection_panels", 1);
-      runtime::cuda_trace::trace_counter(
-          fitted_occupied ? "response_retained_fitted_projection_columns"
-                          : "response_batched_raw_projection_columns", count);
-      runtime::cuda_trace::trace_counter(
-          fitted_occupied ? "response_retained_fitted_charge_blas_calls"
-                          : "response_batched_raw_charge_blas_calls", 1);
+      runtime::cuda_trace::trace_counter(fitted_occupied
+                                             ? "response_retained_fitted_projection_panels"
+                                             : "response_batched_raw_projection_panels",
+                                         1);
+      runtime::cuda_trace::trace_counter(fitted_occupied
+                                             ? "response_retained_fitted_projection_columns"
+                                             : "response_batched_raw_projection_columns",
+                                         count);
+      runtime::cuda_trace::trace_counter(fitted_occupied
+                                             ? "response_retained_fitted_charge_blas_calls"
+                                             : "response_batched_raw_charge_blas_calls",
+                                         1);
     }
     if (fitted_occupied) {
       runtime::cuda_trace::trace_counter("response_retained_fitted_projection_passes", 1);
