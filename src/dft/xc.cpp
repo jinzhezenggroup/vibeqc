@@ -140,8 +140,8 @@ void sample_xc_capacity(XcIntegral& result, const std::vector<double>& ao, std::
       std::max(record.owned_numeric_bytes, runtime::vector_capacities(ao, result.potential));
 }
 
-void validate_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid,
-                           const RksAoCache& cache, unsigned order) {
+void validate_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid, const RksAoCache& cache,
+                           unsigned order) {
   const std::size_t jets = (order + 1) * (order + 2) * (order + 3) / 6;
   if (cache.order != order || cache.points != grid.point_count() || cache.nao != basis.nao ||
       cache.jets.size() != jets * cache.points * cache.nao)

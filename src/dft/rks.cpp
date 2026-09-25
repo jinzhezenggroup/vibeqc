@@ -118,9 +118,9 @@ struct RksEvaluation {
 struct RksXcEvaluator {
   using Direct = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&, const Matrix&,
                                      dft::XcDensitySource, std::size_t, double, double);
-  using CachedDirect = dft::XcIntegral (*)(
-      const dft::AoBasis&, const dft::MolecularGrid&, const Matrix&, dft::XcDensitySource,
-      std::size_t, double, double, const dft::RksAoCache&);
+  using CachedDirect = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
+                                           const Matrix&, dft::XcDensitySource, std::size_t, double,
+                                           double, const dft::RksAoCache&);
   Direct direct{};
   CachedDirect cached_direct{};
   const dft::SemilocalPointProgram* program{};
@@ -163,12 +163,13 @@ dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::Molecu
                                                  correlation_scale);
 }
 
-dft::XcIntegral evaluate_pbe_xc_rks_cached(
-    const dft::AoBasis& basis, const dft::MolecularGrid& grid, const Matrix& density,
-    dft::XcDensitySource source, std::size_t tile, double exchange_scale,
-    double correlation_scale, const dft::RksAoCache& cache) {
-  return dft::integrate_pbe_rks_with_tail_scaled_cached(
-      basis, grid, density, tile, source, exchange_scale, correlation_scale, cache);
+dft::XcIntegral evaluate_pbe_xc_rks_cached(const dft::AoBasis& basis,
+                                           const dft::MolecularGrid& grid, const Matrix& density,
+                                           dft::XcDensitySource source, std::size_t tile,
+                                           double exchange_scale, double correlation_scale,
+                                           const dft::RksAoCache& cache) {
+  return dft::integrate_pbe_rks_with_tail_scaled_cached(basis, grid, density, tile, source,
+                                                        exchange_scale, correlation_scale, cache);
 }
 
 std::uint64_t fingerprint_mix(std::uint64_t hash, std::uint64_t value) noexcept {
@@ -458,10 +459,9 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
     exact_exchange +=
         contract_fock_energy_components(correction_strategy, correction_jk, density).exchange;
   }
-  auto xc = xc_override.has_value()
-                ? std::move(*xc_override)
-                : evaluate_xc(basis, grid, density, source, tile, exchange_scale,
-                              correlation_scale, ao_cache);
+  auto xc = xc_override.has_value() ? std::move(*xc_override)
+                                    : evaluate_xc(basis, grid, density, source, tile,
+                                                  exchange_scale, correlation_scale, ao_cache);
   result.density_diagnostic = xc.density_diagnostic;
   dft::nlc::Vv10Integral nonlocal;
   if (nonlocal_correlation)

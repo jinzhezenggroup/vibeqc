@@ -327,12 +327,10 @@ int main() {
     const auto ao_cache_bytes = vibeqc::dft::rks_ao_cache_bytes(basis, grid, 1);
     auto ao_cache = vibeqc::dft::prepare_rks_ao_cache(basis, grid, 1);
     require(ao_cache_bytes == 4 * grid.point_count() * basis.nao * sizeof(double) &&
-                ao_cache.numeric_capacity_bytes() == ao_cache_bytes &&
-                ao_cache.order == 1 && ao_cache.points == grid.point_count() &&
-                ao_cache.nao == basis.nao,
+                ao_cache.numeric_capacity_bytes() == ao_cache_bytes && ao_cache.order == 1 &&
+                ao_cache.points == grid.point_count() && ao_cache.nao == basis.nao,
             "prepared RKS AO cache has the wrong bounded layout");
-    const auto streamed_tail =
-        vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
+    const auto streamed_tail = vibeqc::dft::integrate_pbe_rks_with_tail(basis, grid, density, 5);
     const auto cached_tail = vibeqc::dft::integrate_pbe_rks_with_tail_scaled_cached(
         basis, grid, density, 5, {}, 1.0, 1.0, ao_cache);
     require(cached_tail.energy == streamed_tail.energy &&
