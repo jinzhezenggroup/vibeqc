@@ -324,6 +324,17 @@ int main() {
             "PBE fixed-density integral is invalid");
     for (double value : pbe.potential)
       require(std::isfinite(value), "PBE fixed-density potential is nonfinite");
+    // The optimized triangular contraction must retain the established
+    // tolerance for slightly asymmetric caller storage by consuming D_uv+D_vu,
+    // rather than silently trusting only one triangle.
+    const std::vector<double> near_symmetric_density{0.8, 0.2 + 5.0e-12, 0.2 - 5.0e-12, 0.6};
+    const auto near_symmetric =
+        vibeqc::dft::integrate_pbe_rks(basis, grid, near_symmetric_density, 5);
+    require(std::abs(near_symmetric.energy - pbe.energy) < 2.0e-14,
+            "triangular PBE contraction changed accepted near-symmetric density semantics");
+    for (std::size_t i = 0; i < pbe.potential.size(); ++i)
+      require(std::abs(near_symmetric.potential[i] - pbe.potential[i]) < 2.0e-14,
+              "triangular PBE potential changed accepted near-symmetric density semantics");
     // #237 Slice A: delta-D may be signed/indefinite. Contract its
     // *linear* rho/grad-rho features separately, then recompute nonlinear PBE
     // from the reconstructed total features. The exact incremental result must

@@ -4,6 +4,8 @@ on:
   push:
     branches: [master]
   pull_request:
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
   schedule:
     - cron: "30 18 * * *"
@@ -253,11 +255,10 @@ jobs:
 
   cumetal-benchmark:
     name: CuMetal performance (CodSpeed / Apple GPU)
-    # Do not benchmark a PR whose complete CuMetal production build/runtime
-    # smoke already failed. This avoids the failure mode seen in prior PR runs
-    # where compatibility/build errors made performance telemetry meaningless.
+    # Keep PR telemetry gated on the required CuMetal runtime smoke.
+    # Preserve master policy: merge groups run correctness, not duplicate timing.
     needs: cuda-tests
-    if: ${{ github.event_name != 'schedule' && needs.cuda-tests.result == 'success' }}
+    if: ${{ github.event_name != 'schedule' && github.event_name != 'merge_group' && needs.cuda-tests.result == 'success' }}
     runs-on: macos-15
     timeout-minutes: 15
     env:

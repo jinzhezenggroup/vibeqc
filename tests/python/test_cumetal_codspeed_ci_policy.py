@@ -13,6 +13,8 @@ def test_cumetal_codspeed_pr_tier_is_bounded_and_build_gated() -> None:
 
     assert "needs: cuda-tests" in section
     assert "needs.cuda-tests.result == 'success'" in section
+    assert "  merge_group:\n    types: [checks_requested]" in workflow
+    assert "github.event_name != 'merge_group'" in section
     assert (
         "VIBEQC_CUMETAL_CODSPEED_TIER: "
         "${{ github.event_name == 'pull_request' && 'pr' || 'full' }}"

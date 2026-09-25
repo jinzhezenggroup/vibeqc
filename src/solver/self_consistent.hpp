@@ -1,18 +1,18 @@
-#ifndef VIBEQC_SCF_SOLVER_SELF_CONSISTENT_HPP
-#define VIBEQC_SCF_SOLVER_SELF_CONSISTENT_HPP
+#ifndef VIBEQC_SOLVER_SELF_CONSISTENT_HPP
+#define VIBEQC_SOLVER_SELF_CONSISTENT_HPP
 
 #include <cmath>
 #include <limits>
 #include <utility>
 
-#include "scf/solver/iteration_control.hpp"
+#include "solver/iteration_control.hpp"
 
-namespace vibeqc::scf::solver {
+namespace vibeqc::solver {
 
 /** Method-neutral fixed-point convergence policy.
  *
  * The driver deliberately knows nothing about densities, charges, orbitals,
- * Hamiltonians, DIIS/Broyden, occupations, or finalization.  A method adapter
+ * Hamiltonians, DIIS/Broyden, occupations, or finalization. A method adapter
  * owns those scientific details and supplies one evaluated proposal per
  * iteration.
  */
@@ -47,12 +47,13 @@ struct SelfConsistentOutcome {
  *   energy, state_rms, residual_rms
  * and any method-owned proposal payload required by accept().
  *
- * record(progress, evaluation) runs before accept(), matching SCF diagnostic
- * ordering: proposal hooks may inspect the current iteration diagnostics.
+ * record(progress, evaluation) runs before accept(), matching existing
+ * mean-field diagnostic ordering: proposal hooks may inspect the current
+ * iteration diagnostics.
  *
  * accept(current_state, evaluation, progress) returns the accepted next state.
  * It may apply damping, DIIS/Broyden policy, external safeguarded proposals, or
- * other method-specific update rules.  Convergence is evaluated from the
+ * other method-specific update rules. Convergence is evaluated from the
  * physical proposal metrics before that acceptance step.
  */
 template <class State, class Evaluate, class Accept, class Record>
@@ -94,6 +95,6 @@ SelfConsistentOutcome<State> run_self_consistent(State initial_state,
   return {std::move(state), latest, converged};
 }
 
-}  // namespace vibeqc::scf::solver
+}  // namespace vibeqc::solver
 
 #endif

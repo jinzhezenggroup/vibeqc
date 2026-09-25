@@ -10,7 +10,7 @@
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/fleet.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace {

@@ -102,17 +102,31 @@ std::array<double, 5> rks_features(const double* phi,
       generated::add_features(work[0], work + 1, work, features.data(), ingredient_mask);
     }
   } else {
+    // Every AO feature kernel is symmetric in (mu, nu). Preserve the accepted
+    // near-symmetric density semantics by summing both off-diagonal elements,
+    // but evaluate each AO pair only once.
     for (std::size_t mu = 0; mu < n; ++mu) {
-      for (std::size_t nu = 0; nu < n; ++nu) {
-        const double d = density[mu * n + nu];
-        features[0] += phi[mu] * d * phi[nu];
+      const double phi_mu = phi[mu];
+      const double diagonal = density[mu * n + mu];
+      features[0] += phi_mu * diagonal * phi_mu;
+      if (need_first)
+        for (unsigned axis = 0; axis < 3; ++axis)
+          features[axis + 1] +=
+              (derivatives[axis][mu] * phi_mu + phi_mu * derivatives[axis][mu]) * diagonal;
+      if (need_tau)
+        for (unsigned axis = 0; axis < 3; ++axis)
+          features[4] += 0.5 * derivatives[axis][mu] * diagonal * derivatives[axis][mu];
+
+      for (std::size_t nu = mu + 1; nu < n; ++nu) {
+        const double pair_density = density[mu * n + nu] + density[nu * n + mu];
+        features[0] += phi_mu * pair_density * phi[nu];
         if (need_first)
           for (unsigned axis = 0; axis < 3; ++axis)
             features[axis + 1] +=
-                (derivatives[axis][mu] * phi[nu] + phi[mu] * derivatives[axis][nu]) * d;
+                (derivatives[axis][mu] * phi[nu] + phi_mu * derivatives[axis][nu]) * pair_density;
         if (need_tau)
           for (unsigned axis = 0; axis < 3; ++axis)
-            features[4] += 0.5 * derivatives[axis][mu] * d * derivatives[axis][nu];
+            features[4] += 0.5 * derivatives[axis][mu] * pair_density * derivatives[axis][nu];
       }
     }
   }
@@ -922,12 +936,14 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       result.energy += weight * xc.energy;
       result.electrons += weight * rho;
       for (std::size_t mu = 0; mu < n; ++mu) {
-        for (std::size_t nu = 0; nu < n; ++nu) {
+        for (std::size_t nu = mu; nu < n; ++nu) {
           double value = xc.rho[0] * phi[mu] * phi[nu];
           value += xc.gradient[0][0] * (grad_x[mu] * phi[nu] + phi[mu] * grad_x[nu]) +
                    xc.gradient[0][1] * (grad_y[mu] * phi[nu] + phi[mu] * grad_y[nu]) +
                    xc.gradient[0][2] * (grad_z[mu] * phi[nu] + phi[mu] * grad_z[nu]);
-          result.potential[mu * n + nu] += weight * value;
+          const double contribution = weight * value;
+          result.potential[mu * n + nu] += contribution;
+          if (nu != mu) result.potential[nu * n + mu] += contribution;
         }
       }
     }
