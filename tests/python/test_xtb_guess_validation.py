@@ -14,6 +14,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+# Pin the CI-selected native library at collection time. Other tests may exercise
+# benchmark CLIs that mutate VIBEQC_LIBRARY inside the worker process.
+_SESSION_VIBEQC_LIBRARY = os.environ.get("VIBEQC_LIBRARY")
 
 BRIDGE = r"""
 #include <algorithm>
@@ -179,7 +182,7 @@ def _compile_bridge(tmp_path: Path) -> Path:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
-    library = Path(os.environ["VIBEQC_LIBRARY"]).resolve()
+    library = Path(_SESSION_VIBEQC_LIBRARY or os.environ["VIBEQC_LIBRARY"]).resolve()
     source = tmp_path / "xtb_guess_validation.cpp"
     source.write_text(BRIDGE)
     executable = tmp_path / "xtb_guess_validation"
