@@ -504,8 +504,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     // bypassed by an opt-in two-iteration device chunk.
     device_chunk_mode =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
-        !fitted && !has_exchange && !mixed_j && spins == 1 && provider.system().ecp_terms.empty() &&
-        configured_chunk_width() == kCudaKsChunkCapacity;
+        !fitted && !has_exchange && options.semilocal_exchange_scale == 1.0 &&
+        options.semilocal_correlation_scale == 1.0 && !mixed_j && spins == 1 &&
+        provider.system().ecp_terms.empty() && configured_chunk_width() == kCudaKsChunkCapacity;
     if (device_chunk_mode) {
       const auto binding = device_chunk_binding();
       if (!device_chunk_region.matches(binding))
