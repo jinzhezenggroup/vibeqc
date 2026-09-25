@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -154,35 +156,42 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
         // Stable compiler coordinates restore the full endpoint gate even
         // when independently evaluated AO features differ by a few ulps.
         const double expected = ref.potential[s][i];
-        close(v[s * elements + i], expected, "UKS CPU/CUDA V", 2e-11 + 2e-12 * std::abs(expected));
         if (empty && !empty_spin_reference.empty()) {
           const double same_input = empty_spin_reference[s * elements + i];
+          if (std::abs(v[s * elements + i] - same_input) > 2e-11 + 2e-12 * std::abs(same_input))
+            std::cerr << "functional=" << l.functional << " spin=" << s << " matrix=" << i
+                      << " tile=" << l.tile_points << " points=" << grid.point_count() << '\n';
           close(v[s * elements + i], same_input, "UKS same-input minority V",
                 2e-11 + 2e-12 * std::abs(same_input));
         }
+        const double tolerance = 2e-11 + 2e-12 * std::abs(expected);
+        if (std::abs(v[s * elements + i] - expected) > tolerance)
+          std::cerr << "functional=" << l.functional << " spin=" << s << " matrix=" << i
+                    << " tile=" << l.tile_points << " points=" << grid.point_count() << '\n';
+        close(v[s * elements + i], expected, "UKS CPU/CUDA V", tolerance);
       }
     }
   }
   fixture.canary();
 }
 
-/** Independently check AO/features and integrate the host point evaluator on
- * identical device inputs, in addition to the complete CPU endpoint gate.
- * This diagnostic separated feature-rounding sensitivity from point emission
- * before the stable spin-coordinate repair. Keep both checks so neither
- * same-input agreement nor endpoint agreement can conceal a separate defect.
- * Independent wide Libxc/one-ulp fixtures live in test_r2scan_boundary_codegen.
+/** Check AO/features against independent host contractions, then evaluate
+ * r2SCAN or WB97M-V on the captured device features. This distinguishes point
+ * math disagreements from feature-rounding sensitivity without relaxing the
+ * complete CPU endpoint gate. The independent r2SCAN boundary fixtures live
+ * in test_r2scan_boundary_codegen.
  */
-std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
-                                                const std::vector<double>& d) {
+std::vector<double> empty_spin_reference(const AoBasis& basis, const MolecularGrid& grid,
+                                         const std::vector<double>& d, std::uint32_t functional) {
   const auto count = grid.point_count(), n = basis.nao;
   // A test-only full tile retains the inputs after enqueue. Production and the
   // endpoint checked against this reference keep their bounded 257-point tile.
-  Fixture capture(basis, grid, 2U, true, count);
+  Fixture capture(basis, grid, functional, true, count);
   capture.submit(d);
-  require(capture.scalars().error == 0, "r2SCAN reference capture failed");
+  require(capture.scalars().error == 0, "meta-GGA reference capture failed");
   const auto& l = capture.layout;
   std::vector<double> ao(l.jets * count * n), features(l.spins * l.feature_terms * count);
+  std::vector<double> coefficients(functional == 4U ? features.size() : 0U);
   // Mirror the borrowed arena's packed basis/grid, AO, density-work, features
   // order. No production inspection API or host transfer is introduced.
   const auto* device = static_cast<const double*>(capture.arena) + l.packed_elements + 4 * count;
@@ -190,10 +199,26 @@ std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const Mole
   device += (l.jets + l.spins * l.work_jets) * count * n;
   check(cudaMemcpy(features.data(), device, features.size() * sizeof(double),
                    cudaMemcpyDeviceToHost));
+  if (functional == 4U)
+    check(cudaMemcpy(coefficients.data(), device + features.size(),
+                     coefficients.size() * sizeof(double), cudaMemcpyDeviceToHost));
+  if (functional == 4U && std::getenv("VIBEQC_WB97MV_DIAGNOSTIC_FILE")) {
+    std::ofstream output(std::getenv("VIBEQC_WB97MV_DIAGNOSTIC_FILE"), std::ios::binary);
+    const std::uint64_t header[]{count, n};
+    output.write(reinterpret_cast<const char*>(header), sizeof(header));
+    for (const auto& values : {ao, features, coefficients, grid.weights()})
+      output.write(reinterpret_cast<const char*>(values.data()),
+                   static_cast<std::streamsize>(values.size() * sizeof(double)));
+    require(static_cast<bool>(output), "unable to capture WB97M-V point diagnostics");
+  }
   std::vector<double> cpu_ao(ao.size()), expected(l.spins * n * n);
+  double max_point_difference = 0.0;
+  std::size_t worst_point = 0;
+  double worst_cpu = 0.0, worst_gpu = 0.0, worst_density = 0.0;
+  double worst_sigma = 0.0, worst_tau = 0.0;
   basis.evaluate(grid.points().data(), count, 1, 0, n, cpu_ao.data(), cpu_ao.size());
   for (std::size_t i = 0; i < ao.size(); ++i)
-    close(ao[i], cpu_ao[i], "captured r2SCAN AO", 2e-15 + 2e-13 * std::abs(cpu_ao[i]));
+    close(ao[i], cpu_ao[i], "captured meta-GGA AO", 2e-15 + 2e-13 * std::abs(cpu_ao[i]));
   for (std::size_t p = 0; p < count; ++p) {
     const auto phi = [&](unsigned jet, std::size_t mu) { return ao[(jet * count + p) * n + mu]; };
     double rho[2]{}, gradient[2][3]{}, tau[2]{};
@@ -211,25 +236,49 @@ std::vector<double> r2scan_empty_spin_reference(const AoBasis& basis, const Mole
           }
         }
       for (unsigned k = 0; k < 5; ++k)
-        close(features[(spin * 5 + k) * count + p], reference[k], "captured r2SCAN feature",
+        close(features[(spin * 5 + k) * count + p], reference[k], "captured meta-GGA feature",
               2e-15 + 2e-13 * std::abs(reference[k]));
       rho[spin] = features[spin * 5 * count + p];
       for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[(spin * 5 + k + 1) * count + p];
       tau[spin] = features[(spin * 5 + 4) * count + p];
     }
-    const auto xc = evaluate_r2scan_point(rho, gradient, tau);
-    for (unsigned spin = 0; spin < 2; ++spin)
-      for (std::size_t mu = 0; mu < n; ++mu)
-        for (std::size_t nu = 0; nu < n; ++nu) {
-          double value = xc.rho[spin] * phi(0, mu) * phi(0, nu);
-          for (unsigned k = 0; k < 3; ++k) {
-            value +=
-                xc.gradient[spin][k] * (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
-            value += xc.kinetic[spin] * phi(k + 1, mu) * phi(k + 1, nu);
+    const auto accumulate = [&](const auto& xc) {
+      for (unsigned spin = 0; spin < 2; ++spin)
+        for (std::size_t mu = 0; mu < n; ++mu)
+          for (std::size_t nu = 0; nu < n; ++nu) {
+            double value = xc.rho[spin] * phi(0, mu) * phi(0, nu);
+            for (unsigned k = 0; k < 3; ++k) {
+              value += xc.gradient[spin][k] *
+                       (phi(k + 1, mu) * phi(0, nu) + phi(0, mu) * phi(k + 1, nu));
+              value += xc.kinetic[spin] * phi(k + 1, mu) * phi(k + 1, nu);
+            }
+            expected[(spin * n + mu) * n + nu] += grid.weights()[p] * value;
           }
-          expected[(spin * n + mu) * n + nu] += grid.weights()[p] * value;
-        }
+    };
+    if (functional == 4U) {
+      const auto xc = evaluate_wb97mv_point(rho, gradient, tau);
+      const double gpu = coefficients[5 * count + p];
+      const double difference = std::abs(gpu - xc.rho[1]);
+      if (difference > max_point_difference) {
+        max_point_difference = difference;
+        worst_point = p;
+        worst_cpu = xc.rho[1];
+        worst_gpu = gpu;
+        worst_density = rho[0];
+        worst_sigma = gradient[0][0] * gradient[0][0] + gradient[0][1] * gradient[0][1] +
+                      gradient[0][2] * gradient[0][2];
+        worst_tau = tau[0];
+      }
+      accumulate(xc);
+    } else {
+      accumulate(evaluate_r2scan_point(rho, gradient, tau));
+    }
   }
+  if (functional == 4U && max_point_difference > 2e-11 + 2e-12 * std::abs(worst_cpu))
+    std::cerr << std::setprecision(17) << "worst WB97M point=" << worst_point
+              << " rho_a=" << worst_density << " v_b cpu=" << worst_cpu
+              << " sigma_aa=" << worst_sigma << " tau_a=" << worst_tau << " gpu=" << worst_gpu
+              << " diff=" << max_point_difference << '\n';
   capture.canary();
   return expected;
 }
@@ -497,8 +546,8 @@ int main() {
       Fixture tail(basis, tail_grid, functional, true, 257);
       auto fully = density(basis.nao, 2);
       std::fill(fully.begin() + basis.nao * basis.nao, fully.end(), 0.0);
-      const auto same_input = functional == 2U
-                                  ? r2scan_empty_spin_reference(basis, tail_grid, fully)
+      const auto same_input = (functional == 2U || functional == 4U)
+                                  ? empty_spin_reference(basis, tail_grid, fully, functional)
                                   : std::vector<double>{};
       compare(tail, basis, tail_grid, fully, same_input);
       if (functional == 2U) {

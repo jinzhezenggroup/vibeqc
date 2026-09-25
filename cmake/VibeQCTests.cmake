@@ -245,7 +245,7 @@ macro(vibeqc_add_native_tests)
     add_executable(vibeqc_dft_cuda_tests tests/native/test_dft_cuda.cu
       src/dft/cuda_xc.cpp "${VIBEQC_GRID_SOURCE}" src/dft/ao_grid.cpp
       src/dft/grid.cpp src/dft/xc.cpp src/scf/density_factor.cpp src/molecule/basis.cpp)
-    add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen)
+    add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen vibeqc_scf_array_cpu_codegen)
     target_include_directories(vibeqc_dft_cuda_tests PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
       "${CMAKE_CURRENT_SOURCE_DIR}/src/dft" "${CMAKE_CURRENT_BINARY_DIR}/generated")
