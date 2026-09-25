@@ -222,7 +222,7 @@ def audit_serialized(candidates: dict[str, bytes], frozen: Path) -> None:
     mismatches = sorted(actual_names - set(candidates))
     for name, candidate in sorted(candidates.items()):
         path = frozen / name
-        if path.is_file() and path.read_bytes().replace(b"\r\n", b"\n") != candidate:
+        if not path.is_file() or path.read_bytes().replace(b"\r\n", b"\n") != candidate:
             mismatches.append(name)
     if mismatches:
         raise RuntimeError(
