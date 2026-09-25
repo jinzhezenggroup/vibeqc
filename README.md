@@ -74,7 +74,9 @@ production optimization settings and full AOT manifest.  The presets are startin
 `VIBEQC_CUDA_COMPILE_JOBS` to bound CUDA compilation. Generated AOT work
 shares that pool by default, preserving the same total compiler bound. Set
 `VIBEQC_AOT_COMPILE_JOBS` only when an independent AOT pool is desired; when
-set, both limits should match the memory available on the build host.
+set, both limits should match the memory available on the build host. The fast
+preset also uses bounded NVCC split compilation for native and generated AOT
+kernels; the release preset keeps split compilation disabled by default.
 `VIBEQC_ENABLE_CXX_PCH=ON` is an opt-in clean-build experiment that
 precompiles only stable standard-library headers for host C++ sources; CUDA
 translation units remain outside that PCH. Keep it off with the default ccache
@@ -126,9 +128,10 @@ continue to use the canonical `sm_120` identity.
 
 For compile-only CUDA experiments,
 `-DVIBEQC_CUDA_SPLIT_COMPILE_THREADS=N` enables NVCC split compilation of the
-native direct kernel owners. It defaults to `1` because split compilation
-can change optimizer resource choices; use the normal setting for performance
-and release binaries.
+native direct kernel owners, while `-DVIBEQC_AOT_SPLIT_COMPILE_THREADS=N`
+does the same for generated AOT owners. Both default to `1` because split
+compilation can change optimizer resource choices; use the normal settings for
+performance and release binaries.
 
 For CPU only, configure with:
 

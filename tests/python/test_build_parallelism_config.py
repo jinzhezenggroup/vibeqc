@@ -53,3 +53,38 @@ def test_host_pch_is_opt_in_and_cxx_only() -> None:
 
     pch = (ROOT / "src" / "pch.hpp").read_text(encoding="utf-8")
     assert '#include "' not in pch
+
+
+def test_fast_cuda_preset_uses_bounded_aot_split_compile() -> None:
+    presets = json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
+    fast = next(
+        preset
+        for preset in presets["configurePresets"]
+        if preset["name"] == "cuda-dev-fast"
+    )
+    assert fast["cacheVariables"]["VIBEQC_AOT_SPLIT_COMPILE_THREADS"] == "2"
+
+    cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert 'set(VIBEQC_AOT_SPLIT_COMPILE_THREADS "1" CACHE STRING' in cmake
+
+    cuda = (ROOT / "cmake" / "VibeQCCuda.cmake").read_text(encoding="utf-8")
+    aot = cuda.split("if(VIBEQC_ENABLE_AOT_SHELLS)", 1)[1]
+    assert "--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}" in aot
+    assert "$<CUDA_COMPILER_ID:NVIDIA>" in aot
+
+
+def test_release_preset_keeps_aot_split_compile_disabled() -> None:
+    presets = json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
+    release = next(
+        preset
+        for preset in presets["configurePresets"]
+        if preset["name"] == "cuda-release-sm120"
+    )
+    assert "VIBEQC_AOT_SPLIT_COMPILE_THREADS" not in release["cacheVariables"]
+
+
+def test_fock_benchmark_records_aot_split_compile_identity() -> None:
+    benchmark = (ROOT / "tools" / "benchmark_fock_strategies.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"VIBEQC_AOT_SPLIT_COMPILE_THREADS"' in benchmark

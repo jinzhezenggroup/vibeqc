@@ -45,6 +45,8 @@ set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
     "Maximum concurrent native CUDA compiler jobs in the Ninja job pool")
 set(VIBEQC_AOT_COMPILE_JOBS "" CACHE STRING
     "Optional independent generated-AOT CUDA job limit; empty shares the native CUDA pool")
+set(VIBEQC_AOT_SPLIT_COMPILE_THREADS "1" CACHE STRING
+    "NVCC split-compile threads for generated AOT kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
     "NVCC split-compile threads for native direct kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
@@ -122,6 +124,10 @@ if(NOT VIBEQC_AOT_COMPILE_JOBS STREQUAL ""
    AND NOT VIBEQC_AOT_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR
           "VIBEQC_AOT_COMPILE_JOBS must be empty or a positive integer")
+endif()
+if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR
+          "VIBEQC_AOT_SPLIT_COMPILE_THREADS must be a positive integer")
 endif()
 if(NOT VIBEQC_CUDA_PROVIDER STREQUAL "nvidia"
    AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
