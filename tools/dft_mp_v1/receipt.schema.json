@@ -52,7 +52,7 @@
       "properties": {
         "issue": {"const": 1190}, "status": {"const": "PASS"},
         "source_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "review_url": {"type": "string", "format": "uri"},
+        "review_url": {"type": "string", "format": "uri", "pattern": "^https://github\\.com/jinzhezenggroup/vibeqc/issues/1190#issuecomment-[1-9][0-9]*$"},
         "raw_receipt": {"$ref": "#/$defs/file"}
       }, "additionalProperties": false
     }

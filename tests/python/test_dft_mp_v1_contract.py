@@ -384,6 +384,53 @@ def test_mixed_numerical_oracle_and_work_negative_controls(
 
 
 @pytest.mark.parametrize(
+    "provider",
+    [None, "", False, 7, [], {}, "vibeqc", "native-dft"],
+)
+def test_oracle_provider_is_a_nonempty_independent_string(
+    tmp_path: Path, contract: dict, provider: object
+) -> None:
+    row = next(r for r in contract["rows"] if r["id"] == "pbe/rks/water/mixed_correct")
+    campaign = _campaign(tmp_path)
+    value = _run_record(tmp_path, contract, row, campaign)
+    value["checks"]["finite_difference"].update(
+        step_bohr=[0.01, 0.005], reconverged_each_displacement=True
+    )
+    value["checks"]["grid_convergence"]["independent_finer_grid"] = True
+    value["checks"]["changed_geometry"].update(
+        input_sha256=contract["cases"]["water"]["changed_input_sha256"],
+        grid_identity=contract["cases"]["water"]["changed_grid_identity"],
+        complete_energy_forces=True,
+    )
+    value["independent_oracle"]["provider"] = provider
+
+    with pytest.raises(InvalidEvidence, match="oracle provider"):
+        _check_run(value, campaign, row, contract, tmp_path)
+
+
+def test_schemas_encode_oracle_and_review_identity_constraints() -> None:
+    result_schema = json.loads(
+        (ROOT / "result.schema.json").read_text(encoding="utf-8")
+    )
+    provider_schema = result_schema["properties"]["independent_oracle"]["properties"][
+        "provider"
+    ]
+    assert provider_schema["type"] == "string"
+    assert provider_schema["minLength"] == 1
+    assert set(provider_schema["not"]["enum"]) == {"vibeqc", "native-dft"}
+
+    receipt_schema = json.loads(
+        (ROOT / "receipt.schema.json").read_text(encoding="utf-8")
+    )
+    assert (
+        receipt_schema["properties"]["final_acceptance"]["properties"]["review_url"][
+            "pattern"
+        ]
+        == contract_validator.FINAL_REVIEW_URL_PATTERN
+    )
+
+
+@pytest.mark.parametrize(
     ("residual", "accepted"),
     [
         (0.0, True),
@@ -822,7 +869,7 @@ def test_optional_nonpass_never_replaces_required_final_row(
             "issue": 1190,
             "status": "PASS",
             "source_commit": campaign["source_commit"],
-            "review_url": "https://github.com/jinzhezenggroup/vibeqc/pull/1",
+            "review_url": "https://github.com/jinzhezenggroup/vibeqc/issues/1190#issuecomment-123",
             "raw_receipt": raw_final,
         },
     }
@@ -832,6 +879,19 @@ def test_optional_nonpass_never_replaces_required_final_row(
     assert outcome["product_status"] == "PASS"
     assert outcome["passed_required_rows"] == 115
     assert len(outcome["optional_findings"]) == 2
+    valid_review_url = receipt["final_acceptance"]["review_url"]
+    for invalid_review_url in (
+        "https://github.com/jinzhezenggroup/vibeqc/README.md",
+        "https://github.com/jinzhezenggroup/vibeqc/issues/1191#issuecomment-123",
+        "https://github.com/jinzhezenggroup/vibeqc/issues/1190",
+        "https://github.com/jinzhezenggroup/vibeqc/issues/1190#issuecomment-not-a-number",
+    ):
+        receipt["final_acceptance"]["review_url"] = invalid_review_url
+        path.write_bytes(canonical(receipt))
+        with pytest.raises(InvalidEvidence, match="#1190 review URL"):
+            audit(path, final=True)
+    receipt["final_acceptance"]["review_url"] = valid_review_url
+    path.write_bytes(canonical(receipt))
     optional_indices = [
         index for index, row in enumerate(contract["rows"]) if not row["required"]
     ]

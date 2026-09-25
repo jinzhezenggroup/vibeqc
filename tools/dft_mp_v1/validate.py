@@ -10,6 +10,7 @@ import argparse
 import json
 import math
 import random
+import re
 import statistics
 import subprocess
 from pathlib import Path
@@ -18,6 +19,10 @@ from .freeze_contract import REPO, ROOT, build, canonical, digest, source_digest
 
 OFFICIAL_UPSTREAM_URL = "https://github.com/jinzhezenggroup/vibeqc.git"
 OFFICIAL_UPSTREAM_MASTER_REF = "refs/heads/master"
+FINAL_REVIEW_URL_PATTERN = (
+    r"^https://github\.com/jinzhezenggroup/vibeqc/issues/1190"
+    r"#issuecomment-[1-9][0-9]*$"
+)
 
 STATUSES = {
     "unknown",
@@ -343,10 +348,13 @@ def _check_run(
     energy = _finite(run.get("energy_eh"), "total energy")
     require(math.isfinite(energy), "nonfinite energy")
     oracle = run.get("independent_oracle")
+    require(type(oracle) is dict, "independent oracle missing")
+    oracle_provider = oracle.get("provider")
     require(
-        type(oracle) is dict
-        and oracle.get("provider") not in (None, "vibeqc", "native-dft"),
-        "independent oracle missing",
+        type(oracle_provider) is str
+        and bool(oracle_provider)
+        and oracle_provider not in ("vibeqc", "native-dft"),
+        "independent oracle provider missing or not independent",
     )
     checked_file(base, oracle.get("raw"))
     require(
@@ -964,15 +972,14 @@ def audit(receipt_path: Path, *, final: bool = False) -> dict:
             acceptance.get("issue") != 1190
             or acceptance.get("status") != "PASS"
             or acceptance.get("source_commit") != source
-            or not acceptance.get("review_url")
+            or type(acceptance.get("review_url")) is not str
         ):
             failures.append("#1190 source-matched reviewed PASS missing")
         else:
             require(
-                acceptance["review_url"].startswith(
-                    "https://github.com/jinzhezenggroup/vibeqc/"
-                ),
-                "review URL is not in upstream repo",
+                re.fullmatch(FINAL_REVIEW_URL_PATTERN, acceptance["review_url"])
+                is not None,
+                "#1190 review URL must identify an issue review comment",
             )
             raw_acceptance = read_json(
                 checked_file(base, acceptance.get("raw_receipt"))

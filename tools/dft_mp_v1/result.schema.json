@@ -18,7 +18,7 @@
     "scf": {"type": "object", "required": ["converged", "physical_residual", "final_forces_state", "screening_thresholds", "energy_tolerance_eh", "density_tolerance"]},
     "energy_eh": {"type": "number"},
     "forces_eh_per_bohr": {"type": "array", "items": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3}},
-    "independent_oracle": {"type": "object", "required": ["provider", "raw", "source_sha256", "method_version", "basis_pack_sha256", "total_energy_error_eh", "energy_gate_eh"]},
+    "independent_oracle": {"type": "object", "required": ["provider", "raw", "source_sha256", "method_version", "basis_pack_sha256", "total_energy_error_eh", "energy_gate_eh"], "properties": {"provider": {"type": "string", "minLength": 1, "not": {"enum": ["vibeqc", "native-dft"]}}}},
     "checks": {"type": "object"},
     "precision": {"type": "object", "required": ["requested_mode", "native_provenance", "scf_fock_timeline", "operators"]},
     "strict_comparator": {"type": "object"}, "mixed_vs_strict": {"type": "object"},
