@@ -16,9 +16,9 @@ def staging_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
     source = (ROOT / "src/dft/nonlocal_correlation/vv10_runtime_cuda.cu").read_text()
-    body = source[source.index("void execute_vv10_cuda(") :].rsplit(
-        "}  // namespace vibeqc::dft::nlc", 1
-    )[0]
+    body = source[
+        source.index("Vv10CudaDeviceLayout vv10_cuda_device_layout(") :
+    ].rsplit("}  // namespace vibeqc::dft::nlc", 1)[0]
     body = re.sub(r"<<<.*?>>>", "", body, flags=re.DOTALL)
     folder = tmp_path_factory.mktemp("nonlocal-host-staging")
     cpp, binary = folder / "probe.cpp", folder / "probe"
@@ -33,7 +33,7 @@ def staging_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return binary
 
 
-@pytest.mark.parametrize("failed_download", (0, 2, 3, 4, 5, 6))
+@pytest.mark.parametrize("failed_download", (0, 1, 2, 3, 4, 5, 6))
 def test_queued_downloads_outlive_host_staging(
     staging_probe: Path, failed_download: int
 ) -> None:
@@ -47,10 +47,29 @@ def test_queued_downloads_outlive_host_staging(
     assert result.returncode == 0, result.stderr
 
 
+def test_resident_enqueue_has_no_hidden_allocation_transfer_or_fence() -> None:
+    source = (ROOT / "src/dft/nonlocal_correlation/vv10_runtime_cuda.cu").read_text()
+    body = source.split("void enqueue_vv10_cuda_device(", 1)[1].split(
+        "void execute_vv10_cuda(", 1
+    )[0]
+    forbidden = (
+        "OwnedCudaStream",
+        "OwnedCudaBuffer",
+        "cudaMemcpyAsync",
+        "cudaMemcpyHostToDevice",
+        "cudaMemcpyDeviceToHost",
+        "cudaStreamSynchronize",
+    )
+    assert all(token not in body for token in forbidden)
+    assert "cudaMemsetAsync" in body
+    assert "reduce_energy_ordered_kernel" in body
+
+
 PREFIX = r"""
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -63,8 +82,11 @@ void operator delete(void* p) noexcept {
  std::free(p);
 }
 void operator delete(void* p,std::size_t) noexcept { ::operator delete(p); }
+struct TestCudaStream {};
+using cudaStream_t = TestCudaStream*;
+TestCudaStream test_stream;
 constexpr int cudaMemcpyHostToDevice=1,cudaMemcpyDeviceToHost=2;
-int cudaMemcpyAsync(void* dst,const void* src,std::size_t bytes,int kind,int) {
+int cudaMemcpyAsync(void* dst,const void* src,std::size_t bytes,int kind,cudaStream_t) {
  if(kind==cudaMemcpyDeviceToHost) {
   ++downloads;
   if(downloads==fail_download) return 7;
@@ -72,7 +94,7 @@ int cudaMemcpyAsync(void* dst,const void* src,std::size_t bytes,int kind,int) {
  }
  std::memcpy(dst,src,bytes);return 0;
 }
-int cudaMemsetAsync(void* dst,int value,std::size_t n,int) {std::memset(dst,value,n);return 0;}
+int cudaMemsetAsync(void* dst,int value,std::size_t n,cudaStream_t) {std::memset(dst,value,n);return 0;}
 int cudaGetLastError() {return 0;}
 namespace runtime {
 void cuda_resource_check(int status) {if(status) throw std::runtime_error("injected copy failure");}
@@ -81,22 +103,28 @@ std::size_t size_mul(std::size_t a,std::size_t b,const char*) {return a*b;}
 struct CudaDeviceScope {explicit CudaDeviceScope(int) {}};
 struct OwnedCudaStream {
  explicit OwnedCudaStream(int) {}
- int get() const {return 1;}
+ cudaStream_t get() const {return &test_stream;}
  void synchronize() const {pending=false;}
  ~OwnedCudaStream() {synchronize();}
 };
 template<class T> struct OwnedCudaBuffer {
  T* data;std::size_t count;
- OwnedCudaBuffer(int,std::size_t n,int):data(static_cast<T*>(std::calloc(n,sizeof(T)))),count(n) {}
+ OwnedCudaBuffer(int,std::size_t n,cudaStream_t):data(static_cast<T*>(std::calloc(n,sizeof(T)))),count(n) {}
  T* get() {return data;}
  ~OwnedCudaBuffer() {pending=false;std::free(data);}
 };
 }
 namespace vibeqc::dft::nlc {
-struct Vv10Parameters {int variant=1;double b=6.0,c=0.01,coefficient=1.0;};
+enum class Vv10Variant {vv10=1,rvv10=2};
+struct Vv10Parameters {Vv10Variant variant=Vv10Variant::vv10;double b=6.0,c=0.01,coefficient=1.0;};
+struct Vv10CudaDeviceLayout {
+ std::size_t point_count{},tile_points{},workspace_bytes{};
+ bool features{},geometry{};
+};
 unsigned launch_blocks(std::size_t,unsigned) {return 1;}
 template<class... T> void local_scales_kernel(T&&...) {}
 template<class... T> void pair_kernel_ordered(T&&...) {}
+template<class... T> void reduce_energy_ordered_kernel(T&&...) {}
 """
 
 SUFFIX = r"""
