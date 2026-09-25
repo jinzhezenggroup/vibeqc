@@ -174,8 +174,14 @@ def lifetime_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     if compiler is None:
         pytest.skip("requires a host C++20 compiler")
     source = (ROOT / "src/cc/lambda_response_cuda.cu").read_text()
-    helpers = source[source.index("std::size_t checked_add(") : source.index("struct AmplitudeLayout")]
-    reserve = source[source.index("std::size_t reserve(") : source.index("class CudaLambdaActions")]
+    helpers = source[
+        source.index("std::size_t checked_add(") : source.index(
+            "struct AmplitudeLayout"
+        )
+    ]
+    reserve = source[
+        source.index("std::size_t reserve(") : source.index("class CudaLambdaActions")
+    ]
     owner = source[
         source.index("struct CudaHamiltonianResponseOwner::Impl {") : source.index(
             "CudaHamiltonianResponseOwner::CudaHamiltonianResponseOwner("
@@ -185,7 +191,17 @@ def lifetime_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     unit, binary = folder / "probe.cpp", folder / "probe"
     unit.write_text(PREFIX + helpers + reserve + owner + DRIVER)
     subprocess.run(
-        [compiler, "-std=c++20", "-O2", "-Wall", "-Wextra", "-Werror", str(unit), "-o", str(binary)],
+        [
+            compiler,
+            "-std=c++20",
+            "-O2",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            str(unit),
+            "-o",
+            str(binary),
+        ],
         check=True,
         capture_output=True,
         text=True,
@@ -199,8 +215,16 @@ def lifetime_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     [
         ("construct", "fock", 0),
         ("destroy", "fock", 0),
-        *((mode, op, 0) for mode in ("success", "device", "sync", "generated") for op in ("hamiltonian", "fock", "orbital")),
-        *(("copy", op, i) for op, count in (("hamiltonian", 18), ("fock", 8), ("orbital", 3)) for i in range(1, count + 1)),
+        *(
+            (mode, op, 0)
+            for mode in ("success", "device", "sync", "generated")
+            for op in ("hamiltonian", "fock", "orbital")
+        ),
+        *(
+            ("copy", op, i)
+            for op, count in (("hamiltonian", 18), ("fock", 8), ("orbital", 3))
+            for i in range(1, count + 1)
+        ),
         *(("invalid", "hamiltonian", i) for i in range(10)),
     ],
 )
