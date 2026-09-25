@@ -72,6 +72,28 @@ def test_missing_frozen_file_does_not_create_a_replacement(
     assert (target / "water.json").read_bytes() == before
 
 
+@pytest.mark.parametrize("replacement", ["directory", "dangling_symlink"])
+def test_non_file_frozen_input_is_rejected(
+    audit_fixture: tuple, replacement: str
+) -> None:
+    generator, target, _ = audit_fixture
+    path = target / "water.json"
+    path.unlink()
+    if replacement == "directory":
+        path.mkdir()
+    else:
+        try:
+            path.symlink_to(target / "missing-source.json")
+        except OSError as exc:
+            pytest.skip(f"symlink creation unavailable: {exc}")
+    with pytest.raises(RuntimeError, match="no files changed"):
+        generator.main()
+    if replacement == "directory":
+        assert path.is_dir()
+    else:
+        assert path.is_symlink()
+
+
 @pytest.mark.parametrize("crlf", [False, True])
 def test_successful_audit_is_readonly(
     audit_fixture: tuple, monkeypatch: pytest.MonkeyPatch, crlf: bool
