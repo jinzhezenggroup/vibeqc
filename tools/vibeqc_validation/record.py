@@ -10,11 +10,12 @@ from __future__ import annotations
 import gzip
 import json
 from pathlib import Path
+from typing import Any
 
 from .retention import digest, safe_relative
 
 
-def decode_json(data: bytes, *, path: str | Path | None = None):
+def decode_json(data: bytes, *, path: str | Path | None = None) -> Any:
     """Decode ordinary or gzip-compressed JSON."""
     name = str(path) if path is not None else ""
     if name.endswith(".gz") or data.startswith(b"\x1f\x8b"):
@@ -22,7 +23,7 @@ def decode_json(data: bytes, *, path: str | Path | None = None):
     return json.loads(data)
 
 
-def load_json(path: Path):
+def load_json(path: Path) -> Any:
     """Load ordinary or gzip-compressed JSON from the checkout."""
     path = Path(path)
     return decode_json(path.read_bytes(), path=path)
