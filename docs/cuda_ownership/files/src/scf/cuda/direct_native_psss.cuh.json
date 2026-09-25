@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_native_psss.cuh",
   "role": "runtime",
   "subsystem": "direct_integrals",
-  "reason": "Runtime psss force geometry/schedule adapter around compiler-generated generated_weighted_eri::psss_force; retains resident-bra reuse, primitive traversal, normalization transport and accumulation but no independent ERI or coordinate-derivative formula.",
+  "reason": "Runtime psss force geometry/schedule adapter around compiler-generated `generated_weighted_eri::psss_force`; retains resident-bra reuse, primitive traversal, normalization transport and accumulation but no independent ERI or coordinate-derivative formula.",
   "regions": []
 }
