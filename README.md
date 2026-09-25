@@ -75,6 +75,10 @@ production optimization settings and full AOT manifest.  The presets are startin
 shares that pool by default, preserving the same total compiler bound. Set
 `VIBEQC_AOT_COMPILE_JOBS` only when an independent AOT pool is desired; when
 set, both limits should match the memory available on the build host.
+`VIBEQC_ENABLE_CXX_PCH=ON` is an opt-in clean-build experiment that
+precompiles only stable standard-library headers for host C++ sources; CUDA
+translation units remain outside that PCH. Keep it off with the default ccache
+workflow unless ccache has been explicitly configured for PCH support.
 
 ```bash
 cmake --preset cuda-dev-fast

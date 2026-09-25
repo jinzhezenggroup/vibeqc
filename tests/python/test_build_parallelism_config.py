@@ -35,3 +35,21 @@ def test_fast_cuda_preset_uses_wider_aot_pool() -> None:
 
     assert variables["VIBEQC_CUDA_COMPILE_JOBS"] == "2"
     assert variables["VIBEQC_AOT_COMPILE_JOBS"] == "4"
+
+
+def test_host_pch_is_opt_in_and_cxx_only() -> None:
+    presets = json.loads((ROOT / "CMakePresets.json").read_text(encoding="utf-8"))
+    fast = next(
+        preset
+        for preset in presets["configurePresets"]
+        if preset["name"] == "cuda-dev-fast"
+    )
+    assert "VIBEQC_ENABLE_CXX_PCH" not in fast["cacheVariables"]
+
+    cmake = (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert "option(VIBEQC_ENABLE_CXX_PCH" in cmake
+    assert "target_precompile_headers(vibeqc PRIVATE" in cmake
+    assert "$<$<COMPILE_LANGUAGE:CXX>:" in cmake
+
+    pch = (ROOT / "src" / "pch.hpp").read_text(encoding="utf-8")
+    assert '#include "' not in pch
