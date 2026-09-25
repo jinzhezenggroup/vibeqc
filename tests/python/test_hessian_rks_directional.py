@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions
 from vibeqc._dft_gradient import _native_ao_atoms
+from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.xc.contractions import ExternalPointContraction
 from vibeqc_compiler.xc.grid_response import partition_response
@@ -14,6 +15,7 @@ from vibeqc_compiler.xc.grid_response import partition_response
 from tools.vibeqc_hessian import (
     directional_rks_response,
     native_rks_xc_hvp_components,
+    rks_hvp,
 )
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse
 
@@ -252,3 +254,63 @@ def test_global_translation_has_zero_rks_nuclear_rhs(case: typing.Any) -> None:
     np.testing.assert_allclose(
         result.response.energy_weighted_density_derivative, 0, atol=3e-8, rtol=0
     )
+
+
+def test_complete_rks_hvp_matches_reconverged_analytic_gradient(
+    case: typing.Any, tmp_path: typing.Any
+) -> None:
+    """Gate the first complete LDA/PBE HVP against displaced analytic gradients."""
+    method, operator, direction, _ = case
+    result = rks_hvp(
+        operator,
+        direction,
+        cache=tmp_path / "hvp",
+        solver_options=GMRESOptions(atol=1e-12, rtol=1e-11),
+    )
+    assert result.directional_response.response.solve_result.converged
+    assert result.diagnostics["nuclear_response_solves"] == 1
+    assert result.diagnostics["complete_source_coverage"]
+    assert not result.diagnostics["full_molecular_hessian_allocated"]
+    assert not result.diagnostics["full_ao_rank_four_weights"]
+    assert tuple(result.components) == (
+        "one_electron",
+        "coulomb",
+        "xc_ao",
+        "xc_grid",
+        "xc_weight",
+        "overlap_pulay",
+        "nuclear",
+    )
+    np.testing.assert_allclose(
+        sum(result.components.values(), start=np.zeros_like(result.value)),
+        result.value,
+        atol=2e-13,
+        rtol=0,
+    )
+
+    errors = []
+    for step in (1.2e-3, 4e-4, 1.3e-4):
+        gradients = []
+        for sign in (1, -1):
+            atoms = _moved(H2, direction, sign * step)
+            with (
+                _calculator(method).prepare_batch([atoms]) as batch,
+                NativeAO(atoms) as basis,
+            ):
+                batch.execute(strict=True)
+                with NativeRKSResponse.from_native(batch, basis) as current:
+                    gradients.append(
+                        np.array(
+                            complete_rks_gradient_diagnostic(
+                                current.state,
+                                basis,
+                                cache=tmp_path / "gradient",
+                                execution="reference",
+                            ).gradient,
+                            copy=True,
+                        )
+                    )
+        numeric = (gradients[0] - gradients[1]) / (2 * step)
+        errors.append(float(np.max(np.abs(result.value - numeric))))
+    assert errors[-1] < 4e-4, errors
+    assert errors[-1] < max(0.35 * errors[0], 2e-5), errors
