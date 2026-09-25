@@ -43,7 +43,7 @@ constexpr std::uint32_t semilocal_family_domain_version(SemilocalFamily family) 
 
 constexpr bool semilocal_family_has_cuda_ks(SemilocalFamily family) noexcept {
   return family == SemilocalFamily::Lda || family == SemilocalFamily::Pbe ||
-         family == SemilocalFamily::R2scan;
+         family == SemilocalFamily::R2scan || family == SemilocalFamily::B3lyp;
 }
 
 inline SemilocalFamily semilocal_family_from_code(std::uint32_t code) {
