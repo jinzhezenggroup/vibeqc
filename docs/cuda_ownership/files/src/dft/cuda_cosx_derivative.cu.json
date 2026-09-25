@@ -1,12 +1,18 @@
 {
   "path": "src/dft/cuda_cosx_derivative.cu",
-  "reason": "Bounded CUDA execution for the explicit COSX quadrature-point derivative: runtime resource and launch plumbing wrap maintained derivative contractions built from generated one-electron value/derivative primitives.",
+  "reason": "Bounded CUDA execution for COSX point and molecular derivatives. Compiler-owned TensorIR scalar contractions now own AO-density projection, ESP response composition, point-gradient symmetrization, molecular AO cotangents, and weight sensitivity; native CUDA retains tiling, indexing, validation, stream/error policy, atom scatter, and the remaining ESP integral assembly.",
   "regions": [
     {
-      "reason": "The ESP probe derivative, AO-density response, weighted potential response, and final point-gradient contractions are maintained scientific CUDA kernels; one-electron attraction values and center derivatives are supplied by generated compiler-owned primitives.",
+      "reason": "ESP value/probe derivative assembly still expands contracted AO pairs around compiler-generated one-electron attraction primitives. Retire this region when a generated weighted ESP consumer owns the contraction and point-center pullback.",
       "role": "scientific",
       "start": "__global__ void esp_probe_derivative_kernel",
-      "stop": "unsigned blocks(std::size_t work) {"
+      "stop": "__global__ void project_density_kernel"
+    },
+    {
+      "reason": "Molecular ESP center-gradient traversal still expands primitive/AO terms and scatters generated attraction center derivatives. Scalar cotangent/factor contractions are generated, but the weighted derivative consumer itself remains native scientific ownership.",
+      "role": "scientific",
+      "start": "__global__ void contract_molecular_esp_kernel",
+      "stop": "__global__ void contract_weight_sensitivity_kernel"
     }
   ],
   "role": "runtime",

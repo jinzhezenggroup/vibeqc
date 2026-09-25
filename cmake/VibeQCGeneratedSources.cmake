@@ -489,6 +489,23 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/integral/one_electron_derivative_policy_cuda.py"
     ARGS --derivatives --output "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}")
 
+  set(VIBEQC_COSX_DERIVATIVE_CONTRACTION_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_cosx_derivative_contractions.cuh")
+  vibeqc_register_generated_sources(
+    NAME vibeqc_cosx_derivative_contraction_codegen
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_cosx_derivative_native.py"
+    OUTPUTS "${VIBEQC_COSX_DERIVATIVE_CONTRACTION_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/cosx_derivative_runtime.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scalar_cpp.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/program.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/types.py"
+    ARGS --output "${VIBEQC_COSX_DERIVATIVE_CONTRACTION_HEADER}"
+    COMMENT "Generating compiler-owned COSX derivative contractions")
+
   set(VIBEQC_GFN2_SDQ_CUDA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_sdq_cuda.cuh")
   vibeqc_register_generated_sources(
