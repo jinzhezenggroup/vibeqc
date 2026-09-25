@@ -48,8 +48,17 @@ def _template_hash(program: typing.Any) -> str:
     )
 
 
+def _require_fp64(program: typing.Any) -> None:
+    # Shape-independent identities omit dtype only because this native ABI is
+    # strictly double. Reject a changed typed equation rather than silently
+    # emitting the same FP64 kernel and template identity for FP32 arithmetic.
+    if any(node.spec.dtype != "float64" for node in program.live_nodes):
+        raise ValueError("SCF CUDA density specialization requires float64 IR")
+
+
 def _validated_density_program() -> typing.Any:
     program = density_program(1, 3, spin_count=2, orbital_count=2)
+    _require_fp64(program)
     if tuple(program.outputs) != ("density",):
         raise ValueError("SCF CUDA density lowering requires one density output")
     contraction = program.outputs["density"]
@@ -82,6 +91,7 @@ def _validated_density_program() -> typing.Any:
 
 def _validated_weighted_density_program() -> typing.Any:
     program = weighted_density_program(1, 3, spin_count=2, orbital_count=2)
+    _require_fp64(program)
     if tuple(program.outputs) != ("weighted_density",):
         raise ValueError("SCF CUDA weighted density requires one expected output")
     contraction = program.outputs["weighted_density"]
