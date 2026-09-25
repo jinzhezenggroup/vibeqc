@@ -16,13 +16,20 @@ from typing import TYPE_CHECKING, Any
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
+from . import libxc_bulk
 from .bulk_aot import BACKENDS, SourceVariant
+from .bulk_runtime import PRODUCTION_CANDIDATE_DOMAIN
 
 if TYPE_CHECKING:
     from .bulk_runtime import BulkRuntimeProgram
 
 # v2 isolates adapter symbols per translation unit; scalar AOT identity is unchanged.
 POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v2"
+
+_NATIVE_DOMAIN_VERSIONS = {
+    libxc_bulk.BULK_SEMANTICS: 1,
+    PRODUCTION_CANDIDATE_DOMAIN: 2,
+}
 
 _POINT_LAYOUTS = {
     ("rho_a", "rho_b"): 1,
@@ -37,6 +44,16 @@ _POINT_LAYOUTS = {
         "tau_b",
     ): 15,
 }
+
+
+def native_domain_version(domain: str) -> int:
+    """Return the stable native ABI version for one compiler-owned XC domain."""
+    if not isinstance(domain, str) or not domain.strip():
+        raise ValueError("native XC domain must be a nonempty string")
+    try:
+        return _NATIVE_DOMAIN_VERSIONS[domain]
+    except KeyError as exc:
+        raise ValueError(f"unsupported native XC domain {domain!r}") from exc
 
 
 def _emit_runtime_source(program: BulkRuntimeProgram, backend: str) -> str:
@@ -244,7 +261,7 @@ class SemilocalPointBinding:
 
 
 def bind_runtime_semilocal_point_program(
-    program: BulkRuntimeProgram, *, domain_version: int
+    program: BulkRuntimeProgram,
 ) -> SemilocalPointBinding:
     """Bind one complete polarized E/vxc runtime Graph to the CPU point ABI.
 
@@ -262,7 +279,7 @@ def bind_runtime_semilocal_point_program(
         variant=variant,
         capability_identity=program.spec.capability_identity,
         point_expression_identity=program.expression_hash,
-        domain_version=domain_version,
+        domain_version=native_domain_version(program.spec.domain),
     )
 
 
@@ -271,4 +288,5 @@ __all__ = [
     "SemilocalPointBinding",
     "bind_runtime_semilocal_point_program",
     "inspect_runtime_program",
+    "native_domain_version",
 ]
