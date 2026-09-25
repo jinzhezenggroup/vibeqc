@@ -112,3 +112,13 @@ def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
     assert "s.bar_doubles_residual" in text
     assert "const std::size_t n=o+v;" in text
     assert "const std::size_t count=n*n*n*n;" in text
+    hamiltonian_start = text.index(
+        "static DeviceHamiltonianOutputs run_hamiltonian_weights(CudaState& s){"
+    )
+    fock_start = text.index(
+        "static DeviceHamiltonianOutputs run_fock_weights(CudaState& s){",
+        hamiltonian_start,
+    )
+    hamiltonian_program = text[hamiltonian_start:fock_start]
+    assert "const std::size_t n=checked_add(o,v);" in hamiltonian_program
+    assert "allocate(n*n*n*n)" in hamiltonian_program
