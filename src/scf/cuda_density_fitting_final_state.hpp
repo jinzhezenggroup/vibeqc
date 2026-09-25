@@ -52,11 +52,14 @@ vibeqc_status read_cuda_density_fitting_final_state(CudaDensityFittingJkPlan* pl
                                                     bool include_density = true);
 
 /** Try physical J/K from an exact current singleton RHF retained density/frame.
- * Token, device generation and every supplied density entry must match. A
- * correction step, stale token or unsupported plan returns used=false so the
- * caller evaluates dense J/K. Successful reuse still evaluates physical F[D].
+ * Token, device generation and every supplied density entry must match.
+ * Qualified streamed auto/occupied K may also reconstruct an algebraic factor
+ * for a bounded strict-finalization correction after matching owner, solve,
+ * model, occupations and generation advance. Rejected/stale/unsupported
+ * requests retain used=false and the dense fallback. Corrected factors never publish a
+ * response projection lease. Successful reuse still evaluates physical F[D].
  * With download=false the serialized final validator consumes the plan's J/K
- * directly; completion and projection-lease publication retain their ordering.
+ * directly; completion and exact projection-lease publication retain ordering.
  */
 vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
                                                     const CudaDfFinalStateToken& expected,

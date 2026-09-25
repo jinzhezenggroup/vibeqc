@@ -167,6 +167,25 @@ vibeqc_status cuda_density_fitting_final_state_token(const CudaDensityFittingJkP
   }
 }
 
+namespace {
+bool bounded_corrected_final_rhf_identity(const CudaDfFinalStateToken& retained,
+                                          const CudaDfFinalStateToken& requested) {
+  const auto& old = retained.identity;
+  const auto& next = requested.identity;
+  if (requested.version != retained.version || next.factor.basis != old.factor.basis ||
+      next.factor.reference != old.factor.reference || next.solve_epoch != old.solve_epoch ||
+      next.model != old.model || next.occupied != old.occupied || next.occupied.size() != 1 ||
+      !next.occupied[0] || next.factor.density_generation <= old.factor.density_generation ||
+      next.factor.orbital_generation <= old.factor.orbital_generation)
+    return false;
+  const auto density_delta = next.factor.density_generation - old.factor.density_generation;
+  const auto orbital_delta = next.factor.orbital_generation - old.factor.orbital_generation;
+  // Mirror the corrected-response provenance fence: strict finalization may
+  // advance generations, but an arbitrarily stale detached identity may not.
+  return density_delta == orbital_delta && density_delta <= 16;
+}
+}  // namespace
+
 vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* plan,
                                                     const CudaDfFinalStateToken& expected,
                                                     const std::vector<double>& density,
@@ -196,11 +215,16 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   if (policy && std::string(policy) == "dense") return fallback("policy_dense");
   if (!plan) return fallback("missing_plan");
   if (plan->batch_size != 1) return fallback("non_singleton");
-  if (plan->streamed) return fallback("streamed");
-  if (plan->integral_source && !packed && !source_dense_resident)
+  const bool automatic = !policy || std::string(policy) == "auto";
+  const bool explicit_occupied = policy && std::string(policy) == "occupied";
+  const bool streamed_occupied = plan->streamed && (automatic || explicit_occupied);
+  if (plan->streamed && !streamed_occupied) return fallback("streamed");
+  if (plan->streamed && !plan->integral_source) return fallback("streamed_without_source");
+  if (!plan->streamed && plan->integral_source && !packed && !source_dense_resident)
     return fallback("source_without_complete_resident_values");
-  if (plan->row_tile != plan->nbf) return fallback("partial_ao_rows");
-  if (!packed && plan->auxiliary_tile != plan->naux) return fallback("partial_auxiliary");
+  if (!plan->streamed && plan->row_tile != plan->nbf) return fallback("partial_ao_rows");
+  if (!plan->streamed && !packed && plan->auxiliary_tile != plan->naux)
+    return fallback("partial_auxiliary");
   if (plan->nbf < 2) return fallback("trivial_dimension");
   auto* state = static_cast<PersistentScfState*>(plan->persistent_scf_state);
   if (!state) return fallback("missing_persistent_state");
@@ -208,23 +232,99 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   if (!state->occupied_exchange) return fallback("occupied_exchange_disabled");
   if (density.size() != plan->matrix_elements || !finite_values(density))
     return fallback("invalid_density");
-  if (!policy || std::string(policy) == "auto") {
+  if (automatic || streamed_occupied) {
     if (state->final_alpha_occupied.size() != 1 || !state->final_beta_occupied.empty() ||
         state->final_alpha_occupied[0] <= 0)
       return fallback("invalid_final_occupation");
-    if (!qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
+    // The streamed projection is private to this K build. Exact final C/D
+    // identity is checked below, but it grants no response projection lease.
+    if (streamed_occupied ? !qualified_value_rhf_exchange(*plan, state->final_alpha_occupied[0])
+                          : !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
       return fallback("work_or_capacity_policy");
   }
   CudaDfFinalStateToken current;
   auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_INVALID_ARGUMENT) return status;
-  if (status != VIBEQC_STATUS_SUCCESS || expected != current) {
+  const bool exact_retained = status == VIBEQC_STATUS_SUCCESS && expected == current;
+  const bool corrected_streamed = status == VIBEQC_STATUS_SUCCESS && !exact_retained &&
+                                  streamed_occupied &&
+                                  bounded_corrected_final_rhf_identity(current, expected);
+  if (!exact_retained && !corrected_streamed) {
     detail.clear();
     return fallback("stale_final_state_token");
   }
-  TraceOperation trace("final_state_retained_jk", plan->stream,
-                       {1, plan->nbf, plan->naux, false, false});
   const auto bytes = plan->matrix_elements * sizeof(double);
+  if (corrected_streamed) {
+    TraceOperation trace(
+        "final_state_corrected_jk", plan->stream,
+        {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
+    auto error = cudaSetDevice(plan->device_id);
+    if (error != cudaSuccess) return cuda_failure(error, "select corrected final device", detail);
+    // Early failures must release the caller's density and the J/K stream lease
+    // only after outstanding uploads and partial contractions have drained.
+    struct CorrectedFinalDrain {
+      cudaStream_t stream;
+      bool active{true};
+      ~CorrectedFinalDrain() {
+        if (active) (void)cudaStreamSynchronize(stream);
+      }
+    } corrected_drain{plan->stream};
+    error = cudaMemcpyAsync(plan->primary_density, density.data(), bytes, cudaMemcpyHostToDevice,
+                            plan->stream);
+    // This algebraic factor represents the corrected D, not the preceding
+    // canonical SCF frame. Revoke that generation before overwriting scratch.
+    if (error == cudaSuccess)
+      error =
+          cudaMemsetAsync(state->d_alpha_factor_generation, 0, sizeof(std::uint32_t), plan->stream);
+    if (error != cudaSuccess)
+      return cuda_failure(error, "upload corrected final density and revoke SCF factor", detail);
+    trace_counter("h2d_bytes", bytes);
+
+    bool accepted = false;
+    std::size_t rank = 0;
+    status =
+        factor_density_for_exchange(*plan, *state, plan->primary_density, accepted, rank, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (!accepted || rank != expected.identity.occupied[0]) {
+      trace_counter("factor_rejected", 1);
+      detail.clear();
+      return fallback("corrected_factor_rejected");
+    }
+
+    coulomb.resize(download ? plan->matrix_elements : 0);
+    exchange.resize(download ? plan->matrix_elements : 0);
+    status = build_coulomb(*plan, plan->primary_density, detail);
+    if (status == VIBEQC_STATUS_SUCCESS)
+      // factor_density_for_exchange reconstructs D = L L^T, so occupation is
+      // already absorbed. Canonical RHF C uses weight two; algebraic L uses one.
+      status = build_occupied_exchange(*plan, 0, state->d_alpha_factor, rank, true, 1,
+                                       plan->alpha_exchange, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (download) {
+      error = cudaMemcpyAsync(coulomb.data(), plan->coulomb, bytes, cudaMemcpyDeviceToHost,
+                              plan->stream);
+      if (error == cudaSuccess)
+        error = cudaMemcpyAsync(exchange.data(), plan->alpha_exchange, bytes,
+                                cudaMemcpyDeviceToHost, plan->stream);
+    }
+    const auto finished = cudaStreamSynchronize(plan->stream);
+    if (error == cudaSuccess) error = finished;
+    if (error != cudaSuccess)
+      return cuda_failure(error, "download corrected final occupied J/K", detail);
+    corrected_drain.active = false;  // The successful final drain already completed.
+    trace_counter("d2h_bytes", download ? 2 * bytes : 0);
+    trace_counter("explicit_synchronizations", 1);
+    trace_counter("correction_generations", expected.identity.factor.density_generation -
+                                                current.identity.factor.density_generation);
+    trace_counter("accepted", 1);
+    runtime::df_progress::label("final_exchange_fallback", "none");
+    used = true;
+    return VIBEQC_STATUS_SUCCESS;
+  }
+
+  TraceOperation trace(
+      "final_state_retained_jk", plan->stream,
+      {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
   auto error = cudaSetDevice(plan->device_id);
   if (error == cudaSuccess)
     error = cudaMemcpyAsync(plan->primary_density, density.data(), bytes, cudaMemcpyHostToDevice,
@@ -280,7 +380,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   trace_counter("explicit_synchronizations", 1);
   // The projection and final coefficients refer to precisely this density
   // generation. Publishing after the successful drain excludes partial K.
-  if (plan->resident_exchange_enabled && (plan->resident_raw_valid || packed) &&
+  if (!plan->streamed && plan->resident_exchange_enabled && (plan->resident_raw_valid || packed) &&
       (!packed || current.identity.occupied[0] <= plan->value_storage.rank_capacity) &&
       plan->metric_full_rank[0] && current.identity.occupied[0] &&
       plan->naux * current.identity.occupied[0] <=
