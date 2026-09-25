@@ -43,10 +43,7 @@ def test_split_global_hybrid_builds_pinned_semilocal_graphs(
         "tau_b",
     )
     assert len(program.exchange.graph.topological_order(program.exchange.roots(1))) > 10
-    assert (
-        len(program.correlation.graph.topological_order(program.correlation.roots(1)))
-        > 10
-    )
+    assert len(program.correlation.graph.topological_order(program.correlation.roots(1))) > 10
 
 
 def test_split_hybrid_builder_remains_fail_closed_for_unknown_method() -> None:
