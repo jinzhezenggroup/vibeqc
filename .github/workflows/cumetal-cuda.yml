@@ -57,7 +57,7 @@ jobs:
   cuda-tests:
     name: CUDA runtime tests (CuMetal / Apple GPU)
     needs: merge_queue_liveness
-    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     runs-on: macos-15
     # Keep the 50-minute full-suite step inside a separate finite job budget.
     timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
