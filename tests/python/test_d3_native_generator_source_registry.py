@@ -6,19 +6,20 @@ import hashlib
 from pathlib import Path
 
 import pytest
+from vibeqc_compiler.common.d3_data import load_d3_production_data
 
 from tools import source_registry
 from tools.vibeqc_d3 import generate_compact_data, generate_native_data
-from vibeqc_compiler.common.d3_data import load_d3_production_data
 
 
 def test_checked_in_compact_d3_product_matches_registry() -> None:
     registry = source_registry._load(source_registry.REGISTRY)
     product = registry["products"][generate_compact_data.PRODUCT_ID]
     output = generate_compact_data.DEFAULT_OUTPUT
-    assert hashlib.sha256(output.read_bytes()).hexdigest() == product["outputs"][
-        "data/parameters/d3_production.bin"
-    ]
+    assert (
+        hashlib.sha256(output.read_bytes()).hexdigest()
+        == product["outputs"]["data/parameters/d3_production.bin"]
+    )
     data = load_d3_production_data(output)
     assert (
         data.table_sha256

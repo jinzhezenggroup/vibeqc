@@ -196,11 +196,20 @@ def _d3_tables() -> _D3Tables:
         raise ValueError("pinned D3 table digest does not match compiler identity")
     if raw.radii_sha256 != D3_RADII_SHA256:
         raise ValueError("derived D3 radii digest does not match compiler identity")
-    elements = tuple(_ElementRecord(x.reference_count, x.reference_offset, raw.r4r2[i], raw.covalent_radii[i]) for i, x in enumerate(raw.elements))
-    pairs = tuple(_PairRecord(x.c6_offset, x.first_reference_count, x.second_reference_count) for x in raw.pairs)
+    elements = tuple(
+        _ElementRecord(
+            x.reference_count, x.reference_offset, raw.r4r2[i], raw.covalent_radii[i]
+        )
+        for i, x in enumerate(raw.elements)
+    )
+    pairs = tuple(
+        _PairRecord(x.c6_offset, x.first_reference_count, x.second_reference_count)
+        for x in raw.pairs
+    )
     if any(not 1 <= item.reference_count <= D3_REFERENCE_SLOTS for item in elements):
         raise ValueError("unsupported D3 reference count")
     return _D3Tables(elements, pairs, raw.coordination_numbers, raw.c6)
+
 
 def _pair_record_index(first_z: int, second_z: int) -> int:
     low, high = sorted((first_z, second_z))

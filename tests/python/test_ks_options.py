@@ -5,7 +5,6 @@ import os
 import typing
 from dataclasses import replace
 from fractions import Fraction
-from pathlib import Path
 
 import numpy as np
 import pytest
