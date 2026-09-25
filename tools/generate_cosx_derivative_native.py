@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 import types
+import typing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,8 +34,10 @@ from vibeqc_compiler.method.cosx_derivative_runtime import (
     build_cosx_scale_program,
     build_cosx_symmetric_projection_update_program,
 )
-from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.scalar_cpp import emit_scalar_cpp
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor.program import Program
 
 
 def _device(source: str, function_name: str) -> str:

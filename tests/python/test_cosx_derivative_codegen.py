@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,9 @@ from vibeqc_compiler.method.cosx_derivative_runtime import (
     build_cosx_symmetric_projection_update_program,
 )
 from vibeqc_compiler.tensor import execute
-from vibeqc_compiler.tensor.program import Program
+
+if typing.TYPE_CHECKING:
+    from vibeqc_compiler.tensor.program import Program
 
 ROOT = Path(__file__).resolve().parents[2]
 
