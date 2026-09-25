@@ -9,10 +9,14 @@ GOOD = (
     "ptxas info : Used 32 registers, 0 bytes lmem\n"
 )
 INCOMPLETE = (
-    "ptxas info : Function properties for expensive_kernel\n"
-    "ptxas info : Used 240 registers, 0 bytes lmem\n",
-    "ptxas info : Function properties for expensive_kernel\n"
-    "    4096 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n",
+    (
+        "ptxas info : Function properties for expensive_kernel\n"
+        "ptxas info : Used 240 registers, 0 bytes lmem\n"
+    ),
+    (
+        "ptxas info : Function properties for expensive_kernel\n"
+        "    4096 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+    ),
     "ptxas info : Function properties for bulk_xc_census_probe\n",
 )
 
