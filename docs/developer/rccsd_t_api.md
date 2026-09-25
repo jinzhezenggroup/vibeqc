@@ -19,8 +19,9 @@ the public native registry exposes qualified conventional small-system
 `RCCSD(T)` energy and analytic forces on CPU and CUDA through
 `VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`. Homogeneous prepared
 batches follow the selected backend capability. The CUDA force route executes
-the generated corrected-Lambda RHS/J^T actions on CUDA with host GMRES control,
-retains later parameter/Hamiltonian and Z response stages on host, and uses the
+the generated corrected-Lambda RHS/J^T actions and fixed-orbital parameter VJPs
+on one shared CUDA state with host Lambda GMRES control, retains later
+Hamiltonian and Z response stages on host, and uses the
 CUDA conventional nuclear-derivative consumer for final contraction.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
@@ -202,8 +203,9 @@ DF/frozen-core/open-shell:   no
 
 CUDA force publication never substitutes RCCSD/HF derivatives. The force owner
 builds the complete CCSD(T) relaxed response before publication. Generated
-corrected-Lambda RHS/J^T actions execute on CUDA, their packed GMRES control is
-still host-owned, later response/Z stages remain on host, and the final
+corrected-Lambda RHS/J^T actions and fixed-orbital parameter VJPs execute on one
+shared CUDA state, their packed Lambda GMRES control is still host-owned, later
+Hamiltonian/Z stages remain on host, and the final
 conventional nuclear derivative is executed by the CUDA consumer.
 
 The internal #746 CPU force chain now executes its generated Lambda, parameter-
