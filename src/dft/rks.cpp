@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -620,8 +621,14 @@ ScfResult run_rks(
   std::optional<dft::RksAoCache> ao_cache;
   if (!incremental_xc && evaluate_xc.cached_direct) {
     const auto cache_bytes = dft::rks_ao_cache_bytes(basis, grid, ks.ao_order);
-    if (cache_bytes <= kCpuRksAoCacheMaximumBytes)
-      ao_cache.emplace(dft::prepare_rks_ao_cache(basis, grid, ks.ao_order));
+    if (cache_bytes <= kCpuRksAoCacheMaximumBytes) {
+      try {
+        ao_cache.emplace(dft::prepare_rks_ao_cache(basis, grid, ks.ao_order));
+      } catch (const std::bad_alloc&) {
+        // Optional retention must not make the existing streamed path unavailable.
+        ao_cache.reset();
+      }
+    }
   }
   std::shared_ptr<const OccupiedDensityFactor> factor;
   DensityFactorIdentity identity{};
