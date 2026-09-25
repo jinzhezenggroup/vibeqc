@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "dft/ks_final_state.hpp"
+#include "dft/semilocal_family.hpp"
 
 namespace {
 using namespace vibeqc;
