@@ -1,3 +1,5 @@
+> **Checkout retention note (2026-09-25):** bulky raw campaign members were moved out of the normal checkout and remain byte-for-byte recoverable from existing Git history. See [the bulk retention manifest](../retention-2026-09-25/bulk.manifest.json) and use `tools/restore_retained_evidence.py` before following links or reproduction steps that require archived members.
+
 # Bounded split occupied Gram: negative endpoint result (#412)
 
 > **Historical supporting data:** bulky reports from this campaign remain in

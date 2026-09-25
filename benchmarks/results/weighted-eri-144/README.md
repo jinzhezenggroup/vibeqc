@@ -36,7 +36,7 @@ device memory.
 
 ## Complete endpoints
 
-[endpoints.json](endpoints.json) indexes four raw sample files and their hashes.
+[endpoints.json](endpoints.json) indexes the four original raw sample files and their hashes. To keep the normal checkout compact, those four full sample files are hash-pinned by [the 2026-09-25 retention manifest](../retention-2026-09-25/migration.json) and remain byte-for-byte recoverable from existing Git history. The current tree keeps the index, numerical gates, provenance and resource summaries.
 The matrix contains 24 scenarios and 72 fresh-process endpoint runs: RHF/UHF,
 STO-3G/def2-SVP, batches 1/3, fixed/resident/paged queues, and previous-library,
 retained-expression, and generated-expression routes. Each endpoint includes
@@ -113,3 +113,11 @@ compact; the index and provenance preserve their identities.
 Routine log/XML files named in this historical account are now represented in
 [the retention audit](../retention-238/migration.json), with extracted measurements,
 diagnostic conclusions, and exact original Git/checksum identities.
+
+## Restoring the complete endpoint samples
+
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-2026-09-25/migration.json \
+  --output .artifacts/retention-2026-09-25
+```

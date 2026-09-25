@@ -13,12 +13,6 @@
       "sha256": "d35702fc9076dbdcad9d05b697188e9388f457dc9452db323ce888ed6d5a9538"
     },
     {
-      "bytes": 637919,
-      "path": "samples.json",
-      "role": "samples",
-      "sha256": "97df4d81c12e157396725d981dcc6a2be193a18b2df81b1514b54032b4af2524"
-    },
-    {
       "bytes": 1628,
       "path": "summary.json",
       "role": "summary",

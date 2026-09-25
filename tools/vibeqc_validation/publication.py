@@ -95,7 +95,7 @@ def validate_publication(manifest: dict, files: dict[str, bytes]) -> None:
         for name, raw in files.items()
         if Path(name).is_relative_to(prefix)
     }
-    evidence = decode_record(files[evidence_path], relative_files)
+    evidence = decode_record(files[evidence_path], relative_files, path=evidence_path)
     validate_evidence(evidence)
     for attachment in evidence["attachments"]:
         path = safe_relative(attachment["path"])

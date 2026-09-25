@@ -2,9 +2,11 @@
 
 Both bundles measure clean source `dfc9e55f13bc55b4961d7ab5255064a66e38df7b`.
 They accept the experimental numerical implementation, without promoting a
-production selector or claiming a general speedup. CPU and CUDA each retain
-three complete samples for H2, water and LiH, using pinned independent post-HF
-fixtures. The publication manifests validate every selected file's checksum.
+production selector or claiming a general speedup. CPU and CUDA keep compact validation envelopes and timing summaries in the
+current checkout. The original three complete samples for H2, water and LiH are
+hash-pinned by [the 2026-09-25 retention manifest](../retention-2026-09-25/migration.json)
+and remain byte-for-byte recoverable from existing Git history. The publication
+manifests validate the compact selected files that remain in the checkout.
 
 | Maximum checked error | CPU | CUDA | Absolute gate |
 | --- | ---: | ---: | ---: |
@@ -86,3 +88,14 @@ Use an empty output directory and preserve Slurm's assigned device visibility.
 Optional `--publish <new-directory>` validates and publishes a selected bundle
 only from clean measured source. No run logs, profiler dumps or binaries are
 retained here.
+
+## Restoring the full raw samples
+
+The historical sample ledgers are data only; the restoration helper verifies
+their recorded size and SHA-256 and never fetches implicitly:
+
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-2026-09-25/migration.json \
+  --output .artifacts/retention-2026-09-25
+```

@@ -40,7 +40,11 @@ def _records(manifest: Path | None) -> list[dict]:
     schema = audit.get("schema")
     if schema == "vibeqc.storage-migration.v1":
         records = audit.get("archives")
-    elif schema in {"vibeqc.evidence-archive.v1", "vibeqc.git-snapshot.v1"}:
+    elif schema in {
+        "vibeqc.evidence-archive.v1",
+        "vibeqc.git-snapshot.v1",
+        "vibeqc.git-object-snapshot.v1",
+    }:
         records = audit.get("files")
     else:
         raise ValueError("unsupported evidence migration manifest")
@@ -58,11 +62,17 @@ def _records(manifest: Path | None) -> list[dict]:
         if entry["path"] in paths:
             raise ValueError("path has no unique verified migration record")
         paths.add(entry["path"])
+        digest_ok = (
+            isinstance(entry.get("git_blob_sha1"), str)
+            and re.fullmatch(r"[0-9a-f]{40}", entry["git_blob_sha1"])
+            if schema == "vibeqc.git-object-snapshot.v1"
+            else isinstance(entry.get("sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+        )
         if (
             not isinstance(entry.get("revision"), str)
             or not re.fullmatch(r"[0-9a-f]{40}", entry["revision"])
-            or not isinstance(entry.get("sha256"), str)
-            or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+            or not digest_ok
             or type(entry.get("bytes")) is not int
             or entry["bytes"] < 0
         ):
@@ -74,7 +84,7 @@ def _records(manifest: Path | None) -> list[dict]:
         for parent in PurePosixPath(path).parents
     ):
         raise ValueError("historical evidence paths conflict")
-    if schema == "vibeqc.git-snapshot.v1" and (
+    if schema in {"vibeqc.git-snapshot.v1", "vibeqc.git-object-snapshot.v1"} and (
         type(audit.get("file_count")) is not int
         or audit["file_count"] != len(result)
         or type(audit.get("total_bytes")) is not int
@@ -106,10 +116,15 @@ def _read(entry: dict) -> bytes:
             f"with git fetch origin {entry['revision']} and retry"
         )
     data = result.stdout
-    if (
-        len(data) != entry["bytes"]
-        or hashlib.sha256(data).hexdigest() != entry["sha256"]
-    ):
+    if len(data) != entry["bytes"]:
+        raise ValueError("historical evidence checksum/size mismatch")
+    if "git_blob_sha1" in entry:
+        header = f"blob {len(data)}\0".encode()
+        actual = hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
+        if actual != entry["git_blob_sha1"]:
+            raise ValueError("historical evidence checksum/size mismatch")
+    # Verify every declared identity; an added Git digest cannot bypass SHA-256.
+    if "sha256" in entry and hashlib.sha256(data).hexdigest() != entry["sha256"]:
         raise ValueError("historical evidence checksum/size mismatch")
     return data
 
@@ -136,8 +151,15 @@ def restore(
     target = _target(output, ROOT / ".artifacts/retention-restore" / path)
     data = _read(matches[0])
     target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("xb") as stream:
-        stream.write(data)
+    # Acquire exclusively before entering cleanup: a competing destination is
+    # not ours to remove. Include close/flush errors in the rollback scope.
+    stream = target.open("xb")
+    try:
+        with stream:
+            stream.write(data)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
     return target
 
 
@@ -160,9 +182,15 @@ def restore_snapshot(
             member.parent.mkdir(parents=True, exist_ok=True)
             with member.open("xb") as stream:
                 stream.write(data)
-        # copytree refuses an existing destination, including one created while
-        # validation was running. Never overwrite a checkout or a previous copy.
-        shutil.copytree(staged, target)
+        # Reserve ownership exclusively before copying. If publication fails,
+        # remove only this invocation's partial tree so the restore can retry.
+        # A competing destination makes mkdir fail outside the cleanup scope.
+        target.mkdir(parents=True, exist_ok=False)
+        try:
+            shutil.copytree(staged, target, dirs_exist_ok=True)
+        except BaseException:
+            shutil.rmtree(target)
+            raise
     return target
 
 
