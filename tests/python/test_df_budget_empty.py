@@ -70,6 +70,52 @@ def test_explicit_cap_is_not_changed_by_probe(budget_probe: Path, force: bool) -
     assert (response > 0) == force
 
 
+def test_roomy_automatic_budget_retains_source_backed_device_value_floor(
+    tmp_path: Path,
+) -> None:
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    source = tmp_path / "automatic.cpp"
+    source.write_text(r"""
+#include "scf/df_preparation_budget.hpp"
+#include <cassert>
+int main() {
+  using namespace vibeqc::scf;
+  constexpr std::size_t mib = 1024U * 1024U;
+  const DfBudgetWorkload work{64, 64, 8, 1, 8, true};
+  const DfResourceEnvelope roomy{8ULL << 30, 8ULL << 30, true};
+  const auto automatic = resolve_df_budget(work, roomy, 0);
+  const auto resident_floor = df_resident_value_admission_floor(work);
+  assert(automatic.value_bytes >= resident_floor);
+  assert(automatic.value_bytes + automatic.response_bytes == automatic.total_bytes);
+  const auto explicit_cap = resolve_df_budget(work, roomy, 12345);
+  assert(explicit_cap.total_bytes == 12345);
+  const DfResourceEnvelope tight{256 * mib, 8ULL << 30, true};
+  const auto limited = resolve_df_budget(work, tight, 0);
+  assert(limited.value_bytes < resident_floor);
+  assert(limited.total_bytes <= automatic.total_bytes);
+}
+""")
+    root = Path(__file__).resolve().parents[2]
+    executable = tmp_path / "automatic"
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            f"-I{root / 'src'}",
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)
+
+
 def test_resolved_subbudget_preserves_origin_and_cannot_reopen_auto(
     tmp_path: Path,
 ) -> None:

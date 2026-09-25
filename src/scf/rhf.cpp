@@ -116,13 +116,18 @@ DensityFittingScfData assemble_density_fitting_data(integrals::IntegralData one_
 }
 
 /**
- * Release tensor-sized host storage after a source-backed CUDA plan has taken
- * ownership of tile regeneration.  Dimensions and compact metric metadata
- * remain available to finalization, while the source plan supplies all
- * three-center and derivative values on demand under the caller's budget.
+ * Release uploaded/transient host tensors without retiring a bound raw
+ * response owner. Source-backed metadata has no host raw tensor; an automatic
+ * materialized resident plan must keep its already-admitted raw values until
+ * its force/replay lifetime ends. Dimensions and compact metric remain live.
  */
 [[maybe_unused]] void discard_density_fitting_tensor_storage(DensityFittingScfData& data) {
-  std::vector<double>().swap(data.raw.three_center);
+  // A positive automatic budget can select a materialized resident owner.
+  // Its force provider still borrows this original raw tensor (including for
+  // partial response panels); only source-backed metadata can regenerate it.
+  // Keep the exact allocation/identity while the bound response is live.
+  if (!data.df_gradient_orbital || !data.df_gradient_auxiliary)
+    std::vector<double>().swap(data.raw.three_center);
   std::vector<double>().swap(data.raw.three_center_derivative);
   std::vector<double>().swap(data.raw.metric_derivative);
   std::vector<double>().swap(data.three_center.values);
