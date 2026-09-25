@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_INITIAL_GUESS_DENSITY_HPP
 #define VIBEQC_SCF_INITIAL_GUESS_DENSITY_HPP
 
+#include <cstddef>
 #include <optional>
 #include <span>
 #include <utility>
@@ -55,6 +56,29 @@ std::pair<Matrix, Matrix> normalized_warm_uhf_density(const integrals::IntegralD
 Matrix charge_guided_lowdin_density(const core::System& system, const integrals::IntegralData& ints,
                                     const Matrix& orthogonalizer, const Matrix& input,
                                     std::span<const double> atomic_charges);
+
+/** Diagnostic and density from metric projection of an occupied source subspace. */
+struct OccupiedProjectionResult {
+  Matrix density;
+  double source_metric_orthogonality_error = 0.0;
+  double minimum_projected_norm = 0.0;
+  double projection_residual = 0.0;
+  double target_metric_orthogonality_error = 0.0;
+};
+
+/** Project source occupied columns through S_ts into the target AO metric.
+ *
+ * source_coefficients are row-major C[source AO, orbital] with occupied
+ * orbitals in the first columns. source_overlap and cross_overlap are S_ss and
+ * S_ts respectively. The target orthogonalizer is S_tt^(-1/2). Rank loss,
+ * non-orthonormal source columns and excessive lost norm reject the proposal;
+ * the target Hamiltonian and SCF convergence controls remain untouched.
+ */
+OccupiedProjectionResult project_occupied_density(
+    const integrals::IntegralData& target, const Matrix& target_orthogonalizer,
+    std::span<const double> source_overlap, std::span<const double> cross_overlap,
+    std::size_t source_nbf, std::span<const double> source_coefficients, std::size_t occupied,
+    double occupation = 2.0, double maximum_residual = 0.5);
 /** Prepare a restricted core guess or a finite, normalized warm density.
  * Supplied density is validated/normalized without reading hcore. Its optional
  * core frame is empty unless explicitly requested; a cold density always has
