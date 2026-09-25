@@ -704,7 +704,7 @@ jobs:
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       NUMEXPR_NUM_THREADS: 1
-      VIBEQC_CODSPEED_TIER: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
+      VIBEQC_CODSPEED_TIER: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'pr' || 'full' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
