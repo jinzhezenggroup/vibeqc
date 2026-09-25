@@ -533,36 +533,6 @@ def _cpu_node(node: typing.Any, number: int, names: dict[int, str]) -> list[str]
             f"    {out}[{target_index}]+={names[source._emit_index]}[flat];",
             "  }",
         ]
-    elif node.op == "scatter_add":
-        source = node.inputs[0]
-        axis = node.attrs["axis"]
-        positions = tuple(node.attrs["positions"])
-        if not positions or positions != tuple(range(positions[0], positions[-1] + 1)):
-            raise ValueError("runtime RCCSD CUDA scatter requires contiguous positions")
-        offset = _runtime_bound(positions[0])
-        source_dim = _dim(source.spec.indices[axis])
-        rank = len(node.spec.indices)
-        if rank:
-            lines.append("    std::size_t rem=flat;")
-        coords = [""] * rank
-        for target_axis in reversed(range(rank)):
-            dim = _dim(node.spec.indices[target_axis])
-            lines += [
-                f"    const std::size_t c{target_axis}=rem%{dim};",
-                f"    rem/={dim};",
-            ]
-            coords[target_axis] = f"c{target_axis}"
-        source_coords = list(coords)
-        source_coords[axis] = f"(c{axis}-{offset})"
-        source_index = _flat_coords(source_coords, source.spec)
-        lines += [
-            f"    if(c{axis}<{offset} || c{axis}>={offset}+{source_dim}){{",
-            "      out[flat]=0.0;",
-            "    }else{",
-            f"      const double value=a0[{source_index}];",
-            f"      out[flat]=vibeqc_tensor::finite(value,error,{number});",
-            "    }",
-        ]
     elif node.op == "transpose":
         source = node.inputs[0]
         rank = len(node.spec.indices)
@@ -981,6 +951,36 @@ def _cuda_kernel(
         lines += [
             f"    const double value=__dmul_rn({coefficient},sum);",
             f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
+        ]
+    elif node.op == "scatter_add":
+        source = node.inputs[0]
+        axis = node.attrs["axis"]
+        positions = tuple(node.attrs["positions"])
+        if not positions or positions != tuple(range(positions[0], positions[-1] + 1)):
+            raise ValueError("runtime RCCSD CUDA scatter requires contiguous positions")
+        offset = _runtime_bound(positions[0])
+        source_dim = _dim(source.spec.indices[axis])
+        rank = len(node.spec.indices)
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        coords = [""] * rank
+        for target_axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[target_axis])
+            lines += [
+                f"    const std::size_t c{target_axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+            coords[target_axis] = f"c{target_axis}"
+        source_coords = list(coords)
+        source_coords[axis] = f"(c{axis}-{offset})"
+        source_index = _flat_coords(source_coords, source.spec)
+        lines += [
+            f"    if(c{axis}<{offset} || c{axis}>={offset}+{source_dim}){{",
+            "      out[flat]=0.0;",
+            "    }else{",
+            f"      const double value=a0[{source_index}];",
+            f"      out[flat]=vibeqc_tensor::finite(value,error,{number});",
+            "    }",
         ]
     elif node.op == "transpose":
         source = node.inputs[0]
