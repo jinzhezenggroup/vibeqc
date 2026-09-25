@@ -61,9 +61,7 @@ def test_runtime_aot_binding_uses_compact_native_feature_abi(
 
 
 def test_adapter_source_binds_all_identities_and_tau_convention() -> None:
-    program = build_bulk_runtime_program(
-        "MGGA_X_R2SCAN01", spin="polarized", order=1
-    )
+    program = build_bulk_runtime_program("MGGA_X_R2SCAN01", spin="polarized", order=1)
     binding = bulk_point_program.bind_runtime_semilocal_point_program(
         program, domain_version=3
     )
@@ -100,9 +98,7 @@ def test_binding_rejects_nonpolarized_or_partial_point_contract() -> None:
 
     with pytest.raises(ValueError, match="positive integer"):
         bulk_point_program.bind_runtime_semilocal_point_program(
-            build_bulk_runtime_program(
-                "GGA_X_PBE_SOL", spin="polarized", order=1
-            ),
+            build_bulk_runtime_program("GGA_X_PBE_SOL", spin="polarized", order=1),
             domain_version=0,
         )
 
@@ -114,17 +110,13 @@ def test_noncurated_gga_adapter_executes_projected_graph_exactly(
     if compiler is None:
         pytest.skip("C++ compiler unavailable")
 
-    program = build_bulk_runtime_program(
-        "GGA_X_PBE_SOL", spin="polarized", order=1
-    )
+    program = build_bulk_runtime_program("GGA_X_PBE_SOL", spin="polarized", order=1)
     binding = bulk_point_program.bind_runtime_semilocal_point_program(
         program, domain_version=1
     )
 
     rho = np.array([0.7, 0.4], dtype=np.float64)
-    gradient = np.array(
-        [[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64
-    )
+    gradient = np.array([[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64)
     sigma = np.array(
         [
             np.dot(gradient[0], gradient[0]),
@@ -138,17 +130,15 @@ def test_noncurated_gga_adapter_executes_projected_graph_exactly(
         raw[0],
         raw[1],
         raw[2],
-        *(
-            2.0 * raw[3] * gradient[0] + raw[4] * gradient[1]
-        ),
-        *(
-            raw[4] * gradient[0] + 2.0 * raw[5] * gradient[1]
-        ),
+        *(2.0 * raw[3] * gradient[0] + raw[4] * gradient[1]),
+        *(raw[4] * gradient[0] + 2.0 * raw[5] * gradient[1]),
         0.0,
         0.0,
     ]
 
-    source = binding.emit_source() + r"""
+    source = (
+        binding.emit_source()
+        + r"""
 #include <iomanip>
 #include <iostream>
 
@@ -164,6 +154,7 @@ int main() {
   std::cout << ' ' << value.kinetic[0] << ' ' << value.kinetic[1] << '\n';
 }
 """
+    )
     path = tmp_path / "bulk_point.cpp"
     executable = tmp_path / "bulk_point"
     path.write_text(source, encoding="utf-8")

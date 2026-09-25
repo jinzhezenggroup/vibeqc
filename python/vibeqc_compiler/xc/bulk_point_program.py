@@ -41,8 +41,7 @@ _POINT_LAYOUTS = {
 def _emit_runtime_source(program: BulkRuntimeProgram, backend: str) -> str:
     """Emit the projected runtime Graph through the existing scalar lowerers."""
     variables = {
-        name: f"features[{index}]"
-        for index, name in enumerate(program.spec.features)
+        name: f"features[{index}]" for index, name in enumerate(program.spec.features)
     }
     if backend == "cuda":
         from vibeqc_compiler.integral.cuda import CudaEmitter
@@ -169,11 +168,7 @@ class SemilocalPointBinding:
                 "  const double sigma_bb = gradient[1][0] * gradient[1][0] +",
                 "      gradient[1][1] * gradient[1][1] + gradient[1][2] * gradient[1][2];",
             ]
-            tail = (
-                ", tau[0], tau[1]"
-                if self.ingredient_mask == 15
-                else ""
-            )
+            tail = ", tau[0], tau[1]" if self.ingredient_mask == 15 else ""
             feature_lines.append(
                 "  double features["
                 + str(feature_count)
@@ -213,7 +208,7 @@ class SemilocalPointBinding:
         q = json.dumps
         return (
             self.variant.source
-            + "\n#include \"dft/xc.hpp\"\n"
+            + '\n#include "dft/xc.hpp"\n'
             + "\nnamespace vibeqc::dft::bulk_generated {\n"
             + f"inline constexpr const char* kBindingIdentity = {q(self.identity)};\n"
             + f"inline constexpr const char* kCapabilityIdentity = {q(self.capability_identity)};\n"
