@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,8 @@ def parse_providers(value: str) -> tuple[str, ...]:
 def _validated(
     record: dict[str, Any], *, size: int, provider: str, repeats: int, threads: int
 ) -> dict[str, Any]:
+    if not isinstance(record, dict):
+        raise ValueError("probe record must be a JSON object")
     expected_provider = "automatic" if provider == "auto" else provider
     expected = {
         "schema": PROBE_SCHEMA,
@@ -56,10 +59,16 @@ def _validated(
         "transpose_b": "N",
     }
     for key, value in expected.items():
-        if record.get(key) != value:
+        if type(record.get(key)) is not type(value) or record[key] != value:
             raise ValueError(f"probe record has unexpected {key}: {record.get(key)!r}")
-    if not record.get("cpu_target") or not record.get("provider"):
-        raise ValueError("probe record omitted target/provider identity")
+    for key in ("cpu_target", "provider", "thread_ownership"):
+        if not isinstance(record.get(key), str) or not record[key].strip():
+            raise ValueError(f"probe record has invalid {key} identity")
+    resolved = record["provider"]
+    if resolved not in {"scalar", "openblas"} or (
+        provider != "auto" and resolved != provider
+    ):
+        raise ValueError("probe record has inconsistent resolved provider identity")
     ownership = record.get("thread_ownership")
     if ownership not in {"task_parallel", "provider_parallel"}:
         raise ValueError("probe record omitted valid thread ownership")
@@ -68,7 +77,12 @@ def _validated(
     if provider != "openblas" and threads == 1 and ownership != "task_parallel":
         raise ValueError("single-thread auto/scalar probe must remain task-parallel")
     for key in ("seconds", "gflops"):
-        if not isinstance(record.get(key), (int, float)) or record[key] <= 0:
+        value = record.get(key)
+        try:
+            valid = type(value) in (int, float) and math.isfinite(value) and value > 0
+        except OverflowError:
+            valid = False
+        if not valid:
             raise ValueError(f"probe record has invalid {key}")
     return dict(record)
 
