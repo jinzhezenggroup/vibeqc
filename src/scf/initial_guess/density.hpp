@@ -25,8 +25,9 @@ using reference::Matrix;
  *
  * Providers run exactly once before the physical SCF loop. They may propose a
  * target-basis AO density derived from a cheaper model, but do not own the
- * target Hamiltonian, convergence policy, or final state. Returning nullopt or
- * throwing a standard exception requests the canonical core-density fallback.
+ * target Hamiltonian, convergence policy, or final state. Returning nullopt,
+ * failing proposal validation, or throwing a non-allocation standard exception
+ * requests the canonical core-density fallback.
  */
 struct RestrictedInitialDensityRequest {
   const core::System& system;
