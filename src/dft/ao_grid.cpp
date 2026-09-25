@@ -141,8 +141,7 @@ void AoBasis::evaluate(const double* points, std::size_t npoint, unsigned order,
                                              alpha, r[k]);
               values[0] += term;
             } else {
-              constexpr unsigned MaxDerivative =
-                  JetCount == 4 ? 1U : (JetCount == 10 ? 2U : 3U);
+              constexpr unsigned MaxDerivative = JetCount == 4 ? 1U : (JetCount == 10 ? 2U : 3U);
               std::array<std::array<double, MaxDerivative + 1>, 3> axis{};
               for (unsigned k = 0; k < 3; ++k) {
                 const auto l = static_cast<unsigned>(record[4 + 4 * t + k]);
