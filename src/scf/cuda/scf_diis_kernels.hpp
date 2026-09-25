@@ -9,7 +9,9 @@ namespace vibeqc::scf::cuda_execution {
 
 /** Form deterministic block partials for the history including the current
  * residual, before its circular slot is overwritten. The caller lends
- * batch*history^2*parts doubles; parts=ceil(nbf^2*spins/4096). Only active
+ * batch*history^2*parts doubles; parts=ceil(nbf^2*spins/4096). The kernel
+ * computes each symmetric history pair once and mirrors its identical partial
+ * into the full-square layout consumed by the update kernel. Only active
  * systems and populated slots are read. No atomics or history mutation occur.
  */
 void launch_diis_dot_partials(cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf,
@@ -20,8 +22,10 @@ void launch_diis_dot_partials(cudaStream_t stream, std::int32_t batch_size, std:
 
 /** Preserve launch geometry, stream and per-item state routing.
  * cooperative_dots uses one complete 32-lane warp per system, as submitted
- * by compact DF SCF. It changes only reduction order, keeping the normalized
- * metric, pivot gate, chronological history retirement and Fock proposal.
+ * by compact DF SCF. It computes only unique symmetric Gram entries, mirrors
+ * them into the dense solve, and otherwise changes only reduction order while
+ * keeping the normalized metric, pivot gate, chronological history retirement
+ * and Fock proposal unchanged.
  */
 void launch_update_diis_kernel(dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream,
                                std::int32_t batch_size, std::int32_t nbf,
