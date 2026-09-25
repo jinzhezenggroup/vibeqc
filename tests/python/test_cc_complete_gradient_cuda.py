@@ -138,12 +138,15 @@ def test_complete_ccsdt_cuda_response_gradient_matches_pinned_pyscf(
     assert os.environ.get("SLURM_JOB_ID"), (
         "CUDA RCCSD(T) response-gradient qualification requires Slurm"
     )
+    architecture = os.environ.get("VIBEQC_TENSOR_ARCH", "").strip()
+    if not architecture:
+        pytest.fail(
+            "set VIBEQC_TENSOR_ARCH to the allocated GPU architecture; "
+            "CUDA RCCSD(T) qualification must not assume a device target"
+        )
     nvcc = find_nvcc()
     assert nvcc is not None
-    compiler = CudaCompilerAdapter(
-        nvcc,
-        cuda_target_info(os.environ.get("VIBEQC_TENSOR_ARCH", "sm_120")),
-    )
+    compiler = CudaCompilerAdapter(nvcc, cuda_target_info(architecture))
     expected = np.asarray(analytic_oracle("h2o")["analytic"]["gradient"])
     with _source("h2o") as source:
         result = complete_ccsdt_cuda_response_gradient_validation(
