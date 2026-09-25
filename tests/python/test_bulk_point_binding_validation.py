@@ -29,7 +29,10 @@ def variant() -> SourceVariant:
 @pytest.mark.parametrize("field", ["capability_identity", "point_expression_identity"])
 @pytest.mark.parametrize("value", [True, 7, ["identity"], {"identity": "value"}, " "])
 def test_binding_identities_are_nonempty_strings(field: str, value: object) -> None:
-    arguments = {"capability_identity": "capability", "point_expression_identity": "expression"}
+    arguments = {
+        "capability_identity": "capability",
+        "point_expression_identity": "expression",
+    }
     arguments[field] = value
     with pytest.raises(ValueError, match=field):
         SemilocalPointBinding(variant(), domain_version=1, **arguments)
@@ -50,13 +53,20 @@ def test_binding_requires_an_actual_source_variant() -> None:
         SemilocalPointBinding(duck, "capability", "expression", 1)
 
 
-@pytest.mark.parametrize("features,mask", [
-    (("rho_a", "rho_b"), 1),
-    (("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb"), 7),
-    (("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b"), 15),
-])
-def test_valid_binding_payload_is_detached_and_emission_is_stable(features: tuple[str, ...], mask: int) -> None:
-    binding = SemilocalPointBinding(replace(variant(), features=features), "capability", "expression", 1)
+@pytest.mark.parametrize(
+    "features,mask",
+    [
+        (("rho_a", "rho_b"), 1),
+        (("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb"), 7),
+        (("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb", "tau_a", "tau_b"), 15),
+    ],
+)
+def test_valid_binding_payload_is_detached_and_emission_is_stable(
+    features: tuple[str, ...], mask: int
+) -> None:
+    binding = SemilocalPointBinding(
+        replace(variant(), features=features), "capability", "expression", 1
+    )
     before = binding.identity, binding.emit_source()
     payload = binding.to_payload()
     payload["capability_identity"] = "other"
