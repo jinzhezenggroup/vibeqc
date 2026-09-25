@@ -39,13 +39,16 @@ struct GeneratedShellTask {
   std::uint64_t spin_offset;
   std::uint32_t matrix_order;
   std::uint32_t shell_pair[2];
-  // Bit n is set when canonical slots 2*n and 2*n+1 reverse the cache's
-  // shell_pair_first/shell_pair_second order.
+  // Bits 0/1 record whether canonical pair slots reverse the cache's
+  // shell_pair_first/shell_pair_second order. Bit 2 carries the value-consumer
+  // identity so pure-J does not grow every materialized quartet descriptor.
   std::uint32_t reversed_shell_pair_mask;
   std::uint32_t shell[4];
   std::uint32_t atom[4];
-  GeneratedFockConsumer fock_consumer;
 };
+
+inline constexpr std::uint32_t kGeneratedShellTaskCoulombConsumerBit = 1U << 2U;
+static_assert(sizeof(GeneratedShellTask) == 192U);
 
 /**
  * Device topology view for fixed-storage generated direct-J/K streaming.
