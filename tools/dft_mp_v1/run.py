@@ -288,7 +288,9 @@ def run(plan_path: Path, out: Path, selected: set[str] | None = None) -> Path:
                             or "adapter did not provide a pass result"
                         ),
                     }
-        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        # Digit/depth limits raise ValueError/RecursionError, not necessarily
+        # JSONDecodeError. Retain these rejected bytes as a completed failure.
+        except (ValueError, RecursionError) as error:
             entry = {
                 "id": key,
                 "status": "failed",
