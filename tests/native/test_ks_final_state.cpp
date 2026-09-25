@@ -27,6 +27,15 @@ ResolvedFockBuild ks_fock(FockSpin spin) {
   return resolve_fock_build(spec, FockBackend::Cuda);
 }
 
+ResolvedFockBuild cuda_global_hybrid_fock(FockSpin spin, double exact_exchange) {
+  FockBuildSpec spec;
+  spec.spin = spin;
+  spec.derivative_order = 0;
+  spec.exchange.present = true;
+  spec.exchange.coefficient = (spin == FockSpin::Restricted ? -0.5 : -1.0) * exact_exchange;
+  return resolve_fock_build(spec, FockBackend::Cuda);
+}
+
 struct Fixture {
   KsFinalStateIdentity id{{{11, 23, 7, 9}, 5, ks_fock(FockSpin::Restricted), {1}},
                           {1, 1, {}, 256, false, 1, 0, 31}};
@@ -103,6 +112,43 @@ void analytic_rks_and_uks() {
   }
 }
 
+void cuda_global_hybrid_identity() {
+  for (const bool unrestricted : {false, true}) {
+    const auto spin = unrestricted ? FockSpin::Unrestricted : FockSpin::Restricted;
+    for (const bool b3lyp : {false, true}) {
+      Fixture hybrid;
+      hybrid.id.determinant.model = cuda_global_hybrid_fock(spin, b3lyp ? 0.2 : 0.25);
+      hybrid.id.model.functional =
+          semilocal_family_code(b3lyp ? SemilocalFamily::B3lyp : SemilocalFamily::Pbe);
+      hybrid.id.model.scf_domain_version =
+          semilocal_family_domain_version(b3lyp ? SemilocalFamily::B3lyp : SemilocalFamily::Pbe);
+      hybrid.id.model.semilocal_exchange_scale = b3lyp ? 1.0 : 0.75;
+      hybrid.id.model.semilocal_correlation_scale = 1.0;
+      if (unrestricted) {
+        hybrid.id.determinant.occupied = {1, 0};
+        hybrid.id.model.spins = 2;
+        hybrid.physical.density = {{.5, 0, 0, 0}, {0, 0, 0, 0}};
+        hybrid.physical.fock.push_back(hybrid.physical.fock[0]);
+        hybrid.candidate.spins.push_back(hybrid.candidate.spins[0]);
+      }
+      hybrid.sync();
+      require(hybrid.validate(), b3lyp ? "CUDA B3LYP final-state identity rejected"
+                                       : "CUDA PBE0 final-state identity rejected");
+
+      hybrid.id.determinant.model = cuda_global_hybrid_fock(spin, (b3lyp ? 0.2 : 0.25) + 0.01);
+      hybrid.sync();
+      require(!hybrid.validate(), b3lyp ? "CUDA B3LYP accepted wrong exact-exchange fraction"
+                                        : "CUDA PBE0 accepted wrong exact-exchange fraction");
+    }
+  }
+
+  Fixture scaled_pbe;
+  scaled_pbe.id.determinant.model = cuda_global_hybrid_fock(FockSpin::Restricted, 0.25);
+  scaled_pbe.id.model.semilocal_exchange_scale = 0.8;
+  scaled_pbe.sync();
+  require(!scaled_pbe.validate(), "CUDA accepted an unqualified scaled PBE hybrid");
+}
+
 void identity_rejection() {
   const std::vector<std::function<void(KsFinalStateIdentity&)>> changes{
       [](auto& id) { ++id.determinant.factor.basis; },
@@ -169,6 +215,7 @@ void model_and_state_rejection() {
 int main() {
   try {
     analytic_rks_and_uks();
+    cuda_global_hybrid_identity();
     identity_rejection();
     model_and_state_rejection();
     std::cout << "KS final-state contract tests passed\n";
