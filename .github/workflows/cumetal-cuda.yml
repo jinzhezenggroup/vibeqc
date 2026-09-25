@@ -349,7 +349,7 @@ jobs:
           # into a small standalone probe. Numerical validation runs before READY
           # and stays outside the timed CodSpeed region.
           CUMETAL_ROOT="$CUMETAL_PREFIX" \
-            "$CUMETAL_PREFIX/bin/cumetalc" benchmarks/cumetal_d4_codspeed.cu \
+            "$CUMETAL_PREFIX/bin/cumetalc" --fp64=ieee64 benchmarks/cumetal_d4_codspeed.cu \
             -I"$CUMETAL_PREFIX/include" \
             -I"${GITHUB_WORKSPACE}/src" \
             -I"$VIBEQC_BENCH_BUILD/generated" \
