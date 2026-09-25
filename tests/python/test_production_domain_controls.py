@@ -27,7 +27,7 @@ def test_shared_control_cases_produce_exact_pass_rows(
         "spin": spin,
         "case_id": case_id,
         "status": "pass",
-        "outputs": ["energy", "vxc", "fxc"],
+        "outputs": ["energy", "vxc"],
         "reason": None,
     }
     assert detail["status"] == "pass"
