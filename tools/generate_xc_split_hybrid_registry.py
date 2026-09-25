@@ -87,6 +87,8 @@ def registry_entries(path: Path = MANIFEST) -> tuple[dict[str, object], ...]:
                 "type_name": type_name,
                 "function_name": f"{function_stem}_device",
                 "features": features,
+                "exact_exchange_numerator": method.exact_exchange.numerator,
+                "exact_exchange_denominator": method.exact_exchange.denominator,
             }
         )
     return tuple(entries)
@@ -107,6 +109,17 @@ def emit_registry(path: Path = MANIFEST) -> str:
         for entry in entries
         if entry["family"] == "mgga"
     )
+    composition_cases = []
+    for entry in entries:
+        composition_cases.extend(
+            [
+                f"    case 0x{entry['code']:x}U:",
+                "      return {"
+                f"{entry['exact_exchange_numerator']}U, "
+                f"{entry['exact_exchange_denominator']}U, true"
+                "};",
+            ]
+        )
     device_bodies = "\n".join(str(entry["body"]).rstrip("\n") for entry in entries)
     dispatch_cases = []
     for entry in entries:
@@ -158,6 +171,19 @@ def emit_registry(path: Path = MANIFEST) -> str:
             "      return true;",
             "    default:",
             "      return false;",
+            "  }",
+            "}",
+            "struct SplitHybridComposition {",
+            "  std::uint32_t exact_exchange_numerator{};",
+            "  std::uint32_t exact_exchange_denominator{};",
+            "  bool matched{};",
+            "};",
+            "VIBEQC_SPLIT_HYBRID_HD inline constexpr SplitHybridComposition",
+            "split_hybrid_composition(std::uint32_t functional) noexcept {",
+            "  switch (functional) {",
+            *composition_cases,
+            "    default:",
+            "      return {};",
             "  }",
             "}",
             "#if defined(__CUDACC__)",
