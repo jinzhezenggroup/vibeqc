@@ -952,6 +952,27 @@ def _cuda_kernel(
             f"    const double value=__dmul_rn({coefficient},sum);",
             f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
         ]
+    elif node.op == "slice":
+        source = node.inputs[0]
+        ranges = tuple(node.attrs["ranges"])
+        rank = len(node.spec.indices)
+        if len(ranges) != rank:
+            raise ValueError("runtime RCCSD CUDA slice rank mismatch")
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        coords = [""] * rank
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [
+                f"    const std::size_t c{axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+            coords[axis] = f"(c{axis}+{_runtime_bound(ranges[axis][0])})"
+        source_index = _flat_coords(coords, source.spec)
+        lines += [
+            f"    const double value=a0[{source_index}];",
+            f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
+        ]
     elif node.op == "scatter_add":
         source = node.inputs[0]
         axis = node.attrs["axis"]
