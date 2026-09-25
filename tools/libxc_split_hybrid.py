@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fractions import Fraction
+from functools import cache
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -124,7 +125,34 @@ def _bound_component(
     return {**row, "entry": skeleton["entry"], "owner": skeleton["owner"]}
 
 
+@cache
+def _validate_work_policy_sources() -> None:
+    root = asset_path("upstream/libxc/7.0.0")
+    required = {
+        root / "functionals.c": (
+            "func->sigma_threshold = pow(func->info->dens_threshold, 4.0/3.0);",
+            "func->tau_threshold   = 1e-20;",
+        ),
+        root / "work_mgga_inc.c": (
+            "if(dens < p->dens_threshold)",
+            "my_rho[0] = m_max(p->dens_threshold, VAR(rho, ip, 0));",
+            "my_sigma[0] = m_max(p->sigma_threshold * p->sigma_threshold, VAR(sigma, ip, 0));",
+            "my_tau[0] = m_max(p->tau_threshold, VAR(tau, ip, 0));",
+            "my_rho[1] = m_max(p->dens_threshold, VAR(rho, ip, 1));",
+            "my_sigma[1] = (my_sigma[1] >= -s_ave ? my_sigma[1] : -s_ave);",
+            "my_sigma[1] = (my_sigma[1] <= +s_ave ? my_sigma[1] : +s_ave);",
+        ),
+    }
+    for path, snippets in required.items():
+        text = path.read_text(encoding="utf-8")
+        if any(snippet not in text for snippet in snippets):
+            raise MapleImportError(
+                f"Libxc split-hybrid work policy source changed: {path.name}"
+            )
+
+
 def _work_policy(record: dict[str, Any]) -> LibxcWorkPolicy:
+    _validate_work_policy_sources()
     bindings = record.get("bindings")
     flags = record.get("flags")
     if not isinstance(bindings, dict) or not isinstance(flags, str):
