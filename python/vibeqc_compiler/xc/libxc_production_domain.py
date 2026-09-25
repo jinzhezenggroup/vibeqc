@@ -5,9 +5,9 @@ Libxc registration beyond the interior pointwise domain.  It deliberately does
 not evaluate a functional and never grants production admission by itself.
 
 The profile is structural: every successful production-domain claim must prove
-the same named boundary matrix for the registration's ingredient set and both
-spin layouts.  Numerical fixtures and runners live downstream, but their
-evidence is rejected unless it matches this exact versioned profile.
+the exact named boundary matrix for the registration's ingredient set and spin
+layout.  Numerical fixtures and runners live downstream, but their evidence is
+rejected unless it matches this exact versioned profile.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
-SCHEMA = "vibeqc.libxc-production-domain-profile.v1"
-PROFILE = "semilocal-boundary-matrix/v1"
+SCHEMA = "vibeqc.libxc-production-domain-profile.v2"
+PROFILE = "semilocal-boundary-matrix/v2"
 SUPPORTED_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
 
 _DENSITY_CASES = (
@@ -55,11 +55,11 @@ _CONTROL_CASES = (
 
 @dataclass(frozen=True)
 class ProductionDomainProfile:
-    """Exact boundary matrix required before production-domain promotion."""
+    """Exact spin-aware boundary matrix required before production promotion."""
 
     family: str
     required_ingredients: tuple[str, ...]
-    case_ids: tuple[str, ...]
+    cases_by_spin: tuple[tuple[str, tuple[str, ...]], ...]
     blocker: str | None = None
     schema: str = SCHEMA
     profile: str = PROFILE
@@ -72,6 +72,26 @@ class ProductionDomainProfile:
         return self.blocker is None
 
     @property
+    def case_ids(self) -> tuple[str, ...]:
+        """Return the stable union of case identifiers across spin layouts."""
+        return tuple(
+            dict.fromkeys(
+                case_id
+                for _, case_ids in self.cases_by_spin
+                for case_id in case_ids
+            )
+        )
+
+    def case_ids_for_spin(self, spin: str) -> tuple[str, ...]:
+        """Return only cases with physical meaning for one spin layout."""
+        if spin not in self.spin_layouts:
+            raise ValueError(f"unsupported production-domain spin layout {spin!r}")
+        for layout, case_ids in self.cases_by_spin:
+            if layout == spin:
+                return case_ids
+        raise ValueError(f"production-domain profile has no cases for spin {spin!r}")
+
+    @property
     def identity(self) -> str:
         """Stable identity for evidence binding and deterministic regeneration."""
         return canonical_hash(
@@ -80,7 +100,7 @@ class ProductionDomainProfile:
                 "profile": self.profile,
                 "family": self.family,
                 "required_ingredients": self.required_ingredients,
-                "case_ids": self.case_ids,
+                "cases_by_spin": self.cases_by_spin,
                 "spin_layouts": self.spin_layouts,
                 "outputs": self.outputs,
                 "blocker": self.blocker,
@@ -96,6 +116,9 @@ class ProductionDomainProfile:
             "family": self.family,
             "required_ingredients": list(self.required_ingredients),
             "case_ids": list(self.case_ids),
+            "cases_by_spin": {
+                spin: list(case_ids) for spin, case_ids in self.cases_by_spin
+            },
             "spin_layouts": list(self.spin_layouts),
             "outputs": list(self.outputs),
             "eligible": self.eligible,
@@ -125,16 +148,30 @@ def qualification_profile(
         "unsupported-ingredients:" + ",".join(unsupported) if unsupported else None
     )
 
-    cases = [*_DENSITY_CASES, *_SPIN_CASES]
+    ingredient_cases: list[str] = []
     if "sigma" in ingredients:
-        cases.extend(_SIGMA_CASES)
+        ingredient_cases.extend(_SIGMA_CASES)
     if "tau" in ingredients:
-        cases.extend(_TAU_CASES)
-    cases.extend(_CONTROL_CASES)
+        ingredient_cases.extend(_TAU_CASES)
+
+    polarized_cases = (
+        *_DENSITY_CASES,
+        *_SPIN_CASES,
+        *ingredient_cases,
+        *_CONTROL_CASES,
+    )
+    unpolarized_cases = (
+        *_DENSITY_CASES,
+        *ingredient_cases,
+        *_CONTROL_CASES,
+    )
     return ProductionDomainProfile(
         family=family,
         required_ingredients=required_ingredients,
-        case_ids=tuple(cases),
+        cases_by_spin=(
+            ("polarized", polarized_cases),
+            ("unpolarized", unpolarized_cases),
+        ),
         blocker=blocker,
     )
 
