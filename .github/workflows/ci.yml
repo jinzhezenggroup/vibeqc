@@ -68,7 +68,7 @@ jobs:
 
   cpu:
     needs: merge_queue_liveness
-    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -166,7 +166,7 @@ jobs:
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
     needs: merge_queue_liveness
-    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -429,7 +429,7 @@ jobs:
   python:
     name: python (${{ matrix.shard }})
     needs: merge_queue_liveness
-    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -1016,7 +1016,7 @@ jobs:
     timeout-minutes: 5
     needs: [merge_queue_liveness, cpu, cuda-compile, python]
     runs-on: ubuntu-24.04
-    if: always()
+    if: ${{ !cancelled() }}
     steps:
       - name: Accept an orphaned merge-group run
         if: needs.merge_queue_liveness.outputs.active == 'false'
