@@ -14,25 +14,20 @@ records the matched endpoint and holdout evidence; the
 records the shared scheduling/profile boundary.
 
 ```bash
-# Explicit retained native exception for comparison or a documented workload.
-VIBEQC_ONE_ELECTRON_DERIVATIVES=reference your-command
-
-# Explicit generated schedules (nucleus_cooperative is also the default).
+# Generated schedules (nucleus_cooperative is the default).
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=thread your-command
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=shell_warp your-command
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=nucleus_cooperative your-command
 VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING=serial your-command
 ```
 
-The retained `reference` route uses the cooperative native force consumer (or
-the previous DF derivative-tensor route where applicable). It is an explicit
-oracle/performance control, not an automatic production fallback: only
-`VIBEQC_ONE_ELECTRON_DERIVATIVES=reference`, `native`, or `0` selects it. The
-legacy `tensor` control remains an explicit non-generated DF comparison route
-(and therefore the native control for Direct HF). Unknown or misspelled values
-stay on the compiler-owned generated path instead of silently changing
-scientific ownership. The old scalar native force family and
-`VIBEQC_ONE_ELECTRON_FORCE_SCALAR` switch are retired.
+The compiler-owned generated consumer is now the only CUDA S/T/V first-derivative
+and weighted-force owner. The former `VIBEQC_ONE_ELECTRON_DERIVATIVES`
+selector, cooperative native force/reference kernel, and derivative-specific
+Hermite workspace are retired. Independent validation remains through the
+CPU/libcint/PySCF references and raw derivative tests; `serial` is only a
+deterministic generated schedule diagnostic, not a second scientific formula
+owner.
 `thread` owns triangular AO pairs by thread; `shell_warp` assigns a shell
 pair to a warp whose lanes own AO components; `nucleus_cooperative` assigns an
 AO pair to a warp whose lanes own one nuclear center per tile and share the
@@ -167,13 +162,13 @@ responsibility of the existing two-electron force path.
 
 `benchmarks/one_electron_values_gate.py --derivatives` retains five interleaved
 baseline/candidate pairs for complete cold, unchanged and changed-geometry
-energy-plus-force endpoints. `--fitted` compares DF's previous full one-electron
-derivative tensors with the fused path, and `--df-budget` controls the existing
-DF workspace. `--contraction-length` builds longer explicit contractions for
-custom-shell cases. `--observe-resources` retains resource-plan observations.
-All paired energies/forces are checked; timings are whole endpoints, not
-isolated integral-kernel claims. Reduced raw arithmetic cost alone cannot
-promote a production force path.
+energy-plus-force endpoints. The baseline uses the deterministic generated
+`serial` schedule and the candidate uses the requested generated mapping;
+independent numerical acceptance remains in the libcint/PySCF tests rather than
+this performance A/B. `--df-budget`, `--contraction-length`, and
+`--observe-resources` retain the existing resource/stress controls. All paired
+energies/forces are checked; timings are whole endpoints, not isolated
+integral-kernel claims.
 
 ## RTX 5090 evidence and disposition
 
@@ -239,11 +234,12 @@ The current nucleus-cooperative default is qualified separately by the linked
 #670 promotion decision, not by relabeling these historical measurements.
 The archived endpoint evidence is deliberately not rewritten: resident DF
 unchanged replay measured 4.586 / 5.429 ms (reference / generated), and Direct
-sdf18 changed geometry measured 36.667 / 39.352 ms. Those cases justify keeping
-the cooperative native route as an explicit `reference` performance exception;
-they do not justify keeping handwritten S/T/V formulas as the normal owner. The
-old scalar kernel (335.6 us in the archived sp8 profile) is slower than both the
-cooperative kernel (85.2 us) and generated shell warp (58.0 us) and is removed.
+sdf18 changed geometry measured 36.667 / 39.352 ms. Those cases explain why #357 initially retained the cooperative native route as
+an explicit performance control. After the generated nucleus-cooperative
+promotion and this compatibility cleanup, that native force route is retired;
+the archived timings remain historical evidence rather than a live selector.
+The old scalar kernel (335.6 us in the archived sp8 profile) was already slower
+than both the cooperative kernel (85.2 us) and generated shell warp (58.0 us).
 
 No new GPU timing claim is made by the retirement change itself; promotion uses
 the pinned #141 numerical/resource/endpoint evidence above. Reproduction scripts

@@ -79,6 +79,28 @@ def _index_table_values(node: Node) -> tuple[int, ...] | None:
     return index_table_values(node)
 
 
+def _logical_node_flops(node: Node) -> int:
+    """Return the existing one-materialization arithmetic proxy for one node."""
+
+    contract = gemm_contract(node)
+    if contract is not None:
+        return contract.flops
+    if node.op == "einsum":
+        domains = {}
+        for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
+            domains.update(zip(labels, child.spec.shape, strict=True))
+        return len(node.inputs) * prod(domains.values())
+    if node.op not in VIEWS and node.op not in (
+        "input",
+        "constant",
+        "gather",
+        "indexed_gather",
+        "runtime_indexed_select",
+    ):
+        return sum(child.spec.size for child in node.inputs)
+    return 0
+
+
 @dataclass(frozen=True)
 class TensorSchedule:
     """Small explicit search space over one stable stream, optionally replayed.
@@ -906,21 +928,7 @@ def plan_cuda(
             if g is not None and not virtual[i] and i not in disabled_gemm_steps
             else "none"
         )
-        if g:
-            flops += g.flops
-        elif node.op == "einsum":
-            domains = {}
-            for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
-                domains.update(zip(labels, child.spec.shape, strict=True))
-            flops += len(node.inputs) * prod(domains.values())
-        elif node.op not in VIEWS and node.op not in (
-            "input",
-            "constant",
-            "gather",
-            "indexed_gather",
-            "runtime_indexed_select",
-        ):
-            flops += sum(child.spec.size for child in node.inputs)
+        flops += _logical_node_flops(node)
         steps.append(
             Step(
                 node,

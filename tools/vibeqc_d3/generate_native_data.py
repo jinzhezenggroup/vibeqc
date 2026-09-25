@@ -1,112 +1,40 @@
-"""Generate the compact production D3(BJ) table from pinned xTBloom data."""
+"""Generate the native D3(BJ) table from VibeQC's compact production product."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+PYTHON_ROOT = ROOT / "python"
+if str(PYTHON_ROOT) not in sys.path:
+    sys.path.insert(0, str(PYTHON_ROOT))
+from vibeqc_compiler.common.d3_data import load_d3_production_data
 
-from tools import source_registry
-
-_D3_SOURCE_ID = "xtbloom-gfn1-d3"
-_MODEL_SOURCE_ID = "xtbloom-gfn1-parameters"
-_REQUIRED_SOURCE_FILES = frozenset({"gfn1_d3.json", "gfn1.json"})
-MANIFEST = ROOT / "manifests" / "xtbloom-d3.json"
-DEFAULT_OUTPUT = ROOT / "src" / "dft" / "dispersion" / "d3_data.hpp"
+MANIFEST = ROOT / "manifests/xtbloom-d3.json"
+DATA = ROOT / "data/parameters/d3_production.bin"
+DEFAULT_OUTPUT = ROOT / "src/dft/dispersion/d3_data.hpp"
 
 
-def sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
-def _registered_source_texts() -> tuple[dict[str, str], str]:
-    """Load exact D3/GFN1 texts through their common-registry owners."""
-    registry = source_registry._load(source_registry.REGISTRY)
-    result: dict[str, str] = {}
-    common_revision: str | None = None
-    for source_id, required in (
-        (_D3_SOURCE_ID, ("gfn1_d3.json",)),
-        (_MODEL_SOURCE_ID, ("gfn1.json",)),
-    ):
-        source = registry["sources"].get(source_id)
-        if not isinstance(source, dict):
-            raise source_registry.SourceRegistryError(
-                f"source registry is missing {source_id!r}"
-            )
-        revision = source.get("revision")
-        if not isinstance(revision, str) or not revision:
-            raise source_registry.SourceRegistryError(
-                f"source registry has invalid revision for {source_id!r}"
-            )
-        if common_revision is None:
-            common_revision = revision
-        elif revision != common_revision:
-            raise source_registry.SourceRegistryError(
-                "D3 and GFN1 source owners must pin the same upstream revision"
-            )
-        texts = source_registry.read_source_texts(source_id, source)
-        missing = set(required) - texts.keys()
-        if missing:
-            raise source_registry.SourceRegistryError(
-                f"{source_id!r} is missing required files: {sorted(missing)}"
-            )
-        result.update({name: texts[name] for name in required})
-    if common_revision is None:
-        raise source_registry.SourceRegistryError("registered D3 sources are empty")
-    return (
-        {name: result[name] for name in sorted(_REQUIRED_SOURCE_FILES)},
-        common_revision,
-    )
-
-
-def _real(value: float) -> str:
-    value = float(value)
-    if value == 0.0:
-        return "0.0"
-    return value.hex()
+def _real(v: float) -> str:
+    v = float(v)
+    return "0.0" if v == 0.0 else v.hex()
 
 
 def render() -> str:
-    manifest = json.loads(MANIFEST.read_text())
-    expected = manifest["data"]
-    source_texts, source_revision = _registered_source_texts()
-    table_raw = source_texts["gfn1_d3.json"].encode("utf-8")
-    model_raw = source_texts["gfn1.json"].encode("utf-8")
-    if sha256(table_raw) != expected["gfn1_d3.json"]:
-        raise RuntimeError("gfn1_d3.json digest mismatch")
-    if sha256(model_raw) != manifest["sources"]["data/parameters/gfn1.json"]["sha256"]:
-        raise RuntimeError("gfn1.json digest mismatch")
-
-    source = json.loads(table_raw)
-    model = json.loads(model_raw)
-    if [item["atomic_number"] for item in model["elements"]] != list(range(1, 87)):
-        raise RuntimeError("upstream GFN1 element order changed")
-    radii = [item["covalent_radius_bohr"] for item in model["elements"]]
-    radii_bytes = (json.dumps(radii, indent=2) + "\n").encode()
-    if hashlib.sha256(radii_bytes).hexdigest() != expected["covalent_radii.json"]:
-        raise RuntimeError("derived covalent radii digest mismatch")
-    elements = source["elements"]
-    pairs = source["pair_records"]
-    refs = source["coordination_numbers"]
-    c6 = source["c6"]
-    r4r2 = source["r4r2"]
-    vdw = source["vdw_radii"]
-    if len(elements) != 86 or len(radii) != 86 or len(r4r2) != 86:
-        raise RuntimeError("production D3 table must cover exactly H through Rn")
-    if len(pairs) != 86 * 87 // 2 or len(vdw) != len(pairs):
-        raise RuntimeError("unexpected packed element-pair count")
-    if any(e["reference_count"] > 7 for e in elements):
-        raise RuntimeError(
-            "D3 production layout supports at most seven references per element"
-        )
-
-    out = [
+    m = json.loads(MANIFEST.read_text())
+    e = m["data"]
+    d = load_d3_production_data(DATA)
+    if (
+        d.table_sha256 != e["gfn1_d3.json"]
+        or d.radii_sha256 != e["covalent_radii.json"]
+    ):
+        raise RuntimeError("compact D3 provenance mismatch")
+    if any(x.reference_count > 7 for x in d.elements):
+        raise RuntimeError("D3 supports at most seven references per element")
+    o = [
         "// Generated by tools/vibeqc_d3/generate_native_data.py; do not edit.",
         "// Source/provenance: manifests/xtbloom-d3.json.",
         "#pragma once",
@@ -115,9 +43,9 @@ def render() -> str:
         "#include <cstdint>",
         "",
         "namespace vibeqc::dft::dispersion::d3_data {",
-        f'inline constexpr char kTableSha256[] = "{expected["gfn1_d3.json"]}";',
-        f'inline constexpr char kRadiiSha256[] = "{expected["covalent_radii.json"]}";',
-        f'inline constexpr char kVersion[] = "xtbloom-d3-{source_revision[:7]}-production-v1";',
+        f'inline constexpr char kTableSha256[] = "{d.table_sha256}";',
+        f'inline constexpr char kRadiiSha256[] = "{d.radii_sha256}";',
+        f'inline constexpr char kVersion[] = "xtbloom-d3-{d.source_revision[:7]}-production-v1";',
         "",
         "struct ElementData {",
         "  std::uint32_t reference_offset;",
@@ -132,62 +60,55 @@ def render() -> str:
         "  double vdw_radius;",
         "};",
         "",
-        f"inline constexpr std::array<ElementData, {len(elements)}> kElements{{{{",
+        f"inline constexpr std::array<ElementData, {len(d.elements)}> kElements{{{{",
     ]
-    for i, e in enumerate(elements):
-        out.append(
-            "    ElementData{"
-            f"{int(e['reference_offset'])}u, {int(e['reference_count'])}u, "
-            f"{_real(radii[i])}, {_real(r4r2[i])}"
-            "},"
+    for i, x in enumerate(d.elements):
+        o.append(
+            f"    ElementData{{{x.reference_offset}u, {x.reference_count}u, {_real(d.covalent_radii[i])}, {_real(d.r4r2[i])}}},"
         )
-    out.extend(
-        [
-            "}};",
-            "",
-            f"inline constexpr std::array<double, {len(refs)}> kReferenceCn{{{{",
-        ]
-    )
-    for i in range(0, len(refs), 4):
-        out.append("    " + ", ".join(_real(x) for x in refs[i : i + 4]) + ",")
-    out.extend(
-        ["}};", "", f"inline constexpr std::array<PairData, {len(pairs)}> kPairs{{{{"]
-    )
-    for p, radius in zip(pairs, vdw):
-        out.append(
-            "    PairData{"
-            f"{int(p['c6_offset'])}u, {int(p['first_reference_count'])}u, "
-            f"{int(p['second_reference_count'])}u, {_real(radius)}"
-            "},"
+    o += [
+        "}};",
+        "",
+        f"inline constexpr std::array<double, {len(d.coordination_numbers)}> kReferenceCn{{{{",
+    ]
+    for i in range(0, len(d.coordination_numbers), 4):
+        o.append(
+            "    "
+            + ", ".join(_real(v) for v in d.coordination_numbers[i : i + 4])
+            + ","
         )
-    out.extend(
-        ["}};", "", f"inline constexpr std::array<double, {len(c6)}> kReferenceC6{{{{"]
-    )
-    for i in range(0, len(c6), 4):
-        out.append("    " + ", ".join(_real(x) for x in c6[i : i + 4]) + ",")
-    out.extend(
-        [
-            "}};",
-            "",
-            "}  // namespace vibeqc::dft::dispersion::d3_data",
-            "",
-        ]
-    )
-    return "\n".join(out)
+    o += [
+        "}};",
+        "",
+        f"inline constexpr std::array<PairData, {len(d.pairs)}> kPairs{{{{",
+    ]
+    for i, x in enumerate(d.pairs):
+        o.append(
+            f"    PairData{{{x.c6_offset}u, {x.first_reference_count}u, {x.second_reference_count}u, {_real(d.vdw_radii[i])}}},"
+        )
+    o += [
+        "}};",
+        "",
+        f"inline constexpr std::array<double, {len(d.c6)}> kReferenceC6{{{{",
+    ]
+    for i in range(0, len(d.c6), 4):
+        o.append("    " + ", ".join(_real(v) for v in d.c6[i : i + 4]) + ",")
+    o += ["}};", "", "}  // namespace vibeqc::dft::dispersion::d3_data", ""]
+    return "\n".join(o)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--check", action="store_true")
-    args = parser.parse_args()
-    rendered = render()
-    if args.check:
-        if not args.output.exists() or args.output.read_text() != rendered:
-            raise SystemExit(f"{args.output} is stale; regenerate it")
+    p = argparse.ArgumentParser()
+    p.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    p.add_argument("--check", action="store_true")
+    a = p.parse_args()
+    r = render()
+    if a.check:
+        if not a.output.exists() or a.output.read_text() != r:
+            raise SystemExit(f"{a.output} is stale; regenerate it")
         return
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(rendered)
+    a.output.parent.mkdir(parents=True, exist_ok=True)
+    a.output.write_text(r)
 
 
 if __name__ == "__main__":

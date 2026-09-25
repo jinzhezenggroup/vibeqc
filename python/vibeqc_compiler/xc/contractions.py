@@ -12,7 +12,11 @@ import numpy as np
 
 from vibeqc_compiler.common.arrays import immutable
 from vibeqc_compiler.dft.ao import directional_ao_jets, jet_indices
-from vibeqc_compiler.dft.features import density_features, spin_densities
+from vibeqc_compiler.dft.features import (
+    _density_features_from_spin_densities,
+    density_features,
+    spin_densities,
+)
 
 from .coefficients import coefficient_program, jet_pullback_program
 from .contracts import DerivativeRequest, DiscreteEnergyContract
@@ -381,17 +385,27 @@ class ContractionProgram:
     def spec(self) -> typing.Any:
         return self.contract.functional
 
-    def features(self, jets: typing.Any, density: typing.Any) -> typing.Any:
-        """Perform only the ingredient reductions declared by this functional."""
+    def _feature_ingredients(self) -> tuple[str, ...]:
         family = self.contract.ingredients.family
-        requested = (
+        return (
             ("rho",)
             if family == "lda"
             else ("rho", "gradient", "sigma", "tau")
             if family == "mgga"
             else ("rho", "gradient", "sigma")
         )
-        return density_features(jets, density, ingredients=requested)
+
+    def features(self, jets: typing.Any, density: typing.Any) -> typing.Any:
+        """Perform only the ingredient reductions declared by this functional."""
+        return density_features(jets, density, ingredients=self._feature_ingredients())
+
+    def _features_from_spin_densities(
+        self, jets: typing.Any, density: typing.Any
+    ) -> typing.Any:
+        """Consume a two-spin density already normalized by the enclosing endpoint."""
+        return _density_features_from_spin_densities(
+            jets, density, ingredients=self._feature_ingredients()
+        )
 
     def scalar_values(self, features: typing.Any) -> typing.Any:
         """Evaluate only declared roots; keep their derivative labels explicit."""
@@ -480,7 +494,7 @@ class ContractionProgram:
             point_motion=points,
             center_motion=centers,
         )
-        features = self.features(base_jets, d)
+        features = self._features_from_spin_densities(base_jets, d)
         direction = _geometry_feature_direction(
             features, base_jets, directional_jets, d, dd, family
         )
@@ -644,7 +658,7 @@ class ContractionProgram:
             center_motion=right_centers,
         )
         base_jets = raw_jets[:base_count]
-        features = self.features(base_jets, d)
+        features = self._features_from_spin_densities(base_jets, d)
         left, right, mixed = _geometry_feature_directions(
             features,
             base_jets,
@@ -720,22 +734,9 @@ class ContractionProgram:
             "electrons": immutable(features["rho"] @ weights),
         }
 
-    def evaluate(
-        self,
-        jets: typing.Any,
-        density: typing.Any,
-        weights: typing.Any,
-        *,
-        delta_density: typing.Any = None,
-        ao_atoms: typing.Any = None,
-        natom: typing.Any = None,
-    ) -> typing.Any:
-        """Return exactly the requested observable for a complete-density tile.
-
-        Geometry requires one extra spatial jet and an explicit AO-to-atom
-        map. Response directions may be indefinite but must be real symmetric;
-        cross-spin Hessian terms are preserved before AO assembly.
-        """
+    def _tile_inputs(
+        self, jets: typing.Any, weights: typing.Any
+    ) -> tuple[np.ndarray, np.ndarray]:
         jets, weights = immutable(jets), immutable(weights)
         required = len(jet_indices(self.contract.ao_order))
         if (
@@ -745,15 +746,25 @@ class ContractionProgram:
             or weights.shape != (jets.shape[1],)
         ):
             raise ValueError("XC contraction requires its declared AO/point domain")
-        d = spin_densities(density, jets.shape[2])
-        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
-            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        return jets, weights
+
+    def _evaluate_spin_densities(
+        self,
+        jets: np.ndarray,
+        density: typing.Any,
+        weights: np.ndarray,
+        *,
+        delta_density: typing.Any = None,
+        ao_atoms: typing.Any = None,
+        natom: typing.Any = None,
+    ) -> typing.Any:
+        """Evaluate after an enclosing boundary has normalized spin densities once."""
         observable = self.contract.request.observable
         if observable != "response" and delta_density is not None:
             raise ValueError("density direction requires a response request")
         if observable != "geometry" and (ao_atoms is not None or natom is not None):
             raise ValueError("AO-center map requires a geometric request")
-        features = self.features(jets, d)
+        features = self._features_from_spin_densities(jets, density)
         if observable == "potential":
             return self.potential_tile(jets, features, weights)
         rows = self.scalar_values(features)
@@ -766,16 +777,12 @@ class ContractionProgram:
         v = self._gradient(rows, jets.shape[1])
         gradient = _functional_gradient(self.spec, features)
         if observable == "response":
-            dd = spin_densities(delta_density, jets.shape[2])
-            if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
-                raise UnsupportedXC(
-                    "unpolarized response requires equal spin directions"
-                )
-            # rho and grad(rho) are linear in D. Sigma is differentiated at
-            # the reference gradients, not evaluated nonlinearly at delta-D.
             requested = ("rho",) if gradient is None else ("rho", "gradient")
             delta = _response_features(
-                features, density_features(jets, dd, ingredients=requested)
+                features,
+                _density_features_from_spin_densities(
+                    jets, delta_density, ingredients=requested
+                ),
             )
             direction = _pack(self.spec, delta)
             dv = np.zeros_like(v)
@@ -796,9 +803,69 @@ class ContractionProgram:
         else:
             coefficients = self.coefficients.evaluate(gradient, v)
             result["geometry"] = self._geometry(
-                jets, d, weights, coefficients, rows[()], ao_atoms, natom
+                jets, density, weights, coefficients, rows[()], ao_atoms, natom
             )
         return result
+
+    def _evaluate_prevalidated_density(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        delta_density: typing.Any = None,
+        ao_atoms: typing.Any = None,
+        natom: typing.Any = None,
+    ) -> typing.Any:
+        """Internal tile path for density owners validated by a prepared endpoint."""
+        jets, weights = self._tile_inputs(jets, weights)
+        return self._evaluate_spin_densities(
+            jets,
+            density,
+            weights,
+            delta_density=delta_density,
+            ao_atoms=ao_atoms,
+            natom=natom,
+        )
+
+    def evaluate(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        delta_density: typing.Any = None,
+        ao_atoms: typing.Any = None,
+        natom: typing.Any = None,
+    ) -> typing.Any:
+        """Return exactly the requested observable for a complete-density tile.
+
+        Geometry requires one extra spatial jet and an explicit AO-to-atom
+        map. Response directions may be indefinite but must be real symmetric;
+        cross-spin Hessian terms are preserved before AO assembly.
+        """
+        jets, weights = self._tile_inputs(jets, weights)
+        d = spin_densities(density, jets.shape[2])
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        observable = self.contract.request.observable
+        if observable != "response" and delta_density is not None:
+            raise ValueError("density direction requires a response request")
+        dd = None
+        if observable == "response":
+            dd = spin_densities(delta_density, jets.shape[2])
+            if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+                raise UnsupportedXC(
+                    "unpolarized response requires equal spin directions"
+                )
+        return self._evaluate_spin_densities(
+            jets,
+            d,
+            weights,
+            delta_density=dd,
+            ao_atoms=ao_atoms,
+            natom=natom,
+        )
 
     def geometry_from_cartesian_coefficients(
         self,
@@ -968,6 +1035,165 @@ class ExternalPointContraction(ContractionProgram):
     def pack_features(self, features: typing.Any) -> typing.Any:
         """Return the canonical feature-major scalar ABI for an external provider."""
         return _pack(self.spec, features)
+
+    def mixed_geometry_from_rks_cartesian_coefficients(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        left_centers: typing.Any,
+        left_points: typing.Any,
+        left_weights: typing.Any,
+        right_centers: typing.Any,
+        right_points: typing.Any,
+        right_weights: typing.Any,
+        mixed_weights: typing.Any,
+        energy: typing.Any,
+        rho_coefficients: typing.Any,
+        directional_rho_coefficients: typing.Any,
+        gradient_coefficients: typing.Any = None,
+        directional_gradient_coefficients: typing.Any = None,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Contract an RKS XC Hessian bilinear from provider-owned point data.
+
+        The external point owner supplies the SCF-domain energy, Cartesian
+        density/gradient potential coefficients, and their derivative along the
+        right geometry+density direction. AO/grid mixed motion stays under the
+        shared contraction owner. This is sufficient for an LDA/GGA Hessian
+        bilinear; no third XC derivative or scalar-Graph substitution is needed.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError("mixed RKS geometry requires a geometry contraction")
+        if self.spec.spin != "unpolarized":
+            raise UnsupportedXC("external mixed RKS geometry requires unpolarized XC")
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("external mixed RKS geometry supports LDA/GGA only")
+
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 2))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError("mixed RKS geometry requires AO jets through order+2")
+        npoint, nao = raw_jets.shape[1:]
+        weights = immutable(weights, shape=(npoint,))
+        left_points = immutable(left_points, shape=(npoint, 3))
+        right_points = immutable(right_points, shape=(npoint, 3))
+        left_weights = immutable(left_weights, shape=(npoint,))
+        right_weights = immutable(right_weights, shape=(npoint,))
+        mixed_weights = immutable(mixed_weights, shape=(npoint,))
+        left_centers = immutable(left_centers)
+        right_centers = immutable(right_centers, shape=left_centers.shape)
+        if left_centers.ndim != 2 or left_centers.shape[1:] != (3,):
+            raise ValueError("mixed RKS geometry requires [atom,3] center directions")
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(left_centers))
+        ):
+            raise ValueError("mixed RKS geometry requires one valid atom per AO")
+
+        d = spin_densities(density, nao)
+        if not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("mixed RKS geometry requires an equal-spin density")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "mixed RKS geometry requires an equal-spin density direction"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        extended_count = len(jet_indices(ingredient_order + 1))
+        left_extended = directional_ao_jets(
+            raw_jets,
+            ingredient_order + 1,
+            ao_atoms=atoms,
+            point_motion=left_points,
+            center_motion=left_centers,
+        )
+        left_jets = left_extended[:base_count]
+        right_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        mixed_jets = directional_ao_jets(
+            left_extended[:extended_count],
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=right_points,
+            center_motion=right_centers,
+        )
+        base_jets = raw_jets[:base_count]
+        features = self.features(base_jets, d)
+        left, right, mixed = _geometry_feature_directions(
+            features,
+            base_jets,
+            left_jets,
+            right_jets,
+            mixed_jets,
+            d,
+            dd,
+            family,
+        )
+
+        energy = immutable(energy, shape=(npoint,))
+        rho = immutable(rho_coefficients, shape=(npoint,))
+        drho = immutable(directional_rho_coefficients, shape=(npoint,))
+        arrays = [energy, rho, drho]
+        gradient = dgradient = None
+        if family == "gga":
+            gradient = immutable(gradient_coefficients, shape=(npoint, 3))
+            dgradient = immutable(directional_gradient_coefficients, shape=(npoint, 3))
+            arrays.extend((gradient, dgradient))
+        elif (
+            gradient_coefficients is not None
+            or directional_gradient_coefficients is not None
+        ):
+            raise ValueError("LDA mixed RKS geometry does not consume gradients")
+        if not all(np.isfinite(value).all() for value in arrays):
+            raise ValueError("nonfinite external RKS XC coefficient")
+
+        def feature_energy(
+            value: typing.Any,
+            rho_value: np.ndarray,
+            gradient_value: np.ndarray | None,
+        ) -> np.ndarray:
+            result = rho_value * value["rho"].sum(axis=0)
+            if family == "gga":
+                assert gradient_value is not None
+                result = result + np.sum(
+                    gradient_value * value["gradient"].sum(axis=0), axis=1
+                )
+            return result
+
+        left_energy = feature_energy(left, rho, gradient)
+        right_energy = feature_energy(right, rho, gradient)
+        mixed_feature_energy = feature_energy(mixed, rho, gradient)
+        mixed_feature_energy += feature_energy(left, drho, dgradient)
+
+        result = XCMixedDirectional(
+            mixed_measure=float(mixed_weights @ energy),
+            left_measure_right_feature=float(left_weights @ right_energy),
+            right_measure_left_feature=float(right_weights @ left_energy),
+            feature_mixed=float(weights @ mixed_feature_energy),
+        )
+        if not np.isfinite(result.total):
+            raise ArithmeticError("nonfinite external mixed RKS XC contraction")
+        return result
 
     def geometry_from_feature_rows(
         self,

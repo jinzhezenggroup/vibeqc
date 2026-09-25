@@ -170,9 +170,12 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
     assert "__global__ void bulk_xc_census_probe" in probe
     assert "bulk_xc_point(features, outputs)" in probe
     resources = bulk_aot.ptxas_resources(
-        "ptxas info : Used 42 registers, 16 bytes smem\n"
-        "24 bytes stack frame, 0 bytes spill stores, 8 bytes spill loads\n"
-        "ptxas info : Used 60 registers\n"
+        "ptxas info : Function properties for bulk_xc_census_probe\n"
+        "    24 bytes stack frame, 0 bytes spill stores, 8 bytes spill loads\n"
+        "ptxas info : Used 42 registers, 16 bytes smem, 4 bytes lmem\n"
+        "ptxas info : Function properties for bulk_xc_point\n"
+        "    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+        "ptxas info : Used 60 registers, 2 bytes lmem\n"
     )
     assert resources == {
         "registers": 60,
@@ -180,10 +183,135 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
         "stack_bytes": 24,
         "spill_store_bytes": 0,
         "spill_load_bytes": 8,
-        "local_bytes": None,
+        "local_bytes": 4,
     }
+
+    zero_shared = bulk_aot.ptxas_resources(
+        "ptxas info : Function properties for bulk_xc_census_probe\n"
+        "    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+        "ptxas info : Used 32 registers, 0 bytes lmem\n"
+    )
+    assert zero_shared["shared_bytes"] == 0
     with pytest.raises(ValueError, match="cuda_arch"):
         bulk_aot.compile_probe(variant(), cuda_arch="native")
+
+
+def test_cuda_resource_gate_fails_closed_on_unknown_observations() -> None:
+    limits = bulk_aot.CudaResourceLimits(128, 64, 0, 0, 0)
+    evidence = {
+        "status": "compiled",
+        "resources": {
+            "registers": 64,
+            "stack_bytes": 0,
+            "spill_store_bytes": 0,
+            "spill_load_bytes": 0,
+            "shared_bytes": 0,
+            "local_bytes": None,
+        },
+    }
+
+    gate = bulk_aot.gate_cuda_resources(evidence, limits)
+    assert gate["status"] == "unavailable"
+    assert not gate["package_eligible"]
+    assert gate["reasons"] == ["unknown-resource:local_bytes"]
+
+
+def test_cuda_resource_gate_enforces_register_stack_local_shared_and_spills() -> None:
+    limits = bulk_aot.CudaResourceLimits(64, 32, 8, 16, 0)
+    passing = {
+        "status": "compiled",
+        "resources": {
+            "registers": 64,
+            "stack_bytes": 32,
+            "spill_store_bytes": 0,
+            "spill_load_bytes": 0,
+            "shared_bytes": 16,
+            "local_bytes": 8,
+        },
+    }
+    assert bulk_aot.gate_cuda_resources(passing, limits) == {
+        "status": "passed",
+        "package_eligible": True,
+        "reasons": [],
+        "limits": limits.to_payload(),
+        "observed": passing["resources"],
+    }
+
+    failing = {
+        "status": "compiled",
+        "resources": {
+            "registers": 65,
+            "stack_bytes": 33,
+            "spill_store_bytes": 4,
+            "spill_load_bytes": 4,
+            "shared_bytes": 17,
+            "local_bytes": 9,
+        },
+    }
+    gate = bulk_aot.gate_cuda_resources(failing, limits)
+    assert gate["status"] == "rejected"
+    assert not gate["package_eligible"]
+    assert gate["reasons"] == [
+        "register-limit",
+        "stack-limit",
+        "local-memory-limit",
+        "shared-memory-limit",
+        "spill-limit",
+    ]
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (0, 0, 0, 0, 0),
+        (64, -1, 0, 0, 0),
+        (64, 0, -1, 0, 0),
+        (64, 0, 0, -1, 0),
+        (64, 0, 0, 0, -1),
+    ],
+)
+def test_cuda_resource_limits_reject_invalid_bounds(
+    args: tuple[int, int, int, int, int],
+) -> None:
+    with pytest.raises(ValueError):
+        bulk_aot.CudaResourceLimits(*args)
+
+
+def test_measurement_marks_cuda_ineligible_without_resource_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    item = variant(backend="cuda")
+    plan = bulk_aot.plan_package([item])
+
+    monkeypatch.setattr(
+        bulk_aot,
+        "compile_probe",
+        lambda *args, **kwargs: {
+            "status": "compiled",
+            "resources": {
+                "registers": 32,
+                "stack_bytes": 0,
+                "spill_store_bytes": 0,
+                "spill_load_bytes": 0,
+                "shared_bytes": 0,
+                "local_bytes": 0,
+            },
+        },
+    )
+    measured = bulk_aot.measure_plan(plan, lambda _: item)
+    gate = next(iter(measured.values()))["resource_gate"]
+    assert gate == {
+        "status": "not-run",
+        "package_eligible": False,
+        "reasons": ["resource-policy-not-supplied"],
+    }
+
+    measured = bulk_aot.measure_plan(
+        plan,
+        lambda _: item,
+        cuda_resource_limits=bulk_aot.CudaResourceLimits(64, 0, 0, 0, 0),
+    )
+    assert next(iter(measured.values()))["resource_gate"]["status"] == "passed"
 
 
 def test_compilation_timeout_is_explicit(monkeypatch: pytest.MonkeyPatch) -> None:

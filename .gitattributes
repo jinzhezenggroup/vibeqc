@@ -39,7 +39,6 @@ src/dft/dispersion/d4_eeq_r2scan3c_c6.hpp linguist-generated=true
 python/vibeqc_compiler/method/_generated_parameters.py linguist-generated=true
 python/vibeqc_compiler/method/_generated_libxc_methods.py linguist-generated=true
 src/xtb/native/data/parameters/gfn1.hpp linguist-generated=true
-upstream/xtbloom/** -whitespace linguist-vendored=true
 python/vibeqc_compiler/geometry/_gfn1_data.py text eol=lf linguist-generated=true
 
 # Full-tree Libxc mathematical inputs; preserve upstream bytes, not runtime code.

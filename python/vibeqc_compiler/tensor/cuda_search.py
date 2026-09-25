@@ -29,6 +29,7 @@ from .cuda_gemm import gemm_contract
 from .cuda_plan import (
     TensorPlan,
     TensorSchedule,
+    _logical_node_flops,
     estimated_cuda_launches,
     plan_cuda,
 )
@@ -238,6 +239,10 @@ def _fp64_accumulation_terms(plan: TensorPlan) -> int:
     """Count scalar contributions widened from FP32 into qualified FP64 reductions."""
     total = 0
     for step in plan.steps:
+        # Runtime index maps are integer controls, not floating-point values.
+        # Their deliberate absence from the precision plan is not an error.
+        if step.node.spec.dtype == "int64":
+            continue
         value = plan.precision_by_node[step.node]
         if value.compute_dtype == value.accumulation_dtype:
             continue
@@ -313,6 +318,90 @@ def _scalar_reduction_promotion_rejections(plan: TensorPlan) -> tuple[str, ...]:
     return tuple(reasons)
 
 
+def _full_operand_evaluations(
+    plan: TensorPlan, step_index: int, operand_index: int
+) -> int:
+    """Count scalar reads of one operand for one complete logical step execution."""
+
+    step = plan.steps[step_index]
+    node = step.node
+    if not node.spec.size:
+        return 0
+    if step.gemm == "packed":
+        contract = gemm_contract(node)
+        if contract is None or operand_index not in (0, 1):
+            raise AssertionError(
+                "packed GEMM must have exactly two contraction operands"
+            )
+        tile_m = min(plan.schedule.tile_m, contract.m)
+        tile_n = min(plan.schedule.tile_n, contract.n)
+        if operand_index == 0:
+            n_tiles = (contract.n + tile_n - 1) // tile_n
+            return contract.batch * n_tiles * contract.m * contract.k
+        m_tiles = (contract.m + tile_m - 1) // tile_m
+        return contract.batch * m_tiles * contract.k * contract.n
+    if node.op == "einsum":
+        domains = {}
+        for child, labels in zip(node.inputs, node.attrs["labels"], strict=True):
+            domains.update(zip(labels, child.spec.shape, strict=True))
+        return prod(domains.values())
+    if node.op == "reduce":
+        return node.inputs[operand_index].spec.size
+    if node.op in ("scatter_add", "segment_sum"):
+        return node.inputs[operand_index].spec.size
+    return node.spec.size
+
+
+def _effective_arithmetic_work(plan: TensorPlan) -> tuple[int, int, int]:
+    """Account scalar work repeated by virtual/inlined producer evaluation.
+
+    TensorPlan.estimated_flops describes one logical traversal of every
+    occurrence. The CUDA emitter can evaluate virtual producers many times
+    inside generated reductions or packed-GEMM panel preparation. This pass
+    follows those actual consumer edges without changing executable identity,
+    using a conservative ceiling only when a partial virtual demand is not an
+    integral fraction of the producer logical domain.
+    """
+
+    evaluations = [0] * len(plan.steps)
+    for index, step in enumerate(plan.steps):
+        if not step.virtual:
+            evaluations[index] = step.node.spec.size
+
+    for index in range(len(plan.steps) - 1, -1, -1):
+        step = plan.steps[index]
+        demand = evaluations[index]
+        output_size = step.node.spec.size
+        if not demand or not output_size:
+            continue
+        for operand_index, child in enumerate(step.inputs):
+            if not plan.steps[child].virtual:
+                continue
+            full_reads = _full_operand_evaluations(plan, index, operand_index)
+            scaled = demand * full_reads
+            evaluations[child] += (scaled + output_size - 1) // output_size
+
+    effective = plan.estimated_flops
+    for index, step in enumerate(plan.steps):
+        if not step.virtual or not step.node.spec.size:
+            continue
+        logical = _logical_node_flops(step.node)
+        executed = (
+            logical * evaluations[index] + step.node.spec.size - 1
+        ) // step.node.spec.size
+        effective += executed - logical
+
+    virtual_evaluations = sum(
+        evaluations[index] for index, step in enumerate(plan.steps) if step.virtual
+    )
+    rematerialized = sum(
+        max(0, evaluations[index] - step.node.spec.size)
+        for index, step in enumerate(plan.steps)
+        if step.virtual
+    )
+    return effective, virtual_evaluations, rematerialized
+
+
 def estimate_schedule(plan: TensorPlan) -> dict:
     """Reuse exact capacity accounting and expose bounded, calibratable cost proxies."""
     live_values, registers = [], 0
@@ -345,9 +434,16 @@ def estimate_schedule(plan: TensorPlan) -> dict:
     occupancy = resident * plan.schedule.threads / plan.target.maximum_threads_per_sm
     launches = estimated_cuda_launches(plan)
     widened_accumulation_terms = _fp64_accumulation_terms(plan)
+    effective_flops, virtual_evaluations, rematerialized_values = (
+        _effective_arithmetic_work(plan)
+    )
+    peak_live_values = max(live_values, default=0)
     promotion_rejections = _scalar_reduction_promotion_rejections(plan)
     profitability = GpuProfitability(
         semantic_traffic_bytes=traffic["total_bytes"],
+        arithmetic_operation_count=effective_flops,
+        peak_live_values=peak_live_values,
+        rematerialized_value_count=rematerialized_values,
         estimated_registers_per_thread=registers,
         estimated_occupancy_upper_bound=occupancy,
         launch_count=launches,
@@ -389,7 +485,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
             device_bytes=plan.device_bytes,
             host_bytes=plan.host_bytes,
             workspace_bytes=plan.allocation_bytes,
-            peak_live_values=max(live_values, default=0),
+            peak_live_values=peak_live_values,
             registers_per_thread=registers,
             shared_bytes=shared_bytes,
             resident_workgroups=resident,
@@ -405,7 +501,7 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         ),
     )
     return {
-        "schema": "vibeqc.tensor.cuda.static-cost.v4",
+        "schema": "vibeqc.tensor.cuda.static-cost.v5",
         "peak_numeric_bytes": plan.peak_bytes,
         "device_bytes": plan.device_bytes,
         "host_bytes": plan.host_bytes,
@@ -424,6 +520,9 @@ def estimate_schedule(plan: TensorPlan) -> dict:
         "estimated_endpoint_semantic_traffic_bytes": traffic["total_bytes"],
         "traffic_scope": traffic["scope"],
         "estimated_flops": plan.estimated_flops,
+        "estimated_effective_flops": effective_flops,
+        "estimated_virtual_value_evaluations": virtual_evaluations,
+        "estimated_rematerialized_value_count": rematerialized_values,
         "estimated_fp64_accumulation_terms": widened_accumulation_terms,
         "estimated_registers_per_thread": registers,
         "estimated_shared_bytes": shared_bytes,
