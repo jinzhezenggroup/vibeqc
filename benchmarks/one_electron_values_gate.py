@@ -140,17 +140,7 @@ def main() -> None:
             "basis": repr(basis),
         }
     )
-    selection_variable = (
-        "VIBEQC_ONE_ELECTRON_DERIVATIVES"
-        if args.derivatives
-        else "VIBEQC_ONE_ELECTRON_VALUES"
-    )
-    mapping_variable = (
-        "VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"
-        if args.derivatives
-        else "VIBEQC_ONE_ELECTRON_VALUE_MAPPING"
-    )
-    os.environ[mapping_variable] = args.mapping
+    mapping_variable = "VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"
     library = _native.load_library()
     library.vibeqc_get_source_identity.restype = ctypes.c_char_p
     if library.vibeqc_get_source_identity().decode() != source_identity(ROOT):
@@ -167,9 +157,7 @@ def main() -> None:
             raise RuntimeError("CUDA synchronization failed")
 
     def select(selection: typing.Any) -> None:
-        os.environ[selection_variable] = (
-            "generated" if selection == "candidate" else "reference"
-        )
+        os.environ[mapping_variable] = "serial" if selection == "baseline" else args.mapping
 
     def prepare() -> typing.Any:
         resource_budget = (
@@ -298,6 +286,7 @@ def main() -> None:
         "batch": args.batch,
         "contraction_length_override": args.contraction_length,
         "mapping": args.mapping,
+        "baseline_mapping": "serial",
         "operator": "df_derivatives"
         if args.df_derivatives
         else ("derivatives" if args.derivatives else "values"),

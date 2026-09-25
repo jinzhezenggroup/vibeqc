@@ -88,7 +88,6 @@ def worker(args: typing.Any) -> None:
         os.environ["VIBEQC_DF_VALUE_MAPPING"] = "primitive"
         os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = "shell_warp"
         # Keep the independent one-electron force route identical on both sides.
-        os.environ.pop("VIBEQC_ONE_ELECTRON_DERIVATIVES", None)
     else:
         os.environ["VIBEQC_ONE_ELECTRON_VALUES"] = args.selection
         os.environ["VIBEQC_ONE_ELECTRON_VALUE_MAPPING"] = args.mapping
