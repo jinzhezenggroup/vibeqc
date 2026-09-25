@@ -7,6 +7,7 @@ from functools import lru_cache
 
 import numpy as np
 import pytest
+import vibeqc_compiler.dft.features as feature_module
 from vibeqc_compiler.dft import (
     ExplicitGrid,
     GridSpec,
@@ -97,6 +98,32 @@ def test_trace_variation_diagonal_offdiagonal_and_mixed_spins(
             # the small-step target does not select the most favorable step.
             assert np.all(np.asarray(errors) < [2e-5, 2e-6, 3e-7]), errors
             assert errors[-1] < errors[0] / 20 + 2e-10, errors
+
+
+def test_fixed_density_tiles_reuse_entry_validated_density(
+    monkeypatch: typing.Any,
+) -> None:
+    meta, data, grid = fixture("h2")
+    density = data["density_total"]
+    with NativeAO(**basis_arguments(meta)) as basis:
+        reference = consumer("PBE", "unpolarized").integrate(
+            basis, grid, density, tile_points=7
+        )
+
+        def repeated_validation(
+            *_args: typing.Any, **_kwargs: typing.Any
+        ) -> typing.Any:
+            raise AssertionError("fixed-density tile repeated spin-density validation")
+
+        monkeypatch.setattr(feature_module, "spin_densities", repeated_validation)
+        actual = consumer("PBE", "unpolarized").integrate(
+            basis, grid, density, tile_points=7
+        )
+
+    check(actual.energy, reference.energy)
+    check(actual.potential, reference.potential)
+    check(actual.electrons, reference.electrons)
+    assert actual.tiles == reference.tiles
 
 
 @pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
