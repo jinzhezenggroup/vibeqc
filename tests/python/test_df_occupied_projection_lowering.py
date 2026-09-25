@@ -88,7 +88,7 @@ extern "C" int small_metric(int a,int rr,const double* e,const double* eigenvalu
 
 
 @pytest.fixture(scope="session")
-def native(tmp_path_factory: pytest.TempPathFactory):
+def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("requires a host C++ compiler")
@@ -137,7 +137,7 @@ def native(tmp_path_factory: pytest.TempPathFactory):
     return lib
 
 
-def pointer(array):
+def pointer(array: np.ndarray) -> ct.POINTER(ct.c_double):
     return array.ctypes.data_as(ct.POINTER(ct.c_double))
 
 
@@ -145,7 +145,7 @@ def pointer(array):
     "n,r,a", [(1, 1, 1), (4, 1, 7), (7, 3, 9), (12, 5, 17), (16, 8, 13), (31, 7, 11)]
 )
 @pytest.mark.parametrize("width", [1, 2, 5, 64])
-def test_projected_panel_layout_and_tails(native, n, r, a, width):
+def test_projected_panel_layout_and_tails(\n    native: ct.CDLL, n: int, r: int, a: int, width: int\n) -> None:
     rng = np.random.default_rng(20260925 + n + r + a)
     c = np.asfortranarray(rng.normal(size=(n, r)))
     values = rng.normal(size=(a, n, n))
@@ -181,7 +181,7 @@ def test_projected_panel_layout_and_tails(native, n, r, a, width):
 
 @pytest.mark.parametrize("a,r", [(1, 1), (3, 2), (9, 3), (17, 5)])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6, 1e10])
-def test_small_metric_layout(native, a, r, condition):
+def test_small_metric_layout(\n    native: ct.CDLL, a: int, r: int, condition: float\n) -> None:
     rng = np.random.default_rng(71 + a + r)
     eigenvectors = np.asfortranarray(np.linalg.qr(rng.normal(size=(a, a)))[0])
     eigenvalues = np.geomspace(1, condition, a)
@@ -208,7 +208,7 @@ def test_small_metric_layout(native, a, r, condition):
     assert native.call_count() == 2
 
 
-def test_96_atom_capacity_and_overflow(native):
+def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
     n, r, a = 768, 160, 3712
     cap = a * r * r
     assert native.tile_size(n, r, a, cap, 64, False) == 64
@@ -221,7 +221,7 @@ def test_96_atom_capacity_and_overflow(native):
 @pytest.mark.parametrize("n,r,a", [(4, 1, 3), (7, 3, 9), (12, 5, 13), (16, 8, 17)])
 @pytest.mark.parametrize("scale", [1.0, 2.0])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6])
-def test_full_rank_adjoints_using_emitted_helpers(native, n, r, a, scale, condition):
+def test_full_rank_adjoints_using_emitted_helpers(\n    native: ct.CDLL, n: int, r: int, a: int, scale: float, condition: float\n) -> None:
     rng = np.random.default_rng(800 + n + r + a)
     c = np.asfortranarray(np.linalg.qr(rng.normal(size=(n, r)))[0])
     raw = rng.normal(size=(a, n, n))
