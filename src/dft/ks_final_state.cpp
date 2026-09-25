@@ -46,7 +46,8 @@ bool valid_model(const KsFinalStateIdentity& identity) {
         (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
          fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
-      (!b3lyp && !wb97mv && (family != SemilocalFamily::Pbe || fock.backend == scf::FockBackend::Cuda) &&
+      (!b3lyp && !wb97mv &&
+       (family != SemilocalFamily::Pbe || fock.backend == scf::FockBackend::Cuda) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
         fock.spec.exchange.present)) ||
       (b3lyp && (fock.backend != scf::FockBackend::Cpu || model.semilocal_exchange_scale != 1 ||
