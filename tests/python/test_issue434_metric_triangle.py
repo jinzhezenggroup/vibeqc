@@ -14,9 +14,7 @@ from benchmarks.issue434_fixed_density import (
 def test_whitening_uses_the_direct_solvers_upper_triangle(
     order: str, lower_delta: float
 ) -> None:
-    raw = np.array(
-        [[[1.0, 0.2], [0.3, -0.1]], [[0.3, -0.1], [0.7, 0.4]]], order=order
-    )
+    raw = np.array([[[1.0, 0.2], [0.3, -0.1]], [[0.3, -0.1], [0.7, 0.4]]], order=order)
     density = np.array([[1.2, 0.1], [0.1, 0.8]], order=order)
     metric = np.array([[2.0, 0.25], [0.25, 1.5]], order=order)
     authoritative = metric.copy()
@@ -30,7 +28,10 @@ def test_whitening_uses_the_direct_solvers_upper_triangle(
         coulomb_from_raw(raw, metric, density), expected, atol=5e-15, rtol=1e-15
     )
     np.testing.assert_allclose(
-        coulomb_from_whitened_raw(raw, metric, density), expected, atol=5e-15, rtol=1e-15
+        coulomb_from_whitened_raw(raw, metric, density),
+        expected,
+        atol=5e-15,
+        rtol=1e-15,
     )
     np.testing.assert_array_equal(metric, before)
 
@@ -39,9 +40,7 @@ def test_whitening_uses_the_direct_solvers_upper_triangle(
 def test_whitening_does_not_ignore_authoritative_triangle_perturbations(
     order: str,
 ) -> None:
-    raw = np.array(
-        [[[1.0, 0.2], [0.3, -0.1]], [[0.3, -0.1], [0.7, 0.4]]], order=order
-    )
+    raw = np.array([[[1.0, 0.2], [0.3, -0.1]], [[0.3, -0.1], [0.7, 0.4]]], order=order)
     density = np.array([[1.2, 0.1], [0.1, 0.8]], order=order)
     metric = np.array([[2.0, 0.25], [0.25, 1.5]], order=order)
     changed = metric.copy(order=order)
@@ -49,8 +48,8 @@ def test_whitening_does_not_ignore_authoritative_triangle_perturbations(
     expected = coulomb_from_raw(raw, changed, density) - coulomb_from_raw(
         raw, metric, density
     )
-    actual = coulomb_from_whitened_raw(raw, changed, density) - coulomb_from_whitened_raw(
-        raw, metric, density
-    )
+    actual = coulomb_from_whitened_raw(
+        raw, changed, density
+    ) - coulomb_from_whitened_raw(raw, metric, density)
     assert np.max(np.abs(expected)) > 1.0e-6
     np.testing.assert_allclose(actual, expected, atol=5e-15, rtol=1e-15)
