@@ -1072,11 +1072,7 @@ def _cuda_program(
         )
         + ";",
         "  const auto o=s.o,v=s.v;",
-        *(
-            ["  const std::size_t n=checked_add(o,v);"]
-            if uses_complete_orbital
-            else []
-        ),
+        *(["  const std::size_t n=checked_add(o,v);"] if uses_complete_orbital else []),
         "  std::size_t cursor=0;",
         "  auto allocate=[&](std::size_t count)->double*{double* p=arena+cursor;cursor=checked_add(cursor,count);return p;};",
         "  vibeqc_tensor::cuda_check(cudaMemsetAsync(s.error,0,sizeof(int),s.stream));",
