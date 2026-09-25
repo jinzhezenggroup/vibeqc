@@ -163,10 +163,8 @@ def compact_publication(
             json.loads(gzip.decompress(raw))
         contents[entry["path"]] = raw
 
-    # Already compacted publications are validated but left byte-identical.
-    if any(str(entry["path"]).endswith(".json.gz") for entry in entries):
-        return []
-
+    # Select remaining plain members individually. A publication may already
+    # contain packed members without having compacted every eligible JSON file.
     candidates = {
         entry["path"]: entry
         for entry in entries
@@ -200,13 +198,17 @@ def compact_publication(
         )
 
     evidence_path = directory / evidence_name
-    evidence = json.loads(contents[evidence_name])
+    evidence_is_packed = evidence_name.endswith(".json.gz")
+    evidence_raw = contents[evidence_name]
+    if evidence_is_packed:
+        evidence_raw = gzip.decompress(evidence_raw)
+    evidence = json.loads(evidence_raw)
     evidence_changed = _update_storage_references(evidence, replacements)
-    evidence_data = (
-        json_bytes(evidence) if evidence_changed else contents[evidence_name]
-    )
+    evidence_data = json_bytes(evidence) if evidence_changed else evidence_raw
 
-    if evidence_name in candidates:
+    if evidence_name in candidates or (
+        not evidence_is_packed and len(evidence_data) >= THRESHOLD
+    ):
         new = evidence_name + ".gz"
         packed = compressed(evidence_data)
         replacements[evidence_name] = (new, packed)
@@ -218,6 +220,8 @@ def compact_publication(
             )
         )
     elif evidence_changed:
+        if evidence_is_packed:
+            evidence_data = compressed(evidence_data)
         changes.append(
             (
                 evidence_path.relative_to(ROOT).as_posix(),

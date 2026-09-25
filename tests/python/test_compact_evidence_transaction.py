@@ -33,7 +33,8 @@ def large_samples(root: Path) -> None:
         data = (directory / entry["path"]).read_bytes()
         entry.update(bytes=len(data), sha256=compact.digest(data))
     manifest_path.write_bytes(compact.json_bytes(manifest))
-    compact.THRESHOLD = len(evidence_path.read_bytes()) + 1
+    # Leave room for the rewritten path/metadata while keeping samples bulky.
+    compact.THRESHOLD = len(evidence_path.read_bytes()) + 128
 
 
 @pytest.mark.parametrize("in_place", [False, True])
@@ -120,6 +121,7 @@ def test_success_keeps_payloads_and_idempotence(
     before = snapshot(publication)
     assert compact.compact_publication("campaign/publication.json", check=True) == []
     assert snapshot(publication) == before
+
 
 
 def test_companion_created_after_preflight_is_not_overwritten(
