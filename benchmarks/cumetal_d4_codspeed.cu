@@ -106,6 +106,7 @@ class BenchmarkServer {
       check(cudaEventCreate(&end_), "cudaEventCreate(end)");
       for (unsigned int i = 0; i < kWarmupLaunches; ++i) launch_once();
       check(cudaDeviceSynchronize(), "cudaDeviceSynchronize(warmup)");
+      validate_results();
 
       std::cout << "READY device=" << properties.name << " case=d4-production systems=" << kSystems
                 << " atoms_per_system=" << kAtomsPerSystem << std::endl;
@@ -126,6 +127,18 @@ class BenchmarkServer {
       check(cudaEventElapsedTime(&total, begin_, end_), "cudaEventElapsedTime");
       *milliseconds = total / static_cast<float>(kLaunchesPerSample);
       return std::isfinite(*milliseconds) && *milliseconds > 0.0F;
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "FAIL: %s\n", error.what());
+      return false;
+    }
+  }
+
+  bool validate_after_samples() {
+    try {
+      // Inspect the last measured output, without launching a replacement run.
+      check(cudaDeviceSynchronize(), "cudaDeviceSynchronize(post-replay validation)");
+      validate_results();
+      return true;
     } catch (const std::exception& error) {
       std::fprintf(stderr, "FAIL: %s\n", error.what());
       return false;
@@ -224,7 +237,10 @@ class BenchmarkServer {
   void validate_production_schedule() {
     launch_once();
     check(cudaDeviceSynchronize(), "cudaDeviceSynchronize(validation)");
+    validate_results();
+  }
 
+  void validate_results() {
     std::vector<D4Status> statuses(kSystems);
     std::vector<double> energy(expected_energy_.size());
     std::vector<double> gradient(expected_gradient_.size());
@@ -234,8 +250,10 @@ class BenchmarkServer {
     device_gradient_.download(gradient.data(), gradient.size());
     device_dedq_.download(dedq.data(), dedq.size());
 
-    for (const auto status : statuses)
-      if (status != D4Status::success) throw std::runtime_error("production D4 status failed");
+    for (std::size_t system = 0; system < statuses.size(); ++system)
+      if (statuses[system] != D4Status::success)
+        throw std::runtime_error("production D4 status failed: system=" + std::to_string(system) +
+                                 " status=" + std::to_string(static_cast<int>(statuses[system])));
     for (std::size_t i = 0; i < energy.size(); ++i)
       if (!near(energy[i], expected_energy_[i], 2e-10))
         throw std::runtime_error("production D4 energy differs from host reference");
@@ -286,6 +304,11 @@ int main() {
       float milliseconds = 0.0F;
       if (!server.run_sample(&milliseconds)) return 2;
       std::cout << "OK d4 " << milliseconds << std::endl;
+      continue;
+    }
+    if (command == "validate d4") {
+      if (!server.validate_after_samples()) return 4;
+      std::cout << "OK validate d4" << std::endl;
       continue;
     }
     if (command == "quit") return 0;

@@ -56,6 +56,16 @@ class _D4Server:
             raise RuntimeError(f"invalid CuMetal D4 device duration: {device_ms}")
         return device_ms
 
+    def validate(self) -> None:
+        """Check the last measured D4 result outside the benchmark target."""
+        assert self._process.stdin is not None
+        assert self._process.stdout is not None
+        self._process.stdin.write("validate d4\n")
+        self._process.stdin.flush()
+        reply = self._process.stdout.readline().strip()
+        if reply != "OK validate d4":
+            raise RuntimeError(f"CuMetal D4 replay validation failed: {reply!r}")
+
     def close(self) -> None:
         process = self._process
         try:
@@ -104,4 +114,5 @@ def test_cumetal_d4_production_walltime(
 ) -> None:
     """Measure the real cooperative D4 CUDA schedule after strict validation."""
     device_ms = benchmark(cumetal_d4_server.run_once)
+    cumetal_d4_server.validate()
     assert device_ms > 0.0
