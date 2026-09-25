@@ -111,9 +111,9 @@ void verify_direct_jk_target_policy() {
   {
     ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "all");
     const auto selected_mask = bounded_direct_primary_streaming_fock_mask_requested();
-    require(selected_mask.has_value() &&
-                *selected_mask == std::numeric_limits<std::uint64_t>::max(),
-            "primary streaming diagnostic accepts all generated classes");
+    require(
+        selected_mask.has_value() && *selected_mask == std::numeric_limits<std::uint64_t>::max(),
+        "primary streaming diagnostic accepts all generated classes");
   }
   {
     ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "invalid");

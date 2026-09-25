@@ -1582,16 +1582,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   // mixed execution retains its separately qualified routing.
   const std::uint64_t host_primary_streaming_fock_shell_class_mask =
       !mixed_precision_fock && requested_primary_streaming_fock_mask.has_value()
-          ? *requested_primary_streaming_fock_mask &
-                host_generated_streaming_fock_shell_class_mask
+          ? *requested_primary_streaming_fock_mask & host_generated_streaming_fock_shell_class_mask
           : 0U;
   std::array<std::uint32_t, detail::kDirectQuartetShellClassCount>
       host_primary_streaming_fock_flags{};
   for (unsigned shell_class = 0; shell_class < detail::kDirectQuartetShellClassCount;
        ++shell_class) {
     host_primary_streaming_fock_flags[shell_class] =
-        (host_primary_streaming_fock_shell_class_mask &
-         (std::uint64_t{1} << shell_class)) != 0U;
+        (host_primary_streaming_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) != 0U;
   }
   const std::uint64_t host_native_streaming_fock_shell_class_mask =
       host_generated_fock_shell_class_mask & kNativeStreamingFockShellClassMask;
@@ -2117,8 +2115,8 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       const unsigned shell_class = kernel.shell_class;
       if ((host_generated_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) == 0U ||
           (host_native_streaming_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) != 0U ||
-          (host_primary_streaming_fock_shell_class_mask &
-           (std::uint64_t{1} << shell_class)) != 0U) {
+          (host_primary_streaming_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) !=
+              0U) {
         continue;
       }
       unsigned high_pair_class = 0U;
