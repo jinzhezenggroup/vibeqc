@@ -10,12 +10,21 @@ bool exact_full_range(const FockTermSpec& term) noexcept {
          (term.approximation == FockApproximation::Exact && term.op == FockOperator::FullRange);
 }
 
+bool exact_value_exchange(const FockTermSpec& term, double screening) noexcept {
+  if (!term.present) return true;
+  if (term.approximation != FockApproximation::Exact) return false;
+  if (term.op == FockOperator::FullRange) return true;
+  return (term.op == FockOperator::ShortRange || term.op == FockOperator::LongRange) &&
+         term.omega > 0.0 && screening == 0.0;
+}
+
 }  // namespace
 
 PreparedCudaFockBinding prepared_cuda_fock_binding(const PreparedFockPlan& plan) noexcept {
   const auto& strategy = plan.strategy();
   if (strategy.backend != FockBackend::Cuda || strategy.spec.derivative_order != 0 ||
-      !exact_full_range(strategy.spec.coulomb) || !exact_full_range(strategy.spec.exchange))
+      !exact_full_range(strategy.spec.coulomb) ||
+      !exact_value_exchange(strategy.spec.exchange, strategy.screening_tolerance))
     return {};
 
   auto* source = plan.cuda_direct_source();
