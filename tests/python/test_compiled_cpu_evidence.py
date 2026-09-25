@@ -149,6 +149,7 @@ def test_real_noncurated_gga_binding_compiles_and_executes() -> None:
     assert qualification["binding"]["domain"] == PRODUCTION_CANDIDATE_DOMAIN
     assert qualification["binding"]["domain_version"] == 2
     assert qualification["smoke"]["status"] == "pass"
-    assert qualification["smoke"]["maximum_absolute_error"] <= (
-        qualification["smoke"]["absolute_tolerance"]
+    assert (
+        qualification["smoke"]["maximum_absolute_error"]
+        <= (qualification["smoke"]["absolute_tolerance"])
     )

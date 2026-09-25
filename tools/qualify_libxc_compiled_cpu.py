@@ -15,7 +15,6 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-
 from vibeqc_compiler.common.compiler_process import run_compiler
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash, file_hash
 from vibeqc_compiler.xc.bulk_point_program import (
@@ -33,9 +32,7 @@ SMOKE_SCHEMA = "vibeqc.libxc-compiled-cpu-smoke-input/v1"
 
 def _smoke_input() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     rho = np.asarray([0.7, 0.4], dtype=np.float64)
-    gradient = np.asarray(
-        [[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64
-    )
+    gradient = np.asarray([[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64)
     tau = np.asarray([0.35, 0.21], dtype=np.float64)
     return rho, gradient, tau
 
@@ -85,8 +82,14 @@ def _cpp_array(values: np.ndarray) -> str:
     return ", ".join(repr(float(value)) for value in values.reshape(-1))
 
 
-def _translation_unit(binding_source: str, binding_identity: str, domain_version: int,
-                      rho: np.ndarray, gradient: np.ndarray, tau: np.ndarray) -> str:
+def _translation_unit(
+    binding_source: str,
+    binding_identity: str,
+    domain_version: int,
+    rho: np.ndarray,
+    gradient: np.ndarray,
+    tau: np.ndarray,
+) -> str:
     return (
         binding_source
         + """
@@ -166,8 +169,10 @@ def qualify_compiled_cpu(
     }
     input_identity = canonical_hash(input_payload)
 
-    compiler = shutil.which(cxx) if cxx else (
-        shutil.which("c++") or shutil.which("g++") or shutil.which("clang++")
+    compiler = (
+        shutil.which(cxx)
+        if cxx
+        else (shutil.which("c++") or shutil.which("g++") or shutil.which("clang++"))
     )
     if compiler is None:
         outcome = {
@@ -294,7 +299,10 @@ def qualify_compiled_cpu(
 
             aligned = len(observed) == len(expected)
             max_error = (
-                max(abs(left - right) for left, right in zip(observed, expected, strict=True))
+                max(
+                    abs(left - right)
+                    for left, right in zip(observed, expected, strict=True)
+                )
                 if aligned
                 else float("inf")
             )
