@@ -160,15 +160,14 @@ inline std::size_t df_resident_value_admission_floor(DfBudgetWorkload workload) 
 
 /** Resolve one value/response allowance without a fixed-size magic default.
  *
- * Live automatic mode bounds its workload target by available device memory,
- * not the probe-failure cap: a 1-GiB cap forces roomy multi-GiB tensors to
- * regenerate on every replay. When the live envelope can admit a complete
- * source-backed resident value owner, the target is raised to that admission
- * floor before splitting response capacity. Tight live envelopes retain the
- * smaller workload target and therefore the streamed fallback. If the probe
- * is unavailable, the same dimensions deterministically resolve to a
- * conservative 32 MiB..1 GiB envelope. Force response and value ownership are
- * proportional to their estimated staged work, not an unconditional 50/50.
+ * Live automatic mode bounds the workload target by available device memory
+ * without promoting to the larger resident-owner floor. The resident route
+ * changed SCF work counts at 768 AO during qualification, so automatic
+ * admission remains on the bounded source-backed policy. Explicit positive
+ * budgets remain hard caps. If the probe is unavailable, the same dimensions
+ * deterministically resolve to a conservative 32 MiB..1 GiB envelope. Force
+ * response and value ownership are proportional to their estimated staged
+ * work, not an unconditional 50/50.
  */
 inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceEnvelope resource,
                                           std::size_t requested_bytes) noexcept {
@@ -192,12 +191,6 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
   const long double demand = value_demand + response_demand;
   long double response_fraction = demand > 0.0L ? response_demand / demand : 0.5L;
   response_fraction = std::clamp(response_fraction, 0.20L, 0.70L);
-  const auto resident_value_floor = df_resident_value_admission_floor(workload);
-  const auto resident_target =
-      workload.forces ? df_budget_ceiling(static_cast<long double>(resident_value_floor) /
-                                          (1.0L - response_fraction))
-                      : resident_value_floor;
-
   DfResolvedBudget result;
   result.requested_bytes = requested_bytes;
   result.live_resource = resource.live;
@@ -217,12 +210,10 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                          : resource.free_bytes - resource.free_bytes / 2U;
     const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
     const auto available = after_absolute - after_absolute / 4U;
-    // Promote only when the complete resident value owner fits inside the
-    // actual post-reservation envelope. Otherwise preserve the smaller target
-    // so constrained devices still select the bounded streamed route.
-    const auto admitted_target =
-        resident_target <= available ? std::max(workload_target, resident_target) : workload_target;
-    result.total_bytes = std::min(admitted_target, available);
+    // Keep automatic admission on the bounded source-backed workload target.
+    // The resident-owner promotion is intentionally not automatic because its
+    // qualified 768-AO warm-start path changed SCF work counts.
+    result.total_bytes = std::min(workload_target, available);
   } else {
     result.total_bytes = std::min(workload_target, max_fallback);
   }

@@ -70,35 +70,33 @@ def test_explicit_cap_is_not_changed_by_probe(budget_probe: Path, force: bool) -
     assert (response > 0) == force
 
 
-def test_preferred_candidate_peak_raises_only_automatic_envelope(
+def test_automatic_budget_does_not_promote_to_resident_owner_floor(
     tmp_path: Path,
 ) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
-    source = tmp_path / "preferred.cpp"
+    source = tmp_path / "automatic.cpp"
     source.write_text(r"""
 #include "scf/df_preparation_budget.hpp"
 #include <cassert>
 int main() {
   using namespace vibeqc::scf;
   constexpr std::size_t mib = 1024U * 1024U;
-  DfBudgetWorkload work{64, 64, 8, 1, 8, true};
+  const DfBudgetWorkload work{64, 64, 8, 1, 8, true};
   const DfResourceEnvelope roomy{8ULL << 30, 8ULL << 30, true};
-  const auto base = resolve_df_budget(work, roomy, 0);
-  work.preferred_value_peak_bytes = base.total_bytes + 512 * mib;
-  const auto raised = resolve_df_budget(work, roomy, 0);
-  assert(raised.total_bytes == work.preferred_value_peak_bytes);
-  assert(raised.total_bytes > base.total_bytes);
+  const auto automatic = resolve_df_budget(work, roomy, 0);
+  const auto resident_floor = df_resident_value_admission_floor(work);
+  assert(automatic.total_bytes < resident_floor);
   const auto explicit_cap = resolve_df_budget(work, roomy, 12345);
   assert(explicit_cap.total_bytes == 12345);
   const DfResourceEnvelope tight{256 * mib, 8ULL << 30, true};
   const auto limited = resolve_df_budget(work, tight, 0);
-  assert(limited.total_bytes < work.preferred_value_peak_bytes);
+  assert(limited.total_bytes <= automatic.total_bytes);
 }
 """)
     root = Path(__file__).resolve().parents[2]
-    executable = tmp_path / "preferred"
+    executable = tmp_path / "automatic"
     subprocess.run(
         [
             compiler,
