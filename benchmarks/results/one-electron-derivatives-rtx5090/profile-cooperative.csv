@@ -1,0 +1,33 @@
+Generating SQLite file /tmp/issue141-profile-cooperative.sqlite from /tmp/issue141-profile-cooperative.nsys-rep
+Processing [/tmp/issue141-profile-cooperative.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_gpu_kern_sum.py]...
+Time (%),Total Time (ns),Instances,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+83.2,7420213,5,1484042.6,1495691.0,1443754,1530027,38188.7,"vibeqc::scf::<unnamed>::two_electron_force_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const double *, const unsigned char *, double *)"
+10.4,926246,5,185249.2,185185.0,185154,185505,144.7,"vibeqc::scf::<unnamed>::symmetric_eigen_small_kernel(int, int, double *, double *, int *, const unsigned char *)"
+4.8,425925,5,85185.0,84929.0,84225,86401,838.4,"vibeqc::scf::<unnamed>::one_electron_force_cooperative_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const int *, const int *, unsigned long, const double *, const double *, const unsigned char *, double *)"
+0.5,44545,5,8909.0,8897.0,8896,8928,17.3,"vibeqc::scf::<unnamed>::build_fock_kernel(int, int, const double *, const double *, const double *, const unsigned char *, double *)"
+0.3,24960,15,1664.0,1664.0,1632,1696,20.9,"vibeqc::scf::<unnamed>::matrix_product_kernel(int, int, const double *, bool, const double *, const unsigned char *, double *)"
+0.2,17408,5,3481.6,3456.0,3456,3584,57.2,"vibeqc::scf::<unnamed>::nuclear_force_kernel(vibeqc::scf::<unnamed>::DeviceBatch, const unsigned char *, double *)"
+0.1,13216,10,1321.6,1296.0,1184,1472,121.7,"vibeqc::scf::<unnamed>::copy_selected_matrices_kernel(int, int, int, const unsigned char *, const double *, double *)"
+0.1,11200,4,2800.0,2816.0,2720,2848,61.3,"vibeqc::scf::<unnamed>::apply_warm_density_kernel(int, int, const int *, const unsigned char *, const double *, const double *, double *, unsigned char *)"
+0.1,8768,5,1753.6,1760.0,1728,1760,14.3,"vibeqc::scf::<unnamed>::compute_energy_kernel(int, int, const double *, const double *, const double *, const double *, const unsigned char *, double *)"
+0.1,8064,5,1612.8,1600.0,1600,1632,17.5,"vibeqc::scf::<unnamed>::build_weighted_density_kernel(int, int, const int *, const double *, const double *, const unsigned char *, double *)"
+0.1,5824,5,1164.8,1152.0,1152,1184,17.5,"vibeqc::scf::<unnamed>::select_final_fock_rebuild_kernel(int, double, const double *, const unsigned char *, const unsigned char *, unsigned char *, unsigned char *, unsigned int *)"
+0.1,5152,5,1030.4,1024.0,1024,1056,14.3,"vibeqc::scf::<unnamed>::inspect_solver_kernel(int, const int *, unsigned char *, unsigned char *, unsigned char *)"
+0.1,4992,5,998.4,960.0,928,1184,104.7,"vibeqc::scf::<unnamed>::initialize_state_kernel(int, bool, const double *, unsigned char *, unsigned char *, unsigned char *, unsigned int *, double *, double *, double *, unsigned int *, unsigned int *)"
+0.1,4832,5,966.4,960.0,928,992,26.8,"vibeqc::scf::<unnamed>::select_converged_kernel(int, const unsigned char *, const unsigned char *, unsigned char *)"
+
+Processing [/tmp/issue141-profile-cooperative.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_gpu_mem_size_sum.py]...
+Total (MB),Count,Avg (MB),Med (MB),Min (MB),Max (MB),StdDev (MB),Operation
+0.009,49,0.000,0.000,0.000,0.002,0.000,[CUDA memcpy Device-to-Host]
+0.006,13,0.000,0.000,0.000,0.002,0.001,[CUDA memcpy Host-to-Device]
+0.001,14,0.000,0.000,0.000,0.000,0.000,[CUDA memset]
+
+Processing [/tmp/issue141-profile-cooperative.sqlite] with [/group/software/cuda-12.9.1/nsight-systems-2025.1.3/host-linux-x64/reports/cuda_api_sum.py]...
+Time (%),Total Time (ns),Num Calls,Avg (ns),Med (ns),Min (ns),Max (ns),StdDev (ns),Name
+93.2,10207677,62,164640.0,8075.5,3337,1792419,473031.1,cudaMemcpyAsync
+4.8,530861,84,6319.8,4659.0,4098,44726,5249.6,cudaLaunchKernel
+0.8,85614,5,17122.8,12143.0,11452,35618,10424.2,cudaGraphLaunch_v10000
+0.6,69312,14,4950.9,4263.5,3516,12123,2243.1,cudaMemsetAsync
+0.2,26090,14,1863.6,1537.5,1163,5080,999.2,cudaStreamSynchronize
+0.2,18235,5,3647.0,3497.0,3457,4128,281.2,cudaDeviceSynchronize
+0.1,10580,1,10580.0,10580.0,10580,10580,0.0,cuProfilerStart
