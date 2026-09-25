@@ -4,8 +4,8 @@ CUDA DF-HF gradients use generated two-/three-center derivatives and contract
 external response weights before downloading the gradient. The former
 coordinate-wise CUDA force implementations and `VIBEQC_DF_DERIVATIVES` selector
 are removed. CPU DF calculations and independent CPU/libcint validation remain
-available. The separate `VIBEQC_ONE_ELECTRON_DERIVATIVES` selector still controls
-overlap, kinetic, and nuclear-attraction response and has its own promotion gate.
+available. Overlap, kinetic, and nuclear-attraction response now always uses the
+compiler-owned generated consumer; only its diagnostic schedule mapping remains selectable.
 
 ## Independent response contract
 

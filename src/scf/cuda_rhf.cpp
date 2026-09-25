@@ -61,8 +61,6 @@
 #include "scf/cuda/nuclear_kernels.hpp"
 #include "scf/cuda/one_electron_derivatives.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
-#include "scf/cuda/one_electron_force_reference.hpp"
-#include "scf/cuda/one_electron_force_workspace.hpp"
 #include "scf/cuda/one_electron_values.cuh"
 #include "scf/cuda/one_electron_view.hpp"
 #include "scf/cuda/packed_basis.hpp"
@@ -677,12 +675,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     return outputs;
   }
   std::size_t force_coordinate_count = 0;
-  std::size_t one_electron_force_elements = 0;
   std::size_t force_matrix_elements = 0;
   std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
   if (!vibeqc::runtime::checked_multiply(total_atoms, 3, force_coordinate_count) ||
-      !vibeqc::runtime::checked_multiply(batch_size, pair_count, one_electron_force_elements) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, matrix_size,
                                          force_matrix_elements) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, eri_size,
@@ -3689,33 +3685,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return outputs;
       }
     }
-    // Derivative selection is read on every force execution; it retains no
-    // candidate-specific geometry or plan buffers that could become stale.
-    if (cuda_policy::generated_one_electron_derivatives_requested()) {
-      const OneElectronWeightView weights{unrestricted ? total_weighted_density : weighted_density,
-                                          unrestricted ? total_density : final_density,
-                                          unrestricted ? total_density : final_density,
-                                          -1.0,
-                                          1.0,
-                                          1.0};
-      cuda_error = launch_generated_one_electron_gradient(
-          one_electron_view(device_batch), ao_pair_first, ao_pair_second, pair_count, weights,
-          active, cuda_policy::one_electron_derivative_mapping_requested(), -1.0, forces,
-          resources.stream_);
-      if (cuda_error != cudaSuccess) {
-        fill_global_failure(outputs, cuda_status(cuda_error));
-        return outputs;
-      }
-    } else {
-      // Keep the previously qualified cooperative implementation only as an
-      // explicit reference/performance exception. The slower scalar native
-      // family was retired when generated shell-warp became the default.
-      constexpr std::size_t shared_bytes = 3 * sizeof(OneElectronDerivativeHermiteCoefficients);
-      launch_one_electron_force_cooperative_kernel(
-          static_cast<unsigned>(one_electron_force_elements), threads, shared_bytes,
-          resources.stream_, device_batch, ao_pair_first, ao_pair_second, pair_count,
-          unrestricted ? total_density : final_density,
-          unrestricted ? total_weighted_density : weighted_density, active, forces);
+    const OneElectronWeightView weights{unrestricted ? total_weighted_density : weighted_density,
+                                        unrestricted ? total_density : final_density,
+                                        unrestricted ? total_density : final_density,
+                                        -1.0,
+                                        1.0,
+                                        1.0};
+    cuda_error = launch_generated_one_electron_gradient(
+        one_electron_view(device_batch), ao_pair_first, ao_pair_second, pair_count, weights, active,
+        cuda_policy::one_electron_derivative_mapping_requested(), -1.0, forces, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
     }
   }
   // ssss force mathematics is compiler-owned, but executes on the already-qualified
