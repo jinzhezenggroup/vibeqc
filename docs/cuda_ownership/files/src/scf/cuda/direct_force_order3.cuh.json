@@ -1,7 +1,7 @@
 {
   "path": "src/scf/cuda/direct_force_order3.cuh",
-  "role": "runtime",
+  "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Runtime order-three force shell-task/canonicalization adapter around compiler-generated PPPS/DSPS/DPSS/FSSS force roots; owns screening, density folding and atom scatter only, with no independent ERI/derivative algebra.",
+  "reason": "Order-three force adapters consume generated PPPS/DSPS/DPSS/FSSS roots but retain handwritten Gaussian geometry, prefactors, decay derivatives and coordinate recovery. Generated scalar roots do not retire this operator-specific scientific composition.",
   "regions": []
 }

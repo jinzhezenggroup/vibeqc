@@ -1,7 +1,7 @@
 {
   "path": "src/scf/cuda/direct_force_low_order.cuh",
-  "role": "runtime",
+  "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Runtime ssss/psss force shell-task adapter around compiler-generated Weighted IntegralIR force roots; owns screening, density folding, canonicalization and atom scatter, with no independent ERI/gradient recurrence.",
+  "reason": "SSSS/PSSS force adapters consume generated Weighted IntegralIR roots but retain handwritten Gaussian prefactors, Boys arguments, decay derivatives, normalization and center recovery. Operator-specific geometry/contraction remains scientific until its generated replacement is qualified.",
   "regions": []
 }

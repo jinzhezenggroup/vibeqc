@@ -53,7 +53,7 @@
       "id": "native-fock-and-jk",
       "status": "performance-exception",
       "capability": "Native Direct J/K and Fock contraction families, including the retained psss Fock fast path and higher-angular ERI helpers used by Fock consumers.",
-      "current_selector": "Generated shell classes are used where promoted; retained native Fock families remain selected for unpromoted or measured faster domains. The psss force geometry/schedule adapter is runtime-only because its derivative algebra is already compiler-generated; any retained psss Fock path is tracked separately by its actual Fock owner.",
+      "current_selector": "Generated shell classes are used where promoted; retained native Fock families remain selected for unpromoted or measured faster domains. The psss force geometry adapter is tracked under native-low-order-force; any retained psss Fock path is tracked separately by its actual Fock owner.",
       "generated_alternative": "The existing IntegralIR/AOT class registry already represents the underlying ERI mathematics; psss Fock still needs generated shared-work execution that matches the historical fused primitive/Boys traversal.",
       "schedule_requirements": "Share primitive/Boys work across Fock outputs, preserve symmetry/scatter semantics, and choose materialization/rematerialization from measured register and occupancy evidence rather than Direct-only shape tests.",
       "resource_profile": "Register/shared-memory pressure and repeated primitive work are the primary retirement constraints; endpoint selection must consume generic target/resource evidence.",
@@ -82,9 +82,9 @@
     {
       "id": "native-low-order-force",
       "status": "performance-exception",
-      "capability": "Shared Direct-force density contraction and generic quartet composition that still retain handwritten RHF/UHF contraction or coordinate-recovery policy. Low-order order-0/1/2/3 derivative roots and their shell-task adapters are compiler-owned/runtime-only and are excluded from this scientific overlay.",
-      "current_selector": "Order-0/1/2/3 exact shell workers consume compiler-generated Weighted IntegralIR force roots. This family now covers only the shared density coefficient and generic quartet force consumer while those scientific contraction/policy pieces remain handwritten.",
-      "generated_alternative": "Weighted IntegralIR already owns low-order coordinate derivatives. Remaining retirement work is to move the shared RHF/UHF density contraction and generic quartet scientific composition behind generated/shared owners without disturbing the bounded native schedule.",
+      "capability": "Direct-force density contraction, low-order Gaussian geometry/decay derivatives, and generic quartet coordinate recovery remain handwritten. Weighted IntegralIR owns the order-0/1/2/3 scalar force roots, not all native scientific composition that supplies them.",
+      "current_selector": "Order-0/1/2/3 exact shell workers consume compiler-generated Weighted IntegralIR force roots. The four adapters remain scientific because they construct Gaussian prefactors, Boys arguments, decay derivatives and operator-specific force composition; native density and generic quartet consumers remain tracked alongside them.",
+      "generated_alternative": "Weighted IntegralIR already owns the low-order force roots. Remaining retirement work includes their Gaussian geometry/decay inputs, shared RHF/UHF density contraction and generic quartet scientific composition under generated/shared scientific owners.",
       "schedule_requirements": "Preserve symmetry-reduced density folding, center recovery, screening domain, bounded quartet traversal and single-counted atom scatter while keeping scheduler-only plumbing runtime-owned.",
       "resource_profile": "Promotion must preserve the current bounded queue/tile memory profile and complete force endpoint behavior; ownership changes must not introduce materialized whole-quartet derivative tensors.",
       "evidence": [
@@ -96,10 +96,14 @@
         "#832 profitability/resource planning",
         "#833 reusable schedule vocabulary"
       ],
-      "retirement_condition": "Retire the remaining shared density/quartet scientific owners once their contraction and coordinate-recovery semantics are generated or shared under an explicit scientific owner; native queueing, screening transport and atom scatter may remain runtime.",
+      "retirement_condition": "Retire or narrowly reclassify native scientific regions only after their Gaussian geometry, decay derivatives, density contraction and coordinate-recovery semantics have qualified generated/shared scientific owners. A generated force-root call alone is insufficient; generic queueing and transport may remain runtime.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
-        "src/scf/cuda/direct_force_quartet.cuh"
+        "src/scf/cuda/direct_force_low_order.cuh",
+        "src/scf/cuda/direct_force_order2.cuh",
+        "src/scf/cuda/direct_force_order3.cuh",
+        "src/scf/cuda/direct_force_quartet.cuh",
+        "src/scf/cuda/direct_native_psss.cuh"
       ]
     },
     {

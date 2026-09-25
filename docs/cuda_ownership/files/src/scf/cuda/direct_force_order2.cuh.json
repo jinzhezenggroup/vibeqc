@@ -1,7 +1,7 @@
 {
   "path": "src/scf/cuda/direct_force_order2.cuh",
-  "role": "runtime",
+  "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Runtime order-two force shell-task/canonicalization adapter around compiler-generated PSPS/PPSS/DSSS force roots; owns screening, density folding and atom scatter only, with no independent ERI/derivative algebra.",
+  "reason": "Order-two force adapters consume generated PSPS/PPSS/DSSS roots but retain handwritten Gaussian geometry, prefactors, decay derivatives and coordinate recovery. Generated scalar roots do not retire this operator-specific scientific composition.",
   "regions": []
 }

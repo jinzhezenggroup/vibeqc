@@ -22,9 +22,8 @@
 #include "scf/cuda/packed_basis.hpp"
 #include "scf/cuda/scalar_math.cuh"
 
-// Runtime-only Direct force order-two shell-task adapters.
-// PSPS/PPSS/DSSS derivative algebra is compiler-owned by generated_weighted_eri;
-// this header retains queueing, screening, density folding, canonicalization and atom scatter.
+// Retained direct force order2 contraction helpers.
+// Borrow immutable metadata and density/output views; host plans own lifetime.
 
 namespace vibeqc::scf::cuda_execution {
 
