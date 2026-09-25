@@ -395,6 +395,45 @@ def test_runtime_indexed_streaming_schedule_bounds_high_rank_intermediates(
             assert not step.virtual
 
 
+def test_streamed_generated_reduction_costs_virtual_recomputation() -> None:
+    from vibeqc_compiler.common.cuda_target import cuda_target_info
+    from vibeqc_compiler.tensor.cuda_plan import TensorSchedule, plan_cuda
+    from vibeqc_compiler.tensor.cuda_search import estimate_schedule
+
+    program = build_runtime_tile_triples_program(2, 3, capacity=6)
+    target = cuda_target_info("sm_120")
+    baseline = plan_cuda(program, target, max_bytes=2 << 30)
+    streamed = plan_cuda(
+        program,
+        target,
+        max_bytes=2 << 30,
+        schedule=TensorSchedule(
+            stream_reductions=True,
+            streamed_gemm_reduction=True,
+        ),
+    )
+
+    baseline_cost = estimate_schedule(baseline)
+    streamed_cost = estimate_schedule(streamed)
+
+    assert any(step.virtual for step in streamed.steps)
+    assert baseline_cost["estimated_effective_flops"] == baseline.estimated_flops
+    assert baseline_cost["estimated_rematerialized_value_count"] == 0
+    assert streamed_cost["estimated_effective_flops"] > streamed.estimated_flops
+    assert streamed_cost["estimated_effective_flops"] > baseline_cost[
+        "estimated_effective_flops"
+    ]
+    assert streamed_cost["estimated_rematerialized_value_count"] > 0
+    assert (
+        streamed_cost["profitability"]["static"]["arithmetic_operation_count"]
+        == streamed_cost["estimated_effective_flops"]
+    )
+    assert (
+        streamed_cost["profitability"]["static"]["rematerialized_value_count"]
+        == streamed_cost["estimated_rematerialized_value_count"]
+    )
+
+
 # ---------------------------------------------------------------------------
 # Determinism / chunk size independence
 # ---------------------------------------------------------------------------
