@@ -194,6 +194,13 @@ class RccsdtPrepared final : public PreparedCalculation {
                          : cc::rccsdt_force_cpu(system_, *state.reference, state.problem,
                                                 state.solved, state.eps_o, state.eps_v,
                                                 state.budget, force_denominator_threshold);
+        if (execution_.cuda_requested()) {
+          if (!force.lambda.cuda_actions || !force.lambda.owned_device_bytes)
+            throw std::runtime_error(
+                "RCCSD(T) CUDA force did not execute generated Lambda actions on device");
+          execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Device,
+                                          force.lambda.owned_device_bytes);
+        }
         state.result.forces = std::move(force.forces);
         diagnostic.response_iterations = force.orbital_response.iterations;
         diagnostic.response_restarts = force.orbital_response.restarts;
