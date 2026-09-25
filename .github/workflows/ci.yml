@@ -39,6 +39,7 @@ jobs:
     steps:
       - name: Check merge-group ref still exists
         id: liveness
+        continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -67,7 +68,7 @@ jobs:
 
   cpu:
     needs: merge_queue_liveness
-    if: needs.merge_queue_liveness.outputs.active == 'true'
+    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -165,7 +166,7 @@ jobs:
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
     needs: merge_queue_liveness
-    if: needs.merge_queue_liveness.outputs.active == 'true'
+    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -428,7 +429,7 @@ jobs:
   python:
     name: python (${{ matrix.shard }})
     needs: merge_queue_liveness
-    if: needs.merge_queue_liveness.outputs.active == 'true'
+    if: ${{ always() && needs.merge_queue_liveness.outputs.active != 'false' }}
     strategy:
       fail-fast: false
       matrix:
@@ -1018,10 +1019,10 @@ jobs:
     if: always()
     steps:
       - name: Accept an orphaned merge-group run
-        if: needs.merge_queue_liveness.outputs.active != 'true'
+        if: needs.merge_queue_liveness.outputs.active == 'false'
         run: echo "The merge-group ref is gone; expensive CI jobs were intentionally skipped."
       - name: Decide whether the needed jobs succeeded or failed
-        if: needs.merge_queue_liveness.outputs.active == 'true'
+        if: needs.merge_queue_liveness.outputs.active != 'false'
         uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
