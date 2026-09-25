@@ -183,9 +183,7 @@ def test_projected_panel_layout_and_tails(
 
 @pytest.mark.parametrize("a,r", [(1, 1), (3, 2), (9, 3), (17, 5)])
 @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6, 1e10])
-def test_small_metric_layout(
-    native: ct.CDLL, a: int, r: int, condition: float
-) -> None:
+def test_small_metric_layout(native: ct.CDLL, a: int, r: int, condition: float) -> None:
     rng = np.random.default_rng(71 + a + r)
     eigenvectors = np.asfortranarray(np.linalg.qr(rng.normal(size=(a, a)))[0])
     eigenvalues = np.geomspace(1, condition, a)
