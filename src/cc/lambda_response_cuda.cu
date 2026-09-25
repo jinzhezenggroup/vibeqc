@@ -168,8 +168,7 @@ class CudaLambdaActions {
                   generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir)});
     if (with_parameters)
       response_elements =
-          std::max({response_elements,
-                    generated::parameter_foo_arena_elements(p.nocc, p.nvir),
+          std::max({response_elements, generated::parameter_foo_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fov_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fvv_arena_elements(p.nocc, p.nvir),
                     generated::parameter_ovov_arena_elements(p.nocc, p.nvir),
@@ -290,8 +289,8 @@ class CudaLambdaActions {
                                cudaMemcpyHostToDevice, stream_));
     cuda_check(cudaMemcpyAsync(state_.bar_doubles_residual, lambda2.data(), bytes(layout_.n2),
                                cudaMemcpyHostToDevice, stream_));
-    h2d_bytes_ = checked_add(
-        h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
+    h2d_bytes_ =
+        checked_add(h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
   }
 
   using ParameterRunner = generated::DeviceParameterOutput (*)(generated::CudaState&);
@@ -300,8 +299,8 @@ class CudaLambdaActions {
     const auto output = run(state_);
     std::vector<double> values(count);
     int error = 0;
-    cuda_check(
-        cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost, stream_));
+    cuda_check(cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost,
+                               stream_));
     cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaStreamSynchronize(stream_));
     d2h_bytes_ = checked_add(d2h_bytes_, checked_add(bytes(count), sizeof(int)));
@@ -363,8 +362,7 @@ double max_abs(std::span<const double> values) {
 }
 
 LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<const double> t1_source,
-                        std::span<const double> t2_source, int device,
-                        const LambdaOptions& options,
+                        std::span<const double> t2_source, int device, const LambdaOptions& options,
                         CudaFixedOrbitalResponseResult* fixed_orbital) {
   validate_problem(p);
   validate_lambda_options(options);
@@ -476,16 +474,13 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
                         checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
     fixed_orbital->ovoo =
         owner.parameter(generated::run_parameter_ovoo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nvir),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->oooo =
         owner.parameter(generated::run_parameter_oooo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nocc),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->vvvv =
         owner.parameter(generated::run_parameter_vvvv_cuda,
-                        checked_mul(checked_mul(p.nvir, p.nvir),
-                                    checked_mul(p.nvir, p.nvir)));
+                        checked_mul(checked_mul(p.nvir, p.nvir), checked_mul(p.nvir, p.nvir)));
   }
   result.diagnostic.numeric_capacity_bytes = owner.numeric_capacity_bytes();
   result.diagnostic.owned_device_bytes = owner.owned_device_bytes();
@@ -517,11 +512,9 @@ CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_
     const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
     std::span<const double> t2_source, int device, const LambdaOptions& options) {
   CudaFixedOrbitalResponseResult result;
-  result.lambda =
-      solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
+  result.lambda = solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
   return result;
 }
-
 
 struct CudaHamiltonianResponseOwner::Impl {
   struct Layout {
@@ -539,12 +532,13 @@ struct CudaHamiltonianResponseOwner::Impl {
        std::size_t max_device_bytes)
       : scope(checked_device(device)), o(occupied), v(virtuals), n(checked_add(o, v)) {
     if (!o || !v || !max_device_bytes)
-      throw std::invalid_argument("RCCSD CUDA Hamiltonian response requires nonzero dimensions and budget");
+      throw std::invalid_argument(
+          "RCCSD CUDA Hamiltonian response requires nonzero dimensions and budget");
     n2 = checked_mul(n, n);
     n4 = checked_mul(n2, n2);
     ov = checked_mul(o, v);
-    const std::array<std::span<const double>, 4> raw_values = {
-        raw.density, raw.g, raw.h, raw.rotation};
+    const std::array<std::span<const double>, 4> raw_values = {raw.density, raw.g, raw.h,
+                                                               raw.rotation};
     const std::array<std::size_t, 4> raw_sizes = {n2, n4, n2, n2};
     for (std::size_t index = 0; index < raw_values.size(); ++index)
       validate_values(raw_values[index], raw_sizes[index], "raw Hamiltonian");
@@ -569,10 +563,9 @@ struct CudaHamiltonianResponseOwner::Impl {
     layout.reference_seed = reserve(cursor, sizeof(double));
     layout.fock_seed = reserve(cursor, bytes(n2));
     layout.rotation_seed = reserve(cursor, bytes(n2));
-    const auto response_elements =
-        std::max({generated::hamiltonian_weights_arena_elements(o, v),
-                  generated::fock_weights_arena_elements(o, v),
-                  generated::orbital_jvp_arena_elements(o, v)});
+    const auto response_elements = std::max({generated::hamiltonian_weights_arena_elements(o, v),
+                                             generated::fock_weights_arena_elements(o, v),
+                                             generated::orbital_jvp_arena_elements(o, v)});
     layout.response_arena = reserve(cursor, bytes(response_elements));
     layout.error = reserve(cursor, sizeof(int));
     layout.total = align256(cursor);
@@ -620,17 +613,16 @@ struct CudaHamiltonianResponseOwner::Impl {
     const std::array<std::span<const double>, 10> values = {
         parameters.foo,  parameters.fov,  parameters.fvv,  parameters.ovov, parameters.ovvo,
         parameters.oovv, parameters.ovvv, parameters.ovoo, parameters.oooo, parameters.vvvv};
-    const std::array<std::size_t, 10> sizes = {
-        checked_mul(o, o),
-        ov,
-        checked_mul(v, v),
-        checked_mul(checked_mul(o, o), checked_mul(v, v)),
-        checked_mul(checked_mul(o, o), checked_mul(v, v)),
-        checked_mul(checked_mul(o, o), checked_mul(v, v)),
-        checked_mul(o, checked_mul(v, checked_mul(v, v))),
-        checked_mul(ov, checked_mul(o, o)),
-        checked_mul(checked_mul(o, o), checked_mul(o, o)),
-        checked_mul(checked_mul(v, v), checked_mul(v, v))};
+    const std::array<std::size_t, 10> sizes = {checked_mul(o, o),
+                                               ov,
+                                               checked_mul(v, v),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(o, checked_mul(v, checked_mul(v, v))),
+                                               checked_mul(ov, checked_mul(o, o)),
+                                               checked_mul(checked_mul(o, o), checked_mul(o, o)),
+                                               checked_mul(checked_mul(v, v), checked_mul(v, v))};
     std::array<double*, 10> fields = {
         state.bar_foo,  state.bar_fov,  state.bar_fvv,  state.bar_ovov, state.bar_ovvo,
         state.bar_oovv, state.bar_ovvv, state.bar_ovoo, state.bar_oooo, state.bar_vvvv};
@@ -659,8 +651,8 @@ struct CudaHamiltonianResponseOwner::Impl {
     const auto output = generated::run_orbital_jvp_cuda(state);
     std::vector<double> result(ov);
     int error = 0;
-    cuda_check(cudaMemcpyAsync(result.data(), output.d_fov, bytes(ov), cudaMemcpyDeviceToHost,
-                               stream));
+    cuda_check(
+        cudaMemcpyAsync(result.data(), output.d_fov, bytes(ov), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaStreamSynchronize(stream));
     d2h = checked_add(d2h, checked_add(bytes(ov), sizeof(int)));
@@ -700,10 +692,10 @@ struct CudaHamiltonianResponseOwner::Impl {
     result.stationarity.resize(n2);
     result.orbital_rhs.resize(ov);
     int error = 0;
-    cuda_check(cudaMemcpyAsync(result.hcore.data(), output.hcore, bytes(n2),
-                               cudaMemcpyDeviceToHost, stream));
-    cuda_check(cudaMemcpyAsync(result.eri.data(), output.eri, bytes(n4),
-                               cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(result.hcore.data(), output.hcore, bytes(n2), cudaMemcpyDeviceToHost,
+                               stream));
+    cuda_check(
+        cudaMemcpyAsync(result.eri.data(), output.eri, bytes(n4), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(result.overlap.data(), output.overlap, bytes(n2),
                                cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(result.rotation_gradient.data(), output.rotation_gradient, bytes(n2),
@@ -714,8 +706,7 @@ struct CudaHamiltonianResponseOwner::Impl {
                                cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
     cuda_check(cudaStreamSynchronize(stream));
-    const auto output_bytes =
-        bytes(checked_add(n4, checked_add(checked_mul(4, n2), ov)));
+    const auto output_bytes = bytes(checked_add(n4, checked_add(checked_mul(4, n2), ov)));
     d2h = checked_add(d2h, checked_add(output_bytes, sizeof(int)));
     ++syncs;
     check_error(error);
@@ -747,9 +738,9 @@ struct CudaHamiltonianResponseOwner::Impl {
   std::size_t syncs{};
 };
 
-CudaHamiltonianResponseOwner::CudaHamiltonianResponseOwner(
-    std::size_t nocc, std::size_t nvir, CudaRawHamiltonianView raw, int device,
-    std::size_t max_device_bytes)
+CudaHamiltonianResponseOwner::CudaHamiltonianResponseOwner(std::size_t nocc, std::size_t nvir,
+                                                           CudaRawHamiltonianView raw, int device,
+                                                           std::size_t max_device_bytes)
     : impl_(std::make_unique<Impl>(nocc, nvir, raw, device, max_device_bytes)) {}
 
 CudaHamiltonianResponseOwner::~CudaHamiltonianResponseOwner() = default;
@@ -759,13 +750,11 @@ CudaHamiltonianResponseResult CudaHamiltonianResponseOwner::hamiltonian(
   return impl_->hamiltonian(parameters, reference_seed);
 }
 
-CudaHamiltonianResponseResult CudaHamiltonianResponseOwner::fock(
-    std::span<const double> bar_fock) {
+CudaHamiltonianResponseResult CudaHamiltonianResponseOwner::fock(std::span<const double> bar_fock) {
   return impl_->fock(bar_fock);
 }
 
-std::vector<double> CudaHamiltonianResponseOwner::orbital_jvp(
-    std::span<const double> d_rotation) {
+std::vector<double> CudaHamiltonianResponseOwner::orbital_jvp(std::span<const double> d_rotation) {
   return impl_->orbital_jvp(d_rotation);
 }
 
@@ -777,9 +766,7 @@ std::size_t CudaHamiltonianResponseOwner::h2d_bytes() const noexcept { return im
 
 std::size_t CudaHamiltonianResponseOwner::d2h_bytes() const noexcept { return impl_->d2h; }
 
-std::size_t CudaHamiltonianResponseOwner::synchronizations() const noexcept {
-  return impl_->syncs;
-}
+std::size_t CudaHamiltonianResponseOwner::synchronizations() const noexcept { return impl_->syncs; }
 
 }  // namespace vibeqc::cc
 
