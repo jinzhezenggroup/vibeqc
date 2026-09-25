@@ -61,6 +61,23 @@ scf::ResolvedFockBuild exact_exchange_strategy(bool restricted, scf::FockBackend
   return scf::resolve_fock_build(spec, backend, 1e-12);
 }
 
+struct RshStrategies {
+  scf::ResolvedFockBuild primary;
+  scf::ResolvedFockBuild correction;
+};
+
+RshStrategies rsh_strategies(bool restricted, scf::FockBackend backend) {
+  const auto spin = restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted;
+  constexpr double short_exchange = 0.20;
+  constexpr double long_exchange = 0.65;
+  constexpr double omega = 0.33;
+  return {scf::resolve_fock_build(scf::make_rsh_primary_fock_spec(spin, short_exchange), backend,
+                                  1e-12),
+          scf::resolve_fock_build(
+              scf::make_rsh_correction_fock_spec(spin, short_exchange, long_exchange, omega),
+              backend, 1e-12)};
+}
+
 void prepared_cuda_fock_seam() {
   const auto system = hydrogens(2, true);
   const scf::PreparedFockPlan cpu(system, nullptr, strategy(true, scf::FockBackend::Cpu));
@@ -89,7 +106,7 @@ void prepared_cuda_fock_seam() {
   const auto screened_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
   const scf::PreparedFockPlan screened_range(system, nullptr, screened_resolved, 0);
   require(static_cast<bool>(scf::prepared_cuda_fock_binding(screened_range)),
-          "screened CUDA range exchange lacks the prepared execution binding");
+          "screened CUDA range exchange lost the qualified prepared binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This
@@ -192,6 +209,60 @@ void run_exact_exchange_case(bool restricted) {
               std::abs(snapshot.components.exact_exchange -
                        result.dft_diagnostic.components.exact_exchange) < 1e-10,
           "CUDA exact-exchange final state lost the converged model or energy");
+}
+
+void run_range_exchange_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const auto cpu_strategy = rsh_strategies(restricted, scf::FockBackend::Cpu);
+  const auto gpu_strategy = rsh_strategies(restricted, scf::FockBackend::Cuda);
+  const scf::PreparedFockPlan cpu_primary(system, nullptr, cpu_strategy.primary);
+  const scf::PreparedFockPlan cpu_correction(system, nullptr, cpu_strategy.correction);
+  const scf::PreparedFockPlan gpu_primary(system, nullptr, gpu_strategy.primary, 0);
+
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+  options.max_iterations = 200;
+
+  const unsigned spins = restricted ? 1U : 2U;
+  const auto primary_bytes =
+      dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, false);
+  const auto range_bytes =
+      dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, true);
+  require(range_bytes > primary_bytes + spins * basis.nao * basis.nao * sizeof(double),
+          "CUDA KS range correction did not reserve its matrix and error state");
+
+  dft::CudaKsPlan plan(gpu_primary, basis, grid, options, dft::SemilocalFamily::Pbe, 257,
+                       &gpu_strategy.correction);
+  const auto result = plan.run(nullptr, false);
+  require(result.converged && !plan.failed(), "CUDA range-separated KS did not converge");
+  const auto reference =
+      restricted ? scf::run_pbe_rsh_rks(cpu_primary, cpu_correction, basis, grid, options)
+                 : scf::run_pbe_rsh_uks(cpu_primary, cpu_correction, basis, grid, options);
+  require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
+          "CUDA range-separated KS endpoint disagrees with CPU");
+  require(std::abs(result.dft_diagnostic.components.exact_exchange -
+                   reference.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA range-separated exact-exchange component disagrees with CPU");
+  const auto movement = plan.transfers();
+  require(movement.iteration_synchronizations == movement.iterations &&
+              movement.execution_region_bindings == 0,
+          "unqualified range-separated KS entered the device-chunk fast path");
+
+  dft::CudaKsFinalStateToken token;
+  std::string detail;
+  require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  dft::VerifiedKsFinalState snapshot;
+  require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  require(snapshot.identity.model.range_correction &&
+              *snapshot.identity.model.range_correction == gpu_strategy.correction &&
+              snapshot.identity.determinant.model == gpu_strategy.primary &&
+              std::abs(snapshot.components.total() - result.energy) < 1e-10,
+          "CUDA range-separated final state lost correction identity or energy");
 }
 
 void compare_rks_chunk_history(bool pbe) {
@@ -695,6 +766,8 @@ int main() {
     rejected_api_requests_revoke_tokens();
     run_exact_exchange_case(true);
     run_exact_exchange_case(false);
+    run_range_exchange_case(true);
+    run_range_exchange_case(false);
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);
       run_hydroxyl(pbe);
