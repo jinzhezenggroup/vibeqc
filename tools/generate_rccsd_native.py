@@ -921,18 +921,18 @@ def _cuda_kernel(
     elif node.op == "einsum":
         labels = node.attrs["labels"]
         output = tuple(node.attrs["output"])
-        kinds = _label_kinds(node)
-        all_labels = sorted(kinds)
+        dims = _label_dims(node)
+        all_labels = sorted(dims)
         reduced = [label for label in all_labels if label not in output]
         if output:
             lines.append("    std::size_t rem=flat;")
         for label in reversed(output):
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines += [f"    const std::size_t l{label}=rem%{dim};", f"    rem/={dim};"]
         lines.append("    double sum=0.0;")
         indent = "    "
         for label in reduced:
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines.append(
                 f"{indent}for(std::size_t l{label}=0;l{label}<{dim};++l{label}){{"
             )
