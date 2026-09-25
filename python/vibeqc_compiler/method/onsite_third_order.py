@@ -9,14 +9,10 @@ from vibeqc_compiler.tensor.ir import constant, divide, input_tensor, multiply
 from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.types import TensorSpec
 
-ONSITE_THIRD_ORDER_FP64_ORDER = (
-    "q2=q*q; potential=q2*gamma3; energy=(q2*q*gamma3)/3"
-)
+ONSITE_THIRD_ORDER_FP64_ORDER = "q2=q*q; potential=q2*gamma3; energy=(q2*q*gamma3)/3"
 
 
-def build_onsite_third_order_primal(
-    *, provenance: Mapping[str, object]
-) -> Program:
+def build_onsite_third_order_primal(*, provenance: Mapping[str, object]) -> Program:
     """Build E=gamma3*q^3/3 and dE/dq=gamma3*q^2 in one scalar graph."""
 
     charge_spec = TensorSpec((), role="input", differentiable=True)
