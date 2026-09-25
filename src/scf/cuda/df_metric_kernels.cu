@@ -145,9 +145,15 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
   const auto systems = matrix_size != 0 && matrix_elements % matrix_size == 0
                            ? matrix_elements / matrix_size
                            : std::size_t{0};
+  // A compact full-matrix launch must not enlarge a caller-supplied partial
+  // flat domain. Preserve non-1D/empty grid semantics through the old adapter.
+  const bool complete_flat_domain =
+      block.x != 0 && grid.y == 1 && grid.z == 1 &&
+      static_cast<std::size_t>(grid.x) >=
+          matrix_elements / block.x + (matrix_elements % block.x != 0);
   const bool column_schedule =
       systems != 0 && systems <= kGridYLimit &&
-      dimension <= static_cast<std::size_t>(std::numeric_limits<unsigned>::max()) && block.x != 0 &&
+      dimension <= static_cast<std::size_t>(std::numeric_limits<int>::max()) && complete_flat_domain &&
       block.y == 1 && block.z == 1;
   if (column_schedule) {
     scale_eigenvectors_column_kernel<<<dim3(static_cast<unsigned>(dimension),
