@@ -1303,8 +1303,8 @@ int main() {
             &overlap_owners[0], &overlap_owners[1]};
         std::vector<double> initial_forces;
         for (std::size_t budget :
-             {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U, 4U * 1024U * 1024U,
-              8U * 1024U * 1024U, 12U * 1024U * 1024U, 16U * 1024U * 1024U}) {
+             {0U, 32768U, 1024U * 1024U, 2U * 1024U * 1024U, 4U * 1024U * 1024U, 8U * 1024U * 1024U,
+              12U * 1024U * 1024U, 16U * 1024U * 1024U}) {
           bucket_options.density_fitting_memory_budget_bytes = budget;
           const auto replay = run(&cached.plan, bucket_systems, auxiliary, bucket_options,
                                   bucket_initial, 0, nullptr, &prepared_cache, &overlap_views);

@@ -136,12 +136,7 @@ def cuda_df_candidates(
             # for the generated response owner even when a replay requests only E.
             copies = 1
             retained = packed + 8 * (2 * n * n * copies + d)
-            temporary = packed + 8 * (
-                2 * c * c * copies
-                + d
-                + 4 * c * c
-                + 1
-            )
+            temporary = packed + 8 * (2 * c * c * copies + d + 4 * c * c + 1)
             preparation_metadata += packed
             preparation_retained += retained
             preparation_temporary = max(preparation_temporary, temporary)

@@ -73,7 +73,9 @@ def main() -> None:
                 "coordinate-wise DF response was retired; use an archived source checkout"
             )
 
-    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"] = args.mode.removeprefix("generated_")
+    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING"] = args.mode.removeprefix(
+        "generated_"
+    )
 
     # The profiler needs only the runtime API, avoiding a second array runtime
     # and allocator in the measured process. Synchronize all owning streams.

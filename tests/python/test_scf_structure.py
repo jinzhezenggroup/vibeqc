@@ -251,7 +251,9 @@ def test_shared_numerics_cannot_import_operator_contractions(
     """Adding a consumer must not make the shared recurrence depend on it."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
-    (source / "one_electron_native_contraction.cuh").write_text("// Force contraction\n")
+    (source / "one_electron_native_contraction.cuh").write_text(
+        "// Force contraction\n"
+    )
     (source / "coulomb_auxiliary.cuh").write_text(
         '#include "one_electron_native_contraction.cuh"\n'
     )

@@ -156,7 +156,9 @@ def test_derivative_mappings_on_reused_plan_match_fresh_execution(
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
             actual = batch.execute(strict=True).items[0]
             expected = calc.singlepoint(atoms)
-            np.testing.assert_allclose(actual.forces, expected.forces, atol=3e-9, rtol=0)
+            np.testing.assert_allclose(
+                actual.forces, expected.forces, atol=3e-9, rtol=0
+            )
 
 
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])

@@ -157,7 +157,9 @@ def main() -> None:
             raise RuntimeError("CUDA synchronization failed")
 
     def select(selection: typing.Any) -> None:
-        os.environ[mapping_variable] = "serial" if selection == "baseline" else args.mapping
+        os.environ[mapping_variable] = (
+            "serial" if selection == "baseline" else args.mapping
+        )
 
     def prepare() -> typing.Any:
         resource_budget = (
