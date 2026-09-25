@@ -297,8 +297,7 @@ def _small_cuda_item_inventory(
         item["spins"],
     )
     if any(
-        value > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1
-        for value in scalar_args
+        value > 2 ** (8 * ctypes.sizeof(ctypes.c_size_t)) - 1 for value in scalar_args
     ):
         raise ValueError("CUDA resource shape exceeds this host's size_t ABI")
     angular_values = tuple(orbital["shell_angular"])

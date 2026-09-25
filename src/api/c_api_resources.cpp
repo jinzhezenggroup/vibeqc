@@ -182,11 +182,13 @@ int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, st
 
 /** Topology-aware small-HF envelope. Unlike v1 this can account for the
  * quartet-direct force route while remaining a pure host-side shape query. */
-int vibeqc_resource_small_hf_cuda_v2(
-    std::size_t nbf, std::size_t direct_nbf, std::size_t atoms, std::size_t shells,
-    const std::uint8_t* shell_angular, const std::size_t* shell_primitive_counts,
-    std::size_t diis_history, std::size_t spins, int precision_mode, double energy_tolerance,
-    double screening_tolerance, std::uint64_t* output, std::size_t count) {
+int vibeqc_resource_small_hf_cuda_v2(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                     std::size_t shells, const std::uint8_t* shell_angular,
+                                     const std::size_t* shell_primitive_counts,
+                                     std::size_t diis_history, std::size_t spins,
+                                     int precision_mode, double energy_tolerance,
+                                     double screening_tolerance, std::uint64_t* output,
+                                     std::size_t count) {
   if (output == nullptr || count != 2 || shell_angular == nullptr ||
       shell_primitive_counts == nullptr) {
     return 1;

@@ -64,12 +64,13 @@ bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std:
   return true;
 }
 
-bool small_hf_cuda_resource_layout_v2(
-    std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
-    const std::uint8_t* shell_angular_values, const std::size_t* shell_primitive_counts,
-    std::size_t shells, std::size_t diis_history, std::size_t spins, int precision_mode,
-    double energy_tolerance, double screening_tolerance, std::size_t& arena_bytes,
-    std::size_t& plan_object_bytes) {
+bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                      const std::uint8_t* shell_angular_values,
+                                      const std::size_t* shell_primitive_counts, std::size_t shells,
+                                      std::size_t diis_history, std::size_t spins,
+                                      int precision_mode, double energy_tolerance,
+                                      double screening_tolerance, std::size_t& arena_bytes,
+                                      std::size_t& plan_object_bytes) {
   using namespace cuda_execution;
   if (shell_angular_values == nullptr || shell_primitive_counts == nullptr || nbf == 0 ||
       nbf > kPersistentEriAoLimit || nbf > kSmallEigensolverLimit || direct_nbf < nbf ||
@@ -96,8 +97,7 @@ bool small_hf_cuda_resource_layout_v2(
       cuda_policy::resolve_small_hf_profitability(runtime::CudaTargetInfo{}, small_hf_workload);
   if (small_hf_profitability.use_cublas) return false;
 
-  std::vector<std::uint8_t> shell_angular(shell_angular_values,
-                                          shell_angular_values + shells);
+  std::vector<std::uint8_t> shell_angular(shell_angular_values, shell_angular_values + shells);
   std::vector<std::int64_t> shell_direct_ao_offsets(shells + 1, 0);
   std::vector<std::int32_t> shell_pair_first;
   std::vector<std::int32_t> shell_pair_second;
@@ -132,26 +132,24 @@ bool small_hf_cuda_resource_layout_v2(
       shell_pair_first.push_back(static_cast<std::int32_t>(first));
       shell_pair_second.push_back(static_cast<std::int32_t>(second));
       std::size_t pair_primitives = 0;
-      if (!runtime::checked_multiply(shell_primitive_counts[first],
-                                     shell_primitive_counts[second], pair_primitives) ||
+      if (!runtime::checked_multiply(shell_primitive_counts[first], shell_primitive_counts[second],
+                                     pair_primitives) ||
           !runtime::checked_add(shell_pair_primitive_count, pair_primitives,
                                 shell_pair_primitive_count)) {
         return false;
       }
-      const unsigned pair_order =
-          static_cast<unsigned>(shell_angular[first]) + static_cast<unsigned>(shell_angular[second]);
+      const unsigned pair_order = static_cast<unsigned>(shell_angular[first]) +
+                                  static_cast<unsigned>(shell_angular[second]);
       if (pair_order == 1U) ++psss_bra_pair_count;
-      if (shell_angular[first] == 0U && shell_angular[second] == 0U)
-        ++psss_resident_ket_pair_count;
+      if (shell_angular[first] == 0U && shell_angular[second] == 0U) ++psss_resident_ket_pair_count;
     }
   }
   const std::size_t shell_pair_count = shell_pair_first.size();
   if (shell_pair_count > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()))
     return false;
   system_shell_pair_offsets.push_back(static_cast<std::int64_t>(shell_pair_count));
-  const std::size_t shell_pair_block_count =
-      detail::bounded_direct_queue_refill_count(shell_pair_count,
-                                                detail::kBoundedDirectShellPairBlockSize);
+  const std::size_t shell_pair_block_count = detail::bounded_direct_queue_refill_count(
+      shell_pair_count, detail::kBoundedDirectShellPairBlockSize);
 
   std::size_t psss_chunks_per_bra = 0;
   if (psss_resident_ket_pair_count != 0) {
@@ -217,14 +215,13 @@ bool small_hf_cuda_resource_layout_v2(
       direct_task_layout.angular_order_tile_counts[kGenericOrderFive];
 
   ArenaLayout force_layout{};
-  if (!make_layout(
-          1, nbf, direct_nbf, atoms, shells, shell_pair_count, shell_pair_block_count, 0,
-          shell_pair_primitive_count, psss_resident_task_count, psss_resident_ket_pair_count,
-          direct_task_layout.exact_tile_count, fp32_shell_quartet_tile_count,
-          generated_shell_task_capacity, ppps_resident_ket_task_capacity,
-          generic_order5_tile_capacity, primitive_count, std::max<std::size_t>(1, diis_history), 0,
-          spins, false, direct_nbf != nbf, false, false, false, false, mixed_precision_fock,
-          force_layout)) {
+  if (!make_layout(1, nbf, direct_nbf, atoms, shells, shell_pair_count, shell_pair_block_count, 0,
+                   shell_pair_primitive_count, psss_resident_task_count,
+                   psss_resident_ket_pair_count, direct_task_layout.exact_tile_count,
+                   fp32_shell_quartet_tile_count, generated_shell_task_capacity,
+                   ppps_resident_ket_task_capacity, generic_order5_tile_capacity, primitive_count,
+                   std::max<std::size_t>(1, diis_history), 0, spins, false, direct_nbf != nbf,
+                   false, false, false, false, mixed_precision_fock, force_layout)) {
     return false;
   }
 
