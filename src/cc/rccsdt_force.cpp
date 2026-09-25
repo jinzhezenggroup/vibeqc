@@ -489,8 +489,17 @@ static RccsdtForceResult rccsdt_force_impl(
   lambda_options.gmres.absolute_tolerance = 1e-12;
   lambda_options.gmres.relative_tolerance = 0.0;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
-  const auto corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1,
-                                                             triples.t2, lambda_options);
+  LambdaResult corrected;
+#if VIBEQC_HAS_CUDA
+  if (cuda_derivative)
+    corrected = solve_lambda_cuda_with_energy_source(problem, cc_result, triples.t1, triples.t2,
+                                                     device_id, lambda_options);
+  else
+#endif
+    corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1, triples.t2,
+                                                    lambda_options);
+  if (cuda_derivative && !corrected.diagnostic.cuda_actions)
+    throw std::runtime_error("RCCSD(T) CUDA force lost CUDA Lambda action ownership");
 
   auto parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
   add_projected_triples(parameters, triples, o, v);
