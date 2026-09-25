@@ -203,6 +203,16 @@ void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint6
   enqueue_impl(density, nullptr, elements, generation);
 }
 
+void CudaXcPlan::enqueue_density_features(const double* density, std::size_t elements,
+                                          std::uint64_t generation, double* total_density,
+                                          double* total_gradient) {
+  if (layout_.response)
+    throw std::invalid_argument("XC response plan cannot publish physical features");
+  if (total_density == nullptr || total_gradient == nullptr)
+    throw std::invalid_argument("CUDA XC density-feature export requires both output buffers");
+  enqueue_impl(density, nullptr, elements, generation, total_density, total_gradient);
+}
+
 void CudaXcPlan::enqueue_response(const double* density, const double* direction,
                                   std::size_t elements, std::uint64_t generation) {
   if (!layout_.response) throw std::invalid_argument("XC plan was not prepared for response");
@@ -210,7 +220,8 @@ void CudaXcPlan::enqueue_response(const double* density, const double* direction
 }
 
 void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                              std::uint64_t generation) {
+                              std::uint64_t generation, double* total_density,
+                              double* total_gradient) {
   check_device();
   const auto matrix = size_mul(layout_.nao, layout_.nao, "CUDA XC density size overflow");
   const auto count = size_mul(layout_.spins, matrix, "CUDA XC density size overflow");
@@ -221,6 +232,26 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
   const auto input_bytes = size_mul(count, sizeof(double), "CUDA XC density size overflow");
   if (vibeqc::runtime::ranges_overlap(density, input_bytes, arena_, layout_.device_bytes))
     throw std::invalid_argument("CUDA XC density aliases its workspace");
+  if ((total_density == nullptr) != (total_gradient == nullptr))
+    throw std::invalid_argument("CUDA XC density-feature outputs must be provided together");
+  if (total_density) {
+    if (layout_.feature_terms < 4)
+      throw std::invalid_argument("CUDA XC density-gradient export requires GGA ingredients");
+    const auto rho_bytes =
+        size_mul(layout_.npoint, sizeof(double), "CUDA XC feature export size overflow");
+    const auto gradient_bytes =
+        size_mul(size_mul(3, layout_.npoint, "CUDA XC feature export size overflow"),
+                 sizeof(double), "CUDA XC feature export size overflow");
+    device_pointer(total_density, device_);
+    device_pointer(total_gradient, device_);
+    if (vibeqc::runtime::ranges_overlap(total_density, rho_bytes, arena_, layout_.device_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_gradient, gradient_bytes, arena_,
+                                        layout_.device_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_density, rho_bytes, density, input_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_gradient, gradient_bytes, density, input_bytes) ||
+        vibeqc::runtime::ranges_overlap(total_density, rho_bytes, total_gradient, gradient_bytes))
+      throw std::invalid_argument("CUDA XC density-feature outputs alias live input/workspace");
+  }
   if (layout_.response) {
     device_pointer(direction, device_);
     if (vibeqc::runtime::ranges_overlap(direction, input_bytes, arena_, layout_.device_bytes))
@@ -237,7 +268,8 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
 #endif
     cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
                             ao_, work_, features_, coefficients_, point_totals_, potential_,
-                            totals_, error_, direction, delta_features_);
+                            totals_, error_, direction, delta_features_, total_density,
+                            total_gradient);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at
     // this native owner boundary so both single-point and batch APIs preserve it.

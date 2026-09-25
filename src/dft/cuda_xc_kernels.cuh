@@ -27,8 +27,13 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
-             int* error, const double* direction, double* delta_features) {
+             int* error, const double* direction, double* delta_features, double* total_density,
+             double* total_gradient) {
   const I matrices = l.spins * l.nao * l.nao;
+  if ((total_density == nullptr) != (total_gradient == nullptr))
+    throw std::invalid_argument("CUDA XC total-density capture requires rho and gradient together");
+  if (total_density != nullptr && l.feature_terms < 4)
+    throw std::invalid_argument("CUDA XC total-density gradient capture requires GGA ingredients");
   cuda_check(cudaMemsetAsync(error, 0, sizeof(int), stream));
   validate_density<<<blocks(matrices, 128), 128, 0, stream>>>(density, l.nao, l.spins, error);
   cuda_check(cudaGetLastError());
@@ -54,6 +59,11 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
                                l.feature_terms, l.functional, features, error);
     cuda_check(cudaGetLastError());
+    if (total_density) {
+      scheduled_total_density_features(stream, features, count, l.spins, l.feature_terms, begin,
+                                       total_density, total_gradient, error);
+      cuda_check(cudaGetLastError());
+    }
     if (direction) {
       // AO panels are shared; work is scratch and can be reused after the
       // reference features are retained. No host AO/feature staging occurs.
