@@ -17,6 +17,10 @@ struct CudaState {
   double *d1{}, *d2{}, *t1{}, *t2{};
   double *iteration_arena{}, *replay_arena{}, *response_arena{};
   double *bar_correlation_energy{}, *bar_singles_residual{}, *bar_doubles_residual{};
+  double *bar_foo{}, *bar_fov{}, *bar_fvv{};
+  double *bar_ovov{}, *bar_ovvo{}, *bar_oovv{}, *bar_ovvv{}, *bar_ovoo{}, *bar_oooo{}, *bar_vvvv{};
+  double *bar_reference_electronic_energy{}, *bar_fock{}, *d_rotation{};
+  double *density{}, *g{}, *h{}, *rotation{};
   int* error{};
 };
 
@@ -39,6 +43,17 @@ struct DeviceLambdaOutputs {
 struct DeviceParameterOutput {
   double* values{};
 };
+struct DeviceHamiltonianOutputs {
+  double* hcore{};
+  double* eri{};
+  double* overlap{};
+  double* rotation_gradient{};
+  double* stationarity{};
+  double* orbital_rhs{};
+};
+struct DeviceOrbitalJvpOutput {
+  double* d_fov{};
+};
 
 DeviceIterationOutputs run_iteration_cuda(CudaState& state);
 DeviceReplayOutputs run_replay_cuda(CudaState& state);
@@ -56,5 +71,8 @@ DeviceParameterOutput run_parameter_ovvv_cuda(CudaState& state);
 DeviceParameterOutput run_parameter_ovoo_cuda(CudaState& state);
 DeviceParameterOutput run_parameter_oooo_cuda(CudaState& state);
 DeviceParameterOutput run_parameter_vvvv_cuda(CudaState& state);
+DeviceHamiltonianOutputs run_hamiltonian_weights_cuda(CudaState& state);
+DeviceHamiltonianOutputs run_fock_weights_cuda(CudaState& state);
+DeviceOrbitalJvpOutput run_orbital_jvp_cuda(CudaState& state);
 
 }  // namespace vibeqc::cc::generated
