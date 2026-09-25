@@ -85,7 +85,9 @@ def test_gfn1_and_gfn2_delegate_third_order_math_to_shared_owner() -> None:
         assert "multiply(" not in source
 
 
-@pytest.mark.parametrize("message", ("missing registered input", "source hash mismatch"))
+@pytest.mark.parametrize(
+    "message", ("missing registered input", "source hash mismatch")
+)
 def test_gfn1_es3_propagates_reference_verification_failure(
     monkeypatch: pytest.MonkeyPatch, message: str
 ) -> None:
