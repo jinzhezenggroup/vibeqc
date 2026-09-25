@@ -24,14 +24,19 @@ def snapshot(root: Path) -> dict[str, bytes]:
 def publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     directory = tmp_path / "campaign"
     directory.mkdir()
-    samples = b'[1, 2, 3]\n'
-    evidence = json.dumps({
-        "energy": -1.25,
-        "attachments": [{
-            "path": "samples.json", "bytes": len(samples),
-            "sha256": hashlib.sha256(samples).hexdigest(),
-        }],
-    }).encode()
+    samples = b"[1, 2, 3]\n"
+    evidence = json.dumps(
+        {
+            "energy": -1.25,
+            "attachments": [
+                {
+                    "path": "samples.json",
+                    "bytes": len(samples),
+                    "sha256": hashlib.sha256(samples).hexdigest(),
+                }
+            ],
+        }
+    ).encode()
     files = []
     for name, role, data in (
         ("samples.json", "samples", samples),
@@ -39,13 +44,24 @@ def publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         ("summary.json", "summary", b'{"passed": true}\n'),
     ):
         (directory / name).write_bytes(data)
-        files.append({"path": name, "role": role, "bytes": len(data),
-                      "sha256": hashlib.sha256(data).hexdigest()})
+        files.append(
+            {
+                "path": name,
+                "role": role,
+                "bytes": len(data),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            }
+        )
     (directory / "publication.json").write_text(json.dumps({"files": files}))
     review = tmp_path / "review.json"
-    review.write_text(json.dumps({
-        "threshold_bytes": 1_000_000, "files": [],
-    }))
+    review.write_text(
+        json.dumps(
+            {
+                "threshold_bytes": 1_000_000,
+                "files": [],
+            }
+        )
+    )
     monkeypatch.setattr(compact, "ROOT", tmp_path)
     monkeypatch.setattr(compact, "REVIEW", review)
     monkeypatch.setattr(compact, "TARGETS", ("campaign/publication.json",))
@@ -89,7 +105,9 @@ def test_existing_target_is_not_overwritten(publication: Path) -> None:
     assert snapshot(publication) == before
 
 
-def test_success_preserves_data_and_repeated_check_is_read_only(publication: Path) -> None:
+def test_success_preserves_data_and_repeated_check_is_read_only(
+    publication: Path,
+) -> None:
     old = snapshot(publication)
     compact.main([])
     manifest = json.loads((publication / "campaign/publication.json").read_text())
@@ -99,9 +117,9 @@ def test_success_preserves_data_and_repeated_check_is_read_only(publication: Pat
         assert hashlib.sha256(data).hexdigest() == entry["sha256"]
     samples = (publication / "campaign/samples.json.gz").read_bytes()
     assert gzip.decompress(samples) == old["campaign/samples.json"]
-    evidence = json.loads(gzip.decompress(
-        (publication / "campaign/evidence.json.gz").read_bytes()
-    ))
+    evidence = json.loads(
+        gzip.decompress((publication / "campaign/evidence.json.gz").read_bytes())
+    )
     assert evidence["energy"] == -1.25
     attachment = evidence["attachments"][0]
     assert attachment["path"] == "samples.json.gz"
