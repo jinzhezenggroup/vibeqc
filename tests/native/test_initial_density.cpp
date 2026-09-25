@@ -94,10 +94,9 @@ void check_initial_density_contract() {
   RestrictedInitialDensityProvider provider =
       [&](const RestrictedInitialDensityRequest& request) -> std::optional<Matrix> {
     ++provider_calls;
-    provider_context_ok =
-        &request.system == &system && &request.integrals == &ints &&
-        &request.orthogonalizer == &x && request.occupied == 1 &&
-        request.core_density == Matrix({1, 0, 0, 0, 0, 0, 0, 0, 0});
+    provider_context_ok = &request.system == &system && &request.integrals == &ints &&
+                          &request.orthogonalizer == &x && request.occupied == 1 &&
+                          request.core_density == Matrix({1, 0, 0, 0, 0, 0, 0, 0, 0});
     return raw;
   };
   solves = 0;
@@ -126,8 +125,8 @@ void check_initial_density_contract() {
   // provider, preserving replay and imported-seed semantics.
   provider_calls = 0;
   solves = 0;
-  close(prepare_initial_density(system, ints, x, 1, &raw, a,
-                                InitialOrbitalRequest::ColdDensityOnly, {}, provider),
+  close(prepare_initial_density(system, ints, x, 1, &raw, a, InitialOrbitalRequest::ColdDensityOnly,
+                                {}, provider),
         {1, .15, 0, .15, 0, 0, 0, 0, 0});
   require(provider_calls == 0 && solves == 0 && !a,
           "cold-start provider intercepted an explicit warm density");
