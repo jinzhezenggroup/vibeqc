@@ -160,14 +160,17 @@ inline std::size_t df_resident_value_admission_floor(DfBudgetWorkload workload) 
 
 /** Resolve one value/response allowance without a fixed-size magic default.
  *
- * Live automatic mode bounds the workload target by available device memory
- * without promoting to the larger resident-owner floor. The resident route
- * changed SCF work counts at 768 AO during qualification, so automatic
- * admission remains on the bounded source-backed policy. Explicit positive
- * budgets remain hard caps. If the probe is unavailable, the same dimensions
- * deterministically resolve to a conservative 32 MiB..1 GiB envelope. Force
- * response and value ownership are proportional to their estimated staged
- * work, not an unconditional 50/50.
+ * Live automatic mode bounds its workload target by available device memory,
+ * not the probe-failure cap: a 1-GiB cap forces roomy multi-GiB tensors to
+ * regenerate on every replay. When the live envelope can admit a complete
+ * source-backed resident device value owner, raise the target to its admission
+ * floor before splitting response capacity. This does not choose the
+ * materialized host raw owner; that separate route changed SCF work counts
+ * during qualification. Tight live envelopes retain the smaller target and
+ * streamed fallback. Explicit positive budgets remain hard caps. If the probe
+ * is unavailable, the same dimensions deterministically resolve to a
+ * conservative 32 MiB..1 GiB envelope. Force response and value ownership
+ * are proportional to their estimated staged work, not an unconditional 50/50.
  */
 inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceEnvelope resource,
                                           std::size_t requested_bytes) noexcept {

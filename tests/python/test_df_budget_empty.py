@@ -88,10 +88,12 @@ int main() {
   const auto automatic = resolve_df_budget(work, roomy, 0);
   const auto resident_floor = df_resident_value_admission_floor(work);
   assert(automatic.value_bytes >= resident_floor);
+  assert(automatic.value_bytes + automatic.response_bytes == automatic.total_bytes);
   const auto explicit_cap = resolve_df_budget(work, roomy, 12345);
   assert(explicit_cap.total_bytes == 12345);
   const DfResourceEnvelope tight{256 * mib, 8ULL << 30, true};
   const auto limited = resolve_df_budget(work, tight, 0);
+  assert(limited.value_bytes < resident_floor);
   assert(limited.total_bytes <= automatic.total_bytes);
 }
 """)

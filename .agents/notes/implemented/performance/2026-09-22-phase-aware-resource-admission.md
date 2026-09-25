@@ -37,6 +37,28 @@ showed a reproducible large warm-start convergence regression.
 Explicit user budgets, numerical thresholds, force definitions and the existing
 bounded planner remain unchanged.
 
+## Source-backed device residency is not host-owner promotion
+
+Automatic DF has two independent decisions: the resolved allowance can keep
+the source-backed CUDA J/K value owner device-resident, while the production
+route still assembles source-backed metadata instead of a materialized host raw
+tensor. Removing the device-residency floor does not prevent host-owner
+promotion; that is governed by the preparation route. It only makes large
+source-backed plans repeatedly stream and regenerate their value panels.
+
+With the same RTX 5090/CUDA 12.9.86 Release configuration and identical
+freshly generated 768-AO checkpoints, removing this floor left changed-warm
+at three SCF iterations but raised its seven-sample median complete endpoint
+from 2.045308 s to 7.148424 s. The diagnostic force trace changed from one
+to six resident-whitening panels and from two to twelve factor GEMMs; the
+source-backed flag stayed true. Restoring the device floor returned the median
+to 2.049543 s with three iterations, one panel and two GEMMs. Energy and force
+agreed with the original source-backed run to 0 and 1.2e-13 respectively.
+The resource-qualified device floor avoids both the measured work
+amplification and the separately rejected materialized-host convergence path.
+Explicit caps and tight-device streaming remain bounded by their original
+rules.
+
 ## Device evidence for withdrawing automatic resident promotion
 
 On RTX 5090 / CUDA 12.9.86, shared-checkpoint comparisons used identical
