@@ -192,19 +192,54 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          payload="$(gh api --method GET             "/repos/${GITHUB_REPOSITORY}/actions/artifacts"             -f name='cuda-ccache-master-12.9-sm120-v2'             -f per_page=20)"
-          read -r run_id created_at < <(
-            jq -r '
-              [.artifacts[] | select(.expired == false)]
-              | sort_by(.created_at)
-              | last
-              | if . == null then " " else "\(.workflow_run.id) \(.created_at)" end
-            ' <<<"$payload"
-          )
-          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+          run_id=""
+          created_at=""
           publish=false
+          artifact_name='cuda-ccache-master-12.9-sm120-v2'
+
+          # Trust only artifacts produced by successful pushes of this CI workflow
+          # on master. A repository-wide artifact-name lookup is insufficient
+          # provenance because another ref/workflow could publish the same name.
+          runs_payload=""
+          if runs_payload="$(gh api --method GET \
+              "/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+              -f branch=master -f event=push -f status=success -f per_page=20)"; then
+            while read -r candidate_run_id; do
+              [[ -n "$candidate_run_id" ]] || continue
+              artifacts_payload=""
+              if ! artifacts_payload="$(gh api --method GET \
+                  "/repos/${GITHUB_REPOSITORY}/actions/runs/${candidate_run_id}/artifacts" \
+                  -f name="${artifact_name}" -f per_page=10)"; then
+                echo "::warning::Unable to inspect CUDA ccache artifacts for trusted run ${candidate_run_id}; trying the next run."
+                continue
+              fi
+              candidate_created_at="$(jq -r \
+                '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .created_at // empty' \
+                <<<"${artifacts_payload}")"
+              if [[ -n "$candidate_created_at" ]]; then
+                run_id="$candidate_run_id"
+                created_at="$candidate_created_at"
+                break
+              fi
+            done < <(
+              jq -r '
+                .workflow_runs[]
+                | select(
+                    .event == "push"
+                    and .head_branch == "master"
+                    and .conclusion == "success"
+                  )
+                | .id
+              ' <<<"${runs_payload}"
+            )
+          else
+            echo "::warning::Unable to discover trusted master CUDA ccache snapshot; falling back to actions/cache or a cold compile."
+          fi
+
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/master" ]]; then
             if [[ -z "$created_at" ]]; then
+              # Discovery is acceleration-only. Try to heal a missing/unavailable
+              # snapshot, but publication below is also explicitly non-gating.
               publish=true
             else
               created_epoch="$(date -u -d "$created_at" +%s)"
@@ -214,6 +249,8 @@ jobs:
               fi
             fi
           fi
+
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
           echo "publish=${publish}" >> "$GITHUB_OUTPUT"
       - name: Restore trusted master CUDA ccache snapshot
         id: trusted_cuda_ccache_download
@@ -271,6 +308,7 @@ jobs:
         run: ccache --show-stats
       - name: Publish trusted master CUDA ccache snapshot
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.trusted_cuda_ccache.outputs.publish == 'true'
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: cuda-ccache-master-12.9-sm120-v2
