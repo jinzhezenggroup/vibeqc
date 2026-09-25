@@ -178,11 +178,10 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
 
 
 void validate_transition_metal_d_shell_translation() {
-  const std::array<std::int32_t, 3> atomic_numbers{30, 1, 1};
-  const std::array<double, 9> positions{
+  const std::array<std::int32_t, 2> atomic_numbers{10, 2};
+  const std::array<double, 6> positions{
       0.0, 0.0, 0.0,
-      2.7, 0.8, -0.4,
-      -1.9, 2.2, 1.1,
+      2.4, 1.1, -0.7,
   };
 
   methods::detail::Gfn2RuntimeBridge runtime(methods::detail::Gfn2RuntimeBackend::kCpu, 0);
@@ -200,12 +199,12 @@ void validate_transition_metal_d_shell_translation() {
   const auto xtb = runtime.execute(request);
   if (xtb.status != methods::detail::Gfn2RuntimeStatus::kSuccess || !xtb.converged ||
       !xtb.orbitals)
-    throw std::runtime_error("ZnH2 GFN2 d-shell translation probe did not converge");
+    throw std::runtime_error("NeHe GFN2 d-shell translation probe did not converge");
 
   const auto& source = xtb.orbitals->source_system;
   const std::size_t source_n = molecule::ao_count(source);
   if (source_n == 0 || xtb.orbitals->overlap.size() != source_n * source_n)
-    throw std::runtime_error("ZnH2 GFN2 d-shell translation probe returned invalid dimensions");
+    throw std::runtime_error("NeHe GFN2 d-shell translation probe returned invalid dimensions");
 
   std::size_t ao_offset = 0;
   std::size_t d_begin = source_n;
@@ -219,7 +218,7 @@ void validate_transition_metal_d_shell_translation() {
     ao_offset += shell_size;
   }
   if (d_begin == source_n || ligand_s == source_n)
-    throw std::runtime_error("ZnH2 GFN2 source basis did not expose the expected d/s shells");
+    throw std::runtime_error("NeHe GFN2 source basis did not expose the expected d/s shells");
 
   // This inter-center block is deliberately required to be nonzero: a same-center
   // identity overlap would not detect an incorrect d-harmonic ordering.
@@ -229,7 +228,7 @@ void validate_transition_metal_d_shell_translation() {
         std::max(native_d_ligand,
                  std::abs(xtb.orbitals->overlap[(d_begin + component) * source_n + ligand_s]));
   if (!(native_d_ligand > 1.0e-8))
-    throw std::runtime_error("ZnH2 d/s overlap block is too small to qualify AO ordering");
+    throw std::runtime_error("NeHe d/s overlap block is too small to qualify AO ordering");
 
   std::vector<double> rebuilt(source_n * source_n);
   integrals::cross_overlap(source, source, rebuilt);
