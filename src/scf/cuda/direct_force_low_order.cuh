@@ -18,8 +18,9 @@
 #include "scf/cuda/matrix_index.cuh"
 #include "scf/cuda/packed_basis.hpp"
 
-// Retained direct force low order contraction helpers.
-// Borrow immutable metadata and density/output views; host plans own lifetime.
+// Runtime-only Direct force low-order shell-task adapters.
+// ERI and coordinate-derivative algebra is compiler-owned by generated_weighted_eri;
+// this header retains screening, density folding, canonicalization and atom scatter.
 
 namespace vibeqc::scf::cuda_execution {
 
