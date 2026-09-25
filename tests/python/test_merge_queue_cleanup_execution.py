@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SHA = "a" * 40
 OTHER = "b" * 40
 
-GH = r'''
+GH = r"""
 import json, os, sys
 from pathlib import Path
 if "POST" in sys.argv:
@@ -25,14 +25,14 @@ else:
     page = int(next(arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("page=")))
     rows = json.loads(Path(os.environ["RUN_FIXTURE"]).read_text())
     print(json.dumps({"workflow_runs": rows[(page-1)*100:page*100]}))
-'''
-CURL = r'''
+"""
+CURL = r"""
 import os, sys
 from pathlib import Path
 output = sys.argv[sys.argv.index("--output") + 1]
 Path(output).write_text(os.environ["REF_BODY"])
 print(os.environ["REF_STATUS"], end="")
-'''
+"""
 
 
 def _run(tmp_path: Path, rows: list[dict], status: str, body: str) -> list[int]:
