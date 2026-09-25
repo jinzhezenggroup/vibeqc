@@ -850,7 +850,20 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    if (device_metric && schedule == 0 && (!source || packed_raw || whitened) &&
+    const char* source_schedule_control =
+        std::getenv("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE");
+    const std::string_view source_schedule =
+        source_schedule_control ? source_schedule_control : "auto";
+    if (source_schedule != "auto" && source_schedule != "qualify")
+      throw std::invalid_argument(
+          "VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE requires auto or qualify");
+    const bool source_schedule_eligible = df_response_shell_source_eligible(
+        source != nullptr, packed_raw != nullptr, whitened != nullptr,
+        occupied && device_metric && device_metric->full_rank,
+        source_schedule == "qualify");
+    runtime::cuda_trace::trace_counter("response_source_derivative_qualification_requested",
+                                       source_schedule == "qualify");
+    if (device_metric && schedule == 0 && source_schedule_eligible &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
@@ -866,6 +879,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (execution != "generic" && execution != "shell-sp" && execution != "shell")
       throw std::invalid_argument("unknown DF weighted execution (use generic, shell-sp or shell)");
     const bool shell_execution = execution != "generic" && device_metric && schedule == 0;
+    runtime::cuda_trace::trace_counter("response_derivative_shell_execution", shell_execution);
+    runtime::cuda_trace::trace_counter("response_derivative_profile_promoted", promoted_default);
     const bool full_shell_domain = execution == "shell";
     const char* pair_control = std::getenv("VIBEQC_DF_DERIVATIVE_PAIRS");
     const std::string_view pair_policy = pair_control ? pair_control : "auto";

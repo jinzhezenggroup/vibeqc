@@ -65,4 +65,17 @@ constexpr bool df_packed_response_preferred(std::size_t nbf, std::size_t naux, s
          df_derivative_work_at_least(nbf, nbf, naux, profile.minimum_packed_response_weights);
 }
 
+/** Explicit qualification can decouple source-only occupied response from
+ * derivative scheduling. This is NOT automatic production promotion. The
+ * bridge must have validated the occupied/source/metric identities first.
+ * Unknown targets and all existing diagnostic exclusions remain unchanged.
+ */
+constexpr bool df_response_shell_source_eligible(bool has_source, bool has_raw,
+                                                 bool has_fitted,
+                                                 bool validated_full_rank_occupied,
+                                                 bool qualify_source) noexcept {
+  return !has_source || has_raw || has_fitted ||
+         (qualify_source && validated_full_rank_occupied);
+}
+
 }  // namespace vibeqc::scf
