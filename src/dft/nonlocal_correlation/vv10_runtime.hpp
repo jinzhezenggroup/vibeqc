@@ -9,6 +9,10 @@
 
 #include "vibeqc/vibeqc.h"
 
+#if VIBEQC_HAS_CUDA
+#include <cuda_runtime_api.h>
+#endif
+
 namespace vibeqc::dft::nlc {
 
 enum class Vv10Variant : std::int32_t { vv10 = 1, rvv10 = 2 };
@@ -68,6 +72,34 @@ class Vv10Plan {
 };
 
 #if VIBEQC_HAS_CUDA
+struct Vv10CudaDeviceLayout {
+  std::size_t point_count{};
+  std::size_t tile_points{};
+  std::size_t workspace_bytes{};
+  bool features{};
+  bool geometry{};
+};
+
+/** Exact caller-owned workspace for resident CUDA VV10/rVV10 execution.
+ * Input/output arrays and the numerical-error slot are caller-owned and are
+ * not included in workspace_bytes.
+ */
+Vv10CudaDeviceLayout vv10_cuda_device_layout(std::size_t point_count, std::size_t tile_points,
+                                             bool features, bool geometry);
+
+/** Enqueue one resident fixed-grid evaluation on the caller stream.
+ * All scientific inputs and outputs are device-resident. No allocation,
+ * host transfer or synchronization occurs here. energy may alias workspace
+ * because it is published only after all pair kernels have consumed scratch.
+ */
+void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters parameters,
+                              int device_id, cudaStream_t stream, const double* coordinates,
+                              const double* weights, const double* density,
+                              const double* density_gradient, void* workspace,
+                              std::size_t workspace_bytes, double* energy, double* vrho,
+                              double* vsigma, double* point_derivative, double* weight_derivative,
+                              int* numerical_error);
+
 void execute_vv10_cuda(const double* coordinates, const double* weights, const double* density,
                        const double* density_gradient, std::size_t point_count,
                        std::size_t tile_points, Vv10Parameters parameters, int device_id,
