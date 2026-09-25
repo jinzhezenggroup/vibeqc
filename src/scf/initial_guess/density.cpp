@@ -568,6 +568,9 @@ OccupiedCompletionResult complete_occupied_density(const integrals::IntegralData
     }
   }
 
+  if (!finite(result.density))
+    throw std::invalid_argument("occupied completion produced a non-finite target density");
+
   double trace = 0.0;
   for (std::size_t orbital = 0; orbital < target_occupied; ++orbital)
     trace += metric_column_dot(orbital, orbital);
