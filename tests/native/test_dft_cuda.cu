@@ -100,6 +100,37 @@ struct Fixture {
                 after.synchronizations == before.synchronizations,
             "XC enqueue staged data or synchronized");
   }
+  std::pair<std::vector<double>, std::vector<double>> submit_density_features(
+      const std::vector<double>& d) {
+    double *device_rho{}, *device_gradient{};
+    std::vector<double> rho(layout.npoint), gradient(3 * layout.npoint);
+    try {
+      check(cudaMalloc(&device_rho, rho.size() * sizeof(double)));
+      check(cudaMalloc(&device_gradient, gradient.size() * sizeof(double)));
+      check(cudaMemcpyAsync(density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice,
+                            stream));
+      check(cudaStreamSynchronize(stream));
+      const auto before = plan->transfers();
+      plan->enqueue_density_features(density, d.size(), ++generation, device_rho, device_gradient);
+      const auto after = plan->transfers();
+      require(after.output_d2h_bytes == before.output_d2h_bytes &&
+                  after.setup_h2d_bytes == before.setup_h2d_bytes &&
+                  after.synchronizations == before.synchronizations,
+              "XC density-feature enqueue staged data or synchronized");
+      check(cudaMemcpyAsync(rho.data(), device_rho, rho.size() * sizeof(double),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaMemcpyAsync(gradient.data(), device_gradient, gradient.size() * sizeof(double),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaStreamSynchronize(stream));
+    } catch (...) {
+      if (device_gradient) cudaFree(device_gradient);
+      if (device_rho) cudaFree(device_rho);
+      throw;
+    }
+    cudaFree(device_gradient);
+    cudaFree(device_rho);
+    return {std::move(rho), std::move(gradient)};
+  }
   CudaXcScalars scalars() { return plan->read_scalars(generation); }
   std::vector<double> potential() { return plan->download_potential(generation); }
   void canary() {
@@ -176,6 +207,38 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
         close(v[s * elements + i], expected, "UKS CPU/CUDA V", tolerance);
       }
     }
+  }
+  fixture.canary();
+}
+
+void density_feature_capture_case(const AoBasis& basis, const MolecularGrid& grid,
+                                  bool unrestricted) {
+  Fixture fixture(basis, grid, 4U, unrestricted, 7);
+  const auto d = density(basis.nao, unrestricted ? 2U : 1U);
+  const auto captured = fixture.submit_density_features(d);
+  require(fixture.scalars().error == 0, "CUDA XC density-feature capture reported an error");
+
+  const auto count = grid.point_count(), n = basis.nao, matrix = n * n;
+  std::vector<double> ao(4 * count * n);
+  basis.evaluate(grid.points().data(), count, 1, 0, n, ao.data(), ao.size());
+  const auto phi = [&](unsigned jet, std::size_t point, std::size_t mu) {
+    return ao[(jet * count + point) * n + mu];
+  };
+  for (std::size_t p = 0; p < count; ++p) {
+    double rho = 0.0, gradient[3]{};
+    for (unsigned spin = 0; spin < (unrestricted ? 2U : 1U); ++spin)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          const double value = d[spin * matrix + mu * n + nu];
+          rho += phi(0, p, mu) * value * phi(0, p, nu);
+          for (unsigned k = 0; k < 3; ++k)
+            gradient[k] +=
+                value * (phi(k + 1, p, mu) * phi(0, p, nu) + phi(0, p, mu) * phi(k + 1, p, nu));
+        }
+    close(captured.first[p], rho, "captured total density", 2e-15 + 2e-13 * std::abs(rho));
+    for (unsigned k = 0; k < 3; ++k)
+      close(captured.second[3 * p + k], gradient[k], "captured total density gradient",
+            2e-15 + 2e-13 * std::abs(gradient[k]));
   }
   fixture.canary();
 }
@@ -515,6 +578,7 @@ int main(int argc, char** argv) {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
+    for (bool unrestricted : {false, true}) density_feature_capture_case(basis, grid, unrestricted);
     for (unsigned functional : {0U, 1U, 2U, 4U})
       for (bool unrestricted : {false, true}) {
         graph_capture(basis, grid, functional, unrestricted);

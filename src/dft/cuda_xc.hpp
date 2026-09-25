@@ -96,6 +96,12 @@ class CudaXcPlan {
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
   void enqueue(const double* density, std::size_t elements, std::uint64_t generation);
+  /** Execute the ordinary physical XC evaluation while also publishing total
+   * rho and grad-rho to caller-owned full-grid device buffers. This adds no
+   * plan-owned storage and is admitted only for GGA/meta-GGA ingredient sets. */
+  void enqueue_density_features(const double* density, std::size_t elements,
+                                std::uint64_t generation, double* total_density,
+                                double* total_gradient);
   /** Differentiate the fixed native density on GPU, including AO/feature and
    * matrix assembly. Signed directions use the same input layout as density. */
   void enqueue_response(const double* density, const double* direction, std::size_t elements,
@@ -108,7 +114,8 @@ class CudaXcPlan {
  private:
   void check_device() const;
   void enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                    std::uint64_t generation);
+                    std::uint64_t generation, double* total_density = nullptr,
+                    double* total_gradient = nullptr);
   CudaXcLayout layout_;
   CudaXcPointLauncher point_launcher_{};
   CudaXcTransfers transfers_;
@@ -130,6 +137,7 @@ void enqueue(const CudaXcLayout& layout, CudaXcPointLauncher point_launcher, cud
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
-             int* error, const double* direction = nullptr, double* delta_features = nullptr);
+             int* error, const double* direction = nullptr, double* delta_features = nullptr,
+             double* total_density = nullptr, double* total_gradient = nullptr);
 }  // namespace cuda_xc_detail
 }  // namespace vibeqc::dft

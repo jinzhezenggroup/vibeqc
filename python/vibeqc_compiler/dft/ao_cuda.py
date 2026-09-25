@@ -321,6 +321,32 @@ inline void scheduled_density_features(cudaStream_t stream, const double* ao, co
   }
 }
 
+__global__ void capture_total_density_features(const double* features, I count, I spins,
+                                               I feature_terms, I begin, double* total_density,
+                                               double* total_gradient, int* error) {
+  for (I p = I(blockIdx.x) * blockDim.x + threadIdx.x; p < count;
+       p += I(blockDim.x) * gridDim.x) {
+    double rho = 0.0, gradient[3]{};
+    for (I spin = 0; spin < spins; ++spin) {
+      rho += features[(spin * feature_terms) * count + p];
+      for (I k = 0; k < 3; ++k)
+        gradient[k] += features[(spin * feature_terms + k + 1) * count + p];
+    }
+    const I target = begin + p;
+    total_density[target] = finite(rho, error, 1);
+    for (I k = 0; k < 3; ++k)
+      total_gradient[3 * target + k] = finite(gradient[k], error, 1);
+  }
+}
+
+inline void scheduled_total_density_features(cudaStream_t stream, const double* features,
+                                             I count, I spins, I feature_terms, I begin,
+                                             double* total_density, double* total_gradient,
+                                             int* error) {
+  capture_total_density_features<<<vibeqc_tensor::blocks(count,128),128,0,stream>>>(
+      features,count,spins,feature_terms,begin,total_density,total_gradient,error);
+}
+
 struct DevicePointValue {
   double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};
   bool valid{true};
