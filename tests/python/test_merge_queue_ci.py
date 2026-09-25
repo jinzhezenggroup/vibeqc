@@ -28,8 +28,8 @@ def test_required_merge_group_jobs_use_the_liveness_gate() -> None:
         for job in jobs:
             section = _job(source, job)
             assert "needs: merge_queue_liveness" in section
-            assert "always()" in section
-            assert "outputs.active != 'false'" in section
+            assert "if: needs.merge_queue_liveness.outputs.active != 'false'" in section
+            assert "always()" not in section
 
 
 def test_merge_group_concurrency_cancels_superseded_same_ref_runs() -> None:
@@ -48,6 +48,7 @@ def test_ci_aggregate_accepts_only_explicitly_confirmed_orphans() -> None:
     assert "Accept an orphaned merge-group run" in section
     assert "needs.merge_queue_liveness.outputs.active == 'false'" in section
     assert "needs.merge_queue_liveness.outputs.active != 'false'" in section
+    assert "if: ${{ !cancelled() }}" in section
 
 
 def test_dequeue_cleanup_cancels_only_runs_with_deleted_queue_refs() -> None:
