@@ -303,7 +303,6 @@ macro(vibeqc_register_host_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/layout.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/types.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/layout.py"
     ARGS --contract-output "${VIBEQC_DF_HF_RESPONSE_CONTRACT_HEADER}")
@@ -356,7 +355,6 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
-      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/layout.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/types.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/common/layout.py"
     ARGS --cuda-output "${VIBEQC_DF_HF_RESPONSE_CUDA_HEADER}")
