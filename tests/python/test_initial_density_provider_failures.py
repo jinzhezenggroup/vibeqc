@@ -158,6 +158,6 @@ int main(int argc, char** argv) {
 )
 def test_seed_provider_failure_and_frame_contract(seed_probe: Path, mode: str) -> None:
     completed = subprocess.run(
-        [str(seed_probe), mode], capture_output=True, text=True, timeout=10
+        [str(seed_probe), mode], check=False, capture_output=True, text=True, timeout=10
     )
     assert completed.returncode == 0, (mode, completed.returncode, completed.stderr)
