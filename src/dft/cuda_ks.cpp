@@ -70,9 +70,10 @@ std::size_t sum(std::size_t a, std::size_t b) {
 }
 /** Numeric arena view shared by allocation and metadata-only planning. */
 struct KsStateStorage {
-  double *hcore{}, *overlap{}, *x{}, *j{}, *density{}, *proposal{}, *warm{}, *fock{}, *residual{},
-      *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{}, *gram{}, *weights{},
-      *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{}, *cold_seed{};
+  double *hcore{}, *overlap{}, *x{}, *j{}, *density{}, *proposal{}, *warm{}, *warm_orbitals{},
+      *fock{}, *residual{}, *tmp1{}, *tmp2{}, *effective{}, *fock_history{}, *residual_history{},
+      *gram{}, *weights{}, *eigenvalues{}, *final_coefficients{}, *final_eigenvalues{},
+      *cold_seed{};
   std::int32_t* occupied{};
   std::uint8_t *enabled{}, *spin_enabled{};
   std::uint32_t *history_count{}, *history_head{};
@@ -94,7 +95,8 @@ struct KsStateStorage {
       bytes = sum(bytes, product(count, sizeof(T)));
     };
     for (auto** pointer : {&hcore, &overlap, &x, &j}) reserve(*pointer, matrix);
-    for (auto** pointer : {&density, &proposal, &warm, &fock, &residual, &tmp1, &tmp2, &effective})
+    for (auto** pointer :
+         {&density, &proposal, &warm, &warm_orbitals, &fock, &residual, &tmp1, &tmp2, &effective})
       reserve(*pointer, elements);
     // The generated cold guess stays resident across cold retries. It cannot
     // alias proposal/warm storage, which changes during every SCF trajectory.
@@ -170,7 +172,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   std::unique_ptr<CudaXcPlan> xc;
   std::unique_ptr<OrdinaryStreamEigensolver> eigensolver;
   scf::ScfResult output;
-  bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, started{};
+  bool is_active{}, is_pending{}, is_failed{}, warm_ready{}, warm_orbitals_ready{}, started{};
   bool warm_updates{true}, device_chunk_mode{};
   bool stabilize_occupations{}, final_closure{};
   bool mixed_j{}, strict_refinement{}, pending_mixed_j{}, mixed_j_executed{};
@@ -191,6 +193,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
             // The prepared facade owns provider lifetime and replay identity;
             // device chunks are admitted only for its direct-Fock binding.
             device, stream, arena, fock_binding.source_identity};
+  }
+
+  void invalidate_warm_orbitals() noexcept {
+    if (warm_orbitals_ready) ++movement.warm_orbital_frame_invalidations;
+    warm_orbitals_ready = false;
+  }
+
+  void clear_warm_state() noexcept {
+    warm_ready = false;
+    invalidate_warm_orbitals();
   }
 
   void current_device() const {
@@ -439,6 +451,11 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (is_pending) throw std::logic_error("cannot replace a pending CUDA KS iteration");
     final_state_ready = final_frame_ready = false;
     final_generation = 0;
+    // #991's first KS slice is deliberately intra-trajectory only. A changed
+    // geometry may reuse the last-good density, but its previous orthonormal
+    // orbital frame is not projected across metrics until that route is
+    // independently qualified.
+    invalidate_warm_orbitals();
     if (solve_epoch == std::numeric_limits<std::uint64_t>::max()) {
       is_active = false;
       is_failed = true;
@@ -708,12 +725,28 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   void enqueue() {
-    if (device_chunk_mode)
-      enqueue_device();
-    else
-      enqueue_legacy();
+    try {
+      if (device_chunk_mode)
+        enqueue_device();
+      else
+        enqueue_legacy();
+    } catch (...) {
+      invalidate_warm_orbitals();
+      throw;
+    }
   }
-  bool finish() { return device_chunk_mode ? finish_device() : finish_legacy(); }
+  bool finish() {
+    // A partial density/frame copy or rejected iteration cannot lend the old
+    // intermediate frame. Preserve the independent last-good warm density.
+    try {
+      const bool active = device_chunk_mode ? finish_device() : finish_legacy();
+      if (is_failed) invalidate_warm_orbitals();
+      return active;
+    } catch (...) {
+      invalidate_warm_orbitals();
+      throw;
+    }
+  }
 
   CudaXcView stage_xc(std::uint64_t next_generation) {
     if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
@@ -990,6 +1023,16 @@ struct CudaKsPlan::Impl : KsStateStorage {
       } else if (is_active) {
         check(cudaMemcpyAsync(density, proposal, elements * sizeof(double),
                               cudaMemcpyDeviceToDevice, stream));
+        // tmp2 still owns the ordinary eigensolver's orthonormal-basis orbital
+        // frame. Retain it beside the accepted proposal so the next RKS/UKS
+        // iteration can evaluate the same #996 occupied-subspace gate without
+        // a matrix D2H. No solver routing changes in this slice.
+        check(cudaMemcpyAsync(warm_orbitals, tmp2, elements * sizeof(double),
+                              cudaMemcpyDeviceToDevice, stream));
+        warm_orbitals_ready = true;
+        ++movement.warm_orbital_frames_retained;
+      } else {
+        invalidate_warm_orbitals();
       }
       if (output.converged) {
         final_state_ready = true;
@@ -1180,7 +1223,7 @@ std::vector<double> CudaKsPlan::warm_density() {
   return impl_->warm_ready ? impl_->download(impl_->warm) : std::vector<double>{};
 }
 void CudaKsPlan::set_warm_start_updates(bool enabled) noexcept { impl_->warm_updates = enabled; }
-void CudaKsPlan::clear_warm_start() noexcept { impl_->warm_ready = false; }
+void CudaKsPlan::clear_warm_start() noexcept { impl_->clear_warm_state(); }
 void CudaKsPlan::invalidate_final_state() noexcept {
   impl_->final_state_ready = impl_->final_frame_ready = false;
   impl_->final_generation = 0;
