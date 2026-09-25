@@ -121,4 +121,4 @@ def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
     )
     hamiltonian_program = text[hamiltonian_start:fock_start]
     assert "const std::size_t n=checked_add(o,v);" in hamiltonian_program
-    assert "allocate(n*n*n*n)" in hamiltonian_program
+    assert "allocate(checked_product({n,n,n,n}))" in hamiltonian_program
