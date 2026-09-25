@@ -26,6 +26,7 @@ void reset_control(cudaStream_t stream, unsigned spins, int occupied_alpha, int 
                    Control* control, std::uint8_t* enabled, std::uint8_t* spin_enabled);
 void assemble_fock(cudaStream_t stream, std::size_t n, unsigned spins, const double* hcore,
                    const double* coulomb, const double* exchange, double exchange_coefficient,
+                   const double* range_exchange, double range_exchange_coefficient,
                    const double* potential, const std::uint8_t* enabled, double* fock);
 void stabilize_uks_proposal(cudaStream_t stream, std::size_t n, const double* overlap,
                             const double* occupied_projector, const std::uint8_t* enabled,
@@ -33,9 +34,10 @@ void stabilize_uks_proposal(cudaStream_t stream, std::size_t n, const double* ov
 void diagnostics(cudaStream_t stream, std::size_t n, unsigned spins, const double* density,
                  const double* proposal, const double* residual, const double* hcore,
                  const double* overlap, const double* coulomb, const double* exchange,
-                 double exchange_coefficient, const double* xc_totals, const int* xc_error,
-                 const int* jk_error, const int* solver_info, const std::uint8_t* enabled,
-                 Scalars* output);
+                 double exchange_coefficient, const double* range_exchange,
+                 double range_exchange_coefficient, const double* xc_totals, const int* xc_error,
+                 const int* jk_error, const int* range_error, const int* solver_info,
+                 const std::uint8_t* enabled, Scalars* output);
 void advance(cudaStream_t stream, std::size_t n, unsigned spins, double nuclear_repulsion,
              int occupied_alpha, int occupied_beta, double energy_tolerance,
              double density_tolerance, unsigned max_iterations, bool warm_updates, Scalars* current,
