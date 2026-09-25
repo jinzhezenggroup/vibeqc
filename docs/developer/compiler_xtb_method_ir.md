@@ -85,6 +85,14 @@ parameter identity, the triplet topology and the TensorIR equation. This does
 not change the method-wide capability boundary below: the remaining GFN1
 electronic/runtime graph is still unavailable as a public endpoint.
 
+The atom-resolved GFN1 ES3 term is also compiler-owned. GFN1 and GFN2 now
+reuse one onsite-third-order TensorIR equation for `gamma3*q^3/3` and its
+charge derivative while binding different state-resolution semantics: GFN1
+uses atomic charge and GFN2 uses shell charge. The GFN1 binding also includes
+the canonical parameter-set identity. This is one fixed-state electronic
+slice; H0, ES2, population assembly, SCC execution, and public GFN1 admission
+remain separate gates.
+
 The canonical parameter-set revision is the SHA-256 identity of
 `upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json`. The correction requirements additionally bind
 the existing canonical GFN1 D3 reference-table digest rather than duplicating

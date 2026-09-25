@@ -1,0 +1,43 @@
+{
+  "atoms": [
+    [
+      "O",
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    [
+      "H",
+      [
+        0.0,
+        -1.43233673,
+        1.10715266
+      ]
+    ],
+    [
+      "H",
+      [
+        0.0,
+        1.43233673,
+        1.10715266
+      ]
+    ]
+  ],
+  "charge": 0,
+  "id": "water",
+  "multiplicity": 1,
+  "schema_version": 1,
+  "source": {
+    "attribution": "VibeQC repository",
+    "file": "benchmarks/_cases.py",
+    "kind": "repository_snapshot",
+    "license": "GPL-3.0-or-later",
+    "name": "water-def2-svp-spherical",
+    "repository_commit": "6f6a3789c6065adff8e6e603f9b2d3c840852f53",
+    "source_url": "https://github.com/jinzhezenggroup/vibeqc",
+    "upstream_geometry_revision": null
+  },
+  "units": "bohr"
+}

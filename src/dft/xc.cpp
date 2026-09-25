@@ -140,6 +140,14 @@ void sample_xc_capacity(XcIntegral& result, const std::vector<double>& ao, std::
       std::max(record.owned_numeric_bytes, runtime::vector_capacities(ao, result.potential));
 }
 
+void validate_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid, const RksAoCache& cache,
+                           unsigned order) {
+  const std::size_t jets = (order + 1) * (order + 2) * (order + 3) / 6;
+  if (cache.order != order || cache.points != grid.point_count() || cache.nao != basis.nao ||
+      cache.jets.size() != jets * cache.points * cache.nao)
+    throw std::invalid_argument("prepared RKS AO cache does not match basis/grid/order");
+}
+
 point::Value evaluate_generated_lda_point(const double rho[2]) {
   point::Value out;
   for (unsigned spin = 0; spin < 2; ++spin)
@@ -202,6 +210,34 @@ point::Value evaluate_generated_pbe_point(const double rho[2], const double grad
 }
 
 }  // namespace
+
+std::size_t RksAoCache::numeric_capacity_bytes() const noexcept {
+  return runtime::vector_bytes(jets);
+}
+
+std::size_t rks_ao_cache_bytes(const AoBasis& basis, const MolecularGrid& grid, unsigned order) {
+  if (order > 3 || !basis.nao || !grid.point_count())
+    throw std::invalid_argument("invalid prepared RKS AO cache domain");
+  const std::size_t jet_count = (order + 1) * (order + 2) * (order + 3) / 6;
+  const auto maximum = std::numeric_limits<std::size_t>::max();
+  if (grid.point_count() > maximum / basis.nao ||
+      grid.point_count() * basis.nao > maximum / jet_count ||
+      grid.point_count() * basis.nao * jet_count > maximum / sizeof(double))
+    throw std::invalid_argument("prepared RKS AO cache size overflow");
+  return grid.point_count() * basis.nao * jet_count * sizeof(double);
+}
+
+RksAoCache prepare_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid, unsigned order) {
+  const auto bytes = rks_ao_cache_bytes(basis, grid, order);
+  RksAoCache cache;
+  cache.order = order;
+  cache.points = grid.point_count();
+  cache.nao = basis.nao;
+  cache.jets.resize(bytes / sizeof(double));
+  basis.evaluate(grid.points().data(), cache.points, order, 0, cache.nao, cache.jets.data(),
+                 cache.jets.size());
+  return cache;
+}
 
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density, std::size_t tile_points,
@@ -894,9 +930,11 @@ SpinXcIntegral integrate_r2scan_uks(const AoBasis& basis, const MolecularGrid& g
 XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& grid,
                                   const std::vector<double>& density, std::size_t tile_points,
                                   bool allow_tail, XcDensitySource source,
-                                  double exchange_scale = 1.0, double correlation_scale = 1.0) {
+                                  double exchange_scale = 1.0, double correlation_scale = 1.0,
+                                  const RksAoCache* cache = nullptr) {
   const std::size_t n = basis.nao;
   validate_density_matrix(basis, grid, density, tile_points);
+  if (cache) validate_rks_ao_cache(basis, grid, *cache, 1U);
 
   XcIntegral result;
   result.potential.assign(n * n, 0.0);
@@ -910,14 +948,19 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
   const auto& weights = grid.weights();
   for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
     const std::size_t count = std::min(tile_points, result.points - begin);
-    ao.resize(4 * count * n);
+    if (!cache) {
+      ao.resize(4 * count * n);
+      basis.evaluate(points.data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    }
     sample_xc_capacity(result, ao, count);
-    basis.evaluate(points.data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
+    const double* ao_data = cache ? cache->jets.data() : ao.data();
+    const std::size_t point_stride = cache ? cache->points : count;
     for (std::size_t point = 0; point < count; ++point) {
-      const double* phi = ao.data() + point * n;
-      const double* grad_x = ao.data() + (count + point) * n;
-      const double* grad_y = ao.data() + (2 * count + point) * n;
-      const double* grad_z = ao.data() + (3 * count + point) * n;
+      const std::size_t stored_point = cache ? begin + point : point;
+      const double* phi = ao_data + stored_point * n;
+      const double* grad_x = ao_data + (point_stride + stored_point) * n;
+      const double* grad_y = ao_data + (2 * point_stride + stored_point) * n;
+      const double* grad_z = ao_data + (3 * point_stride + stored_point) * n;
       const auto features = rks_features(phi, {grad_x, grad_y, grad_z}, n, density, factor, 7U);
       const double rho = features[0];
       const std::array<double, 3> gradient{features[1], features[2], features[3]};
@@ -1057,6 +1100,14 @@ XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const Molecu
                                               double exchange_scale, double correlation_scale) {
   return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source, exchange_scale,
                                 correlation_scale);
+}
+
+XcIntegral integrate_pbe_rks_with_tail_scaled_cached(
+    const AoBasis& basis, const MolecularGrid& grid, const std::vector<double>& density,
+    std::size_t tile_points, XcDensitySource source, double exchange_scale,
+    double correlation_scale, const RksAoCache& cache) {
+  return integrate_pbe_rks_impl(basis, grid, density, tile_points, true, source, exchange_scale,
+                                correlation_scale, &cache);
 }
 
 XcIntegral integrate_pbe_rks_with_tail(const AoBasis& basis, const MolecularGrid& grid,
