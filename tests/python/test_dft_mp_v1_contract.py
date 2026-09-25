@@ -247,6 +247,108 @@ def test_campaign_plan_binds_merged_source_and_installed_artifacts(
         )
 
 
+def _commit_source_manifest(
+    repo: Path, value: dict, *, reverse_keys: bool = False
+) -> str:
+    if not (repo / ".git").exists():
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "dft-mp-v1@example.invalid"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "DFT-MP-v1 test"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "core.autocrlf", "false"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        )
+    manifest_path = repo / "tools/dft_mp_v1/manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {key: value[key] for key in reversed(value)} if reverse_keys else value
+    manifest_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    subprocess.run(
+        ["git", "add", "tools/dft_mp_v1/manifest.json"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "record contract fixture"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_campaign_preflight_compares_complete_source_contract(
+    tmp_path: Path, contract: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "source-repo"
+    repo.mkdir()
+    official_head = {"oid": ""}
+    monkeypatch.setattr(prepare_campaign, "REPO", repo)
+    monkeypatch.setattr(
+        prepare_campaign, "_official_master_oid", lambda *_: official_head["oid"]
+    )
+
+    source = _commit_source_manifest(repo, contract, reverse_keys=True)
+    official_head["oid"] = source
+    prepare_campaign._check_merged_source(source, contract)
+
+    def delete_required_row(value: dict) -> None:
+        index = next(
+            i for i, row in enumerate(value["rows"]) if row["required"] is True
+        )
+        del value["rows"][index]
+
+    def digest_only(value: dict) -> None:
+        declared = value["contract_sha256"]
+        value.clear()
+        value["contract_sha256"] = declared
+
+    mutations = [
+        ("deleted mandatory row", delete_required_row),
+        (
+            "changed geometry identity",
+            lambda value: value["cases"]["water"].update(grid_identity="0" * 64),
+        ),
+        (
+            "weakened performance threshold",
+            lambda value: value["gates"].update(minimum_geomean_speedup=1.0),
+        ),
+        ("digest-only manifest", digest_only),
+        (
+            "integer-to-boolean mutation",
+            lambda value: value["cases"]["water"].update(atom_count=True),
+        ),
+    ]
+    for label, mutate in mutations:
+        altered = copy.deepcopy(contract)
+        mutate(altered)
+        assert altered.get("contract_sha256") == contract["contract_sha256"], label
+        source = _commit_source_manifest(repo, altered)
+        official_head["oid"] = source
+        with pytest.raises(InvalidEvidence, match="exact contract"):
+            prepare_campaign._check_merged_source(source, contract)
+
+
 def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> dict:
     case = contract["cases"][row["case"]]
     raw = _file(tmp_path / "oracle.raw")
