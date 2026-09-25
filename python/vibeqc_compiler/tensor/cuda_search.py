@@ -326,7 +326,7 @@ def _full_operand_evaluations(
     if step.gemm == "packed":
         contract = gemm_contract(node)
         if contract is None or operand_index not in (0, 1):
-            raise AssertionError("packed GEMM must have exactly two contraction operands")
+            raise AssertionError(\n                "packed GEMM must have exactly two contraction operands"\n            )
         tile_m = min(plan.schedule.tile_m, contract.m)
         tile_n = min(plan.schedule.tile_n, contract.n)
         if operand_index == 0:
