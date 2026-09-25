@@ -1,112 +1,75 @@
-# Decision: admit serialized resource phases by peak live set
+# Decision: account serialized resource phases by live set
 
 Status: implemented
 Date: 2026-09-22
+Updated: 2026-09-26
 
 ## Problem
 
-DF automatic budgeting split one device envelope into value and response buckets
-even though value setup/SCF work and force-response workspace are sequential. A
-resident owner could therefore fit the real peak live set yet be rejected by the
-smaller value partition, silently selecting a slower source-backed route.
+Resource estimates must follow actual allocation lifetimes. Serialized setup,
+SCF, XC and force phases do not necessarily overlap, while prepared CUDA force
+owners can remain live across later replays. Treating every phase as
+simultaneously transient overstates memory; treating a retained owner as retired
+understates it.
 
-CUDA KS planning had the same structural risk: one-electron setup excess and
-generated-force staging were both added to the retained owner even though those
-transient phases do not overlap.
+An accompanying experiment promoted automatic single-system dense RHF DF from
+the bounded source-backed owner to a fully materialized resident owner whenever
+the total automatic envelope could fit that owner.
 
 ## Decision
 
-Treat the total automatic DF envelope as the admission cap for a complete
-resident value/SCF owner. Keep the explicit value/response split for bounded
-fallback and response scratch, but do not use the value slice alone to reject a
-resident owner whose value-phase peak fits the total envelope.
-DIIS admission follows the selected value-phase cap. Explicit positive budgets
-retain their existing bounded routing semantics.
+Keep the phase/lifetime accounting fixes:
 
-For KS, collapse serialized setup/SCF/XC/force transient storage to one maximum
-phase excess per memory space. Persistent state remains charged across all
-phases.
+- CPU serialized transient work is charged by its maximum live phase.
+- Prepared CUDA force host/device arenas are persistent across replays and are
+  charged separately from later transient setup/SCF work.
+- Public DF value/response budgets remain explicit replay identity and must stay
+  within the caller-visible total.
+- A bound raw DF response owner is not retired while force response still
+  borrows it.
 
-## Invariants
+Do **not** promote the default automatic DF route to the materialized resident
+owner. Automatic positive resolved DF allowances continue to use the bounded
+source-backed route. The provider-derived preferred peak and total-envelope
+resident-owner override were removed from PR #970 after device acceptance
+showed a reproducible large warm-start convergence regression.
 
-- Automatic resident DF admission remains single-item dense RHF only.
-- The existing DF tile planner must prove the complete owner fits.
-- Persistent owners are never treated as dead between phases.
-- Sequential transient workspaces are charged by maximum live excess, not sum.
-- Numerical equations, thresholds, precision, and force definitions are unchanged.
+Explicit user budgets, numerical thresholds, force definitions and the existing
+bounded planner remain unchanged.
 
-## Evidence
+## Device evidence for withdrawing automatic resident promotion
 
-Regression coverage constructs a DF case where the resident owner exceeds the
-legacy value slice but fits the total automatic envelope; resident admission
-must be retained. CUDA KS coverage independently makes setup and force
-transients large enough that summing them would reject a valid plan, then
-requires the phase-peak plan to fit exactly.
-The motivating RTX 5090 equal-basis DF investigation found that routing a
-768-AO case away from resident response exposed a bounded response path. The
-independent #940 charge-contraction fix removed its dominant scalar kernel; this
-decision prevents the resource split itself from selecting that slower owner
-when the actual phase peak fits.
+On RTX 5090 / CUDA 12.9.86, shared-checkpoint comparisons used identical
+base-generated checkpoint bytes and unchanged SCF tolerances.
 
-## Consequences
+- 96 / 192 / 384 AO passed the existing 2% same-work screen.
+- At 768 AO changed-warm, base/source-backed required 3 SCF iterations while
+  the resident candidate required 8 in every retained sample.
+- Median complete endpoints were 2.045572 s versus 3.300133 s, a +61.33%
+  regression.
+- The separate evolving-density campaign also showed a +11.42% 768-AO
+  changed-warm slowdown.
+- Independent energy/force and public-budget correctness gates still passed.
 
-Resource estimates describe lifetime rather than administrative sub-budgets.
-New DFT/response components should either declare explicit non-overlapping
-phases through ResourcePlan or collapse serialized scratch into a maximum phase
-excess before composition.
+This establishes a work-count/convergence-path change, not ordinary timing
+noise. The resident-owner optimization remains a separate #439 investigation;
+it must not be recovered by relaxing the 1e-12 energy or 1e-10 density
+convergence gates or by adding an AO-count magic threshold.
+
+## Remaining resource acceptance
+
+The integrated resource work retains the independently qualified public
+24/32/64 MiB energy/force/energy replay checks, including the genuine 24 MiB
+streamed-force case, and the retained CUDA force-owner lifetime accounting.
+
+The separate response-budget override behavior remains tracked in #1027.
 
 ## References
 
 - #439
-- #890
 - #940
-- `python/vibeqc_compiler/common/resources.py`
+- #970
+- #1027
 
-## Retained force-owner correction
-
-The CUDA force lifetime assumption is superseded by
-[retained KS force overlap](2026-09-22-retained-ks-force-overlap.md).
-The CPU transient-max and separate DF admission decisions remain unchanged.
-
-## Device acceptance and obsolete test assumptions
-
-The integrated scientific source `06aec739` passed independent PySCF cold/warm
-energy and complete-force gates at 96, 192, 384 and 768 AO on an allocated RTX
-5090 with CUDA 12.9.86. Explicit 24/32/64 MiB energy/force/energy replay also
-passed with both one-electron derivative providers. Every traced value peak
-and response scratch allocation fit its resolved allowance, and those
-allowances summed to the unchanged public budget. At 24 MiB, force replay
-actually streamed values while energy replay retained them.
-
-The older property-budget test still assumed a 50/50 split and a 32 MiB
-streaming transition. Both the integrated head and base `9d6d4423` fail those
-assertions because the accepted resource policy already allocates by workload.
-The test now verifies the public total, actual phase allowances, independently
-referenced forces, and a real 24 MiB resident/streamed transition. No production
-policy or scientific tolerance changed to make these assertions pass.
-
-Response-panel comparison must first prime the occupied owner and freeze its
-density. Comparing a first dense response with later occupied responses mixes
-different workspace demands. The existing 4/16/4 MiB limits remain checked;
-panel counts must be stable when returning to the same allowance and must not
-increase with a larger allowance. A strict decrease is inappropriate when one
-occupied panel already fits both limits.
-
-Matched performance comparisons must likewise control the warm density.
-Repeatedly updating each implementation's own density produced different SCF
-iteration counts and apparent warm regressions. Importing the same checkpoint
-bytes and freezing updates isolates the owner change without altering SCF
-tolerances. Checkpoint physical validation is explicit benchmark preparation
-outside endpoint timing; it is not an implicit production CPU reference.
-Retain the initial evolving-density samples alongside the controlled replay,
-rather than deleting the first observation or treating it as equivalent work.
-
-Detailed numerical, work-count, timing and sampled-memory evidence is attached
-to PR #970. Machine-local raw data and runners are retained under
-`/home/jzzeng/codes/vibeqc-ready-20260922/evidence/`.
-
-A separate 512 KiB diagnostic response-override probe reported 604,384 scratch
-bytes on both `9d6d4423` and `06aec739`. That pre-existing override-accounting
-issue is recorded in the acceptance discussion; this PR does not claim to fix
-or qualify that smaller diagnostic limit. It is distinct from the public
-positive-budget replay gates and the retained 4/16/4 MiB response test.
+Agent: ChatGPT
+Model: GPT-5.6 Sol
