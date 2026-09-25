@@ -30,7 +30,9 @@ def emit_b3lyp_device() -> str:
         if isinstance(primitive, ExactExchangePrimitive)
     ]
     if len(exchange) != 1 or exchange[0].operator != "full-range":
-        raise RuntimeError("B3LYP MethodIR lost its canonical full-range exchange primitive")
+        raise RuntimeError(
+            "B3LYP MethodIR lost its canonical full-range exchange primitive"
+        )
     body = emit_polarized_semilocal(
         semilocal,
         value_type="B3lypDeviceValue",
