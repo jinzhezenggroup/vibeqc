@@ -369,13 +369,15 @@ def test_production_domain_profiles_are_ingredient_driven_and_versioned() -> Non
     for capability in (lda, gga, mgga):
         profile = capability.production_domain_profile
         payload = profile.to_payload()
-        assert payload["schema"] == "vibeqc.libxc-production-domain-profile.v1"
-        assert payload["profile"] == "semilocal-boundary-matrix/v1"
+        assert payload["schema"] == "vibeqc.libxc-production-domain-profile.v2"
+        assert payload["profile"] == "semilocal-boundary-matrix/v2"
         assert payload["identity"] == profile.identity
         assert payload["spin_layouts"] == ["polarized", "unpolarized"]
         assert payload["outputs"] == ["energy", "vxc", "fxc"]
         assert "density/vacuum" in payload["case_ids"]
         assert "spin/zero-a" in payload["case_ids"]
+        assert "spin/zero-a" in payload["cases_by_spin"]["polarized"]
+        assert "spin/zero-a" not in payload["cases_by_spin"]["unpolarized"]
         assert "control/lazy-inactive-branch" in payload["case_ids"]
         assert "control/invalid-nonfinite" in payload["case_ids"]
 
