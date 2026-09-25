@@ -1,7 +1,7 @@
 {
   "path": "src/scf/cuda/direct_force_order3.cuh",
-  "role": "scientific",
+  "role": "runtime",
   "subsystem": "direct_integrals",
-  "reason": "Native Direct-HF total-order-three queue/screening/density/atom-scatter adapter around compiler-generated Weighted IntegralIR force helpers; it retains no independent ERI recurrence or hand-derived coordinate-response formula.",
+  "reason": "Runtime order-three force shell-task/canonicalization adapter around compiler-generated PPPS/DSPS/DPSS/FSSS force roots; owns screening, density folding and atom scatter only, with no independent ERI/derivative algebra.",
   "regions": []
 }
