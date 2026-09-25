@@ -691,9 +691,11 @@ jobs:
     name: CPU performance (CodSpeed)
     # PRs always run two representative endpoints and add targeted coverage when
     # changed paths touch advanced DFT machinery; master/manual runs the full
-    # endpoint set. Scheduled qualification already has expensive numerical
-    # coverage and does not need duplicate performance instrumentation.
-    if: github.event_name != 'schedule'
+    # endpoint set. Merge-group CI revalidates correctness only: performance was
+    # already measured on the PR and should not consume queue runner capacity.
+    # Scheduled qualification already has expensive numerical coverage and does
+    # not need duplicate performance instrumentation.
+    if: github.event_name != 'schedule' && github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
