@@ -27,10 +27,10 @@ void launch_independent_jk_bounds_kernel(dim3 grid, dim3 block, std::size_t shar
 void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, DeviceBatch batch, std::size_t system_begin,
                                   bool want_j, bool want_k, bool unrestricted, bool mixed_j,
-                                  DirectCoulombRange exchange_range,
-                                  double exchange_omega, double screening, const double* bounds,
-                                  const double* density, const double* beta, double* j_out,
-                                  double* ka_out, double* kb_out);
+                                  DirectCoulombRange exchange_range, double exchange_omega,
+                                  double screening, const double* bounds, const double* density,
+                                  const double* beta, double* j_out, double* ka_out,
+                                  double* kb_out);
 
 /** Preserve the exact public-AO consumer launch and borrowed allocations. */
 void launch_independent_jk_derivative_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

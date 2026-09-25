@@ -166,10 +166,10 @@ void launch_independent_jk_bounds_kernel(dim3 grid, dim3 block, std::size_t shar
 void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                   cudaStream_t stream, DeviceBatch batch, std::size_t system_begin,
                                   bool want_j, bool want_k, bool unrestricted, bool mixed_j,
-                                  DirectCoulombRange exchange_range,
-                                  double exchange_omega, double screening, const double* bounds,
-                                  const double* density, const double* beta, double* j_out,
-                                  double* ka_out, double* kb_out) {
+                                  DirectCoulombRange exchange_range, double exchange_omega,
+                                  double screening, const double* bounds, const double* density,
+                                  const double* beta, double* j_out, double* ka_out,
+                                  double* kb_out) {
   if (mixed_j)
     independent_jk_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, system_begin, want_j, want_k, unrestricted, integral_range(exchange_range),
