@@ -532,16 +532,6 @@ def test_noncurrent_native_ks_schema_is_rejected(monkeypatch: typing.Any) -> Non
         Calculator(method="pbe0-rks", ks_options=KsOptions(grid=CUSTOM))
 
 
-def test_missing_native_ks_schema_is_rejected(monkeypatch: typing.Any) -> None:
-    from vibeqc import _native
-
-    library = _native.load_library(device="cpu")
-    monkeypatch.setattr(library, "vibeqc_ks_options_version", None)
-    monkeypatch.setattr(_native, "load_library", lambda **kwargs: library)
-    with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
-        Calculator(method="pbe-rks", ks_options=KsOptions(grid=CUSTOM))
-
-
 @pytest.mark.parametrize(
     "method",
     (

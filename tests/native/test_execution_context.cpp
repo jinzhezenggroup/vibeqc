@@ -22,12 +22,38 @@ void verify_tracker() {
   require(execution.cuda_requested(), "execution.cuda_requested()");
   require(execution.device_id() == 7, "execution.device_id() == 7");
 
+  const auto initial = execution.resources();
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Host)
+               .has_value(),
+          "unobserved host pinned memory was reported as measured");
+  require(!initial
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
+               .has_value(),
+          "unobserved device pinned memory was reported as measured");
+
+  // A measured zero is real evidence and must remain distinguishable from an
+  // unobserved zero-valued storage field.
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                  vibeqc::runtime::ExecutionMemorySpace::Device, 0);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Host, 64);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Host, 32);
   execution.observe_numeric_peak(vibeqc::runtime::ExecutionMemorySpace::Device, 96);
   execution.observe_workspace_peak(vibeqc::runtime::ExecutionMemorySpace::Host, 24);
   execution.observe_workspace_peak(vibeqc::runtime::ExecutionMemorySpace::Device, 128);
   execution.observe_workspace_peak(vibeqc::runtime::ExecutionMemorySpace::Device, 80);
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                  vibeqc::runtime::ExecutionMemorySpace::Host, 48);
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::ProviderRetained,
+                                  vibeqc::runtime::ExecutionMemorySpace::Device, 144);
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::ProviderRetained,
+                                  vibeqc::runtime::ExecutionMemorySpace::Device, 96);
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::Staging,
+                                  vibeqc::runtime::ExecutionMemorySpace::Host, 40);
+  execution.observe_resource_peak(vibeqc::runtime::ExecutionResourceKind::CaptureRetained,
+                                  vibeqc::runtime::ExecutionMemorySpace::Device, 256);
 
   const auto resources = execution.resources();
   require(resources.host_numeric_peak_bytes == 64, "resources.host_numeric_peak_bytes == 64");
@@ -38,6 +64,42 @@ void verify_tracker() {
   require(resources.numeric_observations == 3, "resources.numeric_observations == 3");
   require(resources.workspace_observations == 3, "resources.workspace_observations == 3");
 
+  const auto& numeric = resources.observation(vibeqc::runtime::ExecutionResourceKind::Numeric);
+  require(numeric.host_peak_bytes == 64 && numeric.device_peak_bytes == 96,
+          "numeric resource detail lost host/device peaks");
+  require(numeric.host_observations == 2 && numeric.device_observations == 1,
+          "numeric resource detail lost per-space observation counts");
+  const auto& scratch = resources.observation(vibeqc::runtime::ExecutionResourceKind::Scratch);
+  require(scratch.host_peak_bytes == 24 && scratch.device_peak_bytes == 128,
+          "workspace compatibility did not map to scratch");
+  require(scratch.host_observations == 1 && scratch.device_observations == 2,
+          "scratch resource detail lost per-space observation counts");
+  const auto& pinned = resources.observation(vibeqc::runtime::ExecutionResourceKind::Pinned);
+  require(pinned.host_peak_bytes == 48 && pinned.host_observations == 1 &&
+              pinned.device_peak_bytes == 0 && pinned.device_observations == 1,
+          "pinned observation lost explicit memory-space identity");
+  const auto measured_pinned_host = resources.measured_peak_bytes(
+      vibeqc::runtime::ExecutionResourceKind::Pinned, vibeqc::runtime::ExecutionMemorySpace::Host);
+  const auto measured_pinned_device =
+      resources.measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device);
+  require(measured_pinned_host.has_value() && *measured_pinned_host == 48,
+          "measured host pinned peak was not published");
+  require(measured_pinned_device.has_value() && *measured_pinned_device == 0,
+          "measured zero device pinned peak was conflated with unknown");
+  const auto& provider =
+      resources.observation(vibeqc::runtime::ExecutionResourceKind::ProviderRetained);
+  require(provider.device_peak_bytes == 144 && provider.device_observations == 2 &&
+              provider.host_observations == 0,
+          "provider-retained observation lost high-water/count semantics");
+  const auto& staging = resources.observation(vibeqc::runtime::ExecutionResourceKind::Staging);
+  require(staging.host_peak_bytes == 40 && staging.host_observations == 1,
+          "staging observation lost host accounting");
+  const auto& capture =
+      resources.observation(vibeqc::runtime::ExecutionResourceKind::CaptureRetained);
+  require(capture.device_peak_bytes == 256 && capture.device_observations == 1,
+          "capture-retained observation lost device accounting");
+
   execution.reset_resources();
   const auto reset = execution.resources();
   require(reset.host_numeric_peak_bytes == 0, "reset.host_numeric_peak_bytes == 0");
@@ -46,6 +108,21 @@ void verify_tracker() {
   require(reset.device_workspace_peak_bytes == 0, "reset.device_workspace_peak_bytes == 0");
   require(reset.numeric_observations == 0, "reset.numeric_observations == 0");
   require(reset.workspace_observations == 0, "reset.workspace_observations == 0");
+  require(reset.observation(vibeqc::runtime::ExecutionResourceKind::Pinned).host_observations == 0,
+          "reset retained a pinned observation");
+  require(reset.observation(vibeqc::runtime::ExecutionResourceKind::ProviderRetained)
+                  .device_observations == 0,
+          "reset retained a provider observation");
+  require(reset.observation(vibeqc::runtime::ExecutionResourceKind::Staging).host_observations == 0,
+          "reset retained a staging observation");
+  require(reset.observation(vibeqc::runtime::ExecutionResourceKind::CaptureRetained)
+                  .device_observations == 0,
+          "reset retained a capture observation");
+  require(!reset
+               .measured_peak_bytes(vibeqc::runtime::ExecutionResourceKind::Pinned,
+                                    vibeqc::runtime::ExecutionMemorySpace::Device)
+               .has_value(),
+          "reset retained measured-state identity for pinned device memory");
 }
 
 // Exercise the actual prepared owners so a disconnected telemetry adapter
@@ -82,6 +159,11 @@ void verify_prepared_resources() {
       const auto snapshot = owner->execution_resources();
       require(snapshot.device_numeric_peak_bytes == 0 && snapshot.device_workspace_peak_bytes == 0,
               "CPU endpoint fabricated device observations");
+      require(snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Numeric)
+                          .device_observations == 0 &&
+                  snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Scratch)
+                          .device_observations == 0,
+              "CPU endpoint fabricated device resource observations");
       if (method == VIBEQC_METHOD_RHF) {
         require(snapshot.numeric_observations == 0 && snapshot.host_numeric_peak_bytes == 0,
                 "HF without telemetry must remain explicitly unobserved");
@@ -92,10 +174,17 @@ void verify_prepared_resources() {
       require(snapshot.numeric_observations == replay && snapshot.host_numeric_peak_bytes > 0 &&
                   snapshot.host_numeric_peak_bytes == diagnostic->numeric_capacity_bytes,
               "CC numeric observation lost the method diagnostic or replay count");
+      require(
+          snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Numeric).host_observations ==
+              replay,
+          "CC numeric observation lost per-space accounting");
       if (method == VIBEQC_METHOD_RCCSD_T) {
         require(snapshot.workspace_observations == replay &&
                     snapshot.host_workspace_peak_bytes == diagnostic->ccsd_t_workspace_bytes,
                 "triples workspace observation lost its source semantics");
+        require(snapshot.observation(vibeqc::runtime::ExecutionResourceKind::Scratch)
+                        .host_observations == replay,
+                "triples scratch observation lost per-space accounting");
       } else {
         require(snapshot.workspace_observations == 0,
                 "RCCSD numeric capacity was relabelled as scratch workspace");

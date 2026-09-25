@@ -9,15 +9,17 @@ from .paths import PACKAGE
 
 # Generic backend services never reach into a scientific subsystem. TensorIR
 # and IntegralIR stay independent; the bounded Array API frontend may depend on
-# TensorIR but TensorIR never depends on that frontend. XC reuses scalar algebra
-# and DFT ingredients. Method composition sits above XC/TensorIR; custom
-# derivative rules emit tensor graphs and may compose geometry lowerings.
+# TensorIR but TensorIR never depends on that frontend. Periodic cell identity
+# is shared across method stacks but only depends on common services. XC reuses
+# scalar algebra and DFT ingredients. Method composition sits above XC/TensorIR;
+# custom derivative rules emit tensor graphs and may compose geometry lowerings.
 ALLOWED = {
     "common": {"common"},
     "integral": {"integral", "common"},
     "tensor": {"tensor", "common"},
     "array_api": {"array_api", "tensor"},
     "geometry": {"geometry", "tensor", "common"},
+    "periodic": {"periodic", "common"},
     "dft": {"dft", "common"},
     "xc": {"xc", "integral", "dft", "common"},
     "method": {"method", "geometry", "xc", "tensor", "common"},
@@ -35,6 +37,8 @@ RUNTIME_ADAPTERS = {
 # AO lowering reuses exactly these neutral facilities, as XC already does;
 # it must not acquire integral recurrence, SCF, or schedule dependencies.
 SCALAR_CLIENTS = {
+    "dft.xc_bilinear": {"vibeqc_compiler.integral.expr"},
+    "dft.xc_contraction_cuda": {"vibeqc_compiler.integral.cuda"},
     "dft.ao_cuda": {
         "vibeqc_compiler.integral.expr",
         "vibeqc_compiler.integral.cuda",

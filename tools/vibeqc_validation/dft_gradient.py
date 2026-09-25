@@ -12,7 +12,10 @@ from itertools import pairwise
 import numpy as np
 from vibeqc._dft_gradient import StableGridMotion
 from vibeqc_compiler.dft import NativeAO
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import (
+    ContractionProgram,
+    ExternalPointContraction,
+)
 from vibeqc_compiler.xc.spec import FunctionalSpec
 
 
@@ -118,7 +121,11 @@ def finite_difference_xc_directional(
     ):
         raise ValueError("oracle requires at least three decreasing positive steps")
 
-    energy = ContractionProgram(functional, "energy")
+    energy = (
+        ContractionProgram(functional, "energy")
+        if point_energy is None
+        else ExternalPointContraction(functional, "energy")
+    )
     estimates = []
     for step in steps:
         values = []

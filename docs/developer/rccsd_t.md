@@ -3,10 +3,10 @@
 `tools.vibeqc_cc/triples.py` provides the auditable standard closed-shell
 non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
 generated native CPU energy evaluator, and generated response paths share that
-definition. `VIBEQC_METHOD_RCCSD_T` now has a native/public CPU energy owner and
-homogeneous prepared-batch support; public analytic forces and the native CUDA
-owner remain fail-closed. PySCF is used only by pinned validation tooling and is
-never a runtime dependency.
+definition. `VIBEQC_METHOD_RCCSD_T` now has native/public CPU energy and
+analytic-force ownership plus a native CUDA energy owner, with homogeneous
+prepared-batch support. CUDA analytic forces remain fail-closed. PySCF is used
+only by pinned validation tooling and is never a runtime dependency.
 
 ## Mathematical contract
 
@@ -210,9 +210,31 @@ projection is applied after assembly.
 Pinned PySCF 2.14.0 analytic gradients for H2O and NH3 are independent acceptance
 oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
 finite differences and omission controls remain in
-`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU energy
-owner and homogeneous prepared batch are covered by
-`tests/python/test_rccsdt_public.py`; native/public force publication remains
-#155 C even though the qualified CPU response/gradient TensorIR execution is now
-native. The ownership rationale is recorded in
+`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU
+energy/force owner and CUDA energy owner, including homogeneous prepared batches,
+are covered by `tests/python/test_rccsdt_public.py`; CUDA force publication
+remains a separate capability. The ownership rationale is recorded in
 [the complete-gradient Agent Note](../../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).
+
+## Native CUDA public interface
+
+`Calculator(method="ccsd(t)", device="cuda", basis="sto-3g")` executes native
+CUDA RHF, the existing conventional MO-block preparation, resident RCCSD with
+physical residual replay, and the generated CUDA standard `(T)` evaluator.
+Energy single points and homogeneous prepared batches use this owner. The CPU
+analytic-force owner is unchanged; CUDA force requests remain explicitly
+unsupported.
+
+The existing MO provider retains its explicit host preparation/staging contract.
+Accepted CC amplitudes and MO blocks are host-owned between the resident CC solve
+and `(T)`; the triples owner stages those inputs once. This is GPU execution of
+the correlation stages, not an end-to-end device-residency or performance claim.
+
+The generated evaluator shares the CPU audited permutation inventory, evaluates
+the triangular virtual domain, and uses fixed-order block/final reductions.
+Its bounded workspace is charged against the remaining correlation budget and
+reported through the execution-resource telemetry.
+
+Exact-head public CUDA qualification is enabled with
+`VIBEQC_RCCSDT_CUDA_TEST=1` and exercises both single-point and prepared-batch
+energy paths together with the independent generated-evaluator oracle.

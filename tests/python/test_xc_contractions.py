@@ -8,7 +8,7 @@ from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.dft.fixtures import basis_arguments
 from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.xc import UnsupportedXC, functional
-from vibeqc_compiler.xc.contractions import ContractionProgram
+from vibeqc_compiler.xc.contractions import ContractionProgram, ExternalPointContraction
 from vibeqc_compiler.xc.integration_fixtures import load_integration_fixture as fixture
 
 
@@ -510,6 +510,128 @@ def test_mixed_xc_geometry_matches_directional_derivative_of_analytic_gradient(
         mixed_weights=mixed_weights,
     )
     np.testing.assert_allclose(frozen.total, swapped.total, atol=2e-11, rtol=2e-10)
+
+
+@pytest.mark.parametrize("name", ["LDA_XC_PW", "PBE"])
+def test_external_rks_mixed_cartesian_coefficients_match_generated_graph(
+    name: str,
+) -> None:
+    meta, data, grid = fixture("h2")
+    args = basis_arguments(meta)
+    density = data["density_total"]
+    spec = functional(name, spin="unpolarized")
+    generated = ContractionProgram(spec, "geometry")
+    external = ExternalPointContraction(spec, "geometry")
+    second = ContractionProgram(spec, "response")
+    rng = np.random.default_rng(180964)
+    delta_density = rng.normal(size=density.shape) * 0.002
+    delta_density = 0.5 * (delta_density + delta_density.T)
+    left_centers = rng.normal(size=(len(args["atoms"]), 3)) * 0.03
+    right_centers = rng.normal(size=left_centers.shape) * 0.025
+    left_points = rng.normal(size=grid.points.shape) * 0.02
+    right_points = rng.normal(size=grid.points.shape) * 0.018
+    left_weights = rng.normal(size=grid.weights.shape) * 2e-4
+    right_weights = rng.normal(size=grid.weights.shape) * 1.5e-4
+    mixed_weights = rng.normal(size=grid.weights.shape) * 4e-5
+
+    with NativeAO(**args) as basis:
+        counts = [
+            2 * shell.angular_momentum + 1
+            if basis.representation == "real_spherical"
+            else (shell.angular_momentum + 1) * (shell.angular_momentum + 2) // 2
+            for shell in basis.shells
+        ]
+        ao_atoms = np.repeat([shell.atom_index for shell in basis.shells], counts)
+        full_jets = basis.evaluate(
+            grid.points, generated.contract.ingredients.ao_order + 2
+        )
+        expected = generated.mixed_geometry_directional(
+            full_jets,
+            density,
+            grid.weights,
+            ao_atoms=ao_atoms,
+            left_centers=left_centers,
+            left_points=left_points,
+            left_weights=left_weights,
+            right_centers=right_centers,
+            right_points=right_points,
+            right_weights=right_weights,
+            mixed_weights=mixed_weights,
+            delta_density=delta_density,
+        )
+        _, _, features, right = external.geometry_feature_direction(
+            full_jets,
+            density,
+            ao_atoms=ao_atoms,
+            center_motion=right_centers,
+            point_motion=right_points,
+            delta_density=delta_density,
+        )
+
+    rows = second.scalar_values(features)
+    gradient = second._gradient(rows, len(grid.points))
+    base_gradient = features.get("gradient")
+    if base_gradient is not None:
+        base_gradient = base_gradient.sum(axis=0)
+    base_coefficients = external.coefficients.evaluate(base_gradient, gradient)
+
+    right_packed = external.pack_features(right)
+    directional_gradient = np.zeros_like(gradient)
+    indices = second.contract.ingredients.feature_indices
+    for i in indices:
+        for j in indices:
+            directional_gradient[i] += rows[(min(i, j), max(i, j))] * right_packed[j]
+    response_coefficients = second.response_coefficients
+    assert response_coefficients is not None
+    right_cartesian_gradient = right.get("gradient")
+    if right_cartesian_gradient is not None:
+        right_cartesian_gradient = right_cartesian_gradient.sum(axis=0)
+    directional_coefficients = response_coefficients.evaluate(
+        base_gradient,
+        gradient,
+        delta_gradient=right_cartesian_gradient,
+        delta_v=directional_gradient,
+    )
+    actual = external.mixed_geometry_from_rks_cartesian_coefficients(
+        full_jets,
+        density,
+        grid.weights,
+        ao_atoms=ao_atoms,
+        left_centers=left_centers,
+        left_points=left_points,
+        left_weights=left_weights,
+        right_centers=right_centers,
+        right_points=right_points,
+        right_weights=right_weights,
+        mixed_weights=mixed_weights,
+        energy=rows[()],
+        rho_coefficients=base_coefficients["rho"][0],
+        directional_rho_coefficients=directional_coefficients["rho"][0],
+        gradient_coefficients=base_coefficients.get("gradient", [None])[0],
+        directional_gradient_coefficients=directional_coefficients.get(
+            "gradient", [None]
+        )[0],
+        delta_density=delta_density,
+    )
+
+    np.testing.assert_allclose(
+        [
+            actual.mixed_measure,
+            actual.left_measure_right_feature,
+            actual.right_measure_left_feature,
+            actual.feature_mixed,
+            actual.total,
+        ],
+        [
+            expected.mixed_measure,
+            expected.left_measure_right_feature,
+            expected.right_measure_left_feature,
+            expected.feature_mixed,
+            expected.total,
+        ],
+        atol=2e-12,
+        rtol=2e-11,
+    )
 
 
 def test_contraction_requests_reject_unsupported_axes_domains_and_directions() -> None:

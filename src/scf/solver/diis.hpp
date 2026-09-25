@@ -1,6 +1,7 @@
 #ifndef VIBEQC_SCF_SOLVER_DIIS_HPP
 #define VIBEQC_SCF_SOLVER_DIIS_HPP
 #include "scf/reference/linalg.hpp"
+#include "solver/diis_history.hpp"
 
 namespace vibeqc::scf::solver {
 using reference::Matrix;
@@ -20,10 +21,8 @@ class Diis {
   Matrix update(const Matrix& fock, const Matrix& residual);
 
  private:
-  std::size_t capacity_;
+  ::vibeqc::solver::detail::DiisHistory history_;
   bool normalize_metric_{};
-  std::vector<Matrix> focks_;
-  std::vector<Matrix> residuals_;
 };
 }  // namespace vibeqc::scf::solver
 #endif

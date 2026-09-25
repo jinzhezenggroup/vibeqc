@@ -11,7 +11,7 @@
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace {
@@ -69,8 +69,8 @@ void verify_direct_jk_target_policy() {
   require(production.persistent_quartet_warps_per_sm == 8U,
           "resource-rich targets preserve the qualified eight-worker schedule");
   require(direct_jk_bounded_streaming_task_capacity_limit(production, sizeof(GeneratedShellTask)) ==
-              8U * 1024U * 1024U,
-          "5090 bounded streaming preserves the qualified eight-million-task page");
+              (std::size_t{3} << 29) / sizeof(GeneratedShellTask),
+          "5090 bounded streaming charges the current task ABI against its page cap");
 
   CudaTargetInfo synthetic;
   synthetic.warp_size = 32;
@@ -85,9 +85,10 @@ void verify_direct_jk_target_policy() {
           "a 2-GiB target independently bounds reusable streaming scratch");
   require(constrained.persistent_quartet_warps_per_sm == 2U,
           "a 64-thread synthetic SM cannot inherit eight resident warp workers");
-  require(direct_jk_bounded_streaming_task_capacity_limit(constrained,
-                                                          sizeof(GeneratedShellTask)) == 699050U,
-          "bounded task capacity follows only its own constrained scratch budget");
+  require(
+      direct_jk_bounded_streaming_task_capacity_limit(constrained, sizeof(GeneratedShellTask)) ==
+          (std::size_t{128} << 20) / sizeof(GeneratedShellTask),
+      "bounded task capacity follows only its own constrained scratch budget");
 
   const CudaTargetInfo unknown{};
   const auto fallback = resolve_direct_jk_schedule_policy(unknown);
@@ -106,9 +107,10 @@ void verify_direct_jk_target_policy() {
   DirectJkTuningProfile fixed_only;
   fixed_only.fixed_topology.maximum_arena_bytes = std::size_t{64} << 20;
   const auto fixed_tuned = resolve_direct_jk_schedule_policy(qualified, fixed_only);
-  require(direct_jk_bounded_streaming_task_capacity_limit(
-              fixed_tuned, sizeof(GeneratedShellTask)) == 8U * 1024U * 1024U,
-          "tightening fixed-topology storage must not shrink bounded streaming pages");
+  require(
+      direct_jk_bounded_streaming_task_capacity_limit(fixed_tuned, sizeof(GeneratedShellTask)) ==
+          (std::size_t{3} << 29) / sizeof(GeneratedShellTask),
+      "tightening fixed-topology storage must not shrink bounded streaming pages");
 
   DirectJkTuningProfile bounded_only;
   bounded_only.bounded_streaming.maximum_arena_bytes = std::size_t{96} << 20;
@@ -116,9 +118,10 @@ void verify_direct_jk_target_policy() {
   require(bounded_tuned.fixed_topology.arena_maximum_bytes ==
               production.fixed_topology.arena_maximum_bytes,
           "tightening bounded scratch must not alter fixed-topology admission");
-  require(direct_jk_bounded_streaming_task_capacity_limit(bounded_tuned,
-                                                          sizeof(GeneratedShellTask)) == 524288U,
-          "bounded streaming remains independently tunable");
+  require(
+      direct_jk_bounded_streaming_task_capacity_limit(bounded_tuned, sizeof(GeneratedShellTask)) ==
+          (std::size_t{96} << 20) / sizeof(GeneratedShellTask),
+      "bounded streaming remains independently tunable");
 
   using vibeqc::scf::cuda_policy::estimate_small_hf_workload;
   using vibeqc::scf::cuda_policy::resolve_small_hf_profitability;

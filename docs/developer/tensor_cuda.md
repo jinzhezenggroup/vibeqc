@@ -142,6 +142,16 @@ small irregular contractions; it is not a substitute for cuBLAS on regular
 large GEMMs. Empty output domains launch no kernel and empty reduction domains
 produce zero. Index expressions remain compilable for zero extents.
 
+`TensorSchedule(stream_reductions=True, streamed_gemm_reduction=True)` is an
+explicit memory-oriented candidate for einsums that consume streamed producer
+values. It evaluates those contractions with the existing generated reduction
+kernel instead of repacking the virtual producer for every GEMM panel. It uses
+the same TensorIR equation, runtime index maps, finite checks, and existing
+plan/artifact identity machinery. The ordinary schedule and earlier streaming
+schedule remain available. The candidate can recompute expensive virtual
+producers, so it is absent from the default search space. Complete endpoint
+qualification is required for each workload before use as a performance choice.
+
 Generated kernels cover ordered addition, products, division/denominators,
 transpose, logical reshape, slice, gather (including repeated coordinates),
 reduction, explicit broadcast, and the ragged `indexed_gather`, `scatter_add`

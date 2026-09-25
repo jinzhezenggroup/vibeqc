@@ -136,9 +136,7 @@ void validate_system(const MethodDefinition& definition, const core::System& sys
 
 void validate_option_family(const MethodDefinition& definition,
                             const vibeqc_method_descriptor& descriptor) {
-  if (descriptor.struct_size >=
-          offsetof(vibeqc_method_descriptor, ks_options) + sizeof(descriptor.ks_options) &&
-      descriptor.ks_options &&
+  if (descriptor.ks_options &&
       definition.provider.domain.family != VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "KS options require the DFT method family");
 }
