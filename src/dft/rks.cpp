@@ -969,6 +969,28 @@ ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& ba
                  program.identifier, nullptr);
 }
 
+ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                                   const dft::MolecularGrid& grid, const ScfOptions& options,
+                                   dft::SemilocalFamily family, unsigned spin_channels,
+                                   const std::vector<double>* initial_density) {
+  if (spin_channels != 1U && spin_channels != 2U)
+    throw std::invalid_argument("curated semilocal KS requires one or two spin channels");
+  const bool unrestricted = spin_channels == 2U;
+  switch (family) {
+    case dft::SemilocalFamily::Lda:
+      return unrestricted ? run_lda_uks(plan, basis, grid, options, initial_density)
+                          : run_lda_rks(plan, basis, grid, options, initial_density);
+    case dft::SemilocalFamily::Pbe:
+      return unrestricted ? run_pbe_uks(plan, basis, grid, options, initial_density)
+                          : run_pbe_rks(plan, basis, grid, options, initial_density);
+    case dft::SemilocalFamily::R2scan:
+      return unrestricted ? run_r2scan_uks(plan, basis, grid, options, initial_density)
+                          : run_r2scan_rks(plan, basis, grid, options, initial_density);
+    default:
+      throw std::invalid_argument("composed semilocal family requires its dedicated KS path");
+  }
+}
+
 ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                         const dft::MolecularGrid& grid, const ScfOptions& options,
                         const std::vector<double>* initial_density) {
