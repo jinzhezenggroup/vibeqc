@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <span>
 #include <stdexcept>
 
@@ -52,16 +53,19 @@ inline ResidentGmresWorkspace resident_gmres_workspace(const GmresPlan& plan) {
   if (plan.restart != expected.restart || plan.workspace_bytes != expected.workspace_bytes)
     throw std::invalid_argument("resident GMRES plan does not match its dimensions and options");
 
-  if (plan.restart > (static_cast<std::size_t>(-1) - 10) / 2)
+  constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+  if (plan.restart > (maximum - 10) / 2)
     throw std::overflow_error("resident GMRES vector-slot count overflow");
   const auto slots = 2 * plan.restart + 10;
 
   // H[(restart+1),restart], cosine, sine, transformed and coefficients.
-  if (plan.restart &&
-      plan.restart > (static_cast<std::size_t>(-1) - 5 * plan.restart - 1) / plan.restart)
+  if (plan.restart && plan.restart > maximum / plan.restart)
     throw std::overflow_error("resident GMRES scalar workspace overflow");
-  const auto scalar_elements = plan.restart * plan.restart + 5 * plan.restart + 1;
-  if (scalar_elements > static_cast<std::size_t>(-1) / sizeof(double))
+  const auto square = plan.restart * plan.restart;
+  if (plan.restart > (maximum - square - 1) / 5)
+    throw std::overflow_error("resident GMRES scalar workspace overflow");
+  const auto scalar_elements = square + 5 * plan.restart + 1;
+  if (scalar_elements > maximum / sizeof(double))
     throw std::overflow_error("resident GMRES scalar workspace overflow");
   return {slots, scalar_elements * sizeof(double)};
 }
