@@ -2,15 +2,16 @@
 
 import importlib.util
 import io
+from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def _module():
+def _module() -> ModuleType:
     path = ROOT / "benchmarks/test_cumetal_d4_codspeed.py"
     spec = importlib.util.spec_from_file_location("d4_replay_harness", path)
     assert spec is not None and spec.loader is not None
@@ -50,7 +51,7 @@ def test_final_result_is_checked_outside_the_timed_target(valid: bool) -> None:
         if not valid:
             raise RuntimeError("D4 replay numerical validation failed")
 
-    def benchmark(target):
+    def benchmark(target: Callable[[], float]) -> float:
         nonlocal inside
         inside = True
         result = target()
