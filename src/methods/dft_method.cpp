@@ -246,8 +246,9 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.d4_correction)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "PBE-D4 currently requires strict FP64");
   if (descriptor.precision_mode == VIBEQC_PRECISION_AUTO &&
-      execution_plan.semilocal_family == dft::SemilocalFamily::R2scan)
-    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "r2SCAN currently requires strict FP64");
+      (execution_plan.semilocal_family == dft::SemilocalFamily::R2scan ||
+       execution_plan.semilocal_family == dft::SemilocalFamily::Wb97mv))
+    throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED, "meta-GGA DFT currently requires strict FP64");
   options.precision_mode = descriptor.precision_mode;
 
   scf::FockBuildSpec fock;
@@ -339,26 +340,30 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     }
   }
 
+  const bool complete_wb97mv = execution_plan.semilocal_family == dft::SemilocalFamily::Wb97mv &&
+                               execution_plan.range_exchange && execution_plan.nonlocal_correlation;
+  const bool cuda_wb97mv = backend == VIBEQC_BACKEND_CUDA && complete_wb97mv;
   const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
                                 options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
-  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA)
+  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "scaled/global-hybrid KS currently requires CPU");
+                      "CUDA scaled/hybrid KS is qualified only for complete WB97M-V");
   if (execution_plan.nonlocal_correlation &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Wb97mv)
     throw MethodError(
         VIBEQC_STATUS_NOT_IMPLEMENTED,
         "self-consistent nonlocal correlation has no lowerer for this semilocal graph");
-  if (execution_plan.nonlocal_correlation && backend != VIBEQC_BACKEND_CPU_REFERENCE)
+  if (execution_plan.nonlocal_correlation && backend != VIBEQC_BACKEND_CPU_REFERENCE &&
+      !cuda_wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "self-consistent nonlocal correlation currently requires CPU");
+                      "CUDA self-consistent nonlocal correlation is qualified only for WB97M-V");
   if (options.precision_mode == VIBEQC_PRECISION_AUTO && execution_plan.nonlocal_correlation)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "self-consistent nonlocal correlation currently requires strict FP64");
-  if (execution_plan.range_exchange && backend != VIBEQC_BACKEND_CPU_REFERENCE)
+  if (execution_plan.range_exchange && backend != VIBEQC_BACKEND_CPU_REFERENCE && !cuda_wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "native KS range-separated exchange currently requires CPU");
+                      "CUDA range-separated KS is qualified only for complete WB97M-V");
   if (execution_plan.range_exchange &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Wb97mv)
@@ -384,11 +389,13 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     if (!execution_plan.range_exchange || !execution_plan.nonlocal_correlation)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                         "WB97M-V requires complete B97M + SR/LR + VV10 primitives");
+    const auto correction_backend =
+        backend == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu;
     const auto correction =
         scf::resolve_fock_build(scf::make_rsh_correction_fock_spec(
                                     fock.spin, execution_plan.short_range_exchange,
                                     execution_plan.long_range_exchange, execution_plan.range_omega),
-                                scf::FockBackend::Cpu, options.screening_tolerance);
+                                correction_backend, options.screening_tolerance);
     scf::require_wb97mv_composition(*options.resolved_fock_build, correction,
                                     execution_plan.nonlocal_parameters);
   }
@@ -577,13 +584,22 @@ class KsPreparedCalculation final : public PreparedCalculation {
         grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
     if (execution_plan_.range_exchange) prepare_range_exchange(device);
-#if VIBEQC_HAS_CUDA
-    if (backend_ == VIBEQC_BACKEND_CUDA)
-      cuda_ = std::make_unique<dft::CudaKsPlan>(fock_, basis_, grid_, options_,
-                                                execution_plan_.semilocal_family,
-                                                options_.xc_tile_points);
-#endif
     if (execution_plan_.nonlocal_correlation) prepare_nonlocal(device);
+#if VIBEQC_HAS_CUDA
+    if (backend_ == VIBEQC_BACKEND_CUDA) {
+      if (execution_plan_.semilocal_family == dft::SemilocalFamily::Wb97mv &&
+          options_.xc_execution_schedule != scf::ScfOptions::XcExecutionSchedule::DeviceFused)
+        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                          "public CUDA WB97M-V requires device-fused XC/nonlocal execution");
+      const auto* range = range_strategy_ ? &*range_strategy_ : nullptr;
+      const auto domain = execution_plan_.semilocal_family == dft::SemilocalFamily::Wb97mv
+                              ? dft::nlc::Vv10DensityDomain::MolecularV1
+                              : dft::nlc::Vv10DensityDomain::StrictPositive;
+      cuda_ = std::make_unique<dft::CudaKsPlan>(
+          fock_, basis_, grid_, options_, execution_plan_.semilocal_family, options_.xc_tile_points,
+          range, nonlocal_.get(), domain);
+    }
+#endif
     if (execution_plan_.d4_correction) prepare_d4(device);
     runtime::sample_cpu_capacity(host_numeric_capacity());
   }
@@ -904,13 +920,16 @@ class KsPreparedCalculation final : public PreparedCalculation {
   void prepare_range_exchange(int device) {
     const auto spin =
         unrestricted(execution_plan_) ? scf::FockSpin::Unrestricted : scf::FockSpin::Restricted;
-    auto strategy = scf::resolve_fock_build(
+    const auto fock_backend =
+        backend_ == VIBEQC_BACKEND_CUDA ? scf::FockBackend::Cuda : scf::FockBackend::Cpu;
+    range_strategy_ = scf::resolve_fock_build(
         scf::make_rsh_correction_fock_spec(spin, execution_plan_.short_range_exchange,
                                            execution_plan_.long_range_exchange,
                                            execution_plan_.range_omega),
-        scf::FockBackend::Cpu, options_.screening_tolerance);
-    range_correction_ =
-        std::make_unique<scf::PreparedFockPlan>(system_, nullptr, std::move(strategy), device);
+        fock_backend, options_.screening_tolerance);
+    if (fock_backend == scf::FockBackend::Cpu)
+      range_correction_ =
+          std::make_unique<scf::PreparedFockPlan>(system_, nullptr, *range_strategy_, device);
   }
 
   void prepare_nonlocal(int device) {
@@ -968,6 +987,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
   scf::ScfOptions options_;
   vibeqc_backend backend_;
   scf::PreparedFockPlan fock_;
+  std::optional<scf::ResolvedFockBuild> range_strategy_;
   std::unique_ptr<scf::PreparedFockPlan> range_correction_;
   dft::AoBasis basis_;
   dft::MolecularGrid grid_;

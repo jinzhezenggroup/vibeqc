@@ -12,10 +12,17 @@
 #if defined(VIBEQC_TEST_HOOKS)
 namespace {
 thread_local cudaError_t fail_next_xc_status = cudaSuccess;
+thread_local cudaError_t fail_next_nonlocal_xc_status = cudaSuccess;
 }  // namespace
 extern "C" void xc_cuda_fail_next_runtime_for_test_v1() { fail_next_xc_status = cudaErrorUnknown; }
 extern "C" void xc_cuda_fail_next_allocation_for_test_v1() {
   fail_next_xc_status = cudaErrorMemoryAllocation;
+}
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1() {
+  fail_next_nonlocal_xc_status = cudaErrorUnknown;
+}
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1() {
+  fail_next_nonlocal_xc_status = cudaErrorMemoryAllocation;
 }
 #endif
 
@@ -251,9 +258,31 @@ void CudaXcPlan::enqueue_nonlocal_potential(std::uint64_t generation,
       overlaps_arena(total_gradient, gradient_bytes) || overlaps_arena(vrho, scalar_bytes) ||
       overlaps_arena(vsigma, scalar_bytes) || overlaps_arena(nonlocal_energy, sizeof(double)))
     throw std::invalid_argument("CUDA nonlocal AO inputs alias the semilocal XC workspace");
-  cuda_xc_detail::enqueue_nonlocal_potential(layout_, stream_, basis_, points_, effective_weights,
-                                             total_gradient, vrho, vsigma, nonlocal_energy, ao_,
-                                             coefficients_, potential_, totals_, error_);
+
+  // The nonlocal phase mutates the semilocal potential/totals in place.
+  // Revoke the generation before the first asynchronous mutation so a launch
+  // failure can never expose a partially accumulated result.
+  generations_.revoke(generation);
+  try {
+#if defined(VIBEQC_TEST_HOOKS)
+    const auto injected = fail_next_nonlocal_xc_status;
+    fail_next_nonlocal_xc_status = cudaSuccess;
+    vibeqc_tensor::cuda_check(injected);
+#endif
+    cuda_xc_detail::enqueue_nonlocal_potential(layout_, stream_, basis_, points_, effective_weights,
+                                               total_gradient, vrho, vsigma, nonlocal_energy, ao_,
+                                               coefficients_, potential_, totals_, error_);
+    generations_.commit(generation);
+  } catch (const vibeqc_tensor::DeviceAllocationError&) {
+    (void)cudaStreamSynchronize(stream_);
+    throw std::bad_alloc();
+  } catch (const vibeqc_tensor::DeviceRuntimeError& error) {
+    (void)cudaStreamSynchronize(stream_);
+    throw vibeqc::Error(VIBEQC_STATUS_CUDA_ERROR, error.what());
+  } catch (...) {
+    (void)cudaStreamSynchronize(stream_);
+    throw;
+  }
 }
 
 void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,

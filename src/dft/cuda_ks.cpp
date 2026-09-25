@@ -59,6 +59,25 @@ void check(vibeqc_status status, const std::string& detail) {
   if (status == VIBEQC_STATUS_INVALID_ARGUMENT) throw std::invalid_argument(detail);
   if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
 }
+template <class Function>
+void run_resident_nonlocal_cuda(Function function) {
+  try {
+    function();
+  } catch (const std::bad_alloc&) {
+    throw;
+  } catch (const std::invalid_argument&) {
+    throw;
+  } catch (const std::overflow_error&) {
+    throw;
+  } catch (const vibeqc::Error&) {
+    throw;
+  } catch (const std::runtime_error& error) {
+    // The resident VV10 seam uses runtime::cuda_resource_check internally.
+    // Translate its untyped CUDA runtime failures at the KS owner boundary;
+    // allocation failures already arrive as std::bad_alloc.
+    throw vibeqc::Error(VIBEQC_STATUS_CUDA_ERROR, error.what());
+  }
+}
 std::size_t product(std::size_t a, std::size_t b) {
   if (b && a > std::numeric_limits<std::size_t>::max() / b)
     throw std::overflow_error("CUDA KS storage overflow");
@@ -606,6 +625,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.dft_diagnostic.grid_points = xc_layout.npoint;
     output.dft_diagnostic.tile_points = xc_layout.tile_points;
     output.dft_diagnostic.ao_order = functional == SemilocalFamily::Lda ? 0 : 1;
+    output.dft_diagnostic.scf_domain_version = semilocal_family_domain_version(functional);
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;
     started = true;
@@ -893,15 +913,19 @@ struct CudaKsPlan::Impl : KsStateStorage {
       xc->enqueue_density_features(density, elements, next_generation, nonlocal_raw_density,
                                    nonlocal_raw_gradient);
       const auto quadrature = xc->grid_view();
-      nlc::enqueue_vv10_molecular_domain_cuda(
-          stream, xc_layout.npoint, generated::kMolecularVv10DensityThreshold, quadrature.weights,
-          nonlocal_raw_density, nonlocal_raw_gradient, nonlocal_effective_weights,
-          nonlocal_effective_density, nonlocal_effective_gradient, nonlocal_domain_error);
-      nlc::enqueue_vv10_cuda_device(
-          nonlocal_layout, nonlocal_correlation->parameters(), device, stream, quadrature.points,
-          nonlocal_effective_weights, nonlocal_effective_density, nonlocal_effective_gradient,
-          nonlocal_workspace, nonlocal_layout.workspace_bytes, nonlocal_workspace, nonlocal_vrho,
-          nonlocal_vsigma, nullptr, nullptr, nonlocal_pair_error);
+      run_resident_nonlocal_cuda([&] {
+        nlc::enqueue_vv10_molecular_domain_cuda(
+            stream, xc_layout.npoint, generated::kMolecularVv10DensityThreshold, quadrature.weights,
+            nonlocal_raw_density, nonlocal_raw_gradient, nonlocal_effective_weights,
+            nonlocal_effective_density, nonlocal_effective_gradient, nonlocal_domain_error);
+      });
+      run_resident_nonlocal_cuda([&] {
+        nlc::enqueue_vv10_cuda_device(
+            nonlocal_layout, nonlocal_correlation->parameters(), device, stream, quadrature.points,
+            nonlocal_effective_weights, nonlocal_effective_density, nonlocal_effective_gradient,
+            nonlocal_workspace, nonlocal_layout.workspace_bytes, nonlocal_workspace, nonlocal_vrho,
+            nonlocal_vsigma, nullptr, nullptr, nonlocal_pair_error);
+      });
       xc->enqueue_nonlocal_potential(next_generation, nonlocal_effective_weights,
                                      nonlocal_effective_gradient, nonlocal_vrho, nonlocal_vsigma,
                                      nonlocal_workspace);

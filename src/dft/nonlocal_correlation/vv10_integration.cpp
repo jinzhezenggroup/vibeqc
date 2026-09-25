@@ -80,9 +80,10 @@ Vv10Integral integrate_vv10_rks(const AoBasis& basis, const MolecularGrid& grid,
   validate_density(basis, grid, density, tile_points);
   if (domain != Vv10DensityDomain::StrictPositive && domain != Vv10DensityDomain::MolecularV1)
     throw std::invalid_argument("unknown VV10 integration density domain");
-  if (domain == Vv10DensityDomain::MolecularV1 && (plan.backend() != VIBEQC_BACKEND_CPU_REFERENCE ||
-                                                   plan.parameters().variant != Vv10Variant::vv10))
-    throw std::invalid_argument("molecular VV10 density screening is CPU VV10 only");
+  // The host AO bridge applies the same molecular padding before either
+  // resident CUDA or CPU VV10 pair execution. Keep rVV10 outside this domain.
+  if (domain == Vv10DensityDomain::MolecularV1 && plan.parameters().variant != Vv10Variant::vv10)
+    throw std::invalid_argument("molecular VV10 density screening requires VV10");
   if (source.route != XcDensityRoute::DensityMatrix)
     throw std::invalid_argument(
         "self-consistent VV10 currently requires the density-matrix AO route");

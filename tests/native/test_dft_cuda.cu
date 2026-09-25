@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -15,6 +16,10 @@
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/cuda_resources.cuh"
+#include "vibeqc/vibeqc.hpp"
+
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1();
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1();
 
 namespace {
 using namespace vibeqc::dft;
@@ -311,6 +316,41 @@ void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bo
       for (std::size_t i = 0; i < matrix; ++i)
         close(after[spin * matrix + i] - before[spin * matrix + i], expected[i],
               "CUDA nonlocal AO potential composition", 3e-12 + 2e-12 * std::abs(expected[i]));
+
+    using fail_function = void (*)();
+    const std::array<std::pair<fail_function, vibeqc_status>, 2> failures{{
+        {&xc_cuda_fail_next_nonlocal_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+        {&xc_cuda_fail_next_nonlocal_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY},
+    }};
+    for (const auto& [fail, expected_status] : failures) {
+      // Establish a fresh published semilocal generation, then fail the
+      // in-place nonlocal phase. That generation must be revoked rather than
+      // exposing a partially accumulated potential/totals.
+      fixture.submit(d);
+      fail();
+      bool mapped = false;
+      try {
+        fixture.plan->enqueue_nonlocal_potential(fixture.generation, d_weights, d_gradient, d_vrho,
+                                                 d_vsigma, d_energy);
+      } catch (const std::bad_alloc&) {
+        mapped = expected_status == VIBEQC_STATUS_OUT_OF_MEMORY;
+      } catch (const vibeqc::Error& error) {
+        mapped = error.status() == expected_status;
+      }
+      require(mapped, "CUDA nonlocal AO failure lost its typed status");
+
+      bool revoked = false;
+      try {
+        (void)fixture.plan->read_scalars(fixture.generation);
+      } catch (const std::invalid_argument&) {
+        revoked = true;
+      }
+      require(revoked, "failed CUDA nonlocal AO phase left a partial generation readable");
+
+      fixture.submit(d);
+      require(fixture.scalars().error == 0,
+              "CUDA nonlocal AO failure prevented the next semilocal generation");
+    }
   } catch (...) {
     for (auto* pointer : {d_energy, d_vsigma, d_vrho, d_gradient, d_weights})
       if (pointer) cudaFree(pointer);
