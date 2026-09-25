@@ -308,6 +308,8 @@ void verify_preflight_and_approximation_identity() {
     range_exchange.derivative_order = 1;
     require_rejected([&] { (void)resolve_fock_build(range_exchange, FockBackend::Cpu); },
                      "range exchange incorrectly advertised common Fock derivatives");
+    require_rejected([&] { (void)resolve_fock_build(range_exchange, FockBackend::Cuda, 0.0); },
+                     "CUDA range exchange incorrectly advertised common Fock derivatives");
   }
   auto second_derivative = exact_spec;
   second_derivative.derivative_order = 2;
