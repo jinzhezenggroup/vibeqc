@@ -13,6 +13,7 @@
 
 #include "dft/cuda_xc.hpp"
 #include "dft/xc.hpp"
+#include "generated_split_hybrid_registry.cuh"
 #include "molecule/basis.hpp"
 #include "runtime/cuda_resources.cuh"
 
@@ -524,6 +525,25 @@ int main(int argc, char** argv) {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
+    for (const auto functional : {generated::kM062XFunctionalCode,
+                                  generated::kMN15FunctionalCode}) {
+      const auto layout = cuda_xc_layout_shape(
+          basis.natom, basis.nprimitive, basis.nao, grid.point_count(), functional, false, 17);
+      require(layout.jets == 4 && layout.work_jets == 4 && layout.feature_terms == 5,
+              "generated split-hybrid MGGA layout is inconsistent");
+      require(cuda_xc_detail::resolve_point_launcher(functional, false) != nullptr,
+              "generated split-hybrid CUDA point launcher is missing");
+    }
+    bool unknown_split_hybrid_rejected = false;
+    try {
+      (void)cuda_xc_layout_shape(
+          basis.natom, basis.nprimitive, basis.nao, grid.point_count(),
+          generated::kSplitHybridMggaCodeBase | 0xffffU, false, 17);
+    } catch (const std::invalid_argument&) {
+      unknown_split_hybrid_rejected = true;
+    }
+    require(unknown_split_hybrid_rejected,
+            "unregistered split-hybrid CUDA functional code was accepted");
     for (unsigned functional : {0U, 1U, 2U, 3U, 4U})
       for (bool unrestricted : {false, true}) {
         graph_capture(basis, grid, functional, unrestricted);
