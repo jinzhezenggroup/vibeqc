@@ -108,6 +108,20 @@ class SemilocalPointBinding:
     domain_version: int
 
     def __post_init__(self) -> None:
+        if not isinstance(self.variant, SourceVariant):
+            raise TypeError("point binding requires SourceVariant")
+        for label, value in (
+            ("capability_identity", self.capability_identity),
+            ("point_expression_identity", self.point_expression_identity),
+            ("variant.name", self.variant.name),
+            ("variant.import_identity", self.variant.import_identity),
+            ("variant.domain", self.variant.domain),
+            ("variant.source", self.variant.source),
+            ("variant.backend", self.variant.backend),
+            ("variant.spin", self.variant.spin),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{label} must be a nonempty string")
         if self.variant.backend != "cpu":
             raise ValueError("native semilocal point binding currently requires CPU")
         if self.variant.spin != "polarized":
@@ -120,8 +134,6 @@ class SemilocalPointBinding:
             raise ValueError(
                 "native semilocal point binding requires compact rho/sigma/tau features"
             )
-        if not self.capability_identity or not self.point_expression_identity:
-            raise ValueError("point binding identities must be nonempty")
         if type(self.domain_version) is not int or self.domain_version <= 0:
             raise ValueError("domain_version must be a positive integer")
 
