@@ -88,7 +88,15 @@ def probe(tmp_path_factory):
     exe = directory / "probe"
     unit.write_text(SHIM + kernels + wrapper + DRIVER)
     subprocess.run(
-        [compiler, "-std=c++20", "-O1", "-fsanitize=undefined", str(unit), "-o", str(exe)],
+        [
+            compiler,
+            "-std=c++20",
+            "-O1",
+            "-fsanitize=undefined",
+            str(unit),
+            "-o",
+            str(exe),
+        ],
         check=True,
         capture_output=True,
         text=True,

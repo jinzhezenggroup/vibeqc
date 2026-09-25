@@ -153,8 +153,8 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
           matrix_elements / block.x + (matrix_elements % block.x != 0);
   const bool column_schedule =
       systems != 0 && systems <= kGridYLimit &&
-      dimension <= static_cast<std::size_t>(std::numeric_limits<int>::max()) && complete_flat_domain &&
-      block.y == 1 && block.z == 1;
+      dimension <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
+      complete_flat_domain && block.y == 1 && block.z == 1;
   if (column_schedule) {
     scale_eigenvectors_column_kernel<<<dim3(static_cast<unsigned>(dimension),
                                             static_cast<unsigned>(systems)),
