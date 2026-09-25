@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -16,8 +15,9 @@ def test_small_hf_force_requests_skip_persistent_eri_force_consumers() -> None:
         "nbf <= kPersistentEriAoLimit"
     ) in source
     force_dispatch = source[
-        source.index("if (!options.compute_forces)")
-        : source.index("if (reuse_converged_fock", source.index("if (!options.compute_forces)"))
+        source.index("if (!options.compute_forces)") : source.index(
+            "if (reuse_converged_fock", source.index("if (!options.compute_forces)")
+        )
     ]
     assert "launch_two_electron_force_kernel" not in force_dispatch
     assert "launch_two_electron_uhf_force_kernel" not in force_dispatch
@@ -30,8 +30,12 @@ def test_small_hf_force_requests_skip_persistent_eri_force_consumers() -> None:
 
 
 def test_reference_force_file_keeps_only_matrix_direct_fallback() -> None:
-    source = (ROOT / "src/scf/cuda/direct_reference_force.cu").read_text(encoding="utf-8")
-    header = (ROOT / "src/scf/cuda/direct_reference_force.hpp").read_text(encoding="utf-8")
+    source = (ROOT / "src/scf/cuda/direct_reference_force.cu").read_text(
+        encoding="utf-8"
+    )
+    header = (ROOT / "src/scf/cuda/direct_reference_force.hpp").read_text(
+        encoding="utf-8"
+    )
     assert "__global__ void two_electron_force_kernel(" not in source
     assert "__global__ void two_electron_uhf_force_kernel(" not in source
     assert "launch_two_electron_force_kernel(" not in header
