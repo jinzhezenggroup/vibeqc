@@ -116,8 +116,6 @@ static_assert(offsetof(Generated{class_name}ShellTask, shell) ==
               offsetof(vibeqc::scf::detail::GeneratedShellTask, shell));
 static_assert(offsetof(Generated{class_name}ShellTask, atom) ==
               offsetof(vibeqc::scf::detail::GeneratedShellTask, atom));
-static_assert(offsetof(Generated{class_name}ShellTask, fock_consumer) ==
-              offsetof(vibeqc::scf::detail::GeneratedShellTask, fock_consumer));
 static_assert(sizeof(Generated{class_name}PrimitivePairData) ==
               sizeof(vibeqc::scf::detail::GeneratedPrimitivePairData));
 static_assert(alignof(Generated{class_name}PrimitivePairData) ==
@@ -593,8 +591,12 @@ __device__ __forceinline__ void {prefix}_stream_populate_task(
   task.matrix_order = topology.matrix_order;
   task.shell_pair[0] = shell_pairs[0];
   task.shell_pair[1] = shell_pairs[1];
-  task.reversed_shell_pair_mask = reversed_mask;
-  task.fock_consumer = static_cast<Generated{class_name}FockConsumer>(topology.fock_consumer);
+  task.reversed_shell_pair_mask =
+      reversed_mask |
+      (topology.fock_consumer ==
+               vibeqc::scf::detail::GeneratedFockConsumer::Coulomb
+           ? kGenerated{class_name}CoulombConsumerBit
+           : 0U);
 }}
 """
 
