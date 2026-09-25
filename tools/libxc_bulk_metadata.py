@@ -224,9 +224,20 @@ def parameter_layout(
 
 
 def extract_registrations(
-    c_source: str, maple_source: str, header_source: str
+    c_source: str,
+    maple_source: str,
+    header_source: str,
+    *,
+    allow_hybrid_exchange: bool = False,
 ) -> list[dict[str, Any]]:
-    """Extract each registration independently, retaining every rejection."""
+    """Extract each registration independently, retaining every rejection.
+
+    Hybrid exchange owners remain blocked by default.  Build-time split-hybrid
+    lowering may opt in only to global HYB_*_X owners whose exact-exchange
+    coefficient is defined by Libxc's set_ext_params_*_exx contract.
+    """
+    if type(allow_hybrid_exchange) is not bool:
+        raise TypeError("allow_hybrid_exchange must be bool")
     text, header = strip_c_comments(c_source), strip_c_comments(header_source)
     definitions = constant_definitions(header, text)
     prefixes = set(re.findall(rf"\b({_IDENTIFIER})\s*\*\s*params\s*;", maple_source))
@@ -246,7 +257,13 @@ def extract_registrations(
             record["id"] = constant_value(fields[0], definitions)
             if type(record["id"]) is not int or record["id"] <= 0:
                 raise CMetadataError("functional ID must be a positive integer")
-            if fields[3] not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA"):
+            raw_family = fields[3]
+            hybrid_exchange = (
+                allow_hybrid_exchange
+                and raw_family in ("XC_FAMILY_HYB_GGA", "XC_FAMILY_HYB_MGGA")
+                and fields[1] == "XC_EXCHANGE"
+            )
+            if raw_family not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA") and not hybrid_exchange:
                 raise CMetadataError(
                     "non-semilocal family requires MethodIR composition"
                 )
@@ -259,7 +276,9 @@ def extract_registrations(
                 "XC_EXCHANGE_CORRELATION",
             ):
                 raise CMetadataError("non-XC functional (e.g. kinetic)")
-            family = fields[3].removeprefix("XC_FAMILY_").lower()
+            family = raw_family.removeprefix("XC_FAMILY_").lower()
+            if hybrid_exchange:
+                family = family.removeprefix("hyb_")
             record.update(
                 family=family, kind=fields[1].removeprefix("XC_"), flags=fields[5]
             )
@@ -286,8 +305,14 @@ def extract_registrations(
             }
             record["parameter_setter"] = params[4]
             if count:
-                if params[4] != "set_ext_params_cpy":
-                    raise CMetadataError(f"custom parameter setter: {params[4]}")
+                setter = params[4]
+                if hybrid_exchange:
+                    if setter not in ("set_ext_params_exx", "set_ext_params_cpy_exx"):
+                        raise CMetadataError(
+                            f"split hybrid exchange requires global exact-exchange setter: {setter}"
+                        )
+                elif setter != "set_ext_params_cpy":
+                    raise CMetadataError(f"custom parameter setter: {setter}")
                 if len(prefixes) != 1:
                     raise CMetadataError("missing or ambiguous Maple parameter prefix")
                 names = array_values(text, params[1])
@@ -299,15 +324,18 @@ def extract_registrations(
                     raise CMetadataError(
                         "parameter array length does not match registration"
                     )
+                copy_count = count - 1 if hybrid_exchange else count
+                if hybrid_exchange:
+                    record["exact_exchange_parameter"] = repr(float(values[-1]))
                 layout = parameter_layout(
                     text + "\n" + header, next(iter(prefixes)), definitions
                 )
                 offset = 0
                 for field, size in layout:
-                    if offset == count:
+                    if offset == copy_count:
                         break
                     width = size or 1
-                    if offset + width > count:
+                    if offset + width > copy_count:
                         raise CMetadataError("partial parameter array copy")
                     packed = [
                         repr(float(value)) for value in values[offset : offset + width]
@@ -318,7 +346,7 @@ def extract_registrations(
                         for index, value in enumerate(packed):
                             bindings[f"params_a_{field}_{index}_"] = value
                     offset += width
-                if offset != count:
+                if offset != copy_count:
                     raise CMetadataError("parameter struct is smaller than copy count")
             elif any(value != "NULL" for value in params[1:]):
                 raise CMetadataError("nonempty zero-parameter contract")
