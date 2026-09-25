@@ -86,6 +86,7 @@ def _reference(
 
     return np.concatenate(((total_rho * exc)[None], gradient))[:, 0]
 
+
 def _relative_error(
     observed: np.ndarray, expected: np.ndarray, *, atol: float
 ) -> float:
