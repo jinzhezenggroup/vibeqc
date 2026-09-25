@@ -40,7 +40,9 @@ def test_native_bridge_exposes_orbitals_only_by_explicit_cpu_request() -> None:
     assert "request.compute_orbitals" in source
     assert "copy_restricted_gfn2_orbital_snapshot_cpu" in source
     assert "kCpu" in source
-    assert "GFN2 orbital export is currently qualified only for the CPU runtime" in source
+    assert (
+        "GFN2 orbital export is currently qualified only for the CPU runtime" in source
+    )
     assert "copy_restricted_gfn2_orbital_snapshot_cpu" in cpu
     assert "wavefunction.coefficients" in cpu
     assert "wavefunction.occupations" in cpu

@@ -250,7 +250,6 @@ Matrix charge_guided_lowdin_density(const core::System& system, const integrals:
   return density;
 }
 
-
 OccupiedProjectionResult project_occupied_density(
     const integrals::IntegralData& target, const Matrix& target_orthogonalizer,
     std::span<const double> source_overlap, std::span<const double> cross_overlap,
@@ -271,9 +270,9 @@ OccupiedProjectionResult project_occupied_density(
       cross_overlap.size() != target_nbf * source_nbf ||
       source_coefficients.size() != source_nbf * source_nbf || occupied > source_nbf ||
       occupied > target_nbf || !(occupation > 0.0) || !std::isfinite(occupation) ||
-      maximum_residual < 0.0 || !std::isfinite(maximum_residual) ||
-      !finite(target.overlap) || !finite(target_orthogonalizer) || !finite(source_overlap) ||
-      !finite(cross_overlap) || !finite(source_coefficients)) {
+      maximum_residual < 0.0 || !std::isfinite(maximum_residual) || !finite(target.overlap) ||
+      !finite(target_orthogonalizer) || !finite(source_overlap) || !finite(cross_overlap) ||
+      !finite(source_coefficients)) {
     throw std::invalid_argument("occupied projection has inconsistent or non-finite dimensions");
   }
 
@@ -290,8 +289,8 @@ OccupiedProjectionResult project_occupied_density(
     for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
       double value = 0.0;
       for (std::size_t nu = 0; nu < source_nbf; ++nu)
-        value += source_overlap[mu * source_nbf + nu] *
-                 source_coefficients[nu * source_nbf + orbital];
+        value +=
+            source_overlap[mu * source_nbf + nu] * source_coefficients[nu * source_nbf + orbital];
       source_metric_times_c[mu * occupied + orbital] = value;
     }
   }
@@ -303,8 +302,7 @@ OccupiedProjectionResult project_occupied_density(
         value += source_coefficients[mu * source_nbf + first] *
                  source_metric_times_c[mu * occupied + second];
       const double expected = first == second ? 1.0 : 0.0;
-      source_orthogonality_error =
-          std::max(source_orthogonality_error, std::abs(value - expected));
+      source_orthogonality_error = std::max(source_orthogonality_error, std::abs(value - expected));
     }
   }
   result.source_metric_orthogonality_error = source_orthogonality_error;
@@ -318,8 +316,8 @@ OccupiedProjectionResult project_occupied_density(
     for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
       double value = 0.0;
       for (std::size_t nu = 0; nu < source_nbf; ++nu)
-        value += cross_overlap[mu * source_nbf + nu] *
-                 source_coefficients[nu * source_nbf + orbital];
+        value +=
+            cross_overlap[mu * source_nbf + nu] * source_coefficients[nu * source_nbf + orbital];
       cross_times_c[mu * occupied + orbital] = value;
     }
   }
@@ -347,10 +345,8 @@ OccupiedProjectionResult project_occupied_density(
   auto spectral = reference::symmetric_eigen(std::move(gram), occupied);
   const double minimum_norm = spectral.values.front();
   const double maximum_norm = spectral.values.back();
-  if (!(minimum_norm > 0.0) || !std::isfinite(minimum_norm) ||
-      !std::isfinite(maximum_norm) ||
-      minimum_norm <= 1.0e-10 * maximum_norm ||
-      maximum_norm > 1.0 + 1.0e-7) {
+  if (!(minimum_norm > 0.0) || !std::isfinite(minimum_norm) || !std::isfinite(maximum_norm) ||
+      minimum_norm <= 1.0e-10 * maximum_norm || maximum_norm > 1.0 + 1.0e-7) {
     throw std::invalid_argument("occupied projection lost rank or exceeds the source norm");
   }
   result.minimum_projected_norm = minimum_norm;
@@ -386,8 +382,8 @@ OccupiedProjectionResult project_occupied_density(
     for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
       double value = 0.0;
       for (std::size_t source = 0; source < occupied; ++source)
-        value += projected[mu * occupied + source] *
-                 inverse_sqrt_gram[index(source, orbital, occupied)];
+        value +=
+            projected[mu * occupied + source] * inverse_sqrt_gram[index(source, orbital, occupied)];
       target_coefficients[mu * occupied + orbital] = value;
     }
   }
@@ -410,8 +406,7 @@ OccupiedProjectionResult project_occupied_density(
         value += target_coefficients[mu * occupied + first] *
                  target_metric_times_c[mu * occupied + second];
       const double expected = first == second ? 1.0 : 0.0;
-      target_orthogonality_error =
-          std::max(target_orthogonality_error, std::abs(value - expected));
+      target_orthogonality_error = std::max(target_orthogonality_error, std::abs(value - expected));
     }
   }
   result.target_metric_orthogonality_error = target_orthogonality_error;
@@ -433,12 +428,11 @@ OccupiedProjectionResult project_occupied_density(
   double electron_trace = 0.0;
   for (std::size_t mu = 0; mu < target_nbf; ++mu)
     for (std::size_t nu = 0; nu < target_nbf; ++nu)
-      electron_trace += result.density[index(mu, nu, target_nbf)] *
-                        target.overlap[index(nu, mu, target_nbf)];
+      electron_trace +=
+          result.density[index(mu, nu, target_nbf)] * target.overlap[index(nu, mu, target_nbf)];
   const double expected_trace = occupation * static_cast<double>(occupied);
   if (!std::isfinite(electron_trace) ||
-      std::abs(electron_trace - expected_trace) >
-          1.0e-7 * std::max(1.0, expected_trace))
+      std::abs(electron_trace - expected_trace) > 1.0e-7 * std::max(1.0, expected_trace))
     throw std::invalid_argument("occupied projection failed the target electron trace");
 
   return result;

@@ -132,7 +132,6 @@ void check_charge_guided_lowdin_contract() {
   invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2}); });
 }
 
-
 void check_occupied_projection_contract() {
   integrals::IntegralData target;
   target.nbf = 2;
@@ -143,10 +142,9 @@ void check_occupied_projection_contract() {
   const double inv_sqrt_two = 1.0 / std::sqrt(2.0);
   // Coefficients are columns. The occupied source vector is a normalized
   // 45-degree rotation; projecting into an identical target must preserve it.
-  const Matrix source_coefficients{inv_sqrt_two, -inv_sqrt_two,
-                                   inv_sqrt_two, inv_sqrt_two};
-  const auto projected = project_occupied_density(target, x, source_overlap, cross, 2,
-                                                   source_coefficients, 1);
+  const Matrix source_coefficients{inv_sqrt_two, -inv_sqrt_two, inv_sqrt_two, inv_sqrt_two};
+  const auto projected =
+      project_occupied_density(target, x, source_overlap, cross, 2, source_coefficients, 1);
   close(projected.density, {1, 1, 1, 1});
   require(std::abs(projected.minimum_projected_norm - 1.0) < 1e-13 &&
               projected.projection_residual < 1e-13 &&
@@ -156,13 +154,11 @@ void check_occupied_projection_contract() {
 
   const Matrix rank_lost_cross{0, 0, 0, 0};
   invalid([&] {
-    project_occupied_density(target, x, source_overlap, rank_lost_cross, 2,
-                             source_coefficients, 1);
+    project_occupied_density(target, x, source_overlap, rank_lost_cross, 2, source_coefficients, 1);
   });
   const Matrix nonorthogonal_coefficients{2, 0, 0, 1};
   invalid([&] {
-    project_occupied_density(target, x, source_overlap, cross, 2,
-                             nonorthogonal_coefficients, 1);
+    project_occupied_density(target, x, source_overlap, cross, 2, nonorthogonal_coefficients, 1);
   });
 }
 
