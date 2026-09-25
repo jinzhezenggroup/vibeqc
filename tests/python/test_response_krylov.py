@@ -183,6 +183,25 @@ def test_block_solver_preserves_tiny_nonzero_rhs_and_indefinite_operator() -> No
     assert result.results[0].residual_norm < 1e-12
 
 
+def test_block_solver_reuses_last_true_residual_without_duplicate_actions() -> None:
+    """Final publication must reuse the last exact block residual checkpoint."""
+    operator = _MatrixOperator(np.eye(3), 3)
+    rhs = np.eye(3)[:, :2]
+    result = solve_many(
+        operator,
+        rhs,
+        strategy="blocked",
+        options=GMRESOptions(rtol=1e-12, restart=3, max_iterations=3),
+        collect_basis=False,
+    )
+    assert result.converged
+    # Two block expansion actions plus one true-residual action per RHS.
+    # A second final-residual pass would increase this from four to six.
+    assert result.operator_actions == 4
+    assert operator.statistics["actions"] == 4
+    np.testing.assert_allclose(result.solution, rhs, atol=1e-14, rtol=0)
+
+
 def test_block_workspace_preflight_accounts_for_initial_basis_and_retained_results() -> (
     None
 ):

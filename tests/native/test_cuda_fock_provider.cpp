@@ -1,13 +1,17 @@
 #include <cuda_runtime_api.h>
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
+#include "integrals/s_integrals.hpp"
 #include "molecule/basis.hpp"
+#include "scf/cuda/direct_jk_plan.hpp"
 #include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_direct_jk.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
@@ -108,6 +112,28 @@ void direct_device_failures(CudaDirectJkPlan* plan, const std::vector<double>& a
   }
 }
 
+void direct_value_dispatch_selection() {
+  const auto hybrid = direct_jk_value_dispatch(true, true, true, false);
+  require(hybrid.generated_coulomb && !hybrid.generic_coulomb && hybrid.generic_exchange,
+          "generated-capable hybrid J/K did not split J from exact K");
+
+  const auto mixed = direct_jk_value_dispatch(true, true, true, true);
+  require(!mixed.generated_coulomb && mixed.generic_coulomb && mixed.generic_exchange,
+          "mixed-J hybrid escaped the generic J/K path");
+
+  const auto fallback = direct_jk_value_dispatch(false, true, true, false);
+  require(!fallback.generated_coulomb && fallback.generic_coulomb && fallback.generic_exchange,
+          "missing generated capacity did not retain generic J/K fallback");
+
+  const auto pure_j = direct_jk_value_dispatch(true, true, false, false);
+  require(pure_j.generated_coulomb && !pure_j.generic_coulomb && !pure_j.generic_exchange,
+          "pure J no longer selects the generated Coulomb consumer");
+
+  const auto pure_k = direct_jk_value_dispatch(true, false, true, false);
+  require(!pure_k.generated_coulomb && !pure_k.generic_coulomb && pure_k.generic_exchange,
+          "K-only request selected an unrelated Coulomb consumer");
+}
+
 void device_selection() {
   const std::vector<double> metric{2.0, 0.1, 0.1, 1.3};
   const std::vector<double> tensor{1.3, 0.2, 0.3, -0.1, 0.3, -0.1, 0.8, 0.6};
@@ -167,6 +193,138 @@ void device_selection() {
       da.verify(input_a);
       db.verify(input_b);
     }
+}
+
+std::vector<double> reference_range_exchange(const vibeqc::core::System& system,
+                                             const std::vector<double>& density,
+                                             vibeqc::integrals::CoulombRange range, double omega) {
+  const auto eri = vibeqc::integrals::build_range_eri(system, range, omega);
+  const std::size_t n = vibeqc::molecule::ao_count(system);
+  std::vector<double> exchange(n * n);
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k)
+        for (std::size_t l = 0; l < n; ++l)
+          exchange[i * n + j] += density[k * n + l] * eri[((i * n + k) * n + j) * n + l];
+  return exchange;
+}
+
+void range_exchange_provider() {
+  vibeqc::core::System system;
+  system.atoms = {{1, {0.0, 0.1, -0.8}}, {1, {0.2, -0.1, 0.7}}};
+  system.shells = {{0, 0, {{0.9, 0.7}, {0.25, 0.3}}}, {1, 1, {{0.65, 1.0}}}};
+  system.electron_count = 2;
+  system.basis_representation = VIBEQC_BASIS_CARTESIAN;
+  std::string detail;
+  require(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  const std::size_t n = vibeqc::molecule::ao_count(system), matrix = n * n;
+  std::vector<double> alpha(matrix), beta(matrix);
+  for (std::size_t ij = 0; ij < matrix; ++ij) {
+    alpha[ij] = std::sin(0.41 * (ij / n) - 0.27 * (ij % n)) / n;
+    beta[ij] = std::cos(0.23 * (ij / n) + 0.31 * (ij % n)) / (2.0 * n);
+  }
+
+  CudaDirectJkPlan* raw{};
+  CudaDirectJkDiagnostic diagnostic;
+  require(create_cuda_direct_jk_plan(0, {system}, 0, 0.0, 32U * 1024U * 1024U, &raw, diagnostic,
+                                     detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+      raw, &destroy_cuda_direct_jk_plan);
+
+  constexpr double omega = 0.37;
+  for (const auto [op, radial] :
+       {std::pair{FockOperator::ShortRange, vibeqc::integrals::CoulombRange::Short},
+        std::pair{FockOperator::LongRange, vibeqc::integrals::CoulombRange::Long}}) {
+    const auto expected_alpha = reference_range_exchange(system, alpha, radial, omega);
+    const auto expected_beta = reference_range_exchange(system, beta, radial, omega);
+    for (const auto spin : {FockSpin::Restricted, FockSpin::Unrestricted}) {
+      FockBuildSpec spec;
+      spec.spin = spin;
+      spec.derivative_order = 0;
+      spec.coulomb.present = false;
+      spec.exchange = {true, -0.31, op, omega, FockApproximation::Exact};
+      std::vector<double> j, ka, kb;
+      require(execute_cuda_direct_jk(plan.get(), spec, alpha,
+                                     spin == FockSpin::Unrestricted ? beta : std::vector<double>{},
+                                     j, ka, kb, detail) == VIBEQC_STATUS_SUCCESS,
+              detail.c_str());
+      require(j.empty() && ka.size() == expected_alpha.size() &&
+                  kb.size() == (spin == FockSpin::Unrestricted ? expected_beta.size() : 0),
+              "range-separated CUDA exchange returned the wrong spin matrix set");
+      for (std::size_t i = 0; i < ka.size(); ++i)
+        require(std::isfinite(ka[i]) && std::abs(ka[i] - expected_alpha[i]) < 2e-10,
+                "range-separated CUDA alpha exchange differs from the CPU range-ERI oracle");
+      for (std::size_t i = 0; i < kb.size(); ++i)
+        require(std::isfinite(kb[i]) && std::abs(kb[i] - expected_beta[i]) < 2e-10,
+                "range-separated CUDA beta exchange differs from the CPU range-ERI oracle");
+    }
+  }
+
+  // Pick a positive threshold between actual full-range Schwarz products so
+  // the qualification checks both retained and skipped range quartets.
+  const auto full_eri = vibeqc::integrals::build_integrals(system, false, true).eri;
+  std::vector<double> bounds(matrix), products;
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t k = 0; k < n; ++k)
+      bounds[i * n + k] = std::sqrt(std::abs(full_eri[((i * n + k) * n + i) * n + k]));
+  for (std::size_t i = 0; i < n; ++i)
+    for (std::size_t j = 0; j < n; ++j)
+      for (std::size_t k = 0; k < n; ++k)
+        for (std::size_t l = 0; l < n; ++l)
+          products.push_back(bounds[i * n + k] * bounds[j * n + l]);
+  const auto [minimum, maximum] = std::minmax_element(products.begin(), products.end());
+  require(*minimum < *maximum, "range-screening fixture has no distinct Schwarz products");
+  const double screening = 0.5 * (*minimum + *maximum);
+
+  CudaDirectJkPlan* screened_raw{};
+  CudaDirectJkDiagnostic screened_diagnostic;
+  require(create_cuda_direct_jk_plan(0, {system}, 0, screening, 32U * 1024U * 1024U, &screened_raw,
+                                     screened_diagnostic, detail) == VIBEQC_STATUS_SUCCESS,
+          detail.c_str());
+  std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> screened(
+      screened_raw, &destroy_cuda_direct_jk_plan);
+  for (const auto [op, radial] :
+       {std::pair{FockOperator::ShortRange, vibeqc::integrals::CoulombRange::Short},
+        std::pair{FockOperator::LongRange, vibeqc::integrals::CoulombRange::Long}}) {
+    FockBuildSpec range_spec;
+    range_spec.spin = FockSpin::Restricted;
+    range_spec.derivative_order = 0;
+    range_spec.coulomb.present = false;
+    range_spec.exchange = {true, -0.31, op, omega, FockApproximation::Exact};
+    std::vector<double> j, ka, kb;
+    require(execute_cuda_direct_jk(screened.get(), range_spec, alpha, {}, j, ka, kb, detail) ==
+                VIBEQC_STATUS_SUCCESS,
+            detail.c_str());
+    const auto range_eri = vibeqc::integrals::build_range_eri(system, radial, omega);
+    std::vector<double> screened_expected(matrix);
+    std::size_t skipped = 0, retained = 0;
+    for (std::size_t i = 0; i < n; ++i)
+      for (std::size_t j = 0; j < n; ++j)
+        for (std::size_t k = 0; k < n; ++k)
+          for (std::size_t l = 0; l < n; ++l) {
+            if (bounds[i * n + k] * bounds[j * n + l] < screening) {
+              ++skipped;
+              continue;
+            }
+            ++retained;
+            screened_expected[i * n + j] +=
+                alpha[k * n + l] * range_eri[((i * n + k) * n + j) * n + l];
+          }
+    require(skipped > 0 && retained > 0, "range-screening fixture did not exercise both paths");
+    const auto unscreened_expected = reference_range_exchange(system, alpha, radial, omega);
+    double screening_effect = 0.0;
+    for (std::size_t i = 0; i < matrix; ++i)
+      screening_effect =
+          std::max(screening_effect, std::abs(screened_expected[i] - unscreened_expected[i]));
+    require(screening_effect > 1e-7, "range-screening fixture has no measurable skipped work");
+    require(j.empty() && kb.empty() && ka.size() == screened_expected.size(),
+            "screened CUDA range exchange returned the wrong matrix set");
+    for (std::size_t i = 0; i < ka.size(); ++i)
+      require(std::isfinite(ka[i]) && std::abs(ka[i] - screened_expected[i]) < 2e-10,
+              "screened CUDA range exchange differs from the screened CPU oracle");
+  }
 }
 
 void direct_providers(bool through_f_response) {
@@ -295,7 +453,9 @@ void direct_providers(bool through_f_response) {
             compare(dka, eka);
             compare(dkb, ekb);
             direct_device(plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
-            if (j && !k) {
+            if (j) {
+              // Generated-capable value plans must preserve independent J/K
+              // numerics when J and K are dispatched through separate sources.
               direct_device(pure_j_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
               direct_device(fallback_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
             }
@@ -369,7 +529,9 @@ int main(int argc, char** argv) {
     require(argc == 1 || (argc == 2 && std::string(argv[1]) == "--through-f-response"),
             "expected optional --through-f-response");
     const bool through_f_response = argc == 2;
+    direct_value_dispatch_selection();
     device_selection();
+    range_exchange_provider();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "
               << (through_f_response ? "through-f" : "s/p") << " derivatives PASS\n";

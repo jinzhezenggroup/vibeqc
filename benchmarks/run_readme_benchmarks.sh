@@ -12,7 +12,7 @@ export PYTHONPATH=".:python${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "$readme_output"/{hf,dft,dft-reference,cc}
 readme_group="${1:-all}"
 case "$readme_group" in
-    all|hf|dft|dft-reference|dft-paired|cc|smoke) ;;
+    all|hf|hf-direct|dft|dft-reference|dft-paired|cc|smoke) ;;
     *) printf 'Unknown benchmark group: %s\n' "$readme_group" >&2; exit 2 ;;
 esac
 readme_failed=0
@@ -53,8 +53,9 @@ if [[ "$readme_group" == dft-paired ]]; then
     done
 fi
 
-if [[ "$readme_group" == all || "$readme_group" == hf || "$readme_group" == smoke ]]; then
+if [[ "$readme_group" == all || "$readme_group" == hf || "$readme_group" == hf-direct || "$readme_group" == smoke ]]; then
     for mode in direct df; do
+        [[ "$readme_group" == hf-direct && "$mode" == df ]] && continue
         readme_extra=()
         if [[ "$mode" == df ]]; then
             readme_extra=(--density-fitting cuda --reference-full-fock

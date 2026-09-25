@@ -1,0 +1,2162 @@
+{
+  "amendment_policy": "new version and hash; record affected gates and migration mapping in issue and PR",
+  "amendments": [],
+  "basis": {
+    "all_electron": true,
+    "auxiliary": null,
+    "basis_pack_sha256": "1bbb5611e5580d033e56eea7e24cf17ef85e58d0d6d67aa25e3732690822d6fe",
+    "j_k": "direct",
+    "name": "def2-svp",
+    "representation": "real_spherical"
+  },
+  "cases": {
+    "ace_glygly_nme": {
+      "ao_count_spherical": 247,
+      "atom_count": 26,
+      "changed_grid_identity": "7b19614a7b585b002c24dbbba7f96c29e8de91d994c5f8afed76ea0fbf561873",
+      "changed_input": "inputs/ace_glygly_nme-changed.json",
+      "changed_input_sha256": "119bd9e7082bb62d7ac99964b1eefaafb8324d963bbf73c39c0e15934003ba2e",
+      "charge": 0,
+      "classification": "performance_holdout",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "d5bd27afaf1efe7276177f79494629712c2cedf72ae80d1edccdfdbce65bd53f",
+      "input": "inputs/ace_glygly_nme.json",
+      "input_sha256": "a63601f468773d8c22b2bcb302078c3d508ed3ef71f5b99b03ab7e21de0db3e3",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "benzene": {
+      "ao_count_spherical": 114,
+      "atom_count": 12,
+      "changed_grid_identity": "3b4f38499bc77911e6cc0d22b8c9a36cffe8e8c9b4a47868211088669ec0071f",
+      "changed_input": "inputs/benzene-changed.json",
+      "changed_input_sha256": "270a5e7d7c3e43a3ab683dd535579f3ebf36ec8b33efc4d86c8178a39e41b45b",
+      "charge": 0,
+      "classification": "correctness_sentinel",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "1280a18dce85e6a3c165b84e7ca8c179c6de7db1fc5dfd91bd0abf4354be85a3",
+      "input": "inputs/benzene.json",
+      "input_sha256": "63a04833b80927047d73dc5d0f3010d2578a72daac70531e21d737b45090fff3",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "caffeine": {
+      "ao_count_spherical": 246,
+      "atom_count": 24,
+      "changed_grid_identity": "212fb058ce32f5a1a4d148e7a2e1ff1ebc3ae94b2f1edfea1ad21d2ea8addb5b",
+      "changed_input": "inputs/caffeine-changed.json",
+      "changed_input_sha256": "64c1f65aabf18e6afbc356fd8d3b712fd919da8603cb58db3317c67ccb86fbb7",
+      "charge": 0,
+      "classification": "performance_holdout",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "8d449179b0a3c38097d9b606f89fe2a9e79441a5669e16538fc3c9e73c728036",
+      "input": "inputs/caffeine.json",
+      "input_sha256": "518f3dd07dbc07f855c04a0a7047db0283e845b0097e5e92e12d0bdede88cdfe",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "o2": {
+      "ao_count_spherical": 28,
+      "atom_count": 2,
+      "changed_grid_identity": "5387a2ab2be7d1b26d684dd066476752b453427b3ecedf24cd330f1ab78376db",
+      "changed_input": "inputs/o2-changed.json",
+      "changed_input_sha256": "e253fc2a9b7280e6da94f42e2ec97dc4468857c770f283f5ad1ee88ced7962ac",
+      "charge": 0,
+      "classification": "correctness_sentinel",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "057f9fff146f0e1f92aa1f5cbaf3f2e404d525912f0f1e94a438b0ed51ac5505",
+      "input": "inputs/o2.json",
+      "input_sha256": "bbdf5d48b90afc85783493a8a35825ec2366196cad71e9948fcbd2c44fcfb826",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 3
+    },
+    "oh": {
+      "ao_count_spherical": 19,
+      "atom_count": 2,
+      "changed_grid_identity": "7fa7775e6fabf27148adb8f09d0364f4c5630e7863645f1d8c984fff9bdb9b88",
+      "changed_input": "inputs/oh-changed.json",
+      "changed_input_sha256": "0fbc37f8855b3c169f706223892ef96d12bf34fb9ca84be1d7082e979d916c53",
+      "charge": 0,
+      "classification": "correctness_sentinel",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "db66f5dcdc9e2c95a2b602b8fe88f1212c84ce74c4672742816b923fcb741dc6",
+      "input": "inputs/oh.json",
+      "input_sha256": "5fe0477292596ebd3ee879ce0abd586b360a3440f4b1e8d13ca9a6a60fe123d9",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 2
+    },
+    "water": {
+      "ao_count_spherical": 24,
+      "atom_count": 3,
+      "changed_grid_identity": "369feb6d8cfe9439cd9938f9bd6592a3e56b5717464e14a5620ccb3a8a9f70ea",
+      "changed_input": "inputs/water-changed.json",
+      "changed_input_sha256": "6979dae5d5ce879de5b2871fd9b40ea0edae188b149645ddbbf860276d193802",
+      "charge": 0,
+      "classification": "correctness_sentinel",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "f7662893ef804b9d9b287c9295efb8c06fad608c7367fdee600f9fb63138e8b0",
+      "input": "inputs/water.json",
+      "input_sha256": "ae1834fce328b8815befa7ba22620d65831a97b8f29fdb50d4d04f178a792e90",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "water16": {
+      "ao_count_spherical": 384,
+      "atom_count": 48,
+      "changed_grid_identity": "1371da2db46daf567b9114330fa04482c6bb49ce857ce9cdc0bb94f0eb80aea3",
+      "changed_input": "inputs/water16-changed.json",
+      "changed_input_sha256": "aeed82d446f75c81e17684aab71fc0ea8bd002d2eef8eede47b1bbcd6bcf8b26",
+      "charge": 0,
+      "classification": "performance_tuning",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "bc82ab6dc00fb8bebc53290bf575eb7823e15e34e315bfc1f0ac62d57a4eb76f",
+      "input": "inputs/water16.json",
+      "input_sha256": "5bd7416cddffbbc735fcfd11a0f6def43765707bbc2a454119d227fecb990a74",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "water32": {
+      "ao_count_spherical": 768,
+      "atom_count": 96,
+      "changed_grid_identity": "e54e1fb1d47c1a3090be43c6d4616293f164bd790657d0da4b6a4282bc36ec4e",
+      "changed_input": "inputs/water32-changed.json",
+      "changed_input_sha256": "788d9ae25c5b89a947832738e24c3ffb8376f04885de63209be6a9a686e3214b",
+      "charge": 0,
+      "classification": "performance_tuning",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "462361d06e44c372a4b116599ecde2e4bf6b6bd4416f26fea2f3b47fa6cb0ece",
+      "input": "inputs/water32.json",
+      "input_sha256": "a5d04b8fe0f36b6a49dd5dcb54cd7560e3e9be6c2742cdace788232e490f7439",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "water8": {
+      "ao_count_spherical": 192,
+      "atom_count": 24,
+      "changed_grid_identity": "f0f51a6ba5dd355d91f95b0bdcd5d0354b889b3a257a7970c39aaf7c3ce36c0d",
+      "changed_input": "inputs/water8-changed.json",
+      "changed_input_sha256": "5c2813a5e647040a55cc6e4fc7f4879759c896c906e53bed49472e73dd7e5d69",
+      "charge": 0,
+      "classification": "performance_tuning",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "32fc1826c1ad929b88c5bd304d2e45e3c7ccb4f94b1f7e2c4b224f3f097b3450",
+      "input": "inputs/water8.json",
+      "input_sha256": "a163fd3b1645f021a1d863f4c2ced1140d38d7475587aeacbc51b6bad9cce09b",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    },
+    "water_dimer": {
+      "ao_count_spherical": 48,
+      "atom_count": 6,
+      "changed_grid_identity": "c2921226ec29a5ec735dcbdc2e491d97458a03dd562d74df3c863ba61bf9bddd",
+      "changed_input": "inputs/water_dimer-changed.json",
+      "changed_input_sha256": "e917487ae144213eb746bd59f419494107227a926f2c263082affadc8b50fc14",
+      "charge": 0,
+      "classification": "correctness_sentinel",
+      "device": "RTX 5090/sm_120",
+      "grid_identity": "842699535b4243ae7753c99894769ed278300bd5896833fec7b67e0e37e1927a",
+      "input": "inputs/water_dimer.json",
+      "input_sha256": "c894ad4c7718f9002b61e0a75b566368e2bb8ef3e0601cf6714d4ff50c66924e",
+      "memory_budget_bytes": 21474836480,
+      "multiplicity": 1
+    }
+  },
+  "contract_id": "DFT-MP-v1",
+  "contract_sha256": "a9d439261a08007a296862e8869d35c1b127e6725e7bd73e294fa9ccc9b602a0",
+  "final_acceptance_issue": 1190,
+  "gates": {
+    "complete_endpoint": "prepare+SCF+final strict verification/refinement+analytic forces+transfers+synchronization+selection; changed geometry includes rebuild",
+    "existing_stricter_gate_wins": true,
+    "independent_force_component_max_eh_per_bohr": 1e-06,
+    "independent_total_energy_abs_eh": 1e-07,
+    "maximum_unexplained_case_regression": 0.05,
+    "minimum_ci95_lower_exclusive": 1.0,
+    "minimum_geomean_speedup": 1.2,
+    "minimum_paired_samples": 5,
+    "mixed_energy_abs_eh": 1e-07,
+    "mixed_force_component_max_eh_per_bohr": 1e-06,
+    "no_online_scientific_cuda_compile": true,
+    "pair_order": "interleaved alternating AB/BA with recorded order and raw samples",
+    "performance_cases": [
+      "water8",
+      "water16",
+      "water32",
+      "caffeine",
+      "ace_glygly_nme"
+    ],
+    "preferred_paired_samples": 10,
+    "statistic": "geometric mean of per-case median strict/mixed ratios; stratified paired bootstrap 10000 resamples per case with seed 1185, percentile 2.5 lower bound",
+    "timing_boundaries": [
+      "cold",
+      "warm",
+      "changed_geometry"
+    ]
+  },
+  "model": {
+    "grid_convergence": "independent finer grid required",
+    "grid_points_weights": "molecular_grid_identity per case",
+    "grid_selection": "explicit_common_pbe_tight_derivative_v2_not_per_method_default",
+    "grid_source": "GridPolicy('tight').resolve('pbe', derivative_order=1) at contract freeze",
+    "grid_spec": {
+      "angular_azimuth": 48,
+      "angular_polar": 24,
+      "angular_rule": "legendre-trapezoid",
+      "coincident_tolerance": 1e-12,
+      "element_radii": [
+        [
+          1,
+          0.8062831465047213
+        ],
+        [
+          2,
+          1.1590320231005369
+        ],
+        [
+          3,
+          3.0235617993927044
+        ],
+        [
+          4,
+          2.368456742857618
+        ],
+        [
+          5,
+          1.9401188212769855
+        ],
+        [
+          6,
+          1.8897261246204402
+        ],
+        [
+          7,
+          1.7889407313073502
+        ],
+        [
+          8,
+          1.5873699446811698
+        ],
+        [
+          9,
+          1.6125662930094427
+        ],
+        [
+          10,
+          1.6881553379942602
+        ],
+        [
+          11,
+          3.5274887659581555
+        ],
+        [
+          12,
+          3.1495435410340673
+        ],
+        [
+          13,
+          2.8471873610947966
+        ],
+        [
+          14,
+          2.620420226140344
+        ],
+        [
+          15,
+          2.771598316109979
+        ],
+        [
+          16,
+          2.5700275294837986
+        ],
+        [
+          17,
+          2.494438484498981
+        ],
+        [
+          18,
+          2.4188494395141635
+        ],
+        [
+          19,
+          4.434557305775966
+        ],
+        [
+          20,
+          3.880237642553971
+        ],
+        [
+          21,
+          3.3511143276602473
+        ],
+        [
+          22,
+          3.0739544960492493
+        ],
+        [
+          23,
+          3.048758147720977
+        ],
+        [
+          24,
+          2.771598316109979
+        ],
+        [
+          25,
+          2.696009271125162
+        ],
+        [
+          26,
+          2.620420226140344
+        ],
+        [
+          27,
+          2.5196348328272538
+        ],
+        [
+          28,
+          2.494438484498981
+        ],
+        [
+          29,
+          2.5448311811555264
+        ],
+        [
+          30,
+          2.746401967781707
+        ],
+        [
+          31,
+          2.8219910127665244
+        ],
+        [
+          32,
+          2.746401967781707
+        ],
+        [
+          33,
+          2.8975800577513415
+        ],
+        [
+          34,
+          2.771598316109979
+        ],
+        [
+          35,
+          2.8723837094230693
+        ],
+        [
+          36,
+          2.9479727544078864
+        ],
+        [
+          37,
+          4.7621098340435095
+        ],
+        [
+          38,
+          4.2077901708215135
+        ],
+        [
+          39,
+          3.7038632042560633
+        ],
+        [
+          40,
+          3.5022924176298824
+        ],
+        [
+          41,
+          3.325917979331975
+        ],
+        [
+          42,
+          3.1243471927057946
+        ],
+        [
+          43,
+          2.8975800577513415
+        ],
+        [
+          44,
+          2.8471873610947966
+        ],
+        [
+          45,
+          2.8471873610947966
+        ],
+        [
+          46,
+          2.721205619453434
+        ],
+        [
+          47,
+          2.8975800577513415
+        ],
+        [
+          48,
+          3.0991508443775224
+        ],
+        [
+          49,
+          3.2251325860188853
+        ],
+        [
+          50,
+          3.1747398893623395
+        ],
+        [
+          51,
+          3.1747398893623395
+        ],
+        [
+          52,
+          3.0991508443775224
+        ],
+        [
+          53,
+          3.325917979331975
+        ],
+        [
+          54,
+          3.3007216310037024
+        ],
+        [
+          55,
+          5.26603680060896
+        ],
+        [
+          56,
+          4.434557305775966
+        ],
+        [
+          57,
+          4.0818084291801515
+        ],
+        [
+          58,
+          3.7038632042560633
+        ],
+        [
+          59,
+          3.9810230358670613
+        ],
+        [
+          60,
+          3.9558266875387886
+        ],
+        [
+          61,
+          3.9306303392105164
+        ],
+        [
+          62,
+          3.9054339908822433
+        ],
+        [
+          63,
+          3.8046485975691535
+        ],
+        [
+          64,
+          3.8298449458974257
+        ],
+        [
+          65,
+          3.8046485975691535
+        ],
+        [
+          66,
+          3.7794522492408804
+        ],
+        [
+          67,
+          3.754255900912608
+        ],
+        [
+          68,
+          3.754255900912608
+        ],
+        [
+          69,
+          3.7290595525843355
+        ],
+        [
+          70,
+          3.8550412942256984
+        ],
+        [
+          71,
+          3.6786668559277906
+        ],
+        [
+          72,
+          3.451899720973338
+        ],
+        [
+          73,
+          3.3007216310037024
+        ],
+        [
+          74,
+          3.0991508443775224
+        ],
+        [
+          75,
+          2.9731691027361595
+        ],
+        [
+          76,
+          2.922776406079614
+        ],
+        [
+          77,
+          2.796794664438252
+        ],
+        [
+          78,
+          2.8219910127665244
+        ],
+        [
+          79,
+          2.8471873610947966
+        ],
+        [
+          80,
+          3.325917979331975
+        ],
+        [
+          81,
+          3.27552528267543
+        ],
+        [
+          82,
+          3.27552528267543
+        ],
+        [
+          83,
+          3.4267033726450653
+        ],
+        [
+          84,
+          3.3007216310037024
+        ],
+        [
+          85,
+          3.4770960693016097
+        ],
+        [
+          86,
+          3.5778814626147004
+        ]
+      ],
+      "ordering": "atom-radial-polar-azimuth",
+      "partition": "becke-equal-radius",
+      "partition_iterations": 3,
+      "pruning": "none",
+      "radial_points": 72,
+      "radial_rule": "rational-legendre",
+      "units": "Bohr",
+      "version": 2
+    },
+    "methods": {
+      "b3lyp": {
+        "role": "strict_reuse",
+        "version": "B3LYP-VWN-RPA-tail-v1/libxc-7.0"
+      },
+      "lda": {
+        "role": "regression",
+        "version": "LDA-XC-PW/libxc-7.0"
+      },
+      "pbe": {
+        "role": "core_mixed",
+        "version": "PBE-GGA/libxc-7.0"
+      },
+      "pbe0": {
+        "role": "core_mixed",
+        "version": "PBE0-global-hybrid/libxc-7.0"
+      },
+      "r2scan": {
+        "role": "core_mixed",
+        "version": "r2SCAN-MGGA/libxc-7.0"
+      }
+    },
+    "scf": {
+      "density_tolerance": 1e-08,
+      "energy_tolerance_eh": 1e-10,
+      "max_iterations": 100,
+      "physical_residual_max": 1e-08,
+      "screening_thresholds": {
+        "direct_eri": 1e-12
+      },
+      "state_selection": "same attained state required"
+    }
+  },
+  "product_issue": 1191,
+  "required_ablations": [
+    "strict_matched",
+    "algorithm_layout_only",
+    "arithmetic_only",
+    "combined"
+  ],
+  "required_checks": [
+    "independent_energy_force_oracle",
+    "independent_grid_convergence",
+    "multi_step_reconverged_finite_difference",
+    "changed_geometry",
+    "warm_replay",
+    "batch_isolation",
+    "failure_recovery",
+    "strict_fallback",
+    "public_no_online_compile"
+  ],
+  "rows": [
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe/rks/water/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe/rks/water/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe/rks/water/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe/rks/water_dimer/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe/rks/water_dimer/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe/rks/water_dimer/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe/rks/benzene/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe/rks/benzene/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe/rks/benzene/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe/rks/water8/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe/rks/water8/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe/rks/water8/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe/rks/water8/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe/rks/water16/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe/rks/water16/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe/rks/water16/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe/rks/water16/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe/rks/water32/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe/rks/water32/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe/rks/water32/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe/rks/water32/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe/rks/caffeine/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe/rks/caffeine/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe/rks/caffeine/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe/rks/caffeine/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe/rks/ace_glygly_nme/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe/rks/ace_glygly_nme/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe/rks/ace_glygly_nme/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe/rks/ace_glygly_nme/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe/uks/oh/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe/uks/oh/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe/uks/oh/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe/uks/o2/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe/uks/o2/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe/uks/o2/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "r2scan/rks/water/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "r2scan/rks/water/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "r2scan/rks/water/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "r2scan/rks/water_dimer/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "r2scan/rks/water_dimer/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "r2scan/rks/water_dimer/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "r2scan/rks/benzene/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "r2scan/rks/benzene/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "r2scan/rks/benzene/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "r2scan/rks/water8/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "r2scan/rks/water8/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "r2scan/rks/water8/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "r2scan/rks/water8/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "r2scan/rks/water16/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "r2scan/rks/water16/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "r2scan/rks/water16/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "r2scan/rks/water16/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "r2scan/rks/water32/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "r2scan/rks/water32/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "r2scan/rks/water32/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "r2scan/rks/water32/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "r2scan/rks/caffeine/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "r2scan/rks/caffeine/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "r2scan/rks/caffeine/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "r2scan/rks/caffeine/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "r2scan/rks/ace_glygly_nme/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "r2scan/rks/ace_glygly_nme/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "r2scan/rks/ace_glygly_nme/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "r2scan/rks/ace_glygly_nme/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "r2scan/uks/oh/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "r2scan/uks/oh/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "r2scan/uks/oh/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "r2scan/uks/o2/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "r2scan",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "r2scan/uks/o2/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "r2scan/uks/o2/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "r2scan",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe0/rks/water/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe0/rks/water/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "pbe0/rks/water/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe0/rks/water_dimer/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe0/rks/water_dimer/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water_dimer",
+      "id": "pbe0/rks/water_dimer/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe0/rks/benzene/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe0/rks/benzene/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "pbe0/rks/benzene/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe0/rks/water8/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe0/rks/water8/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe0/rks/water8/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water8",
+      "id": "pbe0/rks/water8/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe0/rks/water16/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe0/rks/water16/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe0/rks/water16/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water16",
+      "id": "pbe0/rks/water16/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe0/rks/water32/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe0/rks/water32/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe0/rks/water32/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water32",
+      "id": "pbe0/rks/water32/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe0/rks/caffeine/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe0/rks/caffeine/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe0/rks/caffeine/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "caffeine",
+      "id": "pbe0/rks/caffeine/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe0/rks/ace_glygly_nme/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe0/rks/ace_glygly_nme/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe0/rks/ace_glygly_nme/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "ace_glygly_nme",
+      "id": "pbe0/rks/ace_glygly_nme/promoted",
+      "j_k": "direct",
+      "level": "promoted",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe0/uks/oh/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe0/uks/oh/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "pbe0/uks/oh/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe0/uks/o2/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "pbe0",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe0/uks/o2/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "pbe0/uks/o2/mixed_correct",
+      "j_k": "direct",
+      "level": "mixed_correct",
+      "method": "pbe0",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "b3lyp/rks/water/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "b3lyp",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "b3lyp/rks/water/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "b3lyp",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "b3lyp/rks/benzene/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "b3lyp",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "benzene",
+      "id": "b3lyp/rks/benzene/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "b3lyp",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "b3lyp/uks/oh/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "b3lyp",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "b3lyp/uks/oh/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "b3lyp",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "b3lyp/uks/o2/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "b3lyp",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": false,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "o2",
+      "id": "b3lyp/uks/o2/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "b3lyp",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": false,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "lda/rks/water/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "lda",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "water",
+      "id": "lda/rks/water/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "lda",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "rks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "lda/uks/oh/fp64_energy",
+      "j_k": "direct",
+      "level": "fp64_energy",
+      "method": "lda",
+      "product": "energy",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    },
+    {
+      "backend": "cuda",
+      "basis": "def2-svp/spherical",
+      "case": "oh",
+      "id": "lda/uks/oh/fp64_energy_forces",
+      "j_k": "direct",
+      "level": "fp64_energy_forces",
+      "method": "lda",
+      "product": "energy+analytic_forces",
+      "provider": "native-dft",
+      "required": true,
+      "spin": "uks"
+    }
+  ],
+  "schema_version": 1,
+  "scope": {
+    "batch_latency": 1,
+    "batch_throughput": 4,
+    "elements": [
+      "H",
+      "C",
+      "N",
+      "O"
+    ],
+    "hardware": {
+      "device": "RTX 5090",
+      "driver_toolchain_build": "pin exact identities in campaign before timing",
+      "memory_budget_bytes": 21474836480,
+      "sm": 120
+    },
+    "optional_domains": [
+      "density_fitting",
+      "def2-tzvp",
+      "other_gpu",
+      "ecp",
+      "periodic",
+      "hessians"
+    ],
+    "periodic": false
+  },
+  "source_issue": 1185,
+  "version": "1.0.0"
+}

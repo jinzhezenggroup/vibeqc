@@ -282,10 +282,19 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
                                                                    plan.panel_capacity, true)
                                   : generated::ProjectedExchangeSchedule{};
   const auto* shared_policy = std::getenv("VIBEQC_DF_JK_SHARED_SOURCE");
-  const bool shared = !beta && (seed || ready) && joint_rank && shared_policy &&
-                      std::strcmp(shared_policy, "1") == 0 &&
+  if (shared_policy && std::strcmp(shared_policy, "auto") != 0 &&
+      std::strcmp(shared_policy, "0") != 0 && std::strcmp(shared_policy, "1") != 0) {
+    detail = "VIBEQC_DF_JK_SHARED_SOURCE must be auto, 0 or 1";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const bool shared_explicit_multiblock = shared_policy && std::strcmp(shared_policy, "1") == 0;
+  const bool shared_requested =
+      !shared_policy || std::strcmp(shared_policy, "auto") == 0 || shared_explicit_multiblock;
+  const bool shared_schedule_admitted =
+      df_shared_projected_exchange_schedule_admitted(joint_schedule, shared_explicit_multiblock);
+  const bool shared = shared_requested && !beta && (seed || ready) && joint_rank &&
                       qualified_value_rhf_exchange(plan, joint_rank) && plan.triangular_exchange &&
-                      joint_schedule.blocks >= 1 && joint_schedule.blocks <= 2 &&
+                      shared_schedule_admitted &&
                       plan.row_tile * plan.nbf * plan.auxiliary_tile >= plan.naux;
   if (shared && ready)
     launch_validate_device_occupied_kernel(
@@ -294,8 +303,9 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
   const JkTermSelection terms{true, !ready && !seed};
   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
   if (shared) {
-    status = build_shared_coulomb_occupied_exchange(plan, alpha, state.d_alpha_factor, joint_rank,
-                                                    seed ? 1 : 2, detail);
+    status =
+        build_shared_coulomb_occupied_exchange(plan, alpha, state.d_alpha_factor, joint_rank,
+                                               seed ? 1 : 2, shared_explicit_multiblock, detail);
   } else if (beta) {
     status = execute_cuda_density_fitting_uhf_jk_device(
         &plan, alpha, beta, plan.coulomb, plan.alpha_exchange, plan.beta_exchange, detail, terms);

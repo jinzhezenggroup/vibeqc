@@ -1,0 +1,8 @@
+{
+  "name": "scf_density_cuda",
+  "outputs": [
+    "generated/generated_scf_density_cuda.cuh"
+  ],
+  "owner": "python/vibeqc_compiler/tensor/scf_cuda.py",
+  "scope": "Build-time CUDA lowering of canonical SCF plain and energy-weighted density TensorIR for RHF/UHF integer occupations. Plain density contracts one upper-triangle AO pair and mirrors the completed value; weighted density retains full-square evaluation to preserve its qualified FP64 multiplication order. Native code retains launch, stream, active-item, warm-start and solver/runtime ownership."
+}

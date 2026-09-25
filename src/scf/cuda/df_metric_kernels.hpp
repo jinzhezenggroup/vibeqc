@@ -7,11 +7,11 @@
 
 namespace vibeqc::scf::cuda_df {
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Launch on the caller's stream, compacting the logical work domain when legal. */
 void launch_symmetrize_metrics_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t dimension, double* metrics);
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Launch on the caller's stream, remapping dense metric columns when legal. */
 void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t matrix_elements,
                                       std::size_t dimension, const double* eigenvectors,
@@ -23,5 +23,13 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
  */
 void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
                                     const double* eigenvalues, bool square_root, double* projected);
+
+/** Scale column-major [eigendirection,pair] projections into disjoint storage.
+ * This preserves the same elementwise division while allowing callers to fuse
+ * a required retention copy into the scaling pass.
+ */
+void launch_scale_metric_projection_to(cudaStream_t stream, std::size_t dimension,
+                                       std::size_t pairs, const double* eigenvalues,
+                                       bool square_root, const double* projected, double* scaled);
 
 }  // namespace vibeqc::scf::cuda_df

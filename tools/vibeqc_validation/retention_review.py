@@ -6,6 +6,7 @@ without a native build, NumPy, network access or an artifact service.
 
 from __future__ import annotations
 
+import gzip
 import json
 from collections import Counter
 from pathlib import PurePosixPath
@@ -30,7 +31,12 @@ def raw_json_markers(path: str, data: bytes) -> list[str]:
     These markers request a human storage decision; they do not mean the data
     lack scientific value. NPZ measurements and negative results are not banned.
     """
-    if not path.endswith(".json"):
+    if path.endswith(".json.gz"):
+        try:
+            data = gzip.decompress(data)
+        except (OSError, EOFError):
+            return []
+    elif not path.endswith(".json"):
         return []
     try:
         value = json.loads(data)

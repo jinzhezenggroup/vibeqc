@@ -13,7 +13,7 @@ tomllib = pytest.importorskip("tomllib")
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_installed_compiler_contains_pinned_libxc_source_closure(
+def test_installed_compiler_contains_required_source_and_production_assets(
     tmp_path: Path,
 ) -> None:
     package = tmp_path / "vibeqc_compiler"
@@ -31,6 +31,7 @@ def test_installed_compiler_contains_pinned_libxc_source_closure(
             shutil.copytree(ROOT / source, target, dirs_exist_ok=True)
         else:
             shutil.copyfile(ROOT / source, target)
+
     registry = json.loads((ROOT / "upstream/manifest.json").read_text())
     libxc = registry["sources"]["libxc-7.0.0"]
     installed = package / "assets" / libxc["local_root"]
@@ -39,14 +40,14 @@ def test_installed_compiler_contains_pinned_libxc_source_closure(
         assert (installed / name).read_bytes() == (
             ROOT / libxc["local_root"] / name
         ).read_bytes()
-    xtbloom = registry["sources"]["xtbloom-gfn1-d3"]
-    installed_xtbloom = package / "assets" / xtbloom["local_root"]
-    for name in xtbloom["files"]:
-        assert (installed_xtbloom / name).read_bytes() == (
-            ROOT / xtbloom["local_root"] / name
-        ).read_bytes()
-    assert (installed_xtbloom / "gfn1.json").is_file()
+
+    for source_id in ("xtbloom-gfn1-d3", "xtbloom-gfn1-parameters"):
+        source = registry["sources"][source_id]
+        assert source["kind"] == "remote-file-set"
+        assert "local_root" not in source
+
     script = """
+from vibeqc_compiler.common.d3_data import load_d3_production_data
 from vibeqc_compiler.common.paths import asset_path, source_root
 from vibeqc_compiler.integral.expr import Graph
 from vibeqc_compiler.xc.libxc_maple import import_maple_file
@@ -61,10 +62,9 @@ module = import_maple_file(root, 'gga_c_pbe.mpl', defines={'gga_c_pbe_params'}, 
 graph = Graph()
 energy = module.call(graph, 'f', graph.constant(1), graph.constant(0), graph.constant(0), 0, 0)
 assert -1 < graph.evaluate(energy, {}) < 0
-assert asset_path('manifests/libxc/7.0.0/manifest.json').is_file()
-xtbloom = asset_path('upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3')
-assert (xtbloom / 'gfn1_d3.json').is_file()
-assert (xtbloom / 'gfn1.json').is_file()
+d3 = load_d3_production_data(asset_path('data/parameters/d3_production.bin'))
+assert len(d3.c6) == 28455
+assert d3.table_sha256 == '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a7e8886cd22e'
 """
     completed = subprocess.run(
         [sys.executable, "-S", "-c", script],

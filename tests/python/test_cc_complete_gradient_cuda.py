@@ -2,14 +2,21 @@
 
 import os
 import typing
+from pathlib import Path
 
 import numpy as np
 import pytest
 from vibeqc.calculator import Atom, Primitive, Shell
+from vibeqc.profiles import find_nvcc
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 
 from tools.cc_gradient_fixtures import inputs, load, source_arguments
 from tools.validate_ccsd_t_gradient import analytic_oracle
-from tools.vibeqc_cc import complete_ccsdt_gradient_validation
+from tools.vibeqc_cc import (
+    complete_ccsdt_cuda_response_gradient_validation,
+    complete_ccsdt_gradient_validation,
+)
 from tools.vibeqc_cc.complete_gradient import (
     CCSDGradientOptions,
     complete_gradient_validation,
@@ -123,6 +130,63 @@ def test_complete_ccsdt_cuda_derivative_endpoint_matches_pinned_pyscf() -> None:
     assert result.diagnostics["dense_ao_derivative_oracle"] is False
     assert result.diagnostics["gpu_one_electron_calls"] == 10
     assert result.diagnostics["gpu_weighted_eri_calls"] == 8
+
+
+def test_complete_ccsdt_cuda_response_gradient_matches_pinned_pyscf(
+    tmp_path: Path,
+) -> None:
+    assert os.environ.get("SLURM_JOB_ID"), (
+        "CUDA RCCSD(T) response-gradient qualification requires Slurm"
+    )
+    architecture = os.environ.get("VIBEQC_TENSOR_ARCH", "").strip()
+    if not architecture:
+        pytest.fail(
+            "set VIBEQC_TENSOR_ARCH to the allocated GPU architecture; "
+            "CUDA RCCSD(T) qualification must not assume a device target"
+        )
+    nvcc = find_nvcc()
+    assert nvcc is not None
+    compiler = CudaCompilerAdapter(nvcc, cuda_target_info(architecture))
+    expected = np.asarray(analytic_oracle("h2o")["analytic"]["gradient"])
+    with _source("h2o") as source:
+        result = complete_ccsdt_cuda_response_gradient_validation(
+            source,
+            compiler,
+            tmp_path / "ccsdt-cuda-response-gradient",
+            options=CCSDGradientOptions(
+                derivative_backend="cuda",
+                device_id=0,
+                derivative_stage_budget_bytes=64 << 20,
+                one_electron_schedule=0,
+            ),
+            vir_chunk_size=1,
+            tensor_max_bytes=512 << 20,
+            triples_max_bytes=512 << 20,
+            lambda_host_bytes=1 << 30,
+            lambda_device_bytes=2 << 30,
+            jk_device_budget_bytes=512 << 20,
+            response_device_budget_bytes=1 << 30,
+        )
+
+    np.testing.assert_allclose(result.gradient, expected, atol=1e-6, rtol=0)
+    assert result.diagnostics["cuda_response_gradient_validation"] is True
+    assert result.diagnostics["state_preparation_backend"] == (
+        "native-cpu-rhf+native-cpu-rccsd"
+    )
+    assert result.diagnostics["lambda_backend"] == "cuda-fp64-resident-actions"
+    assert (
+        result.diagnostics["triples_response_backend"]
+        == "cuda-fp64-resident-triples-vjp"
+    )
+    assert result.diagnostics["parameter_tensor_backend"] == (
+        "cuda-fp64-ordinary-stream"
+    )
+    assert result.diagnostics["response_execution"] == "cuda-resident"
+    assert result.diagnostics["resident_response_diagnostics"] is not None
+    assert result.diagnostics["cpu_execution_fallback"] is False
+    assert result.diagnostics["derivative_backend"] == (
+        "cuda-generated-bounded-consumers"
+    )
 
 
 def test_h2_shell_streamed_eri_weights_match_dense_cuda_endpoint() -> None:

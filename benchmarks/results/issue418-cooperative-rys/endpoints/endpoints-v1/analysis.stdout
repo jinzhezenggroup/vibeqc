@@ -1,9 +1,0 @@
-96-forces.json {'auto': 0.10895301098935306, 'candidate': 0.10900283697992563} improvement -0.00045731632490131346 failed []
-96-energy.json {'auto': 0.009817240061238408, 'candidate': 0.009833209915086627} improvement -0.0016267152222622094 failed []
-192-forces.json {'auto': 0.1648425660096109, 'candidate': 0.13013471197336912} improvement 0.21055152729312754 failed []
-192-energy.json {'auto': 0.0396492260042578, 'candidate': 0.039215937023982406} improvement 0.010928056457618185 failed []
-384-forces.json {'auto': 0.6940168149303645, 'candidate': 0.622889355989173} improvement 0.10248665077131902 failed []
-384-energy.json {'auto': 0.2698929440230131, 'candidate': 0.26985531183891} improvement 0.00013943374562586097 failed []
-768-forces.json {'auto': 2.5577557729557157, 'candidate': 2.0008949649054557} improvement 0.21771461291894867 failed []
-768-energy.json {'auto': 1.014736555982381, 'candidate': 1.0150298608932644} improvement -0.0002890453774964108 failed []
-complete shell reduction 0.44517935057023406 performance gate True

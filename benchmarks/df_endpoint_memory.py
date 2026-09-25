@@ -43,7 +43,6 @@ def main() -> None:
     args = parser.parse_args()
     if not os.environ.get("SLURM_JOB_ID") or args.batch < 1 or args.df_budget < 0:
         parser.error("use a finite Slurm job, positive batch, and nonnegative budget")
-    os.environ["VIBEQC_ONE_ELECTRON_DERIVATIVES"] = "generated"
     if args.selection == "reference":
         parser.error(
             "coordinate-wise DF response was retired; use an archived source checkout"

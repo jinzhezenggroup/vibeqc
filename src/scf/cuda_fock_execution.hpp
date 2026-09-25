@@ -31,8 +31,11 @@ struct PreparedCudaFockBinding {
 
 /** Return the ordinary-stream device binding when the prepared plan can
  * execute its complete requested value-side Fock model through one resident
- * provider. The first implementation covers the existing full-range exact
- * Direct-J/K owner; DF/mixed-provider compositions remain explicit follow-ups.
+ * provider. The value seam covers full-range Coulomb plus exact full-/short-/
+ * long-range exchange. Range-separated exchange may reuse the conservative
+ * full-range Schwarz bounds for value screening; operator-specific tighter
+ * bounds and range derivatives remain separate follow-ups. DF/mixed-provider
+ * compositions remain explicit follow-ups.
  */
 PreparedCudaFockBinding prepared_cuda_fock_binding(const PreparedFockPlan& plan) noexcept;
 

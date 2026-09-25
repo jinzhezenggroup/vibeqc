@@ -513,8 +513,10 @@ contexts, shape buckets and detached outputs. Real-device tests skip in CPU CI
 unless explicitly enabled by the caller's GPU allocation.
 
 The [archived CG09 records](../../benchmarks/results/tensor-cuda-146/README.md)
-include the retained-provider allocation audit, all candidate samples and the
-measured selection/fallback results for six shape buckets.
+retain the provider-allocation audit and measured selection/fallback results for
+six shape buckets. The complete candidate tuning ledgers and raw samples are
+hash-pinned in existing Git history and can be restored through the checked-in
+retention manifest.
 
 Precision-request identity and qualification scope are part of the resolved schedule,
 not the source equation hash. Cast AD uses the declared arithmetic linearization

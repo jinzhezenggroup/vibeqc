@@ -304,16 +304,18 @@ CUDA_MODULES["cuda_integral_numerics"] = (
 )
 CUDA_ALLOWED["cuda_integral_numerics"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_integral_numerics"]
-) + ("scf/cuda/packed_basis.", "molecule/basis.hpp")
+) + (
+    "scf/cuda/packed_basis.",
+    "molecule/basis.hpp",
+    # Range moments are the shared CPU/CUDA scientific primitive. Keep this
+    # exception exact so CUDA numerics cannot acquire the broader integral layer.
+    "integrals/range_moments.hpp",
+)
 CUDA_MODULES["cuda_one_electron_native"] = (
     "one_electron_reference",
-    "one_electron_force_reference",
-    "one_electron_force_workspace",
     "one_electron_native_overlap",
     "one_electron_native_attraction",
-    "one_electron_native_attraction_gradient",
     "one_electron_native_contraction",
-    "one_electron_native_force",
 )
 CUDA_ALLOWED["cuda_one_electron_native"] = (
     tuple("scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_one_electron_native"])
@@ -505,8 +507,6 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda/nuclear_kernels.hpp",
     "scf/cuda/one_electron_derivatives.cuh",
     "scf/cuda/one_electron_export_kernels.hpp",
-    "scf/cuda/one_electron_force_reference.hpp",
-    "scf/cuda/one_electron_force_workspace.hpp",
     "scf/cuda/one_electron_values.cuh",
     "scf/cuda/one_electron_view.hpp",
     "scf/cuda/packed_basis.hpp",
@@ -528,8 +528,7 @@ CUDA_ALLOWED["cuda_hf_driver"] = (
     "scf/cuda_weighted_eri.hpp",
     "scf/direct_task_layout.hpp",
     "scf/generated_shell_task.hpp",
-    "scf/rhf.hpp",
-    "scf/solver/iteration_control.hpp",
+    "solver/iteration_control.hpp",
 )
 # Upstream physical-reference export is a host bridge for post-HF clients.
 CUDA_ALLOWED["cuda_hf_driver"] += (

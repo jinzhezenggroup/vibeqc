@@ -22,7 +22,10 @@ from vibeqc_compiler.integral.first_directional import DirectionalMatrixTerm
 from vibeqc_compiler.integral.one_electron_derivatives import (
     build_one_electron_derivative_ir,
 )
-from vibeqc_compiler.integral.weight_pullback import normalized_cartesian_components
+from vibeqc_compiler.integral.weight_pullback import (
+    normalized_cartesian_components,
+    normalized_radial_primitives,
+)
 from vibeqc_compiler.integral.weighted_eri import build_weighted_eri_ir
 
 from .native import NativeRHFState
@@ -33,6 +36,11 @@ RHF_FIRST_ERI_TERMS = (
     DirectionalMatrixTerm(0, (0, 1), (2, 3), 1.0),
     DirectionalMatrixTerm(0, (0, 2), (1, 3), -0.5),
 )
+
+# Pure semilocal RKS has the same closed-shell density convention but only the
+# Hartree geometry response in the two-electron frozen Fock. XC geometry is a
+# separate source owned by the semilocal contraction/grid-response stack.
+SEMILOCAL_RKS_FIRST_ERI_TERMS = (DirectionalMatrixTerm(0, (0, 1), (2, 3), 1.0),)
 
 
 def checked_direction(direction: typing.Any, natoms: typing.Any) -> typing.Any:
@@ -74,13 +82,42 @@ class _FirstDerivativeProvider:
             raise TypeError("generated Hessian sources require NativeRHFState")
         state.validate()
         self.state = state
+        self._bind_source(state.source, state.cache)
+
+    @classmethod
+    def from_source(
+        cls, source: typing.Any, cache: typing.Any
+    ) -> "_FirstDerivativeProvider":
+        """Bind the same generated integral owner without inventing an RHF state.
+
+        This constructor is used by semilocal RKS Hessian preparation, where the
+        live KS/CPKS owner supplies its own state validation. The source remains
+        an all-electron direct AO integral owner; method-specific Fock weights are
+        supplied separately by the caller.
+        """
+        check = getattr(source, "_check_open", None)
+        if not callable(check):
+            raise TypeError("generated first derivatives require a native AO source")
+        check()
+        result = cls.__new__(cls)
+        result.state = None
+        result._bind_source(source, cache)
+        return result
+
+    def _bind_source(self, source: typing.Any, cache: typing.Any) -> None:
         self.compiler = CppCompilerAdapter(Path(shutil.which("c++") or "c++"))
-        self.cache = state.cache / "first-cache"
+        self.cache = Path(cache) / "first-cache"
         self.evaluators = {}
-        self.shells = state.source.shells
-        self.offsets = state.offsets
-        self.primitives = state.primitives
-        self.coords = state.coords
+        self.shells = source.shells
+        self.offsets = np.cumsum((0, *source.shell_sizes))
+        self.primitives = tuple(
+            normalized_radial_primitives(
+                shell.angular_momentum,
+                tuple((p.exponent, p.coefficient) for p in shell.primitives),
+            )
+            for shell in source.shells
+        )
+        self.coords = np.array([atom.position for atom in source.atoms])
 
     def raw_tiles(
         self, ir: typing.Any, slots: typing.Any, atom_indices: typing.Any
@@ -138,15 +175,66 @@ def generated_directional_first_order(
     return _generated_first_order(state, checked_direction(direction, state.nat))
 
 
-def _generated_first_order(
-    state: typing.Any, direction: typing.Any = None
+def generated_directional_semilocal_rks_integral_first_order(
+    source: typing.Any,
+    density: typing.Any,
+    direction: typing.Any,
+    *,
+    cache: typing.Any = ".artifacts",
 ) -> typing.Any:
-    provider = _FirstDerivativeProvider(state)
+    """Return the integral-only frozen RKS Fock direction and overlap direction.
+
+    This is the direct all-electron pure-semilocal nuclear-RHS source:
+    hcore'(v) + J'(D; v) and S'(v) at fixed AO density. It deliberately
+    excludes XC geometry response, induced CPKS density response, exact exchange,
+    density fitting, ECP and any public Hessian capability claim.
+    """
+    check = getattr(source, "_check_open", None)
+    if not callable(check):
+        raise TypeError("semilocal RKS first derivatives require a native AO source")
+    check()
+    if getattr(source, "representation", None) != "cartesian":
+        raise NotImplementedError(
+            "semilocal RKS Hessian first derivatives require Cartesian AOs"
+        )
+    if getattr(source, "auxiliary_shells", ()):
+        raise NotImplementedError(
+            "semilocal RKS Hessian first derivatives require direct integrals"
+        )
+    natom = len(source.atoms)
+    vector = checked_direction(direction, natom)
+    ao_density = _checked_ao_weight(density, source.nbf, "RKS reference density")
+    provider = _FirstDerivativeProvider.from_source(source, cache)
+    charges = np.asarray(
+        [atom.atomic_number for atom in source.atoms], dtype=np.float64
+    )
+    return _contract_generated_first_order(
+        provider,
+        ao_density,
+        charges,
+        direction=vector,
+        eri_terms=SEMILOCAL_RKS_FIRST_ERI_TERMS,
+    )
+
+
+def _contract_generated_first_order(
+    provider: typing.Any,
+    density: typing.Any,
+    charges: typing.Any,
+    *,
+    direction: typing.Any,
+    eri_terms: typing.Any,
+) -> typing.Any:
+    """Contract one closed-shell frozen-Fock model from common generated DAGs."""
     shells, offsets = provider.shells, provider.offsets
-    density = state.P0
-    shape = (state.nbf, state.nbf)
+    nbf = int(offsets[-1])
+    natom = len(provider.coords)
+    charges = np.asarray(charges, dtype=np.float64)
+    if charges.shape != (natom,) or not np.isfinite(charges).all():
+        raise ValueError("nuclear charges must be finite with one value per atom")
+    shape = (nbf, nbf)
     if direction is None:
-        shape = (state.nat, 3, *shape)
+        shape = (natom, 3, *shape)
     overlap, frozen = np.zeros(shape), np.zeros(shape)
     if direction is not None and not np.any(direction):
         return frozen, overlap
@@ -174,7 +262,7 @@ def _generated_first_order(
             ir = build_one_electron_derivative_ir(family, angular)
             for (u, v), gradient in provider.raw_tiles(ir, (a, b), atoms):
                 accumulate(out, atoms, gradient, offsets[a] + u, offsets[b] + v)
-        for nucleus, charge in enumerate(state.Z):
+        for nucleus, charge in enumerate(charges):
             ir = build_one_electron_derivative_ir(
                 "nuclear_attraction", angular, charge=float(charge)
             )
@@ -190,9 +278,8 @@ def _generated_first_order(
             u, v, w, x = (
                 offsets[shell] + c for shell, c in zip(slots, component, strict=True)
             )
-            # Ordered AO traversal: no orbit multiplicities or energy prefactors.
             ao = (u, v, w, x)
-            for term in RHF_FIRST_ERI_TERMS:
+            for term in eri_terms:
                 i, j = (ao[k] for k in term.output_pair)
                 k, l = (ao[k] for k in term.weight_pair)
                 accumulate(
@@ -206,6 +293,116 @@ def _generated_first_order(
     if not np.isfinite(overlap).all() or not np.isfinite(frozen).all():
         raise FloatingPointError("generated nuclear-perturbation source is nonfinite")
     return frozen, overlap
+
+
+def _generated_first_order(
+    state: typing.Any, direction: typing.Any = None
+) -> typing.Any:
+    provider = _FirstDerivativeProvider(state)
+    return _contract_generated_first_order(
+        provider,
+        state.P0,
+        state.Z,
+        direction=direction,
+        eri_terms=RHF_FIRST_ERI_TERMS,
+    )
+
+
+def generated_weighted_first_integral_gradient(
+    source: typing.Any,
+    source_name: str,
+    *,
+    pair_weights: typing.Any = None,
+    eri_shell_weights: typing.Any = None,
+    cache: typing.Any = ".artifacts",
+) -> np.ndarray:
+    """Contract plan-owned response weights with generated first integrals.
+
+    Pair sources consume a finite AO weight matrix. Coulomb consumes one ordered
+    shell-quartet weight block at a time, keeping the MethodIR response cotangent
+    shell-local rather than materializing an AO-rank-four tensor.
+    """
+    if source_name not in ("one_electron", "coulomb", "overlap_pulay"):
+        raise ValueError("unknown stationary first-integral source")
+    check = getattr(source, "_check_open", None)
+    if not callable(check):
+        raise TypeError("weighted first derivatives require a native AO source")
+    check()
+    if source.representation != "cartesian" or source.auxiliary_shells:
+        raise ValueError(
+            "weighted first derivatives require direct Cartesian all-electron sources"
+        )
+    provider = _FirstDerivativeProvider.from_source(source, cache)
+    shells, offsets = provider.shells, provider.offsets
+    natom, nbf = len(source.atoms), source.nbf
+    charges = np.asarray(
+        [atom.atomic_number for atom in source.atoms], dtype=np.float64
+    )
+    result = np.zeros((natom, 3), dtype=np.float64)
+
+    def accumulate(
+        atoms: typing.Any, derivative: typing.Any, coefficient: typing.Any
+    ) -> None:
+        coefficient = float(coefficient)
+        if coefficient == 0:
+            return
+        for center, atom in enumerate(atoms):
+            result[atom] += coefficient * derivative[center]
+
+    if source_name != "coulomb":
+        if eri_shell_weights is not None:
+            raise ValueError("pair first derivative cannot consume ERI shell weights")
+        weights = np.asarray(pair_weights)
+        if (
+            weights.shape != (nbf, nbf)
+            or weights.dtype.kind not in "iuf"
+            or not np.isfinite(weights).all()
+        ):
+            raise ValueError("pair first derivative requires a finite real AO matrix")
+        weights = np.asarray(weights, dtype=np.float64)
+        for a, b in product(range(len(shells)), repeat=2):
+            angular = (shells[a].angular_momentum, shells[b].angular_momentum)
+            atoms = (shells[a].atom_index, shells[b].atom_index)
+            sa = slice(offsets[a], offsets[a + 1])
+            sb = slice(offsets[b], offsets[b + 1])
+            block = weights[sa, sb]
+            families = (
+                ("kinetic",),
+                ("overlap",),
+            )[source_name == "overlap_pulay"]
+            for family in families:
+                ir = build_one_electron_derivative_ir(family, angular)
+                for (u, v), gradient in provider.raw_tiles(ir, (a, b), atoms):
+                    accumulate(atoms, gradient, block[u, v])
+            if source_name == "one_electron":
+                for nucleus, charge in enumerate(charges):
+                    ir = build_one_electron_derivative_ir(
+                        "nuclear_attraction", angular, charge=float(charge)
+                    )
+                    centers = (*atoms, nucleus)
+                    for (u, v), gradient in provider.raw_tiles(ir, (a, b), centers):
+                        accumulate(centers, gradient, block[u, v])
+    else:
+        if pair_weights is not None or not callable(eri_shell_weights):
+            raise ValueError(
+                "coulomb first derivative requires shell-local ERI weights"
+            )
+        for slots in product(range(len(shells)), repeat=4):
+            angular = tuple(shells[i].angular_momentum for i in slots)
+            atoms = tuple(shells[i].atom_index for i in slots)
+            shape = tuple(offsets[i + 1] - offsets[i] for i in slots)
+            weights = np.asarray(eri_shell_weights(slots), dtype=np.float64)
+            if weights.shape != shape or not np.isfinite(weights).all():
+                raise ValueError(
+                    "ERI shell weights must be finite with the ordered shell shape"
+                )
+            ir = build_weighted_eri_ir(angular)
+            for component, gradient in provider.raw_tiles(ir, slots, atoms):
+                accumulate(atoms, gradient, weights[component])
+
+    if not np.isfinite(result).all():
+        raise FloatingPointError("nonfinite weighted first-integral contraction")
+    return result
 
 
 def generated_rhf_relaxation_contraction(

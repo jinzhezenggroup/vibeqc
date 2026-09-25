@@ -70,6 +70,20 @@ void prepared_cuda_fock_seam() {
   require(binding && binding.nbf == hybrid.one_electron().nbf && binding.stream != nullptr &&
               binding.source_identity != nullptr,
           "prepared full-range CUDA J/K owner lacks the method-neutral execution binding");
+
+  auto range_spec = spec;
+  range_spec.coulomb.present = false;
+  range_spec.exchange = {true, -0.19, scf::FockOperator::LongRange, 0.33,
+                         scf::FockApproximation::Exact};
+  const auto range_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 0.0);
+  const scf::PreparedFockPlan range(system, nullptr, range_resolved, 0);
+  require(static_cast<bool>(scf::prepared_cuda_fock_binding(range)),
+          "unscreened value-only CUDA range exchange lacks the prepared execution binding");
+
+  const auto screened_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
+  const scf::PreparedFockPlan screened_range(system, nullptr, screened_resolved, 0);
+  require(static_cast<bool>(scf::prepared_cuda_fock_binding(screened_range)),
+          "screened CUDA range exchange lacks the prepared execution binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This
@@ -135,7 +149,8 @@ void compare_rks_chunk_history(bool pbe) {
     require(::setenv("VIBEQC_CUDA_KS_CHUNK", width, 1) == 0,
             "could not select CUDA RKS history route");
     const scf::PreparedFockPlan gpu(system, nullptr, strategy(true, scf::FockBackend::Cuda), 0);
-    dft::CudaKsPlan plan(gpu, basis, grid, options, pbe, 257);
+    dft::CudaKsPlan plan(gpu, basis, grid, options,
+                         pbe ? dft::SemilocalFamily::Pbe : dft::SemilocalFamily::Lda, 257);
     auto result = plan.run(nullptr, false, false);
     return std::pair{std::move(result), plan.transfers()};
   };
@@ -196,7 +211,8 @@ void run_hydroxyl(bool pbe) {
   options.max_iterations = 200;
   options.energy_tolerance = 1e-12;
   options.density_tolerance = 1e-10;
-  dft::CudaKsPlan plan(gpu, basis, grid, options, pbe);
+  dft::CudaKsPlan plan(gpu, basis, grid, options,
+                       pbe ? dft::SemilocalFamily::Pbe : dft::SemilocalFamily::Lda);
   const auto cold = plan.run(nullptr, false, false);
   require(cold.converged && !plan.failed(), "CUDA OH occupation cycle did not converge");
   const auto reference = scf::run_uks(cpu, basis, grid, options, pbe);
@@ -258,7 +274,7 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
   options.energy_tolerance = 1e-12;
   options.density_tolerance = 1e-10;
   options.max_iterations = 150;
-  dft::CudaKsPlan plan(gpu, basis, grid, options, functional, 257);
+  dft::CudaKsPlan plan(gpu, basis, grid, options, dft::semilocal_family_from_code(functional), 257);
   dft::CudaKsFinalStateToken unavailable;
   std::string snapshot_detail;
   require(plan.final_state_token(unavailable, snapshot_detail) == VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -293,6 +309,11 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
               cold_execution.submitted_iterations <=
                   cold_execution.iterations + cold_execution.iteration_chunks,
           "CUDA KS speculative work escaped the bounded chunk contract");
+  if (cold_execution.iteration_synchronizations == cold_execution.iterations &&
+      result.iterations > 1) {
+    require(cold_execution.warm_orbital_frames_retained + 1 == result.iterations,
+            "ordinary CUDA KS did not retain one orbital frame per continuing iteration");
+  }
   if (!result.converged || plan.failed()) {
     std::cerr << "failed atoms=" << atoms << " restricted=" << restricted
               << " functional=" << functional << " iter=" << result.iterations
@@ -441,12 +462,14 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
     const dft::MolecularGrid new_grid(moved, grid_spec);
     bool stale = false;
     try {
-      dft::CudaKsPlan wrong(new_gpu, new_basis, grid, options, functional);
+      dft::CudaKsPlan wrong(new_gpu, new_basis, grid, options,
+                            dft::semilocal_family_from_code(functional));
     } catch (const std::invalid_argument&) {
       stale = true;
     }
     require(stale, "CUDA SCF accepted a same-shape old grid");
-    dft::CudaKsPlan changed(new_gpu, new_basis, new_grid, options, functional);
+    dft::CudaKsPlan changed(new_gpu, new_basis, new_grid, options,
+                            dft::semilocal_family_from_code(functional));
     auto seed = plan.warm_density();
     for (auto& value : seed) value *= 1.3;
     const auto moved_warm = changed.run(&seed), moved_cold = changed.run(nullptr, false);
@@ -455,7 +478,8 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
             "changed-geometry warm normalization changed the endpoint");
   }
   options.max_iterations = 1;
-  dft::CudaKsPlan unfinished(gpu, basis, grid, options, functional);
+  dft::CudaKsPlan unfinished(gpu, basis, grid, options,
+                             dft::semilocal_family_from_code(functional));
   const auto limited = unfinished.run();
   require(!limited.converged && !unfinished.failed(), "iteration limit misreported its status");
   require(unfinished.warm_density().empty(), "unfinished solve published a good warm state");
@@ -472,7 +496,8 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
   runtime::active_device_resource_ledger = ledger;
   try {
     {
-      dft::CudaKsPlan measured(gpu, basis, grid, options, functional, 257);
+      dft::CudaKsPlan measured(gpu, basis, grid, options,
+                               dft::semilocal_family_from_code(functional), 257);
       require(ledger->live ==
                   measured.resources().state_device_bytes + measured.resources().xc_device_bytes,
               "CUDA KS resource request omits explicit allocations");

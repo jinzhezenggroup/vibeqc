@@ -1,11 +1,37 @@
 """Resident reuse must obey each call's admission caps before any device work."""
 
+import inspect
 from types import SimpleNamespace
 
 import pytest
 from vibeqc import _stationary_cuda as runtime
 from vibeqc_compiler.common.prepared_execution import PreparedArtifactBinding
 from vibeqc_compiler.common.provenance import canonical_hash
+
+
+def test_shared_tensor_artifact_is_bound_once_without_hiding_collisions() -> None:
+    first = SimpleNamespace(metadata={"key": "shared", "binary_sha256": "same"})
+    second = SimpleNamespace(metadata={"key": "shared", "binary_sha256": "same"})
+    other = SimpleNamespace(metadata={"key": "other", "binary_sha256": "other"})
+    assert runtime._unique_prepared_artifacts((first, second, other)) == (
+        first,
+        other,
+    )
+    conflicting = SimpleNamespace(
+        metadata={"key": "shared", "binary_sha256": "different"}
+    )
+    with pytest.raises(ValueError, match="conflicting binaries"):
+        runtime._unique_prepared_artifacts((first, conflicting))
+
+
+def test_prepared_artifact_deduplication_is_inside_cleanup_scope() -> None:
+    source = inspect.getsource(runtime.PreparedStationaryCudaExecution.ensure)
+    artifacts_at = source.index("artifacts = _unique_prepared_artifacts(")
+    try_at = source.rfind("try:", 0, artifacts_at)
+    install_at = source.index("self._lease.install(", artifacts_at)
+    except_at = source.index("except Exception:", install_at)
+    close_at = source.index("stack.close()", except_at)
+    assert 0 <= try_at < artifacts_at < install_at < except_at < close_at
 
 
 @pytest.mark.parametrize(

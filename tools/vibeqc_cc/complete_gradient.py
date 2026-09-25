@@ -289,13 +289,21 @@ class BoundCCSDOrbitalResponse:
     This owner deliberately stops before the Z solve and before every AO/nuclear
     derivative program. It owns only the raw MO Hamiltonian replay, generated
     fixed-orbital pullback, native RHF response operator, and independently
-    generated orbital matrix used to qualify that operator. It therefore cannot
+    generated orbital matrix used to qualify that operator. Generated TensorIR
+    may execute through an explicit external owner; the RHF J/K response operator
+    remains separately owned. It therefore cannot
     publish a nuclear gradient and does not inherit complete-gradient memory
     gates or derivative-backend settings.
     """
 
     def __init__(
-        self, response: typing.Any, provider: typing.Any, *, options: typing.Any = None
+        self,
+        response: typing.Any,
+        provider: typing.Any,
+        *,
+        options: typing.Any = None,
+        tensor_executor: typing.Any = None,
+        response_backend: typing.Any = None,
     ) -> None:
         started = time.perf_counter()
         options = CCSDGradientOptions() if options is None else options
@@ -306,6 +314,22 @@ class BoundCCSDOrbitalResponse:
         ):
             raise TypeError(
                 "CC orbital response requires a bound CC response and conventional provider"
+            )
+        if tensor_executor is not None and (
+            not callable(getattr(tensor_executor, "execute", None))
+            or not isinstance(getattr(tensor_executor, "backend", None), str)
+        ):
+            raise TypeError(
+                "external orbital-response tensor executor must expose execute() and backend"
+            )
+        if response_backend is not None and (
+            not callable(getattr(response_backend, "coulomb_exchange", None))
+            or not callable(getattr(response_backend, "validate_reference", None))
+            or not isinstance(getattr(response_backend, "identity", None), str)
+        ):
+            raise TypeError(
+                "external RHF response backend must expose identity, "
+                "validate_reference(), and coulomb_exchange()"
             )
         source = provider.source
         _validate_source(source)
@@ -338,6 +362,8 @@ class BoundCCSDOrbitalResponse:
             ("reference_identity", reference.identity),
             ("source_identity", source.identity),
             ("options", options),
+            ("tensor_executor", tensor_executor),
+            ("response_backend", response_backend),
         ):
             put(name, value)
         self._assert_current()
@@ -397,11 +423,23 @@ class BoundCCSDOrbitalResponse:
                 "CC same-space orbital stationarity failed; no canonical-gap patch is applied"
             )
 
-        backend = NativeJKBackend(
-            source,
-            axis_tile=max(source.shell_sizes),
-            budget_bytes=options.provider_budget_bytes,
-        )
+        backend = response_backend
+        if backend is None:
+            backend = NativeJKBackend(
+                source,
+                axis_tile=max(source.shell_sizes),
+                budget_bytes=options.provider_budget_bytes,
+            )
+        else:
+            if getattr(backend, "hamiltonian_id", None) != reference.hamiltonian_id:
+                raise ResponseCompatibilityError(
+                    "external RHF response backend Hamiltonian mismatch"
+                )
+            backend.validate_reference(reference)
+            if getattr(backend, "nbf", reference.nmo) != reference.nmo:
+                raise ResponseCompatibilityError(
+                    "external RHF response backend AO dimension mismatch"
+                )
         problem = RHFResponseOperator.build_problem(
             reference,
             backend,
@@ -409,6 +447,7 @@ class BoundCCSDOrbitalResponse:
         )
         operator = RHFResponseOperator(problem, backend)
         put("operator", operator)
+        put("response_backend", backend)
         put("operator_identity", operator.identity)
 
         basis = np.eye(operator.dimension)
@@ -486,6 +525,12 @@ class BoundCCSDOrbitalResponse:
                 "CC orbital-response source/provider/reference is stale or closed"
             )
         self.response.bound._assert_current(self.reference_identity)
+        if hasattr(self, "operator") and hasattr(self, "response_backend"):
+            if self.operator.backend is not self.response_backend:
+                raise ResponseCompatibilityError(
+                    "CC orbital-response backend ownership changed"
+                )
+            self.response_backend.validate_reference(self.reference)
         if (
             hasattr(self, "operator_identity")
             and self.operator.identity != self.operator_identity
@@ -494,9 +539,21 @@ class BoundCCSDOrbitalResponse:
                 "CC orbital-response operator identity changed"
             )
 
+    @property
+    def tensor_backend(self) -> str:
+        return (
+            _tensor_owner(self.response).tensor_backend
+            if self.tensor_executor is None
+            else self.tensor_executor.backend
+        )
+
     def _run(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
         self._assert_current()
-        outputs = _tensor_owner(self.response)._tensor_execute(program, feeds)
+        outputs = (
+            _tensor_owner(self.response)._tensor_execute(program, feeds)
+            if self.tensor_executor is None
+            else self.tensor_executor.execute(program, feeds)
+        )
         if set(outputs) != set(program.outputs):
             raise ResponseCompatibilityError(
                 "CC orbital-response program returned an incomplete output set"

@@ -1,0 +1,1430 @@
+{
+  "schema": "vibeqc.issue172.oh_branch_fd.v1",
+  "source_tree": "0e6350acbf193cde487c6772c2f783baf9cd86f2",
+  "allocation": "issue-0172-oh-branch-fd-h100-0e6350ac-20260923",
+  "target_positions_bohr": [
+    [
+      0.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.002,
+      -0.001,
+      1.803
+    ]
+  ],
+  "steps_bohr": [
+    0.001,
+    0.0003,
+    0.0001
+  ],
+  "branches": {
+    "prepared": {
+      "initial_positions_bohr": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.8
+        ]
+      ],
+      "first": {
+        "energy": -75.72709068346445,
+        "forces": [
+          [
+            1.0099741652192808e-14,
+            -1.4982903475097508e-14,
+            -0.022264224077211913
+          ],
+          [
+            -1.0554620188409219e-14,
+            1.539250774061627e-14,
+            0.022264224077207472
+          ]
+        ],
+        "iterations": 44,
+        "physical_residual_rms": 2.639941511538635e-12,
+        "status": 0
+      },
+      "target": {
+        "energy": -75.72715487759841,
+        "forces": [
+          [
+            -2.206381872370961e-05,
+            1.1252594305687353e-05,
+            -0.020515926845499775
+          ],
+          [
+            2.206381872239035e-05,
+            -1.1252594305781028e-05,
+            0.020515926845515762
+          ]
+        ],
+        "iterations": 52,
+        "physical_residual_rms": 3.972317983263747e-12,
+        "status": 0
+      },
+      "target_state": {
+        "identity": {
+          "schema": "vibeqc.stationary-ks-state/v1",
+          "method": "r2scan-uks",
+          "model_identity": "0a4bc79cd62a3b9747e0446eb83f38f0a536402a09ad7aaf5fb28878c4a9ff1a",
+          "geometry_identity": "0c319ecca2a49c5f0f29fa092f27abebabc8a19ea19525fa776862f789547d42",
+          "basis_identity": "70f733df77420058bdd1b85ebfbfb014f16e53c817c6d4ec8d849a91d6db4ec8",
+          "overlap_identity": "0ecdf6b94a02266a472654186ac1e48e00121a3ee0167101ceb6f0e431271743",
+          "grid_identity": "38c0093ca8d926ba64f7d4bc61e96ceebfbb07517b20c8fbc3ebdbda6d829376",
+          "topology_identity": "b5e9cd8cef95a5c3d55a623d39b788e90b2e229bdf0f7a7484d4eec1ad01775e",
+          "functional_identity": "4f27899b344bdbd4e3d12513010246de0c896eed425aee02c1774e9b78062300",
+          "regularization_identity": "418c603b754f23eb65b84b006c0d671e786c92056c2116c326b982fbb36f5a08",
+          "provider_identity": "4cd77f4cf7875af55539bc1b85caec0be17ec02e5e0888a5de20d28e07088d03",
+          "owner": 2,
+          "solve_epoch": 1,
+          "density_generation": 52,
+          "fock_generation": 52,
+          "orbital_generation": 52
+        },
+        "physical_residual": 4.346989250135085e-12,
+        "occupied_indices": [
+          [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            0,
+            1,
+            2,
+            3
+          ]
+        ],
+        "frontier_orbital_energies": [
+          [
+            -0.3883211702358155,
+            -0.30592472998174003,
+            0.08491063852892201,
+            0.38920661360350933
+          ],
+          [
+            -0.4187394425138345,
+            -0.2790702349400436,
+            -0.1958463663823528,
+            0.0968419163814546
+          ]
+        ],
+        "independent_state_seeded_total_energy": -75.72715487759828,
+        "independent_state_seeded_total_force": [
+          [
+            -2.206381860511437e-05,
+            1.1252594081462851e-05,
+            -0.020515926845626788
+          ],
+          [
+            2.2063818605113937e-05,
+            -1.1252594081461334e-05,
+            0.02051592684562368
+          ]
+        ]
+      },
+      "finite_differences": [
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.001,
+          "analytic_gradient": 1.1252594305781028e-05,
+          "finite_difference": 1.1252815568241203e-05,
+          "absolute_error": 2.212624601750636e-10,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715487187739,
+                "forces": null,
+                "iterations": 45,
+                "physical_residual_rms": 4.067100491257023e-12,
+                "status": 0
+              },
+              "physical_residual": 4.446491313871799e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883211795580695,
+                  -0.30592473641505435,
+                  0.08491069450478134,
+                  0.38920662552421814
+                ],
+                [
+                  -0.41873945906346105,
+                  -0.27907024034974204,
+                  -0.19584637507129388,
+                  0.09684197741058183
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.876718609431177e-05,
+                7.041222843552145e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715489438302,
+                "forces": null,
+                "iterations": 52,
+                "physical_residual_rms": 3.772248317996536e-12,
+                "status": 0
+              },
+              "physical_residual": 4.1238180664496955e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832114428970743,
+                  -0.3059247091192648,
+                  0.08491046822664593,
+                  0.38920657799029507
+                ],
+                [
+                  -0.4187393941399009,
+                  -0.27907021498096446,
+                  -0.1958463430749476,
+                  0.09684173123873009
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.876707879825209e-05,
+                7.041211784443602e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.0003,
+          "analytic_gradient": 1.1252594305781028e-05,
+          "finite_difference": 1.1252391611075534e-05,
+          "absolute_error": 2.0269470549400014e-10,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.7271548747208,
+                "forces": null,
+                "iterations": 59,
+                "physical_residual_rms": 3.0415762133939483e-12,
+                "status": 0
+              },
+              "physical_residual": 3.6033039025813932e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832117477827705,
+                  -0.3059247334274469,
+                  0.08491066732648016,
+                  0.38920661966742254
+                ],
+                [
+                  -0.41873945082060315,
+                  -0.2790702380908914,
+                  -0.19584637052464762,
+                  0.09684194772210608
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.0630149684441603e-05,
+                2.1123662287037035e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715488147223,
+                "forces": null,
+                "iterations": 42,
+                "physical_residual_rms": 6.869275282284244e-13,
+                "status": 0
+              },
+              "physical_residual": 7.501286491147455e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832116419759866,
+                  -0.30592472523780617,
+                  0.08491059944199746,
+                  0.38920660540720153
+                ],
+                [
+                  -0.41873943134313435,
+                  -0.27907023048003216,
+                  -0.19584636092471022,
+                  0.09684187387028186
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.063014002985228e-05,
+                2.1123652046990018e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.0001,
+          "analytic_gradient": 1.1252594305781028e-05,
+          "finite_difference": 1.125279425195913e-05,
+          "absolute_error": 1.9994617810226059e-10,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715487652847,
+                "forces": null,
+                "iterations": 47,
+                "physical_residual_rms": 7.639132885414404e-12,
+                "status": 0
+              },
+              "physical_residual": 8.350099409243475e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883211719163281,
+                  -0.30592473127473097,
+                  0.08491064927135511,
+                  0.389206615861691
+                ],
+                [
+                  -0.4187394456011106,
+                  -0.27907023613593923,
+                  -0.19584636790942195,
+                  0.09684192806945276
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.876715627812156e-06,
+                7.041219879366941e-06
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715487877903,
+                "forces": null,
+                "iterations": 52,
+                "physical_residual_rms": 8.99156652316738e-12,
+                "status": 0
+              },
+              "physical_residual": 9.831265695246781e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832116838947156,
+                  -0.305924728544876,
+                  0.08491062664321242,
+                  0.38920661110830396
+                ],
+                [
+                  -0.4187394391086128,
+                  -0.2790702335989796,
+                  -0.19584636470941796,
+                  0.09684190345210636
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.876714565414184e-06,
+                7.041218494555228e-06
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.001,
+          "analytic_gradient": -0.020515926845515762,
+          "finite_difference": -0.020516293957939524,
+          "absolute_error": 3.6711242376238906e-07,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72717510429052,
+                "forces": null,
+                "iterations": 36,
+                "physical_residual_rms": 1.4339482676011255e-12,
+                "status": 0
+              },
+              "physical_residual": 1.694590844064196e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38829420202812087,
+                  -0.30589847922484337,
+                  0.08470466184028487,
+                  0.3891638320462892
+                ],
+                [
+                  -0.4186828416477221,
+                  -0.27904277989591236,
+                  -0.19581955347160282,
+                  0.09661800938415342
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.049776577741252e-05,
+                8.289524995859499e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72713407170261,
+                "forces": null,
+                "iterations": 46,
+                "physical_residual_rms": 7.0639974973160776e-12,
+                "status": 0
+              },
+              "physical_residual": 7.724241247086511e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38834816511611164,
+                  -0.3059510047902714,
+                  0.08511636714299954,
+                  0.38924955871039446
+                ],
+                [
+                  -0.418796034724672,
+                  -0.2790977107622798,
+                  -0.19587319943586656,
+                  0.0970655938978708
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.066000707079857e-05,
+                8.309035414481858e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.0003,
+          "analytic_gradient": -0.020515926845515762,
+          "finite_difference": -0.02051595960968674,
+          "absolute_error": 3.276417097700102e-08,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72716100632184,
+                "forces": null,
+                "iterations": 49,
+                "physical_residual_rms": 5.315514138690293e-12,
+                "status": 0
+              },
+              "physical_residual": 5.8143704597462885e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883130769860859,
+                  -0.30591685223687776,
+                  0.08484887153427628,
+                  0.3891937619719014
+                ],
+                [
+                  -0.4187224631599973,
+                  -0.27906199625144706,
+                  -0.1958383204039217,
+                  0.09677476832541689
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.4166332572628235e-05,
+                2.4889030315680682e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72714869674607,
+                "forces": null,
+                "iterations": 54,
+                "physical_residual_rms": 1.355225114006405e-12,
+                "status": 0
+              },
+              "physical_residual": 1.6087391306038511e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883292658863234,
+                  -0.3059326098914232,
+                  0.08497238319621321,
+                  0.3892194799545794
+                ],
+                [
+                  -0.4187564210889691,
+                  -0.2790784754987574,
+                  -0.1958544141736813,
+                  0.09690904378397082
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.418093376554964e-05,
+                2.490659017788388e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.0001,
+          "analytic_gradient": -0.020515926845515762,
+          "finite_difference": -0.020515928795816762,
+          "absolute_error": 1.9503010005583743e-09,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715692629508,
+                "forces": null,
+                "iterations": 48,
+                "physical_residual_rms": 1.3956589880952485e-12,
+                "status": 0
+              },
+              "physical_residual": 1.5319112336009975e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883184722197325,
+                  -0.3059221038266717,
+                  0.08489005201048899,
+                  0.3892023280910115
+                ],
+                [
+                  -0.4187337828158082,
+                  -0.2790674885030566,
+                  -0.19584368418854506,
+                  0.09681953598929025
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.057065674998976e-06,
+                8.29829347655242e-06
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715282310932,
+                "forces": null,
+                "iterations": 52,
+                "physical_residual_rms": 7.476056983622155e-13,
+                "status": 0
+              },
+              "physical_residual": 8.188332258773445e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832386851906747,
+                  -0.305927356377775,
+                  0.08493122256651842,
+                  0.38921090075140224
+                ],
+                [
+                  -0.41874510212563754,
+                  -0.2790729815851511,
+                  -0.19584904877791412,
+                  0.09686429447853387
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.05868782954855e-06,
+                8.300244914299926e-06
+              ]
+            }
+          ]
+        }
+      ],
+      "independent_total_energy_error": 1.2789769243681803e-13,
+      "independent_total_force_max_error": 2.243196947637749e-13
+    },
+    "fresh": {
+      "initial_positions_bohr": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.002,
+          -0.001,
+          1.803
+        ]
+      ],
+      "first": {
+        "energy": -75.72715487733727,
+        "forces": [
+          [
+            -2.2031086708441692e-05,
+            1.0795113928260783e-05,
+            -0.020515934673789347
+          ],
+          [
+            2.2031086706804113e-05,
+            -1.0795113931761021e-05,
+            0.02051593467380267
+          ]
+        ],
+        "iterations": 45,
+        "physical_residual_rms": 4.277062526367984e-12,
+        "status": 0
+      },
+      "target": {
+        "energy": -75.72715487733727,
+        "forces": [
+          [
+            -2.2031086708441692e-05,
+            1.0795113928260783e-05,
+            -0.020515934673789347
+          ],
+          [
+            2.2031086706804113e-05,
+            -1.0795113931761021e-05,
+            0.02051593467380267
+          ]
+        ],
+        "iterations": 45,
+        "physical_residual_rms": 4.277062526367984e-12,
+        "status": 0
+      },
+      "target_state": {
+        "identity": {
+          "schema": "vibeqc.stationary-ks-state/v1",
+          "method": "r2scan-uks",
+          "model_identity": "45bafa220d1a12b009c68dff37c34b68edcdab8c26b75aa3a176459fea515d36",
+          "geometry_identity": "0c319ecca2a49c5f0f29fa092f27abebabc8a19ea19525fa776862f789547d42",
+          "basis_identity": "70f733df77420058bdd1b85ebfbfb014f16e53c817c6d4ec8d849a91d6db4ec8",
+          "overlap_identity": "0ecdf6b94a02266a472654186ac1e48e00121a3ee0167101ceb6f0e431271743",
+          "grid_identity": "ca759a5ce69f6ccb59d665241e82e29881e3ee466dbef0b5b55fe439a9575a97",
+          "topology_identity": "b5e9cd8cef95a5c3d55a623d39b788e90b2e229bdf0f7a7484d4eec1ad01775e",
+          "functional_identity": "4f27899b344bdbd4e3d12513010246de0c896eed425aee02c1774e9b78062300",
+          "regularization_identity": "418c603b754f23eb65b84b006c0d671e786c92056c2116c326b982fbb36f5a08",
+          "provider_identity": "690b434108a17a7e8f3bab3d600ec3741124cd540ae90038d221cfa28005f2a7",
+          "owner": 15,
+          "solve_epoch": 1,
+          "density_generation": 45,
+          "fock_generation": 45,
+          "orbital_generation": 45
+        },
+        "physical_residual": 4.67615965889958e-12,
+        "occupied_indices": [
+          [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            0,
+            1,
+            2,
+            3
+          ]
+        ],
+        "frontier_orbital_energies": [
+          [
+            -0.38832117162828156,
+            -0.30592472889792116,
+            0.08491063688442195,
+            0.3892066137060881
+          ],
+          [
+            -0.4187394433905371,
+            -0.2790702323679538,
+            -0.19584636826901708,
+            0.09684191496629223
+          ]
+        ],
+        "independent_state_seeded_total_energy": -75.72715487733704,
+        "independent_state_seeded_total_force": [
+          [
+            -2.2031086712656203e-05,
+            1.0795113928084925e-05,
+            -0.02051593467379246
+          ],
+          [
+            2.203108671265447e-05,
+            -1.0795113928086226e-05,
+            0.02051593467379157
+          ]
+        ]
+      },
+      "finite_differences": [
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.001,
+          "analytic_gradient": 1.0795113931761021e-05,
+          "finite_difference": 1.0795211835556984e-05,
+          "absolute_error": 9.790379596270784e-11,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715487203448,
+                "forces": null,
+                "iterations": 31,
+                "physical_residual_rms": 3.2408773585714033e-12,
+                "status": 0
+              },
+              "physical_residual": 3.5421256622596397e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832117872155614,
+                  -0.3059247370658401,
+                  0.08491069549218448,
+                  0.38920662546255
+                ],
+                [
+                  -0.41873945853667005,
+                  -0.27907024189533064,
+                  -0.1958463739358119,
+                  0.09684197826110165
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.877100216987284e-05,
+                7.040835293088193e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.7271548936249,
+                "forces": null,
+                "iterations": 31,
+                "physical_residual_rms": 2.7882617966184734e-12,
+                "status": 0
+              },
+              "physical_residual": 3.047816444503274e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832114832966,
+                  -0.30592470596697424,
+                  0.08491046344649393,
+                  0.3892065782883465
+                ],
+                [
+                  -0.41873939668198956,
+                  -0.27907020751770517,
+                  -0.19584634852017807,
+                  0.09684172713804687
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.877088197201079e-05,
+                7.040823297416941e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.0003,
+          "analytic_gradient": 1.0795113931761021e-05,
+          "finite_difference": 1.0795844218591812e-05,
+          "absolute_error": 7.302868307908911e-10,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715487459261,
+                "forces": null,
+                "iterations": 11,
+                "physical_residual_rms": 1.3809130536852043e-12,
+                "status": 0
+              },
+              "physical_residual": 1.4931672770569074e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883211754577784,
+                  -0.3059247328982976,
+                  0.0849106665240844,
+                  0.3892066197175432
+                ],
+                [
+                  -0.41873945124852363,
+                  -0.2790702368350323,
+                  -0.19584637144617023,
+                  0.09684194703149844
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.0631293447246733e-05,
+                2.1122499472226306e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715488107012,
+                "forces": null,
+                "iterations": 11,
+                "physical_residual_rms": 1.968759632854729e-12,
+                "status": 0
+              },
+              "physical_residual": 2.130250983232581e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832116634032227,
+                  -0.3059247235689281,
+                  0.08491059690987941,
+                  0.3892066055650702
+                ],
+                [
+                  -0.4187394326919204,
+                  -0.2790702265218857,
+                  -0.19584636382502188,
+                  0.0968418716927532
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.0631282677002926e-05,
+                2.11224888121362e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "transverse_y",
+          "step_bohr": 0.0001,
+          "analytic_gradient": 1.0795113931761021e-05,
+          "finite_difference": 1.079477840448817e-05,
+          "absolute_error": 3.3552727285095327e-10,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715487631227,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 4.404998909374392e-13,
+                "status": 0
+              },
+              "physical_residual": 4.432609328827038e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832117306704983,
+                  -0.3059247303792048,
+                  0.08491064791237012,
+                  0.3892066159464595
+                ],
+                [
+                  -0.41873944632561205,
+                  -0.27907023401042286,
+                  -0.1958463694689757,
+                  0.09684192689984848
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.8770961472623476e-06,
+                7.040831567681671e-06
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715487847123,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 5.108975061557489e-13,
+                "status": 0
+              },
+              "physical_residual": 5.194127964739843e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883211700274178,
+                  -0.30592472726895775,
+                  0.08491062470815906,
+                  0.38920661122910793
+                ],
+                [
+                  -0.4187394401398106,
+                  -0.2790702305722315,
+                  -0.19584636692827553,
+                  0.09684190178739367
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                6.877094951455019e-06,
+                7.040830383414211e-06
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.001,
+          "analytic_gradient": -0.02051593467380267,
+          "finite_difference": -0.020516301589168506,
+          "absolute_error": 3.6691536583685624e-07,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72717510403747,
+                "forces": null,
+                "iterations": 11,
+                "physical_residual_rms": 2.952398178672205e-12,
+                "status": 0
+              },
+              "physical_residual": 3.1262148739384004e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38829420336719306,
+                  -0.305898478100712,
+                  0.08470466013143746,
+                  0.3891638321599687
+                ],
+                [
+                  -0.4186828425496026,
+                  -0.2790427773023225,
+                  -0.19581955526502887,
+                  0.09661800794787592
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.049779480104324e-05,
+                8.2895250584053e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72713407143429,
+                "forces": null,
+                "iterations": 11,
+                "physical_residual_rms": 2.1804654379007267e-12,
+                "status": 0
+              },
+              "physical_residual": 2.264276093500179e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883481665606208,
+                  -0.30595100372135386,
+                  0.08511636553480117,
+                  0.3892495588008008
+                ],
+                [
+                  -0.4187960355689263,
+                  -0.2790977082026643,
+                  -0.19587320138961153,
+                  0.09706559250613962
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.066001119808042e-05,
+                8.309037265602504e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.0003,
+          "analytic_gradient": -0.02051593467380267,
+          "finite_difference": -0.02051596754408062,
+          "absolute_error": 3.287027795090269e-08,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72716100606338,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 9.88172522387953e-13,
+                "status": 0
+              },
+              "physical_residual": 1.0501729847832398e-12,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38831307836418966,
+                  -0.30591685114597583,
+                  0.08484886987633715,
+                  0.38919376207792544
+                ],
+                [
+                  -0.4187224640447919,
+                  -0.2790619936744728,
+                  -0.19583832226738093,
+                  0.09677476690335303
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.4166333335268186e-05,
+                2.4889035920044877e-05
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72714869648286,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 9.380336727903018e-13,
+                "status": 0
+              },
+              "physical_residual": 9.947537099063024e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38832926729253575,
+                  -0.30593260881185497,
+                  0.08497238156253074,
+                  0.389219480053684
+                ],
+                [
+                  -0.41875642195681445,
+                  -0.2790784729302791,
+                  -0.19585441608113668,
+                  0.09690904237574374
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                2.418093267167465e-05,
+                2.490659680440266e-05
+              ]
+            }
+          ]
+        },
+        {
+          "direction": "bond_z",
+          "step_bohr": 0.0001,
+          "analytic_gradient": -0.02051593467380267,
+          "finite_difference": -0.0205159394539578,
+          "absolute_error": 4.7801551293635836e-09,
+          "samples": [
+            {
+              "sign": 1,
+              "result": {
+                "energy": -75.72715692603514,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 3.184947481894583e-13,
+                "status": 0
+              },
+              "physical_residual": 3.3828611616649714e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.38831847360729194,
+                  -0.3059221027406251,
+                  0.08489005036178499,
+                  0.3892023281947786
+                ],
+                [
+                  -0.4187337836951713,
+                  -0.2790674859293401,
+                  -0.19584368606764394,
+                  0.09681953457194582
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.057065590372225e-06,
+                8.298295664427302e-06
+              ]
+            },
+            {
+              "sign": -1,
+              "result": {
+                "energy": -75.72715282284724,
+                "forces": null,
+                "iterations": 10,
+                "physical_residual_rms": 3.110532716511124e-13,
+                "status": 0
+              },
+              "physical_residual": 3.304036033616375e-13,
+              "occupied_indices": [
+                [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ],
+                [
+                  0,
+                  1,
+                  2,
+                  3
+                ]
+              ],
+              "frontier_orbital_energies": [
+                [
+                  -0.3883238699159656,
+                  -0.3059273552954434,
+                  0.08493122092588914,
+                  0.38921090085287785
+                ],
+                [
+                  -0.41874510299932627,
+                  -0.27907297901423145,
+                  -0.19584905067157193,
+                  0.09686429306579517
+                ]
+              ],
+              "density_max_delta_from_target_by_spin": [
+                8.058687779033402e-06,
+                8.300246840536873e-06
+              ]
+            }
+          ]
+        }
+      ],
+      "independent_total_energy_error": 2.2737367544323206e-13,
+      "independent_total_force_max_error": 1.1098760799299612e-14
+    }
+  },
+  "same_geometry_density_max_delta_by_spin": [
+    0.022504426050465487,
+    0.21478310799381045
+  ],
+  "occupied_subspace_min_singular_by_spin": [
+    0.9992795354297439,
+    1.2817211355368367e-05
+  ]
+}

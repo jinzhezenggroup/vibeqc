@@ -71,12 +71,15 @@
     "tools/run_codegen.py",
     "tools/vibeqc_posthf/plan_spec.py",
     "tools/generate_scf_array_native.py",
+    "tools/generate_cosx_derivative_native.py",
     "tools/generate_gfn2_pair_native.py",
     "tools/generate_gfn2_es2_native.py",
     "tools/generate_gfn2_es3_native.py",
+    "tools/generate_gfn2_scc_free_energy_native.py",
     "cmake/VibeQCGfn2Runtime.cmake",
     "tools/xtb/resolve-openblas-wheel.py",
     "tools/xtb/scipy_openblas32_manifest.json",
+    "tools/generate_scf_density_cuda.py",
     "tools/generate_stationary_force_aot.py",
     "tools/write_stationary_aot_manifest.py"
   ]

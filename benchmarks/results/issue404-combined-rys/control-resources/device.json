@@ -1,6 +1,0 @@
-{
-  "slurm_job_id": "9819",
-  "cuda_visible_devices": "0",
-  "query": "name,uuid,driver_version,memory.total,compute_cap",
-  "csv": "NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05, 32607 MiB, 12.0\n"
-}

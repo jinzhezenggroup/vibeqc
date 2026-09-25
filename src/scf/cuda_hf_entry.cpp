@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "scf/cuda_batch.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "vibeqc/vibeqc.hpp"
 
 namespace vibeqc::scf {

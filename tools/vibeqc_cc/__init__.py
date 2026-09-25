@@ -72,6 +72,7 @@ from .lambda_equations import (
 )
 from .lambda_response import BoundCCSDResponse, CCSDParameterWeight
 from .lambda_solver import BoundCCSDLambda, CCSDLambdaResult, LambdaOptions
+from .native_tensor_cuda import CudaCCTensorExecutor
 from .resident_solver import PreparedResidentCCSD, solve_gpu_resident
 from .solver import CCSDResult, PreparedCCSD, SolverOptions, solve
 from .state_transport import (
@@ -90,6 +91,7 @@ from .triples import (
 )
 from .triples_complete_gradient import (
     BoundCCSDTGradient,
+    complete_ccsdt_cuda_response_gradient_validation,
     complete_ccsdt_gradient_validation,
 )
 from .triples_cuda import (
@@ -149,6 +151,7 @@ __all__ = [
     "CCSDTParameterWeight",
     "Capabilities",
     "CorrectedLambdaResult",
+    "CudaCCTensorExecutor",
     "CudaTriplesResponseResult",
     "CudaTriplesResponseTiles",
     "CudaTriplesResult",
@@ -191,6 +194,7 @@ __all__ = [
     "build_tile_triples_program",
     "build_tile_triples_vjp",
     "build_triples_program",
+    "complete_ccsdt_cuda_response_gradient_validation",
     "complete_ccsdt_gradient_validation",
     "complete_gradient_validation",
     "cpu_triples_tiles",

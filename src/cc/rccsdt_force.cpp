@@ -453,19 +453,23 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
   return plan;
 }
 
-RccsdtForceResult rccsdt_force_cpu(const core::System& system,
-                                   const scf::PhysicalReference& reference, const Problem& problem,
-                                   const SolverResult& cc_result, std::span<const double> eps_o,
-                                   std::span<const double> eps_v, std::size_t max_bytes,
-                                   double denominator_threshold) {
+static RccsdtForceResult rccsdt_force_impl(
+    const core::System& system, const scf::PhysicalReference& reference, const Problem& problem,
+    const SolverResult& cc_result, std::span<const double> eps_o, std::span<const double> eps_v,
+    std::size_t max_bytes, bool cuda_derivative, int device_id, std::size_t derivative_stage_budget,
+    double denominator_threshold) {
   validate_problem(problem);
+#if !VIBEQC_HAS_CUDA
+  if (cuda_derivative) throw std::runtime_error("RCCSD(T) CUDA force is unavailable in this build");
+#endif
   if (!cc_result.converged())
     throw std::invalid_argument("RCCSD(T) force requires converged RCCSD amplitudes");
   if (!max_bytes || reference.nbf > 12 || reference.nbf != problem.nocc + problem.nvir ||
       reference.nocc != problem.nocc || eps_o.size() != problem.nocc ||
       eps_v.size() != problem.nvir || !std::isfinite(denominator_threshold) ||
-      denominator_threshold <= 0.0)
-    throw std::invalid_argument("RCCSD(T) force is outside the qualified CPU domain");
+      denominator_threshold <= 0.0 ||
+      (cuda_derivative && (device_id < 0 || !derivative_stage_budget)))
+    throw std::invalid_argument("RCCSD(T) force is outside the qualified conventional domain");
   const auto o = problem.nocc, v = problem.nvir, n = reference.nbf;
   if (reference.orbital_energies.size() != n || !finite(reference.orbital_energies))
     throw std::invalid_argument("RCCSD(T) force requires finite canonical orbital energies");
@@ -611,7 +615,10 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   weights.two_electron = std::move(total.eri);
   weights.overlap = std::move(total.overlap);
   weights.stationarity_residual = stationarity;
-  auto gradient = mp2::conventional_derivative_cpu(system, reference, weights);
+  auto gradient = cuda_derivative
+                      ? mp2::conventional_derivative_cuda(system, reference, weights, device_id,
+                                                          derivative_stage_budget)
+                      : mp2::conventional_derivative_cpu(system, reference, weights);
   for (double& value : gradient) value = -value;
   if (!finite(gradient)) throw std::runtime_error("nonfinite RCCSD(T) analytic force");
 
@@ -627,6 +634,25 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   result.numeric_capacity_bytes = resources.peak_bytes;
   result.response_operator_hash = generated::orbital_jvp_program_hash;
   return result;
+}
+
+RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+                                   const scf::PhysicalReference& reference, const Problem& problem,
+                                   const SolverResult& cc_result, std::span<const double> eps_o,
+                                   std::span<const double> eps_v, std::size_t max_bytes,
+                                   double denominator_threshold) {
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, false, 0,
+                           0, denominator_threshold);
+}
+
+RccsdtForceResult rccsdt_force_cuda(const core::System& system,
+                                    const scf::PhysicalReference& reference, const Problem& problem,
+                                    const SolverResult& cc_result, std::span<const double> eps_o,
+                                    std::span<const double> eps_v, std::size_t max_bytes,
+                                    int device_id, std::size_t derivative_stage_budget,
+                                    double denominator_threshold) {
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, true,
+                           device_id, derivative_stage_budget, denominator_threshold);
 }
 
 }  // namespace vibeqc::cc

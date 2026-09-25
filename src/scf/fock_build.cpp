@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "tensor/cpu_linalg.hpp"
+
 namespace vibeqc::scf {
 namespace {
 
@@ -123,6 +125,13 @@ constexpr FockProviderCapabilities cpu_exact_fock_domain() {
   return capabilities;
 }
 
+constexpr FockProviderCapabilities cuda_exact_fock_domain() {
+  auto capabilities = supported_fock_domain();
+  capabilities.short_range = true;
+  capabilities.long_range = true;
+  return capabilities;
+}
+
 constexpr FockProviderCapabilities cosx_fock_domain() {
   FockProviderCapabilities capabilities;
   capabilities.restricted = true;
@@ -172,7 +181,8 @@ constexpr std::array<FockProviderRegistration, 6> kFockProviders{{
     make_registration("cpu.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cpu,
                       runtime::ProviderAvailability::Executable, {}, "src/scf/fock_provider.cpp"),
     make_registration("cuda.exact", FockApproximation::Exact, runtime::ProviderBackend::Cuda,
-                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
+                      kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp",
+                      cuda_exact_fock_domain()),
     make_registration("cuda.df", FockApproximation::DensityFitted, runtime::ProviderBackend::Cuda,
                       kCudaAvailability, kCudaReason, "src/scf/cuda_fock_provider.cpp"),
     make_registration("cpu.cosx", FockApproximation::SeminumericalCosx,
@@ -350,6 +360,15 @@ DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::s
     result.exchange_alpha.resize(count);
     if (unrestricted) result.exchange_beta.resize(count);
   }
+
+  // Pure restricted Coulomb is exactly a dense (AO-pair)x(AO-pair) matrix-vector
+  // product in the stored chemists-order ERI layout. Reuse the shared CPU BLAS
+  // boundary instead of paying the generic scalar J/K quartet loop when K is absent.
+  if (strategy.spec.coulomb.present && !strategy.spec.exchange.present && !unrestricted) {
+    tensor::cpu_gemv('N', count, count, eri.data(), density.data(), result.coulomb.data());
+    return result;
+  }
+
   for (std::size_t i = 0; i < nbf; ++i) {
     for (std::size_t j = 0; j < nbf; ++j) {
       double coulomb = 0.0, exchange_alpha = 0.0, exchange_beta = 0.0;

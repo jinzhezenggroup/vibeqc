@@ -8,13 +8,32 @@
 namespace vibeqc::scf::cuda_execution {
 
 namespace {
+__device__ void decode_symmetric_pair(std::uint32_t pair, std::uint32_t width, std::uint32_t& row,
+                                      std::uint32_t& column) {
+  row = 0;
+  auto row_width = width;
+  while (pair >= row_width) {
+    pair -= row_width;
+    ++row;
+    --row_width;
+  }
+  column = row + pair;
+}
+
 __global__ void diis_dot_partials_kernel(std::size_t vector_size, std::uint32_t history,
                                          const double* residual, const double* residual_history,
                                          const std::uint8_t* active, const std::uint32_t* counts,
                                          const std::uint32_t* heads, std::size_t parts,
                                          double* partials) {
-  const auto system = blockIdx.z, row = blockIdx.y / history, column = blockIdx.y % history;
+  const auto system = blockIdx.z;
   if (!active[system]) return;
+  __shared__ std::uint32_t pair_slots[2];
+  if (threadIdx.x == 0) {
+    decode_symmetric_pair(static_cast<std::uint32_t>(blockIdx.y), history, pair_slots[0],
+                          pair_slots[1]);
+  }
+  __syncthreads();
+  const auto row = pair_slots[0], column = pair_slots[1];
   const auto count = counts[system] < history ? counts[system] + 1 : history;
   // History retirement can leave a short live window anywhere in the ring.
   // Physical slot numbers therefore cannot be compared directly with count.
@@ -41,9 +60,18 @@ __global__ void diis_dot_partials_kernel(std::size_t vector_size, std::uint32_t 
     value = threadIdx.x < 8 ? warps[threadIdx.x] : 0;
     for (unsigned delta = 16; delta; delta /= 2)
       value += __shfl_down_sync(0xffffffffU, value, delta);
-    if (threadIdx.x == 0)
-      partials[(static_cast<std::size_t>(system) * history * history + blockIdx.y) * parts +
-               blockIdx.x] = value;
+    if (threadIdx.x == 0) {
+      const auto forward =
+          ((static_cast<std::size_t>(system) * history + row) * history + column) * parts +
+          blockIdx.x;
+      partials[forward] = value;
+      if (row != column) {
+        const auto reverse =
+            ((static_cast<std::size_t>(system) * history + column) * history + row) * parts +
+            blockIdx.x;
+        partials[reverse] = value;
+      }
+    }
   }
 }
 }  // namespace
@@ -53,7 +81,8 @@ void launch_diis_dot_partials(cudaStream_t stream, std::int32_t batch_size, std:
                               const double* residual_history, const std::uint8_t* active,
                               const std::uint32_t* counts, const std::uint32_t* heads,
                               std::size_t parts, double* partials) {
-  diis_dot_partials_kernel<<<dim3(parts, history * history, batch_size), 256, 0, stream>>>(
+  const auto pair_blocks = history * (history + 1U) / 2U;
+  diis_dot_partials_kernel<<<dim3(parts, pair_blocks, batch_size), 256, 0, stream>>>(
       static_cast<std::size_t>(nbf) * nbf * spins, history, residual, residual_history, active,
       counts, heads, parts, partials);
 }
@@ -130,16 +159,27 @@ __global__ void update_diis_kernel(std::int32_t batch_size, std::int32_t nbf,
       rhs[row] = row == count ? -1.0 : 0.0;
     }
     __syncwarp();
-    const std::size_t dot_count = static_cast<std::size_t>(count) * count;
+    const std::size_t dot_count = cooperative_dots
+                                      ? static_cast<std::size_t>(count) * (count + 1U) / 2U
+                                      : static_cast<std::size_t>(count) * count;
     // DF's compact solves have only a few history pairs on warm replays.
     // Assigning one lane per pair leaves nearly the whole warp idle while
-    // each lane serially traverses nbf^2 values. An optional collective dot
-    // shares each vector traversal across the warp. The small solve, common
-    // normalization and dependent-history retirement below are identical.
+    // each lane serially traverses nbf^2 values. The cooperative path also
+    // exploits Gram symmetry and mirrors each upper-triangle result. The
+    // small solve, common normalization and dependent-history retirement are
+    // otherwise identical.
     for (std::size_t pair = cooperative_dots ? 0 : threadIdx.x; pair < dot_count;
          pair += cooperative_dots ? 1 : blockDim.x) {
-      const std::uint32_t row = static_cast<std::uint32_t>(pair / count);
-      const std::uint32_t column = static_cast<std::uint32_t>(pair % count);
+      std::uint32_t row = 0, column = 0;
+      if constexpr (CooperativeDots) {
+        if (threadIdx.x == 0)
+          decode_symmetric_pair(static_cast<std::uint32_t>(pair), count, row, column);
+        row = __shfl_sync(0xffffffffU, row, 0);
+        column = __shfl_sync(0xffffffffU, column, 0);
+      } else {
+        row = static_cast<std::uint32_t>(pair / count);
+        column = static_cast<std::uint32_t>(pair % count);
+      }
       const std::size_t row_offset =
           static_cast<std::size_t>(system) * history_stride +
           static_cast<std::size_t>((first + row) % history_capacity) * vector_size;
@@ -164,8 +204,11 @@ __global__ void update_diis_kernel(std::int32_t batch_size, std::int32_t nbf,
       if (cooperative_dots)
         for (unsigned delta = 16; delta; delta /= 2)
           dot += __shfl_down_sync(0xffffffffU, dot, delta);
-      if (!cooperative_dots || threadIdx.x == 0)
+      if (!cooperative_dots || threadIdx.x == 0) {
         matrix[static_cast<std::size_t>(row) * dimension + column] = dot;
+        if (cooperative_dots && row != column)
+          matrix[static_cast<std::size_t>(column) * dimension + row] = dot;
+      }
     }
     __syncwarp();
     if (threadIdx.x == 0) {

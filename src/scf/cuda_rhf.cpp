@@ -61,8 +61,6 @@
 #include "scf/cuda/nuclear_kernels.hpp"
 #include "scf/cuda/one_electron_derivatives.cuh"
 #include "scf/cuda/one_electron_export_kernels.hpp"
-#include "scf/cuda/one_electron_force_reference.hpp"
-#include "scf/cuda/one_electron_force_workspace.hpp"
 #include "scf/cuda/one_electron_values.cuh"
 #include "scf/cuda/one_electron_view.hpp"
 #include "scf/cuda/packed_basis.hpp"
@@ -87,8 +85,7 @@
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
 #include "scf/mean_field.hpp"
-#include "scf/rhf.hpp"
-#include "scf/solver/iteration_control.hpp"
+#include "solver/iteration_control.hpp"
 #include "tensor/metrics.hpp"
 
 namespace vibeqc::scf {
@@ -678,12 +675,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     return outputs;
   }
   std::size_t force_coordinate_count = 0;
-  std::size_t one_electron_force_elements = 0;
   std::size_t force_matrix_elements = 0;
   std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
   if (!vibeqc::runtime::checked_multiply(total_atoms, 3, force_coordinate_count) ||
-      !vibeqc::runtime::checked_multiply(batch_size, pair_count, one_electron_force_elements) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, matrix_size,
                                          force_matrix_elements) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, eri_size,
@@ -1793,6 +1788,29 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const auto blocks_for = [](std::size_t elements) {
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };
+  dim3 direct_shell_quartet_compaction_grid(1U, 1U, 1U);
+  if (requested_quartet_direct && !requested_bounded_direct_streaming) {
+    direct_shell_quartet_compaction_grid = dim3(blocks_for(total_shell_quartets), 1U, 1U);
+    if (batch_size > 1 &&
+        batch_size <= static_cast<std::size_t>(direct_device_properties.maxGridSize[1])) {
+      const std::int64_t first_count =
+          host.system_shell_quartet_offsets[1] - host.system_shell_quartet_offsets[0];
+      bool uniform_quartet_count = first_count > 0;
+      for (std::size_t system = 1; uniform_quartet_count && system < batch_size; ++system) {
+        uniform_quartet_count = host.system_shell_quartet_offsets[system + 1] -
+                                    host.system_shell_quartet_offsets[system] ==
+                                first_count;
+      }
+      if (uniform_quartet_count) {
+        // Compatible items share one launch but use grid.y as an implicit compact
+        // batch identifier. This keeps the existing 12-byte tile descriptor and
+        // removes one binary owner search per candidate quartet.
+        direct_shell_quartet_compaction_grid =
+            dim3(blocks_for(static_cast<std::size_t>(first_count)),
+                 static_cast<unsigned>(batch_size), 1U);
+      }
+    }
+  }
   const auto multiply_matrices = [&](const double* left, bool transpose_left, const double* right,
                                      double* output, double scale = 1.0) {
     const vibeqc_status product_status = launch_matrix_product(
@@ -1894,7 +1912,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return cudaPeekAtLastError();
       }
       launch_compact_active_shell_quartet_tiles_kernel(
-          true, DirectScreeningPurpose::Fock, blocks_for(total_shell_quartets), threads, 0,
+          true, DirectScreeningPurpose::Fock, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
@@ -1916,7 +1934,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return cudaPeekAtLastError();
       }
       launch_compact_active_shell_quartet_tiles_kernel(
-          false, DirectScreeningPurpose::Fock, blocks_for(total_shell_quartets), threads, 0,
+          false, DirectScreeningPurpose::Fock, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
@@ -1953,14 +1971,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         fp32_shell_quartet_tile_counts, fp32_persistent_fock_task_heads);
     if (unrestricted) {
       launch_compact_active_shell_quartet_tiles_kernel(
-          true, DirectScreeningPurpose::Force, blocks_for(total_shell_quartets), threads, 0,
+          true, DirectScreeningPurpose::Force, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0, nullptr,
           nullptr, nullptr, nullptr);
     } else {
       launch_compact_active_shell_quartet_tiles_kernel(
-          false, DirectScreeningPurpose::Force, blocks_for(total_shell_quartets), threads, 0,
+          false, DirectScreeningPurpose::Force, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0, nullptr,
@@ -3001,7 +3019,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   if (cuda_error == cudaSuccess && split_provider_iteration) {
     std::vector<std::uint8_t> host_active(batch_size, 1U);
-    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
+    ::vibeqc::solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       cuda_error = plan.graphs.launch_iteration(resources.stream_);
       if (cuda_error != cudaSuccess) return false;
       status = launch_iteration_eigensolver(ordinary_eigensolver_family);
@@ -3250,7 +3268,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
     // reports an honest non-convergence instead of a clamped success. Each item
     // leaves the loop on its own convergence, so a stagnating item is promoted
     // without holding back or dictating the precision of its neighbors.
-    solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
+    ::vibeqc::solver::run_bounded_iterations(options.max_iterations, [&](unsigned) {
       if (std::none_of(host_refinement_active.begin(), host_refinement_active.end(),
                        [](std::uint8_t value) { return value != 0; })) {
         return false;
@@ -3690,33 +3708,18 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return outputs;
       }
     }
-    // Derivative selection is read on every force execution; it retains no
-    // candidate-specific geometry or plan buffers that could become stale.
-    if (cuda_policy::generated_one_electron_derivatives_requested()) {
-      const OneElectronWeightView weights{unrestricted ? total_weighted_density : weighted_density,
-                                          unrestricted ? total_density : final_density,
-                                          unrestricted ? total_density : final_density,
-                                          -1.0,
-                                          1.0,
-                                          1.0};
-      cuda_error = launch_generated_one_electron_gradient(
-          one_electron_view(device_batch), ao_pair_first, ao_pair_second, pair_count, weights,
-          active, cuda_policy::one_electron_derivative_mapping_requested(), -1.0, forces,
-          resources.stream_);
-      if (cuda_error != cudaSuccess) {
-        fill_global_failure(outputs, cuda_status(cuda_error));
-        return outputs;
-      }
-    } else {
-      // Keep the previously qualified cooperative implementation only as an
-      // explicit reference/performance exception. The slower scalar native
-      // family was retired when generated shell-warp became the default.
-      constexpr std::size_t shared_bytes = 3 * sizeof(OneElectronDerivativeHermiteCoefficients);
-      launch_one_electron_force_cooperative_kernel(
-          static_cast<unsigned>(one_electron_force_elements), threads, shared_bytes,
-          resources.stream_, device_batch, ao_pair_first, ao_pair_second, pair_count,
-          unrestricted ? total_density : final_density,
-          unrestricted ? total_weighted_density : weighted_density, active, forces);
+    const OneElectronWeightView weights{unrestricted ? total_weighted_density : weighted_density,
+                                        unrestricted ? total_density : final_density,
+                                        unrestricted ? total_density : final_density,
+                                        -1.0,
+                                        1.0,
+                                        1.0};
+    cuda_error = launch_generated_one_electron_gradient(
+        one_electron_view(device_batch), ao_pair_first, ao_pair_second, pair_count, weights, active,
+        cuda_policy::one_electron_derivative_mapping_requested(), -1.0, forces, resources.stream_);
+    if (cuda_error != cudaSuccess) {
+      fill_global_failure(outputs, cuda_status(cuda_error));
+      return outputs;
     }
   }
   // ssss force mathematics is compiler-owned, but executes on the already-qualified

@@ -122,6 +122,30 @@ def test_public_native_rccsdt_force_matches_pyscf_analytic_gradient(case: str) -
     assert diag.force_provenance_flags & 0x1
 
 
+def test_public_native_rccsdt_cuda_force_matches_pyscf_analytic_gradient(
+    cuda_device: str,
+) -> None:
+    pytest.importorskip(
+        "pyscf", reason="independent RCCSD(T) gradient reference requires PySCF"
+    )
+    pytest.importorskip("threadpoolctl")
+    atoms, _, _ = _reference_case("h2o")
+    expected = np.asarray(
+        analytic_oracle("h2o")["analytic"]["gradient"], dtype=np.float64
+    )
+    result = _calculator(device=cuda_device).singlepoint(
+        atoms, properties=("energy", "forces")
+    )
+    assert result.converged
+    assert result.forces is not None
+    np.testing.assert_allclose(result.forces, -expected, atol=1.0e-6, rtol=0)
+    diag = result.correlation
+    assert diag is not None
+    assert diag.force_provenance_flags & 0x8
+    assert diag.response_absolute_residual <= 1.0e-9
+    assert diag.response_iterations > 0
+
+
 def test_public_native_rccsdt_force_matches_three_step_energy_finite_difference() -> (
     None
 ):
@@ -150,12 +174,7 @@ def test_public_native_rccsdt_force_matches_three_step_energy_finite_difference(
     assert errors[-1] < 2.0e-6, errors
 
 
-def test_public_native_rccsdt_rejects_unpromoted_cuda_force_df_and_frozen_core() -> (
-    None
-):
-    atoms, _, _ = _reference_case("h2")
-    with pytest.raises(ValueError, match=r"does not support.*forces"):
-        _calculator(device="cuda").singlepoint(atoms, properties=("energy", "forces"))
+def test_public_native_rccsdt_rejects_df_and_frozen_core() -> None:
     with pytest.raises(NotImplementedError, match=r"density fitting"):
         _calculator(density_fitting="cpu")
     with pytest.raises(NotImplementedError, match=r"frozen-core"):
@@ -208,15 +227,37 @@ def test_public_native_rccsdt_cuda_batch_rebuild_and_failure_isolation(
     calc = _calculator(device=cuda_device)
     expected = calc.singlepoint(moved, properties=("energy",)).energy
     with calc.prepare_batch([atoms, atoms]) as batch:
-        first = batch.execute(strict=True)
+        first = batch.execute(properties=("energy",), strict=True)
         assert all(item.succeeded and item.forces is None for item in first.items)
         updated = batch.execute(
-            coordinates=[None, [xyz for _, xyz in moved]], strict=True
+            coordinates=[None, [xyz for _, xyz in moved]],
+            properties=("energy",),
+            strict=True,
         )
         assert updated.items[1].energy == pytest.approx(expected, abs=2e-9)
-        invalid = batch.execute(coordinates=[None, [0.0]], strict=False)
+        invalid = batch.execute(
+            coordinates=[None, [0.0]], properties=("energy",), strict=False
+        )
         assert invalid.items[0].succeeded and not invalid.items[1].succeeded
         assert invalid.items[1].correlation is None
+
+
+def test_public_native_rccsdt_cuda_batch_forces(
+    cuda_device: str,
+) -> None:
+    atoms, _, _ = _reference_case("h2")
+    calc = _calculator(device=cuda_device)
+    with calc.prepare_batch([atoms, atoms]) as batch:
+        result = batch.execute(properties=("energy", "forces"), strict=True)
+    assert all(item.succeeded and item.forces is not None for item in result.items)
+    # Independent CUDA derivative reductions may differ by a few FP64 ulps.
+    np.testing.assert_allclose(
+        result.items[0].forces, result.items[1].forces, atol=1e-12, rtol=0
+    )
+    assert all(
+        item.correlation is not None and item.correlation.force_provenance_flags & 0x8
+        for item in result.items
+    )
 
 
 def test_public_force_admits_reported_endpoint_budget() -> None:

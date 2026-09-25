@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -22,7 +23,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
@@ -115,9 +116,36 @@ struct RksEvaluation {
   dft::XcDensityDiagnostic density_diagnostic;
 };
 
-using RksXcEvaluator = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
+struct RksXcEvaluator {
+  using Direct = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&, const Matrix&,
+                                     dft::XcDensitySource, std::size_t, double, double);
+  using CachedDirect = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
                                            const Matrix&, dft::XcDensitySource, std::size_t, double,
-                                           double);
+                                           double, const dft::RksAoCache&);
+  Direct direct{};
+  CachedDirect cached_direct{};
+  const dft::SemilocalPointProgram* program{};
+
+  RksXcEvaluator(Direct value, CachedDirect cached = nullptr)
+      : direct(value), cached_direct(cached) {}
+  RksXcEvaluator(const dft::SemilocalPointProgram& value) : program(&value) {}
+
+  dft::XcIntegral operator()(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                             const Matrix& density, dft::XcDensitySource source, std::size_t tile,
+                             double exchange_scale, double correlation_scale,
+                             const dft::RksAoCache* cache = nullptr) const {
+    if (program) {
+      if (exchange_scale != 1.0 || correlation_scale != 1.0)
+        throw std::invalid_argument("generic semilocal RKS does not accept legacy XC scaling");
+      return dft::integrate_semilocal_rks(basis, grid, density, *program, tile, source);
+    }
+    if (cache && cached_direct)
+      return cached_direct(basis, grid, density, source, tile, exchange_scale, correlation_scale,
+                           *cache);
+    if (!direct) throw std::logic_error("RKS XC evaluator is empty");
+    return direct(basis, grid, density, source, tile, exchange_scale, correlation_scale);
+  }
+};
 
 dft::XcIntegral evaluate_lda_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                     const Matrix& density, dft::XcDensitySource source,
@@ -134,6 +162,15 @@ dft::XcIntegral evaluate_pbe_xc_rks(const dft::AoBasis& basis, const dft::Molecu
                                     double correlation_scale) {
   return dft::integrate_pbe_rks_with_tail_scaled(basis, grid, density, tile, source, exchange_scale,
                                                  correlation_scale);
+}
+
+dft::XcIntegral evaluate_pbe_xc_rks_cached(const dft::AoBasis& basis,
+                                           const dft::MolecularGrid& grid, const Matrix& density,
+                                           dft::XcDensitySource source, std::size_t tile,
+                                           double exchange_scale, double correlation_scale,
+                                           const dft::RksAoCache& cache) {
+  return dft::integrate_pbe_rks_with_tail_scaled_cached(basis, grid, density, tile, source,
+                                                        exchange_scale, correlation_scale, cache);
 }
 
 std::uint64_t fingerprint_mix(std::uint64_t hash, std::uint64_t value) noexcept {
@@ -402,6 +439,7 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
                            std::size_t tile, double exchange_scale, double correlation_scale,
                            dft::nlc::Vv10Plan* nonlocal_correlation,
                            dft::nlc::Vv10DensityDomain nonlocal_domain,
+                           const dft::RksAoCache* ao_cache,
                            std::optional<dft::XcIntegral> xc_override = std::nullopt) {
   const auto& strategy = plan.strategy();
   const auto& ints = plan.one_electron();
@@ -424,7 +462,7 @@ RksEvaluation evaluate_rks(const PreparedFockPlan& plan,
   }
   auto xc = xc_override.has_value() ? std::move(*xc_override)
                                     : evaluate_xc(basis, grid, density, source, tile,
-                                                  exchange_scale, correlation_scale);
+                                                  exchange_scale, correlation_scale, ao_cache);
   result.density_diagnostic = xc.density_diagnostic;
   dft::nlc::Vv10Integral nonlocal;
   if (nonlocal_correlation)
@@ -537,14 +575,17 @@ ScfResult run_rks(
   ks.occupations = {occupied, occupied};
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  ks.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
-  ks.scf_domain_version = std::string_view(method_name) == "WB97M-V"
-                              ? 3U
-                              : (std::string_view(method_name) == "B3LYP" ? 2U : 1U);
+  ks.ao_order = evaluate_xc.program ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
+                                    : (std::string_view(method_name) == "LDA" ? 0U : 1U);
+  ks.scf_domain_version = evaluate_xc.program
+                              ? evaluate_xc.program->domain_version
+                              : (std::string_view(method_name) == "WB97M-V"
+                                     ? 3U
+                                     : (std::string_view(method_name) == "B3LYP" ? 2U : 1U));
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   const bool incremental_xc = options.experimental_incremental_xc;
-  if (incremental_xc && (std::string_view(method_name) != "PBE" ||
+  if (incremental_xc && (evaluate_xc.program || std::string_view(method_name) != "PBE" ||
                          options.xc_density_route != dft::XcDensityRoute::DensityMatrix ||
                          nonlocal_correlation || options.incremental_xc_max_updates == 0 ||
                          !std::isfinite(options.incremental_xc_max_density_rms) ||
@@ -573,6 +614,22 @@ ScfResult run_rks(
         options.incremental_xc_noise_density_rms, options.incremental_xc_stagnation_iterations,
         ks.incremental_xc});
   }
+  // Repeated CPU SCF builds see an immutable geometry/grid. Retain the complete
+  // order-1 AO grid only when its exact FP64 footprint is bounded; larger
+  // workloads keep the existing tile-streaming recomputation path.
+  constexpr std::size_t kCpuRksAoCacheMaximumBytes = 64ULL * 1024ULL * 1024ULL;
+  std::optional<dft::RksAoCache> ao_cache;
+  if (!incremental_xc && evaluate_xc.cached_direct) {
+    const auto cache_bytes = dft::rks_ao_cache_bytes(basis, grid, ks.ao_order);
+    if (cache_bytes <= kCpuRksAoCacheMaximumBytes) {
+      try {
+        ao_cache.emplace(dft::prepare_rks_ao_cache(basis, grid, ks.ao_order));
+      } catch (const std::bad_alloc&) {
+        // Optional retention must not make the existing streamed path unavailable.
+        ao_cache.reset();
+      }
+    }
+  }
   std::shared_ptr<const OccupiedDensityFactor> factor;
   DensityFactorIdentity identity{};
   const bool use_orbitals = options.xc_density_route == dft::XcDensityRoute::OccupiedOrbitals;
@@ -587,7 +644,8 @@ ScfResult run_rks(
     return runtime::add_capacity(
         runtime::add_capacity(provider_capacity, diis.numeric_capacity()),
         runtime::add_capacity(
-            factor ? factor->numeric_capacity_bytes() : 0,
+            runtime::add_capacity(factor ? factor->numeric_capacity_bytes() : 0,
+                                  ao_cache ? ao_cache->numeric_capacity_bytes() : 0),
             runtime::vector_capacities(orthogonalizer, current_density, orbitals.values,
                                        orbitals.vectors, basis.packed, grid.points(),
                                        grid.weights(), grid.owners(), ks.history)));
@@ -636,7 +694,7 @@ ScfResult run_rks(
                      runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
                      options.xc_tile_points, options.semilocal_exchange_scale,
                      options.semilocal_correlation_scale, nonlocal_correlation, nonlocal_domain,
-                     std::move(xc_override));
+                     ao_cache ? &*ao_cache : nullptr, std::move(xc_override));
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
@@ -677,10 +735,10 @@ ScfResult run_rks(
     const double residual_tolerance = std::min(1.0e-9, options.density_tolerance);
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
-      const solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
-                                                      options.density_tolerance, residual_tolerance,
-                                                      true};
-      return solver::run_self_consistent(
+      const ::vibeqc::solver::SelfConsistentPolicy stage_policy{
+          iteration_budget, options.energy_tolerance, options.density_tolerance, residual_tolerance,
+          true};
+      return ::vibeqc::solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {
             const auto current_factor = factor;
@@ -705,7 +763,7 @@ ScfResult run_rks(
                                      physical_residual,       spin_electrons};
           },
           [&](Matrix& current_density, RksLoopEvaluation evaluation,
-              const solver::SelfConsistentProgress& progress) {
+              const ::vibeqc::solver::SelfConsistentProgress& progress) {
             if (strict_full && progress.converged) {
               // The independent final audit must rebuild the exact density that
               // actually passed the strict physical criteria, not an unchecked
@@ -721,7 +779,8 @@ ScfResult run_rks(
             }
             return std::move(evaluation.next_density);
           },
-          [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+          [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+              const RksLoopEvaluation& evaluation) {
             const unsigned reported_iteration = iteration_offset + progress.iteration;
             result.iterations = reported_iteration;
             result.energy = progress.energy;
@@ -803,10 +862,10 @@ ScfResult run_rks(
     return result;
   }
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance,
-                                            std::min(1.0e-9, options.density_tolerance), true};
-  auto outcome = solver::run_self_consistent(
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance,
+      std::min(1.0e-9, options.density_tolerance), true};
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
         const auto current_factor = factor;
@@ -832,7 +891,7 @@ ScfResult run_rks(
                                  physical_residual,       spin_electrons};
       },
       [&](Matrix& current_density, RksLoopEvaluation evaluation,
-          const solver::SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         if (!progress.converged && progress.iteration == options.max_iterations) {
           // A failed return must keep E/residual/D/factor on the same physical
           // generation rather than publishing the last unchecked proposal.
@@ -842,7 +901,8 @@ ScfResult run_rks(
         }
         return std::move(evaluation.next_density);
       },
-      [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const RksLoopEvaluation& evaluation) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
@@ -909,15 +969,16 @@ ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {
-  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_pbe_xc_rks, "PBE",
-                 nullptr);
+  return run_rks(plan, nullptr, basis, grid, options, initial_density,
+                 RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached), "PBE", nullptr);
 }
 
 ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                                const dft::MolecularGrid& grid, const ScfOptions& options,
                                const std::vector<double>* initial_density,
                                dft::nlc::Vv10Plan& nonlocal_correlation) {
-  return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_pbe_xc_rks, "PBE",
+  return run_rks(plan, nullptr, basis, grid, options, initial_density,
+                 RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached), "PBE",
                  &nonlocal_correlation);
 }
 
@@ -927,7 +988,8 @@ ScfResult run_pbe_rsh_rks(const PreparedFockPlan& primary,
                           const std::vector<double>* initial_density,
                           dft::nlc::Vv10Plan* nonlocal_correlation) {
   return run_rks(primary, &long_range_correction, basis, grid, options, initial_density,
-                 evaluate_pbe_xc_rks, "PBE-RSH", nonlocal_correlation);
+                 RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached), "PBE-RSH",
+                 nonlocal_correlation);
 }
 
 ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
@@ -935,6 +997,37 @@ ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis
                          const std::vector<double>* initial_density) {
   return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_r2scan_xc_rks,
                  "R2SCAN", nullptr);
+}
+
+ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density) {
+  dft::validate_semilocal_point_program(program);
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, RksXcEvaluator(program),
+                 program.identifier, nullptr);
+}
+
+ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                                   const dft::MolecularGrid& grid, const ScfOptions& options,
+                                   dft::SemilocalFamily family, unsigned spin_channels,
+                                   const std::vector<double>* initial_density) {
+  if (spin_channels != 1U && spin_channels != 2U)
+    throw std::invalid_argument("curated semilocal KS requires one or two spin channels");
+  const bool unrestricted = spin_channels == 2U;
+  switch (family) {
+    case dft::SemilocalFamily::Lda:
+      return unrestricted ? run_lda_uks(plan, basis, grid, options, initial_density)
+                          : run_lda_rks(plan, basis, grid, options, initial_density);
+    case dft::SemilocalFamily::Pbe:
+      return unrestricted ? run_pbe_uks(plan, basis, grid, options, initial_density)
+                          : run_pbe_rks(plan, basis, grid, options, initial_density);
+    case dft::SemilocalFamily::R2scan:
+      return unrestricted ? run_r2scan_uks(plan, basis, grid, options, initial_density)
+                          : run_r2scan_rks(plan, basis, grid, options, initial_density);
+    default:
+      throw std::invalid_argument("composed semilocal family requires its dedicated KS path");
+  }
 }
 
 ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,

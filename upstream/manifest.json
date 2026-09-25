@@ -154,7 +154,7 @@
         "python/vibeqc_compiler/xc/scan_maple.py": "faffe4e1c949cd861b44a699b6a1bebc5b22361a8494965c7a0a2bfa62ce2219",
         "python/vibeqc_compiler/xc/semilocal_family.py": "61e27426ca68fd5a04f566ec976fdaecad50c314f194f16c542aa8f6b9e97a84",
         "python/vibeqc_compiler/xc/spec.py": "bba35a1eae1a38caf46e40e2cc6f3d18daa1a5fbb0ed44f1e7f17eb9a601e4b2",
-        "python/vibeqc_compiler/xc/wb97mv_maple.py": "7433cd82cd04aef3d2f015e514cbc54406b05dd9e84f4934411415d90b4e9b27"
+        "python/vibeqc_compiler/xc/wb97mv_maple.py": "a2ab9a290b99a71e4956a180ca2e4b6cd63b318f9df75153ed78148196404302"
       },
       "generator": "python/vibeqc_compiler/xc/libxc_maple.py",
       "generator_sha256": "694999d96acf656cbf99b80da5fa4f3c4548af396d41dc0f01753c3c0b1154e8",
@@ -206,6 +206,21 @@
       "inputs": [],
       "outputs": {
         "python/vibeqc_compiler/integral/rys_high_accuracy_data.py": "51f97cfdf2c750fff11a5f09b9435cb7d541c7153eea1826fe521ec248cae079"
+      }
+    },
+    "d3-production-data": {
+      "canonical_inputs": {
+        "manifests/xtbloom-d3.json": "8a34095d48b8c539acde7f848a1f737df127fbe1edc600b37d8c00956b65a44c"
+      },
+      "generator": "tools/vibeqc_d3/generate_compact_data.py",
+      "generator_sha256": "f36d4e6faba4ffb67af1b069c702b763ef4be9bdbdae76a11704f1c2dec894aa",
+      "input_identity_sha256": "4c3fda2836fc9c81ecede2ed9c073b18799c329d1231ecb88ba93abd98079ca7",
+      "inputs": [
+        "xtbloom-gfn1-d3",
+        "xtbloom-gfn1-parameters"
+      ],
+      "outputs": {
+        "data/parameters/d3_production.bin": "19aed2b11b39a29f6e1c9a8cb442cb78ef3772488edc0c003e7640a5b198e945"
       }
     }
   },
@@ -3556,9 +3571,8 @@
           "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_d3_manifest.json"
         }
       },
-      "kind": "snapshot",
+      "kind": "remote-file-set",
       "license": "LGPL-3.0-or-later",
-      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     },
@@ -3589,9 +3603,8 @@
           "url": "https://raw.githubusercontent.com/jinzhezenggroup/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/data/parameters/gfn1_manifest.json"
         }
       },
-      "kind": "snapshot",
+      "kind": "remote-file-set",
       "license": "LGPL-3.0-or-later AND Apache-2.0",
-      "local_root": "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3",
       "repository": "https://github.com/jinzhezenggroup/xtbloom",
       "revision": "2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3"
     }

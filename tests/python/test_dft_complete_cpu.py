@@ -459,9 +459,18 @@ def independent_uks_gradient(
 
 
 def independent_semilocal_total_gradient(
-    basis: typing.Any, state: typing.Any, method: typing.Any
+    basis: typing.Any,
+    state: typing.Any,
+    method: typing.Any,
+    *,
+    cart: bool = True,
+    initial_guess: typing.Literal["default", "native"] = "default",
 ) -> typing.Any:
-    """Independent PySCF analytic total gradient on the identical explicit grid."""
+    """Independent PySCF analytic total gradient on the identical explicit grid.
+
+    The optional native initial density selects a stationary basin for a
+    difficult radical; PySCF still solves and evaluates its own operators.
+    """
     from pyscf import dft, gto, lib
     from pyscf.data.elements import ELEMENTS
 
@@ -479,7 +488,7 @@ def independent_semilocal_total_gradient(
         atom=[(label, a.position) for label, a in zip(labels, basis.atoms)],
         basis=shells,
         unit="Bohr",
-        cart=True,
+        cart=cart,
         charge=basis.charge,
         spin=basis.multiplicity - 1,
         verbose=0,
@@ -502,7 +511,14 @@ def independent_semilocal_total_gradient(
     mf.conv_tol = 1e-13
     mf.conv_tol_grad = 1e-10
     mf.max_cycle = 200
-    mf.kernel()
+    if initial_guess == "native":
+        density = np.asarray(state.density)
+        dm0 = tuple(density) if method.endswith("-uks") else density[0]
+        mf.kernel(dm0=dm0)
+    elif initial_guess == "default":
+        mf.kernel()
+    else:
+        raise ValueError("unrecognized independent PySCF initial guess")
     assert mf.converged
     grad = mf.nuc_grad_method()
     grad.grid_response = True
