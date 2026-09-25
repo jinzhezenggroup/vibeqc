@@ -5,9 +5,8 @@ import typing
 import numpy as np
 import pytest
 from vibeqc import Calculator, GridSpec, KsOptions
-from vibeqc_compiler.dft import NativeAO
-
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
+from vibeqc_compiler.dft import NativeAO
 
 from tools.vibeqc_hessian import directional_rks_response, rks_hvp
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse

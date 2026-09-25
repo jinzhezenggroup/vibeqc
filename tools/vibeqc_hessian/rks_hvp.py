@@ -96,7 +96,9 @@ def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
         "nuclear",
     )
     if plan.source_names != expected:
-        raise ValueError("semilocal RKS HVP source inventory is not the qualified slice")
+        raise ValueError(
+            "semilocal RKS HVP source inventory is not the qualified slice"
+        )
     return plan
 
 
@@ -129,9 +131,11 @@ def _pair_plan_weights(
         raise ValueError("pair weight generation requires one-electron or overlap")
     block = plan.integral_block(source_name, terms=nbf * nbf, coordinates=1)
     fixed = execute(block.weights, feeds).outputs["weights"].reshape(nbf, nbf)
-    moving = execute(block.response_weights, feeds).outputs[
-        "response_weights"
-    ].reshape(nbf, nbf)
+    moving = (
+        execute(block.response_weights, feeds)
+        .outputs["response_weights"]
+        .reshape(nbf, nbf)
+    )
     return immutable(fixed), immutable(moving)
 
 
@@ -160,9 +164,11 @@ def _coulomb_shell_plan_weights(
     block = plan.integral_block("coulomb", terms=len(tuples), coordinates=1)
     shape = tuple(offsets[s + 1] - offsets[s] for s in slots)
     fixed = execute(block.weights, feeds).outputs["weights"].reshape(shape)
-    moving = execute(block.response_weights, feeds).outputs[
-        "response_weights"
-    ].reshape(shape)
+    moving = (
+        execute(block.response_weights, feeds)
+        .outputs["response_weights"]
+        .reshape(shape)
+    )
     return immutable(fixed), immutable(moving)
 
 
@@ -191,15 +197,12 @@ def _integral_source_hvp(
             cache=cache,
         )
     elif source_name == "coulomb":
+
         def response_weights(slots: tuple[int, int, int, int]) -> np.ndarray:
-            return _coulomb_shell_plan_weights(
-                plan, response, operator, slots
-            )[1]
+            return _coulomb_shell_plan_weights(plan, response, operator, slots)[1]
 
         def fixed_weights(slots: tuple[int, int, int, int]) -> np.ndarray:
-            return _coulomb_shell_plan_weights(
-                plan, response, operator, slots
-            )[0]
+            return _coulomb_shell_plan_weights(plan, response, operator, slots)[0]
 
         first = generated_weighted_first_integral_gradient(
             operator._source,
@@ -411,16 +414,16 @@ def rks_hvp(
 
     contributors = (
         StationaryHVPContributor(
-            "one_electron", "native-rks-plan-weighted-one-electron-v1",
+            "one_electron",
+            "native-rks-plan-weighted-one-electron-v1",
             integral("one_electron"),
         ),
         StationaryHVPContributor(
-            "coulomb", "native-rks-plan-weighted-coulomb-v1",
+            "coulomb",
+            "native-rks-plan-weighted-coulomb-v1",
             integral("coulomb"),
         ),
-        StationaryHVPContributor(
-            "xc_ao", "native-rks-xc-mixed-ao-v1", xc("xc_ao")
-        ),
+        StationaryHVPContributor("xc_ao", "native-rks-xc-mixed-ao-v1", xc("xc_ao")),
         StationaryHVPContributor(
             "xc_grid", "native-rks-xc-mixed-grid-v1", xc("xc_grid")
         ),
@@ -428,7 +431,8 @@ def rks_hvp(
             "xc_weight", "native-rks-xc-mixed-weight-v1", xc("xc_weight")
         ),
         StationaryHVPContributor(
-            "overlap_pulay", "native-rks-plan-weighted-overlap-v1",
+            "overlap_pulay",
+            "native-rks-plan-weighted-overlap-v1",
             integral("overlap_pulay"),
         ),
         StationaryHVPContributor(

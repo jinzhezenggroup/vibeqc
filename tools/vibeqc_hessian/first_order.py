@@ -380,13 +380,13 @@ def generated_weighted_first_integral_gradient(
                         "nuclear_attraction", angular, charge=float(charge)
                     )
                     centers = (*atoms, nucleus)
-                    for (u, v), gradient in provider.raw_tiles(
-                        ir, (a, b), centers
-                    ):
+                    for (u, v), gradient in provider.raw_tiles(ir, (a, b), centers):
                         accumulate(centers, gradient, block[u, v])
     else:
         if pair_weights is not None or not callable(eri_shell_weights):
-            raise ValueError("coulomb first derivative requires shell-local ERI weights")
+            raise ValueError(
+                "coulomb first derivative requires shell-local ERI weights"
+            )
         for slots in product(range(len(shells)), repeat=4):
             angular = tuple(shells[i].angular_momentum for i in slots)
             atoms = tuple(shells[i].atom_index for i in slots)

@@ -50,10 +50,10 @@ __all__ = [
     "analytic_hessian",
     "build_reference",
     "cphf_relaxation",
+    "generated_weighted_second_integral_hvp",
     "nuclear_closed_form",
     "nuclear_hvp",
     "nuclear_hvp_from_source",
-    "generated_weighted_second_integral_hvp",
     "provider_components",
     "provider_hvp_components",
 ]
@@ -684,18 +684,13 @@ def _run_eri_weighted(
                     nc = len(cartesian_components(lc))
                     nd = len(cartesian_components(ld))
                     w4 = np.asarray(shell_weights((a, b, cc, d)), dtype=np.float64)
-                    if (
-                        w4.shape != (na, nb, nc, nd)
-                        or not np.isfinite(w4).all()
-                    ):
+                    if w4.shape != (na, nb, nc, nd) or not np.isfinite(w4).all():
                         raise ValueError(
                             "four-center shell weights must be finite with the "
                             "ordered Cartesian shell shape"
                         )
                     prims = tuple(data["primitives"][i] for i in (a, b, cc, d))
-                    ca, cb, c_atom, cd = (
-                        shells[x].atom_index for x in (a, b, cc, d)
-                    )
+                    ca, cb, c_atom, cd = (shells[x].atom_index for x in (a, b, cc, d))
                     centers = np.array(
                         [
                             state.coords[ca],
@@ -736,12 +731,8 @@ def _run_eri(
     def shell_weights(slots: tuple[int, int, int, int]) -> np.ndarray:
         a, b, cc, d = slots
         sa, sb, sc, sd = (slice(loc[i], loc[i + 1]) for i in slots)
-        w4 = 0.5 * np.einsum(
-            "uv,wx->uvwx", density[sa, sb], density[sc, sd]
-        )
-        w4 -= 0.25 * np.einsum(
-            "uw,vx->uvwx", density[sa, sc], density[sb, sd]
-        )
+        w4 = 0.5 * np.einsum("uv,wx->uvwx", density[sa, sb], density[sc, sd])
+        w4 -= 0.25 * np.einsum("uw,vx->uvwx", density[sa, sc], density[sb, sd])
         return w4
 
     return _run_eri_weighted(data, shell_weights, direction=direction)
@@ -781,9 +772,7 @@ def generated_weighted_second_integral_hvp(
     if source_name == "coulomb":
         if pair_weights is not None or not callable(eri_shell_weights):
             raise ValueError("coulomb second HVP requires shell-local ERI weights")
-        value = _run_eri_weighted(
-            data, eri_shell_weights, direction=vector
-        )
+        value = _run_eri_weighted(data, eri_shell_weights, direction=vector)
     else:
         if eri_shell_weights is not None:
             raise ValueError("pair second HVP cannot consume ERI shell weights")
@@ -798,9 +787,7 @@ def generated_weighted_second_integral_hvp(
         if source_name == "one_electron":
             value = _run_one_electron(
                 data, "kinetic", weights, direction=vector
-            ) + _run_one_electron(
-                data, "nuclear_attraction", weights, direction=vector
-            )
+            ) + _run_one_electron(data, "nuclear_attraction", weights, direction=vector)
         else:
             value = _run_one_electron(data, "overlap", weights, direction=vector)
     diagnostic = _second_provider_diagnostics(data)
@@ -930,9 +917,7 @@ def nuclear_closed_form(s: NativeRHFState) -> np.ndarray:
     return H
 
 
-def nuclear_hvp_from_source(
-    source: typing.Any, direction: np.ndarray
-) -> np.ndarray:
+def nuclear_hvp_from_source(source: typing.Any, direction: np.ndarray) -> np.ndarray:
     """Apply the exact all-electron nucleus-nucleus Hessian from a live source."""
     check = getattr(source, "_check_open", None)
     if not callable(check):
@@ -950,8 +935,11 @@ def nuclear_hvp_from_source(
             r = coords[a] - coords[b]
             d = np.linalg.norm(r)
             unit = r / d
-            block = charges[a] * charges[b] / d**3 * (
-                3.0 * np.outer(unit, unit) - np.eye(3)
+            block = (
+                charges[a]
+                * charges[b]
+                / d**3
+                * (3.0 * np.outer(unit, unit) - np.eye(3))
             )
             contribution = block @ (vector[a] - vector[b])
             out[a] += contribution
