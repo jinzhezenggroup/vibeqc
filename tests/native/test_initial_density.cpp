@@ -152,6 +152,14 @@ void check_occupied_projection_contract() {
               projected.target_metric_orthogonality_error < 1e-13,
           "identity occupied projection diagnostics changed");
 
+  const Matrix reference_coefficients{1, 0, 0, 1};
+  const auto completed = complete_occupied_density(
+      target, projected.coefficients, 1, reference_coefficients, 2);
+  close(completed.density, {2, 0, 0, 2});
+  require(completed.added_orbitals == 1 && completed.minimum_added_norm > 0.7 &&
+              completed.metric_orthogonality_error < 1e-13,
+          "occupied projection core completion changed");
+
   const Matrix rank_lost_cross{0, 0, 0, 0};
   invalid([&] {
     project_occupied_density(target, x, source_overlap, rank_lost_cross, 2, source_coefficients, 1);
