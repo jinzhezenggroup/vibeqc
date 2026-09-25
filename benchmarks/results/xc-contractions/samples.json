@@ -1,0 +1,4812 @@
+{
+  "schema": "vibeqc.xc-contraction-benchmark.v1",
+  "revision": "60dceca7561e6bd04d61d1bbb5ee092044733275",
+  "dirty": false,
+  "source_identity": "c2167197e5aef83f7e66937ae3832c6ebd6a30d3928fccb733e862a313ac6242",
+  "library_sha256": "88bc50af34e621b59a0ac22395964e639bbc605f8eb88d9f60efeb2c2b4e6909",
+  "hardware": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35\nmodel name\t: AMD EPYC 7K62 48-Core Processor",
+  "toolchain": {
+    "python": "3.11.14 (main, Feb 12 2026, 00:42:50) [Clang 21.1.4 ]",
+    "numpy": "2.4.6",
+    "cxx": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.",
+    "pyscf": "2.14.0",
+    "libxc": "7.0.0",
+    "numint_sha256": "ff7384551c7a6b80ff8a5ffcd915eb8bfbf6ca4b8f987f912aa82a1d6edda7e8",
+    "threads": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    }
+  },
+  "programs": {
+    "LDA_XC_PW/energy": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "570e789c57022ca5bc427481086673778a892275ea61fc0e9be0c103e97df2d1",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "lda",
+            "features": [
+              0,
+              1
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "energy",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 0,
+          "scalar_outputs": [
+            []
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b"
+            ],
+            "outputs": 1,
+            "ssa": {
+              "root_count": 1,
+              "reachable_node_count": 91,
+              "operation_counts": {
+                "add": 14,
+                "constant": 29,
+                "log1p": 3,
+                "multiply": 32,
+                "power": 7,
+                "reciprocal": 4,
+                "variable": 2
+              },
+              "arithmetic_operation_count": 83,
+              "materialized_value_count": 60,
+              "estimated_peak_live_values": 16
+            }
+          }
+        },
+        "source_sha256": "0264a1f688326d72db4c47867a1ae58750e032104b49064a2a568198dd749c6e",
+        "source_bytes": 3275,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "d8ddff7be36ddf1e7bea6ce843b97648c528ae754f1cda633923d0b6deab954b",
+        "compile_seconds": 0.17170768999494612,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "0264a1f688326d72db4c47867a1ae58750e032104b49064a2a568198dd749c6e",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "9216a7508144cf54a127db2011714ef247685fd9c118b5f1bb14c82cd115b31d",
+        "resources": []
+      },
+      "construction_seconds": 0.18610292812809348,
+      "source_bytes": 3275,
+      "coefficients_before": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "coefficients_after": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "LDA_XC_PW/potential": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "570e789c57022ca5bc427481086673778a892275ea61fc0e9be0c103e97df2d1",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "lda",
+            "features": [
+              0,
+              1
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "potential",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 0,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b"
+            ],
+            "outputs": 3,
+            "ssa": {
+              "root_count": 3,
+              "reachable_node_count": 201,
+              "operation_counts": {
+                "add": 38,
+                "constant": 55,
+                "log1p": 3,
+                "multiply": 79,
+                "power": 13,
+                "reciprocal": 11,
+                "variable": 2
+              },
+              "arithmetic_operation_count": 245,
+              "materialized_value_count": 144,
+              "estimated_peak_live_values": 34
+            }
+          },
+          "xc_coefficients": {
+            "variables": [
+              "v0",
+              "v1"
+            ],
+            "outputs": 2,
+            "ssa": {
+              "root_count": 2,
+              "reachable_node_count": 2,
+              "operation_counts": {
+                "variable": 2
+              },
+              "arithmetic_operation_count": 0,
+              "materialized_value_count": 0,
+              "estimated_peak_live_values": 0
+            }
+          }
+        },
+        "source_sha256": "dc712a25e9395f3fcf4ae407df57d440836f19ea2ecf2825dbc9cd0cf996ae29",
+        "source_bytes": 8144,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "7b516ad89ec3390f3d6e65b8e93d8639a7067f1767db332be0dff4bb61885503",
+        "compile_seconds": 0.1996258688159287,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "dc712a25e9395f3fcf4ae407df57d440836f19ea2ecf2825dbc9cd0cf996ae29",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "8cb3e4549928a3a3f1f8543d3379abb5ce5e08449f2aacaef85f609f8e79bd1b",
+        "resources": []
+      },
+      "construction_seconds": 0.22015574597753584,
+      "source_bytes": 8144,
+      "coefficients_before": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "coefficients_after": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "LDA_XC_PW/response": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "570e789c57022ca5bc427481086673778a892275ea61fc0e9be0c103e97df2d1",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "lda",
+            "features": [
+              0,
+              1
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "response",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 0,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b"
+            ],
+            "outputs": 6,
+            "ssa": {
+              "root_count": 6,
+              "reachable_node_count": 485,
+              "operation_counts": {
+                "add": 107,
+                "constant": 95,
+                "log1p": 3,
+                "multiply": 241,
+                "power": 19,
+                "reciprocal": 18,
+                "variable": 2
+              },
+              "arithmetic_operation_count": 751,
+              "materialized_value_count": 388,
+              "estimated_peak_live_values": 59
+            }
+          },
+          "xc_response_coefficients": {
+            "variables": [
+              "dv0",
+              "dv1"
+            ],
+            "outputs": 2,
+            "ssa": {
+              "root_count": 2,
+              "reachable_node_count": 2,
+              "operation_counts": {
+                "variable": 2
+              },
+              "arithmetic_operation_count": 0,
+              "materialized_value_count": 0,
+              "estimated_peak_live_values": 0
+            }
+          }
+        },
+        "source_sha256": "3746386fa8ca47b159ff9fefcf73a862c0f30a73014b00366d67135b111f282e",
+        "source_bytes": 20337,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "cb18f1916a9c8e9b23e269c69f3f7b8b32e396919fbfa7abb1cdf013ff4d0f6b",
+        "compile_seconds": 0.28007061197422445,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "3746386fa8ca47b159ff9fefcf73a862c0f30a73014b00366d67135b111f282e",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "ee7abb20143f6c7a580eb27a835e96c146df9c56227d5a07c104de4f73a7681d",
+        "resources": []
+      },
+      "construction_seconds": 0.35625090007670224,
+      "source_bytes": 20337,
+      "coefficients_before": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "coefficients_after": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "LDA_XC_PW/geometry": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "570e789c57022ca5bc427481086673778a892275ea61fc0e9be0c103e97df2d1",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "lda",
+            "features": [
+              0,
+              1
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "geometry",
+          "held_fixed": [
+            "density",
+            "basis exponents/coefficients",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 1,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b"
+            ],
+            "outputs": 3,
+            "ssa": {
+              "root_count": 3,
+              "reachable_node_count": 201,
+              "operation_counts": {
+                "add": 38,
+                "constant": 55,
+                "log1p": 3,
+                "multiply": 79,
+                "power": 13,
+                "reciprocal": 11,
+                "variable": 2
+              },
+              "arithmetic_operation_count": 245,
+              "materialized_value_count": 144,
+              "estimated_peak_live_values": 34
+            }
+          },
+          "xc_coefficients": {
+            "variables": [
+              "v0",
+              "v1"
+            ],
+            "outputs": 2,
+            "ssa": {
+              "root_count": 2,
+              "reachable_node_count": 2,
+              "operation_counts": {
+                "variable": 2
+              },
+              "arithmetic_operation_count": 0,
+              "materialized_value_count": 0,
+              "estimated_peak_live_values": 0
+            }
+          },
+          "xc_jet_pullback": {
+            "variables": [
+              "c0",
+              "x0",
+              "y0"
+            ],
+            "outputs": 1,
+            "ssa": {
+              "root_count": 1,
+              "reachable_node_count": 5,
+              "operation_counts": {
+                "add": 1,
+                "multiply": 1,
+                "variable": 3
+              },
+              "arithmetic_operation_count": 2,
+              "materialized_value_count": 2,
+              "estimated_peak_live_values": 2
+            }
+          }
+        },
+        "source_sha256": "627857e86f0d3a618e6898caa60438e76dc0f6fecd30ecd5dd3a29c2292ef31b",
+        "source_bytes": 8752,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "bc15420ce316d123f2d4c730d7ab3ca278a595d4b5c7d5a70e544812338f8cc5",
+        "compile_seconds": 0.20143896201625466,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "627857e86f0d3a618e6898caa60438e76dc0f6fecd30ecd5dd3a29c2292ef31b",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "22fba0f2908fcdfb723d27178cb7aabb103fdb92ecbbe4acdd38681da8d66b1a",
+        "resources": []
+      },
+      "construction_seconds": 0.22151258401572704,
+      "source_bytes": 8752,
+      "coefficients_before": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "coefficients_after": {
+        "root_count": 2,
+        "reachable_node_count": 2,
+        "operation_counts": {
+          "variable": 2
+        },
+        "arithmetic_operation_count": 0,
+        "materialized_value_count": 0,
+        "estimated_peak_live_values": 0
+      },
+      "ao_pullback_before": {
+        "root_count": 1,
+        "reachable_node_count": 6,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 2,
+          "variable": 3
+        },
+        "arithmetic_operation_count": 3,
+        "materialized_value_count": 3,
+        "estimated_peak_live_values": 3
+      },
+      "ao_pullback_after": {
+        "root_count": 1,
+        "reachable_node_count": 5,
+        "operation_counts": {
+          "add": 1,
+          "multiply": 1,
+          "variable": 3
+        },
+        "arithmetic_operation_count": 2,
+        "materialized_value_count": 2,
+        "estimated_peak_live_values": 2
+      }
+    },
+    "PBE/energy": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "b313d0e495fac097810e4c3a8cccd6e3229948b6cfc78c56734332d2ca43e356",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "gga",
+            "features": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "energy",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 1,
+          "scalar_outputs": [
+            []
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b",
+              "sigma_aa",
+              "sigma_ab",
+              "sigma_bb"
+            ],
+            "outputs": 1,
+            "ssa": {
+              "root_count": 1,
+              "reachable_node_count": 148,
+              "operation_counts": {
+                "add": 25,
+                "constant": 37,
+                "expm1": 1,
+                "log1p": 4,
+                "multiply": 54,
+                "power": 12,
+                "reciprocal": 10,
+                "variable": 5
+              },
+              "arithmetic_operation_count": 148,
+              "materialized_value_count": 106,
+              "estimated_peak_live_values": 18
+            }
+          }
+        },
+        "source_sha256": "db31361cea6ca08b768e1318c21fdf8f4ca44dc150da686ef400d8dbe6b6bacc",
+        "source_bytes": 5406,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "2e976ace0480938cd88ae2d9af89b79008e1353c8b03eac9a9072a782ff66813",
+        "compile_seconds": 0.18091035587713122,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "db31361cea6ca08b768e1318c21fdf8f4ca44dc150da686ef400d8dbe6b6bacc",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "1810514f2aa1e452de393a7ad63d455949fde814c315f11907772d4aff6f79e0",
+        "resources": []
+      },
+      "construction_seconds": 0.2067800280638039,
+      "source_bytes": 5406,
+      "coefficients_before": {
+        "root_count": 8,
+        "reachable_node_count": 35,
+        "operation_counts": {
+          "add": 12,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 24,
+        "estimated_peak_live_values": 8
+      },
+      "coefficients_after": {
+        "root_count": 8,
+        "reachable_node_count": 30,
+        "operation_counts": {
+          "add": 6,
+          "constant": 1,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 18,
+        "estimated_peak_live_values": 8
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "PBE/potential": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "b313d0e495fac097810e4c3a8cccd6e3229948b6cfc78c56734332d2ca43e356",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "gga",
+            "features": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "potential",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 1,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              2
+            ],
+            [
+              3
+            ],
+            [
+              4
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b",
+              "sigma_aa",
+              "sigma_ab",
+              "sigma_bb"
+            ],
+            "outputs": 6,
+            "ssa": {
+              "root_count": 6,
+              "reachable_node_count": 361,
+              "operation_counts": {
+                "add": 75,
+                "constant": 75,
+                "exp": 1,
+                "expm1": 1,
+                "log1p": 4,
+                "multiply": 153,
+                "power": 23,
+                "reciprocal": 24,
+                "variable": 5
+              },
+              "arithmetic_operation_count": 526,
+              "materialized_value_count": 281,
+              "estimated_peak_live_values": 62
+            }
+          },
+          "xc_coefficients": {
+            "variables": [
+              "g0_0",
+              "g0_1",
+              "g0_2",
+              "g1_0",
+              "g1_1",
+              "g1_2",
+              "v0",
+              "v1",
+              "v2",
+              "v3",
+              "v4"
+            ],
+            "outputs": 8,
+            "ssa": {
+              "root_count": 8,
+              "reachable_node_count": 30,
+              "operation_counts": {
+                "add": 6,
+                "constant": 1,
+                "multiply": 12,
+                "variable": 11
+              },
+              "arithmetic_operation_count": 24,
+              "materialized_value_count": 18,
+              "estimated_peak_live_values": 8
+            }
+          }
+        },
+        "source_sha256": "bfb70b332d0ac383b97a813997d37c88c96a106e7f31d8d845281a32bddd26f1",
+        "source_bytes": 17124,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "2a06a4b193d44b9662309318e5e530f4b2af04f752f6237ba62f3096b2fc1b46",
+        "compile_seconds": 0.2654389690142125,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "bfb70b332d0ac383b97a813997d37c88c96a106e7f31d8d845281a32bddd26f1",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "f45983ea4ea13ee605c45af3526089aaf4cdaf9494f22cb5674cd42561d75749",
+        "resources": []
+      },
+      "construction_seconds": 0.3259253320284188,
+      "source_bytes": 17124,
+      "coefficients_before": {
+        "root_count": 8,
+        "reachable_node_count": 35,
+        "operation_counts": {
+          "add": 12,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 24,
+        "estimated_peak_live_values": 8
+      },
+      "coefficients_after": {
+        "root_count": 8,
+        "reachable_node_count": 30,
+        "operation_counts": {
+          "add": 6,
+          "constant": 1,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 18,
+        "estimated_peak_live_values": 8
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "PBE/response": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "b313d0e495fac097810e4c3a8cccd6e3229948b6cfc78c56734332d2ca43e356",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "gga",
+            "features": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "response",
+          "held_fixed": [
+            "basis",
+            "grid points",
+            "quadrature weights",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 1,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              2
+            ],
+            [
+              3
+            ],
+            [
+              4
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ],
+            [
+              0,
+              2
+            ],
+            [
+              0,
+              3
+            ],
+            [
+              0,
+              4
+            ],
+            [
+              1,
+              1
+            ],
+            [
+              1,
+              2
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              1,
+              4
+            ],
+            [
+              2,
+              2
+            ],
+            [
+              2,
+              3
+            ],
+            [
+              2,
+              4
+            ],
+            [
+              3,
+              3
+            ],
+            [
+              3,
+              4
+            ],
+            [
+              4,
+              4
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b",
+              "sigma_aa",
+              "sigma_ab",
+              "sigma_bb"
+            ],
+            "outputs": 21,
+            "ssa": {
+              "root_count": 21,
+              "reachable_node_count": 1196,
+              "operation_counts": {
+                "add": 311,
+                "constant": 153,
+                "exp": 1,
+                "expm1": 1,
+                "log1p": 4,
+                "multiply": 649,
+                "power": 34,
+                "reciprocal": 38,
+                "variable": 5
+              },
+              "arithmetic_operation_count": 2136,
+              "materialized_value_count": 1038,
+              "estimated_peak_live_values": 133
+            }
+          },
+          "xc_response_coefficients": {
+            "variables": [
+              "dg0_0",
+              "dg0_1",
+              "dg0_2",
+              "dg1_0",
+              "dg1_1",
+              "dg1_2",
+              "dv0",
+              "dv1",
+              "dv2",
+              "dv3",
+              "dv4",
+              "g0_0",
+              "g0_1",
+              "g0_2",
+              "g1_0",
+              "g1_1",
+              "g1_2",
+              "v2",
+              "v3",
+              "v4"
+            ],
+            "outputs": 8,
+            "ssa": {
+              "root_count": 8,
+              "reachable_node_count": 63,
+              "operation_counts": {
+                "add": 12,
+                "constant": 1,
+                "multiply": 30,
+                "variable": 20
+              },
+              "arithmetic_operation_count": 48,
+              "materialized_value_count": 42,
+              "estimated_peak_live_values": 10
+            }
+          }
+        },
+        "source_sha256": "e10ceb78215ca114ad61d49faa66d36bca47f746e02e4228824522d7fa259145",
+        "source_bytes": 57176,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "acee3b15706556b54832331a4460d08fdb84d216856bceb94cb941e5357e623f",
+        "compile_seconds": 0.6719934761058539,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "e10ceb78215ca114ad61d49faa66d36bca47f746e02e4228824522d7fa259145",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "a3fb74a873530c2cb1f1f7868c9ed835e6c3ee1cf66088cea9d49341ffe870a6",
+        "resources": []
+      },
+      "construction_seconds": 0.893629786092788,
+      "source_bytes": 57176,
+      "coefficients_before": {
+        "root_count": 8,
+        "reachable_node_count": 74,
+        "operation_counts": {
+          "add": 30,
+          "multiply": 24,
+          "variable": 20
+        },
+        "arithmetic_operation_count": 54,
+        "materialized_value_count": 54,
+        "estimated_peak_live_values": 9
+      },
+      "coefficients_after": {
+        "root_count": 8,
+        "reachable_node_count": 63,
+        "operation_counts": {
+          "add": 12,
+          "constant": 1,
+          "multiply": 30,
+          "variable": 20
+        },
+        "arithmetic_operation_count": 48,
+        "materialized_value_count": 42,
+        "estimated_peak_live_values": 10
+      },
+      "ao_pullback_before": null,
+      "ao_pullback_after": null
+    },
+    "PBE/geometry": {
+      "metadata": {
+        "schema": "vibeqc.xc-native-contractions.v1",
+        "contract": {
+          "schema": "vibeqc.xc-discrete-energy.v1",
+          "functional": "b313d0e495fac097810e4c3a8cccd6e3229948b6cfc78c56734332d2ca43e356",
+          "ingredients": {
+            "spin": "polarized",
+            "family": "gga",
+            "features": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "density": "real symmetric full matrices; total D means Da=Db=D/2",
+            "trace": "sum_s,mu,nu V_s[mu,nu] deltaD_s[mu,nu]; both offdiagonal entries",
+            "sigma_ab_factor": 1,
+            "tau_factor": "1/2",
+            "jets": "ordinary spatial derivatives without factorials"
+          },
+          "observable": "geometry",
+          "held_fixed": [
+            "density",
+            "basis exponents/coefficients",
+            "functional parameters",
+            "mask membership",
+            "regularization"
+          ],
+          "ao_order": 2,
+          "scalar_outputs": [
+            [],
+            [
+              0
+            ],
+            [
+              1
+            ],
+            [
+              2
+            ],
+            [
+              3
+            ],
+            [
+              4
+            ]
+          ],
+          "energy": "sum_g w_g e_xc(z_g); e_xc per volume, never epsilon per particle",
+          "geometry_sources": [
+            "AO centers",
+            "grid points",
+            "quadrature weights"
+          ],
+          "force_convention": "force=-gradient; returned explicit XC partials are gradients",
+          "method_terms": "stationarity, orbital response, Pulay and other energy terms belong to method owners"
+        },
+        "layouts": {
+          "xc_scalar": {
+            "variables": [
+              "rho_a",
+              "rho_b",
+              "sigma_aa",
+              "sigma_ab",
+              "sigma_bb"
+            ],
+            "outputs": 6,
+            "ssa": {
+              "root_count": 6,
+              "reachable_node_count": 361,
+              "operation_counts": {
+                "add": 75,
+                "constant": 75,
+                "exp": 1,
+                "expm1": 1,
+                "log1p": 4,
+                "multiply": 153,
+                "power": 23,
+                "reciprocal": 24,
+                "variable": 5
+              },
+              "arithmetic_operation_count": 526,
+              "materialized_value_count": 281,
+              "estimated_peak_live_values": 62
+            }
+          },
+          "xc_coefficients": {
+            "variables": [
+              "g0_0",
+              "g0_1",
+              "g0_2",
+              "g1_0",
+              "g1_1",
+              "g1_2",
+              "v0",
+              "v1",
+              "v2",
+              "v3",
+              "v4"
+            ],
+            "outputs": 8,
+            "ssa": {
+              "root_count": 8,
+              "reachable_node_count": 30,
+              "operation_counts": {
+                "add": 6,
+                "constant": 1,
+                "multiply": 12,
+                "variable": 11
+              },
+              "arithmetic_operation_count": 24,
+              "materialized_value_count": 18,
+              "estimated_peak_live_values": 8
+            }
+          },
+          "xc_jet_pullback": {
+            "variables": [
+              "c0",
+              "c1",
+              "c2",
+              "c3",
+              "x0",
+              "x1",
+              "x2",
+              "x3",
+              "y0",
+              "y1",
+              "y2",
+              "y3"
+            ],
+            "outputs": 4,
+            "ssa": {
+              "root_count": 4,
+              "reachable_node_count": 24,
+              "operation_counts": {
+                "add": 5,
+                "multiply": 7,
+                "variable": 12
+              },
+              "arithmetic_operation_count": 14,
+              "materialized_value_count": 12,
+              "estimated_peak_live_values": 6
+            }
+          }
+        },
+        "source_sha256": "6497b8a842bd92aa3ed73f3100c61e13ba186b50c2c8bd3c83bb7c09c47930a3",
+        "source_bytes": 18613,
+        "host_source_hashes": {
+          "python/vibeqc_compiler/__init__.py": "2b55026e9aff6ac6e5adeb88381b47b8a7b36612102a08ace25aa6ae322c4d21",
+          "python/vibeqc_compiler/common/__init__.py": "e71301da4c0abeb705a45a1b7de365c55374c9fb9150d3c18c40b08ad5116d93",
+          "python/vibeqc_compiler/common/array_graph.py": "c2a71e0735d5bdef9a1e235e589f6a44c2c36ea23e3e4ea280ed77391fcb77ed",
+          "python/vibeqc_compiler/common/arrays.py": "82c2d81a2990fa832e461a9c1e9c9063d20ecd793087053a3c801e210b2a8120",
+          "python/vibeqc_compiler/common/backend.py": "74bd709a25c5ec3db56fe57f8feb3da117924c8c525fbc52aeb0934fc5f02b77",
+          "python/vibeqc_compiler/common/compiler_process.py": "62e9efc5651b527022ca3fa28126dd3e531037c36fa32624b5df53824943959e",
+          "python/vibeqc_compiler/common/cpp_adapter.py": "daba6842284bd7729e4823c124de14ebd46ec44c9c0222c7bad30f7454b69dc6",
+          "python/vibeqc_compiler/common/cuda_adapter.py": "3d62106b60b4b648c3f0ec67e3e962d348e3bac8eb1d11fcf8763da3da929b72",
+          "python/vibeqc_compiler/common/cuda_resources.py": "7812edc9ee47a30517a09514760a3b8f2381fb1efd3e44402f0f35553837a665",
+          "python/vibeqc_compiler/common/cuda_runtime.py": "ea6d1722f345de7d888661aa4da499f35fb066ac7790d9ee569def0c7196e554",
+          "python/vibeqc_compiler/common/cuda_target.py": "f380b6a86b6b59d25d35fee71b025278e576bc6509a01cfea2e1f99f56ce3b46",
+          "python/vibeqc_compiler/common/evidence.py": "21dbb6376d551e99523c93633623657288bf9009c05f775f59f77570a517fbb6",
+          "python/vibeqc_compiler/common/native_runtime.py": "274b71df24c8aa5a310107662556d2078b6371eb5749d187da7f0d5902f1c13f",
+          "python/vibeqc_compiler/common/paths.py": "9b3026f0cfc9fb631f3c84daa33089834b4fe60b67df99dd07bac0c275573ee0",
+          "python/vibeqc_compiler/common/performance.py": "9bcf82d29ce505d6c54f4f61d23d5c721702b61dd6cf055defb8f19d7b8a4032",
+          "python/vibeqc_compiler/common/provenance.py": "45bcb9e3a484cd0d98affe76938a2ab3fc6d53deb3b2054c4c9b698b070cac1d",
+          "python/vibeqc_compiler/common/resources.py": "b418032f6def27b6168b432fe38fbf1b7af3b9052706f5b6a905045ce5973eb6",
+          "python/vibeqc_compiler/common/structure.py": "eb412ee4b59c0e4e46b1fa9b7b6ef80dd7ea4e4f2f6961fe5835ed3db0c0a76a",
+          "python/vibeqc_compiler/common/timing.py": "c3766f3075ad473d8577712713172c68b7360b20f2ed34a4bb3419b386af2f91",
+          "python/vibeqc_compiler/dft/__init__.py": "1f8185f517d4f2750887f698e0035842175d167d977045ce1179d79ed8da403d",
+          "python/vibeqc_compiler/dft/ao.py": "41f17ec350d216c9269a2d27c4a13270716721939b3c0c31661f995db9ffe85c",
+          "python/vibeqc_compiler/dft/ao_cuda.py": "e32a9a70a9b8a40192a41022a9ba8e1e7f4fc001f086812991c7765d325ca6df",
+          "python/vibeqc_compiler/dft/cuda.py": "abf597e1402f87426e20591d2a8c21be9861e4a2472db6a21899735fa347f6fe",
+          "python/vibeqc_compiler/dft/envelopes.py": "ae1b5db0911a5834710522c7e6486cdd4171ea65b6a63049c2cc00eba01f92a6",
+          "python/vibeqc_compiler/dft/features.py": "c5701358c3021efa3ace2967735f45856c71bc919953091b15f3ee57bb94cfb8",
+          "python/vibeqc_compiler/dft/fixtures.py": "e1680841174bd123bfe14b4e79312a493cd80e5b3d263e6d3a8c051a7414e939",
+          "python/vibeqc_compiler/dft/grid.py": "8e83aeb42eb8739918c7f32379157025ee07440519d6e6dcc1b6de110b685767",
+          "python/vibeqc_compiler/dft/plan.py": "d20ffc0e3b48aa529cfac69bc95ca14a4e2318016d822abb159346b5f068d4b5",
+          "python/vibeqc_compiler/dft/prepared.py": "f00200286386ce779d96011fc533ceda691febddd001baa571bfb0f9a551f303",
+          "python/vibeqc_compiler/dft/spatial.py": "be079d37d7c4485477bfd5e41dfb1437cdbd2a2e5dfa7add4dde2f2571644dbf",
+          "python/vibeqc_compiler/dft/spatial_prepared.py": "4244fd293ad186559527422d9fa99b5d2ccc304ebbd52364a34a757b8d06e81e",
+          "python/vibeqc_compiler/xc/__init__.py": "66227db542a0b4d19827b63f95c98d725a9fc16e96b6eb667d042c49390eb004",
+          "python/vibeqc_compiler/xc/capabilities.py": "a13a2f1e48472385586f4d7a55a8e326514e05b0e87d9856332677bc3469e9ef",
+          "python/vibeqc_compiler/xc/coefficients.py": "5eb4628289ffab3a06c9168d5501582d68927fe413fe406fd50804fb7342d313",
+          "python/vibeqc_compiler/xc/contractions.py": "08daba4692a1e18610ec1a50dd252389986cde60e149d286bca0c8f590fb5b90",
+          "python/vibeqc_compiler/xc/contracts.py": "ad06bb4ac361a9622e8876d1d465a2eed86039021fab3b711c59486a3a4c3343",
+          "python/vibeqc_compiler/xc/cuda.py": "988ab960c11ca17611b1e4f01014a8a7f55b0fb9056488d8acc5cd773c487066",
+          "python/vibeqc_compiler/xc/cuda_emit.py": "e5c36495c5ffd708a722dde0a4a969130b90b82cfc9fc42d50c34b549ba7a83c",
+          "python/vibeqc_compiler/xc/expressions.py": "efec208fe796acbad0d1b2194090ce171f61a8a51885222a0a72932a6cf909e6",
+          "python/vibeqc_compiler/xc/fixtures.py": "527c97dc2d1fcf34ae5e6d3d5c0508cf4094f5d7f89ce9963eec6c29af7741e3",
+          "python/vibeqc_compiler/xc/integration.py": "0be67832b9760f9d285a9d73ba42e92ca274f54f83366445968a1319f91eb13b",
+          "python/vibeqc_compiler/xc/integration_fixtures.py": "309f6792213872628f29db74d5f3d3115fd7b598c13b791e09d524a7c0ad5569",
+          "python/vibeqc_compiler/xc/native.py": "adc059bc7843cc379db82a7f58b13700ae53128f3927a7f0046d8fcd98852cee",
+          "python/vibeqc_compiler/xc/potential.py": "f2c3f5e9b7563ac480e4f95a71864ff7a176ddca9710855c1bdb82d8b85b01ff",
+          "python/vibeqc_compiler/xc/prepared.py": "915d4b1804b2318aa1d320f89a7d99e1f119d02d7f6925d19a6ade91649c2f13",
+          "python/vibeqc_compiler/xc/program.py": "ac0c8c975c8fa4b345d156bfddbaf7827f30dd3568847f6d630cbc4c1c802e85",
+          "python/vibeqc_compiler/xc/reference.py": "e44d3738d61bdc5c9bd557604030ac44f9596c4efa652d2b664db2fca0fc61c5",
+          "python/vibeqc_compiler/xc/spec.py": "6d3f4469538b1585eae0f28cdfc759bba783fb9d5471e375a0140135895d493a"
+        }
+      },
+      "artifact": {
+        "binary_sha256": "2a53ffa89b80b125fc1bfd640353c464b25e6722dc92c2d7714c0321ac9dee30",
+        "compile_seconds": 0.2777509200386703,
+        "identity": {
+          "backend": "cpu",
+          "compiler": {
+            "invocation": "/usr/bin/c++",
+            "path": "/usr/bin/x86_64-linux-gnu-g++-11",
+            "sha256": "2360901d864cf10bfd6296e261cb2c14053552a80377761ab07146ec9ec9a2c0",
+            "version": "x86_64-linux-gnu-g++-11 (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n"
+          },
+          "environment": {
+            "COMPILER_PATH": "",
+            "CPATH": "",
+            "CPLUS_INCLUDE_PATH": "",
+            "GCC_EXEC_PREFIX": "",
+            "LIBRARY_PATH": "",
+            "SOURCE_DATE_EPOCH": ""
+          },
+          "flags": [
+            "c++17",
+            "O3",
+            "shared",
+            "fPIC",
+            "-ffp-contract=off"
+          ],
+          "headers": {},
+          "libraries": [],
+          "schema": 2,
+          "source": "6497b8a842bd92aa3ed73f3100c61e13ba186b50c2c8bd3c83bb7c09c47930a3",
+          "target": {
+            "architecture": "x86_64-linux-gnu",
+            "backend": "cpu",
+            "maximum_resident_workgroups": null,
+            "maximum_workgroup_threads": 1,
+            "subgroup_size": null
+          }
+        },
+        "key": "ec8184558bfd654ba2f557828e158126504b031c912e325b3070346e3a03c84f",
+        "resources": []
+      },
+      "construction_seconds": 0.3122892009560019,
+      "source_bytes": 18613,
+      "coefficients_before": {
+        "root_count": 8,
+        "reachable_node_count": 35,
+        "operation_counts": {
+          "add": 12,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 24,
+        "estimated_peak_live_values": 8
+      },
+      "coefficients_after": {
+        "root_count": 8,
+        "reachable_node_count": 30,
+        "operation_counts": {
+          "add": 6,
+          "constant": 1,
+          "multiply": 12,
+          "variable": 11
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 18,
+        "estimated_peak_live_values": 8
+      },
+      "ao_pullback_before": {
+        "root_count": 4,
+        "reachable_node_count": 36,
+        "operation_counts": {
+          "add": 10,
+          "multiply": 14,
+          "variable": 12
+        },
+        "arithmetic_operation_count": 24,
+        "materialized_value_count": 24,
+        "estimated_peak_live_values": 6
+      },
+      "ao_pullback_after": {
+        "root_count": 4,
+        "reachable_node_count": 24,
+        "operation_counts": {
+          "add": 5,
+          "multiply": 7,
+          "variable": 12
+        },
+        "arithmetic_operation_count": 14,
+        "materialized_value_count": 12,
+        "estimated_peak_live_values": 6
+      }
+    }
+  },
+  "independent_derivatives": {
+    "h2/LDA_XC_PW": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": 0.0040034819423051685,
+          "plus": -0.2360076613460658,
+          "minus": -0.23601566830995016,
+          "finite_difference": 0.004003481942183029,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.2213927785831302e-13,
+            "max_scaled_error": 4.071309261943767e-06,
+            "rms_error": 1.2213927785831302e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 5.003649680547413e-05,
+          "plus": 0.003734383051540611,
+          "minus": 0.0037342829785469408,
+          "finite_difference": 5.003649683520475e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.973061927940071e-14,
+            "max_scaled_error": 9.910206426466904e-07,
+            "rms_error": 2.973061927940071e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": 0.0040034819423051685,
+          "plus": -0.23601046373419923,
+          "minus": -0.23601286582336461,
+          "finite_difference": 0.004003481942303304,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.8648277366750676e-15,
+            "max_scaled_error": 6.216092455583559e-08,
+            "rms_error": 1.8648277366750676e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 5.003649680547413e-05,
+          "plus": 0.003734348026093454,
+          "minus": 0.0037343180041953675,
+          "finite_difference": 5.0036496810774066e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.2999325848152035e-15,
+            "max_scaled_error": 1.7666441949384012e-07,
+            "rms_error": 5.2999325848152035e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": 0.0040034819423051685,
+          "plus": -0.23601126442626016,
+          "minus": -0.23601206512264855,
+          "finite_difference": 0.004003481941933229,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.7193945839897324e-13,
+            "max_scaled_error": 1.2397981946632443e-05,
+            "rms_error": 3.7193945839897324e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 5.003649680547413e-05,
+          "plus": 0.0037343380188029386,
+          "minus": 0.003734328011503577,
+          "finite_difference": 5.003649680788286e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.408724532765999e-15,
+            "max_scaled_error": 8.029081775886664e-08,
+            "rms_error": 2.408724532765999e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": -0.0010488318773124905,
+          "plus": -0.23601271193420337,
+          "minus": -0.23601061427045733,
+          "finite_difference": -0.0010488318730184076,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.294082884409578e-12,
+            "max_scaled_error": 0.00014313609614698594,
+            "rms_error": 4.294082884409578e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": -0.0010488318773124905,
+          "plus": -0.23601197927303397,
+          "minus": -0.23601134997390782,
+          "finite_difference": -0.0010488318769041882,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.083022982215301e-13,
+            "max_scaled_error": 1.3610076607384338e-05,
+            "rms_error": 4.083022982215301e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": -0.0010488318773124905,
+          "plus": -0.2360117696403853,
+          "minus": -0.23601155987400985,
+          "finite_difference": -0.0010488318773205219,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.031336012903623e-15,
+            "max_scaled_error": 2.6771120043012075e-07,
+            "rms_error": 8.031336012903623e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": 0.0048167457261509,
+          "plus": -0.23600684739044342,
+          "minus": -0.2360164808818085,
+          "finite_difference": 0.004816745682534318,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.3616581700545165e-11,
+            "max_scaled_error": 0.001453886056684839,
+            "rms_error": 4.3616581700545165e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": 0.0048167457261509,
+          "plus": -0.23601021969279587,
+          "minus": -0.23601310974022915,
+          "finite_difference": 0.004816745722141524,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.0093752970427055e-12,
+            "max_scaled_error": 0.00013364584323475687,
+            "rms_error": 4.0093752970427055e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": 0.0048167457261509,
+          "plus": -0.23601118309296298,
+          "minus": -0.2360121464421081,
+          "finite_difference": 0.004816745725610971,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.399283450890913e-13,
+            "max_scaled_error": 1.799761150296971e-05,
+            "rms_error": 5.399283450890913e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.0005913014627772725,
+          "plus": -0.23601107347245065,
+          "minus": -0.23601225607537618,
+          "finite_difference": 0.0005913014627656477,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1624815693389579e-14,
+            "max_scaled_error": 3.8749385644631934e-07,
+            "rms_error": 1.1624815693389579e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.0005913014627772725,
+          "plus": -0.23601148738347458,
+          "minus": -0.23601184216435223,
+          "finite_difference": 0.000591301462747144,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.012846049033069e-14,
+            "max_scaled_error": 1.0042820163443564e-06,
+            "rms_error": 3.012846049033069e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.0005913014627772725,
+          "plus": -0.23601160564376714,
+          "minus": -0.2360117239040597,
+          "finite_difference": 0.0005913014627934032,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.6130759922239335e-14,
+            "max_scaled_error": 5.376919974079779e-07,
+            "rms_error": 1.6130759922239335e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.004359215311615682,
+          "plus": -0.23600730285743388,
+          "minus": -0.23601602128779134,
+          "finite_difference": 0.00435921517873139,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.3288429124430623e-10,
+            "max_scaled_error": 0.004429476374810208,
+            "rms_error": 1.3288429124430623e-10,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.004359215311615682,
+          "plus": -0.2360103567662064,
+          "minus": -0.23601297229538618,
+          "finite_difference": 0.004359215299611549,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.2004132930731881e-11,
+            "max_scaled_error": 0.0004001377643577294,
+            "rms_error": 1.2004132930731881e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.004359215311615682,
+          "plus": -0.23601122882536932,
+          "minus": -0.23601210066843137,
+          "finite_difference": 0.0043592153102511855,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.364496189648623e-12,
+            "max_scaled_error": 4.548320632162077e-05,
+            "rms_error": 1.364496189648623e-12,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 6.776263578034403e-21,
+        "max_scaled_error": 6.742526338275806e-09,
+        "rms_error": 6.776263578034403e-21,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "h2/PBE": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": 0.004088403191425731,
+          "plus": -0.23919639047405078,
+          "minus": -0.23920456728043346,
+          "finite_difference": 0.004088403191340739,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.499190934374568e-14,
+            "max_scaled_error": 2.833063644791523e-06,
+            "rms_error": 8.499190934374568e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 5.753161201544705e-05,
+          "plus": 0.003703780559294609,
+          "minus": 0.0037036654960704903,
+          "finite_difference": 5.753161205941659e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.396954127834293e-14,
+            "max_scaled_error": 1.4656513759447646e-06,
+            "rms_error": 4.396954127834293e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": 0.004088403191425731,
+          "plus": -0.23919925230404854,
+          "minus": -0.2392017053459634,
+          "finite_difference": 0.004088403191456388,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.0656900629200123e-14,
+            "max_scaled_error": 1.0218966876400042e-06,
+            "rms_error": 3.0656900629200123e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 5.753161201544705e-05,
+          "plus": 0.0037037402874049,
+          "minus": 0.003703705768437689,
+          "finite_difference": 5.7531612017783236e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.3361846311631407e-15,
+            "max_scaled_error": 7.787282103877137e-08,
+            "rms_error": 2.3361846311631407e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": 0.004088403191425731,
+          "plus": -0.23920006998009463,
+          "minus": -0.23920088766073289,
+          "finite_difference": 0.00408840319127135,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.5438084838281796e-13,
+            "max_scaled_error": 5.146028279427266e-06,
+            "rms_error": 1.5438084838281796e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 5.753161201544705e-05,
+          "plus": 0.003703728781103483,
+          "minus": 0.003703717274781081,
+          "finite_difference": 5.753161200910961e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.337439524984473e-15,
+            "max_scaled_error": 2.1124798416614912e-07,
+            "rms_error": 6.337439524984473e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": -0.0010213267507682726,
+          "plus": -0.23920149852535041,
+          "minus": -0.2391994558718588,
+          "finite_difference": -0.00102132674580091,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.967362458863089e-12,
+            "max_scaled_error": 0.00016557874862876967,
+            "rms_error": 4.967362458863089e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": -0.0010213267507682726,
+          "plus": -0.2392007850719536,
+          "minus": -0.23920017227590346,
+          "finite_difference": -0.00102132675025568,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.125925725546487e-13,
+            "max_scaled_error": 1.7086419085154958e-05,
+            "rms_error": 5.125925725546487e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": -0.0010213267507682726,
+          "plus": -0.23920058093630248,
+          "minus": -0.23920037667095229,
+          "finite_difference": -0.0010213267509495694,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.812968178360741e-13,
+            "max_scaled_error": 6.04322726120247e-06,
+            "rms_error": 1.812968178360741e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": 0.004653355547148073,
+          "plus": -0.23919582485280907,
+          "minus": -0.23920513156382084,
+          "finite_difference": 0.004653355505881973,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.126609991217389e-11,
+            "max_scaled_error": 0.00137553666373913,
+            "rms_error": 4.126609991217389e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": 0.004653355547148073,
+          "plus": -0.2391990827581395,
+          "minus": -0.2392018747714655,
+          "finite_difference": 0.0046533555433473745,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.8006984712235514e-12,
+            "max_scaled_error": 0.00012668994904078507,
+            "rms_error": 3.8006984712235514e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": 0.004653355547148073,
+          "plus": -0.23920001347816983,
+          "minus": -0.23920094414927923,
+          "finite_difference": 0.004653355547001858,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.4621463761965714e-13,
+            "max_scaled_error": 4.873821253988572e-06,
+            "rms_error": 1.4621463761965714e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.0005950566640608606,
+          "plus": -0.2391998837631757,
+          "minus": -0.2392010738765038,
+          "finite_difference": 0.0005950566640544608,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.3998285837474356e-15,
+            "max_scaled_error": 2.1332761945824788e-07,
+            "rms_error": 6.3998285837474356e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.0005950566640608606,
+          "plus": -0.2392003003028405,
+          "minus": -0.23920065733683898,
+          "finite_difference": 0.0005950566641284757,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.761507586466875e-14,
+            "max_scaled_error": 2.253835862155625e-06,
+            "rms_error": 6.761507586466875e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.0005950566640608606,
+          "plus": -0.23920041931417335,
+          "minus": -0.23920053832550614,
+          "finite_difference": 0.0005950566639434385,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.174221310462631e-13,
+            "max_scaled_error": 3.914071034875437e-06,
+            "rms_error": 1.174221310462631e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.0042270854604406615,
+          "plus": -0.2391962491178245,
+          "minus": -0.23920470328849575,
+          "finite_difference": 0.004227085335622993,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.2481766835381602e-10,
+            "max_scaled_error": 0.004160588945127201,
+            "rms_error": 1.2481766835381602e-10,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.0042270854604406615,
+          "plus": -0.2391992104587038,
+          "minus": -0.2392017467099733,
+          "finite_difference": 0.004227085449171053,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.126960851027814e-11,
+            "max_scaled_error": 0.00037565361700927136,
+            "rms_error": 1.126960851027814e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.0042270854604406615,
+          "plus": -0.23920005608512698,
+          "minus": -0.23920090150221884,
+          "finite_difference": 0.004227085459301838,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1388234105735862e-12,
+            "max_scaled_error": 3.796078035245288e-05,
+            "rms_error": 1.1388234105735862e-12,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 6.776263578034403e-21,
+        "max_scaled_error": 6.737501644975188e-09,
+        "rms_error": 6.776263578034403e-21,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "f_cartesian/LDA_XC_PW": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": 0.003982418046900934,
+          "plus": -0.38957961617202713,
+          "minus": -0.389587581008119,
+          "finite_difference": 0.00398241804594468,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.56254173067883e-13,
+            "max_scaled_error": 3.187513910226277e-05,
+            "rms_error": 9.56254173067883e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 0.00012789114264188497,
+          "plus": -0.00651543112076441,
+          "minus": -0.0065156869030501465,
+          "finite_difference": 0.00012789114286820488,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.2631991224673909e-13,
+            "max_scaled_error": 7.543997074891303e-06,
+            "rms_error": 2.2631991224673909e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": 0.003982418046900934,
+          "plus": -0.3895824036936748,
+          "minus": -0.3895847931445029,
+          "finite_difference": 0.003982418046814355,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.657918132426445e-14,
+            "max_scaled_error": 2.8859727108088155e-06,
+            "rms_error": 8.657918132426445e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 0.00012789114264188497,
+          "plus": -0.006515520646908548,
+          "minus": -0.0065155973815941475,
+          "finite_difference": 0.00012789114266596505,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.408007604079443e-14,
+            "max_scaled_error": 8.026692013598143e-07,
+            "rms_error": 2.408007604079443e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": 0.003982418046900934,
+          "plus": -0.38958320016225256,
+          "minus": -0.3895839966458619,
+          "finite_difference": 0.003982418046721836,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.790980558302735e-13,
+            "max_scaled_error": 5.96993519434245e-06,
+            "rms_error": 1.790980558302735e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 0.00012789114264188497,
+          "plus": -0.00651554622534316,
+          "minus": -0.006515571803571686,
+          "finite_difference": 0.00012789114263271617,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.168799617112477e-15,
+            "max_scaled_error": 3.0562665390374927e-07,
+            "rms_error": 9.168799617112477e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": 0.0013644911435484281,
+          "plus": -0.38958223506649503,
+          "minus": -0.3895849640488216,
+          "finite_difference": 0.0013644911632804124,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.973198427568379e-11,
+            "max_scaled_error": 0.0006577328091894598,
+            "rms_error": 1.973198427568379e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": 0.0013644911435484281,
+          "plus": -0.389583189158828,
+          "minus": -0.3895840078535148,
+          "finite_difference": 0.0013644911447026806,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1542524748497929e-12,
+            "max_scaled_error": 3.84750824949931e-05,
+            "rms_error": 1.1542524748497929e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": 0.0013644911435484281,
+          "plus": -0.3895834619646187,
+          "minus": -0.3895837348628476,
+          "finite_difference": 0.0013644911445176433,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.692151595186438e-13,
+            "max_scaled_error": 3.2307171983954795e-05,
+            "rms_error": 9.692151595186438e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": -0.01659981465350578,
+          "plus": -0.3896001998971971,
+          "minus": -0.38956700026775354,
+          "finite_difference": -0.016599814721768302,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.826252063607541e-11,
+            "max_scaled_error": 0.002275417354535847,
+            "rms_error": 6.826252063607541e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": -0.01659981465350578,
+          "plus": -0.38958857849780304,
+          "minus": -0.3895786186090071,
+          "finite_difference": -0.01659981465988262,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.376840028243791e-12,
+            "max_scaled_error": 0.00021256133427479304,
+            "rms_error": 6.376840028243791e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": -0.01659981465350578,
+          "plus": -0.3895852584004468,
+          "minus": -0.389581938437516,
+          "finite_difference": -0.01659981465396143,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.556494070939721e-13,
+            "max_scaled_error": 1.518831356979907e-05,
+            "rms_error": 4.556494070939721e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": -0.0005126982554594685,
+          "plus": -0.3895841111004337,
+          "minus": -0.38958308570392286,
+          "finite_difference": -0.0005126982554337634,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.5705132467024328e-14,
+            "max_scaled_error": 8.56837748900811e-07,
+            "rms_error": 2.5705132467024328e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": -0.0005126982554594685,
+          "plus": -0.3895837522116549,
+          "minus": -0.3895834445927016,
+          "finite_difference": -0.0005126982555170301,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.756159437986241e-14,
+            "max_scaled_error": 1.9187198126620806e-06,
+            "rms_error": 5.756159437986241e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": -0.0005126982554594685,
+          "plus": -0.3895836496720038,
+          "minus": -0.38958354713235277,
+          "finite_difference": -0.0005126982552394743,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.1999416177642672e-13,
+            "max_scaled_error": 7.333138725880891e-06,
+            "rms_error": 2.1999416177642672e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": -0.01574802176541682,
+          "plus": -0.38959935062945106,
+          "minus": -0.38956785458574,
+          "finite_difference": -0.01574802185552726,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.011043994311407e-11,
+            "max_scaled_error": 0.003003681331437136,
+            "rms_error": 9.011043994311407e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": -0.01574802176541682,
+          "plus": -0.38958832318719805,
+          "minus": -0.38957887437413363,
+          "finite_difference": -0.01574802177402764,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.610820390053675e-12,
+            "max_scaled_error": 0.0002870273463351225,
+            "rms_error": 8.610820390053675e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": -0.01574802176541682,
+          "plus": -0.3895851732464091,
+          "minus": -0.38958202364205596,
+          "finite_difference": -0.015748021765793485,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.766639777857961e-13,
+            "max_scaled_error": 1.2555465926193204e-05,
+            "rms_error": 3.766639777857961e-13,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 2.710505431213761e-20,
+        "max_scaled_error": 2.676278203466866e-08,
+        "rms_error": 2.710505431213761e-20,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "f_cartesian/PBE": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": 0.004185204643403221,
+          "plus": -0.4852468023198387,
+          "minus": -0.48525517272911867,
+          "finite_difference": 0.004185204639989282,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.4139392701693083e-12,
+            "max_scaled_error": 0.00011379797567231029,
+            "rms_error": 3.4139392701693083e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 0.00014597057714705033,
+          "plus": -0.008223332199302456,
+          "minus": -0.008223624140459813,
+          "finite_difference": 0.00014597057867819785,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.5311475232236e-12,
+            "max_scaled_error": 5.1038250774120004e-05,
+            "rms_error": 1.5311475232236e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": 0.004185204643403221,
+          "plus": -0.48524973170745295,
+          "minus": -0.48525224283023877,
+          "finite_difference": 0.004185204643033144,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.7007723274751214e-13,
+            "max_scaled_error": 1.2335907758250405e-05,
+            "rms_error": 3.7007723274751214e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 0.00014597057714705033,
+          "plus": -0.00822343438328239,
+          "minus": -0.008223521965628757,
+          "finite_difference": 0.00014597057727769777,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.3064744598667577e-13,
+            "max_scaled_error": 4.354914866222526e-06,
+            "rms_error": 1.3064744598667577e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": 0.004185204643403221,
+          "plus": -0.48525056872590827,
+          "minus": -0.485251405766837,
+          "finite_difference": 0.004185204643680773,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.775522867093372e-13,
+            "max_scaled_error": 9.25174289031124e-06,
+            "rms_error": 2.775522867093372e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 0.00014597057714705033,
+          "plus": -0.008223463577800006,
+          "minus": -0.00822349277191544,
+          "finite_difference": 0.00014597057717072315,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.3672822599754562e-14,
+            "max_scaled_error": 7.890940866584855e-07,
+            "rms_error": 2.3672822599754562e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": 0.002534728031658091,
+          "plus": -0.48524845397456134,
+          "minus": -0.48525352343067174,
+          "finite_difference": 0.0025347280551979434,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.3539852359033553e-11,
+            "max_scaled_error": 0.0007846617453011185,
+            "rms_error": 2.3539852359033553e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": 0.002534728031658091,
+          "plus": -0.48525022695646813,
+          "minus": -0.48525174779328795,
+          "finite_difference": 0.002534728033021239,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.36314787582692e-12,
+            "max_scaled_error": 4.5438262527564006e-05,
+            "rms_error": 1.36314787582692e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": 0.002534728031658091,
+          "plus": -0.4852507337853507,
+          "minus": -0.48525124073095727,
+          "finite_difference": 0.0025347280327436827,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.0855916859897619e-12,
+            "max_scaled_error": 3.6186389532992066e-05,
+            "rms_error": 1.0855916859897619e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": -0.02118436345321046,
+          "plus": -0.4852721737254157,
+          "minus": -0.48522980499837526,
+          "finite_difference": -0.02118436352022135,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.701088989258253e-11,
+            "max_scaled_error": 0.002233696329752751,
+            "rms_error": 6.701088989258253e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": -0.02118436345321046,
+          "plus": -0.48525734274325116,
+          "minus": -0.4852446321251755,
+          "finite_difference": -0.021184363459455145,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.244685324396926e-12,
+            "max_scaled_error": 0.00020815617747989754,
+            "rms_error": 6.244685324396926e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": -0.02118436345321046,
+          "plus": -0.48525310570109226,
+          "minus": -0.48524886882840146,
+          "finite_difference": -0.021184363453996546,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.860864736919382e-13,
+            "max_scaled_error": 2.620288245639794e-05,
+            "rms_error": 7.860864736919382e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": -0.0005169941098339501,
+          "plus": -0.48525150423767327,
+          "minus": -0.48525047024945356,
+          "finite_difference": -0.0005169941098559505,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.200041364364136e-14,
+            "max_scaled_error": 7.33347121454712e-07,
+            "rms_error": 2.200041364364136e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": -0.0005169941098339501,
+          "plus": -0.4852511423417964,
+          "minus": -0.4852508321453304,
+          "finite_difference": -0.000516994110022484,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.8853386733741484e-13,
+            "max_scaled_error": 6.284462244580495e-06,
+            "rms_error": 1.8853386733741484e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": -0.0005169941098339501,
+          "plus": -0.4852510389429744,
+          "minus": -0.48525093554415244,
+          "finite_difference": -0.0005169941097449282,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.90218888188743e-14,
+            "max_scaled_error": 2.967396293962477e-06,
+            "rms_error": 8.90218888188743e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": -0.019166629531386318,
+          "plus": -0.4852701591540547,
+          "minus": -0.48523182589483216,
+          "finite_difference": -0.019166629611266917,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.988059866348429e-11,
+            "max_scaled_error": 0.0026626866221161434,
+            "rms_error": 7.988059866348429e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": -0.019166629531386318,
+          "plus": -0.4852567377077043,
+          "minus": -0.4852452377299808,
+          "finite_difference": -0.01916662953913943,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.753110653485606e-12,
+            "max_scaled_error": 0.00025843702178285355,
+            "rms_error": 7.753110653485606e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": -0.019166629531386318,
+          "plus": -0.48525290395932547,
+          "minus": -0.48524907063341916,
+          "finite_difference": -0.019166629531552903,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.6658549539805279e-13,
+            "max_scaled_error": 5.55284984660176e-06,
+            "rms_error": 1.6658549539805279e-13,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 5.421010862427522e-20,
+        "max_scaled_error": 5.3430185128250766e-08,
+        "rms_error": 5.421010862427522e-20,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "f_spherical/LDA_XC_PW": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": -0.0010078419852574878,
+          "plus": -0.3435272567275587,
+          "minus": -0.3435252410435886,
+          "finite_difference": -0.0010078419850345632,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.2292454340822054e-13,
+            "max_scaled_error": 7.430818113607352e-06,
+            "rms_error": 2.2292454340822054e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 3.443388793826361e-05,
+          "plus": 0.0028822683113469126,
+          "minus": 0.0028821994435709445,
+          "finite_difference": 3.443388798402003e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.575642165507987e-14,
+            "max_scaled_error": 1.5252140551693292e-06,
+            "rms_error": 4.575642165507987e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": -0.0010078419852574878,
+          "plus": -0.34352655111998204,
+          "minus": -0.3435259464147909,
+          "finite_difference": -0.0010078419852381042,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.9383583280130345e-14,
+            "max_scaled_error": 6.461194426710116e-07,
+            "rms_error": 1.9383583280130345e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 3.443388793826361e-05,
+          "plus": 0.0028822442089117602,
+          "minus": 0.002882223548578998,
+          "finite_difference": 3.4433887937182495e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.0811121962939207e-15,
+            "max_scaled_error": 3.603707320979736e-08,
+            "rms_error": 1.0811121962939207e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": -0.0010078419852574878,
+          "plus": -0.34352634954119493,
+          "minus": -0.3435261479727979,
+          "finite_difference": -0.0010078419851455855,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1190224094570489e-13,
+            "max_scaled_error": 3.730074698190163e-06,
+            "rms_error": 1.1190224094570489e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 3.443388793826361e-05,
+          "plus": 0.002882237322247267,
+          "minus": 0.0028822304354696833,
+          "finite_difference": 3.4433887917666856e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0596751301033e-14,
+            "max_scaled_error": 6.865583767011001e-07,
+            "rms_error": 2.0596751301033e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": -3.974652705911316e-05,
+          "plus": -0.34352628866473506,
+          "minus": -0.343526209171682,
+          "finite_difference": -3.974652654226141e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.168517523690408e-13,
+            "max_scaled_error": 1.7228391745634695e-05,
+            "rms_error": 5.168517523690408e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": -3.974652705911316e-05,
+          "plus": -0.34352626069428205,
+          "minus": -0.34352623684636574,
+          "finite_difference": -3.974652718063965e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.215264935666878e-13,
+            "max_scaled_error": 4.050883118889593e-06,
+            "rms_error": 1.215264935666878e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": -3.974652705911316e-05,
+          "plus": -0.3435262527319757,
+          "minus": -0.34352624478267024,
+          "finite_difference": -3.9746527180639646e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.2152648679042422e-13,
+            "max_scaled_error": 4.0508828930141405e-06,
+            "rms_error": 1.2152648679042422e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": 0.009097962262708068,
+          "plus": -0.3435171515882188,
+          "minus": -0.34353534751277376,
+          "finite_difference": 0.009097962277465621,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.4757552818656094e-11,
+            "max_scaled_error": 0.0004919184272885365,
+            "rms_error": 1.4757552818656094e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": 0.009097962262708068,
+          "plus": -0.3435235194385503,
+          "minus": -0.3435289782159088,
+          "finite_difference": 0.00909796226411519,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.407120947538587e-12,
+            "max_scaled_error": 4.6904031584619574e-05,
+            "rms_error": 1.407120947538587e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": 0.009097962262708068,
+          "plus": -0.34352533896741955,
+          "minus": -0.34352715855987204,
+          "finite_difference": 0.009097962262449855,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.5821358939914774e-13,
+            "max_scaled_error": 8.607119646638258e-06,
+            "rms_error": 2.5821358939914774e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.0001237522231316012,
+          "plus": -0.34352612500347446,
+          "minus": -0.34352637250792073,
+          "finite_difference": 0.0001237522231356536,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.052395355044758e-15,
+            "max_scaled_error": 1.350798451681586e-07,
+            "rms_error": 4.052395355044758e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.0001237522231316012,
+          "plus": -0.34352621163003066,
+          "minus": -0.3435262858813646,
+          "finite_difference": 0.00012375222319116475,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.956354658630258e-14,
+            "max_scaled_error": 1.985451552876753e-06,
+            "rms_error": 5.956354658630258e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.0001237522231316012,
+          "plus": -0.3435262363804753,
+          "minus": -0.34352626113091994,
+          "finite_difference": 0.00012375222319116475,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.956354658630258e-14,
+            "max_scaled_error": 1.985451552876753e-06,
+            "rms_error": 5.956354658630258e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.009181967958780556,
+          "plus": -0.34351706807916604,
+          "minus": -0.3435354320151223,
+          "finite_difference": 0.009181967978139083,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.9358526934243336e-11,
+            "max_scaled_error": 0.0006452842311414446,
+            "rms_error": 1.9358526934243336e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.009181967958780556,
+          "plus": -0.34352349428153983,
+          "minus": -0.3435290034623162,
+          "finite_difference": 0.009181967960588308,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.8077518648684787e-12,
+            "max_scaled_error": 6.0258395495615964e-05,
+            "rms_error": 1.8077518648684787e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.009181967958780556,
+          "plus": -0.34352533057181645,
+          "minus": -0.34352716696540825,
+          "finite_difference": 0.009181967959015491,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.3493533507501496e-13,
+            "max_scaled_error": 7.831177835833833e-06,
+            "rms_error": 2.3493533507501496e-13,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 2.0328790734103208e-20,
+        "max_scaled_error": 2.0259031013736727e-08,
+        "rms_error": 2.0328790734103208e-20,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "f_spherical/PBE": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": -0.001100925576342171,
+          "plus": -0.42865728208953857,
+          "minus": -0.4286550802383878,
+          "finite_difference": -0.0011009255753979819,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.441891712924644e-13,
+            "max_scaled_error": 3.1472972376415484e-05,
+            "rms_error": 9.441891712924644e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": 6.048099205257452e-05,
+          "plus": 0.0026641396932603075,
+          "minus": 0.002664018731276029,
+          "finite_difference": 6.0480992139207504e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.663298485707405e-14,
+            "max_scaled_error": 2.8877661619024684e-06,
+            "rms_error": 8.663298485707405e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": -0.001100925576342171,
+          "plus": -0.4286565112412637,
+          "minus": -0.4286558506859179,
+          "finite_difference": -0.0011009255763509234,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 8.752330457606483e-15,
+            "max_scaled_error": 2.917443485868828e-07,
+            "rms_error": 8.752330457606483e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": 6.048099205257452e-05,
+          "plus": 0.0026640973612598786,
+          "minus": 0.002664061072664643,
+          "finite_difference": 6.048099205919339e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.618871303907398e-15,
+            "max_scaled_error": 2.2062904346357995e-07,
+            "rms_error": 6.618871303907398e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": -0.001100925576342171,
+          "plus": -0.4286562910385333,
+          "minus": -0.42865607085341795,
+          "finite_difference": -0.0011009255768135162,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.713451851046102e-13,
+            "max_scaled_error": 1.5711506170153676e-05,
+            "rms_error": 4.713451851046102e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": 6.048099205257452e-05,
+          "plus": 0.002664085265474133,
+          "minus": 0.0026640731692757222,
+          "finite_difference": 6.0480992054856575e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.282055837701802e-15,
+            "max_scaled_error": 7.60685279233934e-08,
+            "rms_error": 2.282055837701802e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": 0.00029797682239512784,
+          "plus": -0.4286558831623896,
+          "minus": -0.428656479116036,
+          "finite_difference": 0.00029797682318810637,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.92978530061994e-13,
+            "max_scaled_error": 2.6432617668733137e-05,
+            "rms_error": 7.92978530061994e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": 0.00029797682239512784,
+          "plus": -0.4286560915683168,
+          "minus": -0.42865627035441006,
+          "finite_difference": 0.0002979768221056389,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.894889189475336e-13,
+            "max_scaled_error": 9.649630631584454e-06,
+            "rms_error": 2.894889189475336e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": 0.00029797682239512784,
+          "plus": -0.4286561511480461,
+          "minus": -0.4286562107434106,
+          "finite_difference": 0.00029797682238319467,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1933162791244456e-14,
+            "max_scaled_error": 3.977720930414819e-07,
+            "rms_error": 1.1933162791244456e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": 0.011652122640221162,
+          "plus": -0.4286445297962055,
+          "minus": -0.42866783404151937,
+          "finite_difference": 0.011652122656941044,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.6719882423021915e-11,
+            "max_scaled_error": 0.0005573294141007306,
+            "rms_error": 1.6719882423021915e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": 0.011652122640221162,
+          "plus": -0.42865268539473916,
+          "minus": -0.4286596766683243,
+          "finite_difference": 0.011652122641851264,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.6301023031406459e-12,
+            "max_scaled_error": 5.4336743438021535e-05,
+            "rms_error": 1.6301023031406459e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": 0.011652122640221162,
+          "plus": -0.42865501574126075,
+          "minus": -0.42865734616578866,
+          "finite_difference": 0.011652122639538298,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.828634879774143e-13,
+            "max_scaled_error": 2.276211626591381e-05,
+            "rms_error": 6.828634879774143e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.00013133813926276467,
+          "plus": -0.4286560496056344,
+          "minus": -0.428656312281913,
+          "finite_difference": 0.000131338139280901,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.813631710090302e-14,
+            "max_scaled_error": 6.045439033634341e-07,
+            "rms_error": 1.813631710090302e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.00013133813926276467,
+          "plus": -0.4286561415423319,
+          "minus": -0.42865622034521544,
+          "finite_difference": 0.00013133813925314541,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.619258514725892e-15,
+            "max_scaled_error": 3.2064195049086313e-07,
+            "rms_error": 9.619258514725892e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.00013133813926276467,
+          "plus": -0.4286561678099598,
+          "minus": -0.4286561940775876,
+          "finite_difference": 0.00013133813897558966,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.8717501467101503e-13,
+            "max_scaled_error": 9.572500489033835e-06,
+            "rms_error": 2.8717501467101503e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.012081437601879054,
+          "plus": -0.42864410109319356,
+          "minus": -0.42866826396844665,
+          "finite_difference": 0.012081437626543234,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.4664180420241877e-11,
+            "max_scaled_error": 0.0008221393473413959,
+            "rms_error": 2.4664180420241877e-11,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.012081437601879054,
+          "plus": -0.42865255665532676,
+          "minus": -0.42865980551788924,
+          "finite_difference": 0.012081437604135234,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.2561796181319593e-12,
+            "max_scaled_error": 7.520598727106531e-05,
+            "rms_error": 2.2561796181319593e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.012081437601879054,
+          "plus": -0.4286549728158842,
+          "minus": -0.4286573891034047,
+          "finite_difference": 0.012081437602284861,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.0580733218220644e-13,
+            "max_scaled_error": 1.3526911072740216e-05,
+            "rms_error": 4.0580733218220644e-13,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 6.776263578034403e-21,
+        "max_scaled_error": 6.735526445890025e-09,
+        "rms_error": 6.776263578034403e-21,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "separated_f/LDA_XC_PW": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": -0.003579691838897965,
+          "plus": -0.09635215026739011,
+          "minus": -0.0963449908837168,
+          "finite_difference": -0.00357969183665402,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.243945047136764e-12,
+            "max_scaled_error": 7.479816823789213e-05,
+            "rms_error": 2.243945047136764e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": -3.771077694794146e-06,
+          "plus": -0.0015112009619675805,
+          "minus": -0.0015111934198121196,
+          "finite_difference": -3.7710777304675314e-06,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.5673385496677937e-14,
+            "max_scaled_error": 1.1891128498892646e-06,
+            "rms_error": 3.5673385496677937e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": -0.003579691838897965,
+          "plus": -0.09634964439302855,
+          "minus": -0.09634749657792534,
+          "finite_difference": -0.003579691838691742,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.0622305946238484e-13,
+            "max_scaled_error": 6.8741019820794955e-06,
+            "rms_error": 2.0622305946238484e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": -3.771077694794146e-06,
+          "plus": -0.0015111983227294374,
+          "minus": -0.001511196060082819,
+          "finite_difference": -3.7710776974355055e-06,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.6413595906305508e-15,
+            "max_scaled_error": 8.804531968768503e-08,
+            "rms_error": 2.6413595906305508e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": -0.003579691838897965,
+          "plus": -0.096348928446742,
+          "minus": -0.09634821250837423,
+          "finite_difference": -0.003579691838853649,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.431567959817251e-14,
+            "max_scaled_error": 1.4771893199390837e-06,
+            "rms_error": 4.431567959817251e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": -3.771077694794146e-06,
+          "plus": -0.0015111975685592838,
+          "minus": -0.001511196814343745,
+          "finite_difference": -3.771077693821498e-06,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.72647933332113e-16,
+            "max_scaled_error": 3.242159777773711e-08,
+            "rms_error": 9.72647933332113e-16,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": 0.0005550752275716312,
+          "plus": -0.09634801574254195,
+          "minus": -0.0963491258929919,
+          "finite_difference": 0.0005550752249713908,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.6002403355485093e-12,
+            "max_scaled_error": 8.667467785161699e-05,
+            "rms_error": 2.6002403355485093e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": 0.0005550752275716312,
+          "plus": -0.09634840398470795,
+          "minus": -0.09634873702984435,
+          "finite_difference": 0.0005550752273329278,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.387033713052711e-13,
+            "max_scaled_error": 7.956779043509037e-06,
+            "rms_error": 2.387033713052711e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": 0.0005550752275716312,
+          "plus": -0.0963485149724575,
+          "minus": -0.09634862598750302,
+          "finite_difference": 0.0005550752275873538,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.572266622451579e-14,
+            "max_scaled_error": 5.240888741505264e-07,
+            "rms_error": 1.572266622451579e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": -0.0001883239361367467,
+          "plus": -0.09634875887067851,
+          "minus": -0.0963483822228082,
+          "finite_difference": -0.00018832393515466617,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.820805464428456e-13,
+            "max_scaled_error": 3.273601821476152e-05,
+            "rms_error": 9.820805464428456e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": -0.0001883239361367467,
+          "plus": -0.09634862698006484,
+          "minus": -0.09634851398570322,
+          "finite_difference": -0.00018832393602896683,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.077798874454805e-13,
+            "max_scaled_error": 3.5926629148493503e-06,
+            "rms_error": 1.077798874454805e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": -0.0001883239361367467,
+          "plus": -0.09634858930966363,
+          "minus": -0.0963485516448764,
+          "finite_difference": -0.00018832393609835574,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.839097551146253e-14,
+            "max_scaled_error": 1.279699183715418e-06,
+            "rms_error": 3.839097551146253e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.00013070991514686547,
+          "plus": -0.09634843976665312,
+          "minus": -0.09634870118648342,
+          "finite_difference": 0.00013070991514846364,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.5981682123522578e-15,
+            "max_scaled_error": 5.327227374507527e-08,
+            "rms_error": 1.5981682123522578e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.00013070991514686547,
+          "plus": -0.09634853126359373,
+          "minus": -0.09634860968954281,
+          "finite_difference": 0.00013070991513689884,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.966636890790248e-15,
+            "max_scaled_error": 3.322212296930083e-07,
+            "rms_error": 9.966636890790248e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.00013070991514686547,
+          "plus": -0.09634855740557675,
+          "minus": -0.09634858354755978,
+          "finite_difference": 0.00013070991511376917,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.3096301307183884e-14,
+            "max_scaled_error": 1.1032100435727963e-06,
+            "rms_error": 3.3096301307183884e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.00049746120658175,
+          "plus": -0.09634807339113392,
+          "minus": -0.09634906831354104,
+          "finite_difference": 0.0004974612035565928,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.0251571647016418e-12,
+            "max_scaled_error": 0.0001008385721567214,
+            "rms_error": 3.0251571647016418e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.00049746120658175,
+          "plus": -0.09634842127202561,
+          "minus": -0.0963487197487494,
+          "finite_difference": 0.0004974612063020819,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.7966810724894264e-13,
+            "max_scaled_error": 9.322270241631422e-06,
+            "rms_error": 2.7966810724894264e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.00049746120658175,
+          "plus": -0.0963485207342053,
+          "minus": -0.09634862022644662,
+          "finite_difference": 0.0004974612066027673,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.1017259113631503e-14,
+            "max_scaled_error": 7.005753037877168e-07,
+            "rms_error": 2.1017259113631503e-14,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 1.6940658945086007e-20,
+        "max_scaled_error": 1.6934272899205232e-08,
+        "rms_error": 1.6940658945086007e-20,
+        "shape": [
+          1
+        ]
+      }
+    },
+    "separated_f/PBE": {
+      "projections": [
+        {
+          "axis": "density",
+          "step": 0.001,
+          "analytic": -0.003565736863090301,
+          "plus": -0.09638790871345895,
+          "minus": -0.09638077723973988,
+          "finite_difference": -0.0035657368595357064,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.5545945527293288e-12,
+            "max_scaled_error": 0.00011848648509097763,
+            "rms_error": 3.5545945527293288e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.001,
+          "analytic": -1.383070935930705e-05,
+          "plus": -0.001519939707349294,
+          "minus": -0.0015199120459299647,
+          "finite_difference": -1.3830709664672779e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.053657282277907e-13,
+            "max_scaled_error": 1.0178857607593026e-05,
+            "rms_error": 3.053657282277907e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0003,
+          "analytic": -0.003565736863090301,
+          "plus": -0.09638541256140243,
+          "minus": -0.09638327311928477,
+          "finite_difference": -0.003565736862766918,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.2338281358290644e-13,
+            "max_scaled_error": 1.0779427119430215e-05,
+            "rms_error": 3.2338281358290644e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0003,
+          "analytic": -1.383070935930705e-05,
+          "plus": -0.0015199300302622593,
+          "minus": -0.0015199217318366282,
+          "finite_difference": -1.38307093852016e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.5894549362821123e-14,
+            "max_scaled_error": 8.631516454273709e-07,
+            "rms_error": 2.5894549362821123e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "density",
+          "step": 0.0001,
+          "analytic": -0.003565736863090301,
+          "plus": -0.09638469940205135,
+          "minus": -0.09638398625467876,
+          "finite_difference": -0.0035657368629982145,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.208649467962182e-14,
+            "max_scaled_error": 3.069549822654061e-06,
+            "rms_error": 9.208649467962182e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "response",
+          "step": 0.0001,
+          "analytic": -1.383070935930705e-05,
+          "plus": -0.0015199272645080562,
+          "minus": -0.0015199244983661834,
+          "finite_difference": -1.3830709364240357e-05,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 4.933306232057441e-15,
+            "max_scaled_error": 1.644435410685814e-07,
+            "rms_error": 4.933306232057441e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.001,
+          "analytic": 0.0005560708627660681,
+          "plus": -0.09638378709720695,
+          "minus": -0.0963848992389272,
+          "finite_difference": 0.0005560708601221043,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.6439638239200702e-12,
+            "max_scaled_error": 8.813212746400235e-05,
+            "rms_error": 2.6439638239200702e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0003,
+          "analytic": 0.0005560708627660681,
+          "plus": -0.09638417603631694,
+          "minus": -0.09638450967883444,
+          "finite_difference": 0.0005560708625044579,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.616101779651103e-13,
+            "max_scaled_error": 8.720339265503679e-06,
+            "rms_error": 2.616101779651103e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "centers",
+          "step": 0.0001,
+          "analytic": 0.0005560708627660681,
+          "plus": -0.09638428722319348,
+          "minus": -0.09638439843736601,
+          "finite_difference": 0.000556070862689495,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.657307947439573e-14,
+            "max_scaled_error": 2.552435982479858e-06,
+            "rms_error": 7.657307947439573e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.001,
+          "analytic": -0.000189071265978819,
+          "plus": -0.096384531968228,
+          "minus": -0.09638415382569802,
+          "finite_difference": -0.00018907126498463045,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 9.941885639394576e-13,
+            "max_scaled_error": 3.3139618797981926e-05,
+            "rms_error": 9.941885639394576e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0003,
+          "analytic": -0.000189071265978819,
+          "plus": -0.09638439955455609,
+          "minus": -0.09638428611179654,
+          "finite_difference": -0.00018907126591212928,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 6.668973641550668e-14,
+            "max_scaled_error": 2.222991213850223e-06,
+            "rms_error": 6.668973641550668e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "points",
+          "step": 0.0001,
+          "analytic": -0.000189071265978819,
+          "plus": -0.09638436173469528,
+          "minus": -0.0963843239204421,
+          "finite_difference": -0.00018907126586586998,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.1294903814323964e-13,
+            "max_scaled_error": 3.7649679381079886e-06,
+            "rms_error": 1.1294903814323964e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.001,
+          "analytic": 0.00013088141105052287,
+          "plus": -0.0963842119454567,
+          "minus": -0.0963844737082788,
+          "finite_difference": 0.0001308814110492773,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 1.2455585608056596e-15,
+            "max_scaled_error": 4.151861869352199e-08,
+            "rms_error": 1.2455585608056596e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0003,
+          "analytic": 0.00013088141105052287,
+          "plus": -0.09638430356244443,
+          "minus": -0.09638438209129106,
+          "finite_difference": 0.0001308814110562162,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 5.693335343101569e-15,
+            "max_scaled_error": 1.897778447700523e-07,
+            "rms_error": 5.693335343101569e-15,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "weights",
+          "step": 0.0001,
+          "analytic": 0.00013088141105052287,
+          "plus": -0.09638432973872663,
+          "minus": -0.09638435591500885,
+          "finite_difference": 0.00013088141112560514,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 7.508227438217385e-14,
+            "max_scaled_error": 2.5027424794057955e-06,
+            "rms_error": 7.508227438217385e-14,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.001,
+          "analytic": 0.0004978810078377719,
+          "plus": -0.09638384532155242,
+          "minus": -0.09638484108356193,
+          "finite_difference": 0.000497881004757339,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.080432935641253e-12,
+            "max_scaled_error": 0.00010268109785470844,
+            "rms_error": 3.080432935641253e-12,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0003,
+          "analytic": 0.0004978810078377719,
+          "plus": -0.09638419349637753,
+          "minus": -0.09638449222498205,
+          "finite_difference": 0.0004978810075328965,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 3.0487537407836163e-13,
+            "max_scaled_error": 1.0162512469278722e-05,
+            "rms_error": 3.0487537407836163e-13,
+            "shape": [
+              1
+            ]
+          }
+        },
+        {
+          "axis": "combined",
+          "step": 0.0001,
+          "analytic": 0.0004978810078377719,
+          "plus": -0.09638429304252386,
+          "minus": -0.09638439261872542,
+          "finite_difference": 0.0004978810078104523,
+          "error": {
+            "passed": true,
+            "atol": 3e-08,
+            "rtol": 0,
+            "max_absolute_error": 2.7319617922072492e-14,
+            "max_scaled_error": 9.106539307357498e-07,
+            "rms_error": 2.7319617922072492e-14,
+            "shape": [
+              1
+            ]
+          }
+        }
+      ],
+      "svec_transpose": {
+        "passed": true,
+        "atol": 1e-12,
+        "rtol": 1e-10,
+        "max_absolute_error": 1.8634724839594607e-20,
+        "max_scaled_error": 1.860898729012653e-08,
+        "rms_error": 1.8634724839594607e-20,
+        "shape": [
+          1
+        ]
+      }
+    }
+  },
+  "memory": {
+    "process_lifetime_rss_high_water_bytes": 124440576,
+    "scope": "Linux worker lifetime RSS includes Python, DAGs, loaded libraries, all previous cases and independent reference work; not per-endpoint delta. Tracemalloc peaks measure separate untimed calls and include traced Python/NumPy allocations, excluding untraced native/BLAS storage. Resource plans bound numeric capacities with explicit exclusions."
+  },
+  "record_parts": {
+    "cases": [
+      {
+        "path": "samples-cases/h2.json",
+        "bytes": 495628,
+        "sha256": "469b9d50a932107811bee78bb6c7a97695fff0eac63e1a6c4fcdb388e95d6378"
+      },
+      {
+        "path": "samples-cases/f_cartesian.json",
+        "bytes": 496810,
+        "sha256": "e492b31d7580fc4f991d817164c4c3bac9561c3c0796dcc4dce986eec1bfafb4"
+      },
+      {
+        "path": "samples-cases/f_spherical.json",
+        "bytes": 496794,
+        "sha256": "a8868daded9482c4ad312dcd651cb109766f4ed298be27218a4203b2216f2a07"
+      },
+      {
+        "path": "samples-cases/separated_f.json",
+        "bytes": 508607,
+        "sha256": "b8dc889d4bdf179c85f543160993c662776a29aa9e62f83ab0eef5c9b424610e"
+      }
+    ]
+  }
+}

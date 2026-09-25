@@ -11,14 +11,13 @@ from vibeqc_compiler.common.resources import ResourcePlan, plan_resources
 
 from tools.publish_spatial_tasks import dense_comparison, summarize, validate_run, write
 from tools.vibeqc_validation.publication import validate_publication
-from tools.vibeqc_validation.record import decode_json, load_json
 
 BUNDLE = Path(__file__).resolve().parents[2] / "benchmarks/results/spatial-tasks"
 
 
 def worker(backend: typing.Any) -> typing.Any:
     """Load a fresh worker so a corruption cannot leak into another case."""
-    return load_json(BUNDLE / backend / "samples.json.gz")
+    return json.loads((BUNDLE / backend / "samples.json").read_text())
 
 
 @pytest.mark.parametrize("backend", ["cpu", "cuda"])
@@ -34,18 +33,14 @@ def test_published_inventory_resource_plans_and_summary(
     manifest = json.loads((root / "publication.json").read_text())
     files = {e["path"]: (root / e["path"]).read_bytes() for e in manifest["files"]}
     validate_publication(manifest, files)
-    evidence_path = next(
-        e["path"] for e in manifest["files"] if e["role"] == "evidence"
-    )
-    evidence = decode_json(files[evidence_path], path=evidence_path)
+    evidence = json.loads(files["evidence.json"])
     assert evidence["revision"] == run["revision"]
     assert evidence["hashes"]["source"] == run["source_identity"]
     assert evidence["toolchain"]["native_library_sha256"] == run["library_sha256"]
     assert manifest["decision"]["scope"] == "numerical"
     assert evidence["performance"]["status"] == "not-run"
     assert evidence["stages"]["production"]["status"] == "not-run"
-    sample_path = next(e["path"] for e in manifest["files"] if e["role"] == "samples")
-    files[sample_path] += b" "
+    files["samples.json"] += b" "
     with pytest.raises(ValueError, match="checksum/size mismatch"):
         validate_publication(manifest, files)
 
@@ -133,7 +128,7 @@ def test_empty_execution_candidates_are_rejected_as_invalid_data() -> None:
 
 def restore_dense(directory: typing.Any) -> typing.Any:
     """Reconstruct all historical process workers solely from the permanent bundle."""
-    retained = load_json(BUNDLE / "cuda/dense-comparison-samples.json.gz")
+    retained = json.loads((BUNDLE / "cuda/dense-comparison-samples.json").read_text())
     for side, runs in retained["runs"].items():
         for index, run in enumerate(runs):
             write(directory / f"234-optimized-dense-{side}-{index}.json", run)

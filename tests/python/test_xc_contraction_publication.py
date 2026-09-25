@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2] / "benchmarks/results/xc-contractions
 
 @pytest.fixture(scope="module")
 def run() -> typing.Any:
-    return load_record(ROOT / "samples.json.gz")
+    return load_record(ROOT / "samples.json")
 
 
 def test_retained_xc_publication_is_complete_and_reconstructs(

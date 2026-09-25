@@ -7,10 +7,10 @@
   },
   "files": [
     {
-      "bytes": 51469,
-      "path": "evidence.json.gz",
+      "bytes": 856635,
+      "path": "evidence.json",
       "role": "evidence",
-      "sha256": "3313a53dfff4a4bda87a0761bad4d412581f1458eebe2a30a4c24d1dd3d289b0"
+      "sha256": "e63f42f606c60fa8d1717bafef8e25e64ead952b466b2291a367d9be56417f2d"
     },
     {
       "bytes": 35209,
@@ -19,9 +19,9 @@
       "sha256": "c4589c0ff2e9495ee55acc1a130a3ddc9fd316329134823229fd74a87d6b8318"
     },
     {
-      "path": "evidence-timings/water_svp.json.gz",
-      "bytes": 42555,
-      "sha256": "b7e553eb5adb1ef65eddb5a89e920ff8acd93bd39d7ae2b8e59e33a698a84440",
+      "path": "evidence-timings/water_svp.json",
+      "bytes": 530246,
+      "sha256": "407abcfa4e844fd1362c67a1afae92205f5200bd13e6f76f4b757e4541acbe94",
       "role": "samples"
     },
     {
@@ -37,21 +37,21 @@
       "role": "samples"
     },
     {
-      "path": "evidence-timings/water4_svp.json.gz",
-      "bytes": 53923,
-      "sha256": "c11b6b4a5b0a4787ec17e8f55c97537ad137366fc4d7b6f4cb80523999f5f581",
+      "path": "evidence-timings/water4_svp.json",
+      "bytes": 675599,
+      "sha256": "605de339af49386c972f934cbfcfd49d370026b72606300cf73b95cf1930862c",
       "role": "samples"
     },
     {
-      "path": "evidence-timings/water8_svp.json.gz",
-      "bytes": 18958,
-      "sha256": "c42e637619d2e35b3ad1c85bf30a99dd69f2e7f14b85fb0da314bb01dea0def6",
+      "path": "evidence-timings/water8_svp.json",
+      "bytes": 272398,
+      "sha256": "f73ebe1231a4809378bfdb73d5a0a57b950f39e6e9e894bf302171469c8994e5",
       "role": "samples"
     },
     {
-      "path": "evidence-timings/oh_diffuse.json.gz",
-      "bytes": 42417,
-      "sha256": "c7a6634dd0313a1bf541e1db80772badd9225dcfda0027bdb2dae16cbcb1650f",
+      "path": "evidence-timings/oh_diffuse.json",
+      "bytes": 529884,
+      "sha256": "e444f8ca70bd3ed4b01a42e676c415cd6521457684cd81b2021f415968b9803f",
       "role": "samples"
     },
     {

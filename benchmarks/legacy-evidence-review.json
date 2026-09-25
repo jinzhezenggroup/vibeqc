@@ -196,6 +196,14 @@
       "sha256": "1bc9dd514c7396fb9a3dd6a637a654fd6617c6bb00a55858c0c445412d143a2d"
     },
     {
+      "bytes": 905438,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/df/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "1a3ac7b04a7a337b1be1203fc528932c3adac4dc9d17f5b13443d17e8a122e26"
+    },
+    {
       "bytes": 163067,
       "classification": "required-compact-accepted-evidence",
       "family": "cuda-ownership",
@@ -212,12 +220,12 @@
       "sha256": "579d1edae2916632ca67eeba09be97003abea88e0cf13a922f0e993ac7b0f91c"
     },
     {
-      "bytes": 146796,
+      "bytes": 866324,
       "classification": "required-compact-accepted-evidence",
       "family": "cuda-ownership",
-      "path": "benchmarks/results/cuda-ownership/df/samples.json.gz",
+      "path": "benchmarks/results/cuda-ownership/df/samples.json",
       "role": "endpoint-or-numerical-samples",
-      "sha256": "15d55a0d8e628bb2e5b2b55c72cc1c3f19e9441b3b4bacafc60ef86394463e12"
+      "sha256": "2936b59346c82f0c9805bbc143485b57c9c8298251ae6c190a9eed67501b086c"
     },
     {
       "bytes": 155087,
@@ -228,12 +236,60 @@
       "sha256": "8d78b766ceb1eedf6bfa7338808a2647e89a96b023d3cd7ed19f06f09ee9ded6"
     },
     {
-      "bytes": 140958,
+      "bytes": 857058,
       "classification": "required-compact-accepted-evidence",
       "family": "cuda-ownership",
-      "path": "benchmarks/results/cuda-ownership/one-electron/samples.json.gz",
+      "path": "benchmarks/results/cuda-ownership/one-electron/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b00ae5c560de2f80a9ce6bf0c883d99386475eec37e15a92b65d6b0f586c6a7c"
+    },
+    {
+      "bytes": 989114,
+      "classification": "required-compact-accepted-evidence",
+      "family": "cuda-ownership",
+      "path": "benchmarks/results/cuda-ownership/one-electron/samples.json",
       "role": "endpoint-or-numerical-samples",
-      "sha256": "73476158a50572cc9530c36f3365afd7c649eb5c17aa9a2bd75513e8221f53aa"
+      "sha256": "b272c454b4c2caa2d435497292ae92213502ee0659d1d0142409d7a0c736bdb4"
+    },
+    {
+      "bytes": 529884,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/oh_diffuse.json",
+      "role": "scientific-record",
+      "sha256": "e444f8ca70bd3ed4b01a42e676c415cd6521457684cd81b2021f415968b9803f"
+    },
+    {
+      "bytes": 675599,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water4_svp.json",
+      "role": "scientific-record",
+      "sha256": "605de339af49386c972f934cbfcfd49d370026b72606300cf73b95cf1930862c"
+    },
+    {
+      "bytes": 272398,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water8_svp.json",
+      "role": "scientific-record",
+      "sha256": "f73ebe1231a4809378bfdb73d5a0a57b950f39e6e9e894bf302171469c8994e5"
+    },
+    {
+      "bytes": 530246,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence-timings/water_svp.json",
+      "role": "scientific-record",
+      "sha256": "407abcfa4e844fd1362c67a1afae92205f5200bd13e6f76f4b757e4541acbe94"
+    },
+    {
+      "bytes": 856635,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-candidates",
+      "path": "benchmarks/results/density-candidates/gpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "e63f42f606c60fa8d1717bafef8e25e64ead952b466b2291a367d9be56417f2d"
     },
     {
       "bytes": 396572,
@@ -316,6 +372,14 @@
       "sha256": "ab6f3595c9c053d173404bf2725fa14d08ea288a1042c1f870a8e722d37c4c7c"
     },
     {
+      "bytes": 1016476,
+      "classification": "required-compact-accepted-evidence",
+      "family": "density-sources-gpu",
+      "path": "benchmarks/results/density-sources-gpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "b6bdb078bf5506a501435b056d892941eeae82d28efe2a50fb169de737a862e8"
+    },
+    {
       "bytes": 485607,
       "classification": "required-compact-accepted-evidence",
       "family": "ecp-consumers-171",
@@ -362,6 +426,22 @@
       "path": "benchmarks/results/ecp-real-f-171/source-identity.json",
       "role": "source-provenance",
       "sha256": "ee05ceb98b288ff5724daa5be0ea83bd912f6e64e2330534863e2e3f18e68fa5"
+    },
+    {
+      "bytes": 442955,
+      "classification": "required-compact-accepted-evidence",
+      "family": "fock-strategies",
+      "path": "benchmarks/results/fock-strategies/cpu/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "0c5f67870e3ce6bece9b5d72e168630f223ad0dad65b158ec5b154471778e311"
+    },
+    {
+      "bytes": 403808,
+      "classification": "required-compact-accepted-evidence",
+      "family": "fock-strategies",
+      "path": "benchmarks/results/fock-strategies/cuda/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "7ea10df0b8c9616ede66380bcb010af55b4bc40f30152561ab15142cccfc8d56"
     },
     {
       "bytes": 391121,
@@ -652,6 +732,86 @@
       "sha256": "e67a2b0115276bb00bc4d9d9c537a13f420af0c9ad82088ee3fbf8a14c286f87"
     },
     {
+      "bytes": 274013,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/f_cartesian.json",
+      "role": "scientific-record",
+      "sha256": "a7944b53500dfa7582bbd774b67c915430ea585a835b6d29922b5372a42bf148"
+    },
+    {
+      "bytes": 273999,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/f_spherical.json",
+      "role": "scientific-record",
+      "sha256": "843b9615ebbb26f38c3ca0a707bbc14b88e1e7b90df1692a1309717b5384307a"
+    },
+    {
+      "bytes": 273253,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/h2.json",
+      "role": "scientific-record",
+      "sha256": "837d47d9e51fd8feb845dce854d188ee31bb2b1e328a4e2d75126f0c4d9ce656"
+    },
+    {
+      "bytes": 275395,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence-endpoint_cases/water.json",
+      "role": "scientific-record",
+      "sha256": "710069221adbac5f55d151548f0e6ebf102816d1d89e971c5a0c98ad6ebcdf6d"
+    },
+    {
+      "bytes": 819312,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-density-sources",
+      "path": "benchmarks/results/spatial-density-sources/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "fedb67edad733b727d150fde69df2a8087c074a25e77e96ef24a7a134909669f"
+    },
+    {
+      "bytes": 235106,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cpu/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "48b3a4b60f2d764394dbefaf66f72e7264432b0ea322de10b8512d63ccb328ff"
+    },
+    {
+      "bytes": 222075,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cpu/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "09eb03e46d8de4be8f06abdbab51bcf54ed2a006f31c42e6a541e0c4a694e9f1"
+    },
+    {
+      "bytes": 363155,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/dense-comparison-samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "a3a3196d28a6bc6cfe01c70d7432a7cf4b185518fddcd22462b8910594f8bf1a"
+    },
+    {
+      "bytes": 214821,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "56afac2991be967e6f729c3f8ca7d9e6dfeb32e016e8ebfd491c868f9c1ad663"
+    },
+    {
+      "bytes": 274093,
+      "classification": "required-compact-accepted-evidence",
+      "family": "spatial-tasks",
+      "path": "benchmarks/results/spatial-tasks/cuda/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "78050dcdb56f14dfbe98cc77736f25f3d7cc62a14a1122c6780d548761c40ccf"
+    },
+    {
       "bytes": 420030,
       "classification": "required-compact-accepted-evidence",
       "family": "tensor-cuda-146",
@@ -674,6 +834,54 @@
       "path": "benchmarks/results/weighted-eri-144/endpoints.json",
       "role": "endpoint-or-numerical-samples",
       "sha256": "ccbf6dd63600d111015879194c1bae05cef12bad5e874cf8570af54dfebacdd7"
+    },
+    {
+      "bytes": 888930,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/evidence.json",
+      "role": "decision-or-audit-record",
+      "sha256": "135f97ee7f879449980d1aa42354805087be727796c32ce4f90f6c697636f068"
+    },
+    {
+      "bytes": 496810,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/f_cartesian.json",
+      "role": "scientific-record",
+      "sha256": "e492b31d7580fc4f991d817164c4c3bac9561c3c0796dcc4dce986eec1bfafb4"
+    },
+    {
+      "bytes": 496794,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/f_spherical.json",
+      "role": "scientific-record",
+      "sha256": "a8868daded9482c4ad312dcd651cb109766f4ed298be27218a4203b2216f2a07"
+    },
+    {
+      "bytes": 495628,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/h2.json",
+      "role": "scientific-record",
+      "sha256": "469b9d50a932107811bee78bb6c7a97695fff0eac63e1a6c4fcdb388e95d6378"
+    },
+    {
+      "bytes": 508607,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples-cases/separated_f.json",
+      "role": "scientific-record",
+      "sha256": "b8dc889d4bdf179c85f543160993c662776a29aa9e62f83ab0eef5c9b424610e"
+    },
+    {
+      "bytes": 183204,
+      "classification": "required-compact-accepted-evidence",
+      "family": "xc-contractions",
+      "path": "benchmarks/results/xc-contractions/samples.json",
+      "role": "endpoint-or-numerical-samples",
+      "sha256": "fcbd00dbd2680e566d4f7c7cbbe7c6c89b140712afeb3b3237d864d8e77c5b93"
     }
   ],
   "schema": "vibeqc.legacy-large-evidence-review.v1",

@@ -19,12 +19,6 @@ repos:
       - id: check-toml
   - repo: local
     hooks:
-      - id: compact-evidence-publications
-        name: Deterministically gzip bulky retained JSON evidence
-        entry: python3 tools/compact_evidence_publications.py
-        language: system
-        pass_filenames: false
-        always_run: true
       - id: evidence-retention
         # Check staged evidence content in addition to the hard file-size cap.
         name: Check tracked evidence retention and review size
