@@ -413,6 +413,7 @@ OccupiedProjectionResult project_occupied_density(
   if (!std::isfinite(target_orthogonality_error) || target_orthogonality_error > 1.0e-7)
     throw std::invalid_argument("projected occupied orbitals failed target-metric orthogonality");
 
+  result.coefficients = target_coefficients;
   for (std::size_t mu = 0; mu < target_nbf; ++mu) {
     for (std::size_t nu = 0; nu < target_nbf; ++nu) {
       double value = 0.0;
@@ -434,6 +435,140 @@ OccupiedProjectionResult project_occupied_density(
   if (!std::isfinite(electron_trace) ||
       std::abs(electron_trace - expected_trace) > 1.0e-7 * std::max(1.0, expected_trace))
     throw std::invalid_argument("occupied projection failed the target electron trace");
+
+  return result;
+}
+
+
+OccupiedCompletionResult complete_occupied_density(
+    const integrals::IntegralData& target, std::span<const double> seeded_coefficients,
+    std::size_t seeded_occupied, std::span<const double> reference_coefficients,
+    std::size_t target_occupied, double occupation, double minimum_complement_norm) {
+  const std::size_t n = target.nbf;
+  const auto finite = [](std::span<const double> values) {
+    return std::all_of(values.begin(), values.end(),
+                       [](double value) { return std::isfinite(value); });
+  };
+  if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n ||
+      seeded_occupied > target_occupied || target_occupied > n ||
+      (seeded_occupied != 0 &&
+       (n > std::numeric_limits<std::size_t>::max() / seeded_occupied ||
+        seeded_coefficients.size() != n * seeded_occupied)) ||
+      reference_coefficients.size() != n * n || target.overlap.size() != n * n ||
+      !(occupation > 0.0) || !std::isfinite(occupation) ||
+      !(minimum_complement_norm > 0.0) || !std::isfinite(minimum_complement_norm) ||
+      !finite(target.overlap) || !finite(seeded_coefficients) ||
+      !finite(reference_coefficients)) {
+    throw std::invalid_argument("occupied completion has inconsistent or non-finite inputs");
+  }
+
+  auto compact_value = [](std::span<const double> coefficients, std::size_t row,
+                          std::size_t column, std::size_t columns) {
+    return coefficients[row * columns + column];
+  };
+  auto metric_dot = [&](std::span<const double> left, std::span<const double> right) {
+    double value = 0.0;
+    for (std::size_t mu = 0; mu < n; ++mu) {
+      double s_right = 0.0;
+      for (std::size_t nu = 0; nu < n; ++nu)
+        s_right += target.overlap[index(mu, nu, n)] * right[nu];
+      value += left[mu] * s_right;
+    }
+    return value;
+  };
+
+  OccupiedCompletionResult result;
+  result.coefficients.assign(n * target_occupied, 0.0);
+  for (std::size_t mu = 0; mu < n; ++mu)
+    for (std::size_t orbital = 0; orbital < seeded_occupied; ++orbital)
+      result.coefficients[mu * target_occupied + orbital] =
+          compact_value(seeded_coefficients, mu, orbital, seeded_occupied);
+
+  auto column = [&](std::size_t orbital) {
+    Matrix values(n);
+    for (std::size_t mu = 0; mu < n; ++mu)
+      values[mu] = result.coefficients[mu * target_occupied + orbital];
+    return values;
+  };
+
+  double seeded_error = 0.0;
+  for (std::size_t first = 0; first < seeded_occupied; ++first) {
+    const Matrix a = column(first);
+    for (std::size_t second = 0; second < seeded_occupied; ++second) {
+      const Matrix b = column(second);
+      const double expected = first == second ? 1.0 : 0.0;
+      seeded_error = std::max(seeded_error, std::abs(metric_dot(a, b) - expected));
+    }
+  }
+  if (!std::isfinite(seeded_error) || seeded_error > 1.0e-7)
+    throw std::invalid_argument("seeded occupied subspace is not target-metric orthonormal");
+
+  std::size_t accepted = seeded_occupied;
+  double minimum_added_norm = std::numeric_limits<double>::infinity();
+  for (std::size_t reference = 0; reference < n && accepted < target_occupied; ++reference) {
+    Matrix residual(n);
+    for (std::size_t mu = 0; mu < n; ++mu)
+      residual[mu] = reference_coefficients[index(mu, reference, n)];
+
+    // Two-pass metric Gram-Schmidt keeps the completion stable when a low
+    // target core orbital has a small component inside the projected valence
+    // subspace.
+    for (unsigned pass = 0; pass < 2u; ++pass) {
+      for (std::size_t previous = 0; previous < accepted; ++previous) {
+        const Matrix q = column(previous);
+        const double projection = metric_dot(q, residual);
+        for (std::size_t mu = 0; mu < n; ++mu) residual[mu] -= projection * q[mu];
+      }
+    }
+    const double norm2 = metric_dot(residual, residual);
+    if (!std::isfinite(norm2) || norm2 < 0.0)
+      throw std::invalid_argument("target reference completion produced an invalid metric norm");
+    const double norm = std::sqrt(std::max(0.0, norm2));
+    if (norm < minimum_complement_norm) continue;
+    minimum_added_norm = std::min(minimum_added_norm, norm);
+    for (std::size_t mu = 0; mu < n; ++mu)
+      result.coefficients[mu * target_occupied + accepted] = residual[mu] / norm;
+    ++accepted;
+  }
+  if (accepted != target_occupied)
+    throw std::invalid_argument("target reference orbitals cannot complete the occupied subspace");
+
+  result.added_orbitals = target_occupied - seeded_occupied;
+  result.minimum_added_norm =
+      result.added_orbitals == 0 ? 1.0 : minimum_added_norm;
+
+  double orthogonality_error = 0.0;
+  for (std::size_t first = 0; first < target_occupied; ++first) {
+    const Matrix a = column(first);
+    for (std::size_t second = 0; second < target_occupied; ++second) {
+      const Matrix b = column(second);
+      const double expected = first == second ? 1.0 : 0.0;
+      orthogonality_error =
+          std::max(orthogonality_error, std::abs(metric_dot(a, b) - expected));
+    }
+  }
+  result.metric_orthogonality_error = orthogonality_error;
+  if (!std::isfinite(orthogonality_error) || orthogonality_error > 1.0e-7)
+    throw std::invalid_argument("completed occupied subspace is not target-metric orthonormal");
+
+  result.density.assign(n * n, 0.0);
+  for (std::size_t mu = 0; mu < n; ++mu) {
+    for (std::size_t nu = 0; nu < n; ++nu) {
+      double value = 0.0;
+      for (std::size_t orbital = 0; orbital < target_occupied; ++orbital)
+        value += result.coefficients[mu * target_occupied + orbital] *
+                 result.coefficients[nu * target_occupied + orbital];
+      result.density[index(mu, nu, n)] = occupation * value;
+    }
+  }
+  double trace = 0.0;
+  for (std::size_t mu = 0; mu < n; ++mu)
+    for (std::size_t nu = 0; nu < n; ++nu)
+      trace += result.density[index(mu, nu, n)] * target.overlap[index(nu, mu, n)];
+  const double expected_trace = occupation * static_cast<double>(target_occupied);
+  if (!std::isfinite(trace) ||
+      std::abs(trace - expected_trace) > 1.0e-7 * std::max(1.0, expected_trace))
+    throw std::invalid_argument("completed occupied density failed the target electron trace");
 
   return result;
 }
