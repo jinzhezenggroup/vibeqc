@@ -24,8 +24,7 @@ inline generated::ProjectedExchangeSchedule df_projected_exchange_schedule(
  */
 inline bool df_shared_projected_exchange_schedule_admitted(
     const generated::ProjectedExchangeSchedule& schedule, bool explicit_multiblock) noexcept {
-  return schedule.rows && schedule.blocks &&
-         (schedule.blocks <= 2 || explicit_multiblock);
+  return schedule.rows && schedule.blocks && (schedule.blocks <= 2 || explicit_multiblock);
 }
 
 }  // namespace vibeqc::scf
