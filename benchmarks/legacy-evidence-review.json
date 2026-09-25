@@ -708,22 +708,6 @@
       "sha256": "5b9d20f364e6a02d3eb80b6aef4fd2f04b16a95754b9f3463b5155074acc1745"
     },
     {
-      "bytes": 571420,
-      "classification": "required-compact-accepted-evidence",
-      "family": "incremental-low-rank",
-      "path": "benchmarks/results/incremental-low-rank/cpu/samples.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "f0f02f2b3ac0f15c2562609571ee60dfa658e650a91779f98a6771245ce38303"
-    },
-    {
-      "bytes": 637919,
-      "classification": "required-compact-accepted-evidence",
-      "family": "incremental-low-rank",
-      "path": "benchmarks/results/incremental-low-rank/cuda/samples.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "97df4d81c12e157396725d981dcc6a2be193a18b2df81b1514b54032b4af2524"
-    },
-    {
       "bytes": 444945,
       "classification": "required-compact-accepted-evidence",
       "family": "issue206-device-response",
@@ -1284,30 +1268,6 @@
       "sha256": "78050dcdb56f14dfbe98cc77736f25f3d7cc62a14a1122c6780d548761c40ccf"
     },
     {
-      "bytes": 262035,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/denominator_update-o3-v7-tuning.json",
-      "role": "performance-samples",
-      "sha256": "88bb18fc1bd8bed25875437fee0478aae17dc1f02eb9c7c659c707d738cbc477"
-    },
-    {
-      "bytes": 262301,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/denominator_update-o5-v17-tuning.json",
-      "role": "performance-samples",
-      "sha256": "97e09caf6790ac4b0b8133a263c7d7d25f61d673f3f57ff4759a1fd19ef232ba"
-    },
-    {
-      "bytes": 264741,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/denominator_update-o8-v31-tuning.json",
-      "role": "performance-samples",
-      "sha256": "4b5ffc35ce83cc8b7b47360d33c47f468f87984edc45b1b10d65b8434b82bee9"
-    },
-    {
       "bytes": 420030,
       "classification": "required-compact-accepted-evidence",
       "family": "tensor-cuda-146",
@@ -1316,68 +1276,12 @@
       "sha256": "11b24caedec603ff7f91e3aa5df6dc54b068c61b145cfbb5e5821849589c5964"
     },
     {
-      "bytes": 258700,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/virtual_residual-o3-v7-tuning.json",
-      "role": "performance-samples",
-      "sha256": "dd76c6226f00aea8801d578dba80cc69502e75520a01e445eb79e38ee4653a45"
-    },
-    {
-      "bytes": 258567,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/virtual_residual-o5-v17-tuning.json",
-      "role": "performance-samples",
-      "sha256": "0350bb807d9aefb215d1af389563086f4b686324a3dc75ea99b912052d2d07f8"
-    },
-    {
-      "bytes": 258340,
-      "classification": "required-compact-accepted-evidence",
-      "family": "tensor-cuda-146",
-      "path": "benchmarks/results/tensor-cuda-146/virtual_residual-o8-v31-tuning.json",
-      "role": "performance-samples",
-      "sha256": "be3a1b3bf09ad614d8980c400474cb495e8469e00cb4b6db771a546bceb8cd02"
-    },
-    {
       "bytes": 169698,
       "classification": "required-compact-accepted-evidence",
       "family": "tensor-resource-scheduler-508",
       "path": "benchmarks/results/tensor-resource-scheduler-508/qualification.json",
       "role": "decision-or-audit-record",
       "sha256": "39414917b758b0c50da615b231fb4736c2b95fd5d43b2c05e95ce69a40dc71aa"
-    },
-    {
-      "bytes": 313909,
-      "classification": "required-compact-accepted-evidence",
-      "family": "weighted-eri-144",
-      "path": "benchmarks/results/weighted-eri-144/endpoints-rhf-def2-svp.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "24c720120e9b63b14cb65fd3000142cd37643e78759b071f80c98b06f43f5817"
-    },
-    {
-      "bytes": 307193,
-      "classification": "required-compact-accepted-evidence",
-      "family": "weighted-eri-144",
-      "path": "benchmarks/results/weighted-eri-144/endpoints-rhf-sto-3g.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "4c208b097c3bb21fbeed3e33bac3761a7000319b3ff7e68e58c032a7ede9eeb9"
-    },
-    {
-      "bytes": 291694,
-      "classification": "required-compact-accepted-evidence",
-      "family": "weighted-eri-144",
-      "path": "benchmarks/results/weighted-eri-144/endpoints-uhf-def2-svp.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "9d803b56824e673bccb6ec0484063017433f43fe6738882eaeffe9c2b1b14f6b"
-    },
-    {
-      "bytes": 287216,
-      "classification": "required-compact-accepted-evidence",
-      "family": "weighted-eri-144",
-      "path": "benchmarks/results/weighted-eri-144/endpoints-uhf-sto-3g.json",
-      "role": "endpoint-or-numerical-samples",
-      "sha256": "39abb5a4f84038e7f184501132e9e5558a0edd1e77015d3cce55a81995472783"
     },
     {
       "bytes": 177463,

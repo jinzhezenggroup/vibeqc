@@ -1,5 +1,5 @@
 {
-  "benchmark_results_max_bytes": 100663296,
+  "benchmark_results_max_bytes": 97517568,
   "change_review_max_bytes": 2097152,
   "exceptions": {
     "benchmarks/results/accuracy-173/arithmetic/states.npz": {

@@ -47,8 +47,12 @@ explicit-loop reference examples.
 
 Selection requires CPU/unfused-GPU parity, spill/resource limits, the shared
 CG01 noise/>2% gate, and a bootstrap speedup lower bound above one on **every**
-provided scale. Each `*-tuning.json` retains accepted and rejected candidates,
-all raw samples, compiler identities and resource records. These are warmed
+provided scale. The six original `*-tuning.json` ledgers retain accepted and rejected candidates,
+all raw samples, compiler identities and resource records. To keep the normal
+checkout compact, their exact bytes are hash-pinned by
+[the 2026-09-25 retention manifest](../retention-2026-09-25/migration.json) and
+restorable from existing Git history; the equation files, validation envelope
+and this decision summary remain tracked. The measurements are warmed
 complete-program timings including validation, host layout staging, transfers,
 packing, cuBLAS, generated kernels, result allocation and error checks.
 Startup and synchronized section profiles are reported separately and do not
@@ -126,4 +130,12 @@ nvcc -std=c++17 -arch=sm_120 -I"$CUDA_PATH/extras/CUPTI/include" \
   -lcublas -lcupti -o /tmp/provider-allocation-audit
 srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 --time=00:05:00 \
   /tmp/provider-allocation-audit
+```
+
+## Restoring the full tuning ledgers
+
+```bash
+python tools/restore_retained_evidence.py --all \
+  --manifest benchmarks/results/retention-2026-09-25/migration.json \
+  --output .artifacts/retention-2026-09-25
 ```
