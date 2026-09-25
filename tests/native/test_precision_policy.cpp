@@ -68,9 +68,11 @@ void verify_direct_jk_target_policy() {
           "5090 bounded streaming preserves the qualified 1.5-GiB page arena");
   require(production.persistent_quartet_warps_per_sm == 8U,
           "resource-rich targets preserve the qualified eight-worker schedule");
+  require(sizeof(GeneratedShellTask) == 192U,
+          "generated task ABI preserves the qualified 192-byte record");
   require(direct_jk_bounded_streaming_task_capacity_limit(production, sizeof(GeneratedShellTask)) ==
-              (std::size_t{3} << 29) / sizeof(GeneratedShellTask),
-          "5090 bounded streaming charges the current task ABI against its page cap");
+              8U * 1024U * 1024U,
+          "192-byte task ABI restores the qualified 8M bounded page");
 
   CudaTargetInfo synthetic;
   synthetic.warp_size = 32;
