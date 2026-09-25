@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -189,6 +190,7 @@ struct Gfn2RuntimeBridge::Impl {
 #endif
   }
 
+  std::mutex execution_mutex;
   Gfn2RuntimeBackend backend;
   vibeqc::xtb::detail::Gfn2CpuExecutionCache cpu_cache;
 #if defined(VIBEQC_HAS_GFN2_CUDA)
@@ -281,6 +283,9 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   output.scc_converged = output_buffer(converged);
   output.per_system_status = output_buffer(statuses);
 
+  // Keep the completed cache state bound to this request until its optional
+  // orbital snapshot has been detached; the cache locks each operation alone.
+  std::lock_guard<std::mutex> execution_lock(impl_->execution_mutex);
   std::string execution_error;
   vibeqc_xtb_status_t execution_status = VIBEQC_XTB_STATUS_NOT_IMPLEMENTED;
   if (impl_->backend == Gfn2RuntimeBackend::kCpu) {
