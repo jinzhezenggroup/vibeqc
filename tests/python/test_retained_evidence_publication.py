@@ -14,10 +14,15 @@ from tools import restore_retained_evidence as recovery
 
 
 @pytest.fixture
-def archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, dict[str, bytes]]:
+def archive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[Path, dict[str, bytes]]:
     root = tmp_path / "repository"
     root.mkdir()
-    payloads = {"campaign/first.bin": b"first\x00record", "campaign/second.bin": b"second\xffrecord"}
+    payloads = {
+        "campaign/first.bin": b"first\x00record",
+        "campaign/second.bin": b"second\xffrecord",
+    }
     for name, data in payloads.items():
         path = root / name
         path.parent.mkdir(exist_ok=True)
@@ -25,29 +30,60 @@ def archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, dict
     subprocess.run(["git", "init", "-q", str(root)], check=True)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
     subprocess.run(
-        ["git", "-c", "user.name=Evidence test", "-c", "user.email=test@example.invalid",
-         "-c", "commit.gpgsign=false", "commit", "-qm", "fixture"],
-        cwd=root, check=True,
+        [
+            "git",
+            "-c",
+            "user.name=Evidence test",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        cwd=root,
+        check=True,
     )
     revision = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
     manifest = root / "manifest.json"
-    manifest.write_text(json.dumps({
-        "schema": "vibeqc.git-object-snapshot.v1", "source_revision": revision,
-        "file_count": len(payloads), "total_bytes": sum(map(len, payloads.values())),
-        "files": [{"path": name, "bytes": len(data), "git_blob_sha1": hashlib.sha1(
-            f"blob {len(data)}\0".encode() + data, usedforsecurity=False
-        ).hexdigest()} for name, data in payloads.items()],
-    }), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema": "vibeqc.git-object-snapshot.v1",
+                "source_revision": revision,
+                "file_count": len(payloads),
+                "total_bytes": sum(map(len, payloads.values())),
+                "files": [
+                    {
+                        "path": name,
+                        "bytes": len(data),
+                        "git_blob_sha1": hashlib.sha1(
+                            f"blob {len(data)}\0".encode() + data, usedforsecurity=False
+                        ).hexdigest(),
+                    }
+                    for name, data in payloads.items()
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     monkeypatch.setattr(recovery, "ROOT", root)
     return manifest, payloads
 
 
 @pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt])
 def test_snapshot_copy_failure_is_clean_and_retryable(
-    archive: tuple[Path, dict[str, bytes]], tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch, failure: type[BaseException],
+    archive: tuple[Path, dict[str, bytes]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: type[BaseException],
 ) -> None:
     manifest, payloads = archive
     target = tmp_path / "snapshot"
@@ -70,8 +106,10 @@ def test_snapshot_copy_failure_is_clean_and_retryable(
 
 @pytest.mark.parametrize("failure", [OSError, KeyboardInterrupt])
 def test_single_file_write_failure_is_clean_and_retryable(
-    archive: tuple[Path, dict[str, bytes]], tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch, failure: type[BaseException],
+    archive: tuple[Path, dict[str, bytes]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: type[BaseException],
 ) -> None:
     manifest, payloads = archive
     target = tmp_path / "single.bin"
@@ -107,8 +145,10 @@ def test_single_file_write_failure_is_clean_and_retryable(
 
 @pytest.mark.parametrize("snapshot", [False, True])
 def test_destination_created_during_verification_is_never_removed(
-    archive: tuple[Path, dict[str, bytes]], tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch, snapshot: bool,
+    archive: tuple[Path, dict[str, bytes]],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot: bool,
 ) -> None:
     manifest, _ = archive
     target = tmp_path / "already-owned"
@@ -133,7 +173,8 @@ def test_destination_created_during_verification_is_never_removed(
 
 
 def test_corrupt_member_never_creates_destination(
-    archive: tuple[Path, dict[str, bytes]], tmp_path: Path,
+    archive: tuple[Path, dict[str, bytes]],
+    tmp_path: Path,
 ) -> None:
     manifest, _ = archive
     record = json.loads(manifest.read_text())
