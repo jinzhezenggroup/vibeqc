@@ -490,18 +490,27 @@ static RccsdtForceResult rccsdt_force_impl(
   lambda_options.gmres.relative_tolerance = 0.0;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
   LambdaResult corrected;
+  ParameterWeights parameters;
 #if VIBEQC_HAS_CUDA
-  if (cuda_derivative)
-    corrected = solve_lambda_cuda_with_energy_source(problem, cc_result, triples.t1, triples.t2,
-                                                     device_id, lambda_options);
-  else
+  if (cuda_derivative) {
+    auto fixed_orbital = solve_lambda_parameter_response_cuda_with_energy_source(
+        problem, cc_result, triples.t1, triples.t2, device_id, lambda_options);
+    corrected = std::move(fixed_orbital.lambda);
+    parameters = {std::move(fixed_orbital.foo),  std::move(fixed_orbital.fov),
+                  std::move(fixed_orbital.fvv),  std::move(fixed_orbital.ovov),
+                  std::move(fixed_orbital.ovvo), std::move(fixed_orbital.oovv),
+                  std::move(fixed_orbital.ovvv), std::move(fixed_orbital.ovoo),
+                  std::move(fixed_orbital.oooo), std::move(fixed_orbital.vvvv)};
+  } else
 #endif
+  {
     corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1, triples.t2,
                                                     lambda_options);
+    parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
+  }
   if (cuda_derivative && !corrected.diagnostic.cuda_actions)
     throw std::runtime_error("RCCSD(T) CUDA force lost CUDA Lambda action ownership");
 
-  auto parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
   add_projected_triples(parameters, triples, o, v);
   const auto raw = raw_hamiltonian(system, reference, max_bytes);
   auto correlation = hamiltonian_pullback(parameters, 0.0, raw, o, v, max_bytes);
