@@ -466,11 +466,10 @@ OccupiedCompletionResult complete_occupied_density(const integrals::IntegralData
   };
   if (n == 0 || n > std::numeric_limits<std::size_t>::max() / n ||
       seeded_occupied > target_occupied || target_occupied > n ||
-      seeded_coefficients.size() != n * seeded_occupied ||
-      reference_coefficients.size() != n * n || target.overlap.size() != n * n ||
-      !(occupation > 0.0) || !std::isfinite(occupation) || !(minimum_complement_norm > 0.0) ||
-      !std::isfinite(minimum_complement_norm) || !finite(target.overlap) ||
-      !finite(seeded_coefficients) || !finite(reference_coefficients)) {
+      seeded_coefficients.size() != n * seeded_occupied || reference_coefficients.size() != n * n ||
+      target.overlap.size() != n * n || !(occupation > 0.0) || !std::isfinite(occupation) ||
+      !(minimum_complement_norm > 0.0) || !std::isfinite(minimum_complement_norm) ||
+      !finite(target.overlap) || !finite(seeded_coefficients) || !finite(reference_coefficients)) {
     throw std::invalid_argument("occupied completion has inconsistent or non-finite inputs");
   }
 
