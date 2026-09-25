@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Qualify one imported Libxc functional against the production-domain matrix.
 
 This is an optional evidence producer.  The independent oracle is PySCF 2.14.0
@@ -18,9 +17,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
-
-if TYPE_CHECKING:
-    from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 from vibeqc_compiler.xc.production_domain_cases import (
     ProductionDomainCase,
     control_case_ids,
@@ -30,6 +26,9 @@ from vibeqc_compiler.xc.production_domain_evidence import (
     build_result,
     stage_evidence,
 )
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 
 CAMPAIGN_SCHEMA = "vibeqc.libxc-production-domain-campaign/v1"
 
