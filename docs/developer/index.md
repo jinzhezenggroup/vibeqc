@@ -74,8 +74,6 @@ libxc_bulk_capabilities
 local_spaces
 matrix_function
 mp2
-mp2-a1
-mp2-a1-native-boundary
 one_electron_codegen
 one_electron_derivatives
 opencl_backend
