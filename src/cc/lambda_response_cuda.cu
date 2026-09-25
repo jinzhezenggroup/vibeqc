@@ -167,8 +167,7 @@ class CudaLambdaActions {
                   generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir)});
     if (with_parameters)
       response_elements =
-          std::max({response_elements,
-                    generated::parameter_foo_arena_elements(p.nocc, p.nvir),
+          std::max({response_elements, generated::parameter_foo_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fov_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fvv_arena_elements(p.nocc, p.nvir),
                     generated::parameter_ovov_arena_elements(p.nocc, p.nvir),
@@ -289,8 +288,8 @@ class CudaLambdaActions {
                                cudaMemcpyHostToDevice, stream_));
     cuda_check(cudaMemcpyAsync(state_.bar_doubles_residual, lambda2.data(), bytes(layout_.n2),
                                cudaMemcpyHostToDevice, stream_));
-    h2d_bytes_ = checked_add(
-        h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
+    h2d_bytes_ =
+        checked_add(h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
   }
 
   using ParameterRunner = generated::DeviceParameterOutput (*)(generated::CudaState&);
@@ -299,8 +298,8 @@ class CudaLambdaActions {
     const auto output = run(state_);
     std::vector<double> values(count);
     int error = 0;
-    cuda_check(
-        cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost, stream_));
+    cuda_check(cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost,
+                               stream_));
     cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaStreamSynchronize(stream_));
     d2h_bytes_ = checked_add(d2h_bytes_, checked_add(bytes(count), sizeof(int)));
@@ -362,8 +361,7 @@ double max_abs(std::span<const double> values) {
 }
 
 LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<const double> t1_source,
-                        std::span<const double> t2_source, int device,
-                        const LambdaOptions& options,
+                        std::span<const double> t2_source, int device, const LambdaOptions& options,
                         CudaFixedOrbitalResponseResult* fixed_orbital) {
   validate_problem(p);
   validate_lambda_options(options);
@@ -475,16 +473,13 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
                         checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
     fixed_orbital->ovoo =
         owner.parameter(generated::run_parameter_ovoo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nvir),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->oooo =
         owner.parameter(generated::run_parameter_oooo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nocc),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->vvvv =
         owner.parameter(generated::run_parameter_vvvv_cuda,
-                        checked_mul(checked_mul(p.nvir, p.nvir),
-                                    checked_mul(p.nvir, p.nvir)));
+                        checked_mul(checked_mul(p.nvir, p.nvir), checked_mul(p.nvir, p.nvir)));
   }
   result.diagnostic.numeric_capacity_bytes = owner.numeric_capacity_bytes();
   result.diagnostic.owned_device_bytes = owner.owned_device_bytes();
@@ -516,8 +511,7 @@ CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_
     const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
     std::span<const double> t2_source, int device, const LambdaOptions& options) {
   CudaFixedOrbitalResponseResult result;
-  result.lambda =
-      solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
+  result.lambda = solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
   return result;
 }
 
