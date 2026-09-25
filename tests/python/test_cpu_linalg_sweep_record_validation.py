@@ -139,5 +139,5 @@ def test_malformed_json_observation_is_rejected_by_complete_sweep(
 
 @pytest.mark.parametrize("payload", [None, [], 1, "record"])
 def test_non_object_probe_record_is_rejected(payload: object) -> None:
-    with pytest.raises(ValueError, match="object"):
+    with pytest.raises(TypeError, match="object"):
         sweep._validated(payload, size=16, provider="scalar", repeats=1, threads=1)
