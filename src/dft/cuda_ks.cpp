@@ -379,6 +379,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (host_unfused &&
         (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0))
       throw std::invalid_argument("scaled CUDA XC requires device-fused execution");
+    if (host_unfused && functional == SemilocalFamily::B3lyp)
+      throw std::invalid_argument("CUDA B3LYP requires device-fused XC execution");
     if (host_unfused) {
       host_xc_density.resize(elements);
       host_xc_potential.resize(elements);
