@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-INVENTORY_PATH = Path("docs/direct_jk_tuning_inventory.json")
+INVENTORY_PATH = Path("manifests/maintenance/direct_jk_tuning_inventory.json")
 _ALLOWED_REMAINING_CLASSIFICATIONS = {
     "bounded-schedule-choice",
     "measured-schedule-choice",

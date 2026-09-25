@@ -28,12 +28,16 @@ def test_current_cross_method_boundaries_are_valid() -> None:
     ):
         assert area in report["areas"]
     assert {
+        "solver/dense_linear.hpp",
         "solver/diis.hpp",
         "solver/diis_history.hpp",
         "solver/iteration_control.hpp",
     } <= {module["path"] for module in report["modules"] if module["owner"] == "solver"}
     assert {"cc", "scf"} <= set(
         report["infrastructure_inventory"]["diis_history"]["consumer_areas"]
+    )
+    assert {"cc", "scf"} <= set(
+        report["infrastructure_inventory"]["dense_linear"]["consumer_areas"]
     )
     assert {
         "runtime/nvidia_host_api/cublas_v2.h",
@@ -74,13 +78,13 @@ def test_relative_include_cannot_hide_method_dependency(tmp_path: typing.Any) ->
     source = tmp_path / "src"
     (source / "runtime/internal").mkdir(parents=True)
     (source / "scf").mkdir()
-    (source / "scf/rhf.hpp").write_text("// method implementation\n")
+    (source / "scf/fleet.hpp").write_text("// method implementation\n")
     (source / "runtime/internal/context.cpp").write_text(
-        '#include "../../scf/rhf.hpp"\n'
+        '#include "../../scf/fleet.hpp"\n'
     )
     errors = audit_electronic_structure_boundaries(tmp_path)["errors"]
     assert len(errors) == 1
-    assert "forbidden runtime dependency on scf/rhf.hpp" in errors[0]
+    assert "forbidden runtime dependency on scf/fleet.hpp" in errors[0]
 
 
 def test_comments_do_not_create_dependency_edges(tmp_path: typing.Any) -> None:
@@ -114,17 +118,17 @@ def test_known_reverse_edge_is_a_ceiling_not_an_exemption(
     (source / "runtime").mkdir(parents=True)
     (source / "scf").mkdir()
     (source / "scf/aot_shell_registry.hpp").write_text("// existing debt\n")
-    (source / "scf/rhf.hpp").write_text("// new method owner\n")
+    (source / "scf/fleet.hpp").write_text("// new method owner\n")
     runtime = source / "runtime/cuda_runtime.cu"
     runtime.write_text('#include "scf/aot_shell_registry.hpp"\n')
     assert audit_electronic_structure_boundaries(tmp_path)["errors"] == []
 
     runtime.write_text(
-        '#include "scf/aot_shell_registry.hpp"\n#include "scf/rhf.hpp"\n'
+        '#include "scf/aot_shell_registry.hpp"\n#include "scf/fleet.hpp"\n'
     )
     errors = audit_electronic_structure_boundaries(tmp_path)["errors"]
     assert len(errors) == 1
-    assert "forbidden runtime dependency on scf/rhf.hpp" in errors[0]
+    assert "forbidden runtime dependency on scf/fleet.hpp" in errors[0]
 
 
 def test_shared_layers_may_depend_on_other_shared_layers(tmp_path: typing.Any) -> None:

@@ -488,7 +488,6 @@ def test_no_checkpoint_cold_run_remains_available_after_clear(
     # The other restart cases exercise the default response and retain their
     # independent numerical comparisons. CPU execution is already deterministic.
     if DEVICE == "cuda":
-        monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")
     path = tmp_path / "state"
     expected = save(path).items[0]

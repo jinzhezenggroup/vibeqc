@@ -39,6 +39,22 @@ struct XcIntegral {
   XcDensityDiagnostic density_diagnostic;
 };
 
+/** Bounded prepared CPU AO-grid values for repeated fixed-geometry RKS builds.
+ * Layout matches AoBasis::evaluate over the complete grid: jet-major, then
+ * point, then AO. Scientific grid/basis identity remains owned by the caller. */
+struct RksAoCache {
+  unsigned order{};
+  std::size_t points{};
+  std::size_t nao{};
+  std::vector<double> jets;
+
+  [[nodiscard]] std::size_t numeric_capacity_bytes() const noexcept;
+};
+
+[[nodiscard]] std::size_t rks_ao_cache_bytes(const AoBasis& basis, const MolecularGrid& grid,
+                                             unsigned order);
+RksAoCache prepare_rks_ao_cache(const AoBasis& basis, const MolecularGrid& grid, unsigned order);
+
 struct SpinXcIntegral {
   double energy{};
   std::array<double, 2> electrons{};
@@ -81,6 +97,12 @@ XcIntegral integrate_pbe_rks_with_tail_scaled(const AoBasis& basis, const Molecu
                                               const std::vector<double>& density,
                                               std::size_t tile_points, XcDensitySource source,
                                               double exchange_scale, double correlation_scale);
+
+/** Same PBE integration using an immutable prepared order-1 AO grid. */
+XcIntegral integrate_pbe_rks_with_tail_scaled_cached(
+    const AoBasis& basis, const MolecularGrid& grid, const std::vector<double>& density,
+    std::size_t tile_points, XcDensitySource source, double exchange_scale,
+    double correlation_scale, const RksAoCache& cache);
 
 /** Integrate unpolarized LDA_XC_PW for an RHF total AO density. */
 XcIntegral integrate_lda_xc_pw_rks(const AoBasis& basis, const MolecularGrid& grid,

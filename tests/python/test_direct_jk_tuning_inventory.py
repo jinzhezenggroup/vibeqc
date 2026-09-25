@@ -19,14 +19,14 @@ SPEC.loader.exec_module(CHECKER)
 
 def _inventory() -> dict[str, object]:
     return json.loads(
-        (REPOSITORY_ROOT / "docs/direct_jk_tuning_inventory.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            REPOSITORY_ROOT / "manifests/maintenance/direct_jk_tuning_inventory.json"
+        ).read_text(encoding="utf-8")
     )
 
 
 def _write_fixture(root: Path, payload: dict[str, object]) -> None:
-    inventory = root / "docs/direct_jk_tuning_inventory.json"
+    inventory = root / "manifests/maintenance/direct_jk_tuning_inventory.json"
     inventory.parent.mkdir(parents=True, exist_ok=True)
     inventory.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 

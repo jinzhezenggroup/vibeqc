@@ -18,7 +18,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
@@ -281,9 +281,10 @@ ScfResult run_uks_impl(
     bool stabilized{};
   };
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance, residual_gate, true};
-  auto outcome = solver::run_self_consistent(
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance, residual_gate,
+      true};
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
@@ -322,7 +323,7 @@ ScfResult run_uks_impl(
                                  stabilized};
       },
       [&](UksState& state, UksLoopEvaluation evaluation,
-          const solver::SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         runtime::sample_cpu_capacity(runtime::add_capacity(
             runtime::add_capacity(
                 runtime::add_capacity(
@@ -351,7 +352,8 @@ ScfResult run_uks_impl(
           return UksState{std::move(state.alpha), std::move(state.beta)};
         return UksState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
       },
-      [&](const solver::SelfConsistentProgress& progress, const UksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const UksLoopEvaluation& evaluation) {
         result.energy = progress.energy;
         result.iterations = progress.iteration;
         result.energy_change = progress.energy_change;

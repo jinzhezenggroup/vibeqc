@@ -263,6 +263,7 @@ macro(vibeqc_add_native_tests)
       src/dft/cuda_cosx_derivative.cu
       "${VIBEQC_ONE_ELECTRON_HEADER}"
       "${VIBEQC_ONE_ELECTRON_DERIVATIVE_HEADER}"
+      "${VIBEQC_COSX_DERIVATIVE_CONTRACTION_HEADER}"
       "${VIBEQC_ONE_ELECTRON_ST_CPU_HEADER}"
       "${VIBEQC_DF_VALUE_CPU_HEADER}"
       "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"

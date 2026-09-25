@@ -466,70 +466,18 @@ def test_c_api_conventional_force_is_transactional_across_repeated_execution() -
         assert diag.force_provenance_flags == 0x7
         assert diag.response_operator_hash == b"rhf-canonical-response-v1"
 
-        class LegacyCorrelationDiagnostic(ct.Structure):
-            _fields_ = _native.CorrelationDiagnostic._fields_[:18]
-
-        legacy_size = ct.sizeof(LegacyCorrelationDiagnostic)
-        assert ct.sizeof(_native.CorrelationDiagnostic) > legacy_size
-        storage = (ct.c_ubyte * (legacy_size + 32))(*([0xA5] * (legacy_size + 32)))
-        legacy = ct.cast(storage, ct.POINTER(LegacyCorrelationDiagnostic))
-        legacy.contents.struct_size = legacy_size
-        legacy.contents.abi_version = _native.ABI_VERSION
-        _native.check(
-            lib,
+        truncated = _native.CorrelationDiagnostic()
+        truncated.struct_size = _native.CorrelationDiagnostic.response_iterations.offset
+        truncated.abi_version = _native.ABI_VERSION
+        truncated.opposite_spin_energy = 123.0
+        original = bytes(truncated)
+        assert (
             lib.vibeqc_calculation_get_correlation_diagnostic(
-                calculation,
-                ct.cast(legacy, ct.POINTER(_native.CorrelationDiagnostic)),
-            ),
-        )
-        assert legacy.contents.opposite_spin_energy < 0
-        assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
-        assert legacy.contents.struct_size == legacy_size
-        _native.check(
-            lib,
-            lib.vibeqc_calculation_get_correlation_diagnostic(
-                calculation, ct.cast(legacy, ct.POINTER(_native.CorrelationDiagnostic))
-            ),
-        )
-        assert legacy.contents.struct_size == legacy_size
-        assert bytes(storage[legacy_size:]) == bytes([0xA5] * 32)
-
-        # The preceding B2 ABI prefix must also remain bounded by struct_size.
-        ccsd_extension = next(
-            index
-            for index, (name, _ctype) in enumerate(
-                _native.CorrelationDiagnostic._fields_
+                calculation, ct.byref(truncated)
             )
-            if name == "ccsd_iterations"
+            == _native.STATUS_ABI_MISMATCH
         )
-
-        class PreviousB2Diagnostic(ct.Structure):
-            _fields_ = _native.CorrelationDiagnostic._fields_[:ccsd_extension]
-
-        previous_size = ct.sizeof(PreviousB2Diagnostic)
-        storage = (ct.c_ubyte * (previous_size + 32))(*([0xA5] * (previous_size + 32)))
-        previous = ct.cast(storage, ct.POINTER(PreviousB2Diagnostic))
-        previous.contents.struct_size = previous_size
-        previous.contents.abi_version = _native.ABI_VERSION
-        _native.check(
-            lib,
-            lib.vibeqc_calculation_get_correlation_diagnostic(
-                calculation,
-                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
-            ),
-        )
-        assert previous.contents.response_operator_hash == b"rhf-canonical-response-v1"
-        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
-        assert previous.contents.struct_size == previous_size
-        _native.check(
-            lib,
-            lib.vibeqc_calculation_get_correlation_diagnostic(
-                calculation,
-                ct.cast(previous, ct.POINTER(_native.CorrelationDiagnostic)),
-            ),
-        )
-        assert previous.contents.struct_size == previous_size
-        assert bytes(storage[previous_size:]) == bytes([0xA5] * 32)
+        assert bytes(truncated) == original
 
         failed_forces = (ct.c_double * 6)(*([456.0] * 6))
         failed = _native.ResultDescriptor(

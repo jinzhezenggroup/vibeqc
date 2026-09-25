@@ -1,4 +1,4 @@
-"""SCF TensorIR algebra parity against the existing handwritten equations."""
+"""SCF TensorIR algebra parity against independent reference equations."""
 
 from fractions import Fraction
 
@@ -12,6 +12,7 @@ from vibeqc_compiler.tensor import (
     energy_program,
     execute,
     fock_composition_program,
+    hf_force_program,
     weighted_density_program,
 )
 
@@ -160,6 +161,38 @@ def test_energy_matches_current_cuda_kernel_equation(spin_count: int) -> None:
     np.testing.assert_allclose(result, expected, atol=1e-13, rtol=1e-13)
 
 
+@pytest.mark.parametrize("spin_count", [1, 2])
+def test_hf_force_assembly_matches_stationary_reference_equation(
+    spin_count: int,
+) -> None:
+    rng = np.random.default_rng(618 + spin_count)
+    density = rng.normal(size=(2, spin_count, 3, 3))
+    weighted = rng.normal(size=(2, spin_count, 3, 3))
+    dh = rng.normal(size=(2, 6, 3, 3))
+    ds = rng.normal(size=(2, 6, 3, 3))
+    two_electron = rng.normal(size=(2, 6))
+    nuclear = rng.normal(size=(2, 6))
+
+    result = execute(
+        hf_force_program(2, 3, spin_count=spin_count, coordinate_count=6),
+        {
+            "density": density,
+            "weighted_density": weighted,
+            "hcore_derivative": dh,
+            "overlap_derivative": ds,
+            "two_electron": two_electron,
+            "nuclear_repulsion_derivative": nuclear,
+        },
+    ).outputs["forces"]
+    expected = (
+        -nuclear
+        - two_electron
+        - np.einsum("bspq,bcpq->bc", density, dh)
+        + np.einsum("bspq,bcpq->bc", weighted, ds)
+    )
+    np.testing.assert_allclose(result, expected, atol=1e-13, rtol=1e-13)
+
+
 def test_diis_pure_tensor_parts_match_fixed_history_equations() -> None:
     rng = np.random.default_rng(618)
     residual = rng.normal(size=(2, 4, 2, 3, 3))
@@ -196,6 +229,8 @@ def test_diis_pure_tensor_parts_match_fixed_history_equations() -> None:
         lambda: density_program(1, 0),
         lambda: density_program(1, 2, spin_count=0),
         lambda: diis_gram_program(1, 0, 2),
+        lambda: hf_force_program(1, 2, spin_count=3),
+        lambda: hf_force_program(1, 2, coordinate_count=0),
         lambda: fock_composition_program(1, 2, reference="invalid"),
         lambda: fock_composition_program(
             1, 2, reference="restricted", exact_exchange=-1
