@@ -71,6 +71,7 @@
     "tools/run_codegen.py",
     "tools/vibeqc_posthf/plan_spec.py",
     "tools/generate_scf_array_native.py",
+    "tools/generate_cosx_derivative_native.py",
     "tools/generate_gfn2_pair_native.py",
     "tools/generate_gfn2_es2_native.py",
     "tools/generate_gfn2_es3_native.py",
