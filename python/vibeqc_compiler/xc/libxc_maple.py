@@ -1589,7 +1589,8 @@ class _Evaluator:
                 raise MapleImportError(
                     "mgga_series_w requires a bounded coefficient list, order and scalar"
                 )
-            coefficients, order_raw, t_raw = arguments
+            coefficients: tuple[object, ...] = arguments[0]
+            order_raw, t_raw = arguments[1], arguments[2]
             if not isinstance(order_raw, Fraction) or order_raw.denominator != 1:
                 raise MapleImportError("mgga_series_w order must be an integer constant")
             order = int(order_raw)
