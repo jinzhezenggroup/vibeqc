@@ -61,7 +61,7 @@ int main(int argc,char**argv){
 
 
 @pytest.fixture(scope="module")
-def probe(tmp_path_factory):
+def probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("requires a host C++ compiler")
@@ -121,7 +121,7 @@ def probe(tmp_path_factory):
         (2147483648, 1, 256, 1, 1, 1),
     ],
 )
-def test_eigenvector_launch_domain(probe, args):
+def test_eigenvector_launch_domain(probe: Path, args: tuple[int, ...]) -> None:
     completed = subprocess.run(
         [str(probe), *map(str, args)], capture_output=True, text=True, timeout=15
     )
