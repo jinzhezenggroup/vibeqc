@@ -69,7 +69,7 @@ def test_two_translation_units_keep_distinct_point_programs(
         paths.append(path)
     driver = tmp_path / "main.cpp"
     driver.write_text(
-        r'''
+        r"""
 #include "dft/xc.hpp"
 #include <cstring>
 extern "C" const vibeqc::dft::SemilocalPointProgram* first_program();
@@ -88,14 +88,26 @@ int main() {
   if (b.energy != 19 || b.rho[0] != 5 || b.rho[1] != 7) return 5;
   return 0;
 }
-''',
+""",
         encoding="utf-8",
     )
     executable = tmp_path / "linked"
     compiled = subprocess.run(
-        [compiler, "-std=c++20", optimization, "-I", str(tmp_path),
-         *(str(path) for path in paths), str(driver), "-o", str(executable)],
-        capture_output=True, text=True, check=False, timeout=30,
+        [
+            compiler,
+            "-std=c++20",
+            optimization,
+            "-I",
+            str(tmp_path),
+            *(str(path) for path in paths),
+            str(driver),
+            "-o",
+            str(executable),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
     )
     assert compiled.returncode == 0, compiled.stdout + compiled.stderr
     subprocess.run([str(executable)], check=True, timeout=10)
