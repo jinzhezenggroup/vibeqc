@@ -59,9 +59,19 @@ From the repository root, with `PYTHONPATH=python:.` (PowerShell:
 ```text
 python -m tools.dft_mp_v1.validate
 python -m pytest tests/python/test_dft_mp_v1_contract.py -q
+python -m tools.dft_mp_v1.prepare_campaign --help
 python -m tools.dft_mp_v1.run --plan /absolute/campaign-plan.json --out /absolute/output
 python -m tools.dft_mp_v1.validate /absolute/output/receipt.json --final
 ```
+
+`prepare_campaign.py` creates the local campaign plan only after the requested exact
+source is reachable from the explicitly resolved official upstream `master`, contains
+this exact frozen manifest, and matches the hashed installed library, prebuilt
+scientific artifact and build record. It also freezes the RTX 5090 UUID,
+driver/toolchain/profile, operating-conditions hash and bounded watchdog; it hashes the
+adapter file and freezes its exact argv. It refuses to overwrite an existing plan. This preflight is not a
+scientific result and does not make incomplete #1186/#1187/#1189 capability or the
+#1303 precision-work provenance gap pass.
 
 `generate_inputs.py` is a read-only audit by default. RDKit-derived geometry
 reconstruction is qualified only for the platform, Python ABI and exact RDKit
@@ -80,7 +90,11 @@ library, artifact and build record before starting. The adapter receives
 `result.schema.json` object
 or an explicit non-pass status to stdout. It must call the installed public
 energy/analytic-force endpoint and independent oracle; the runner is an
-orchestrator, not a replacement scientific implementation. Each attempt writes
+orchestrator, not a replacement scientific implementation. A self-reported adapter
+`pass` is immediately checked against the same per-row semantic validator before the
+runner records it as a pass; malformed, incomplete or synthetic evidence is retained
+as a failed attempt with its raw capture instead.
+ Each attempt writes
 raw stdout/stderr, a progress journal and an atomic receipt update. Rerunning
 the same output resumes only `not-run` rows; retries of failed/timed-out rows
 need a distinct campaign directory so negative evidence stays visible.

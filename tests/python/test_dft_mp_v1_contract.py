@@ -7,15 +7,13 @@ import json
 import subprocess
 import sys
 import time
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import pytest
 from vibeqc import Atom, GridSpec
 from vibeqc_compiler.dft.grid import molecular_grid_identity
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
+from tools.dft_mp_v1 import prepare_campaign
 from tools.dft_mp_v1 import validate as contract_validator
 from tools.dft_mp_v1.freeze_contract import ROOT, canonical, digest, source_digest
 from tools.dft_mp_v1.run import run as capture
@@ -174,6 +172,79 @@ def _campaign(tmp_path: Path) -> dict:
             "device_uuid": "pinned",
         },
     }
+
+
+def test_campaign_plan_binds_merged_source_and_installed_artifacts(
+    tmp_path: Path, contract: dict, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = "a" * 40
+    library = tmp_path / "libvibeqc.so"
+    artifact = tmp_path / "scientific.aot"
+    adapter = tmp_path / "adapter.py"
+    conditions = tmp_path / "conditions.json"
+    library.write_bytes(b"library\n")
+    artifact.write_bytes(b"artifact\n")
+    adapter.write_text("# production adapter fixture\n", encoding="utf-8")
+    conditions.write_bytes(canonical({"mode": "fixture"}))
+    build_record = tmp_path / "build.json"
+    build_record.write_bytes(
+        canonical(
+            {
+                "source_commit": source,
+                "library_sha256": digest(library.read_bytes()),
+                "artifact_sha256": digest(artifact.read_bytes()),
+                "scientific_cuda_artifacts_prebuilt": True,
+            }
+        )
+    )
+    monkeypatch.setattr(prepare_campaign, "_official_master_oid", lambda *_: "f" * 40)
+    monkeypatch.setattr(prepare_campaign, "_git_is_ancestor", lambda *_: True)
+
+    def source_manifest(argv: list[str], **_: object) -> object:
+        assert argv[:2] == ["git", "show"]
+        return type("Done", (), {"returncode": 0, "stdout": canonical(contract)})()
+
+    monkeypatch.setattr(prepare_campaign.subprocess, "run", source_manifest)
+    plan = prepare_campaign.build_plan(
+        source_commit=source,
+        library=library,
+        artifact=artifact,
+        adapter=adapter,
+        build_record=build_record,
+        conditions=conditions,
+        device_uuid="GPU-fixture",
+        driver="fixture-driver",
+        toolchain="fixture-toolchain",
+        build_profile="fixture-profile",
+        timeout_seconds=60,
+        adapter_command=[sys.executable, str(adapter), "--fixture"],
+    )
+    campaign = plan["campaign"]
+    assert campaign["source_commit"] == source
+    assert campaign["library"]["sha256"] == digest(library.read_bytes())
+    assert campaign["artifact"]["sha256"] == digest(artifact.read_bytes())
+    assert campaign["conditions_sha256"] == digest(conditions.read_bytes())
+    assert campaign["hardware"]["device"] == "RTX 5090"
+    assert campaign["hardware"]["sm"] == 120
+    assert plan["adapter_command_file_index"] == 1
+    assert Path(plan["adapter_command"][1]) == adapter.resolve()
+
+    monkeypatch.setattr(prepare_campaign, "_git_is_ancestor", lambda *_: False)
+    with pytest.raises(InvalidEvidence, match="official upstream master"):
+        prepare_campaign.build_plan(
+            source_commit=source,
+            library=library,
+            artifact=artifact,
+            adapter=adapter,
+            build_record=build_record,
+            conditions=conditions,
+            device_uuid="GPU-fixture",
+            driver="fixture-driver",
+            toolchain="fixture-toolchain",
+            build_profile="fixture-profile",
+            timeout_seconds=60,
+            adapter_command=[sys.executable, str(adapter)],
+        )
 
 
 def _run_record(tmp_path: Path, contract: dict, row: dict, campaign: dict) -> dict:
@@ -584,6 +655,34 @@ def test_runner_retains_explicit_unrun_rows_and_raw_journal(
         capture(plan_path, tmp_path / "out", {second})
     resumed = json.loads(result.read_text(encoding="utf-8"))
     assert resumed["rows"][1]["status"] == "running"
+
+
+def test_runner_rejects_adapter_self_reported_pass_before_receipt(
+    tmp_path: Path, contract: dict
+) -> None:
+    adapter = tmp_path / "adapter.py"
+    adapter.write_text(
+        'import json\nprint(json.dumps({"status":"pass"}))\n', encoding="utf-8"
+    )
+    campaign = _campaign(tmp_path)
+    campaign["adapter"] = {"path": adapter.name, "sha256": digest(adapter.read_bytes())}
+    plan = {
+        "adapter_command": [sys.executable, str(adapter)],
+        "adapter_command_file_index": 1,
+        "timeout_seconds": 10,
+        "campaign": campaign,
+    }
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_bytes(canonical(plan))
+    first = contract["rows"][0]["id"]
+
+    result = capture(plan_path, tmp_path / "out", {first})
+    entry = json.loads(result.read_text(encoding="utf-8"))["rows"][0]
+
+    assert entry["status"] == "failed"
+    assert "adapter pass rejected" in entry["reason"]
+    assert "row mismatch" in entry["reason"]
+    assert entry["partial_progress"] == entry["capture"]["progress"]
 
 
 def test_runner_retains_non_object_json_failure(tmp_path: Path, contract: dict) -> None:
