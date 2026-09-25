@@ -9,6 +9,7 @@
 
 #include "molecule/basis.hpp"
 #include "scf/cuda_density_fitting.hpp"
+#include "scf/cuda/direct_jk_plan.hpp"
 #include "scf/cuda_direct_jk.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
 #include "scf/density_fitting.hpp"
@@ -106,6 +107,28 @@ void direct_device_failures(CudaDirectJkPlan* plan, const std::vector<double>& a
     require(recover ? failure == 0 : failure != 0,
             "resident J/K failure state was lost or not reset");
   }
+}
+
+void direct_value_dispatch_selection() {
+  const auto hybrid = direct_jk_value_dispatch(true, true, true, false);
+  require(hybrid.generated_coulomb && !hybrid.generic_coulomb && hybrid.generic_exchange,
+          "generated-capable hybrid J/K did not split J from exact K");
+
+  const auto mixed = direct_jk_value_dispatch(true, true, true, true);
+  require(!mixed.generated_coulomb && mixed.generic_coulomb && mixed.generic_exchange,
+          "mixed-J hybrid escaped the generic J/K path");
+
+  const auto fallback = direct_jk_value_dispatch(false, true, true, false);
+  require(!fallback.generated_coulomb && fallback.generic_coulomb && fallback.generic_exchange,
+          "missing generated capacity did not retain generic J/K fallback");
+
+  const auto pure_j = direct_jk_value_dispatch(true, true, false, false);
+  require(pure_j.generated_coulomb && !pure_j.generic_coulomb && !pure_j.generic_exchange,
+          "pure J no longer selects the generated Coulomb consumer");
+
+  const auto pure_k = direct_jk_value_dispatch(true, false, true, false);
+  require(!pure_k.generated_coulomb && !pure_k.generic_coulomb && pure_k.generic_exchange,
+          "K-only request selected an unrelated Coulomb consumer");
 }
 
 void device_selection() {
@@ -295,7 +318,9 @@ void direct_providers(bool through_f_response) {
             compare(dka, eka);
             compare(dkb, ekb);
             direct_device(plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
-            if (j && !k) {
+            if (j) {
+              // Generated-capable value plans must preserve independent J/K
+              // numerics when J and K are dispatched through separate sources.
               direct_device(pure_j_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
               direct_device(fallback_plan.get(), spec, packed_a, packed_b, ej, eka, ekb);
             }
@@ -369,6 +394,7 @@ int main(int argc, char** argv) {
     require(argc == 1 || (argc == 2 && std::string(argv[1]) == "--through-f-response"),
             "expected optional --through-f-response");
     const bool through_f_response = argc == 2;
+    direct_value_dispatch_selection();
     device_selection();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "
