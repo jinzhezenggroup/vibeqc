@@ -29,10 +29,13 @@ def test_cpu_ao_radial_factor_is_reused_across_requested_jets() -> None:
     assert body.index("double r2 = 0;") < radial
 
 
-def test_legal_jet_extents_do_not_restore_value_only_runtime_dispatch() -> None:
+def test_legal_jet_extents_reuse_axis_derivatives_without_value_only_table() -> None:
     body = _evaluate_body()
     assert "std::array<double, JetCount> values{};" in body
-    assert "JetCount == 1 ? 0U : derivatives[jet][k]" in body
+    assert "if constexpr (JetCount == 1)" in body
+    assert "std::array<std::array<double, MaxDerivative + 1>, 3> axis{};" in body
+    assert "axis[k][derivative] = differentiated_power" in body
+    assert "term *= axis[k][derivatives[jet][k]];" in body
     for jets in (1, 4, 10, 20):
         assert f"evaluate_jets.template operator()<{jets}>()" in body
 
@@ -49,3 +52,19 @@ def test_cpu_ao_radial_exp_work_census() -> None:
         old_exp_calls = primitive_evaluations * jets
         new_exp_calls = primitive_evaluations
         assert old_exp_calls // new_exp_calls == jets
+
+
+def test_cpu_ao_axis_derivative_work_census() -> None:
+    # The original jet-major loop re-evaluated one differentiated polynomial
+    # per axis and requested jet. Reuse keeps the value-only path unchanged and
+    # computes each unique derivative order once per Cartesian axis.
+    expected = {
+        0: (3, 3),
+        1: (12, 6),
+        2: (30, 9),
+        3: (60, 12),
+    }
+    for order, (old_calls, new_calls) in expected.items():
+        assert old_calls == 3 * _jet_count(order)
+        assert new_calls == 3 * (1 if order == 0 else order + 1)
+        assert new_calls <= old_calls
