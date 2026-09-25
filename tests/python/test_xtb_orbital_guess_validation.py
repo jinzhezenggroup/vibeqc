@@ -177,7 +177,10 @@ Candidate run_candidate(const core::System& system, const scf::PreparedFockPlan&
 }
 
 
-void validate_transition_metal_d_shell_translation() {
+void validate_closed_shell_d_shell_translation() {
+  // Pinned GFN2 Ne carries an unoccupied 3d polarization shell; pairing it
+  // with He keeps the probe closed-shell while making the inter-center d/s
+  // block sensitive to spherical ordering and radial normalization.
   const std::array<std::int32_t, 2> atomic_numbers{10, 2};
   const std::array<double, 6> positions{
       0.0, 0.0, 0.0,
@@ -240,7 +243,7 @@ void validate_transition_metal_d_shell_translation() {
 }
 
 int main() {
-  validate_transition_metal_d_shell_translation();
+  validate_closed_shell_d_shell_translation();
 
   const std::vector<std::pair<std::string, core::System>> cases{
       {"water", oxygen_hydrogens({{{0, -1.43233673, 1.10715266}},
