@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/types.hpp"
+#include "dft/semilocal_family.hpp"
 #include "scf/cuda_batch.hpp"
 #include "scf/density_fitting.hpp"
 #include "scf/types.hpp"
@@ -139,6 +140,14 @@ ScfResult run_pbe_rsh_uks(const PreparedFockPlan& primary,
 ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                          const dft::MolecularGrid& grid, const ScfOptions& options,
                          const std::vector<double>* initial_density = nullptr);
+
+/** Common CPU entry for curated LDA/PBE/r2SCAN semilocal execution. The typed
+ * family is shared with the prepared CUDA owner; composed B3/RSH/VV10 paths
+ * retain their dedicated composition checks. */
+ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                                   const dft::MolecularGrid& grid, const ScfOptions& options,
+                                   dft::SemilocalFamily family, unsigned spin_channels,
+                                   const std::vector<double>* initial_density = nullptr);
 
 /** UKS counterpart of run_semilocal_rks for qualification execution. */
 ScfResult run_semilocal_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
