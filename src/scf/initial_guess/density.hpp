@@ -60,6 +60,8 @@ Matrix charge_guided_lowdin_density(const core::System& system, const integrals:
 /** Diagnostic and density from metric projection of an occupied source subspace. */
 struct OccupiedProjectionResult {
   Matrix density;
+  /** Row-major C[target AO, projected occupied orbital]. */
+  Matrix coefficients;
   double source_metric_orthogonality_error = 0.0;
   double minimum_projected_norm = 0.0;
   double projection_residual = 0.0;
@@ -79,6 +81,26 @@ OccupiedProjectionResult project_occupied_density(
     std::span<const double> source_overlap, std::span<const double> cross_overlap,
     std::size_t source_nbf, std::span<const double> source_coefficients, std::size_t occupied,
     double occupation = 2.0, double maximum_residual = 0.5);
+
+
+/** Complete an already projected occupied subspace with the lowest independent
+ * target reference orbitals. This is required when a semiempirical source
+ * spans only valence electrons while the target Gaussian calculation is
+ * all-electron. Both supplied coefficient sets use columns as orbitals.
+ */
+struct OccupiedCompletionResult {
+  Matrix density;
+  Matrix coefficients;
+  std::size_t added_orbitals = 0;
+  double minimum_added_norm = 1.0;
+  double metric_orthogonality_error = 0.0;
+};
+
+OccupiedCompletionResult complete_occupied_density(
+    const integrals::IntegralData& target, std::span<const double> seeded_coefficients,
+    std::size_t seeded_occupied, std::span<const double> reference_coefficients,
+    std::size_t target_occupied, double occupation = 2.0,
+    double minimum_complement_norm = 1.0e-6);
 /** Prepare a restricted core guess or a finite, normalized warm density.
  * Supplied density is validated/normalized without reading hcore. Its optional
  * core frame is empty unless explicitly requested; a cold density always has
