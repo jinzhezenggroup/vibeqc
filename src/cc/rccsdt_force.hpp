@@ -79,9 +79,8 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
  * consumer without authorizing a CPU fallback.
  */
 RccsdtForceResult rccsdt_force_cuda(const core::System& system,
-                                    const scf::PhysicalReference& reference,
-                                    const Problem& problem, const SolverResult& cc_result,
-                                    std::span<const double> eps_o,
+                                    const scf::PhysicalReference& reference, const Problem& problem,
+                                    const SolverResult& cc_result, std::span<const double> eps_o,
                                     std::span<const double> eps_v, std::size_t max_bytes,
                                     int device_id, std::size_t derivative_stage_budget,
                                     double denominator_threshold = 1e-10);

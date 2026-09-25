@@ -185,16 +185,15 @@ class RccsdtPrepared final : public PreparedCalculation {
         const auto force_denominator_threshold =
             descriptor_.ccsd_denominator_threshold ? descriptor_.ccsd_denominator_threshold : 1e-10;
         constexpr std::size_t kCudaDerivativeStageBudget = 64ULL << 20;
-        auto force =
-            execution_.cuda_requested()
-                ? cc::rccsdt_force_cuda(
-                      system_, *state.reference, state.problem, state.solved, state.eps_o,
-                      state.eps_v, state.budget, execution_.device_id(),
-                      std::min(state.budget, kCudaDerivativeStageBudget),
-                      force_denominator_threshold)
-                : cc::rccsdt_force_cpu(system_, *state.reference, state.problem, state.solved,
-                                       state.eps_o, state.eps_v, state.budget,
-                                       force_denominator_threshold);
+        auto force = execution_.cuda_requested()
+                         ? cc::rccsdt_force_cuda(system_, *state.reference, state.problem,
+                                                 state.solved, state.eps_o, state.eps_v,
+                                                 state.budget, execution_.device_id(),
+                                                 std::min(state.budget, kCudaDerivativeStageBudget),
+                                                 force_denominator_threshold)
+                         : cc::rccsdt_force_cpu(system_, *state.reference, state.problem,
+                                                state.solved, state.eps_o, state.eps_v,
+                                                state.budget, force_denominator_threshold);
         state.result.forces = std::move(force.forces);
         diagnostic.response_iterations = force.orbital_response.iterations;
         diagnostic.response_restarts = force.orbital_response.restarts;
