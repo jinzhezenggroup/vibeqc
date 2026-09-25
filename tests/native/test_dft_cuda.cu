@@ -61,12 +61,14 @@ struct Fixture {
   std::uint64_t generation{};
   Fixture(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional, bool uks,
           std::size_t tile, CudaXcAoPrecision ao_precision = CudaXcAoPrecision::Fp64,
-          bool response = false)
-      : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision)) {
+          bool response = false, double exchange_scale = 1.0, double correlation_scale = 1.0)
+      : layout(cuda_xc_layout(basis, grid, functional, uks, tile, ao_precision, exchange_scale,
+                              correlation_scale)) {
     try {
       if (response)
         layout = cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
-                                      functional, uks, tile, true, ao_precision);
+                                      functional, uks, tile, true, ao_precision, exchange_scale,
+                                      correlation_scale);
       check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
       check(cudaMalloc(&arena, layout.device_bytes + 64));
       check(cudaMemset(static_cast<char*>(arena) + layout.device_bytes, 0x5a, 64));
@@ -134,10 +136,13 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto v = fixture.potential();
   const auto& l = fixture.layout;
   if (l.spins == 1) {
-    const auto ref = l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
-                     : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
-                     : l.functional == 1U ? integrate_pbe_rks_with_tail(basis, grid, d, 17)
-                                          : integrate_lda_xc_pw_rks(basis, grid, d, 17);
+    const auto ref =
+        l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
+        : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
+        : l.functional == 1U
+            ? integrate_pbe_rks_with_tail_scaled(basis, grid, d, 17, {}, l.exchange_scale,
+                                                 l.correlation_scale)
+            : integrate_lda_xc_pw_rks(basis, grid, d, 17);
     close(result.energy, ref.energy, "RKS CPU/CUDA XC energy");
     close(result.electrons[0] + result.electrons[1], ref.electrons, "RKS electrons");
     for (std::size_t i = 0; i < v.size(); ++i)
@@ -147,8 +152,10 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
     const auto ref = l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
                      : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
-                     : l.functional == 1U ? integrate_pbe_uks(basis, grid, a, b, 17)
-                                          : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
+                     : l.functional == 1U
+                         ? integrate_pbe_uks_scaled(basis, grid, a, b, 17, l.exchange_scale,
+                                                    l.correlation_scale)
+                         : integrate_lda_xc_pw_uks(basis, grid, a, b, 17);
     close(result.energy, ref.energy, "UKS CPU/CUDA XC energy");
     for (unsigned s = 0; s < 2; ++s) {
       close(result.electrons[s], ref.electrons[s], "UKS electrons");
@@ -571,6 +578,20 @@ int main(int argc, char** argv) {
       }
       require(response_rejected, "unqualified response FP32-compute AO candidate was accepted");
     }
+    // PBE0's semilocal branch is 0.75 PBE exchange + full PBE correlation.
+    // This gate isolates CUDA XC scaling from exact-K composition in the next stack layer.
+    for (bool uks : {false, true}) {
+      Fixture scaled_pbe(basis, grid, 1U, uks, 17, CudaXcAoPrecision::Fp64, false, 0.75, 1.0);
+      compare(scaled_pbe, basis, grid, density(basis.nao, uks ? 2 : 1));
+    }
+    bool scaled_r2scan_rejected = false;
+    try {
+      (void)cuda_xc_layout(basis, grid, 2U, false, 17, CudaXcAoPrecision::Fp64, 0.75, 1.0);
+    } catch (const std::invalid_argument&) {
+      scaled_r2scan_rejected = true;
+    }
+    require(scaled_r2scan_rejected, "unqualified scaled meta-GGA CUDA XC was accepted");
+
     for (std::uint32_t functional : {0U, 1U, 2U, 4U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
