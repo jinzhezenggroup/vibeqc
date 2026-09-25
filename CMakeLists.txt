@@ -33,6 +33,8 @@ option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
        "Share native direct numerical code through a bounded NVIDIA device link" ON)
 option(VIBEQC_CUDA_FAST_COMPILE
        "Use compiler-oriented CUDA options (never for release measurements)" OFF)
+option(VIBEQC_ENABLE_CXX_PCH
+       "Precompile stable standard-library headers for host C++ compilation" OFF)
 set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
     "Compiler cache launcher: auto, off, or an executable name/path")
 set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
@@ -249,6 +251,11 @@ target_include_directories(vibeqc
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+if(VIBEQC_ENABLE_CXX_PCH)
+  target_precompile_headers(vibeqc PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp>")
+endif()
 
 target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
