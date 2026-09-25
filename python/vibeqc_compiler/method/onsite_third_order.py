@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from vibeqc_compiler.tensor.ad_program import linearize
 from vibeqc_compiler.tensor.ir import constant, divide, input_tensor, multiply
 from vibeqc_compiler.tensor.program import Program
 from vibeqc_compiler.tensor.types import TensorSpec
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 ONSITE_THIRD_ORDER_FP64_ORDER = "q2=q*q; potential=q2*gamma3; energy=(q2*q*gamma3)/3"
 
