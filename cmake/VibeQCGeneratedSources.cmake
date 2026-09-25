@@ -572,6 +572,19 @@ macro(vibeqc_register_cuda_generated_sources target)
     ARGS --output "${VIBEQC_DIRECT_HIGH_ORDER_PAIR_GRADIENT_HEADER}"
     COMMENT "Generating compiler-owned Direct-HF high-order pair-gradient helper")
 
+  set(VIBEQC_B3LYP_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_b3lyp_device.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_b3lyp_cuda.py"
+    OUTPUTS "${VIBEQC_B3LYP_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/semilocal_codegen.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/b3lyp_production_policy.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/spec.py"
+    ARGS --output "${VIBEQC_B3LYP_CUDA_HEADER}")
+
   set(VIBEQC_R2SCAN_CUDA_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_r2scan_device.cuh")
   vibeqc_register_generated_sources(
