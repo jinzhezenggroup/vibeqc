@@ -75,7 +75,9 @@ def _emit_component(program, type_name: str, function_name: str) -> str:
     )
 
 
-def emit_split_hybrid_device(identifier: str) -> str:
+def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str, ...]]:
+    """Return namespace body, type name and selected feature ABI for one method."""
+
     method = build_split_global_hybrid(identifier)
     if method.exchange.family != method.correlation.family:
         raise MapleImportError("split hybrid CUDA components use different families")
@@ -107,12 +109,8 @@ def emit_split_hybrid_device(identifier: str) -> str:
     correlation = _emit_component(
         method.correlation, type_name, f"{function_name}_correlation"
     )
-    return "\n".join(
+    body = "\n".join(
         [
-            "// Generated from pinned Libxc split global-hybrid sources; do not edit.",
-            "#pragma once",
-            "#include <cmath>",
-            "namespace vibeqc::dft::generated {",
             f"struct {type_name} {{",
             "  double energy_density{};",
             f"  double feature_derivative[{len(selected)}]{{}};",
@@ -131,6 +129,21 @@ def emit_split_hybrid_device(identifier: str) -> str:
             "        exchange.feature_derivative[i] + correlation.feature_derivative[i];",
             "  return out;",
             "}",
+            "",
+        ]
+    )
+    return body, type_name, selected
+
+
+def emit_split_hybrid_device(identifier: str) -> str:
+    body, _, _ = emit_split_hybrid_device_body(identifier)
+    return "\n".join(
+        [
+            "// Generated from pinned Libxc split global-hybrid sources; do not edit.",
+            "#pragma once",
+            "#include <cmath>",
+            "namespace vibeqc::dft::generated {",
+            body.rstrip("\n"),
             "}  // namespace vibeqc::dft::generated",
             "",
         ]
