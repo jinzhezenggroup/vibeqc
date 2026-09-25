@@ -298,11 +298,12 @@ def qualify_compiled_cpu(
                 if aligned
                 else float("inf")
             )
+            finite_observed = bool(np.isfinite(observed).all())
             smoke_pass = (
                 execution_reason is None
                 and metadata_ok
                 and aligned
-                and np.isfinite(observed).all()
+                and finite_observed
                 and max_error <= absolute_tolerance
             )
             finite_error = max_error if np.isfinite(max_error) else 1.0e300
@@ -310,7 +311,7 @@ def qualify_compiled_cpu(
                 "status": "pass" if smoke_pass else "fail",
                 "input_identity": input_identity,
                 "expected": expected,
-                "observed": observed if aligned else [0.0] * len(expected),
+                "observed": observed if finite_observed else [],
                 "absolute_tolerance": absolute_tolerance,
                 "maximum_absolute_error": finite_error,
             }
