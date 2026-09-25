@@ -825,9 +825,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
                    ? scf::run_pbe_uks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_)
                    : scf::run_pbe_rks_nonlocal(fock_, basis_, grid_, options_, seed, *nonlocal_);
     else
-      native = scf::run_curated_semilocal_ks(
-          fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
-          execution_plan_.spin_channels, seed);
+      native = scf::run_curated_semilocal_ks(fock_, basis_, grid_, options_,
+                                             execution_plan_.semilocal_family,
+                                             execution_plan_.spin_channels, seed);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
