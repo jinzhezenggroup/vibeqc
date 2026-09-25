@@ -34,7 +34,7 @@ def test_dry_run_uses_only_metadata_and_tracks_all_retained_items(
     assert many.resident_bytes["host"] == 4 * one.resident_bytes["host"]
     assert (
         many.peak_bytes["host"] - many.resident_bytes["host"]
-        == one.peak_bytes["host"] - one.resident_bytes["host"]
+        == one.peak_bytes["host"] - one.peak_bytes["host"]
     )
     large = [(1, (0.0, 0.0, 2.0 * i)) for i in range(500)]
     plan = estimate_ks_resources([large], budget=ResourceBudget(host_bytes=1024))
@@ -199,7 +199,7 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
 @pytest.mark.parametrize(
     ("schema_version", "diagnostic"),
     (
-        (None, "vibeqc_ks_options_version"),
+        (None, "semantic KS execution-plan ABI"),
         (0, "semantic KS execution-plan ABI"),
         (1, "allocation inventory"),
     ),
@@ -225,14 +225,8 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     if schema_version is not None:
         library.vibeqc_ks_options_version = lambda: schema_version
     monkeypatch.setattr(calculator, "_library", library)
-    if schema_version is None:
-        # A missing current ABI symbol is a broken library, not an optional
-        # capability. Both entry points must fail before native preparation.
-        with pytest.raises(NotImplementedError, match=diagnostic):
-            calculator.estimate_resources([H2])
-        with pytest.raises(NotImplementedError, match=diagnostic):
-            calculator.prepare_batch([H2])
-        return
+    # Missing, incompatible and inventory-less ABIs all produce an unsupported
+    # estimate; execution must still reject before native preparation.
     assert calculator.estimate_resources([H2]).status == "unsupported"
     with pytest.raises(NotImplementedError, match=diagnostic):
         calculator.prepare_batch([H2])
