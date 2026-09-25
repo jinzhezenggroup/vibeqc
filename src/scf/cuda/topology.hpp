@@ -58,7 +58,8 @@ std::size_t checked_expanded_primitive_references(const std::vector<core::System
  * transforms and resident task tables; public AO expansion remains intact. */
 bool pack_host_batch(const std::vector<core::System>& systems,
                      const std::vector<const std::vector<double>*>& initial_densities,
-                     HostBatch& host, bool unrestricted = false, bool matrix_direct = false);
+                     HostBatch& host, bool unrestricted = false, bool matrix_direct = false,
+                     bool require_direct_transform = false);
 
 /** Compare immutable topology; coordinates and warm state are checked separately by replay. */
 bool same_topology(const HostBatch& first, const HostBatch& second);

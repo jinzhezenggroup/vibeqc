@@ -4,7 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "molecule/basis.hpp"
 #include "scf/cuda/arena.hpp"
+#include "scf/cuda/topology.hpp"
 #include "scf/cuda_batch.hpp"
 #include "vibeqc/vibeqc.h"
 
@@ -57,10 +59,37 @@ void check_spherical_d_uhf() {
   assert(plan_bytes != 0);
 }
 
+void check_small_spherical_force_packs_direct_transform() {
+  vibeqc::core::System system;
+  system.atoms = {{2, {0.0, 0.0, -0.7}}, {1, {0.0, 0.0, 0.7}}};
+  system.shells = {
+      {0, 0, {{1.5, 1.0}}},
+      {0, 2, {{0.8, 1.0}}},
+      {1, 0, {{1.2, 1.0}}},
+  };
+  system.charge = 1;
+  system.multiplicity = 1;
+  system.basis_representation = VIBEQC_BASIS_SPHERICAL;
+  std::string detail;
+  assert(vibeqc::molecule::validate_and_normalize(system, detail) == VIBEQC_STATUS_SUCCESS);
+
+  std::vector<const std::vector<double>*> no_warm(1, nullptr);
+  vibeqc::scf::HostBatch energy_host;
+  assert(vibeqc::scf::pack_host_batch({system}, no_warm, energy_host, false, false, false));
+  assert(energy_host.nbf == 7 && energy_host.direct_nbf == 8);
+  assert(energy_host.ao_to_direct_transform.empty());
+
+  vibeqc::scf::HostBatch force_host;
+  assert(vibeqc::scf::pack_host_batch({system}, no_warm, force_host, false, false, true));
+  assert(force_host.nbf == 7 && force_host.direct_nbf == 8);
+  assert(force_host.ao_to_direct_transform.size() == 7 * 8);
+}
+
 }  // namespace
 
 int main() {
   check_h2_cartesian_rhf();
   check_spherical_d_uhf();
+  check_small_spherical_force_packs_direct_transform();
   return 0;
 }

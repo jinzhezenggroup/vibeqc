@@ -335,7 +335,7 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
   }
   HostBatch candidate;
   if (!pack_host_batch(systems, initial_densities, candidate, unrestricted,
-                       options.export_physical_reference)) {
+                       options.export_physical_reference, options.compute_forces)) {
     std::vector<RhfBucketItem> outputs(systems.size());
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
     return outputs;
