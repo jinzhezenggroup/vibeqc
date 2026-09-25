@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "cc/rccsdt_force.hpp"
 #include "cc/solver.hpp"
 #include "generated_rccsd_cpu.hpp"
 #include "molecule/basis.hpp"
@@ -371,15 +372,56 @@ class RccsdPrepared final : public PreparedCalculation {
   Result execute(bool compute_forces) override {
     std::lock_guard<std::mutex> lock(mutex_);
     last_.reset();
-    if (compute_forces)
+    if (compute_forces && execution_.cuda_requested())
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "RCCSD exposes energy only; analytic forces are not implemented");
+                        "native RCCSD CUDA analytic forces are not promoted yet");
+    if (compute_forces && molecule::ao_count(system_) > 12)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "native RCCSD forces are qualified only through 12 AOs");
+
     auto state = execute_rccsd_prepared(execution_, system_, reference_options_, solver_options_,
                                         reference_capacity_);
     last_ = state.diagnostic;
     if (state.solved.status == cc::SolveStatus::NumericalFailure)
       throw MethodError(VIBEQC_STATUS_NUMERICAL_FAILURE, state.solved.reason);
-    return state.result;
+    if (!state.solved.converged() || !compute_forces) return state.result;
+
+    try {
+      if (!state.reference)
+        throw std::runtime_error("RCCSD force owner lost the converged RHF reference");
+      auto force =
+          cc::rccsd_force_cpu(system_, *state.reference, state.problem, state.solved, state.budget);
+      state.result.forces = std::move(force.forces);
+      auto diagnostic = state.diagnostic;
+      diagnostic.response_iterations = force.orbital_response.iterations;
+      diagnostic.response_restarts = force.orbital_response.restarts;
+      diagnostic.response_absolute_residual =
+          std::max(force.orbital_response.residual_norm, force.independent_orbital_residual);
+      diagnostic.response_relative_residual = force.orbital_response.relative_residual;
+      diagnostic.response_workspace_bytes = force.orbital_response.workspace_bytes;
+      diagnostic.measured_response_workspace_peak_bytes =
+          force.orbital_response.measured_workspace_peak_bytes;
+      diagnostic.response_workspace_allocation_count =
+          force.orbital_response.workspace_allocation_count;
+      diagnostic.planned_endpoint_peak_bytes = std::max<std::uint64_t>(
+          diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
+      diagnostic.force_provenance_flags = 0x7;
+      diagnostic.numeric_capacity_bytes =
+          std::max<std::uint64_t>(diagnostic.numeric_capacity_bytes, force.numeric_capacity_bytes);
+      execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Host,
+                                      force.numeric_capacity_bytes);
+      execution_.observe_workspace_peak(runtime::ExecutionMemorySpace::Host,
+                                        force.orbital_response.workspace_bytes);
+      std::copy_n(force.response_operator_hash.c_str(),
+                  std::min<std::size_t>(64, force.response_operator_hash.size()),
+                  diagnostic.response_operator_hash);
+      last_ = diagnostic;
+      return state.result;
+    } catch (const std::length_error& error) {
+      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, error.what());
+    } catch (const std::bad_alloc&) {
+      throw MethodError(VIBEQC_STATUS_OUT_OF_MEMORY, "RCCSD force workspace allocation failed");
+    }
   }
 
  private:
@@ -419,9 +461,6 @@ class RccsdPreparedBatch final : public PreparedBatch {
   std::vector<BatchItemResult> execute(const Coordinates& coordinates,
                                        bool compute_forces) override {
     invalidate_result();
-    if (compute_forces)
-      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                        "RCCSD batch exposes energy only; forces are unsupported");
     if (!coordinates.empty() && coordinates.size() != size())
       throw std::invalid_argument("RCCSD batch coordinates do not match system count");
     std::vector<BatchItemResult> results(size());
@@ -444,7 +483,7 @@ class RccsdPreparedBatch final : public PreparedBatch {
           owners_[index] = std::move(candidate);
           owner_coordinates_[index] = std::move(target_coordinates);
         }
-        result.calculation = owners_[index]->execute(false);
+        result.calculation = owners_[index]->execute(compute_forces);
         result.status = result.calculation.convergence.converged ? VIBEQC_STATUS_SUCCESS
                                                                  : VIBEQC_STATUS_NOT_CONVERGED;
       } catch (...) {
