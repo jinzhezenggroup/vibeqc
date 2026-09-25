@@ -7,6 +7,7 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import Self
 
 import pytest
 
@@ -119,7 +120,7 @@ def test_single_file_write_failure_is_clean_and_retryable(
         def __init__(self, stream: object) -> None:
             self.stream = stream
 
-        def __enter__(self) -> BrokenWriter:
+        def __enter__(self) -> Self:
             self.stream.__enter__()
             return self
 
