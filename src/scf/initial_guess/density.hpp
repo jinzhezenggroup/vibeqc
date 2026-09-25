@@ -82,7 +82,6 @@ OccupiedProjectionResult project_occupied_density(
     std::size_t source_nbf, std::span<const double> source_coefficients, std::size_t occupied,
     double occupation = 2.0, double maximum_residual = 0.5);
 
-
 /** Complete an already projected occupied subspace with the lowest independent
  * target reference orbitals. This is required when a semiempirical source
  * spans only valence electrons while the target Gaussian calculation is
@@ -99,8 +98,7 @@ struct OccupiedCompletionResult {
 OccupiedCompletionResult complete_occupied_density(
     const integrals::IntegralData& target, std::span<const double> seeded_coefficients,
     std::size_t seeded_occupied, std::span<const double> reference_coefficients,
-    std::size_t target_occupied, double occupation = 2.0,
-    double minimum_complement_norm = 1.0e-6);
+    std::size_t target_occupied, double occupation = 2.0, double minimum_complement_norm = 1.0e-6);
 /** Prepare a restricted core guess or a finite, normalized warm density.
  * Supplied density is validated/normalized without reading hcore. Its optional
  * core frame is empty unless explicitly requested; a cold density always has

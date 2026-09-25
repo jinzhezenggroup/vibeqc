@@ -80,8 +80,7 @@ bool convert_cpu_orbitals(const Gfn2RuntimeRequest& request,
   }
 
   const double rounded_electrons = std::round(snapshot.electron_count);
-  if (!std::isfinite(snapshot.electron_count) ||
-      !std::isfinite(snapshot.alpha_electron_count) ||
+  if (!std::isfinite(snapshot.electron_count) || !std::isfinite(snapshot.alpha_electron_count) ||
       !std::isfinite(snapshot.beta_electron_count) || snapshot.electron_count < 0.0 ||
       snapshot.alpha_electron_count < 0.0 || snapshot.beta_electron_count < 0.0 ||
       std::abs(snapshot.alpha_electron_count + snapshot.beta_electron_count -
