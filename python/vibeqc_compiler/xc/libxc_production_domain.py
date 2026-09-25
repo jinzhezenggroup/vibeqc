@@ -4,10 +4,13 @@ This module defines the evidence contract for promoting an imported semilocal
 Libxc registration beyond the interior pointwise domain.  It deliberately does
 not evaluate a functional and never grants production admission by itself.
 
-The profile is structural: every successful production-domain claim must prove
-the exact named boundary matrix for the registration's ingredient set and spin
-layout.  Numerical fixtures and runners live downstream, but their evidence is
-rejected unless it matches this exact versioned profile.
+The profile is structural and first-order: every successful production-domain
+claim must prove energy and vxc across the exact named boundary matrix for the
+registration's ingredient set and spin layout. Full feature Hessians remain
+owned by the independent response stage because some exact density/spin endpoints
+do not have a finite full Hessian. Numerical fixtures and runners live
+downstream, but their evidence is rejected unless it matches this exact versioned
+profile.
 """
 
 from __future__ import annotations
