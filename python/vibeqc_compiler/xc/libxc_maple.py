@@ -58,6 +58,10 @@ _RESERVED = frozenset(
         "gga_exchange",
         "gga_exchange_nsp",
         "mgga_exchange",
+        "mgga_exchange_nsp",
+        "mgga_series_w",
+        "Fermi_D",
+        "Fermi_D_corrected",
         "my_piecewise3",
         "my_piecewise5",
         "m_min",
@@ -815,6 +819,10 @@ class _Evaluator:
             "gga_exchange",
             "gga_exchange_nsp",
             "mgga_exchange",
+            "mgga_exchange_nsp",
+            "mgga_series_w",
+            "Fermi_D",
+            "Fermi_D_corrected",
             "my_piecewise3",
             "my_piecewise5",
             "m_min",
@@ -1539,6 +1547,80 @@ class _Evaluator:
                     self._intrinsic("screen_dens", (rs_expr, -z_expr)), 0, term1
                 )
             return term0 + term1
+        if name == "mgga_exchange_nsp":
+            if len(arguments) != 9 or not isinstance(arguments[0], _FunctionRef):
+                raise MapleImportError(
+                    "mgga_exchange_nsp requires a function and eight scalars"
+                )
+            function = arguments[0]
+            rs, z, xs0, xs1, u0, u1, t0, t1 = arguments[1:]
+            rs_expr, z_expr = self._as_expr(rs), self._as_expr(z)
+            z0 = self._as_expr(self._intrinsic("z_thr", (z_expr,)))
+            z1 = self._as_expr(self._intrinsic("z_thr", (-z_expr,)))
+            term0 = self._lda_x_spin(rs_expr, z0) * self.call(
+                function.name,
+                (
+                    rs_expr,
+                    z0,
+                    self._as_expr(xs0),
+                    self._as_expr(u0),
+                    self._as_expr(t0),
+                ),
+            )
+            term1 = self._lda_x_spin(rs_expr, z1) * self.call(
+                function.name,
+                (
+                    rs_expr,
+                    z1,
+                    self._as_expr(xs1),
+                    self._as_expr(u1),
+                    self._as_expr(t1),
+                ),
+            )
+            term0 = self._select_condition(
+                self._intrinsic("screen_dens", (rs_expr, z_expr)), 0, term0
+            )
+            term1 = self._select_condition(
+                self._intrinsic("screen_dens", (rs_expr, -z_expr)), 0, term1
+            )
+            return term0 + term1
+        if name == "mgga_series_w":
+            if len(arguments) != 3 or not isinstance(arguments[0], tuple):
+                raise MapleImportError(
+                    "mgga_series_w requires a bounded coefficient list, order and scalar"
+                )
+            coefficients, order_raw, t_raw = arguments
+            if not isinstance(order_raw, Fraction) or order_raw.denominator != 1:
+                raise MapleImportError("mgga_series_w order must be an integer constant")
+            order = int(order_raw)
+            if order < 1 or order > len(coefficients) or order > 32:
+                raise MapleImportError("mgga_series_w order exceeds the coefficient list")
+            t = self._as_expr(t_raw)
+            k = self._as_expr(self._name("K_FACTOR_C", {}))
+            w = (k - t) / (k + t)
+            result = self.graph.constant(0)
+            power = self.graph.constant(1)
+            for index in range(order):
+                result = result + self._as_expr(coefficients[index]) * power
+                power = power * w
+            return result
+        if name == "Fermi_D":
+            if len(arguments) != 2:
+                raise MapleImportError("Fermi_D requires reduced gradient and tau")
+            xs, ts = (self._as_expr(value) for value in arguments)
+            return 1 - xs * xs / (8 * ts)
+        if name == "Fermi_D_corrected":
+            if len(arguments) != 2:
+                raise MapleImportError(
+                    "Fermi_D_corrected requires reduced gradient and tau"
+                )
+            xs, ts = (self._as_expr(value) for value in arguments)
+            constant = self._as_expr(self._scalar_binding("params_a_Fermi_D_cnst"))
+            fermi = 1 - xs * xs / (8 * ts)
+            correction = 1 - self.graph.exponential(
+                -4 * ts * ts / (constant * constant)
+            )
+            return fermi * correction
         if len(arguments) != 1:
             raise MapleImportError(f"{name} requires one scalar argument")
         value = self._as_expr(arguments[0])
