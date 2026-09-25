@@ -144,7 +144,7 @@ def _validate_hf_force(program: typing.Any, spin_count: int) -> None:
         (1, 1),
     ):
         raise ValueError("SCF HF-force final sign topology changed")
-    if _kind_signature(force) != ("batch", "coordinate"):
+    if _kind_signature(force) != ("batch", "cartesian"):
         raise ValueError("SCF HF-force output domains changed")
     if tuple(_input_name(node) for node in force.inputs[:2]) != (
         "nuclear_repulsion_derivative",
@@ -171,7 +171,7 @@ def _validate_hf_force(program: typing.Any, spin_count: int) -> None:
             raise ValueError(f"SCF HF-force {name} operands changed")
         if tuple(_kind_signature(node) for node in contraction.inputs) != (
             ("batch", "spin", "ao", "ao"),
-            ("batch", "coordinate", "ao", "ao"),
+            ("batch", "cartesian", "ao", "ao"),
         ):
             raise ValueError(f"SCF HF-force {name} operand layout changed")
     if force.inputs[2].inputs[0].spec.indices[1].space.size != spin_count:
