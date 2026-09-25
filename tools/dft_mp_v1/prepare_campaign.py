@@ -56,8 +56,7 @@ def _check_merged_source(source_commit: str, contract: dict) -> None:
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise ValueError("merged source has invalid DFT-MP-v1 manifest") from error
     require(
-        type(recorded) is dict
-        and recorded.get("contract_sha256") == contract["contract_sha256"],
+        type(recorded) is dict and canonical(recorded) == canonical(contract),
         "merged source does not contain this exact contract",
     )
 
