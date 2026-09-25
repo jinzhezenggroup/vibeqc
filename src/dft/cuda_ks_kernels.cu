@@ -20,12 +20,15 @@ __global__ void reset_control_kernel(unsigned spins, int occupied_alpha, int occ
 }
 
 __global__ void fock_kernel(std::size_t matrix, unsigned spins, const double* hcore,
-                            const double* coulomb, const double* potential,
+                            const double* coulomb, const double* exchange,
+                            double exchange_coefficient, const double* potential,
                             const std::uint8_t* enabled, double* fock) {
   if (enabled != nullptr && *enabled == 0) return;
   for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * matrix;
-       i += std::size_t(blockDim.x) * gridDim.x)
-    fock[i] = hcore[i % matrix] + coulomb[i % matrix] + potential[i];
+       i += std::size_t(blockDim.x) * gridDim.x) {
+    const double exact = exchange != nullptr ? exchange_coefficient * exchange[i] : 0.0;
+    fock[i] = hcore[i % matrix] + coulomb[i % matrix] + exact + potential[i];
+  }
 }
 
 __global__ void stabilize_uks_kernel(std::size_t matrix, const double* overlap,
@@ -40,6 +43,7 @@ __global__ void stabilize_uks_kernel(std::size_t matrix, const double* overlap,
 __global__ void diagnostic_kernel(std::size_t matrix, unsigned spins, const double* density,
                                   const double* proposal, const double* residual,
                                   const double* hcore, const double* overlap, const double* coulomb,
+                                  const double* exchange, double exchange_coefficient,
                                   const double* xc_totals, const int* xc_error, const int* jk_error,
                                   const int* solver_info, const std::uint8_t* enabled,
                                   Scalars* output) {
@@ -58,6 +62,8 @@ __global__ void diagnostic_kernel(std::size_t matrix, unsigned spins, const doub
       const double change = proposal[offset + i] - d;
       result.one_electron += d * hcore[i];
       result.hartree += 0.5 * d * coulomb[i];
+      if (exchange != nullptr)
+        result.exact_exchange += 0.5 * d * exchange_coefficient * exchange[offset + i];
       electrons += d * overlap[i];
       error2 += residual[offset + i] * residual[offset + i];
       result.maximum_residual = fmax(result.maximum_residual, fabs(residual[offset + i]));
@@ -75,7 +81,8 @@ __global__ void diagnostic_kernel(std::size_t matrix, unsigned spins, const doub
   }
   result.residual_rms = sqrt(result.residual_rms);
   result.density_rms = sqrt(result.density_rms);
-  if (!isfinite(result.one_electron) || !isfinite(result.hartree) || !isfinite(result.xc))
+  if (!isfinite(result.one_electron) || !isfinite(result.hartree) ||
+      !isfinite(result.exact_exchange) || !isfinite(result.xc))
     result.failure |= 8;
   *output = result;
 }
@@ -98,8 +105,8 @@ __global__ void advance_kernel(std::size_t matrix, unsigned spins, double nuclea
     copy_density = 0;
     publish_warm = 0;
     const auto iteration = control->iterations + 1U;
-    const double energy =
-        nuclear_repulsion + current->one_electron + current->hartree + current->xc;
+    const double energy = nuclear_repulsion + current->one_electron + current->hartree +
+                          current->exact_exchange + current->xc;
     const double change = fabs(energy - control->previous_energy);
     current->energy_change = change;
     control->iterations = iteration;
@@ -143,11 +150,11 @@ void reset_control(cudaStream_t stream, unsigned spins, int occupied_alpha, int 
 }
 
 void assemble_fock(cudaStream_t stream, std::size_t n, unsigned spins, const double* hcore,
-                   const double* coulomb, const double* potential, const std::uint8_t* enabled,
-                   double* fock) {
+                   const double* coulomb, const double* exchange, double exchange_coefficient,
+                   const double* potential, const std::uint8_t* enabled, double* fock) {
   const auto blocks = std::min<std::size_t>((spins * n * n + 127) / 128, 65535);
-  fock_kernel<<<static_cast<unsigned>(blocks), 128, 0, stream>>>(n * n, spins, hcore, coulomb,
-                                                                 potential, enabled, fock);
+  fock_kernel<<<static_cast<unsigned>(blocks), 128, 0, stream>>>(
+      n * n, spins, hcore, coulomb, exchange, exchange_coefficient, potential, enabled, fock);
 }
 
 void stabilize_uks_proposal(cudaStream_t stream, std::size_t n, const double* overlap,
@@ -160,12 +167,13 @@ void stabilize_uks_proposal(cudaStream_t stream, std::size_t n, const double* ov
 
 void diagnostics(cudaStream_t stream, std::size_t n, unsigned spins, const double* density,
                  const double* proposal, const double* residual, const double* hcore,
-                 const double* overlap, const double* coulomb, const double* xc_totals,
-                 const int* xc_error, const int* jk_error, const int* solver_info,
-                 const std::uint8_t* enabled, Scalars* output) {
-  diagnostic_kernel<<<1, 1, 0, stream>>>(n * n, spins, density, proposal, residual, hcore, overlap,
-                                         coulomb, xc_totals, xc_error, jk_error, solver_info,
-                                         enabled, output);
+                 const double* overlap, const double* coulomb, const double* exchange,
+                 double exchange_coefficient, const double* xc_totals, const int* xc_error,
+                 const int* jk_error, const int* solver_info, const std::uint8_t* enabled,
+                 Scalars* output) {
+  diagnostic_kernel<<<1, 1, 0, stream>>>(
+      n * n, spins, density, proposal, residual, hcore, overlap, coulomb, exchange,
+      exchange_coefficient, xc_totals, xc_error, jk_error, solver_info, enabled, output);
 }
 
 void advance(cudaStream_t stream, std::size_t n, unsigned spins, double nuclear_repulsion,
