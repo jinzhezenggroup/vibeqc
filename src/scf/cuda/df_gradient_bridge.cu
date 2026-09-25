@@ -1094,8 +1094,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // Keep the legacy packed admission predicate stable; a bridge-owned
       // canonical-factor view may extend the explicit packed request only after
       // the local projection/raw-slice capacity gate succeeds.
-      const bool response_packed_pairs =
-          packed_pairs || (packed_request && owned_occupied);
+      const bool response_packed_pairs = packed_pairs || (packed_request && owned_occupied);
       const auto response_derivative_pairs =
           response_packed_pairs ? DfDerivativePairs::packed : derivative_pairs;
       if (factorized_exchange && !response_packed_pairs)
@@ -1519,8 +1518,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                                    count * sizeof(double));
                 runtime::cuda_trace::trace_counter("screening_feature_stream_drains", 1);
                 trace_df_weight_histogram(*shell_o, *shell_x, range.offset, panel_count, n,
-                                          std::span<const double>(features), response_derivative_pairs,
-                                          full_shell_domain);
+                                          std::span<const double>(features),
+                                          response_derivative_pairs, full_shell_domain);
               }
               if (shell_diagnostics) {
                 char panel_name[96];
@@ -1600,7 +1599,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
           },
           borrowed, raw_a, response_packed_pairs,
           response_packed_pairs ? std::span<const std::int64_t>(shell_x->offsets)
-                       : std::span<const std::int64_t>{},
+                                : std::span<const std::int64_t>{},
           packed_block_rows, read_fitted, single_fitted_tensor,
           owned_occupied ? &owned_buffers : nullptr, factorized_exchange));
       if (gradient_copies > 1) {
