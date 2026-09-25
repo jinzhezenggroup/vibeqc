@@ -34,14 +34,15 @@ ROOT = Path(__file__).resolve().parents[2]
 FULL_LIBXC = ROOT / "upstream" / "libxc-fulltree" / "7.0.0"
 
 
-def _fulltree_records(owner: str, maple: str, *, allow_hybrid_exchange: bool = False) -> list[dict]:
+def _fulltree_records(
+    owner: str, maple: str, *, allow_hybrid_exchange: bool = False
+) -> list[dict]:
     return extract_registrations(
         (FULL_LIBXC / "src" / owner).read_text(),
         (FULL_LIBXC / "maple" / "mgga_exc" / maple).read_text(),
         (FULL_LIBXC / "src" / "util.h").read_text(),
         allow_hybrid_exchange=allow_hybrid_exchange,
     )
-
 
 
 def record(source: str = SOURCE) -> dict:
@@ -116,6 +117,12 @@ def test_const_double_arrays_preserve_copy_parameter_layout() -> None:
     result = record(SOURCE.replace("double kappa, mu;", "const double coeffs[2];"))
     assert result["metadata_status"] == "bound"
     assert result["bindings"]["params_a_coeffs"] == ["0.804", repr(float(10 / 81))]
+
+
+def test_default_parameter_array_bound_remains_fail_closed() -> None:
+    result = record(SOURCE.replace("double kappa, mu;", "double coeffs[33];"))
+    assert result["metadata_status"] == "blocked"
+    assert "parameter array exceeds supported dimensions" in result["reason"]
 
 
 @pytest.mark.parametrize(
