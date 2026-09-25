@@ -14,12 +14,49 @@ permissions:
   contents: read
 
 concurrency:
-  group: cumetal-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: cumetal-cuda-${{ github.event_name == 'pull_request' && github.event.pull_request.number || (github.event_name == 'push' || github.event_name == 'merge_group') && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 jobs:
+  merge_queue_liveness:
+    name: Merge queue liveness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      active: ${{ steps.liveness.outputs.active }}
+    steps:
+      - name: Check merge-group ref still exists
+        id: liveness
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" != "merge_group" ]]; then
+            echo "active=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          ref="${GITHUB_REF#refs/}"
+          error_file="$(mktemp)"
+          if gh api --silent "/repos/${GITHUB_REPOSITORY}/git/ref/${ref}" 2>"${error_file}"; then
+            echo "active=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if grep -q '(HTTP 404)' "${error_file}"; then
+            echo "::notice::Merge-group ref ${GITHUB_REF} no longer exists; skipping orphaned CI."
+            echo "active=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "::warning::Unable to verify merge-group ref; running CI fail-open."
+          cat "${error_file}" >&2
+          echo "active=true" >> "${GITHUB_OUTPUT}"
+
   cuda-tests:
     name: CUDA runtime tests (CuMetal / Apple GPU)
+    needs: merge_queue_liveness
+    if: needs.merge_queue_liveness.outputs.active == 'true'
     runs-on: macos-15
     # Keep the 50-minute full-suite step inside a separate finite job budget.
     timeout-minutes: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && 90 || 30 }}
