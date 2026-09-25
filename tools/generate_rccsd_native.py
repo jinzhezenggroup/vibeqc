@@ -952,6 +952,32 @@ def _cuda_kernel(
             f"    const double value=__dmul_rn({coefficient},sum);",
             f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
         ]
+    elif node.op == "transpose":
+        source = node.inputs[0]
+        rank = len(node.spec.indices)
+        axes = tuple(node.attrs["axes"])
+        if len(axes) != rank or sorted(axes) != list(range(rank)):
+            raise ValueError("invalid native RCCSD CUDA transpose permutation")
+        source_coords: list[str | None] = [None] * rank
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [
+                f"    const std::size_t c{axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+        for out_axis, source_axis in enumerate(axes):
+            source_coords[source_axis] = f"c{out_axis}"
+        if any(coord is None for coord in source_coords):
+            raise ValueError("invalid native RCCSD CUDA transpose coordinate map")
+        index = typing.cast("list[str]", source_coords)[0] if source_coords else "0"
+        for coord, spec_index in zip(source_coords[1:], source.spec.indices[1:]):
+            index = f"({index}*{_dim(spec_index)}+{coord})"
+        lines += [
+            f"    const double value=a0[{index}];",
+            f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
+        ]
     else:
         raise ValueError(f"unsupported native RCCSD CUDA op {node.op}")
     lines += ["  }", "}"]
