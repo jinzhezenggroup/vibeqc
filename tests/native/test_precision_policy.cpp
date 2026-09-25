@@ -49,6 +49,7 @@ constexpr double kTestFloat32UnitRoundoff = 5.9604644775390625e-08;
 
 void verify_direct_jk_target_policy() {
   using vibeqc::runtime::CudaTargetInfo;
+  using vibeqc::scf::cuda_policy::bounded_direct_primary_streaming_fock_mask_requested;
   using vibeqc::scf::cuda_policy::direct_jk_bounded_streaming_task_capacity_limit;
   using vibeqc::scf::cuda_policy::DirectJkTuningProfile;
   using vibeqc::scf::cuda_policy::resolve_direct_jk_schedule_policy;
@@ -100,6 +101,25 @@ void verify_direct_jk_target_policy() {
           "unknown bounded scratch has its own conservative fallback");
   require(fallback.persistent_quartet_warps_per_sm == 4U,
           "unknown occupancy uses the conservative four-worker fallback");
+
+  {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "0x15");
+    const auto selected_mask = bounded_direct_primary_streaming_fock_mask_requested();
+    require(selected_mask.has_value() && *selected_mask == 0x15U,
+            "primary streaming diagnostic accepts an explicit class mask");
+  }
+  {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "all");
+    const auto selected_mask = bounded_direct_primary_streaming_fock_mask_requested();
+    require(selected_mask.has_value() &&
+                *selected_mask == std::numeric_limits<std::uint64_t>::max(),
+            "primary streaming diagnostic accepts all generated classes");
+  }
+  {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "invalid");
+    require(!bounded_direct_primary_streaming_fock_mask_requested().has_value(),
+            "malformed primary streaming masks fail closed");
+  }
 
   CudaTargetInfo partial;
   partial.maximum_blocks_per_sm = 2;
