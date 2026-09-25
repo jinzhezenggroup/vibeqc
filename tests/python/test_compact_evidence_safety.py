@@ -5,11 +5,14 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tools import compact_evidence_publications as compact
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def snapshot(root: Path) -> dict[str, bytes]:
