@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import struct
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from vibeqc_compiler.common import d3_data
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def synthetic() -> bytes:
