@@ -64,8 +64,8 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0.0 ||
       correlation_scale < 0.0)
     throw std::invalid_argument("invalid CUDA XC component scale");
-  if (functional > 1U && (exchange_scale != 1.0 || correlation_scale != 1.0))
-    throw std::invalid_argument("scaled meta-GGA CUDA XC is not qualified");
+  if (functional != 1U && (exchange_scale != 1.0 || correlation_scale != 1.0))
+    throw std::invalid_argument("scaled CUDA XC is currently qualified for PBE only");
   if (response && (exchange_scale != 1.0 || correlation_scale != 1.0))
     throw std::invalid_argument("scaled CUDA XC response is not qualified");
   if (response && functional > 1U)
