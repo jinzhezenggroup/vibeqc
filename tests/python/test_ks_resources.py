@@ -228,9 +228,9 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     if schema_version is None:
         # A missing current ABI symbol is a broken library, not an optional
         # capability. Both entry points must fail before native preparation.
-        with pytest.raises(AttributeError, match=diagnostic):
+        with pytest.raises(NotImplementedError, match=diagnostic):
             calculator.estimate_resources([H2])
-        with pytest.raises(AttributeError, match=diagnostic):
+        with pytest.raises(NotImplementedError, match=diagnostic):
             calculator.prepare_batch([H2])
         return
     assert calculator.estimate_resources([H2]).status == "unsupported"
