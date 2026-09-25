@@ -1,3 +1,5 @@
+> **Checkout retention note (2026-09-25):** bulky raw campaign members were moved out of the normal checkout and remain byte-for-byte recoverable from existing Git history. See [the bulk retention manifest](../retention-2026-09-25/bulk.manifest.json) and use `tools/restore_retained_evidence.py` before following links or reproduction steps that require archived members.
+
 # Issue #135: f-shell acceptance on RTX 5090
 
 All 34 classes pass release compilation, complete resource reporting, and independent GPU numerical validation for all eight RHF/UHF Fock/force direct/persistent entry points. The matrix contains 692 fixtures and 5,536 kernel executions. Maximum absolute analytic error is **1.12e-15**; the raw maximum relative error on nonzero references is 1.19e-9. Acceptance uses the recorded combined `atol=rtol=2e-10` floor, with separate translation and finite-difference guards.

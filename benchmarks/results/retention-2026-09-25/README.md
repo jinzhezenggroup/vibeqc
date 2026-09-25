@@ -47,3 +47,19 @@ headroom instead of allowing the removed volume to return unnoticed.
 
 Agent: ChatGPT
 Model: GPT-5.6 Sol
+
+## Bulk campaign archival pass
+
+A second pass removes **758 additional historical campaign members**
+(**27,343,545 bytes; 26.08 MiB**) while retaining
+the small files required by production manifests, tests, user/developer docs,
+and compact decision summaries. These bulk members are recorded in
+[`bulk.manifest.json`](bulk.manifest.json) using the exact Git blob object ID,
+original path, size, and source revision.
+
+The restoration helper accepts this Git-object snapshot directly and verifies
+the reconstructed blob identity before writing. This permits binary NPZ/NPY/GZ
+and large groups of small records to leave the checkout without an external
+archive or Git-history rewrite.
+
+After this pass the aggregate benchmark-results budget is **64 MiB**.

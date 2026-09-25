@@ -40,7 +40,7 @@ def _records(manifest: Path | None) -> list[dict]:
     schema = audit.get("schema")
     if schema == "vibeqc.storage-migration.v1":
         records = audit.get("archives")
-    elif schema in {"vibeqc.evidence-archive.v1", "vibeqc.git-snapshot.v1"}:
+    elif schema in {"vibeqc.evidence-archive.v1", "vibeqc.git-snapshot.v1", "vibeqc.git-object-snapshot.v1"}:
         records = audit.get("files")
     else:
         raise ValueError("unsupported evidence migration manifest")
@@ -58,11 +58,17 @@ def _records(manifest: Path | None) -> list[dict]:
         if entry["path"] in paths:
             raise ValueError("path has no unique verified migration record")
         paths.add(entry["path"])
+        digest_ok = (
+            isinstance(entry.get("git_blob_sha1"), str)
+            and re.fullmatch(r"[0-9a-f]{40}", entry["git_blob_sha1"])
+            if schema == "vibeqc.git-object-snapshot.v1"
+            else isinstance(entry.get("sha256"), str)
+            and re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+        )
         if (
             not isinstance(entry.get("revision"), str)
             or not re.fullmatch(r"[0-9a-f]{40}", entry["revision"])
-            or not isinstance(entry.get("sha256"), str)
-            or not re.fullmatch(r"[0-9a-f]{64}", entry["sha256"])
+            or not digest_ok
             or type(entry.get("bytes")) is not int
             or entry["bytes"] < 0
         ):
@@ -74,7 +80,7 @@ def _records(manifest: Path | None) -> list[dict]:
         for parent in PurePosixPath(path).parents
     ):
         raise ValueError("historical evidence paths conflict")
-    if schema == "vibeqc.git-snapshot.v1" and (
+    if schema in {"vibeqc.git-snapshot.v1", "vibeqc.git-object-snapshot.v1"} and (
         type(audit.get("file_count")) is not int
         or audit["file_count"] != len(result)
         or type(audit.get("total_bytes")) is not int
@@ -106,10 +112,14 @@ def _read(entry: dict) -> bytes:
             f"with git fetch origin {entry['revision']} and retry"
         )
     data = result.stdout
-    if (
-        len(data) != entry["bytes"]
-        or hashlib.sha256(data).hexdigest() != entry["sha256"]
-    ):
+    if len(data) != entry["bytes"]:
+        raise ValueError("historical evidence checksum/size mismatch")
+    if "git_blob_sha1" in entry:
+        header = f"blob {len(data)}\0".encode()
+        actual = hashlib.sha1(header + data).hexdigest()
+        if actual != entry["git_blob_sha1"]:
+            raise ValueError("historical evidence checksum/size mismatch")
+    elif hashlib.sha256(data).hexdigest() != entry["sha256"]:
         raise ValueError("historical evidence checksum/size mismatch")
     return data
 

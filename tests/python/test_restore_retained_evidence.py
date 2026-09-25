@@ -360,3 +360,26 @@ def test_2026_09_21_trim_manifest_tracks_only_removed_git_objects() -> None:
     )
     assert all(entry["checkout"] == "git-history" for entry in audit["files"])
     assert all(not (module.ROOT / record["path"]).exists() for record in records)
+
+def test_git_object_snapshot_restores_by_blob_identity(historical: typing.Any) -> None:
+    root, name, payload, manifest, audit = historical
+    revision = audit["source_revision"]
+    blob = subprocess.check_output(
+        ["git", "rev-parse", f"{revision}:{name}"], cwd=root, text=True
+    ).strip()
+    object_audit = {
+        "schema": "vibeqc.git-object-snapshot.v1",
+        "source_revision": revision,
+        "history_rewritten": False,
+        "file_count": 1,
+        "total_bytes": len(payload),
+        "files": [{"path": name, "bytes": len(payload), "git_blob_sha1": blob}],
+    }
+    manifest.write_text(json.dumps(object_audit))
+    target = module.restore(name, manifest=manifest)
+    assert target.read_bytes() == payload
+    target.unlink()
+    object_audit["files"][0]["git_blob_sha1"] = "0" * 40
+    manifest.write_text(json.dumps(object_audit))
+    with pytest.raises(ValueError, match="checksum"):
+        module.restore(name, manifest=manifest)
