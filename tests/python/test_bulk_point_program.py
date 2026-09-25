@@ -62,9 +62,7 @@ def test_runtime_aot_binding_uses_compact_native_feature_abi(
 
 
 def test_native_domain_version_is_derived_from_runtime_domain() -> None:
-    interior = build_bulk_runtime_program(
-        "GGA_X_PBE_SOL", spin="polarized", order=1
-    )
+    interior = build_bulk_runtime_program("GGA_X_PBE_SOL", spin="polarized", order=1)
     candidate = build_bulk_runtime_program(
         "GGA_X_PBE_SOL",
         spin="polarized",
@@ -73,11 +71,16 @@ def test_native_domain_version_is_derived_from_runtime_domain() -> None:
     )
 
     interior_binding = bulk_point_program.bind_runtime_semilocal_point_program(interior)
-    candidate_binding = bulk_point_program.bind_runtime_semilocal_point_program(candidate)
+    candidate_binding = bulk_point_program.bind_runtime_semilocal_point_program(
+        candidate
+    )
 
     assert interior_binding.domain_version == 1
     assert candidate_binding.domain_version == 2
-    assert interior_binding.to_payload()["domain"] != candidate_binding.to_payload()["domain"]
+    assert (
+        interior_binding.to_payload()["domain"]
+        != candidate_binding.to_payload()["domain"]
+    )
     assert interior_binding.identity != candidate_binding.identity
 
     with pytest.raises(ValueError, match="unsupported native XC domain"):
