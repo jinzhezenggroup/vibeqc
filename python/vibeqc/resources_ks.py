@@ -109,9 +109,14 @@ def _item_host_inventory(
     # Reserve its full eligible footprint even when an experimental XC route
     # declines it; never charge all batch caches as persistent/coexisting state.
     ao_grid_cache = 0
-    if backend == "cpu" and pbe and spins == 1 and n > 0:
-        if points <= _CPU_AO_GRID_CACHE_CAP // 32 // n:
-            ao_grid_cache = byte_product(32, points, n)
+    if (
+        backend == "cpu"
+        and pbe
+        and spins == 1
+        and n > 0
+        and points <= _CPU_AO_GRID_CACHE_CAP // 32 // n
+    ):
+        ao_grid_cache = byte_product(32, points, n)
     # Match CudaKsPlan's retained host staging exactly. Host-unfused owns one
     # density and one Vxc matrix per spin; UKS additionally owns split alpha/
     # beta matrices for the audited CPU integrator.
