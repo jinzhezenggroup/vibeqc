@@ -185,3 +185,68 @@ def test_v9_libxc_erf_smoothing_covers_direct_and_large_a_branches() -> None:
         [direct(x) if x < 1.35 else large(x) for x in points], dtype=float
     )
     np.testing.assert_allclose(actual, expected, rtol=3e-13, atol=3e-15)
+
+def test_minnesota_mgga_series_w_matches_pinned_util_definition() -> None:
+    module = import_maple_source(
+        "f := t -> mgga_series_w(params, 3, t):",
+        bindings={"params": (1.0, -0.5, 0.25)},
+    )
+    graph = Graph()
+    t = graph.variable("t")
+    value = module.call(graph, "f", t)
+    points = np.array((0.2, 1.0, 3.0))
+    actual = np.asarray(evaluate_array_graph(graph, (value,), {"t": points})[0])
+    k = 3.0 / 10.0 * (6.0 * math.pi**2) ** (2.0 / 3.0)
+    w = (k - points) / (k + points)
+    expected = 1.0 - 0.5 * w + 0.25 * w**2
+    np.testing.assert_allclose(actual, expected, rtol=2e-14, atol=2e-15)
+
+
+def test_minnesota_fermi_d_helpers_match_pinned_util_definition() -> None:
+    module = import_maple_source(
+        "f := (x,t) -> Fermi_D(x,t): "
+        "g := (x,t) -> Fermi_D_corrected(x,t):",
+        bindings={"params_a_Fermi_D_cnst": 0.4},
+    )
+    graph = Graph()
+    x, t = graph.variable("x"), graph.variable("t")
+    f = module.call(graph, "f", x, t)
+    g = module.call(graph, "g", x, t)
+    values = {"x": np.array((0.2, 0.7, 1.1)), "t": np.array((0.8, 1.4, 2.0))}
+    actual = np.asarray(evaluate_array_graph(graph, (f, g), values))
+    base = 1.0 - values["x"] ** 2 / (8.0 * values["t"])
+    corrected = base * (
+        1.0 - np.exp(-4.0 * values["t"] ** 2 / (0.4**2))
+    )
+    np.testing.assert_allclose(actual[0], base, rtol=2e-14, atol=2e-15)
+    np.testing.assert_allclose(actual[1], corrected, rtol=2e-14, atol=2e-15)
+
+
+def test_mgga_exchange_nsp_reduces_to_separable_exchange_when_shape_ignores_rs_z() -> None:
+    module = import_maple_source(
+        "g := (x,u,t) -> x + 2*u + 3*t: "
+        "h := (rs,z,x,u,t) -> g(x,u,t): "
+        "f := (rs,z,x0,x1,u0,u1,t0,t1) -> "
+        "mgga_exchange_nsp(h,rs,z,x0,x1,u0,u1,t0,t1)"
+        " - mgga_exchange(g,rs,z,x0,x1,u0,u1,t0,t1):",
+        bindings={
+            "p_a_dens_threshold": 0.0,
+            "p_a_zeta_threshold": np.finfo(float).eps,
+        },
+    )
+    graph = Graph()
+    names = ("rs", "z", "x0", "x1", "u0", "u1", "t0", "t1")
+    variables = tuple(graph.variable(name) for name in names)
+    value = module.call(graph, "f", *variables)
+    data = {
+        "rs": 1.2,
+        "z": 0.2,
+        "x0": 0.4,
+        "x1": 0.7,
+        "u0": 0.1,
+        "u1": 0.3,
+        "t0": 0.8,
+        "t1": 1.1,
+    }
+    assert graph.evaluate(value, data) == pytest.approx(0.0, abs=2e-14)
+
