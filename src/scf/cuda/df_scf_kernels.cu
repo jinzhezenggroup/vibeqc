@@ -172,9 +172,8 @@ __global__ void build_device_density_kernel(std::size_t batch_size, std::size_t 
   // Mirroring can only replace a lower-triangle worker when the complete
   // flat domain is launched. A clipped launch must retain every original write.
   const auto launched = static_cast<std::uint64_t>(gridDim.x) * blockDim.x;
-  const bool symmetric_density =
-      (occupation_weight == 1.0 || occupation_weight == 2.0) &&
-      launched >= batch_size * matrix_elements;
+  const bool symmetric_density = (occupation_weight == 1.0 || occupation_weight == 2.0) &&
+                                 launched >= batch_size * matrix_elements;
   if (symmetric_density && row > column) return;
   const std::size_t offset = system * matrix_elements;
   double value = 0.0;
