@@ -51,7 +51,6 @@ double explicit_residual(const DenseOperator& matrix, std::span<const double> x,
   return vibeqc::response::stable_norm(residual);
 }
 
-
 struct ContractResidentBackend final : vibeqc::response::ResidentKrylovBackend {
   ContractResidentBackend(std::size_t dimension, std::size_t vector_slots,
                           std::size_t resident_bytes)
