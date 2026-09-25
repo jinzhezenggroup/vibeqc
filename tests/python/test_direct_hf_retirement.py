@@ -78,10 +78,31 @@ def test_scientific_family_cannot_claim_independent_oracle_status() -> None:
         validate_retirement_ledger(ROOT, retirement, ownership)
 
 
-def test_order2_pair_gradient_owner_is_retired() -> None:
-    """Keep compiler-owned order-two force algebra out of native CUDA."""
+def test_low_order_force_adapters_are_runtime_only() -> None:
+    """Keep compiler-owned low-order force algebra out of handwritten science."""
+
+    _, ownership = _inputs()
+    roles = {row["path"]: row["role"] for row in ownership["files"]}
+    runtime_adapters = {
+        "src/scf/cuda/direct_force_low_order.cuh",
+        "src/scf/cuda/direct_force_order2.cuh",
+        "src/scf/cuda/direct_force_order3.cuh",
+        "src/scf/cuda/direct_native_psss.cuh",
+    }
+    assert {path: roles[path] for path in runtime_adapters} == {
+        path: "runtime" for path in runtime_adapters
+    }
 
     assert not (ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh").exists()
-    source = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(encoding="utf-8")
+    low_order = (ROOT / "src/scf/cuda/direct_force_low_order.cuh").read_text(encoding="utf-8")
+    assert "generated_weighted_eri::ssss_force" in low_order
+    psss = (ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(encoding="utf-8")
+    assert "generated_weighted_eri::psss_force" in psss
+
+    order2 = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(encoding="utf-8")
     for name in ("psps", "ppss", "dsss"):
-        assert f"generated_weighted_eri::{name}_force" in source
+        assert f"generated_weighted_eri::{name}_force" in order2
+
+    order3 = (ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(encoding="utf-8")
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in order3
