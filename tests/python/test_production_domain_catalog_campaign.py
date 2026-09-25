@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -96,7 +97,7 @@ def test_catalog_summary_counts_status_family_and_blocked_cases() -> None:
 
 
 def test_catalog_run_retains_campaign_and_structural_blocker(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     eligible = functional_capability("GGA_X_PBE_SOL")
     blocked = functional_capability("MGGA_X_JK")
