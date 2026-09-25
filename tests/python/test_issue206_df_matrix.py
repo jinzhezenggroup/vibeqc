@@ -52,7 +52,7 @@ def test_manifest_hashes_requested_library_in_bounded_chunks(
         repeats=5,
         python=sys.executable,
         library=alias,
-        output_dir=tmp_path / "output",
+        output_dir=output,
     )
     assert payload["source"]["native_library"] == {
         "path": str(library.resolve()),
@@ -506,6 +506,8 @@ def test_host_branch_rejection_retains_raw_samples_and_failed_manifest(
     def reject(**kwargs: typing.Any) -> typing.Any:
         raise failure
 
+    # The CLI assigns VIBEQC_LIBRARY directly; restore it after this test.
+    monkeypatch.setenv("VIBEQC_LIBRARY", os.environ.get("VIBEQC_LIBRARY", ""))
     monkeypatch.setattr(host, "host_workloads", reject)
     monkeypatch.setattr(
         sys,
