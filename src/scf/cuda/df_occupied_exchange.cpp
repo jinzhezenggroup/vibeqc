@@ -155,7 +155,8 @@ vibeqc_status build_streamed_projected_exchange(CudaDensityFittingJkPlan& plan, 
 vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& plan,
                                                      const double* density,
                                                      const double* coefficients, std::size_t rank,
-                                                     double weight, std::string& detail) {
+                                                     double weight, bool allow_multiblock,
+                                                     std::string& detail) {
   plan.final_projection_token.reset();
   if (plan.batch_size != 1 || !plan.streamed || !plan.integral_source ||
       !plan.triangular_exchange || plan.metric_full_rank.size() != 1 || !plan.metric_full_rank[0] ||
@@ -167,8 +168,8 @@ vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& p
   }
   const auto schedule =
       df_projected_exchange_schedule(plan.nbf, plan.naux, rank, plan.panel_capacity, true);
-  if (!schedule.rows || schedule.blocks > 2) {
-    detail = "shared DF J/K source lacks bounded projection capacity";
+  if (!df_shared_projected_exchange_schedule_admitted(schedule, allow_multiblock)) {
+    detail = "shared DF J/K source lacks an admitted projected schedule";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   auto error = cudaMemsetAsync(plan.auxiliary_density, 0, plan.naux * sizeof(double), plan.stream);
@@ -182,6 +183,9 @@ vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& p
       build_streamed_projected_exchange(plan, 0, coefficients, rank, true, weight, schedule.rows,
                                         plan.alpha_exchange, detail, density);
   if (status != VIBEQC_STATUS_SUCCESS) return status;
+  runtime::cuda_trace::trace_counter("shared_projected_row_blocks", schedule.blocks);
+  runtime::cuda_trace::trace_counter("shared_projected_regenerated_rows",
+                                     schedule.generated_rows - plan.nbf);
   runtime::cuda_trace::trace_counter("shared_raw_source_values",
                                      schedule.generated_rows * plan.nbf * plan.naux);
   return build_coulomb(plan, density, detail, true);

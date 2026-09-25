@@ -33,6 +33,10 @@ int main() {
   while (std::cin >> n >> a >> rank >> capacity >> triangular) {
     const auto dense = vibeqc::scf::df_streamed_k_panel(n, a, capacity);
     const auto p = vibeqc::scf::df_projected_exchange_schedule(n, a, rank, capacity, triangular);
+    const auto auto_shared =
+        vibeqc::scf::df_shared_projected_exchange_schedule_admitted(p, false);
+    const auto explicit_shared =
+        vibeqc::scf::df_shared_projected_exchange_schedule_admitted(p, true);
     std::size_t loaded = 0;
     std::size_t charged = 0;
     if (p.rows) {
@@ -107,7 +111,8 @@ int main() {
       }
     }
     std::cout << p.rows << ' ' << p.blocks << ' ' << p.generated_rows << ' '
-              << dense.row_tiles << ' ' << dense.output_tiles << ' ' << loaded << ' ' << charged << '\n';
+              << dense.row_tiles << ' ' << dense.output_tiles << ' ' << loaded << ' ' << charged
+              << ' ' << auto_shared << ' ' << explicit_shared << '\n';
   }
 }
 """
@@ -162,9 +167,21 @@ def test_emitted_schedule_minimizes_raw_work(schedule_query: typing.Any) -> None
     ]
     for shape, result in zip(shapes, schedule_query(shapes), strict=True):
         n, a, rank, capacity, triangular = shape
-        rows, blocks, count, dense_rows, dense_q, actual_count, charged_rows = result
+        (
+            rows,
+            blocks,
+            count,
+            dense_rows,
+            dense_q,
+            actual_count,
+            charged_rows,
+            auto_shared,
+            explicit_shared,
+        ) = result
         assert count == actual_count
         assert charged_rows == (n if rows and triangular else 0)
+        assert explicit_shared == bool(rows)
+        assert auto_shared == bool(rows and blocks <= 2)
         # Python and emitted native policy share the contract, while this
         # independent census qualifies its optimum against every legal width.
         expected = projected_exchange_schedule(
@@ -190,10 +207,22 @@ def test_practical_96_atom_capacity_and_rejection(schedule_query: typing.Any) ->
     for result in schedule_query(
         [(768, 3712, 160, 768 * 768 * tile, 1) for tile in (579, 580)]
     ):
-        rows, blocks, count, dense_rows, dense_q, actual_count, charged_rows = result
+        (
+            rows,
+            blocks,
+            count,
+            dense_rows,
+            dense_q,
+            actual_count,
+            charged_rows,
+            auto_shared,
+            explicit_shared,
+        ) = result
         assert (rows, blocks, count, dense_rows, dense_q) == (384, 2, 768, 1, 7)
         assert count == actual_count
         assert charged_rows == 768
+        assert auto_shared == 1
+        assert explicit_shared == 1
         assert (count + charged_rows) * 768 * 3712 == 4_378_853_376
     assert count * 768 * 3712 == 2_189_426_688
     invalid = [
@@ -205,3 +234,23 @@ def test_practical_96_atom_capacity_and_rejection(schedule_query: typing.Any) ->
         (65536, 2, 1, 65536, 1),
     ]
     assert all(row[:3] == (0, 0, 0) for row in schedule_query(invalid))
+
+
+def test_explicit_multiblock_shared_schedule_keeps_auto_bound(
+    schedule_query: typing.Any,
+) -> None:
+    result = schedule_query([(12, 5, 2, 48, 1)])[0]
+    (
+        rows,
+        blocks,
+        count,
+        _dense_rows,
+        _dense_q,
+        actual_count,
+        charged_rows,
+        auto_shared,
+        explicit_shared,
+    ) = result
+    assert (rows, blocks, count, actual_count, charged_rows) == (4, 3, 16, 16, 12)
+    assert auto_shared == 0
+    assert explicit_shared == 1
