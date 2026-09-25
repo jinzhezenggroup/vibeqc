@@ -54,7 +54,8 @@ __device__ inline __noinline__ Scalar eri_cartesian_value(
   if constexpr (std::is_same_v<Scalar, double>) {
     if (range == vibeqc::integrals::CoulombRange::Full)
       fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
-    else if (!fill_range_coulomb<MaximumAngular>(rho, product_p, product_q, range, omega, auxiliary))
+    else if (!fill_range_coulomb<MaximumAngular>(rho, product_p, product_q, range, omega,
+                                                 auxiliary))
       return scalar<Scalar>(NAN);
   } else {
     if (range != vibeqc::integrals::CoulombRange::Full) return scalar<Scalar>(NAN);

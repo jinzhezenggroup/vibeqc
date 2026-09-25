@@ -83,12 +83,11 @@ __device__ inline __noinline__ Scalar contracted_eri_cartesian(
 }
 
 template <unsigned MaximumAngular, typename Scalar>
-__device__ inline Scalar contracted_eri_order(const DeviceBatch& batch, std::int32_t system,
-                                              std::int32_t i, std::int32_t j, std::int32_t k,
-                                              std::int32_t l, std::int64_t derivative_coordinate,
-                                              vibeqc::integrals::CoulombRange range =
-                                                  vibeqc::integrals::CoulombRange::Full,
-                                              double omega = 0.0) {
+__device__ inline Scalar contracted_eri_order(
+    const DeviceBatch& batch, std::int32_t system, std::int32_t i, std::int32_t j, std::int32_t k,
+    std::int32_t l, std::int64_t derivative_coordinate,
+    vibeqc::integrals::CoulombRange range = vibeqc::integrals::CoulombRange::Full,
+    double omega = 0.0) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
   const std::int64_t ao_i = base + i;
@@ -101,9 +100,9 @@ __device__ inline Scalar contracted_eri_order(const DeviceBatch& batch, std::int
   const std::int32_t shell_l = batch.ao_shells[ao_l];
   if (range != vibeqc::integrals::CoulombRange::Full) {
     if constexpr (std::is_same_v<Scalar, double>)
-      return contracted_eri_cartesian<MaximumAngular, Scalar>(
-          batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k, shell_l,
-          derivative_coordinate, range, omega);
+      return contracted_eri_cartesian<MaximumAngular, Scalar>(batch, ao_i, ao_j, ao_k, ao_l,
+                                                              shell_i, shell_j, shell_k, shell_l,
+                                                              derivative_coordinate, range, omega);
     else
       return scalar<Scalar>(NAN);
   }
@@ -141,19 +140,18 @@ __device__ inline Scalar contracted_eri_order(const DeviceBatch& batch, std::int
     }
     return result;
   } else {
-    return contracted_eri_cartesian<MaximumAngular, Scalar>(
-        batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k, shell_l, derivative_coordinate,
-        range, omega);
+    return contracted_eri_cartesian<MaximumAngular, Scalar>(batch, ao_i, ao_j, ao_k, ao_l, shell_i,
+                                                            shell_j, shell_k, shell_l,
+                                                            derivative_coordinate, range, omega);
   }
 }
 
 template <typename Scalar>
-__device__ inline Scalar contracted_eri(const DeviceBatch& batch, std::int32_t system,
-                                        std::int32_t i, std::int32_t j, std::int32_t k,
-                                        std::int32_t l, std::int64_t derivative_coordinate,
-                                        vibeqc::integrals::CoulombRange range =
-                                            vibeqc::integrals::CoulombRange::Full,
-                                        double omega = 0.0) {
+__device__ inline Scalar contracted_eri(
+    const DeviceBatch& batch, std::int32_t system, std::int32_t i, std::int32_t j, std::int32_t k,
+    std::int32_t l, std::int64_t derivative_coordinate,
+    vibeqc::integrals::CoulombRange range = vibeqc::integrals::CoulombRange::Full,
+    double omega = 0.0) {
   const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
   const std::int32_t shell_i = batch.ao_shells[base + i];
   const std::int32_t shell_j = batch.ao_shells[base + j];
@@ -167,43 +165,43 @@ __device__ inline Scalar contracted_eri(const DeviceBatch& batch, std::int32_t s
   switch (maximum) {
     case 0:
       return contracted_eri_order<0, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 1:
       return contracted_eri_order<1, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 2:
       return contracted_eri_order<2, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 3:
       return contracted_eri_order<3, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 4:
       return contracted_eri_order<4, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 5:
       return contracted_eri_order<5, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 6:
       return contracted_eri_order<6, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 7:
       return contracted_eri_order<7, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 8:
       return contracted_eri_order<8, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 9:
       return contracted_eri_order<9, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                             range, omega);
     case 10:
       return contracted_eri_order<10, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                              range, omega);
     case 11:
       return contracted_eri_order<11, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                              range, omega);
     case 12:
       return contracted_eri_order<12, Scalar>(batch, system, i, j, k, l, derivative_coordinate,
-                                                     range, omega);
+                                              range, omega);
   }
   return scalar<Scalar>(0.0);
 }
