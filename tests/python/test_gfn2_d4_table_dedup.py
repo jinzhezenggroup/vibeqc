@@ -18,6 +18,10 @@ def test_gfn2_runtime_reuses_canonical_d4_tables() -> None:
     assert "shared::prepare_d4_cached_weights" in source
     assert "shared::d4_cached_pair_coefficient" in source
     assert "d4_data::kElements" in source
+    assert "d4_math::coordination_parameters" in source
+    assert "d4_math::coordination_pair" in source
+    assert "d4_math::pair_damping" in source
+    assert "d4_math::damping_radius" in source
 
     # Charge interpolation and C6 coefficient science belong to the shared D4
     # owner; the GFN2 runtime keeps only cache/topology traversal.

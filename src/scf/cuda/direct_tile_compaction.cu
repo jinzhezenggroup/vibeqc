@@ -55,15 +55,30 @@ __global__ void compact_active_shell_quartet_tiles_kernel(
     const std::uint32_t* fp32_shell_quartet_tile_offsets,
     std::uint32_t* fp32_shell_quartet_tile_counts,
     ActiveShellQuartetTile* fp32_shell_quartet_tiles) {
-  const std::size_t shell_quartet = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (shell_quartet >= static_cast<std::size_t>(batch.total_shell_quartets)) {
-    return;
+  // An equal-quartet-count batch is launched system-major (grid.y == batch size).
+  // Resolve ownership from blockIdx.y in that case instead of performing one
+  // O(log(batch)) binary search for every shell quartet. Ragged batches keep
+  // the flat traversal and its exact offset lookup.
+  std::int32_t system = 0;
+  std::size_t local_quartet = 0;
+  const bool system_major =
+      batch.batch_size > 1 && gridDim.y == static_cast<unsigned>(batch.batch_size);
+  if (system_major) {
+    system = static_cast<std::int32_t>(blockIdx.y);
+    const std::size_t begin = static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
+    const std::size_t end =
+        static_cast<std::size_t>(batch.system_shell_quartet_offsets[system + 1]);
+    local_quartet = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (local_quartet >= end - begin) return;
+  } else {
+    const std::size_t shell_quartet =
+        static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (shell_quartet >= static_cast<std::size_t>(batch.total_shell_quartets)) return;
+    system = shell_quartet_system(batch, shell_quartet);
+    local_quartet =
+        shell_quartet - static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
   }
-
-  const std::int32_t system = shell_quartet_system(batch, shell_quartet);
   if (active != nullptr && active[system] == 0) return;
-  const std::size_t local_quartet =
-      shell_quartet - static_cast<std::size_t>(batch.system_shell_quartet_offsets[system]);
   std::size_t first_pair_local = 0;
   std::size_t second_pair_local = 0;
   decode_lower_triangle(local_quartet, first_pair_local, second_pair_local);

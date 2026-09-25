@@ -504,6 +504,8 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
   add(target.final_state_reads, value.final_state_reads);
   add(target.synchronizations, value.synchronizations);
   add(target.iterations, value.iterations);
+  add(target.warm_orbital_frames_retained, value.warm_orbital_frames_retained);
+  add(target.warm_orbital_frame_invalidations, value.warm_orbital_frame_invalidations);
   add(target.occupation_stabilized_proposals, value.occupation_stabilized_proposals);
 }
 #endif

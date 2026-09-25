@@ -31,6 +31,10 @@ struct CudaKsTransfers {
   std::uint64_t setup_h2d_bytes{}, density_h2d_bytes{}, scalar_d2h_bytes{}, matrix_d2h_bytes{};
   std::uint64_t final_state_d2h_bytes{}, final_state_reads{};
   std::uint64_t synchronizations{}, iterations{};
+  /** Intermediate orthonormal KS orbital frames retained entirely on device for
+   * a future #991 warm-subspace admission attempt. These are implementation
+   * diagnostics and are not part of the public C transport ABI. */
+  std::uint64_t warm_orbital_frames_retained{}, warm_orbital_frame_invalidations{};
   /** Number of subsequent proposals using the CPU-compatible stationary-cycle
    * shift; cumulative across replays, independent of transfer counts. */
   std::uint64_t occupation_stabilized_proposals{};
