@@ -235,6 +235,13 @@ def test_stage_plan_rejects_missing_or_ambiguous_provider_hashes() -> None:
     source, _ = stages()
     with pytest.raises(ValueError, match="stage provider hashes"):
         replace(source, provider_hashes=())
+    with pytest.raises(ValueError, match="stage provider hashes"):
+        replace(source, provider_hashes=(("orbital.mathematical_identity",),))
+    with pytest.raises(ValueError, match="lowercase SHA-256"):
+        replace(
+            source,
+            provider_hashes=(("orbital.mathematical_identity", "D" * 64),),
+        )
     with pytest.raises(ValueError, match="duplicate stage provider hash names"):
         replace(
             source,
