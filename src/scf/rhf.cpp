@@ -292,8 +292,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
                                                            std::size_t requested_budget,
                                                            bool needs_cuda_response) {
 #if VIBEQC_HAS_CUDA
-  const bool generated =
-      needs_cuda_response;
+  const bool generated = needs_cuda_response;
   return data.resolved_budget.requested_bytes == requested_budget &&
          data.one_electron_gradient_system.has_value() == generated &&
          (!generated || (data.one_electron_gradient_mapping ==
@@ -336,8 +335,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     integrals::IntegralData cartesian_one_electron;
     std::string one_electron_detail;
     const vibeqc_status one_electron_status = build_cuda_one_electron_integrals(
-        cuda_device_id, system, cartesian_one_electron, one_electron_detail,
-        false,
+        cuda_device_id, system, cartesian_one_electron, one_electron_detail, false,
         include_derivatives);
     if (one_electron_status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
     if (one_electron_status != VIBEQC_STATUS_SUCCESS) {
@@ -1677,8 +1675,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
       const vibeqc_status one_electron_batch_status =
           batch_status == VIBEQC_STATUS_SUCCESS
               ? build_cuda_one_electron_integrals_batch(
-                    device_id, orbital_chunk, one_electron_batch, detail,
-                    false,
+                    device_id, orbital_chunk, one_electron_batch, detail, false,
                     include_derivatives)
               : batch_status;
       if (batch_status == VIBEQC_STATUS_SUCCESS &&
@@ -1747,8 +1744,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
             const vibeqc_status retry_one_electron_status =
                 retry_raw_status == VIBEQC_STATUS_SUCCESS
                     ? build_cuda_one_electron_integrals_batch(
-                          device_id, single_orbital, single_one_electron, retry_detail,
-                          false,
+                          device_id, single_orbital, single_one_electron, retry_detail, false,
                           include_derivatives)
                     : retry_raw_status;
             if (retry_raw_status == VIBEQC_STATUS_SUCCESS &&
@@ -1798,8 +1794,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
           }
           integrals::IntegralData cartesian_one_electron;
           const vibeqc_status one_electron_status = build_cuda_one_electron_integrals(
-              device_id, systems[source], cartesian_one_electron, item_detail,
-              false,
+              device_id, systems[source], cartesian_one_electron, item_detail, false,
               include_derivatives);
           if (one_electron_status != VIBEQC_STATUS_SUCCESS) {
             statuses[source] = one_electron_status;
