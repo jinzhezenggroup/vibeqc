@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from vibeqc_compiler.xc.bulk_runtime import (
-    PRODUCTION_CANDIDATE_DOMAIN,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
     build_bulk_runtime_program,
 )
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
@@ -238,7 +238,7 @@ def qualify_functional(
             capability.name,
             spin=spin,
             order=1,
-            domain=PRODUCTION_CANDIDATE_DOMAIN,
+            domain=PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
         )
         for spin in profile.spin_layouts
     }
