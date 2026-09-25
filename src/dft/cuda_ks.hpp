@@ -49,7 +49,7 @@ struct CudaKsTransfers {
  * provider's actual host/device queries are checked before allocation. This
  * shape query performs no CUDA call and allocates no numeric buffers. */
 std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history,
-                                bool exact_exchange = false);
+                                bool exact_exchange = false, bool range_correction = false);
 
 /** Native ordinary-stream LDA/PBE RKS/UKS trajectory. The borrowed common
  * Fock plan must outlive it. Model/grid/functional identity is immutable;
@@ -65,7 +65,8 @@ class CudaKsPlan {
  public:
   CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
              const scf::ScfOptions& options, std::uint32_t functional,
-             std::size_t tile_points = 256);
+             std::size_t tile_points = 256,
+             const scf::PreparedFockPlan* range_correction = nullptr);
   ~CudaKsPlan();
   CudaKsPlan(const CudaKsPlan&) = delete;
   CudaKsPlan& operator=(const CudaKsPlan&) = delete;
