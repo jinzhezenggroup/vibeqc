@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from vibeqc_compiler.method.onsite_third_order import (
     ONSITE_THIRD_ORDER_FP64_ORDER,
     build_onsite_third_order_kernel,
     build_onsite_third_order_primal,
 )
 from vibeqc_compiler.method.xtb import GFN1_PARAMETER_SET
-from vibeqc_compiler.tensor.program import Program
+
+if TYPE_CHECKING:
+    from vibeqc_compiler.tensor.program import Program
 
 GFN1_ES3_VERSION = "gfn1-es3-atom-ir-v1"
 
