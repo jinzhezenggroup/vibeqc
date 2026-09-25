@@ -958,14 +958,14 @@ class PreparedStationaryCudaExecution:
         except Exception:
             stack.close()
             raise
-        artifacts = _unique_prepared_artifacts(
-            (
-                stationary_artifact,
-                grid_artifact,
-                *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
-            )
-        )
         try:
+            artifacts = _unique_prepared_artifacts(
+                (
+                    stationary_artifact,
+                    grid_artifact,
+                    *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+                )
+            )
             self._lease.install(
                 request,
                 tuple(PreparedArtifactBinding.from_artifact(a) for a in artifacts),
