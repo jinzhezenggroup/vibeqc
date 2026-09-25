@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from .bulk_runtime import BulkRuntimeProgram
 
 # v2 isolates adapter symbols per translation unit; scalar AOT identity is unchanged.
-POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v2"
+POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v3"
 
 _NATIVE_DOMAIN_VERSIONS = {
     libxc_bulk.BULK_SEMANTICS: 1,
@@ -154,6 +154,14 @@ class SemilocalPointBinding:
             )
         if type(self.domain_version) is not int or self.domain_version <= 0:
             raise ValueError("domain_version must be a positive integer")
+        expected_domain_version = _NATIVE_DOMAIN_VERSIONS.get(self.variant.domain)
+        if (
+            expected_domain_version is not None
+            and self.domain_version != expected_domain_version
+        ):
+            raise ValueError(
+                "domain_version disagrees with the compiler-owned runtime domain"
+            )
 
     @property
     def ingredient_mask(self) -> int:
