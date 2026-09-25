@@ -70,7 +70,7 @@ def test_explicit_cap_is_not_changed_by_probe(budget_probe: Path, force: bool) -
     assert (response > 0) == force
 
 
-def test_automatic_budget_does_not_promote_to_resident_owner_floor(
+def test_roomy_automatic_budget_retains_source_backed_device_value_floor(
     tmp_path: Path,
 ) -> None:
     compiler = shutil.which("c++")
@@ -87,7 +87,7 @@ int main() {
   const DfResourceEnvelope roomy{8ULL << 30, 8ULL << 30, true};
   const auto automatic = resolve_df_budget(work, roomy, 0);
   const auto resident_floor = df_resident_value_admission_floor(work);
-  assert(automatic.total_bytes < resident_floor);
+  assert(automatic.value_bytes >= resident_floor);
   const auto explicit_cap = resolve_df_budget(work, roomy, 12345);
   assert(explicit_cap.total_bytes == 12345);
   const DfResourceEnvelope tight{256 * mib, 8ULL << 30, true};

@@ -191,6 +191,12 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
   const long double demand = value_demand + response_demand;
   long double response_fraction = demand > 0.0L ? response_demand / demand : 0.5L;
   response_fraction = std::clamp(response_fraction, 0.20L, 0.70L);
+  const auto resident_value_floor = df_resident_value_admission_floor(workload);
+  const auto resident_target =
+      workload.forces ? df_budget_ceiling(static_cast<long double>(resident_value_floor) /
+                                          (1.0L - response_fraction))
+                      : resident_value_floor;
+
   DfResolvedBudget result;
   result.requested_bytes = requested_bytes;
   result.live_resource = resource.live;
@@ -210,10 +216,12 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                          : resource.free_bytes - resource.free_bytes / 2U;
     const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
     const auto available = after_absolute - after_absolute / 4U;
-    // Keep automatic admission on the bounded source-backed workload target.
-    // The resident-owner promotion is intentionally not automatic because its
-    // qualified 768-AO warm-start path changed SCF work counts.
-    result.total_bytes = std::min(workload_target, available);
+    // Keep host preparation source-backed while retaining the device-value
+    // floor when it fits the live post-headroom envelope. Tight devices remain
+    // on the bounded streamed target.
+    const auto admitted_target =
+        resident_target <= available ? std::max(workload_target, resident_target) : workload_target;
+    result.total_bytes = std::min(admitted_target, available);
   } else {
     result.total_bytes = std::min(workload_target, max_fallback);
   }
