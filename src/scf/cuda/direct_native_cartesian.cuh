@@ -106,7 +106,6 @@ __device__ inline Scalar primitive_eri_cartesian(
                                              first_coefficients, second_coefficients);
 }
 
-
 template <unsigned MaximumAngular, typename FirstCoefficients, typename SecondCoefficients>
 __device__ inline __noinline__ double eri_cartesian_range_value(
     double p, double q, double rho, const Vec3<double>& product_p, const Vec3<double>& product_q,
@@ -123,10 +122,9 @@ __device__ inline __noinline__ double eri_cartesian_range_value(
   for (unsigned t = 0; t <= angular_first.x + angular_second.x; ++t) {
     for (unsigned u = 0; u <= angular_first.y + angular_second.y; ++u) {
       for (unsigned v = 0; v <= angular_first.z + angular_second.z; ++v) {
-        const double first_value =
-            first_coefficients[0].at(angular_first.x, angular_second.x, t) *
-            first_coefficients[1].at(angular_first.y, angular_second.y, u) *
-            first_coefficients[2].at(angular_first.z, angular_second.z, v);
+        const double first_value = first_coefficients[0].at(angular_first.x, angular_second.x, t) *
+                                   first_coefficients[1].at(angular_first.y, angular_second.y, u) *
+                                   first_coefficients[2].at(angular_first.z, angular_second.z, v);
         for (unsigned tau = 0; tau <= angular_third.x + angular_fourth.x; ++tau) {
           for (unsigned nu = 0; nu <= angular_third.y + angular_fourth.y; ++nu) {
             for (unsigned phi = 0; phi <= angular_third.z + angular_fourth.z; ++phi) {

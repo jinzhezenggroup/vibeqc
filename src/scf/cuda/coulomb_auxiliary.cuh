@@ -109,10 +109,10 @@ __device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<
  * rounding remain unchanged.
  */
 template <unsigned MaximumAngular>
-__device__ inline bool fill_range_coulomb(
-    double exponent, const Vec3<double>& product, const Vec3<double>& center,
-    vibeqc::integrals::CoulombRange range, double omega,
-    CoulombAuxiliary<double, MaximumAngular>& auxiliary) {
+__device__ inline bool fill_range_coulomb(double exponent, const Vec3<double>& product,
+                                          const Vec3<double>& center,
+                                          vibeqc::integrals::CoulombRange range, double omega,
+                                          CoulombAuxiliary<double, MaximumAngular>& auxiliary) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   if (range == vibeqc::integrals::CoulombRange::Full) return false;
   for (unsigned item = 0; item < CoulombAuxiliary<double, MaximumAngular>::kStateCount; ++item)

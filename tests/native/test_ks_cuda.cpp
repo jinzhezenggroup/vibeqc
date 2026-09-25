@@ -75,14 +75,12 @@ void prepared_cuda_fock_seam() {
   range_spec.coulomb.present = false;
   range_spec.exchange = {true, -0.19, scf::FockOperator::LongRange, 0.33,
                          scf::FockApproximation::Exact};
-  const auto range_resolved =
-      scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 0.0);
+  const auto range_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 0.0);
   const scf::PreparedFockPlan range(system, nullptr, range_resolved, 0);
   require(scf::prepared_cuda_fock_binding(range),
           "unscreened value-only CUDA range exchange lacks the prepared execution binding");
 
-  const auto screened_resolved =
-      scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
+  const auto screened_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
   const scf::PreparedFockPlan screened_range(system, nullptr, screened_resolved, 0);
   require(!scf::prepared_cuda_fock_binding(screened_range),
           "screened CUDA range exchange bypassed the qualification gate");

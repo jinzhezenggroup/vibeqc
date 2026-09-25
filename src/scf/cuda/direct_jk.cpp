@@ -113,8 +113,7 @@ FockBuildSpec direct_jk_strategy(const CudaDirectJkPlan* plan, FockBuildSpec spe
                       "exact direct source cannot execute a fitted provider");
   direct_jk_require(!spec.coulomb.present || spec.coulomb.op == FockOperator::FullRange,
                     "direct CUDA Coulomb supports only the full-range operator");
-  const bool range_exchange =
-      spec.exchange.present && spec.exchange.op != FockOperator::FullRange;
+  const bool range_exchange = spec.exchange.present && spec.exchange.op != FockOperator::FullRange;
   direct_jk_require(!range_exchange || spec.derivative_order == 0,
                     "range-separated CUDA exchange is value-only");
   direct_jk_require(!range_exchange || plan->screening_tolerance == 0.0,
@@ -452,13 +451,12 @@ static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, 
         direct_jk_check(
             enqueue_generated_coulomb(*plan->generated_coulomb, density, beta, coulomb));
       } else {
-        launch_independent_jk_kernel(static_cast<unsigned>(elements), kIndependentJkThreads, 0,
-                                     plan->stream, plan->batch, 0, spec.coulomb.present,
-                                     spec.exchange.present, unrestricted, mixed_j,
-                                     direct_exchange_range(spec.exchange),
-                                     spec.exchange.present ? spec.exchange.omega : 0.0,
-                                     plan->screening_tolerance, plan->bounds, density, beta,
-                                     coulomb, alpha_exchange, beta_exchange);
+        launch_independent_jk_kernel(
+            static_cast<unsigned>(elements), kIndependentJkThreads, 0, plan->stream, plan->batch, 0,
+            spec.coulomb.present, spec.exchange.present, unrestricted, mixed_j,
+            direct_exchange_range(spec.exchange), spec.exchange.present ? spec.exchange.omega : 0.0,
+            plan->screening_tolerance, plan->bounds, density, beta, coulomb, alpha_exchange,
+            beta_exchange);
       }
       direct_jk_check(cudaGetLastError());
       for (const auto* output : outputs)
@@ -508,9 +506,8 @@ static vibeqc_status execute_cuda_direct_jk_range(
       launch_independent_jk_kernel(
           static_cast<unsigned>(density.size()), kIndependentJkThreads, 0, plan->stream,
           plan->batch, begin, spec.coulomb.present, spec.exchange.present, unrestricted, false,
-          direct_exchange_range(spec.exchange),
-          spec.exchange.present ? spec.exchange.omega : 0.0, plan->screening_tolerance,
-          plan->bounds, plan->density, plan->beta, plan->coulomb,
+          direct_exchange_range(spec.exchange), spec.exchange.present ? spec.exchange.omega : 0.0,
+          plan->screening_tolerance, plan->bounds, plan->density, plan->beta, plan->coulomb,
           plan->alpha_exchange, plan->beta_exchange);
       direct_jk_check(cudaGetLastError());
       auto download = [&](std::vector<double>& out, const double* input) {

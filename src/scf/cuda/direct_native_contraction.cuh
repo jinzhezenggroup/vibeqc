@@ -133,7 +133,6 @@ __device__ inline Scalar contracted_eri_order(const DeviceBatch& batch, std::int
   }
 }
 
-
 template <unsigned MaximumAngular>
 __device__ inline __noinline__ double contracted_range_eri_cartesian(
     const DeviceBatch& batch, std::int64_t ao_i, std::int64_t ao_j, std::int64_t ao_k,
@@ -190,39 +189,55 @@ __device__ inline __noinline__ double contracted_range_eri_cartesian(
 }
 
 template <unsigned MaximumAngular>
-__device__ inline double contracted_range_eri_order(
-    const DeviceBatch& batch, std::int32_t system, std::int32_t i, std::int32_t j, std::int32_t k,
-    std::int32_t l, vibeqc::integrals::CoulombRange range, double omega) {
+__device__ inline double contracted_range_eri_order(const DeviceBatch& batch, std::int32_t system,
+                                                    std::int32_t i, std::int32_t j, std::int32_t k,
+                                                    std::int32_t l,
+                                                    vibeqc::integrals::CoulombRange range,
+                                                    double omega) {
   const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
   const std::int64_t ao_i = base + i, ao_j = base + j, ao_k = base + k, ao_l = base + l;
   const std::int32_t shell_i = batch.ao_shells[ao_i], shell_j = batch.ao_shells[ao_j];
   const std::int32_t shell_k = batch.ao_shells[ao_k], shell_l = batch.ao_shells[ao_l];
-  return contracted_range_eri_cartesian<MaximumAngular>(
-      batch, ao_i, ao_j, ao_k, ao_l, shell_i, shell_j, shell_k, shell_l, range, omega);
+  return contracted_range_eri_cartesian<MaximumAngular>(batch, ao_i, ao_j, ao_k, ao_l, shell_i,
+                                                        shell_j, shell_k, shell_l, range, omega);
 }
 
-__device__ inline double contracted_range_eri(
-    const DeviceBatch& batch, std::int32_t system, std::int32_t i, std::int32_t j, std::int32_t k,
-    std::int32_t l, vibeqc::integrals::CoulombRange range, double omega) {
+__device__ inline double contracted_range_eri(const DeviceBatch& batch, std::int32_t system,
+                                              std::int32_t i, std::int32_t j, std::int32_t k,
+                                              std::int32_t l, vibeqc::integrals::CoulombRange range,
+                                              double omega) {
   const std::int64_t base = static_cast<std::int64_t>(system) * batch.nbf;
   const unsigned maximum = batch.shell_angular[batch.ao_shells[base + i]] +
                            batch.shell_angular[batch.ao_shells[base + j]] +
                            batch.shell_angular[batch.ao_shells[base + k]] +
                            batch.shell_angular[batch.ao_shells[base + l]];
   switch (maximum) {
-    case 0: return contracted_range_eri_order<0>(batch, system, i, j, k, l, range, omega);
-    case 1: return contracted_range_eri_order<1>(batch, system, i, j, k, l, range, omega);
-    case 2: return contracted_range_eri_order<2>(batch, system, i, j, k, l, range, omega);
-    case 3: return contracted_range_eri_order<3>(batch, system, i, j, k, l, range, omega);
-    case 4: return contracted_range_eri_order<4>(batch, system, i, j, k, l, range, omega);
-    case 5: return contracted_range_eri_order<5>(batch, system, i, j, k, l, range, omega);
-    case 6: return contracted_range_eri_order<6>(batch, system, i, j, k, l, range, omega);
-    case 7: return contracted_range_eri_order<7>(batch, system, i, j, k, l, range, omega);
-    case 8: return contracted_range_eri_order<8>(batch, system, i, j, k, l, range, omega);
-    case 9: return contracted_range_eri_order<9>(batch, system, i, j, k, l, range, omega);
-    case 10: return contracted_range_eri_order<10>(batch, system, i, j, k, l, range, omega);
-    case 11: return contracted_range_eri_order<11>(batch, system, i, j, k, l, range, omega);
-    case 12: return contracted_range_eri_order<12>(batch, system, i, j, k, l, range, omega);
+    case 0:
+      return contracted_range_eri_order<0>(batch, system, i, j, k, l, range, omega);
+    case 1:
+      return contracted_range_eri_order<1>(batch, system, i, j, k, l, range, omega);
+    case 2:
+      return contracted_range_eri_order<2>(batch, system, i, j, k, l, range, omega);
+    case 3:
+      return contracted_range_eri_order<3>(batch, system, i, j, k, l, range, omega);
+    case 4:
+      return contracted_range_eri_order<4>(batch, system, i, j, k, l, range, omega);
+    case 5:
+      return contracted_range_eri_order<5>(batch, system, i, j, k, l, range, omega);
+    case 6:
+      return contracted_range_eri_order<6>(batch, system, i, j, k, l, range, omega);
+    case 7:
+      return contracted_range_eri_order<7>(batch, system, i, j, k, l, range, omega);
+    case 8:
+      return contracted_range_eri_order<8>(batch, system, i, j, k, l, range, omega);
+    case 9:
+      return contracted_range_eri_order<9>(batch, system, i, j, k, l, range, omega);
+    case 10:
+      return contracted_range_eri_order<10>(batch, system, i, j, k, l, range, omega);
+    case 11:
+      return contracted_range_eri_order<11>(batch, system, i, j, k, l, range, omega);
+    case 12:
+      return contracted_range_eri_order<12>(batch, system, i, j, k, l, range, omega);
   }
   return NAN;
 }

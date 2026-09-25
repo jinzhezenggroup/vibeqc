@@ -171,11 +171,9 @@ void device_selection() {
     }
 }
 
-
 std::vector<double> reference_range_exchange(const vibeqc::core::System& system,
                                              const std::vector<double>& density,
-                                             vibeqc::integrals::CoulombRange range,
-                                             double omega) {
+                                             vibeqc::integrals::CoulombRange range, double omega) {
   const auto eri = vibeqc::integrals::build_range_eri(system, range, omega);
   const std::size_t n = vibeqc::molecule::ao_count(system);
   std::vector<double> exchange(n * n);
@@ -183,8 +181,7 @@ std::vector<double> reference_range_exchange(const vibeqc::core::System& system,
     for (std::size_t j = 0; j < n; ++j)
       for (std::size_t k = 0; k < n; ++k)
         for (std::size_t l = 0; l < n; ++l)
-          exchange[i * n + j] +=
-              density[k * n + l] * eri[((i * n + k) * n + j) * n + l];
+          exchange[i * n + j] += density[k * n + l] * eri[((i * n + k) * n + j) * n + l];
   return exchange;
 }
 

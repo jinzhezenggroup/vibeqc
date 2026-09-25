@@ -40,10 +40,9 @@ template <bool MixedJ>
 __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begin, bool want_j,
                                       bool want_k, bool unrestricted,
                                       vibeqc::integrals::CoulombRange exchange_range,
-                                      double exchange_omega, double screening,
-                                      const double* bounds, const double* density,
-                                      const double* beta, double* j_out, double* ka_out,
-                                      double* kb_out) {
+                                      double exchange_omega, double screening, const double* bounds,
+                                      const double* density, const double* beta, double* j_out,
+                                      double* ka_out, double* kb_out) {
   __shared__ double sums[3][kIndependentJkThreads];
   const std::size_t n = batch.nbf, matrix = n * n;
   const std::size_t item = system_begin * matrix + blockIdx.x;
@@ -159,9 +158,8 @@ void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_byte
                                   bool want_j, bool want_k, bool unrestricted, bool mixed_j,
                                   vibeqc::integrals::CoulombRange exchange_range,
                                   double exchange_omega, double screening, const double* bounds,
-                                  const double* density,
-                                  const double* beta, double* j_out, double* ka_out,
-                                  double* kb_out) {
+                                  const double* density, const double* beta, double* j_out,
+                                  double* ka_out, double* kb_out) {
   if (mixed_j)
     independent_jk_kernel<true><<<grid, block, shared_bytes, stream>>>(
         batch, system_begin, want_j, want_k, unrestricted, exchange_range, exchange_omega,
