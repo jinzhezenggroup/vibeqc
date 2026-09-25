@@ -129,9 +129,7 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
                 if record["operation"] == "final_state_retained_jk"
             ]
             assert retained_final
-            assert all(
-                record["counters"].get("accepted") for record in retained_final
-            )
+            assert all(record["counters"].get("accepted") for record in retained_final)
             if forces:
                 # Temporary eigenbasis projections never become a resident
                 # symmetric-C force-response lease, even after warm SCF.
