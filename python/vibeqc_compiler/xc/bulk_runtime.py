@@ -122,7 +122,8 @@ class BulkRuntimeSpec:
                 bb = rows["sigma_bb"]
                 sigma_invalid = (
                     (aa < 0) | (bb < 0)
-                    if self.domain in (
+                    if self.domain
+                    in (
                         PRODUCTION_CANDIDATE_DOMAIN,
                         PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
                     )
@@ -131,10 +132,11 @@ class BulkRuntimeSpec:
                 if np.any(sigma_invalid):
                     requirement = (
                         "nonnegative"
-                        if self.domain in (
-                        PRODUCTION_CANDIDATE_DOMAIN,
-                        PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
-                    )
+                        if self.domain
+                        in (
+                            PRODUCTION_CANDIDATE_DOMAIN,
+                            PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
+                        )
                         else "positive"
                     )
                     raise UnsupportedXC(
@@ -150,7 +152,8 @@ class BulkRuntimeSpec:
                 sigma = rows["sigma"]
                 sigma_invalid = (
                     sigma < 0
-                    if self.domain in (
+                    if self.domain
+                    in (
                         PRODUCTION_CANDIDATE_DOMAIN,
                         PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
                     )
@@ -159,10 +162,11 @@ class BulkRuntimeSpec:
                 if np.any(sigma_invalid):
                     requirement = (
                         "nonnegative"
-                        if self.domain in (
-                        PRODUCTION_CANDIDATE_DOMAIN,
-                        PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
-                    )
+                        if self.domain
+                        in (
+                            PRODUCTION_CANDIDATE_DOMAIN,
+                            PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
+                        )
                         else "positive"
                     )
                     raise UnsupportedXC(
@@ -285,9 +289,7 @@ def build_bulk_runtime_program(
     if domain == PRODUCTION_DENSITY_CANDIDATE_DOMAIN:
         catalog = libxc_bulk.read_catalog()
         record = next(
-            item
-            for item in catalog["registrations"]
-            if item["name"] == capability.name
+            item for item in catalog["registrations"] if item["name"] == capability.name
         )
         density_threshold = float(record["bindings"]["p_a_dens_threshold"])
         if not np.isfinite(density_threshold) or density_threshold < 0.0:
