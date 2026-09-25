@@ -433,6 +433,9 @@ def emit_stationary_scientific_kernels(plan: typing.Any) -> str:
 
 
 QUALIFIED_SP_COMPONENTS = ("", "x", "y", "z")
+QUALIFIED_SPD_COMPONENTS = ("", "x", "xx", "xy", "xz", "y", "yy", "yz", "z", "zz")
+QUALIFIED_SPD_AOT_SHARD_WIDTH = 16
+QUALIFIED_SPD_AOT_SHARDS = 23
 QUALIFIED_FUNCTIONALS = (0, 1, 2)
 QUALIFIED_SPINS = ("unpolarized", "polarized")
 QUALIFIED_PARTITION_ITERATIONS = 3
@@ -469,6 +472,19 @@ def qualified_sp_requests() -> tuple[tuple[str, tuple[str, ...]], ...]:
     )
 
 
+def _qualified_component_aot_domain(
+    component_domain: typing.Iterable[str] | None,
+) -> tuple[str, ...] | None:
+    if component_domain is None:
+        return None
+    domain = tuple(component_domain)
+    if domain != QUALIFIED_SPD_COMPONENTS:
+        raise NotImplementedError(
+            "packaged stationary component CUDA currently qualifies the full s/p/d domain only"
+        )
+    return domain
+
+
 def _qualified_aot_plan(functional: int, spin: str) -> StationaryGradientPlan:
     if type(functional) is not int or functional not in QUALIFIED_FUNCTIONALS:
         raise ValueError("AOT stationary functional must be 0, 1, or 2")
@@ -481,9 +497,16 @@ def _qualified_aot_plan(functional: int, spin: str) -> StationaryGradientPlan:
     )
 
 
-def _stationary_aot_name(functional: int, spin: str) -> str:
+def _stationary_aot_name(
+    functional: int,
+    spin: str,
+    *,
+    component_domain: typing.Iterable[str] | None = None,
+) -> str:
     _qualified_aot_plan(functional, spin)
-    return f"{('lda', 'pbe', 'r2scan')[functional]}_{'rks' if spin == 'unpolarized' else 'uks'}"
+    domain = _qualified_component_aot_domain(component_domain)
+    base = f"{('lda', 'pbe', 'r2scan')[functional]}_{'rks' if spin == 'unpolarized' else 'uks'}"
+    return base if domain is None else f"{base}_spd"
 
 
 def stationary_aot_plan_identity(functional: int, *, spin: str) -> str:
@@ -498,7 +521,7 @@ def emit_stationary_aot_cuda(
     spin: str = "unpolarized",
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
 ) -> str:
-    """Emit one qualified all-electron stationary CUDA artifact."""
+    """Emit one qualified all-electron stationary CUDA s/p artifact."""
     if type(iterations) is not int or iterations != QUALIFIED_PARTITION_ITERATIONS:
         raise ValueError(
             "AOT stationary CUDA currently qualifies partition_iterations=3 only"
@@ -514,6 +537,27 @@ def emit_stationary_aot_cuda(
     )
 
 
+def emit_stationary_component_aot_wrapper_cuda(
+    functional: int,
+    *,
+    spin: str = "unpolarized",
+    iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+) -> str:
+    """Emit the small wrapper linked against the fixed packaged s/p/d primitive shards."""
+    if type(iterations) is not int or iterations != QUALIFIED_PARTITION_ITERATIONS:
+        raise ValueError(
+            "AOT stationary CUDA currently qualifies partition_iterations=3 only"
+        )
+    plan = _qualified_aot_plan(functional, spin)
+    return emit_stationary_wrapper_cuda(
+        functional=functional,
+        plan=plan,
+        iterations=iterations,
+        primitive_shards=QUALIFIED_SPD_AOT_SHARDS,
+        primitive_shard_width=QUALIFIED_SPD_AOT_SHARD_WIDTH,
+    )
+
+
 def stationary_aot_source_identity(
     functional: int,
     *,
@@ -521,7 +565,7 @@ def stationary_aot_source_identity(
     spin: str = "unpolarized",
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
 ) -> str:
-    """Content identity shared by checkout builds and installed artifacts."""
+    """Content identity shared by checkout builds and installed s/p artifacts."""
     return canonical_hash(
         emit_stationary_aot_cuda(
             functional,
@@ -532,22 +576,38 @@ def stationary_aot_source_identity(
     )
 
 
-@lru_cache(maxsize=6)
+@lru_cache(maxsize=12)
 def stationary_aot_contract_identity(
     functional: int,
     *,
     spin: str = "unpolarized",
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+    component_domain: tuple[str, ...] | None = None,
 ) -> str:
     """Identity every non-numeric compiler input affecting a packaged artifact."""
     if iterations != QUALIFIED_PARTITION_ITERATIONS:
         raise ValueError(
             "AOT stationary CUDA currently qualifies partition_iterations=3 only"
         )
+    domain = _qualified_component_aot_domain(component_domain)
     plan = _qualified_aot_plan(functional, spin)
+    component = (
+        {}
+        if domain is None
+        else {
+            "component_domain": domain,
+            "primitive_shard_width": QUALIFIED_SPD_AOT_SHARD_WIDTH,
+            "primitive_shards": QUALIFIED_SPD_AOT_SHARDS,
+            "primitive_schedule": "first_derivative_schedule.s/p/d",
+        }
+    )
     return canonical_hash(
         {
-            "schema": "vibeqc.stationary-cuda-aot.contract.v2",
+            "schema": (
+                "vibeqc.stationary-cuda-aot.contract.v2"
+                if domain is None
+                else "vibeqc.stationary-cuda-aot.contract.v3"
+            ),
             "functional": functional,
             "spin": spin,
             "plan_identity": plan.identity,
@@ -556,7 +616,15 @@ def stationary_aot_contract_identity(
                 for source in _FUSED_WEIGHT_SOURCES
             },
             "partition_iterations": iterations,
-            "requests": qualified_sp_requests(),
+            "requests": (
+                qualified_sp_requests()
+                if domain is None
+                else {
+                    "component_domain": domain,
+                    "canonicalization": "first_derivative_schedule",
+                }
+            ),
+            **component,
             "method_module": file_hash(Path(__file__)),
             "compiler_sources": source_hashes(
                 "common", "integral", "xc", "dft", assets=STATIONARY_AOT_ASSETS
@@ -573,8 +641,10 @@ def load_stationary_aot_artifact(
     plan: StationaryGradientPlan,
     architecture: str,
     iterations: int = QUALIFIED_PARTITION_ITERATIONS,
+    component_domain: tuple[str, ...] | None = None,
 ) -> CudaArtifact:
-    """Load one packaged artifact after checking its plan and binary identity."""
+    """Load one packaged artifact after checking its plan, domain, and binary identity."""
+    domain = _qualified_component_aot_domain(component_domain)
     expected_plan = _qualified_aot_plan(functional, spin)
     if (
         not isinstance(plan, StationaryGradientPlan)
@@ -587,7 +657,7 @@ def load_stationary_aot_artifact(
         raise NotImplementedError(
             "packaged stationary CUDA currently qualifies partition_iterations=3 only"
         )
-    name = _stationary_aot_name(functional, spin)
+    name = _stationary_aot_name(functional, spin, component_domain=domain)
     directory = Path(directory).resolve()
     manifest_path = directory / f"vibeqc_stationary_{name}.json"
     candidates = (
@@ -600,15 +670,30 @@ def load_stationary_aot_artifact(
         raise FileNotFoundError(f"missing packaged stationary CUDA artifact for {name}")
     metadata = json.loads(manifest_path.read_text())
     expected = {
-        "schema": "vibeqc.stationary-cuda-aot.v2",
+        "schema": (
+            "vibeqc.stationary-cuda-aot.v2"
+            if domain is None
+            else "vibeqc.stationary-cuda-aot.v3"
+        ),
         "functional": functional,
         "spin": spin,
         "plan_identity": plan.identity,
         "partition_iterations": iterations,
         "contract_identity": stationary_aot_contract_identity(
-            functional, spin=spin, iterations=iterations
+            functional,
+            spin=spin,
+            iterations=iterations,
+            component_domain=domain,
         ),
     }
+    if domain is not None:
+        expected.update(
+            {
+                "component_domain": list(domain),
+                "primitive_shard_width": QUALIFIED_SPD_AOT_SHARD_WIDTH,
+                "primitive_shards": QUALIFIED_SPD_AOT_SHARDS,
+            }
+        )
     for key, value in expected.items():
         if metadata.get(key) != value:
             raise ValueError(f"stationary CUDA AOT {key} identity mismatch")
@@ -648,13 +733,14 @@ def load_stationary_aot_artifact(
     ):
         raise ValueError("stationary CUDA AOT binary integrity mismatch")
     identity = {
-        "schema": "vibeqc.stationary-cuda-aot.v2",
+        "schema": metadata["schema"],
         "source": metadata["source_identity"],
         "contract": metadata["contract_identity"],
         "functional": functional,
         "spin": spin,
         "plan": plan.identity,
         "partition_iterations": iterations,
+        **({"component_domain": list(domain)} if domain is not None else {}),
         "target": {"architecture": architecture, "code_kinds": code_kinds},
     }
     return CudaArtifact(

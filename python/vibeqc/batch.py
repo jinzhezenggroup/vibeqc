@@ -520,20 +520,17 @@ class PreparedBatch:
                     )
                 native_library = Path(str(self._library._name)).resolve()
                 all_electron = state._source.hamiltonian == "all-electron"
-                component_jit = any(
-                    shell.angular_momentum > 1 for shell in basis.shells
-                )
                 kwargs = {
-                    "compiler": None
-                    if all_electron and not component_jit
-                    else self._stationary_cuda_compiler(),
+                    "compiler": (
+                        None if all_electron else self._stationary_cuda_compiler()
+                    ),
                     "target": self._stationary_cuda_target(),
                     "cache": Path(
                         os.environ.get(
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
-                    "aot_directory": None if component_jit else native_library.parent,
+                    "aot_directory": native_library.parent if all_electron else None,
                     "native_grid_library": native_library,
                 }
                 try:
