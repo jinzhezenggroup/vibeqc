@@ -93,6 +93,11 @@ def registry_entries(path: Path = MANIFEST) -> tuple[dict[str, object], ...]:
 
 def emit_registry(path: Path = MANIFEST) -> str:
     entries = registry_entries(path)
+    code_constants = "\n".join(
+        f"inline constexpr std::uint32_t k{entry['type_name'].removesuffix('DeviceValue')}FunctionalCode = "
+        f"0x{entry['code']:x}U;"
+        for entry in entries
+    )
     registration_cases = "\n".join(
         f"    case 0x{entry['code']:x}U:" for entry in entries
     )
@@ -135,6 +140,7 @@ def emit_registry(path: Path = MANIFEST) -> str:
             "inline constexpr std::uint32_t kSplitHybridGgaCodeBase = 0x10000U;",
             "inline constexpr std::uint32_t kSplitHybridMggaCodeBase = 0x20000U;",
             "inline constexpr std::uint32_t kSplitHybridFamilyMask = 0xf0000U;",
+            code_constants,
             "VIBEQC_SPLIT_HYBRID_HD inline constexpr bool split_hybrid_registered(",
             "    std::uint32_t functional) noexcept {",
             "  switch (functional) {",
