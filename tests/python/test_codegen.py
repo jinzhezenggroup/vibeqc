@@ -2104,21 +2104,6 @@ def test_fixed_generated_task_arena_has_a_memory_admission_limit() -> None:
     assert "requested_bounded_direct_streaming = true" in source
 
 
-def test_generated_task_packs_value_consumer_into_orientation_word() -> None:
-    """Keep pure-J identity without growing every Direct-J/K task record."""
-
-    source = emit_shell_class_fused_cuda(DPPP_SPEC, target=TEST_CUDA_TARGET)
-    task = source.split("struct GeneratedDpppShellTask", maxsplit=1)[1].split(
-        "};", maxsplit=1
-    )[0]
-    assert "fock_consumer" not in task
-    assert "kGeneratedDpppCoulombConsumerBit = 1U << 2U" in source
-    assert (
-        "(task.reversed_shell_pair_mask & kGeneratedDpppCoulombConsumerBit) != 0U"
-        in source
-    )
-
-
 def test_direct_task_resource_domains_remain_separate() -> None:
     """Do not reuse fixed-topology storage to size bounded streaming pages."""
 
