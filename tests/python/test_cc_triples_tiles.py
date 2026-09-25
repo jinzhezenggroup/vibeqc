@@ -420,9 +420,10 @@ def test_streamed_generated_reduction_costs_virtual_recomputation() -> None:
     assert baseline_cost["estimated_effective_flops"] == baseline.estimated_flops
     assert baseline_cost["estimated_rematerialized_value_count"] == 0
     assert streamed_cost["estimated_effective_flops"] > streamed.estimated_flops
-    assert streamed_cost["estimated_effective_flops"] > baseline_cost[
-        "estimated_effective_flops"
-    ]
+    assert (
+        streamed_cost["estimated_effective_flops"]
+        > baseline_cost["estimated_effective_flops"]
+    )
     assert streamed_cost["estimated_rematerialized_value_count"] > 0
     assert (
         streamed_cost["profitability"]["static"]["arithmetic_operation_count"]
