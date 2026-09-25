@@ -296,7 +296,7 @@ def hf_force_program(
         raise ValueError("HF force assembly requires one or two spin blocks")
     batch, spin, ao, _ = _orbital_spaces(batch_size, spin_count, nbf, nbf)
     coordinate = IndexSpace(
-        "coordinate", "coordinate", _positive(coordinate_count, "coordinate_count")
+        "coordinate", "cartesian", _positive(coordinate_count, "coordinate_count")
     )
     b, s, p, q, c = (
         Index("b", batch),
