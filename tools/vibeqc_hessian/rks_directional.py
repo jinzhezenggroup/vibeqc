@@ -14,7 +14,10 @@ import numpy as np
 from vibeqc._dft_gradient import _native_ao_atoms
 from vibeqc.profiles import canonical_hash
 from vibeqc_compiler.xc.contractions import ExternalPointContraction
-from vibeqc_compiler.xc.grid_response import partition_mixed_response, partition_response
+from vibeqc_compiler.xc.grid_response import (
+    partition_mixed_response,
+    partition_response,
+)
 from vibeqc_compiler.xc.potential import assemble_coefficients_directional
 
 from tools.vibeqc_posthf.reference import immutable
@@ -69,8 +72,10 @@ class RKSXCHVPComponents:
 
     @property
     def total(self) -> np.ndarray:
-        value = np.asarray(self.xc_ao) + np.asarray(self.xc_grid) + np.asarray(
-            self.xc_weight
+        value = (
+            np.asarray(self.xc_ao)
+            + np.asarray(self.xc_grid)
+            + np.asarray(self.xc_weight)
         )
         return immutable(value)
 
@@ -338,9 +343,7 @@ def native_rks_xc_hvp_components(
     )
     drho = directional_coefficients["rho"][0]
     dgradient = (
-        directional_coefficients["gradient"][0]
-        if "sigma" in spec.ingredients
-        else None
+        directional_coefficients["gradient"][0] if "sigma" in spec.ingredients else None
     )
 
     ao_atoms = _native_ao_atoms(basis)
@@ -426,9 +429,7 @@ def native_rks_xc_hvp_components(
             ):
                 if branch != directional.grid_branch_identity:
                     raise ValueError("XC HVP crossed a Becke response branch")
-            left_weight_motion = (
-                atomic_weights * left_partition.directional[selected]
-            )
+            left_weight_motion = atomic_weights * left_partition.directional[selected]
             mixed_weight_motion = atomic_weights * mixed_partition.mixed[selected]
             components["xc_weight"][atom, axis] = contract(
                 left_centers=zeros_centers,

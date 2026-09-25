@@ -1090,9 +1090,7 @@ class ExternalPointContraction(ContractionProgram):
         gradient = dgradient = None
         if family == "gga":
             gradient = immutable(gradient_coefficients, shape=(npoint, 3))
-            dgradient = immutable(
-                directional_gradient_coefficients, shape=(npoint, 3)
-            )
+            dgradient = immutable(directional_gradient_coefficients, shape=(npoint, 3))
             arrays.extend((gradient, dgradient))
         elif (
             gradient_coefficients is not None

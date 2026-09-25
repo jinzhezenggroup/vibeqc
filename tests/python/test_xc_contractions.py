@@ -580,9 +580,7 @@ def test_external_rks_mixed_cartesian_coefficients_match_generated_graph(
     indices = second.contract.ingredients.feature_indices
     for i in indices:
         for j in indices:
-            directional_gradient[i] += (
-                rows[(min(i, j), max(i, j))] * right_packed[j]
-            )
+            directional_gradient[i] += rows[(min(i, j), max(i, j))] * right_packed[j]
     response_coefficients = second.response_coefficients
     assert response_coefficients is not None
     right_cartesian_gradient = right.get("gradient")
