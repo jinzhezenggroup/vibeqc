@@ -250,6 +250,200 @@ Matrix charge_guided_lowdin_density(const core::System& system, const integrals:
   return density;
 }
 
+
+OccupiedProjectionResult project_occupied_density(
+    const integrals::IntegralData& target, const Matrix& target_orthogonalizer,
+    std::span<const double> source_overlap, std::span<const double> cross_overlap,
+    std::size_t source_nbf, std::span<const double> source_coefficients, std::size_t occupied,
+    double occupation, double maximum_residual) {
+  const std::size_t target_nbf = target.nbf;
+  const auto finite = [](std::span<const double> values) {
+    return std::all_of(values.begin(), values.end(),
+                       [](double value) { return std::isfinite(value); });
+  };
+  if (target_nbf == 0 || source_nbf == 0 ||
+      target_nbf > std::numeric_limits<std::size_t>::max() / target_nbf ||
+      source_nbf > std::numeric_limits<std::size_t>::max() / source_nbf ||
+      target_nbf > std::numeric_limits<std::size_t>::max() / source_nbf ||
+      target.overlap.size() != target_nbf * target_nbf ||
+      target_orthogonalizer.size() != target_nbf * target_nbf ||
+      source_overlap.size() != source_nbf * source_nbf ||
+      cross_overlap.size() != target_nbf * source_nbf ||
+      source_coefficients.size() != source_nbf * source_nbf || occupied > source_nbf ||
+      occupied > target_nbf || !(occupation > 0.0) || !std::isfinite(occupation) ||
+      maximum_residual < 0.0 || !std::isfinite(maximum_residual) ||
+      !finite(target.overlap) || !finite(target_orthogonalizer) || !finite(source_overlap) ||
+      !finite(cross_overlap) || !finite(source_coefficients)) {
+    throw std::invalid_argument("occupied projection has inconsistent or non-finite dimensions");
+  }
+
+  OccupiedProjectionResult result;
+  result.density.assign(target_nbf * target_nbf, 0.0);
+  if (occupied == 0) {
+    result.minimum_projected_norm = 1.0;
+    return result;
+  }
+
+  // Qualify the supplied source occupied columns before any target projection.
+  std::vector<double> source_metric_times_c(source_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < source_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t nu = 0; nu < source_nbf; ++nu)
+        value += source_overlap[mu * source_nbf + nu] *
+                 source_coefficients[nu * source_nbf + orbital];
+      source_metric_times_c[mu * occupied + orbital] = value;
+    }
+  }
+  double source_orthogonality_error = 0.0;
+  for (std::size_t first = 0; first < occupied; ++first) {
+    for (std::size_t second = 0; second < occupied; ++second) {
+      double value = 0.0;
+      for (std::size_t mu = 0; mu < source_nbf; ++mu)
+        value += source_coefficients[mu * source_nbf + first] *
+                 source_metric_times_c[mu * occupied + second];
+      const double expected = first == second ? 1.0 : 0.0;
+      source_orthogonality_error =
+          std::max(source_orthogonality_error, std::abs(value - expected));
+    }
+  }
+  result.source_metric_orthogonality_error = source_orthogonality_error;
+  if (!std::isfinite(source_orthogonality_error) || source_orthogonality_error > 1.0e-7)
+    throw std::invalid_argument("source occupied orbitals are not orthonormal in their metric");
+
+  // B = S_ts C_s(occ), then Y = S_tt^(-1/2) B.  Y^T Y is the
+  // projected-subspace norm before target-metric reorthonormalization.
+  std::vector<double> cross_times_c(target_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t nu = 0; nu < source_nbf; ++nu)
+        value += cross_overlap[mu * source_nbf + nu] *
+                 source_coefficients[nu * source_nbf + orbital];
+      cross_times_c[mu * occupied + orbital] = value;
+    }
+  }
+  std::vector<double> orthogonal_projection(target_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t nu = 0; nu < target_nbf; ++nu)
+        value += target_orthogonalizer[index(mu, nu, target_nbf)] *
+                 cross_times_c[nu * occupied + orbital];
+      orthogonal_projection[mu * occupied + orbital] = value;
+    }
+  }
+
+  Matrix gram(occupied * occupied, 0.0);
+  for (std::size_t first = 0; first < occupied; ++first) {
+    for (std::size_t second = 0; second < occupied; ++second) {
+      double value = 0.0;
+      for (std::size_t mu = 0; mu < target_nbf; ++mu)
+        value += orthogonal_projection[mu * occupied + first] *
+                 orthogonal_projection[mu * occupied + second];
+      gram[index(first, second, occupied)] = value;
+    }
+  }
+  auto spectral = reference::symmetric_eigen(std::move(gram), occupied);
+  const double minimum_norm = spectral.values.front();
+  const double maximum_norm = spectral.values.back();
+  if (!(minimum_norm > 0.0) || !std::isfinite(minimum_norm) ||
+      !std::isfinite(maximum_norm) ||
+      minimum_norm <= 1.0e-10 * maximum_norm ||
+      maximum_norm > 1.0 + 1.0e-7) {
+    throw std::invalid_argument("occupied projection lost rank or exceeds the source norm");
+  }
+  result.minimum_projected_norm = minimum_norm;
+  result.projection_residual = std::sqrt(std::max(0.0, 1.0 - minimum_norm));
+  if (result.projection_residual > maximum_residual)
+    throw std::invalid_argument("occupied projection loses too much source occupied norm");
+
+  Matrix inverse_sqrt_gram(occupied * occupied, 0.0);
+  for (std::size_t row = 0; row < occupied; ++row) {
+    for (std::size_t column = 0; column < occupied; ++column) {
+      double value = 0.0;
+      for (std::size_t eigen = 0; eigen < occupied; ++eigen)
+        value += spectral.vectors[index(row, eigen, occupied)] *
+                 spectral.vectors[index(column, eigen, occupied)] /
+                 std::sqrt(spectral.values[eigen]);
+      inverse_sqrt_gram[index(row, column, occupied)] = value;
+    }
+  }
+
+  // P = S_tt^(-1) B = X (X B), then C_t = P (P^T S P)^(-1/2).
+  std::vector<double> projected(target_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t nu = 0; nu < target_nbf; ++nu)
+        value += target_orthogonalizer[index(mu, nu, target_nbf)] *
+                 orthogonal_projection[nu * occupied + orbital];
+      projected[mu * occupied + orbital] = value;
+    }
+  }
+  std::vector<double> target_coefficients(target_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t source = 0; source < occupied; ++source)
+        value += projected[mu * occupied + source] *
+                 inverse_sqrt_gram[index(source, orbital, occupied)];
+      target_coefficients[mu * occupied + orbital] = value;
+    }
+  }
+
+  std::vector<double> target_metric_times_c(target_nbf * occupied, 0.0);
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t orbital = 0; orbital < occupied; ++orbital) {
+      double value = 0.0;
+      for (std::size_t nu = 0; nu < target_nbf; ++nu)
+        value += target.overlap[index(mu, nu, target_nbf)] *
+                 target_coefficients[nu * occupied + orbital];
+      target_metric_times_c[mu * occupied + orbital] = value;
+    }
+  }
+  double target_orthogonality_error = 0.0;
+  for (std::size_t first = 0; first < occupied; ++first) {
+    for (std::size_t second = 0; second < occupied; ++second) {
+      double value = 0.0;
+      for (std::size_t mu = 0; mu < target_nbf; ++mu)
+        value += target_coefficients[mu * occupied + first] *
+                 target_metric_times_c[mu * occupied + second];
+      const double expected = first == second ? 1.0 : 0.0;
+      target_orthogonality_error =
+          std::max(target_orthogonality_error, std::abs(value - expected));
+    }
+  }
+  result.target_metric_orthogonality_error = target_orthogonality_error;
+  if (!std::isfinite(target_orthogonality_error) || target_orthogonality_error > 1.0e-7)
+    throw std::invalid_argument("projected occupied orbitals failed target-metric orthogonality");
+
+  for (std::size_t mu = 0; mu < target_nbf; ++mu) {
+    for (std::size_t nu = 0; nu < target_nbf; ++nu) {
+      double value = 0.0;
+      for (std::size_t orbital = 0; orbital < occupied; ++orbital)
+        value += target_coefficients[mu * occupied + orbital] *
+                 target_coefficients[nu * occupied + orbital];
+      result.density[index(mu, nu, target_nbf)] = occupation * value;
+    }
+  }
+  if (!finite(result.density))
+    throw std::invalid_argument("occupied projection produced a non-finite target density");
+
+  double electron_trace = 0.0;
+  for (std::size_t mu = 0; mu < target_nbf; ++mu)
+    for (std::size_t nu = 0; nu < target_nbf; ++nu)
+      electron_trace += result.density[index(mu, nu, target_nbf)] *
+                        target.overlap[index(nu, mu, target_nbf)];
+  const double expected_trace = occupation * static_cast<double>(occupied);
+  if (!std::isfinite(electron_trace) ||
+      std::abs(electron_trace - expected_trace) >
+          1.0e-7 * std::max(1.0, expected_trace))
+    throw std::invalid_argument("occupied projection failed the target electron trace");
+
+  return result;
+}
+
 std::pair<Matrix, Matrix> prepare_initial_uhf_density(
     const integrals::IntegralData& ints, const Matrix& orthogonalizer, std::size_t alpha_occupied,
     std::size_t beta_occupied, const std::vector<double>* initial_density,
