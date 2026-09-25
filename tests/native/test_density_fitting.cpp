@@ -1291,9 +1291,7 @@ int main() {
 
       // Reuse the actual fleet cache across option changes. This catches a
       // stale default budget even when geometry and generated mapping match.
-      const char* response_policy = std::getenv("VIBEQC_ONE_ELECTRON_DERIVATIVES");
-      if (response_policy && std::string(response_policy) == "generated") {
-        for (auto run : {vibeqc::scf::run_rhf_density_fitting_cuda_bucket_cached,
+      for (auto run : {vibeqc::scf::run_rhf_density_fitting_cuda_bucket_cached,
                          vibeqc::scf::run_uhf_density_fitting_cuda_bucket_cached}) {
           struct PlanGuard {
             vibeqc::scf::CudaDensityFittingJkPlan* plan{};
@@ -1386,7 +1384,6 @@ int main() {
             }
           }
         }
-      }
 
       std::vector<double> second_metric = plus.metric;
       const std::size_t dependent = plus.naux - 1;

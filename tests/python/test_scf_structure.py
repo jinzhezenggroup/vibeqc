@@ -188,7 +188,7 @@ def test_direct_queue_owners_cannot_acquire_plan_or_integral_state(
 )
 @pytest.mark.parametrize(
     "dependency",
-    ["direct_jk_kernels.cu", "one_electron_native_force.cuh", "resources.hpp"],
+    ["direct_jk_kernels.cu", "one_electron_native_contraction.cuh", "resources.hpp"],
 )
 def test_provider_host_owners_cannot_import_recurrences_or_scf_lifetime(
     tmp_path: typing.Any, owner: typing.Any, dependency: typing.Any
@@ -226,7 +226,7 @@ def test_provider_kernel_interfaces_cannot_acquire_plan_state(
         "scalar_math.cuh",
         "hermite_recurrence.cuh",
         "one_electron_reference.cu",
-        "one_electron_native_force.cuh",
+        "one_electron_native_contraction.cuh",
         "nuclear_kernels.cu",
         "direct_pair_cache.cu",
     ],
@@ -251,9 +251,9 @@ def test_shared_numerics_cannot_import_operator_contractions(
     """Adding a consumer must not make the shared recurrence depend on it."""
     source = tmp_path / "src/scf/cuda"
     source.mkdir(parents=True)
-    (source / "one_electron_native_force.cuh").write_text("// Force contraction\n")
+    (source / "one_electron_native_contraction.cuh").write_text("// Force contraction\n")
     (source / "coulomb_auxiliary.cuh").write_text(
-        '#include "one_electron_native_force.cuh"\n'
+        '#include "one_electron_native_contraction.cuh"\n'
     )
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 

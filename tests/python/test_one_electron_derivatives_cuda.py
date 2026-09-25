@@ -121,9 +121,8 @@ def test_generated_derivatives_preserve_complete_scf_forces(
         "fitted": fitted,
         "count": count,
     }
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "reference")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")
     reference = run_case(monkeypatch, mapping="thread", **options)
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     for mapping in ("thread", "shell_warp", "nucleus_cooperative"):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
         actual = run_case(monkeypatch, mapping="thread", **options)
@@ -139,7 +138,7 @@ def test_generated_derivatives_preserve_complete_scf_forces(
 
 
 @pytest.mark.parametrize("fitted", [False, True])
-def test_derivative_selectors_on_reused_plan_match_fresh_execution(
+def test_derivative_mappings_on_reused_plan_match_fresh_execution(
     monkeypatch: typing.Any, fitted: typing.Any
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
@@ -150,22 +149,14 @@ def test_derivative_selectors_on_reused_plan_match_fresh_execution(
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
     )
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "reference")
+    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "serial")
     with calc.prepare_batch([atoms]) as batch:
         batch.execute(strict=True)
-        for selection, mapping in (
-            ("generated", "thread"),
-            ("generated", "shell_warp"),
-            ("generated", "nucleus_cooperative"),
-            ("reference", "thread"),
-        ):
-            monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", selection)
+        for mapping in ("thread", "shell_warp", "nucleus_cooperative", "serial"):
             monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
             actual = batch.execute(strict=True).items[0]
             expected = calc.singlepoint(atoms)
-            np.testing.assert_allclose(
-                actual.forces, expected.forces, atol=3e-9, rtol=0
-            )
+            np.testing.assert_allclose(actual.forces, expected.forces, atol=3e-9, rtol=0)
 
 
 @pytest.mark.parametrize("method,charge,multiplicity", [("rhf", 0, 1), ("uhf", 1, 2)])
@@ -197,7 +188,6 @@ def test_generated_target_forces_against_independent_pyscf(
     reference.kernel()
     assert reference.converged
     forces = -reference.nuc_grad_method().kernel()
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     for mapping in ("thread", "shell_warp", "nucleus_cooperative"):
         monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", mapping)
         result = Calculator(
@@ -235,7 +225,6 @@ def test_failed_item_does_not_contaminate_generated_neighbor(
     monkeypatch: typing.Any,
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     other = [("He", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
@@ -264,7 +253,6 @@ def test_screened_target_energy_force_domain(
     uses 1e-30 for the near-unscreened two-electron reference on this fixture.
     """
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVE_MAPPING", "nucleus_cooperative")
     atoms = [("H", (0.0, 0.0, -0.7)), ("H", (0.1, 0.2, 0.7))]
     options = {
