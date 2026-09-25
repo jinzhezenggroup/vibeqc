@@ -34,7 +34,7 @@ def test_dry_run_uses_only_metadata_and_tracks_all_retained_items(
     assert many.resident_bytes["host"] == 4 * one.resident_bytes["host"]
     assert (
         many.peak_bytes["host"] - many.resident_bytes["host"]
-        == one.peak_bytes["host"] - one.peak_bytes["host"]
+        == one.peak_bytes["host"] - one.resident_bytes["host"]
     )
     large = [(1, (0.0, 0.0, 2.0 * i)) for i in range(500)]
     plan = estimate_ks_resources([large], budget=ResourceBudget(host_bytes=1024))
