@@ -68,9 +68,9 @@ cmake -S . -B build -G Ninja \
 ```
 
 Two CMake presets make the build-time tradeoff explicit: `cuda-dev-fast`
-targets one real device image and bounds concurrent NVCC jobs, while
-`cuda-release-sm120` keeps the production optimization settings and full AOT
-manifest.  The presets are starting points; set
+targets one real device image, keeps native CUDA compilation bounded, and uses
+a wider generated-AOT compile pool, while `cuda-release-sm120` keeps the
+production optimization settings and full AOT manifest.  The presets are starting points; set
 `VIBEQC_CUDA_COMPILE_JOBS` to bound CUDA compilation. Generated AOT work
 shares that pool by default, preserving the same total compiler bound. Set
 `VIBEQC_AOT_COMPILE_JOBS` only when an independent AOT pool is desired; when
