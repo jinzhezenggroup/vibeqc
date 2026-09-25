@@ -258,7 +258,7 @@ jobs:
     # The required CuMetal runtime correctness job still runs on every PR and
     # merge group. Keep performance telemetry on master/manual qualification to
     # avoid competing with that required Apple-GPU check for queue runner capacity.
-    if: github.event_name != 'pull_request' && github.event_name != 'merge_group' && github.event_name != 'schedule' && github.event_name != 'merge_group'
+    if: github.event_name != 'pull_request' && github.event_name != 'merge_group' && github.event_name != 'schedule'
     runs-on: macos-15
     timeout-minutes: 15
     env:
