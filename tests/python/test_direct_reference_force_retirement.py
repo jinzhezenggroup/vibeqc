@@ -57,3 +57,36 @@ def test_reference_force_retirement_ledger_marks_fallback_only() -> None:
     )
     assert entry["status"] == "unsupported-fallback"
     assert "compute_forces disables persistent_eri" in entry["current_selector"]
+
+
+def test_reference_force_ledger_excludes_export_from_fallback_scope() -> None:
+    ledger = json.loads(
+        (ROOT / "docs/cuda_ownership/direct_hf_retirement.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    entry = next(
+        item
+        for item in ledger["families"]
+        if item["id"] == "retained-reference-force-consumer"
+    )
+    # Export returns before force dispatch; it is not an additional force
+    # domain that a generated replacement must implement before retirement.
+    for field in ("capability", "schedule_requirements", "retirement_condition"):
+        assert "reference" not in entry[field].lower()
+        assert "export" not in entry[field].lower()
+    assert "unsupported non-quartet" in entry["capability"]
+    assert "export returns before force dispatch" in entry["current_selector"]
+
+
+def test_reference_force_manifest_excludes_export_from_fallback_scope() -> None:
+    manifest = json.loads(
+        (
+            ROOT
+            / "docs/cuda_ownership/files/src/scf/cuda/direct_reference_force.cu.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert manifest["role"] == "scientific"
+    reason = manifest["reason"].lower()
+    assert "unsupported non-quartet" in reason
+    assert "physical-reference export" not in reason
