@@ -45,7 +45,9 @@ def _device(source: str, function_name: str) -> str:
     return source.replace(needle, replacement, 1)
 
 
-def _emit(program: Program, name: str, inputs: tuple[str, ...], outputs: tuple[str, ...]) -> str:
+def _emit(
+    program: Program, name: str, inputs: tuple[str, ...], outputs: tuple[str, ...]
+) -> str:
     return _device(
         emit_scalar_cpp(
             program,
