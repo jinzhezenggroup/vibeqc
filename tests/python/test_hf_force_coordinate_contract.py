@@ -8,9 +8,7 @@ from vibeqc_compiler.tensor.scf import hf_force_program
 
 @pytest.mark.parametrize("spins", (1, 2))
 @pytest.mark.parametrize("coordinates", (3, 6, 12))
-def test_hf_force_cartesian_domain_and_reference(
-    spins: int, coordinates: int
-) -> None:
+def test_hf_force_cartesian_domain_and_reference(spins: int, coordinates: int) -> None:
     program = hf_force_program(2, 3, spin_count=spins, coordinate_count=coordinates)
     output = program.outputs["forces"]
     assert tuple(index.space.kind for index in output.spec.indices) == (
