@@ -19,6 +19,7 @@ import numpy as np
 
 from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
+from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 from vibeqc_compiler.xc.production_domain_cases import (
     ProductionDomainCase,
     control_case_ids,
@@ -123,7 +124,7 @@ def _run_numeric_case(
     case: ProductionDomainCase,
     *,
     family: str,
-    profile: Any,
+    profile: ProductionDomainProfile,
     libxc: Any,
     rtol: float,
     atol: float,
@@ -182,12 +183,8 @@ def _run_numeric_case(
     passed = shape_ok and finite and bool(
         np.allclose(observed, expected, rtol=rtol, atol=atol)
     )
-    max_abs = (
-        float(np.max(np.abs(observed - expected))) if shape_ok else None
-    )
-    max_rel = (
-        _relative_error(observed, expected, atol=atol) if shape_ok else None
-    )
+    max_abs = float(np.max(np.abs(observed - expected))) if shape_ok else None
+    max_rel = _relative_error(observed, expected, atol=atol) if shape_ok else None
     reason = None
     if not finite:
         reason = "production candidate produced nonfinite E/vxc/fxc"
