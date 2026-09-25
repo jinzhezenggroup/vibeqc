@@ -341,23 +341,19 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
 
   const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
                                 options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
-  const double pbe0_fock_coefficient =
-      fock.spin == scf::FockSpin::Restricted ? -0.125 : -0.25;
-  const double b3lyp_fock_coefficient =
-      fock.spin == scf::FockSpin::Restricted ? -0.1 : -0.2;
+  const double pbe0_fock_coefficient = fock.spin == scf::FockSpin::Restricted ? -0.125 : -0.25;
+  const double b3lyp_fock_coefficient = fock.spin == scf::FockSpin::Restricted ? -0.1 : -0.2;
   const bool strict_cuda_global_hybrid =
       backend == VIBEQC_BACKEND_CUDA && !execution_plan.range_exchange &&
       !execution_plan.nonlocal_correlation &&
       options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE &&
       options.precision_mode != VIBEQC_PRECISION_AUTO && fock.exchange.present;
   const bool cuda_pbe0 =
-      strict_cuda_global_hybrid &&
-      execution_plan.semilocal_family == dft::SemilocalFamily::Pbe &&
+      strict_cuda_global_hybrid && execution_plan.semilocal_family == dft::SemilocalFamily::Pbe &&
       options.semilocal_exchange_scale == 0.75 && options.semilocal_correlation_scale == 1.0 &&
       fock.exchange.coefficient == pbe0_fock_coefficient;
   const bool cuda_b3lyp =
-      strict_cuda_global_hybrid &&
-      execution_plan.semilocal_family == dft::SemilocalFamily::B3lyp &&
+      strict_cuda_global_hybrid && execution_plan.semilocal_family == dft::SemilocalFamily::B3lyp &&
       options.semilocal_exchange_scale == 1.0 && options.semilocal_correlation_scale == 1.0 &&
       fock.exchange.coefficient == b3lyp_fock_coefficient;
   if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_pbe0 && !cuda_b3lyp)
