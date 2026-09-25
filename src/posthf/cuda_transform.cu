@@ -14,6 +14,8 @@ struct Transform {
   size_t nbf{}, stage{}, output{}, coefficients{};
   std::array<size_t, 4> m{}, tile{}, c_offset{};
   double *c{}, *first{}, *second{}, *result{};
+  bool validated = true;
+  bool failed = false;
 };
 using vibeqc::runtime::size_add;
 using vibeqc::runtime::size_mul;
@@ -38,6 +40,31 @@ int guarded(char* error, size_t size, F fn) noexcept {
     error_text(error, size, "unknown post-HF CUDA error");
     return 1;
   }
+}
+// Exception-only fence: queued copies must stop borrowing host storage before
+// a failed API call returns. Successful profiled sections already drain.
+struct StreamDrain {
+  cudaStream_t stream;
+  bool active = true;
+  ~StreamDrain() {
+    if (active) (void)cudaStreamSynchronize(stream);
+  }
+};
+void validate(Transform& p) {
+  if (p.failed) throw std::runtime_error("MO accumulation failed; recreate the transform");
+  if (p.validated) return;
+  auto& ctx = p.context;
+  ctx.section(true, ctx.metrics.kernel_ms, [&] {
+    check_scale<<<blocks(p.output, 256), 256, 0, ctx.stream>>>(p.result, p.output, 1, ctx.error, 0);
+    cuda_check(cudaGetLastError());
+  });
+  int invalid = 0;
+  StreamDrain readback_drain{ctx.stream};
+  cuda_check(cudaMemcpyAsync(&invalid, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
+  cuda_check(cudaStreamSynchronize(ctx.stream));
+  readback_drain.active = false;
+  if (invalid) throw std::runtime_error("nonfinite MO transformation");
+  p.validated = true;
 }
 }  // namespace
 extern "C" {
@@ -109,6 +136,12 @@ int posthf_cuda_add_v1(void* pointer, const double* values, const size_t* begin,
       shape[k] = counts[k];
       elements = size_mul(elements, counts[k]);
     }
+    if (p.failed) throw std::runtime_error("MO accumulation failed; recreate the transform");
+    // Invalidate before any submission: section timing/fences may fail after
+    // DAXPY has already changed the accumulator, including to a finite partial.
+    p.validated = false;
+    p.failed = true;
+    StreamDrain accumulation_drain{ctx.stream};
     ctx.section(true, ctx.metrics.input_ms, [&] {
       cuda_check(
           cudaMemcpyAsync(p.first, values, elements * 8, cudaMemcpyHostToDevice, ctx.stream));
@@ -131,16 +164,18 @@ int posthf_cuda_add_v1(void* pointer, const double* values, const size_t* begin,
       const double one = 1;
       blas_check(cublasDaxpy(ctx.handle, p.output, &one, in, 1, p.result, 1));
     });
-    ctx.section(true, ctx.metrics.kernel_ms, [&] {
-      check_scale<<<blocks(p.output, 256), 256, 0, ctx.stream>>>(p.result, p.output, 1, ctx.error,
-                                                                 0);
-      cuda_check(cudaGetLastError());
-    });
-    int invalid = 0;
-    cuda_check(
-        cudaMemcpyAsync(&invalid, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
-    cuda_check(cudaStreamSynchronize(ctx.stream));
-    if (invalid) throw std::runtime_error("nonfinite MO transformation");
+    p.failed = false;
+    accumulation_drain.active = false;
+  });
+}
+int posthf_cuda_validate_v1(void* pointer, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer) throw std::invalid_argument("null MO validation");
+    auto& p = *static_cast<Transform*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    validate(p);
   });
 }
 int posthf_cuda_download_v1(void* pointer, double* out, size_t elements, char* error, size_t size) {
@@ -151,6 +186,7 @@ int posthf_cuda_download_v1(void* pointer, double* out, size_t elements, char* e
     std::lock_guard<std::mutex> lock(ctx.mutex);
     ctx.check_device();
     if (elements != p.output) throw std::invalid_argument("MO download size mismatch");
+    validate(p);
     ctx.section(true, ctx.metrics.output_ms, [&] {
       cuda_check(cudaMemcpyAsync(out, p.result, elements * 8, cudaMemcpyDeviceToHost, ctx.stream));
     });
@@ -168,7 +204,18 @@ int posthf_cuda_metrics_v1(void* pointer, Metrics* out, char* error, size_t size
   });
 }
 void* posthf_cuda_pointer_v1(void* pointer) {
-  return pointer ? static_cast<Transform*>(pointer)->result : nullptr;
+  if (!pointer) return nullptr;
+  try {
+    auto& p = *static_cast<Transform*>(pointer);
+    std::lock_guard<std::mutex> lock(p.context.mutex);
+    p.context.check_device();
+    validate(p);
+    return p.result;
+  } catch (...) {
+    // Retain the legacy pointer ABI without letting native callers bypass the
+    // publication boundary. The status-returning validate API reports details.
+    return nullptr;
+  }
 }
 int posthf_cuda_versions_v1(void* pointer, int* values, char* error, size_t size) {
   return guarded(error, size, [&] {

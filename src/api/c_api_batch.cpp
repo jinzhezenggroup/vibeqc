@@ -7,7 +7,6 @@
 #include "api/error.hpp"
 #include "api/handles.hpp"
 #include "api/ks_diagnostic.hpp"
-#include "api/method_descriptor.hpp"
 #include "api/precision.hpp"
 #include "methods/method.hpp"
 #include "runtime/host_component_trace.hpp"
@@ -25,13 +24,12 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
   *batch = nullptr;
-  if (!vibeqc::api::valid_method_descriptor(descriptor)) {
+  if (!vibeqc::api::valid_descriptor(descriptor)) {
     return VIBEQC_STATUS_ABI_MISMATCH;
   }
 
   std::lock_guard<std::recursive_mutex> context_lock(context->mutex);
   try {
-    const auto method = vibeqc::api::snapshot_method_descriptor(descriptor);
     std::vector<vibeqc::core::System> native_systems;
     native_systems.reserve(system_count);
     std::vector<std::uint32_t> atom_counts;
@@ -49,8 +47,8 @@ vibeqc_status vibeqc_batch_prepare(vibeqc_context* context, const vibeqc_system*
     candidate->precision.resize(system_count);
     candidate->scf_diagnostics.resize(system_count);
     candidate->ks_diagnostics.resize(system_count);
-    candidate->plan =
-        vibeqc::methods::prepare_batch(context->state, std::move(native_systems), method, flags);
+    candidate->plan = vibeqc::methods::prepare_batch(context->state, std::move(native_systems),
+                                                     *descriptor, flags);
     *batch = candidate.release();
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
@@ -80,16 +78,12 @@ vibeqc_status vibeqc_batch_get_scf_diagnostic(const vibeqc_batch* batch, uint32_
 vibeqc_status vibeqc_batch_get_correlation_diagnostic(const vibeqc_batch* batch, uint32_t index,
                                                       vibeqc_correlation_diagnostic* diagnostic) {
   if (!batch || !diagnostic || index >= batch->plan->size()) return VIBEQC_STATUS_INVALID_ARGUMENT;
-  const auto caller_size = diagnostic->struct_size;
-  constexpr auto legacy_size = offsetof(vibeqc_correlation_diagnostic, response_iterations);
-  if (caller_size < legacy_size || diagnostic->abi_version != VIBEQC_ABI_VERSION)
-    return VIBEQC_STATUS_ABI_MISMATCH;
+  if (!vibeqc::api::valid_descriptor(diagnostic)) return VIBEQC_STATUS_ABI_MISMATCH;
   std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
   try {
     const auto value = batch->plan->correlation_diagnostic(index);
     if (!value) return VIBEQC_STATUS_NOT_IMPLEMENTED;
-    std::memcpy(diagnostic, &*value, std::min<std::size_t>(caller_size, sizeof(*diagnostic)));
-    diagnostic->struct_size = caller_size;
+    *diagnostic = *value;
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);

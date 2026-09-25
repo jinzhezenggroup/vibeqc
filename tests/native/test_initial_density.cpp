@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -88,6 +89,51 @@ void check_initial_density_contract() {
   prepare_initial_density(system, ints, x, 1, &raw, a, InitialOrbitalRequest::RequireCoreFrame);
   require(solves == 2 && a, "explicit RHF warm frame request did not solve");
 
+  unsigned provider_calls = 0;
+  bool provider_context_ok = false;
+  RestrictedInitialDensityProvider provider =
+      [&](const RestrictedInitialDensityRequest& request) -> std::optional<Matrix> {
+    ++provider_calls;
+    const Matrix expected_core{1, 0, 0, 0, 0, 0, 0, 0, 0};
+    provider_context_ok = &request.system == &system && &request.integrals == &ints &&
+                          &request.orthogonalizer == &x && request.occupied == 1 &&
+                          request.core_density.size() == expected_core.size();
+    for (std::size_t i = 0; provider_context_ok && i < expected_core.size(); ++i)
+      provider_context_ok = std::abs(request.core_density[i] - expected_core[i]) < 1e-13;
+    return raw;
+  };
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, nullptr, a,
+                                InitialOrbitalRequest::ColdDensityOnly, {}, provider),
+        {1, .15, 0, .15, 0, 0, 0, 0, 0});
+  require(provider_calls == 1 && provider_context_ok && solves == 1 && !a,
+          "accepted provider did not replace the cold density without publishing stale orbitals");
+
+  // Provider failures are acceleration failures, not SCF failures. Invalid
+  // proposals must restore the untouched canonical core seed and frame.
+  RestrictedInitialDensityProvider invalid_provider =
+      [&](const RestrictedInitialDensityRequest&) -> std::optional<Matrix> {
+    ++provider_calls;
+    return Matrix(9, 0.0);
+  };
+  provider_calls = 0;
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, nullptr, a,
+                                InitialOrbitalRequest::ColdDensityOnly, {}, invalid_provider),
+        {1, 0, 0, 0, 0, 0, 0, 0, 0});
+  require(provider_calls == 1 && solves == 1 && a,
+          "rejected provider did not fall back to the canonical core seed");
+
+  // Explicit warm densities remain authoritative and never invoke a cold-start
+  // provider, preserving replay and imported-seed semantics.
+  provider_calls = 0;
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, &raw, a, InitialOrbitalRequest::ColdDensityOnly,
+                                {}, provider),
+        {1, .15, 0, .15, 0, 0, 0, 0, 0});
+  require(provider_calls == 0 && solves == 0 && !a,
+          "cold-start provider intercepted an explicit warm density");
+
   for (const Matrix bad :
        {Matrix(2, 1), Matrix(9, 0), Matrix(9, std::numeric_limits<double>::infinity())}) {
     a = EigenResult{{1}, {1}};
@@ -105,6 +151,30 @@ void check_initial_density_contract() {
   // A failed item cannot poison a subsequent independent cold request.
   prepare_initial_density(system, ints, x, 1, nullptr, a);
   require(solves == 1 && a, "cold retry did not rebuild a valid frame");
+}
+
+void check_charge_guided_lowdin_contract() {
+  core::System system;
+  system.atoms = {{1, {0, 0, 0}}, {1, {0, 0, 1}}};
+  system.shells = {{0, 0, {}}, {1, 0, {}}};
+  system.charge = 0;
+  system.electron_count = 2;
+
+  integrals::IntegralData ints;
+  ints.nbf = 2;
+  ints.overlap = {4, 0, 0, 1};
+  const Matrix x{.5, 0, 0, 1};
+  const Matrix base{.25, 0, 0, 1};
+
+  // The base has one Loewdin electron on each atom. A +0.5/-0.5 xTB charge
+  // target therefore moves half an electron from atom 0 to atom 1.
+  close(charge_guided_lowdin_density(system, ints, x, base, std::array{.5, -.5}),
+        {.125, 0, 0, 1.5});
+  close(charge_guided_lowdin_density(system, ints, x, base, std::array{0.0, 0.0}), base);
+
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{0.0}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{.2, .2}); });
+  invalid([&] { charge_guided_lowdin_density(system, ints, x, base, std::array{1.2, -1.2}); });
 }
 
 void check_overlap_cache_contract() {
@@ -224,6 +294,7 @@ int main() {
   observation::active = &observer;
   try {
     check_initial_density_contract();
+    check_charge_guided_lowdin_contract();
     check_overlap_cache_contract();
     check_borrowed_setup_operation();
     observation::active = nullptr;

@@ -133,9 +133,7 @@ def test_physical_components_and_history_match_independent_state(
         diagnostic.grid_points = 0
 
 
-def test_batch_snapshot_history_abi_invalidation_and_old_library(
-    monkeypatch: typing.Any, device: typing.Any
-) -> None:
+def test_batch_snapshot_history_abi_invalidation(device: typing.Any) -> None:
     calculator = Calculator(
         method="pbe-uks",
         device=device,
@@ -206,11 +204,6 @@ def test_batch_snapshot_history_abi_invalidation_and_old_library(
             == _native.STATUS_INVALID_ARGUMENT
         )
         assert query(batch._batch, 1, None, None, 0) == _native.STATUS_NOT_IMPLEMENTED
-        monkeypatch.setattr(batch._library, "vibeqc_batch_get_ks_diagnostic", None)
-        assert (
-            batch.execute(properties=("energy",), strict=True).items[0].ks_diagnostic
-            is None
-        )
 
 
 def test_valid_iteration_limit_keeps_its_actual_history(
@@ -246,9 +239,7 @@ def test_hf_has_no_ks_snapshot() -> None:
         )
 
 
-def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
-    monkeypatch: typing.Any,
-) -> None:
+def test_cpu_reports_no_cuda_ks_transport() -> None:
     atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
     calculator = Calculator(method="lda-rks", device="cpu")
     assert (
@@ -270,10 +261,6 @@ def test_cpu_and_old_libraries_report_no_cuda_ks_transport(
         )
         assert value.setup_h2d_bytes == 19
         assert query(batch._batch, 1, None) == _native.STATUS_INVALID_ARGUMENT
-        monkeypatch.setattr(
-            batch._library, "vibeqc_batch_get_ks_transport_diagnostic", None
-        )
-        assert batch.ks_transport_diagnostics == (None,)
 
 
 def test_cuda_ks_transport_covers_setup_replay_and_geometry_rebuild(

@@ -373,6 +373,14 @@ def test_static_accounting_reuses_combined_numeric_budget_and_labels_unknowns() 
     assert estimate["estimated_local_bytes"] is None  # spills need PTXAS, not guesses
     assert estimate["generated_source_bytes"] > 0
     assert estimate["generated_static_data_bytes"] == baseline.static_data_bytes
+    assert estimate["estimated_effective_flops"] == baseline.estimated_flops
+    assert estimate["estimated_virtual_value_evaluations"] == 0
+    assert estimate["estimated_rematerialized_value_count"] == 0
+    assert (
+        estimate["profitability"]["static"]["arithmetic_operation_count"]
+        == estimate["estimated_effective_flops"]
+    )
+    assert estimate["profitability"]["static"]["rematerialized_value_count"] == 0
     assert "excludes" in estimate["traffic_scope"]
     assert "calibrated" in estimate["compile_cost_proxy"]
     contract = ScheduleContract.from_payload(estimate["schedule_contract"])

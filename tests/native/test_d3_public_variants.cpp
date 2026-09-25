@@ -231,15 +231,12 @@ void test_fail_closed_and_resources(Context& context) {
               batch == nullptr,
           "D3 maximum_bytes must fail closed");
 
-  auto legacy = bj_model(0.0);
-  legacy.struct_size = static_cast<std::uint32_t>(offsetof(vibeqc_d3_bj_descriptor, rs6));
-  require(vibeqc_d3_batch_prepare(context.value, &system, 1, &legacy, &batch) ==
-                  VIBEQC_STATUS_SUCCESS &&
-              batch != nullptr,
-          "legacy BJ descriptor prefix stopped working");
-  require(std::strcmp(vibeqc_d3_batch_variant_identity(batch), "d3.bj-two-body") == 0,
-          "legacy BJ descriptor acquired the wrong capability");
-  vibeqc_d3_batch_destroy(batch);
+  auto truncated = bj_model(0.0);
+  truncated.struct_size = static_cast<std::uint32_t>(offsetof(vibeqc_d3_bj_descriptor, rs6));
+  require(vibeqc_d3_batch_prepare(context.value, &system, 1, &truncated, &batch) ==
+                  VIBEQC_STATUS_ABI_MISMATCH &&
+              batch == nullptr,
+          "truncated D3 model descriptor was accepted");
 }
 
 }  // namespace

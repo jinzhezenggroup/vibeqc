@@ -1,14 +1,15 @@
-# RCCSD energy and physical singles equations (CG11 A)
+# RCCSD equations and CPU scientific baseline
 
-This document preserves the A-slice contract. Complete residuals and the
-subsequently implemented CPU solver are documented in [RCCSD B/C](rccsd_bc.md).
+This page records the fixed-amplitude energy and physical-singles equation
+inventory used by the complete RCCSD residual and solver implementation.
+Complete CPU residual/iteration semantics are documented in
+[RCCSD CPU solver](rccsd_bc.md), while the current native/public CUDA execution
+and acceptance boundary is documented in [GPU RCCSD](rccsd_gpu.md).
 
-`tools.vibeqc_cc` provides the internal small-system FP64 CPU RCCSD facade:
-`build_ccsd_program`, `PreparedCCSD`, `SolverOptions`, `CCSDResult`, and `solve`.
-It implements complete physical T1/T2 residuals and CPU iterations in addition
-to the fixed-amplitude energy/T1 interface documented below. The full A/B/C
-scope and molecular acceptance are described in [RCCSD B/C](rccsd_bc.md).
-It does not register a public `Calculator` method; GPU RCCSD remains #149.
+`tools.vibeqc_cc` provides the internal FP64 CPU scientific facade used for
+independent equation and solver validation. Public capability is determined by
+the native registry and the generated method table, not by this validation
+facade.
 
 ## Mathematical contract
 
@@ -103,7 +104,7 @@ two shifts (0 and 0.4) and deliberately different eps and diag(F). Reading
 `t1_new` directly as R1 is explicitly rejected by the tests. The CC facade
 never imports PySCF or calls an external amplitude update/solver.
 
-## Independent coordinates and future adjoints
+## Independent coordinates and adjoint conventions
 
 `amplitude_layouts(o,v)` reuses #145 `PackedLayout`. Singles use C-order
 `(i,a)`. Doubles use C-order `(i,j,a,b)`; each orbit of `(i,j,a,b)->(j,i,b,a)`
@@ -121,7 +122,7 @@ The chosen real coordinate inner product is
 For a packed coordinate differential, an ordinary Euclidean covector has
 components `weight[u]*lambda[u]` when lambda denotes this metric's vector.
 These are coordinate conventions, not an implicit spin-orbital Lambda
-normalization. Future Lambda implementations must explicitly map their dual
+normalization. Lambda implementations must explicitly map their dual
 projectors to this residual and metric. A plain unweighted packed dot product
 cannot substitute for the dense contraction. Slice A defines no T2 projector
 or Lambda solver and makes no derivative-validation claim.

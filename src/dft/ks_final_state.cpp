@@ -4,6 +4,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "dft/semilocal_family.hpp"
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
@@ -18,11 +19,24 @@ bool finite(const auto& values) {
 bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
-  const bool b3lyp = model.functional == 3U;
-  const bool wb97mv = model.functional == 4U;
-  if (model.version != 1 || model.functional > 4U ||
-      model.scf_domain_version != (wb97mv ? 3U : (b3lyp ? 2U : 1U)) || !model.tile_points ||
-      !model.owner || (model.spins != 1 && model.spins != 2) ||
+  SemilocalFamily family;
+  try {
+    family = semilocal_family_from_code(model.functional);
+  } catch (const std::invalid_argument&) {
+    return false;
+  }
+  const bool pbe = family == SemilocalFamily::Pbe;
+  const bool b3lyp = family == SemilocalFamily::B3lyp;
+  const bool wb97mv = family == SemilocalFamily::Wb97mv;
+  const bool cuda_pbe0 = pbe && fock.backend == scf::FockBackend::Cuda &&
+                         fock.spec.coulomb.approximation == scf::FockApproximation::Exact &&
+                         fock.spec.exchange.present &&
+                         fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
+                         model.semilocal_exchange_scale == 0.75 &&
+                         model.semilocal_correlation_scale == 1.0 &&
+                         fock.spec.exchange.coefficient == (model.spins == 1 ? -0.125 : -0.25);
+  if (model.version != 1 || model.scf_domain_version != semilocal_family_domain_version(family) ||
+      !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||
@@ -39,12 +53,15 @@ bool valid_model(const KsFinalStateIdentity& identity) {
         (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
          fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
-      (!b3lyp && !wb97mv && (model.functional != 1 || fock.backend == scf::FockBackend::Cuda) &&
+      (!b3lyp && !wb97mv && (!pbe || (fock.backend == scf::FockBackend::Cuda && !cuda_pbe0)) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
         fock.spec.exchange.present)) ||
-      (b3lyp && (fock.backend != scf::FockBackend::Cpu || model.semilocal_exchange_scale != 1 ||
-                 model.semilocal_correlation_scale != 1 || !fock.spec.exchange.present ||
-                 fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2))))
+      (b3lyp && (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
+                 !fock.spec.exchange.present ||
+                 fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2) ||
+                 (fock.backend == scf::FockBackend::Cuda &&
+                  (fock.spec.coulomb.approximation != scf::FockApproximation::Exact ||
+                   fock.spec.exchange.approximation != scf::FockApproximation::Exact)))))
     return false;
   try {
     if (wb97mv) {
