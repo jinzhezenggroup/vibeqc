@@ -77,6 +77,34 @@ def test_python_ci_shards_the_known_long_tail_without_invalidating_ccache() -> N
         assert path_name in section
 
 
+def test_f_shell_release_cache_tracks_only_its_generator_dependencies() -> None:
+    path = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
+    section = (
+        path.read_text()
+        .split("      - name: Restore f-shell release objects\n", 1)[1]
+        .split("      - name: Compile five representative f classes", 1)[0]
+    )
+    key_line = next(
+        line for line in section.splitlines() if "key: f-shell-cuda-" in line
+    )
+    assert "f-shell-cuda-v2-12.9-sm120-" in key_line
+    for dependency in (
+        "'python/vibeqc_compiler/common/**'",
+        "'python/vibeqc_compiler/integral/**'",
+        "'tools/validate_f_shells.py'",
+        "'tools/vibeqc_validation/f_shell.py'",
+    ):
+        assert dependency in key_line
+    for unrelated_scope in (
+        "'include/**'",
+        "'python/vibeqc_compiler/**'",
+        "'tools/**'",
+    ):
+        assert unrelated_scope not in key_line
+    assert "f-shell-cuda-v2-12.9-sm120-" in section
+    assert "f-shell-cuda-12.9-sm120-" in section
+
+
 def test_routine_python_ci_defers_qualification_scale_megatests() -> None:
     path = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
     section = (
