@@ -321,6 +321,7 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_occupied_response_cuda.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
@@ -373,6 +374,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_occupied_response_cuda.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"

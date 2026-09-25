@@ -13,6 +13,8 @@ from .df_hf_response_contract import (
     RHF_EXCHANGE_COEFFICIENT,
 )
 
+from .df_occupied_response_cuda import emit_occupied_response_helpers
+
 _CHARGE_EQUATION = "tij,pij->tp"
 
 
@@ -89,9 +91,12 @@ def emit_df_hf_response_cuda() -> str:
 #include <cuda_runtime.h>
 
 #include <cstddef>
+#include <limits>
 
 namespace vibeqc::scf {{
 namespace generated {{
+
+{emit_occupied_response_helpers()}
 
 /** Lower the complete q[t,P] = sum_ij D[t,ij] B[P,ij] contraction at once.
  *
