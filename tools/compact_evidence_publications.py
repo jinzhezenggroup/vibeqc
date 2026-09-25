@@ -64,23 +64,28 @@ def _update_storage_references(
     return changed
 
 
-def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
+def compact_publication(
+    relative: str, *, check: bool = False
+) -> list[tuple[str, str, bytes]]:
     manifest_path = ROOT / relative
     directory = manifest_path.parent
     manifest = json.loads(manifest_path.read_text())
     entries = manifest["files"]
 
+    # Authenticate every original member before updating any storage identity.
+    # Keep these exact bytes so compaction does not re-read unchecked content.
+    contents = {}
+    for entry in entries:
+        path = directory / entry["path"]
+        raw = path.read_bytes()
+        if len(raw) != entry["bytes"] or digest(raw) != entry["sha256"]:
+            raise ValueError(f"publication identity mismatch: {path}")
+        if str(entry["path"]).endswith(".json.gz"):
+            json.loads(gzip.decompress(raw))
+        contents[entry["path"]] = raw
+
     # Already compacted publications are validated but left byte-identical.
     if any(str(entry["path"]).endswith(".json.gz") for entry in entries):
-        for entry in entries:
-            path = directory / entry["path"]
-            if str(entry["path"]).endswith(".json.gz"):
-                raw = path.read_bytes()
-                json.loads(gzip.decompress(raw))
-                if len(raw) != entry["bytes"] or digest(raw) != entry["sha256"]:
-                    raise ValueError(
-                        f"compressed publication identity mismatch: {path}"
-                    )
         return []
 
     candidates = {
@@ -104,7 +109,7 @@ def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
         if old == evidence_name:
             continue
         source = directory / old
-        data = compressed(source.read_bytes())
+        data = compressed(contents[old])
         new = old + ".gz"
         replacements[old] = (new, data)
         changes.append(
@@ -116,10 +121,10 @@ def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
         )
 
     evidence_path = directory / evidence_name
-    evidence = json.loads(evidence_path.read_text())
+    evidence = json.loads(contents[evidence_name])
     evidence_changed = _update_storage_references(evidence, replacements)
     evidence_data = (
-        json_bytes(evidence) if evidence_changed else evidence_path.read_bytes()
+        json_bytes(evidence) if evidence_changed else contents[evidence_name]
     )
 
     if evidence_name in candidates:
@@ -150,13 +155,21 @@ def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
         elif old == evidence_name and evidence_changed:
             entry.update(bytes=len(evidence_data), sha256=digest(evidence_data))
 
-    manifest_path.write_bytes(json_bytes(manifest))
+    # A pre-existing companion is not ours to overwrite, even in check mode.
+    for old, new, _data in changes:
+        target = ROOT / new
+        if old != new and (target.exists() or target.is_symlink()):
+            raise FileExistsError(target)
+    if check:
+        return changes
+
     for old, new, data in changes:
         target = ROOT / new
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
         if old != new:
             (ROOT / old).unlink()
+    manifest_path.write_bytes(json_bytes(manifest))
     return changes
 
 
@@ -186,11 +199,11 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     changes: list[tuple[str, str, bytes]] = []
     for target in TARGETS:
-        changes.extend(compact_publication(target))
-    if changes:
-        update_legacy_review(changes)
+        changes.extend(compact_publication(target, check=args.check))
     if args.check and changes:
         raise SystemExit("retained evidence JSON is not compacted")
+    if changes:
+        update_legacy_review(changes)
     print(
         f"compressed evidence publications: {len(changes)} changed files"
         if changes
