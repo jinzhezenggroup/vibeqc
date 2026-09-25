@@ -15,7 +15,8 @@ struct CudaState {
   double *foo{}, *fov{}, *fvv{};
   double *ovov{}, *ovvo{}, *oovv{}, *ovvv{}, *ovoo{}, *oooo{}, *vvvv{};
   double *d1{}, *d2{}, *t1{}, *t2{};
-  double *iteration_arena{}, *replay_arena{};
+  double *iteration_arena{}, *replay_arena{}, *response_arena{};
+  double *bar_correlation_energy{}, *bar_singles_residual{}, *bar_doubles_residual{};
   int* error{};
 };
 
@@ -31,8 +32,16 @@ struct DeviceReplayOutputs {
   double* r1{};
   double* r2{};
 };
+struct DeviceLambdaOutputs {
+  double* t1{};
+  double* t2{};
+};
 
 DeviceIterationOutputs run_iteration_cuda(CudaState& state);
 DeviceReplayOutputs run_replay_cuda(CudaState& state);
+DeviceLambdaOutputs run_lambda_rhs_cuda(CudaState& state);
+DeviceLambdaOutputs run_lambda_transpose_cuda(CudaState& state);
+DeviceLambdaOutputs run_lambda_independent_rhs_cuda(CudaState& state);
+DeviceLambdaOutputs run_lambda_independent_transpose_cuda(CudaState& state);
 
 }  // namespace vibeqc::cc::generated
