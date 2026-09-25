@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import math
-import re
 import shutil
 import tempfile
 import time
@@ -18,6 +17,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from vibeqc_compiler.common.compiler_process import run_compiler
+from vibeqc_compiler.common.cuda_resources import parse_resources
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
 if TYPE_CHECKING:
@@ -266,18 +266,32 @@ extern "C" __global__ void bulk_xc_census_probe(
 
 
 def ptxas_resources(log: str) -> dict[str, int | None]:
-    """Extract observed maxima; missing observations are unknown, never zero."""
-    patterns = {
-        "registers": r"Used\s+(\d+)\s+registers",
-        "stack_bytes": r"(\d+)\s+bytes stack frame",
-        "spill_store_bytes": r"(\d+)\s+bytes spill stores",
-        "spill_load_bytes": r"(\d+)\s+bytes spill loads",
-        "shared_bytes": r"(\d+)\s+bytes smem",
-        "local_bytes": r"(\d+)\s+bytes lmem",
-    }
+    """Extract conservative maxima from canonical per-function PTXAS records."""
+    records = parse_resources(log)
+    if not records:
+        return {
+            "registers": None,
+            "stack_bytes": None,
+            "spill_store_bytes": None,
+            "spill_load_bytes": None,
+            "shared_bytes": None,
+            "local_bytes": None,
+        }
+    local_values = [record.local_bytes for record in records]
     return {
-        key: max((int(value) for value in re.findall(pattern, log)), default=None)
-        for key, pattern in patterns.items()
+        "registers": max(record.registers for record in records),
+        "stack_bytes": max(record.stack_bytes for record in records),
+        "spill_store_bytes": max(record.spill_store_bytes for record in records),
+        "spill_load_bytes": max(record.spill_load_bytes for record in records),
+        # PTXAS omits the smem token for a zero-shared-memory function; the
+        # canonical parser intentionally normalizes that omission to zero.
+        "shared_bytes": max(record.shared_bytes for record in records),
+        # Keep local memory fail-closed when any function omits the lmem field.
+        "local_bytes": (
+            max(value for value in local_values if value is not None)
+            if all(value is not None for value in local_values)
+            else None
+        ),
     }
 
 
