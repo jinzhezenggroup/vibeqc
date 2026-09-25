@@ -104,9 +104,10 @@ def test_success_keeps_payloads_and_idempotence(
         large_samples(publication)
     old_samples = (publication / "campaign/samples.json").read_bytes()
     compact.compact_publication("campaign/publication.json")
-    assert gzip.decompress(
-        (publication / "campaign/samples.json.gz").read_bytes()
-    ) == old_samples
+    assert (
+        gzip.decompress((publication / "campaign/samples.json.gz").read_bytes())
+        == old_samples
+    )
     manifest = json.loads((publication / "campaign/publication.json").read_text())
     for entry in manifest["files"]:
         data = (publication / "campaign" / entry["path"]).read_bytes()

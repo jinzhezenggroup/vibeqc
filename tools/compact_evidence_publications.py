@@ -72,7 +72,6 @@ def _update_storage_references(
     return changed
 
 
-
 def _commit_publication(
     manifest_path: Path, manifest: dict, changes: list[tuple[str, str, bytes]]
 ) -> None:
@@ -80,9 +79,7 @@ def _commit_publication(
 
     This is exception safety, not a crash-consistent multi-publication journal.
     """
-    stage = Path(
-        tempfile.mkdtemp(prefix=".evidence-stage-", dir=manifest_path.parent)
-    )
+    stage = Path(tempfile.mkdtemp(prefix=".evidence-stage-", dir=manifest_path.parent))
     backups: list[tuple[Path, Path]] = []
     created: list[Path] = []
     try:
