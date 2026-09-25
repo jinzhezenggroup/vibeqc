@@ -233,3 +233,34 @@ def test_shared_input_guard_is_not_bypassed(publication: typing.Any) -> None:
     with pytest.raises(ValueError, match="invalid triples input"):
         _publish(publication, state)
     assert not any(call[0] in ("cpu", "execute", "denominators") for call in calls)
+
+
+@pytest.mark.parametrize("cuda", (False, True))
+@pytest.mark.parametrize(
+    "reference,ccsd,triples",
+    [
+        (-75.0, 1e308, 1e308),
+        (1e308, -0.125, 1e308),
+        (-75.0, float("nan"), -0.015625),
+        (float("inf"), -0.125, -0.015625),
+        (-75.0, -0.125, float("inf")),
+    ],
+)
+def test_nonfinite_energy_is_rejected_before_result_construction(
+    publication: typing.Any, cuda: bool, reference: float, ccsd: float, triples: float
+) -> None:
+    state, _ = _owner(publication[1], cuda=cuda)
+    state.reference.reference_energy = reference
+    state.response.response.baseline._execute_tensor = lambda *args: {
+        "correlation_energy": ccsd
+    }
+    if cuda:
+        state._run = lambda *args: {"triples_energy": triples / 4}
+    else:
+        publication[1]["triples_energy"] = lambda *args: triples
+
+    constructed = []
+    publication[1]["CCSDGradientResult"] = lambda *args: constructed.append(args)
+    with pytest.raises(PublicationError, match="nonfinite"):
+        _publish(publication, state)
+    assert constructed == []

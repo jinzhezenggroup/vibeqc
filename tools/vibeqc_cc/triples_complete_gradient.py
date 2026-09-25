@@ -270,13 +270,18 @@ class BoundCCSDTGradient(BoundCCSDGradient):
                 )
                 outputs = self._run(program, _tile_input_feeds(arrays, tile.a_end))
                 triples += float(outputs["triples_energy"])
-            if not np.isfinite(triples):
-                raise ImplicitSolveError("nonfinite RCCSD(T) publication energy")
         correlation = correlation_ccsd + triples
+        total_energy = self.reference.reference_energy + correlation
+        # Finite stage energies can still overflow when combined for publication.
+        if not all(
+            np.isfinite(value)
+            for value in (correlation_ccsd, triples, correlation, total_energy)
+        ):
+            raise ImplicitSolveError("nonfinite RCCSD(T) publication energy")
         corrected = state.response.corrected
         self._assert_current()
         return CCSDGradientResult(
-            self.reference.reference_energy + correlation,
+            total_energy,
             correlation,
             np.asarray(gradient).reshape(-1, 3),
             {k: np.asarray(v).reshape(-1, 3) for k, v in physical.items()},
