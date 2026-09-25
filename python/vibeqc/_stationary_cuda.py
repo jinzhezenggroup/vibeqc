@@ -898,7 +898,7 @@ class PreparedStationaryCudaExecution:
                     CUDA_REQUESTS_PER_UNIT if component_mode else None
                 ),
             )
-            if aot_directory is None or ecp or component_mode
+            if aot_directory is None or ecp
             else load_stationary_aot_artifact(
                 aot_directory,
                 functional=functional,
@@ -906,6 +906,9 @@ class PreparedStationaryCudaExecution:
                 plan=plan,
                 architecture=target.architecture,
                 iterations=spec.partition_iterations,
+                component_domain=(
+                    _component_domain(expansions) if component_mode else None
+                ),
             )
         )
         grid_artifact = (
@@ -1373,7 +1376,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                         CUDA_REQUESTS_PER_UNIT if component_mode else None
                     ),
                 )
-                if aot_directory is None or ecp or component_mode
+                if aot_directory is None or ecp
                 else load_stationary_aot_artifact(
                     aot_directory,
                     functional=functional,
@@ -1381,6 +1384,9 @@ def _complete_rks_cuda_gradient_diagnostic(
                     plan=plan,
                     architecture=target.architecture,
                     iterations=spec.partition_iterations,
+                    component_domain=(
+                        _component_domain(expansions) if component_mode else None
+                    ),
                 )
             )
             grid_artifact = (
