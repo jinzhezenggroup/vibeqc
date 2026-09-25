@@ -24,11 +24,13 @@ from vibeqc_compiler.xc.production_domain_cases import (
 )
 from vibeqc_compiler.xc.production_domain_controls import run_control_case
 from vibeqc_compiler.xc.production_domain_evidence import (
+    build_execution_binding,
     build_result,
     stage_evidence,
 )
 
 if TYPE_CHECKING:
+    from vibeqc_compiler.xc.bulk_runtime import BulkRuntimeProgram
     from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
 
 CAMPAIGN_SCHEMA = "vibeqc.libxc-production-domain-campaign/v1"
@@ -124,6 +126,7 @@ def _run_numeric_case(
     *,
     family: str,
     profile: ProductionDomainProfile,
+    program: BulkRuntimeProgram,
     libxc: Any,
     rtol: float,
     atol: float,
@@ -159,7 +162,6 @@ def _run_numeric_case(
         }
 
     try:
-        program = build_bulk_runtime_program(name, spin=case.spin, order=2)
         if program.spec.features != feature_names:
             raise ValueError(
                 "candidate feature layout mismatch: "
@@ -250,6 +252,12 @@ def main() -> int:
     if libxc.xc_type(capability.name).lower() != profile.family:
         raise RuntimeError("independent Libxc family disagrees with imported catalog")
 
+    programs = {
+        spin: build_bulk_runtime_program(capability.name, spin=spin, order=2)
+        for spin in profile.spin_layouts
+    }
+    execution = build_execution_binding(capability.name, programs)
+
     rows: list[dict[str, Any]] = []
     details: list[dict[str, Any]] = []
     for spin in profile.spin_layouts:
@@ -270,6 +278,7 @@ def main() -> int:
                 by_id[case_id],
                 family=profile.family,
                 profile=profile,
+                program=programs[spin],
                 libxc=libxc,
                 rtol=args.rtol,
                 atol=args.atol,
@@ -277,13 +286,19 @@ def main() -> int:
             rows.append(row)
             details.append(detail)
 
-    receipt = build_result(capability.name, rows, evidence=args.evidence)
+    receipt = build_result(
+        capability.name,
+        rows,
+        evidence=args.evidence,
+        execution=execution,
+    )
     envelope = stage_evidence(capability.name, receipt)
     payload = {
         "schema": CAMPAIGN_SCHEMA,
         "functional": capability.name,
         "capability_identity": capability.identity,
         "profile": profile.to_payload(),
+        "execution": execution,
         "oracle": {
             "pyscf": pyscf.__version__,
             "libxc": libxc.__version__,
