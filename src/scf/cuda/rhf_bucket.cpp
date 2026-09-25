@@ -145,9 +145,9 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
       shell_pair_second.push_back(static_cast<std::int32_t>(second));
       std::size_t pair_primitives = 0;
       if (!checked_size_multiply(shell_primitive_counts[first], shell_primitive_counts[second],
-                                     pair_primitives) ||
+                                 pair_primitives) ||
           !checked_size_add(shell_pair_primitive_count, pair_primitives,
-                                shell_pair_primitive_count)) {
+                            shell_pair_primitive_count)) {
         return false;
       }
       const unsigned pair_order = static_cast<unsigned>(shell_angular[first]) +
@@ -169,8 +169,7 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
         (psss_resident_ket_pair_count + kResidentPsssThreads - 1) / kResidentPsssThreads;
   }
   std::size_t psss_resident_task_count = 0;
-  if (!checked_size_multiply(psss_bra_pair_count, psss_chunks_per_bra,
-                                 psss_resident_task_count)) {
+  if (!checked_size_multiply(psss_bra_pair_count, psss_chunks_per_bra, psss_resident_task_count)) {
     return false;
   }
 
@@ -208,8 +207,8 @@ bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, s
     for (std::size_t order = kMixedFockMinimumAngularOrder;
          order < detail::kDirectQuartetAngularOrderCount; ++order) {
       if (!checked_size_add(fp32_shell_quartet_tile_count,
-                                direct_task_layout.angular_order_tile_counts[order],
-                                fp32_shell_quartet_tile_count)) {
+                            direct_task_layout.angular_order_tile_counts[order],
+                            fp32_shell_quartet_tile_count)) {
         return false;
       }
     }
