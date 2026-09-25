@@ -146,7 +146,10 @@ class BoundCCSDTOrbitalResponse:
         # curvature checks and lifetime gates.  Constructing this validation
         # owner does not evaluate nuclear integral derivatives.
         baseline = BoundCCSDOrbitalResponse(
-            response.baseline, provider, options=options
+            response.baseline,
+            provider,
+            options=options,
+            tensor_executor=response.parameter_executor,
         )
         reference = baseline.reference
         response.bound._assert_current(reference.identity)
