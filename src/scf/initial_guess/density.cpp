@@ -302,6 +302,8 @@ OccupiedProjectionResult project_occupied_density(
         value += source_coefficients[mu * source_nbf + first] *
                  source_metric_times_c[mu * occupied + second];
       const double expected = first == second ? 1.0 : 0.0;
+      if (!std::isfinite(value))
+        throw std::invalid_argument("source occupied metric contraction is non-finite");
       source_orthogonality_error = std::max(source_orthogonality_error, std::abs(value - expected));
     }
   }
@@ -406,6 +408,8 @@ OccupiedProjectionResult project_occupied_density(
         value += target_coefficients[mu * occupied + first] *
                  target_metric_times_c[mu * occupied + second];
       const double expected = first == second ? 1.0 : 0.0;
+      if (!std::isfinite(value))
+        throw std::invalid_argument("target occupied metric contraction is non-finite");
       target_orthogonality_error = std::max(target_orthogonality_error, std::abs(value - expected));
     }
   }
