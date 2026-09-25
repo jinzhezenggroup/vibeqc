@@ -133,7 +133,6 @@ def _validate_weighted(program: typing.Any) -> None:
         raise ValueError("SCF weighted-density weight domains changed")
 
 
-
 def _validate_hf_force(program: typing.Any, spin_count: int) -> None:
     if tuple(program.outputs) != ("forces",):
         raise ValueError("SCF HF-force program must have one expected output")
@@ -177,6 +176,7 @@ def _validate_hf_force(program: typing.Any, spin_count: int) -> None:
             raise ValueError(f"SCF HF-force {name} operand layout changed")
     if force.inputs[2].inputs[0].spec.indices[1].space.size != spin_count:
         raise ValueError("SCF HF-force spin layout changed")
+
 
 def _validate_diis_gram(program: typing.Any) -> None:
     if tuple(program.outputs) != ("gram",):
