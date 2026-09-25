@@ -65,18 +65,21 @@ __global__ void scale_eigenvectors_kernel(std::size_t matrix_elements, std::size
  * second grid dimension supplies enough independent pair stripes to occupy the
  * device without recomputing sqrt(eigenvalue) for every projected element.
  * There is no reduction or cross-thread arithmetic: every output element keeps
- * the exact existing division by the same FP64 denominator.
+ * the exact existing division by the same FP64 denominator. Input and output
+ * may alias for the original in-place route or be disjoint to fuse retention.
  */
 __global__ void scale_metric_projection_kernel(std::size_t dimension, std::size_t pairs,
                                                const double* eigenvalues, bool square_root,
-                                               double* projected) {
+                                               const double* projected, double* scaled) {
   const auto direction = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   const auto group = static_cast<std::size_t>(blockIdx.y);
   if (direction >= dimension || group >= pairs) return;
   const auto value = eigenvalues[direction];
   const auto denominator = square_root ? sqrt(value) : value;
-  for (auto pair = group; pair < pairs; pair += static_cast<std::size_t>(gridDim.y))
-    projected[pair * dimension + direction] /= denominator;
+  for (auto pair = group; pair < pairs; pair += static_cast<std::size_t>(gridDim.y)) {
+    const auto index = pair * dimension + direction;
+    scaled[index] = projected[index] / denominator;
+  }
 }
 
 // Preserve the caller's original domain when rectangular tiles or a clipped
@@ -116,14 +119,21 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
       matrix_elements, dimension, eigenvectors, scales, scaled_eigenvectors);
 }
 
-void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
-                                    const double* eigenvalues, bool square_root,
-                                    double* projected) {
+void launch_scale_metric_projection_to(cudaStream_t stream, std::size_t dimension,
+                                       std::size_t pairs, const double* eigenvalues,
+                                       bool square_root, const double* projected, double* scaled) {
   constexpr std::size_t kPairGroups = 32;
   const auto groups = std::min(pairs, kPairGroups);
   scale_metric_projection_kernel<<<dim3(static_cast<unsigned>((dimension + 255) / 256),
                                         static_cast<unsigned>(groups)),
                                    256, 0, stream>>>(dimension, pairs, eigenvalues, square_root,
-                                                     projected);
+                                                     projected, scaled);
+}
+
+void launch_scale_metric_projection(cudaStream_t stream, std::size_t dimension, std::size_t pairs,
+                                    const double* eigenvalues, bool square_root,
+                                    double* projected) {
+  launch_scale_metric_projection_to(stream, dimension, pairs, eigenvalues, square_root, projected,
+                                    projected);
 }
 }  // namespace vibeqc::scf::cuda_df
