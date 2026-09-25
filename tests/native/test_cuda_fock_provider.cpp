@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "molecule/basis.hpp"
-#include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda/direct_jk_plan.hpp"
+#include "scf/cuda_density_fitting.hpp"
 #include "scf/cuda_direct_jk.hpp"
 #include "scf/cuda_direct_jk_device.hpp"
 #include "scf/density_fitting.hpp"

@@ -20,10 +20,9 @@ struct DirectJkValueDispatch {
   bool generated_coulomb{}, generic_coulomb{}, generic_exchange{};
 };
 constexpr DirectJkValueDispatch direct_jk_value_dispatch(bool generated_coulomb_available,
-                                                          bool want_coulomb, bool want_exchange,
-                                                          bool mixed_coulomb) noexcept {
-  const bool generated_coulomb =
-      generated_coulomb_available && want_coulomb && !mixed_coulomb;
+                                                         bool want_coulomb, bool want_exchange,
+                                                         bool mixed_coulomb) noexcept {
+  const bool generated_coulomb = generated_coulomb_available && want_coulomb && !mixed_coulomb;
   return {generated_coulomb, want_coulomb && !generated_coulomb, want_exchange};
 }
 

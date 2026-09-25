@@ -432,9 +432,8 @@ static vibeqc_status enqueue_cuda_direct_jk_device_impl(CudaDirectJkPlan* plan, 
         direct_jk_check(cudaGetLastError());
       }
     if (spec.coulomb.present || spec.exchange.present) {
-      const auto dispatch =
-          direct_jk_value_dispatch(plan->generated_coulomb != nullptr, spec.coulomb.present,
-                                   spec.exchange.present, mixed_j);
+      const auto dispatch = direct_jk_value_dispatch(
+          plan->generated_coulomb != nullptr, spec.coulomb.present, spec.exchange.present, mixed_j);
       if (dispatch.generated_coulomb)
         direct_jk_check(
             enqueue_generated_coulomb(*plan->generated_coulomb, density, beta, coulomb));
