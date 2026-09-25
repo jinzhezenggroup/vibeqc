@@ -82,7 +82,6 @@ range_separated_integrals
 rccsd
 rccsd_bc
 rccsd_gpu
-rccsd_gpu_solver
 rccsd_lambda
 rccsd_t
 rccsd_t_api
