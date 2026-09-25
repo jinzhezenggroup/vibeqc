@@ -16,7 +16,7 @@ def _decode_tile(pair: int, tiles: int) -> tuple[int, int]:
 
 
 def test_metric_symmetry_uses_compact_upper_tile_domain() -> None:
-    kernel = SOURCE.split("__global__ void scale_eigenvectors_kernel", maxsplit=1)[0]
+    kernel = SOURCE.split("__global__ void scale_eigenvectors", maxsplit=1)[0]
     assert "__shared__ std::size_t tile_row, tile_column;" in kernel
     assert "tile_row = pair - low * (low + 1) / 2;" in kernel
     assert "tile_column = low;" in kernel

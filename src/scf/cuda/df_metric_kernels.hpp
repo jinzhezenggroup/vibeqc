@@ -7,11 +7,11 @@
 
 namespace vibeqc::scf::cuda_df {
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Launch on the caller's stream, compacting the logical work domain when legal. */
 void launch_symmetrize_metrics_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t dimension, double* metrics);
 
-/** Forward the caller's exact launch configuration on its existing stream. */
+/** Launch on the caller's stream, remapping dense metric columns when legal. */
 void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
                                       cudaStream_t stream, std::size_t matrix_elements,
                                       std::size_t dimension, const double* eigenvectors,

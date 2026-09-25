@@ -47,15 +47,38 @@ __global__ void symmetrize_metrics_kernel(std::size_t dimension, std::size_t til
   metrics[second] = symmetric;
 }
 
-__global__ void scale_eigenvectors_kernel(std::size_t matrix_elements, std::size_t dimension,
-                                          const double* eigenvectors, const double* scales,
-                                          double* scaled_eigenvectors) {
+__global__ void scale_eigenvectors_flat_kernel(std::size_t matrix_elements, std::size_t dimension,
+                                               const double* eigenvectors, const double* scales,
+                                               double* scaled_eigenvectors) {
   const std::size_t element = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (element >= matrix_elements) return;
   const std::size_t local = element % (dimension * dimension);
   const std::size_t system = element / (dimension * dimension);
   const std::size_t column = local / dimension;
   scaled_eigenvectors[element] = eigenvectors[element] * scales[system * dimension + column];
+}
+
+/** Scale one metric-eigenvector column per block.
+ *
+ * The legacy flat launch decodes [system,column,row] independently for every
+ * matrix element with three runtime 64-bit division/modulo operations and loads
+ * the same scale once per element. Metric setup already knows this dense shape:
+ * one block can own a column, load its scale once, and let adjacent lanes walk
+ * contiguous rows. The elementwise FP64 multiply and layout are unchanged.
+ */
+__global__ void scale_eigenvectors_column_kernel(std::size_t dimension, const double* eigenvectors,
+                                                 const double* scales,
+                                                 double* scaled_eigenvectors) {
+  const std::size_t column = static_cast<std::size_t>(blockIdx.x);
+  const std::size_t system = static_cast<std::size_t>(blockIdx.y);
+  __shared__ double column_scale;
+  if (threadIdx.x == 0) column_scale = scales[system * dimension + column];
+  __syncthreads();
+  const std::size_t base = (system * dimension + column) * dimension;
+  for (std::size_t row = threadIdx.x; row < dimension; row += blockDim.x) {
+    const std::size_t element = base + row;
+    scaled_eigenvectors[element] = eigenvectors[element] * column_scale;
+  }
 }
 
 /** Scale a bounded pair stripe while reusing the eigendirection denominator.
@@ -115,7 +138,31 @@ void launch_scale_eigenvectors_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       cudaStream_t stream, std::size_t matrix_elements,
                                       std::size_t dimension, const double* eigenvectors,
                                       const double* scales, double* scaled_eigenvectors) {
-  scale_eigenvectors_kernel<<<grid, block, shared_bytes, stream>>>(
+  constexpr std::size_t kGridYLimit = 65535;
+  const bool square_fits =
+      dimension != 0 && dimension <= std::numeric_limits<std::size_t>::max() / dimension;
+  const auto matrix_size = square_fits ? dimension * dimension : std::size_t{0};
+  const auto systems = matrix_size != 0 && matrix_elements % matrix_size == 0
+                           ? matrix_elements / matrix_size
+                           : std::size_t{0};
+  // A compact full-matrix launch must not enlarge a caller-supplied partial
+  // flat domain. Preserve non-1D/empty grid semantics through the old adapter.
+  const bool complete_flat_domain =
+      block.x != 0 && grid.y == 1 && grid.z == 1 &&
+      static_cast<std::size_t>(grid.x) >=
+          matrix_elements / block.x + (matrix_elements % block.x != 0);
+  const bool column_schedule =
+      systems != 0 && systems <= kGridYLimit &&
+      dimension <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
+      complete_flat_domain && block.y == 1 && block.z == 1;
+  if (column_schedule) {
+    scale_eigenvectors_column_kernel<<<dim3(static_cast<unsigned>(dimension),
+                                            static_cast<unsigned>(systems)),
+                                       block, shared_bytes, stream>>>(dimension, eigenvectors,
+                                                                      scales, scaled_eigenvectors);
+    return;
+  }
+  scale_eigenvectors_flat_kernel<<<grid, block, shared_bytes, stream>>>(
       matrix_elements, dimension, eigenvectors, scales, scaled_eigenvectors);
 }
 

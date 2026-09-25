@@ -81,7 +81,7 @@ def metric_execution(tmp_path_factory: pytest.TempPathFactory) -> Path:
         pytest.skip("requires a host C++ compiler")
     text = (ROOT / "src/scf/cuda/df_metric_kernels.cu").read_text(encoding="utf-8")
     start = text.index("__global__ void symmetrize_metrics_kernel")
-    end = text.index("__global__ void scale_eigenvectors_kernel", start)
+    end = text.index("__global__ void scale_eigenvectors", start)
     kernels = text[start:end]
     marker = "__global__ void symmetrize_metrics_fallback_kernel"
     if marker in text:
