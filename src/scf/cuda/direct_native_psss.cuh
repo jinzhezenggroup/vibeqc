@@ -19,7 +19,8 @@
 
 // Runtime-only psss force geometry/schedule adapter.
 // The coordinate-derivative algebra is compiler-owned by generated_weighted_eri::psss_force;
-// this helper retains resident-bra reuse, primitive traversal, normalization transport and accumulation.
+// this helper retains resident-bra reuse, primitive traversal, normalization transport and
+// accumulation.
 namespace vibeqc::scf::cuda_execution {
 
 /**

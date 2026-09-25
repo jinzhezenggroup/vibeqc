@@ -94,7 +94,9 @@ def test_low_order_force_adapters_are_runtime_only() -> None:
     }
 
     assert not (ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh").exists()
-    low_order = (ROOT / "src/scf/cuda/direct_force_low_order.cuh").read_text(encoding="utf-8")
+    low_order = (ROOT / "src/scf/cuda/direct_force_low_order.cuh").read_text(
+        encoding="utf-8"
+    )
     assert "generated_weighted_eri::ssss_force" in low_order
     psss = (ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(encoding="utf-8")
     assert "generated_weighted_eri::psss_force" in psss
