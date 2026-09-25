@@ -65,9 +65,11 @@ struct PersistentScfState {
   double storage[2]{};
   double* d_alpha_factor=storage;
 };
+enum class DfPairStorage { Dense, SymmetricLower, SymmetricLowerSingle };
 struct CudaDensityFittingJkPlan {
   void* persistent_scf_state=nullptr;
   bool streamed=true;
+  struct { DfPairStorage pairs=DfPairStorage::Dense; } value_storage;
   void* integral_source=reinterpret_cast<void*>(1);
   std::size_t batch_size=1,matrix_elements=4,nbf=2,naux=2,factor_basis_identity=9;
   cudaStream_t stream=1;
