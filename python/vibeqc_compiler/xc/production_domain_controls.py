@@ -140,9 +140,16 @@ def _lazy_inactive_branch(
     return row, detail
 
 
-def _invalid_nonfinite(name: str, spin: str) -> tuple[dict[str, Any], dict[str, Any]]:
+def _invalid_nonfinite(
+    name: str,
+    spin: str,
+    program: BulkRuntimeProgram | None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Require every nonfinite feature to fail before mathematical evaluation."""
-    program = build_bulk_runtime_program(name, spin=spin, order=2)
+    if program is None:
+        program = build_bulk_runtime_program(name, spin=spin, order=2)
+    elif program.spec.identifier != name or program.spec.spin != spin:
+        raise ValueError("production-domain control program identity mismatch")
     feature_count = len(program.spec.features)
     baseline = np.ones((feature_count, 1), dtype=np.float64)
     rejected = 0
