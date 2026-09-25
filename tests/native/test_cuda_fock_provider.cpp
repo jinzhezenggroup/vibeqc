@@ -223,8 +223,7 @@ void range_exchange_provider() {
       spec.exchange = {true, -0.31, op, omega, FockApproximation::Exact};
       std::vector<double> j, ka, kb;
       require(execute_cuda_direct_jk(plan.get(), spec, alpha,
-                                     spin == FockSpin::Unrestricted ? beta
-                                                                    : std::vector<double>{},
+                                     spin == FockSpin::Unrestricted ? beta : std::vector<double>{},
                                      j, ka, kb, detail) == VIBEQC_STATUS_SUCCESS,
               detail.c_str());
       require(j.empty() && ka.size() == expected_alpha.size() &&
