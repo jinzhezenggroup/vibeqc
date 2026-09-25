@@ -260,7 +260,9 @@ def test_cuda_resource_gate_enforces_register_stack_local_shared_and_spills() ->
         (64, 0, 0, 0, -1),
     ],
 )
-def test_cuda_resource_limits_reject_invalid_bounds(args: tuple[int, ...]) -> None:
+def test_cuda_resource_limits_reject_invalid_bounds(
+    args: tuple[int, int, int, int, int],
+) -> None:
     with pytest.raises(ValueError):
         bulk_aot.CudaResourceLimits(*args)
 
