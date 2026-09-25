@@ -1,12 +1,12 @@
 #include "scf/fock_build.hpp"
 
-#include "tensor/cpu_linalg.hpp"
-
 #include <array>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <utility>
+
+#include "tensor/cpu_linalg.hpp"
 
 namespace vibeqc::scf {
 namespace {
