@@ -28,9 +28,7 @@ def required_matrix(
     """Return the exact spin x case coverage required by the current profile."""
     profile = capability.production_domain_profile
     return tuple(
-        (spin, case_id)
-        for spin in profile.spin_layouts
-        for case_id in profile.case_ids
+        (spin, case_id) for spin in profile.spin_layouts for case_id in profile.case_ids
     )
 
 
@@ -49,9 +47,7 @@ def _normalize_case(
     if spin not in profile.spin_layouts:
         raise ValueError(f"production-domain case has unsupported spin {spin!r}")
     if case_id not in profile.case_ids:
-        raise ValueError(
-            f"production-domain case has unsupported case_id {case_id!r}"
-        )
+        raise ValueError(f"production-domain case has unsupported case_id {case_id!r}")
     if status not in CASE_STATUSES:
         raise ValueError("production-domain case status must be pass, fail, or not-run")
     if (
@@ -83,8 +79,7 @@ def _canonical_payload(
     profile = capability.production_domain_profile
     if not profile.eligible:
         raise ValueError(
-            "production-domain result is structurally blocked: "
-            + str(profile.blocker)
+            "production-domain result is structurally blocked: " + str(profile.blocker)
         )
     if not isinstance(evidence, str) or not evidence.strip():
         raise ValueError("production-domain result requires an evidence reference")
