@@ -122,7 +122,7 @@ def test_preparation_owns_generated_response_and_prior_items(
             text=True,
         )
     )
-    accepted, derivatives, nuclear, owners, n, _ = values
+    accepted, derivatives, nuclear, owners, _n, _ = values
     expected = 0 if mode == "reject" else 2 if mode == "partial" else 1
     assert accepted == expected
     assert derivatives == 0
