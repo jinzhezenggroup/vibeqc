@@ -18,7 +18,9 @@ def _preparation() -> tuple[str, str]:
     name = "      - name: Prepare pinned GFN1 and D3 reference inputs\n"
     assert workflow.count(name) == 1
     step = workflow.split(name, 1)[1].split("      - name:", 1)[0]
-    assert "if: (matrix.shard == 'core' || matrix.shard == 'compiler-heavy') && " in step
+    assert (
+        "if: (matrix.shard == 'core' || matrix.shard == 'compiler-heavy') && " in step
+    )
     assert "steps.gfn1_reference_sources.outputs.cache-hit != 'true'" in step
     commands = step.split("        run: |\n", 1)[1]
     return workflow, "\n".join(line[10:] for line in commands.splitlines())
@@ -97,7 +99,10 @@ def test_reference_guards_cover_both_consumers_and_cache_states(
 ) -> None:
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     for name, expected in (
-        ("Cache pinned GFN1 and D3 reference inputs", shard in {"core", "compiler-heavy"}),
+        (
+            "Cache pinned GFN1 and D3 reference inputs",
+            shard in {"core", "compiler-heavy"},
+        ),
         (
             "Prepare pinned GFN1 and D3 reference inputs",
             shard in {"core", "compiler-heavy"} and cache_hit != "true",
@@ -113,7 +118,11 @@ def test_reference_guards_cover_both_consumers_and_cache_states(
             "steps.gfn1_reference_sources.outputs.cache-hit", '"$CACHE_HIT"'
         )
         completed = subprocess.run(
-            ["bash", "-c", f"if [[ {expression} ]]; then printf run; else printf skip; fi"],
+            [
+                "bash",
+                "-c",
+                f"if [[ {expression} ]]; then printf run; else printf skip; fi",
+            ],
             env={**os.environ, "SHARD": shard, "CACHE_HIT": cache_hit},
             check=True,
             capture_output=True,
