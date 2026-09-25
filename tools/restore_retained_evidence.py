@@ -40,7 +40,11 @@ def _records(manifest: Path | None) -> list[dict]:
     schema = audit.get("schema")
     if schema == "vibeqc.storage-migration.v1":
         records = audit.get("archives")
-    elif schema in {"vibeqc.evidence-archive.v1", "vibeqc.git-snapshot.v1", "vibeqc.git-object-snapshot.v1"}:
+    elif schema in {
+        "vibeqc.evidence-archive.v1",
+        "vibeqc.git-snapshot.v1",
+        "vibeqc.git-object-snapshot.v1",
+    }:
         records = audit.get("files")
     else:
         raise ValueError("unsupported evidence migration manifest")

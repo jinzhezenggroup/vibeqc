@@ -361,6 +361,7 @@ def test_2026_09_21_trim_manifest_tracks_only_removed_git_objects() -> None:
     assert all(entry["checkout"] == "git-history" for entry in audit["files"])
     assert all(not (module.ROOT / record["path"]).exists() for record in records)
 
+
 def test_git_object_snapshot_restores_by_blob_identity(historical: typing.Any) -> None:
     root, name, payload, manifest, audit = historical
     revision = audit["source_revision"]
