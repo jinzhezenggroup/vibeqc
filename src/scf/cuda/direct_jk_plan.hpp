@@ -11,6 +11,21 @@
 
 namespace vibeqc::scf {
 
+/** Select the resident value sources without changing the requested mathematics.
+ * Generated J is exact FP64 and may be composed with the independent exact-K
+ * consumer on the same provider stream. Mixed-J and missing optional capacity
+ * deliberately retain the generic source.
+ */
+struct DirectJkValueDispatch {
+  bool generated_coulomb{}, generic_coulomb{}, generic_exchange{};
+};
+constexpr DirectJkValueDispatch direct_jk_value_dispatch(bool generated_coulomb_available,
+                                                         bool want_coulomb, bool want_exchange,
+                                                         bool mixed_coulomb) noexcept {
+  const bool generated_coulomb = generated_coulomb_available && want_coulomb && !mixed_coulomb;
+  return {generated_coulomb, want_coulomb && !generated_coulomb, want_exchange};
+}
+
 /** Own one exact public-AO provider source and its density/output scratch.
  * Kernel consumers borrow the packed view; the plan drains its stream before
  * releasing buffers. Layout and explicit budget accounting remain unchanged.
