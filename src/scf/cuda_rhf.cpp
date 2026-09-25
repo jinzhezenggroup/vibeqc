@@ -113,6 +113,7 @@ using cuda_policy::aot_shell_class_selection_override_requested;
 using cuda_policy::bounded_direct_aot_only_diagnostic_requested;
 using cuda_policy::bounded_direct_count_diagnostic_requested;
 using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
+using cuda_policy::bounded_direct_primary_streaming_fock_mask_requested;
 using cuda_policy::bounded_direct_streaming_override_requested;
 using cuda_policy::bounded_fock_class_timing_requested;
 using cuda_policy::configured_mixed_precision_fock_threshold;
@@ -1574,6 +1575,24 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           : 0U;
   const std::uint64_t host_generated_streaming_fock_shell_class_mask =
       host_generated_fock_shell_class_mask & kGeneratedStreamingFockShellClassMask;
+  const auto requested_primary_streaming_fock_mask =
+      bounded_direct_primary_streaming_fock_mask_requested();
+  // Keep the scheduling A/B orthogonal to mixed-precision arithmetic.  A
+  // primary-streaming diagnostic is active only for strict FP64 execution;
+  // mixed execution retains its separately qualified routing.
+  const std::uint64_t host_primary_streaming_fock_shell_class_mask =
+      !mixed_precision_fock && requested_primary_streaming_fock_mask.has_value()
+          ? *requested_primary_streaming_fock_mask &
+                host_generated_streaming_fock_shell_class_mask
+          : 0U;
+  std::array<std::uint32_t, detail::kDirectQuartetShellClassCount>
+      host_primary_streaming_fock_flags{};
+  for (unsigned shell_class = 0; shell_class < detail::kDirectQuartetShellClassCount;
+       ++shell_class) {
+    host_primary_streaming_fock_flags[shell_class] =
+        (host_primary_streaming_fock_shell_class_mask &
+         (std::uint64_t{1} << shell_class)) != 0U;
+  }
   const std::uint64_t host_native_streaming_fock_shell_class_mask =
       host_generated_fock_shell_class_mask & kNativeStreamingFockShellClassMask;
   const std::uint64_t host_uncovered_fock_shell_class_mask =
@@ -2097,7 +2116,9 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       const generated::ShellKernelMetadata& kernel = bounded_fock_kernels[kernel_index];
       const unsigned shell_class = kernel.shell_class;
       if ((host_generated_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) == 0U ||
-          (host_native_streaming_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) != 0U) {
+          (host_native_streaming_fock_shell_class_mask & (std::uint64_t{1} << shell_class)) != 0U ||
+          (host_primary_streaming_fock_shell_class_mask &
+           (std::uint64_t{1} << shell_class)) != 0U) {
         continue;
       }
       unsigned high_pair_class = 0U;
@@ -2221,6 +2242,13 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
           bounded_direct_generated_overflow, 0,
           detail::kDirectQuartetShellClassCount * sizeof(std::uint32_t), resources.stream_);
       if (reset_error != cudaSuccess) return reset_error;
+      if (host_primary_streaming_fock_shell_class_mask != 0U) {
+        reset_error = cudaMemcpyAsync(
+            bounded_direct_generated_overflow, host_primary_streaming_fock_flags.data(),
+            host_primary_streaming_fock_flags.size() * sizeof(std::uint32_t),
+            cudaMemcpyHostToDevice, resources.stream_);
+        if (reset_error != cudaSuccess) return reset_error;
+      }
       cudaError_t paged_error =
           launch_bounded_paged_generated_fock(is_unrestricted, quartet_density, quartet_fock);
       if (paged_error != cudaSuccess) return paged_error;
