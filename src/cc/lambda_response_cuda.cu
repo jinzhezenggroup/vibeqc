@@ -147,7 +147,7 @@ int checked_device(int device) {
 class CudaLambdaActions {
  public:
   CudaLambdaActions(const Problem& p, const SolverResult& cc, const LambdaOptions& options,
-                    int device, bool with_source)
+                    int device, bool with_source, bool with_parameters)
       : scope_(checked_device(device)), layout_(p.nocc, p.nvir) {
     layout_.initialize();
     layout_.validate_dense(cc.t1, cc.t2);
@@ -160,11 +160,24 @@ class CudaLambdaActions {
       device_layout_.inputs[index] = reserve(cursor, bytes(host[index]->size()));
     device_layout_.replay_arena =
         reserve(cursor, bytes(generated::replay_arena_elements(p.nocc, p.nvir)));
-    const auto response_elements =
+    auto response_elements =
         std::max({generated::lambda_rhs_arena_elements(p.nocc, p.nvir),
                   generated::lambda_transpose_arena_elements(p.nocc, p.nvir),
                   generated::lambda_independent_rhs_arena_elements(p.nocc, p.nvir),
                   generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir)});
+    if (with_parameters)
+      response_elements =
+          std::max({response_elements,
+                    generated::parameter_foo_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_fov_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_fvv_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_ovov_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_ovvo_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_oovv_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_ovvv_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_ovoo_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_oooo_arena_elements(p.nocc, p.nvir),
+                    generated::parameter_vvvv_arena_elements(p.nocc, p.nvir)});
     device_layout_.response_arena = reserve(cursor, bytes(response_elements));
     device_layout_.energy_seed = reserve(cursor, sizeof(double));
     device_layout_.residual_one = reserve(cursor, bytes(layout_.n1));
@@ -266,6 +279,36 @@ class CudaLambdaActions {
                 out_one, out_two);
   }
 
+  void set_parameter_seeds(std::span<const double> lambda1, std::span<const double> lambda2) {
+    if (lambda1.size() != layout_.n1 || lambda2.size() != layout_.n2)
+      throw std::invalid_argument("RCCSD CUDA parameter-response seed shape mismatch");
+    const double energy_seed = 1.0;
+    cuda_check(cudaMemcpyAsync(state_.bar_correlation_energy, &energy_seed, sizeof(double),
+                               cudaMemcpyHostToDevice, stream_));
+    cuda_check(cudaMemcpyAsync(state_.bar_singles_residual, lambda1.data(), bytes(layout_.n1),
+                               cudaMemcpyHostToDevice, stream_));
+    cuda_check(cudaMemcpyAsync(state_.bar_doubles_residual, lambda2.data(), bytes(layout_.n2),
+                               cudaMemcpyHostToDevice, stream_));
+    h2d_bytes_ = checked_add(
+        h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
+  }
+
+  using ParameterRunner = generated::DeviceParameterOutput (*)(generated::CudaState&);
+
+  std::vector<double> parameter(ParameterRunner run, std::size_t count) {
+    const auto output = run(state_);
+    std::vector<double> values(count);
+    int error = 0;
+    cuda_check(
+        cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost, stream_));
+    cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
+    cuda_check(cudaStreamSynchronize(stream_));
+    d2h_bytes_ = checked_add(d2h_bytes_, checked_add(bytes(count), sizeof(int)));
+    ++synchronizations_;
+    check_error(error);
+    return values;
+  }
+
  private:
   void copy_output(const generated::DeviceLambdaOutputs& output, std::vector<double>& one,
                    std::vector<double>& two) {
@@ -320,7 +363,8 @@ double max_abs(std::span<const double> values) {
 
 LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<const double> t1_source,
                         std::span<const double> t2_source, int device,
-                        const LambdaOptions& options) {
+                        const LambdaOptions& options,
+                        CudaFixedOrbitalResponseResult* fixed_orbital) {
   validate_problem(p);
   validate_lambda_options(options);
   if (!cc.converged())
@@ -339,7 +383,7 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
       if (!std::isfinite(value))
         throw std::invalid_argument("nonfinite RCCSD CUDA Lambda energy source");
 
-  CudaLambdaActions owner(p, cc, options, device, with_source);
+  CudaLambdaActions owner(p, cc, options, device, with_source, fixed_orbital != nullptr);
   const auto& layout = owner.layout();
   double replay_energy = 0.0;
   std::vector<double> dense_one, dense_two;
@@ -414,6 +458,34 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
   result.diagnostic.independent_residual_max = independent_max;
   result.diagnostic.iterations = solved.iterations;
   result.diagnostic.operator_actions = solved.operator_actions;
+  if (fixed_orbital) {
+    owner.set_parameter_seeds(result.lambda1, result.lambda2);
+    fixed_orbital->foo =
+        owner.parameter(generated::run_parameter_foo_cuda, checked_mul(p.nocc, p.nocc));
+    fixed_orbital->fov =
+        owner.parameter(generated::run_parameter_fov_cuda, checked_mul(p.nocc, p.nvir));
+    fixed_orbital->fvv =
+        owner.parameter(generated::run_parameter_fvv_cuda, checked_mul(p.nvir, p.nvir));
+    const auto oovv = checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nvir, p.nvir));
+    fixed_orbital->ovov = owner.parameter(generated::run_parameter_ovov_cuda, oovv);
+    fixed_orbital->ovvo = owner.parameter(generated::run_parameter_ovvo_cuda, oovv);
+    fixed_orbital->oovv = owner.parameter(generated::run_parameter_oovv_cuda, oovv);
+    fixed_orbital->ovvv =
+        owner.parameter(generated::run_parameter_ovvv_cuda,
+                        checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
+    fixed_orbital->ovoo =
+        owner.parameter(generated::run_parameter_ovoo_cuda,
+                        checked_mul(checked_mul(p.nocc, p.nvir),
+                                    checked_mul(p.nocc, p.nocc)));
+    fixed_orbital->oooo =
+        owner.parameter(generated::run_parameter_oooo_cuda,
+                        checked_mul(checked_mul(p.nocc, p.nocc),
+                                    checked_mul(p.nocc, p.nocc)));
+    fixed_orbital->vvvv =
+        owner.parameter(generated::run_parameter_vvvv_cuda,
+                        checked_mul(checked_mul(p.nvir, p.nvir),
+                                    checked_mul(p.nvir, p.nvir)));
+  }
   result.diagnostic.numeric_capacity_bytes = owner.numeric_capacity_bytes();
   result.diagnostic.owned_device_bytes = owner.owned_device_bytes();
   result.diagnostic.h2d_bytes = owner.h2d_bytes();
@@ -429,7 +501,7 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
 
 LambdaResult solve_lambda_cuda(const Problem& problem, const SolverResult& cc_result, int device,
                                const LambdaOptions& options) {
-  return solve_impl(problem, cc_result, {}, {}, device, options);
+  return solve_impl(problem, cc_result, {}, {}, device, options, nullptr);
 }
 
 LambdaResult solve_lambda_cuda_with_energy_source(const Problem& problem,
@@ -437,7 +509,16 @@ LambdaResult solve_lambda_cuda_with_energy_source(const Problem& problem,
                                                   std::span<const double> t1_source,
                                                   std::span<const double> t2_source, int device,
                                                   const LambdaOptions& options) {
-  return solve_impl(problem, cc_result, t1_source, t2_source, device, options);
+  return solve_impl(problem, cc_result, t1_source, t2_source, device, options, nullptr);
+}
+
+CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_source(
+    const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
+    std::span<const double> t2_source, int device, const LambdaOptions& options) {
+  CudaFixedOrbitalResponseResult result;
+  result.lambda =
+      solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
+  return result;
 }
 
 }  // namespace vibeqc::cc
