@@ -247,9 +247,7 @@ def qualify_functional(
 ) -> dict[str, Any]:
     """Run one exact production-domain campaign without writing files."""
     if pyscf_version != "2.14.0" or libxc.__version__ != "7.0.0":
-        raise RuntimeError(
-            "qualification requires exactly PySCF 2.14.0 / Libxc 7.0.0"
-        )
+        raise RuntimeError("qualification requires exactly PySCF 2.14.0 / Libxc 7.0.0")
     if rtol < 0.0 or atol < 0.0:
         raise ValueError("qualification tolerances must be nonnegative")
     if not isinstance(evidence, str) or not evidence.strip():

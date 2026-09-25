@@ -132,9 +132,7 @@ def summarize_rows(
             status: status_counts.get(status, 0) for status in CATALOG_ROW_STATUSES
         },
         "by_family": {
-            family: {
-                status: counts.get(status, 0) for status in CATALOG_ROW_STATUSES
-            }
+            family: {status: counts.get(status, 0) for status in CATALOG_ROW_STATUSES}
             for family, counts in sorted(family_counts.items())
         },
         "blocked_case_counts": dict(sorted(blocked_case_counts.items())),

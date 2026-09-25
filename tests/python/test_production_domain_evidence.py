@@ -194,7 +194,6 @@ def test_structural_blocker_cannot_receive_a_matrix_receipt() -> None:
         )
 
 
-
 def test_receipt_binds_exact_execution_identity() -> None:
     execution = _execution()
     result = build_result(

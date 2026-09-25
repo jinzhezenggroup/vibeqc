@@ -120,7 +120,9 @@ def _normalize_execution(
             raise TypeError("production-domain execution record must be a mapping")
         spin = raw.get("spin")
         if spin not in expected_spins:
-            raise ValueError(f"production-domain execution has unsupported spin {spin!r}")
+            raise ValueError(
+                f"production-domain execution has unsupported spin {spin!r}"
+            )
         if spin in records:
             raise ValueError(f"duplicate production-domain execution spin {spin!r}")
         if raw.get("executor") != EXECUTOR:
@@ -146,9 +148,7 @@ def _normalize_execution(
         ):
             raise ValueError("production-domain execution features are invalid")
         outputs = raw.get("outputs")
-        expected_outputs = [
-            list(output) for output in _expected_outputs(len(features))
-        ]
+        expected_outputs = [list(output) for output in _expected_outputs(len(features))]
         if outputs != expected_outputs:
             raise ValueError(
                 "production-domain execution must cover complete E/vxc/fxc outputs"
