@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tools.libxc_bulk_metadata import (
@@ -28,11 +30,68 @@ const xc_func_info_type xc_func_info_gga_x_trial = {
 """
 MAPLE = "(* prefix: trial_params *params; *)\nf := x -> params_a_mu*x:\n"
 
+ROOT = Path(__file__).resolve().parents[2]
+FULL_LIBXC = ROOT / "upstream" / "libxc-fulltree" / "7.0.0"
+
+
+def _fulltree_records(owner: str, maple: str, *, allow_hybrid_exchange: bool = False) -> list[dict]:
+    return extract_registrations(
+        (FULL_LIBXC / "src" / owner).read_text(),
+        (FULL_LIBXC / "maple" / "mgga_exc" / maple).read_text(),
+        (FULL_LIBXC / "src" / "util.h").read_text(),
+        allow_hybrid_exchange=allow_hybrid_exchange,
+    )
+
+
 
 def record(source: str = SOURCE) -> dict:
     rows = extract_registrations(source, MAPLE, "")
     assert len(rows) == 1
     return rows[0]
+
+
+def test_m06_2x_correlation_const_array_layout_binds_from_pinned_source() -> None:
+    rows = _fulltree_records("mgga_c_m06l.c", "mgga_c_m06l.mpl")
+    row = next(item for item in rows if item["name"] == "MGGA_C_M06_2X")
+    assert row["metadata_status"] == "bound"
+    assert row["family"] == "mgga"
+    assert len(row["bindings"]["params_a_css"]) == 5
+    assert len(row["bindings"]["params_a_dab"]) == 6
+
+
+def test_m06_2x_split_exchange_binds_only_with_explicit_opt_in() -> None:
+    ordinary = _fulltree_records("hyb_mgga_x_m05.c", "hyb_mgga_x_m05.mpl")
+    blocked = next(item for item in ordinary if item["name"] == "HYB_MGGA_X_M06_2X")
+    assert blocked["metadata_status"] == "blocked"
+
+    rows = _fulltree_records(
+        "hyb_mgga_x_m05.c",
+        "hyb_mgga_x_m05.mpl",
+        allow_hybrid_exchange=True,
+    )
+    row = next(item for item in rows if item["name"] == "HYB_MGGA_X_M06_2X")
+    assert row["metadata_status"] == "bound"
+    assert row["family"] == "mgga"
+    assert row["exact_exchange_parameter"] == "0.54"
+    assert row["bindings"]["params_a_csi_HF"] == "1.0"
+    assert "params_a_cx" not in row["bindings"]
+
+
+def test_mn15_split_exchange_and_correlation_bind_from_pinned_source() -> None:
+    exchange = _fulltree_records(
+        "mgga_x_mn12.c",
+        "mgga_x_mn12.mpl",
+        allow_hybrid_exchange=True,
+    )
+    xrow = next(item for item in exchange if item["name"] == "HYB_MGGA_X_MN15")
+    assert xrow["metadata_status"] == "bound"
+    assert xrow["exact_exchange_parameter"] == "0.44"
+
+    correlation = _fulltree_records("mgga_c_m08.c", "mgga_c_m08.mpl")
+    crow = next(item for item in correlation if item["name"] == "MGGA_C_MN15")
+    assert crow["metadata_status"] == "bound"
+    assert len(crow["bindings"]["params_a_m08_a"]) == 12
+    assert len(crow["bindings"]["params_a_m08_b"]) == 12
 
 
 def test_struct_layout_not_display_name_owns_binding() -> None:
