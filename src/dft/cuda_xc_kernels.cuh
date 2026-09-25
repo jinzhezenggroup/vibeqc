@@ -70,11 +70,11 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
                    error, delta_features);
     cuda_check(cudaGetLastError());
     // Feature/response consumers have finished reading work. The compiler may
-    // reuse those same panels for weighted symmetric potential assembly.
+    // reuse those same panels for weighted symmetric potential assembly. The
+    // tiled schedule also folds the deterministic three-channel total reduction
+    // into this launch; its scalar fallback retains the historical reducer.
     scheduled_potential(stream, ao, coefficients, weights + begin, l.nao, count, l.spins,
-                        l.feature_terms, l.work_jets, work, potential, error);
-    cuda_check(cudaGetLastError());
-    accumulate_totals<<<1, 32, 0, stream>>>(point_totals, count, totals, error);
+                        l.feature_terms, l.work_jets, work, point_totals, potential, totals, error);
     cuda_check(cudaGetLastError());
   }
 }

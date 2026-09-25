@@ -456,6 +456,13 @@ jobs:
               'tests/python/test_codegen.py::test_dddp_rys5_recurrence_matches_every_symbolic_component'
               --deselect
               'tests/python/test_range_separation.py::test_generated_range_values_and_all_center_derivatives_against_libcint[angular3-cpu-long_range]'
+              # The coarse-grid WB97M-V water finite-difference replay is
+              # qualification-scale on hosted runners (~9.5 minutes in the
+              # latest successful PR run). The higher-grid water RKS case and
+              # both open-shell UKS cases remain on routine CI; keep this
+              # redundant grid-shape replay for scheduled/manual qualification.
+              --deselect
+              'tests/python/test_wb97mv_complete.py::test_public_wb97mv_force_matches_reconverged_energy_differences[grid_shape0-water-rks]'
               # The module-scoped analytic Hessian fixture computes a complete
               # water Hessian before the first parametrized check. On hosted
               # runners that setup alone is ~27 minutes, so keep the H2 path
@@ -497,10 +504,11 @@ jobs:
               --deselect
               'tests/python/test_dft_complete_cpu.py::test_production_grid_open_shell_converges_against_independent_dense_quadrature[pbe-uks-tight]'
               # Closed-shell SPD ECP reconverged finite differences are
-              # qualification-scale on hosted runners. Recent PBE cases alone
-              # take ~6.5 minutes each; LDA was already kept off the routine
-              # path for the same reason. Routine CI retains the lighter
-              # complete/budgeted ECP force contracts and UKS coverage.
+              # qualification-scale on hosted runners. The two LDA-UKS
+              # reconverged finite-difference cases are also ~9 minutes each.
+              # Keep the much faster PBE-UKS complete-force checks plus paired
+              # and budgeted ECP contracts on routine CI; run the redundant
+              # RKS/LDA qualification matrix on scheduled/manual CI.
               --deselect
               'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-rks]'
               --deselect
@@ -509,6 +517,10 @@ jobs:
               'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
               --deselect
               'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[pbe-rks]'
+              --deselect
+              'tests/python/test_ecp_spd_cartesian_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-uks]'
+              --deselect
+              'tests/python/test_ecp_spd_spherical_cpu.py::test_spd_force_analytic_and_reconverged_fd[lda-uks]'
             )
           fi
           # Keep every routine Python test on every PR, but remove the single
@@ -674,9 +686,10 @@ jobs:
 
   cpu-benchmark:
     name: CPU performance (CodSpeed)
-    # Correctness gates already run on every PR. Keep CodSpeed on master/manual
-    # qualification so performance telemetry does not consume PR runner slots.
-    if: github.event_name != 'pull_request' && github.event_name != 'schedule'
+    # PRs run only the bounded representative tier; master/manual runs the full
+    # endpoint set. Scheduled qualification already has expensive numerical
+    # coverage and does not need duplicate performance instrumentation.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -685,6 +698,7 @@ jobs:
       OPENBLAS_NUM_THREADS: 1
       MKL_NUM_THREADS: 1
       NUMEXPR_NUM_THREADS: 1
+      VIBEQC_CODSPEED_TIER: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -738,6 +752,8 @@ jobs:
         with:
           # Hosted GitHub runners are noisy for wall-clock gating; simulation
           # provides the stable PR/master regression signal without Macro Runner quota.
+          # VIBEQC_CODSPEED_TIER keeps PR instrumentation to two representative
+          # endpoints while master/manual records the broader trend set.
           mode: simulation
           run: .venv/bin/python -m pytest benchmarks/test_cpu_codspeed.py --codspeed -q
 

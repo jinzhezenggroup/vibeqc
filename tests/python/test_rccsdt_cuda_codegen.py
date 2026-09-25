@@ -80,6 +80,7 @@ int main(int argc, char** argv) {
             nvcc,
             "-std=c++17",
             "-O2",
+            "-arch=" + os.environ.get("VIBEQC_TEST_CUDA_ARCH", "sm_120"),
             "-DVIBEQC_HAS_CUDA=1",
             f"-I{ROOT / 'src'}",
             str(source),

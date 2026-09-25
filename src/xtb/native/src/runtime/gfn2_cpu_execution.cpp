@@ -41,6 +41,7 @@
 #include "model/gfn2/scc_mixer.hpp"
 #include "model/gfn2/spin.hpp"
 #include "model/gfn2/wavefunction.hpp"
+#include "solver/iteration_control.hpp"
 
 namespace vibeqc::xtb::detail {
 namespace {
@@ -927,17 +928,35 @@ vibeqc_xtb_status_t SystemExecution::refresh_geometry(const CpuLinearAlgebraBack
 
 vibeqc_xtb_status_t SystemExecution::run_scc(const CpuLinearAlgebraBackend& backend,
                                              std::string& error) {
-  while (driver_state.converged[0] == 0u &&
-         driver_state.system_statuses[0] == VIBEQC_XTB_STATUS_SUCCESS) {
-    const vibeqc_xtb_status_t status =
+  vibeqc_xtb_status_t terminal_status = VIBEQC_XTB_STATUS_SUCCESS;
+  const unsigned iteration_budget = static_cast<unsigned>(std::min<std::uint64_t>(
+      driver.maximum_iterations(),
+      static_cast<std::uint64_t>(std::numeric_limits<unsigned>::max())));
+
+  vibeqc::solver::run_bounded_iterations(iteration_budget, [&](unsigned) {
+    if (driver_state.converged[0] != 0u ||
+        driver_state.system_statuses[0] != VIBEQC_XTB_STATUS_SUCCESS) {
+      return false;
+    }
+    terminal_status =
         iterate_scc_driver_batch_cpu(driver, geometry, backend, overlap_cache, wavefunction,
                                      mixer_state, driver_state, driver_workspace, error);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) {
-      return status;
-    }
+    return terminal_status == VIBEQC_XTB_STATUS_SUCCESS &&
+           driver_state.converged[0] == 0u &&
+           driver_state.system_statuses[0] == VIBEQC_XTB_STATUS_SUCCESS;
+  });
+
+  if (terminal_status != VIBEQC_XTB_STATUS_SUCCESS) {
+    return terminal_status;
   }
-  return driver_state.converged[0] != 0u ? VIBEQC_XTB_STATUS_SUCCESS
-                                         : driver_state.system_statuses[0];
+  if (driver_state.converged[0] != 0u) {
+    return VIBEQC_XTB_STATUS_SUCCESS;
+  }
+  if (driver_state.system_statuses[0] != VIBEQC_XTB_STATUS_SUCCESS) {
+    return driver_state.system_statuses[0];
+  }
+  error = "SCC iteration budget exhausted without a terminal state";
+  return VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED;
 }
 
 vibeqc_xtb_status_t SystemExecution::refresh_stationary_potentials(std::string& error) {
