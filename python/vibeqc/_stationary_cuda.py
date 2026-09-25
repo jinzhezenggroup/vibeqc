@@ -651,6 +651,24 @@ def _native_grid_artifact(library: typing.Any, architecture: str) -> CudaArtifac
     )
 
 
+def _unique_prepared_artifacts(
+    artifacts: tuple[typing.Any, ...],
+) -> tuple[typing.Any, ...]:
+    """Bind shared compiled kernels once while keeping each tensor slot separate."""
+    unique: dict[str, typing.Any] = {}
+    for artifact in artifacts:
+        key = artifact.metadata["key"]
+        previous = unique.get(key)
+        if previous is not None:
+            if previous.metadata["binary_sha256"] != artifact.metadata["binary_sha256"]:
+                raise ValueError(
+                    "stationary CUDA artifact key has conflicting binaries"
+                )
+            continue
+        unique[key] = artifact
+    return tuple(unique.values())
+
+
 class PreparedStationaryCudaTopologyMismatch(ValueError):
     """Retained execution is incompatible with the requested scientific topology."""
 
@@ -940,10 +958,12 @@ class PreparedStationaryCudaExecution:
         except Exception:
             stack.close()
             raise
-        artifacts = (
-            stationary_artifact,
-            grid_artifact,
-            *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+        artifacts = _unique_prepared_artifacts(
+            (
+                stationary_artifact,
+                grid_artifact,
+                *(tensor_artifacts[name] for name in sorted(tensor_artifacts)),
+            )
         )
         try:
             self._lease.install(

@@ -8,6 +8,21 @@ from vibeqc_compiler.common.prepared_execution import PreparedArtifactBinding
 from vibeqc_compiler.common.provenance import canonical_hash
 
 
+def test_shared_tensor_artifact_is_bound_once_without_hiding_collisions() -> None:
+    first = SimpleNamespace(metadata={"key": "shared", "binary_sha256": "same"})
+    second = SimpleNamespace(metadata={"key": "shared", "binary_sha256": "same"})
+    other = SimpleNamespace(metadata={"key": "other", "binary_sha256": "other"})
+    assert runtime._unique_prepared_artifacts((first, second, other)) == (
+        first,
+        other,
+    )
+    conflicting = SimpleNamespace(
+        metadata={"key": "shared", "binary_sha256": "different"}
+    )
+    with pytest.raises(ValueError, match="conflicting binaries"):
+        runtime._unique_prepared_artifacts((first, conflicting))
+
+
 @pytest.mark.parametrize(
     "failed,changed", [(False, False), (False, True), (True, False)]
 )
