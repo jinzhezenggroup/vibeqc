@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import struct
 import typing
 from dataclasses import dataclass
@@ -9,6 +10,9 @@ from dataclasses import dataclass
 if typing.TYPE_CHECKING:
     from pathlib import Path
 
+# Pinned output of upstream/manifest.json's d3-production-data product.
+# Header source digests are metadata; authenticate the complete stored bytes.
+D3_PRODUCTION_SHA256 = "19aed2b11b39a29f6e1c9a8cb442cb78ef3772488edc0c003e7640a5b198e945"
 MAGIC = b"VQD3BIN1"
 _HEADER = struct.Struct("<8s40s32s32s7I")
 _ELEMENT = struct.Struct("<IB")
@@ -82,6 +86,8 @@ def load_d3_production_data(path: Path) -> D3ProductionData:
     cr, off = _doubles(raw, off, nrad)
     if off != len(raw):
         raise ValueError("D3 production data has trailing bytes")
+    if hashlib.sha256(raw).hexdigest() != D3_PRODUCTION_SHA256:
+        raise ValueError("D3 production data digest mismatch")
     return D3ProductionData(
         revision.decode("ascii"),
         table.hex(),
