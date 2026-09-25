@@ -216,6 +216,10 @@ def _setter_state(
             raise MethodMetadataError(
                 "copy-CAM setter lacks alpha/beta/omega parameters"
             ) from error
+    if setter in ("set_ext_params_exx", "set_ext_params_cpy_exx"):
+        if not defaults:
+            raise MethodMetadataError("exact-exchange setter lacks a coefficient")
+        return mix, defaults[-1], beta, omega
     if setter == "NULL":
         return mix, alpha, beta, omega
 
@@ -384,10 +388,10 @@ def _init_state(
 
 
 def _method_identifier(registration: str) -> str:
-    for prefix in ("HYB_GGA_XC_", "HYB_MGGA_XC_"):
+    for prefix in ("HYB_GGA_XC_", "HYB_MGGA_XC_", "HYB_GGA_X_", "HYB_MGGA_X_"):
         if registration.startswith(prefix):
             return registration.removeprefix(prefix).replace("_", "-")
-    raise MethodMetadataError("hybrid registration is not an XC method")
+    raise MethodMetadataError("hybrid registration is not a supported method owner")
 
 
 def extract_method_registrations(
@@ -418,9 +422,17 @@ def extract_method_registrations(
                 )
             if "XC_FLAGS_3D" not in re.split(r"\s*\|\s*", fields[5]):
                 raise MethodMetadataError("non-3D hybrid functional")
-            if fields[1] != "XC_EXCHANGE_CORRELATION":
+            kind = fields[1]
+            if kind not in ("XC_EXCHANGE_CORRELATION", "XC_EXCHANGE"):
                 raise MethodMetadataError(
-                    "hybrid registration is not exchange-correlation"
+                    "hybrid registration is not exchange-correlation or exchange"
+                )
+            split_exchange = kind == "XC_EXCHANGE"
+            if split_exchange and not registration.startswith(
+                ("HYB_GGA_X_", "HYB_MGGA_X_")
+            ):
+                raise MethodMetadataError(
+                    "split hybrid exchange registration has unsupported naming"
                 )
             libxc_id = constant_value(fields[0], definitions)
             if type(libxc_id) is not int or libxc_id <= 0:
@@ -429,13 +441,29 @@ def extract_method_registrations(
                 )
             names, defaults, setter = _parameter_defaults(text, fields[7], definitions)
             init_name = fields[8].strip()
-            init_body = _function_body(text, init_name)
-            initial = _initial_mix(init_body, definitions)
-            component_ids = None if initial is None else initial[0]
-            initial_mix = None if initial is None else initial[1]
-            init_alpha, init_beta, init_omega, nlc_b, nlc_c = _init_state(
-                init_body, definitions
-            )
+            if split_exchange:
+                # Global split-hybrid exchange owners such as M06-2X and MN15
+                # may share an initializer with unrelated variants and therefore
+                # contain registration-dependent control flow. Their
+                # set_ext_params_*_exx contract is sufficient here: the last
+                # default is the exact-exchange fraction and the preceding
+                # parameters belong to the semilocal Maple body.
+                if setter not in ("set_ext_params_exx", "set_ext_params_cpy_exx"):
+                    raise MethodMetadataError(
+                        "split hybrid exchange requires the audited global-exchange setter"
+                    )
+                component_ids = None
+                initial_mix = None
+                init_alpha = init_beta = init_omega = Fraction(0)
+                nlc_b = nlc_c = None
+            else:
+                init_body = _function_body(text, init_name)
+                initial = _initial_mix(init_body, definitions)
+                component_ids = None if initial is None else initial[0]
+                initial_mix = None if initial is None else initial[1]
+                init_alpha, init_beta, init_omega, nlc_b, nlc_c = _init_state(
+                    init_body, definitions
+                )
             mix, alpha, beta, omega = _setter_state(
                 text,
                 setter,
@@ -451,6 +479,8 @@ def extract_method_registrations(
                 )
             components: list[tuple[str, Fraction]] = []
             direct_stem = None
+            split_exchange_component = None
+            paired_correlation_component = None
             if component_ids is not None:
                 assert mix is not None
                 components = [
@@ -458,11 +488,21 @@ def extract_method_registrations(
                     for name, coefficient in zip(component_ids, mix, strict=True)
                     if coefficient
                 ]
+            elif split_exchange:
+                prefix = (
+                    "HYB_MGGA_X_" if registration.startswith("HYB_MGGA_X_")
+                    else "HYB_GGA_X_"
+                )
+                family_prefix = "MGGA" if prefix == "HYB_MGGA_X_" else "GGA"
+                direct_stem = registration.removeprefix(prefix)
+                split_exchange_component = registration
+                paired_correlation_component = f"{family_prefix}_C_{direct_stem}"
+                components = [(registration, Fraction(1))]
             elif registration.startswith("HYB_MGGA_XC_"):
                 direct_stem = registration.removeprefix("HYB_MGGA_XC_")
             else:
                 raise MethodMetadataError(
-                    "hybrid has neither xc_mix_init nor a direct MGGA XC body"
+                    "hybrid has neither xc_mix_init nor a supported direct semilocal body"
                 )
 
             exact = short = long = Fraction(0)
@@ -488,6 +528,14 @@ def extract_method_registrations(
                 flags=fields[5],
                 components=[[name, str(value)] for name, value in components],
                 direct_semilocal_stem=direct_stem,
+                **(
+                    {
+                        "split_exchange_component": split_exchange_component,
+                        "paired_correlation_component": paired_correlation_component,
+                    }
+                    if split_exchange
+                    else {}
+                ),
                 exact_exchange=str(exact),
                 short_range_exchange=str(short),
                 long_range_exchange=str(long),
