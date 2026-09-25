@@ -119,6 +119,12 @@ def test_const_double_arrays_preserve_copy_parameter_layout() -> None:
     assert result["bindings"]["params_a_coeffs"] == ["0.804", repr(float(10 / 81))]
 
 
+def test_default_parameter_array_bound_remains_fail_closed() -> None:
+    result = record(SOURCE.replace("double kappa, mu;", "double coeffs[33];"))
+    assert result["metadata_status"] == "blocked"
+    assert "parameter array exceeds supported dimensions" in result["reason"]
+
+
 @pytest.mark.parametrize(
     ("old", "new", "reason"),
     [
