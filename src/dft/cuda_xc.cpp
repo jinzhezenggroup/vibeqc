@@ -57,7 +57,7 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                                   std::size_t tile_points, bool response,
                                   CudaXcAoPrecision ao_precision, double exchange_scale,
                                   double correlation_scale) {
-  const bool supported_functional = functional <= 2U || functional == 4U;
+  const bool supported_functional = functional <= 4U;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
@@ -84,7 +84,7 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
   const bool meta_gga = functional == 2U || functional == 4U;
   const auto ao_jets = functional == 0U ? 1U : 4U;
   const auto work_jets = meta_gga ? 4U : 1U;
-  const auto feature_terms = functional == 0U ? 1U : (functional == 1U ? 4U : 5U);
+  const auto feature_terms = functional == 0U ? 1U : (meta_gga ? 5U : 4U);
   CudaXcLayout out{atoms,
                    primitives,
                    nao,
