@@ -17,4 +17,15 @@ inline generated::ProjectedExchangeSchedule df_projected_exchange_schedule(
                                                 dense.output_tiles, triangular);
 }
 
+/** Keep automatic shared J/K on its qualified <=2-block domain while allowing
+ * an explicit profitability experiment to exercise any compiler-valid
+ * triangular projected schedule. This changes no capacity or source-work
+ * admission by itself.
+ */
+inline bool df_shared_projected_exchange_schedule_admitted(
+    const generated::ProjectedExchangeSchedule& schedule, bool explicit_multiblock) noexcept {
+  return schedule.rows && schedule.blocks &&
+         (schedule.blocks <= 2 || explicit_multiblock);
+}
+
 }  // namespace vibeqc::scf
