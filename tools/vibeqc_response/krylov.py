@@ -1227,6 +1227,9 @@ def _block_solve(
     actions = 0
     iterations = 0
     history = [float(norm) for norm in rhs_norms]
+    # The initial zero solution has exactly the RHS norms as its true residual.
+    # Every later solution update refreshes this array before any loop exit.
+    norms = rhs_norms.copy()
     last_start = 0
     breakdown = False
 
@@ -1303,10 +1306,10 @@ def _block_solve(
     published_basis = immutable(
         engine.stack_host(basis) if collect_basis else np.empty((n, 0))
     )
-    final_norms = [
-        engine.norm(engine.subtract(value, apply(candidate)))
-        for value, candidate in zip(b, solution, strict=True)
-    ]
+    # The last loop checkpoint already evaluated the true residual for every
+    # current solution. Re-applying an expensive CPKS/J-K/XC operator here
+    # would only duplicate those actions; no solution changes after that check.
+    final_norms = norms
     for column, norm in enumerate(final_norms):
         target = max(options.atol, options.rtol * rhs_norms[column])
         converged = norm <= target

@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_force_low_order.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Retained native direct Fock/force contraction on borrowed metadata and density/output views; original scientific equations and reduction order are preserved.",
+  "reason": "SSSS/PSSS force adapters consume generated Weighted IntegralIR roots but retain handwritten Gaussian prefactors, Boys arguments, decay derivatives, normalization and center recovery. Operator-specific geometry/contraction remains scientific until its generated replacement is qualified.",
   "regions": []
 }

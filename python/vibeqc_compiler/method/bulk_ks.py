@@ -1,8 +1,9 @@
 """Evidence-gated MethodIR/KS resolution for automatic bulk Libxc registrations.
 
 This module is deliberately a composition boundary, not an evidence producer.
-A bulk registration reaches a KS plan only after the existing capability owner
-has qualified the exact CPU molecular-SCF product requested here.
+Qualification producers may resolve an execution candidate after compiled-CPU
+and production-domain evidence exists; ordinary consumers require the additional
+molecular-SCF evidence produced by executing that candidate.
 """
 
 from __future__ import annotations
@@ -21,7 +22,8 @@ from .ks_execution import KsExecutionPlan, compile_ks_execution_plan
 from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
 
 BULK_KS_RESOLUTION_SCHEMA = "vibeqc.bulk-libxc-ks-resolution.v1"
-_CPU_REQUIRED_STAGES = ("compiled-cpu", "production-domain", "molecular-scf")
+_CPU_EXECUTION_STAGES = ("compiled-cpu", "production-domain")
+_CPU_PROMOTION_STAGES = (*_CPU_EXECUTION_STAGES, "molecular-scf")
 _SUPPORTED_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
 
 
@@ -52,24 +54,15 @@ class BulkKsResolution:
         }
 
 
-def resolve_bulk_ks(
+def _resolve_bulk_ks(
     name: str,
     *,
     spin: str = "unpolarized",
     backend: str = "cpu",
     evidence: typing.Mapping[str, typing.Any] | None = None,
     identifier: str | None = None,
+    required_stages: tuple[str, ...],
 ) -> BulkKsResolution:
-    """Resolve one qualified automatic Libxc registration into a pure KS plan.
-
-    This first integration slice is intentionally CPU-only.  CPU admission
-    requires explicit ``compiled-cpu``, ``production-domain`` and
-    ``molecular-scf`` evidence.  Representation, pointwise validation, CUDA
-    compilation, or a ready-but-unqualified stage never grants this resolver.
-
-    ``identifier`` is descriptive MethodIR provenance.  It does not alter the
-    scientific identity of an otherwise identical resolved registration.
-    """
     if backend != "cpu":
         raise UnsupportedMethod(
             "automatic bulk Libxc KS resolution is currently qualified only for CPU"
@@ -95,7 +88,7 @@ def resolve_bulk_ks(
 
     qualified = resolve_capability(
         capability.name,
-        required_stages=_CPU_REQUIRED_STAGES,
+        required_stages=required_stages,
         evidence=evidence,
     )
     if qualified.identity != capability.identity:
@@ -122,4 +115,53 @@ def resolve_bulk_ks(
         method=method,
         plan=plan,
         required_ingredients=capability.required_ingredients,
+    )
+
+
+def resolve_bulk_ks_candidate(
+    name: str,
+    *,
+    spin: str = "unpolarized",
+    backend: str = "cpu",
+    evidence: typing.Mapping[str, typing.Any] | None = None,
+    identifier: str | None = None,
+) -> BulkKsResolution:
+    """Resolve the CPU candidate used to produce molecular-SCF evidence.
+
+    Candidate execution remains fail-closed on compiled-CPU and complete
+    production-domain evidence. Requiring molecular-SCF here would be circular:
+    this is the exact plan that the qualification runner must execute to create
+    that evidence.
+    """
+    return _resolve_bulk_ks(
+        name,
+        spin=spin,
+        backend=backend,
+        evidence=evidence,
+        identifier=identifier,
+        required_stages=_CPU_EXECUTION_STAGES,
+    )
+
+
+def resolve_bulk_ks(
+    name: str,
+    *,
+    spin: str = "unpolarized",
+    backend: str = "cpu",
+    evidence: typing.Mapping[str, typing.Any] | None = None,
+    identifier: str | None = None,
+) -> BulkKsResolution:
+    """Resolve one promoted automatic Libxc registration into a pure KS plan.
+
+    Ordinary consumers require compiled-CPU, production-domain and molecular-SCF
+    evidence. Qualification producers must use resolve_bulk_ks_candidate instead
+    of manufacturing the final endpoint stage.
+    """
+    return _resolve_bulk_ks(
+        name,
+        spin=spin,
+        backend=backend,
+        evidence=evidence,
+        identifier=identifier,
+        required_stages=_CPU_PROMOTION_STAGES,
     )

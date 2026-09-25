@@ -48,6 +48,22 @@ the script verifies the archive and records the formula hashes. CUDA tests also
 exchange spins. See the [conditioning decision](../../.agents/notes/implemented/numerics/2026-09-23-scan-stable-spin-fractions.md)
 for the independent-reference rationale and endpoint evidence.
 
+The pinned WB97M-V semilocal adapter screens polarized work densities directly
+at Libxc's `1e-13` spin floor. When the minority fraction is at most `1e-3`
+and exceeds Libxc's zeta screening boundary, its
+shared CPU/CUDA Graph evaluates the PW/Stoll opposite-spin correlation using
+`log1p`/`expm1` increments rather than subtracting nearly equal correlation
+energies. The nominally pure-spin parallel PW terms still retain Libxc's
+nonzero zeta-floor power; omitting it would reintroduce a minority potential
+error despite otherwise stable algebra. Other spin mixtures retain the original
+imported Maple expression.
+The complete CUDA fixed-density E/V gate keeps its original tolerance and
+257-point production tile. To diagnose captured work points independently,
+`tools/qualify_wb97mv_tail.py` extracts the original Libxc 7.0.0 polarized
+Maple C routine and evaluates it in libquadmath. This semilocal qualification
+does not admit the full public CUDA method's range-separated exchange or VV10
+parts. See the [Stoll stability decision](../../.agents/notes/implemented/numerics/2026-09-24-wb97mv-empty-spin-stoll-stability.md).
+
 ## SCAN and SCAN0 composition and switching contract
 
 `MGGA_X_SCAN` and `MGGA_C_SCAN` use the pinned Libxc 7.0.0 SCAN expressions.

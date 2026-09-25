@@ -11,7 +11,7 @@
 #include "scf/cuda/rhf_policy.hpp"
 #include "scf/direct_task_layout.hpp"
 #include "scf/generated_shell_task.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace {

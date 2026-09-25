@@ -4,7 +4,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -77,8 +76,7 @@ class RccsdtPrepared final : public PreparedCalculation {
   RccsdtPrepared(Capabilities capabilities, runtime::ExecutionContext execution,
                  core::System system, const vibeqc_method_descriptor& descriptor)
       : capabilities_(capabilities), execution_(std::move(execution)), system_(std::move(system)) {
-    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
-    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_ = descriptor;
     descriptor_.density_fitting_auxiliary_basis = nullptr;
     descriptor_.ks_options = nullptr;
   }
@@ -243,8 +241,7 @@ class RccsdtPreparedBatch final : public PreparedBatch {
         execution_(context),
         context_(&context),
         systems_(std::move(systems)) {
-    const auto bytes = std::min<std::size_t>(descriptor.struct_size, sizeof(descriptor_));
-    std::memcpy(&descriptor_, &descriptor, bytes);
+    descriptor_ = descriptor;
     descriptor_.density_fitting_auxiliary_basis = nullptr;
     descriptor_.ks_options = nullptr;
     owners_.reserve(systems_.size());

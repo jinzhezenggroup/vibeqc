@@ -206,7 +206,6 @@ def test_complete_hf_replay_two_budgets_and_force_components(
         density_tolerance=1e-10,
         screening_tolerance=1e-14,
     )
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     oracle = Calculator(
         device="cpu",
         method=method,
@@ -305,7 +304,6 @@ def test_generated_df_hf_matches_pyscf_and_two_energy_difference_steps(
     reference.kernel()
     assert reference.converged
     expected = -reference.nuc_grad_method().kernel()
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     calc = Calculator(
         device="cuda",
         method=method,
@@ -435,7 +433,6 @@ def test_auxiliary_only_atom_hf_energy_derivative(
         screening_tolerance=1e-14,
     )
     expected = oracle.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     actual = calc.singlepoint(atoms, charge=charge, multiplicity=multiplicity)
     np.testing.assert_allclose(actual.forces, expected.forces, atol=3e-9, rtol=0)
     for step in (2e-4, 5e-5):
@@ -477,7 +474,6 @@ def test_df_generated_sdf_bucket_preserves_all_geometry_phases(
         "count": 3,
         "df_budget": budget,
     }
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     actual = run_case(monkeypatch, mapping="thread", **kwargs)
     basis, systems, charge, multiplicity = sdf_case_inputs(method, kwargs["count"])
     # Libcint/PySCF provides an independent complete-force oracle, including
@@ -527,7 +523,6 @@ def test_df_generated_failed_item_preserves_successful_neighbor(
     monkeypatch: typing.Any, budget: typing.Any
 ) -> None:
     assert os.environ.get("SLURM_JOB_ID"), "GPU tests require Slurm"
-    monkeypatch.setenv("VIBEQC_ONE_ELECTRON_DERIVATIVES", "generated")
     atoms = [("H", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     other = [("He", (0, 0, -0.7)), ("H", (0.1, 0, 0.7))]
     calc = Calculator(

@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "generated_gfn2_electronic_native.hpp"
+#include "generated_gfn2_scc_free_energy_native.hpp"
 
 namespace vibeqc::xtb::detail::gfn2 {
 
@@ -2235,17 +2236,17 @@ vibeqc_xtb_status_t evaluate_scc_energy_system(const SccDriverPlanData& data,
     periodic_energy = workspace.periodic_embedding_energies[system];
   }
 
-  double internal_energy = core_energy;
-  if (!add_finite(es2_energy, internal_energy) || !add_finite(es3_energy, internal_energy) ||
-      !add_finite(aes2_energy, internal_energy) || !add_finite(spin_energy, internal_energy) ||
-      !add_finite(d4_energy, internal_energy) || !add_finite(explicit_pc_energy, internal_energy) ||
-      !add_finite(field_energy, internal_energy) || !add_finite(periodic_energy, internal_energy)) {
+  double internal_energy = 0.0;
+  if (!::vibeqc::xtb::generated::compose_gfn2_scc_internal_energy(
+          core_energy, es2_energy, es3_energy, aes2_energy, spin_energy, d4_energy,
+          explicit_pc_energy, field_energy, periodic_energy, internal_energy)) {
     error = "SCC driver complete internal energy overflowed";
     return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }
   const double entropy = workspace.thermodynamics.entropies[system];
-  const double free_energy = std::fma(-data.electronic_temperature, entropy, internal_energy);
-  if (!std::isfinite(entropy) || !std::isfinite(free_energy)) {
+  double free_energy = 0.0;
+  if (!::vibeqc::xtb::generated::compose_gfn2_scc_free_energy(
+          data.electronic_temperature, entropy, internal_energy, free_energy)) {
     error = "SCC driver complete free energy is not finite";
     return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
   }

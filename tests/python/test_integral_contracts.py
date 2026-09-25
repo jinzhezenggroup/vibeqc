@@ -511,7 +511,9 @@ def test_serialized_examples_are_reproducible_and_report_unavailable_lowering(
         ],
         check=True,
     )
-    assert output.read_bytes() == Path("docs/integral_ir_examples.json").read_bytes()
+    assert (
+        output.read_bytes() == Path("manifests/integral_ir_examples.json").read_bytes()
+    )
     examples = json.loads(output.read_text())
     assert len(examples) == 3
     for example in examples.values():

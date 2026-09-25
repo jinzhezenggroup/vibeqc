@@ -1,0 +1,88 @@
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <vector>
+#include <quadmath.h>
+
+using real = __float128;
+#define GPU_DEVICE_FUNCTION
+#define XC_FLAGS_HAVE_EXC 1
+#define XC_FLAGS_HAVE_VXC 2
+#define XC_FLAGS_NEEDS_LAPLACIAN 4
+#define XC_FLAGS_NEEDS_TAU 8
+#define POW_1_3(x) cbrtq(x)
+#define POW_3_2(x) ((x) * sqrtq(x))
+#define my_piecewise3(c, x, y) ((c) ? (x) : (y))
+#define my_piecewise5(c, x, d, y, z) ((c) ? (x) : ((d) ? (y) : (z)))
+
+struct info_type { int flags = XC_FLAGS_HAVE_EXC | XC_FLAGS_HAVE_VXC | XC_FLAGS_NEEDS_TAU; };
+struct dim_type { int zk = 1, vrho = 2, vsigma = 3, vlapl = 2, vtau = 2; };
+struct hyb_mgga_xc_wb97_mv_params { real c_x[3], c_ss[5], c_os[6]; };
+struct xc_func_type {
+  void* params;
+  real cam_omega, dens_threshold, zeta_threshold;
+  info_type* info;
+  dim_type dim;
+};
+struct xc_mgga_out_params { real *zk, *vrho, *vsigma, *vlapl, *vtau; };
+
+@FORMULA@
+
+int main(int argc, char** argv) {
+  if (argc != 3) return 2;
+  FILE* input = std::fopen(argv[1], "rb");
+  std::uint64_t count = 0, nao = 0;
+  if (!input || std::fread(&count, sizeof(count), 1, input) != 1 ||
+      std::fread(&nao, sizeof(nao), 1, input) != 1 ||
+      count == 0 || count > 1000000 || nao == 0 || nao > 10000) return 3;
+  if (std::fseek(input, static_cast<long>(4 * count * nao * sizeof(double)), SEEK_CUR)) return 4;
+  std::vector<double> features(10 * count), result(8 * count);
+  if (std::fread(features.data(), sizeof(double), features.size(), input) != features.size())
+    return 5;
+  std::fclose(input);
+
+  info_type info;
+  hyb_mgga_xc_wb97_mv_params params{
+      {0.85Q, 1.007Q, 0.259Q},
+      {0.443Q, -1.437Q, -4.535Q, -3.39Q, 4.278Q},
+      {1.0Q, 1.358Q, 2.924Q, -8.812Q, -1.39Q, 9.142Q}};
+  const double density_floor = 1e-13;
+  const double sigma_threshold = std::pow(density_floor, 4.0 / 3.0);
+  const double sigma_floor = sigma_threshold * sigma_threshold;
+  xc_func_type state{&params, 0.3Q, real(density_floor), real(0x1p-52), &info, {}};
+  for (std::size_t point = 0; point < count; ++point) {
+    auto feature = [&](unsigned spin, unsigned term) {
+      return features[(spin * 5 + term) * count + point];
+    };
+    const double physical_rho[2]{feature(0, 0), feature(1, 0)};
+    if (physical_rho[0] + physical_rho[1] < density_floor) continue;
+    real rho[]{real(std::fmax(density_floor, physical_rho[0])),
+               real(std::fmax(density_floor, physical_rho[1]))};
+    double physical_sigma[3]{};
+    for (unsigned axis = 1; axis < 4; ++axis) {
+      physical_sigma[0] += feature(0, axis) * feature(0, axis);
+      physical_sigma[1] += feature(0, axis) * feature(1, axis);
+      physical_sigma[2] += feature(1, axis) * feature(1, axis);
+    }
+    double work_sigma[3]{std::fmax(sigma_floor, physical_sigma[0]), physical_sigma[1],
+                         std::fmax(sigma_floor, physical_sigma[2])};
+    const double limit = 0.5 * (work_sigma[0] + work_sigma[2]);
+    work_sigma[1] = std::clamp(work_sigma[1], -limit, limit);
+    real sigma[]{real(work_sigma[0]), real(work_sigma[1]), real(work_sigma[2])};
+    real tau[]{real(std::fmax(1e-20, feature(0, 4))),
+               real(std::fmax(1e-20, feature(1, 4)))};
+    real values[8]{};
+    xc_mgga_out_params output{values, values + 1, values + 3, nullptr, values + 6};
+    func_vxc_pol(&state, 0, rho, sigma, nullptr, tau, &output);
+    values[0] *= real(physical_rho[0]) + real(physical_rho[1]);
+    for (unsigned channel = 0; channel < 8; ++channel)
+      result[8 * point + channel] = static_cast<double>(values[channel]);
+  }
+
+  FILE* output = std::fopen(argv[2], "wb");
+  if (!output || std::fwrite(result.data(), sizeof(double), result.size(), output) != result.size())
+    return 6;
+  return std::fclose(output) == 0 ? 0 : 7;
+}
