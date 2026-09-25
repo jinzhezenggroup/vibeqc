@@ -93,7 +93,9 @@ def test_low_order_force_geometry_remains_scientific(name: str) -> None:
     path = f"src/scf/cuda/{name}"
     roles = {row["path"]: row["role"] for row in ownership["files"]}
     assert roles[path] == "scientific"
-    owners = [family["id"] for family in retirement["families"] if path in family["files"]]
+    owners = [
+        family["id"] for family in retirement["families"] if path in family["files"]
+    ]
     assert owners == ["native-low-order-force"]
 
 
