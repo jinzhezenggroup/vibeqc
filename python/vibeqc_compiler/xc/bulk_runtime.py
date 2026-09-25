@@ -212,8 +212,12 @@ def build_bulk_runtime_program(
 ) -> BulkRuntimeProgram:
     """Build one pointwise-qualified runtime candidate without promoting it.
 
-    Only rho/sigma/tau registrations enter this bridge. Production-domain and
-    molecular capability remain evidence gates owned by downstream lanes.
+    Only rho/sigma/tau registrations enter this bridge. The default preserves
+    the strictly-positive interior domain. The versioned production candidate
+    additionally admits physical zero sigma so qualification can decide support
+    from actual E/vxc/fxc behavior. Density and tau endpoints remain unchanged
+    and fail closed. Production-domain and molecular capability remain evidence
+    gates owned by downstream lanes.
     """
     if domain not in _RUNTIME_DOMAINS:
         raise UnsupportedXC(f"unsupported bulk runtime domain {domain!r}")
