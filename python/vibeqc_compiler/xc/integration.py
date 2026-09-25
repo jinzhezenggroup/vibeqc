@@ -160,7 +160,12 @@ class FixedDensityXC:
                     jets = basis.evaluate(
                         tile.points, self._contraction.contract.ao_order
                     )
-                    yield tile, jets, self._contraction.features(jets, d), None
+                    yield (
+                        tile,
+                        jets,
+                        self._contraction._features_from_spin_densities(jets, d),
+                        None,
+                    )
 
         for tile, jets, features, ao_ids in collocation():
             if ao_ids is not None and len(ao_ids) == 0:

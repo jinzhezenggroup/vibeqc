@@ -74,8 +74,6 @@ libxc_bulk_capabilities
 local_spaces
 matrix_function
 mp2
-mp2-a1
-mp2-a1-native-boundary
 one_electron_codegen
 one_electron_derivatives
 opencl_backend
@@ -84,7 +82,6 @@ range_separated_integrals
 rccsd
 rccsd_bc
 rccsd_gpu
-rccsd_gpu_solver
 rccsd_lambda
 rccsd_t
 rccsd_t_api

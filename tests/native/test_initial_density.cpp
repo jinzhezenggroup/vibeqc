@@ -89,6 +89,51 @@ void check_initial_density_contract() {
   prepare_initial_density(system, ints, x, 1, &raw, a, InitialOrbitalRequest::RequireCoreFrame);
   require(solves == 2 && a, "explicit RHF warm frame request did not solve");
 
+  unsigned provider_calls = 0;
+  bool provider_context_ok = false;
+  RestrictedInitialDensityProvider provider =
+      [&](const RestrictedInitialDensityRequest& request) -> std::optional<Matrix> {
+    ++provider_calls;
+    const Matrix expected_core{1, 0, 0, 0, 0, 0, 0, 0, 0};
+    provider_context_ok = &request.system == &system && &request.integrals == &ints &&
+                          &request.orthogonalizer == &x && request.occupied == 1 &&
+                          request.core_density.size() == expected_core.size();
+    for (std::size_t i = 0; provider_context_ok && i < expected_core.size(); ++i)
+      provider_context_ok = std::abs(request.core_density[i] - expected_core[i]) < 1e-13;
+    return raw;
+  };
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, nullptr, a,
+                                InitialOrbitalRequest::ColdDensityOnly, {}, provider),
+        {1, .15, 0, .15, 0, 0, 0, 0, 0});
+  require(provider_calls == 1 && provider_context_ok && solves == 1 && !a,
+          "accepted provider did not replace the cold density without publishing stale orbitals");
+
+  // Provider failures are acceleration failures, not SCF failures. Invalid
+  // proposals must restore the untouched canonical core seed and frame.
+  RestrictedInitialDensityProvider invalid_provider =
+      [&](const RestrictedInitialDensityRequest&) -> std::optional<Matrix> {
+    ++provider_calls;
+    return Matrix(9, 0.0);
+  };
+  provider_calls = 0;
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, nullptr, a,
+                                InitialOrbitalRequest::ColdDensityOnly, {}, invalid_provider),
+        {1, 0, 0, 0, 0, 0, 0, 0, 0});
+  require(provider_calls == 1 && solves == 1 && a,
+          "rejected provider did not fall back to the canonical core seed");
+
+  // Explicit warm densities remain authoritative and never invoke a cold-start
+  // provider, preserving replay and imported-seed semantics.
+  provider_calls = 0;
+  solves = 0;
+  close(prepare_initial_density(system, ints, x, 1, &raw, a, InitialOrbitalRequest::ColdDensityOnly,
+                                {}, provider),
+        {1, .15, 0, .15, 0, 0, 0, 0, 0});
+  require(provider_calls == 0 && solves == 0 && !a,
+          "cold-start provider intercepted an explicit warm density");
+
   for (const Matrix bad :
        {Matrix(2, 1), Matrix(9, 0), Matrix(9, std::numeric_limits<double>::infinity())}) {
     a = EigenResult{{1}, {1}};
