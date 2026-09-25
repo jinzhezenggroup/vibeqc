@@ -165,6 +165,8 @@ int main() {
             "-O0",
             "-I",
             str(ROOT / "src"),
+            "-I",
+            str(ROOT / "include"),
             str(path),
             "-o",
             str(executable),
