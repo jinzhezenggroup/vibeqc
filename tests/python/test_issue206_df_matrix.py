@@ -506,6 +506,8 @@ def test_host_branch_rejection_retains_raw_samples_and_failed_manifest(
     def reject(**kwargs: typing.Any) -> typing.Any:
         raise failure
 
+    # The CLI assigns VIBEQC_LIBRARY directly; restore it after this test.
+    monkeypatch.setenv("VIBEQC_LIBRARY", os.environ.get("VIBEQC_LIBRARY", ""))
     monkeypatch.setattr(host, "host_workloads", reject)
     monkeypatch.setattr(
         sys,
