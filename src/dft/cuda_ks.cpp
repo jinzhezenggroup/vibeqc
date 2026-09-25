@@ -186,8 +186,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   runtime::CompiledExecutionBinding device_chunk_binding() const {
     return {"cuda-ks-device-chunk-v1:" + std::to_string(n) + ":" + std::to_string(spins) + ":" +
-                std::to_string(semilocal_family_code(functional)) + ":" + std::to_string(history) + ":" +
-                std::to_string(xc_layout.tile_points),
+                std::to_string(semilocal_family_code(functional)) + ":" +
+                std::to_string(history) + ":" + std::to_string(xc_layout.tile_points),
             // The prepared facade owns provider lifetime and replay identity;
             // device chunks are admitted only for its direct-Fock binding.
             device, stream, arena, fock_binding.source_identity};
@@ -302,7 +302,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
         grid_spec(grid.spec()),
         functional(functional) {
     if (!semilocal_family_has_cuda_ks(functional))
-      throw std::invalid_argument("CUDA KS semilocal family has no qualified device implementation");
+      throw std::invalid_argument(
+          "CUDA KS semilocal family has no qualified device implementation");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
     fock_binding = scf::prepared_cuda_fock_binding(provider);
@@ -356,7 +357,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
     stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
-    xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile);
+    xc_layout =
+        cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
     if (host_unfused) {
@@ -403,8 +405,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(final_enabled, &host_one, sizeof(host_one));
       if (!host_unfused) {
         // Device-fused XC setup drains this same stream.
-        xc = std::make_unique<CudaXcPlan>(basis, grid, semilocal_family_code(functional), spins == 2, tile, xc_arena,
-                                          resource.xc_device_bytes, stream);
+        xc = std::make_unique<CudaXcPlan>(basis, grid, semilocal_family_code(functional),
+                                           spins == 2, tile, xc_arena,
+                                           resource.xc_device_bytes, stream);
       }
       // This owner uses ordinary stream execution. Reuse the common provider
       // instead of forcing the graph-safe maximum-pivot fallback at every size.
@@ -462,7 +465,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.dft_diagnostic.occupations = occupations;
     output.dft_diagnostic.grid_points = xc_layout.npoint;
     output.dft_diagnostic.tile_points = xc_layout.tile_points;
-    output.dft_diagnostic.ao_order = xc_layout.functional == SemilocalFamily::Lda ? 0 : 1;
+    output.dft_diagnostic.ao_order = functional == SemilocalFamily::Lda ? 0 : 1;
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;
     started = true;
