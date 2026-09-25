@@ -49,6 +49,17 @@ def capabilities() -> dict[str, object]:
         "dynamic_shapes": False,
         "python_control_flow": False,
         "functions": tuple(sorted(SUPPORTED_FUNCTIONS)),
+        "reference_execution": {
+            "numpy_reference": "independent",
+            "alternate_namespace": "validation-only",
+            "production_native_dispatch": False,
+        },
+        "interoperability_disposition": {
+            "reference_backends": "internal-validation",
+            "dlpack": "internal-same-device-zero-copy",
+            "array_api_conformance": False,
+            "public_api": False,
+        },
         "dlpack_interop": {
             "version": DLPACK_INTEROP_VERSION,
             "import": "same-device-zero-copy",

@@ -131,6 +131,21 @@ for now; moving those kernels requires separate stream/layout and performance
 qualification. This is still an internal preview and does not add an Array API
 conformance claim.
 
+## B2/B3 interoperability disposition
+
+The backend-generic interpreter and DLPack slices are retained as internal
+validation/interoperability facilities. Alternate array namespaces may execute
+the same TensorIR program for validation without changing its logical identity;
+this does not route production native execution through Python.
+
+DLPack support remains a bounded same-device import boundary. It requires the
+producer/consumer protocol, rejects device relocation without an explicit copy,
+and does not retain raw capsules. The qualified NumPy CPU round trip demonstrates
+shared storage; other frameworks and devices require their own qualification.
+
+These facilities do not advertise Array API conformance and are not a public API
+commitment. The preview therefore keeps `__array_namespace__` absent.
+
 ## Ownership
 
 `vibeqc_compiler.array_api` is a separate compiler owner above

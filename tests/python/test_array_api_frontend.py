@@ -330,3 +330,14 @@ def test_capability_report_does_not_claim_full_conformance() -> None:
     assert report["take_indices"] == "static-int-tuple"
     assert report["slice_ranges"] == "static-half-open-unit-step"
     assert "einsum_extension" in report["functions"]
+    assert report["reference_execution"] == {
+        "numpy_reference": "independent",
+        "alternate_namespace": "validation-only",
+        "production_native_dispatch": False,
+    }
+    assert report["interoperability_disposition"] == {
+        "reference_backends": "internal-validation",
+        "dlpack": "internal-same-device-zero-copy",
+        "array_api_conformance": False,
+        "public_api": False,
+    }
