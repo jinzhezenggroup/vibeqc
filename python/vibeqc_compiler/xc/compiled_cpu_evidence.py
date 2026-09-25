@@ -63,8 +63,10 @@ def _smoke(value: Any, *, required: bool) -> dict[str, Any] | None:
         raise TypeError("compiled-CPU smoke expected values must be a sequence")
     if not isinstance(observed, Sequence) or isinstance(observed, (str, bytes)):
         raise TypeError("compiled-CPU smoke observed values must be a sequence")
-    if len(expected) != len(observed) or not expected:
-        raise ValueError("compiled-CPU smoke vectors must be nonempty and aligned")
+    if not expected:
+        raise ValueError("compiled-CPU smoke expected vector must be nonempty")
+    if required and len(expected) != len(observed):
+        raise ValueError("passing compiled-CPU smoke vectors must be aligned")
     expected_values = [float(item) for item in expected]
     observed_values = [float(item) for item in observed]
     tolerance = value.get("absolute_tolerance")
