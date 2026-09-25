@@ -62,9 +62,15 @@ class Buffer {
 };
 
 bool near(double actual, double expected, double tolerance) {
-  return std::isfinite(actual) && std::isfinite(expected) &&
-         std::abs(actual - expected) <=
-             tolerance * std::max({1.0, std::abs(actual), std::abs(expected)});
+  const bool accepted = std::isfinite(actual) && std::isfinite(expected) &&
+                        std::abs(actual - expected) <=
+                            tolerance * std::max({1.0, std::abs(actual), std::abs(expected)});
+  if (!accepted)
+    std::fprintf(stderr,
+                 "D4 mismatch: actual=%.17g expected=%.17g absolute_error=%.17g limit=%.17g\n",
+                 actual, expected, std::abs(actual - expected),
+                 tolerance * std::max({1.0, std::abs(actual), std::abs(expected)}));
+  return accepted;
 }
 
 class BenchmarkServer {
