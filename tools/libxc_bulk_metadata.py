@@ -199,9 +199,10 @@ def parameter_layout(
             statement = raw_statement.strip()
             if not statement:
                 continue
-            if not re.match(r"double\s", statement):
+            declaration = re.fullmatch(r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL)
+            if declaration is None:
                 raise CMetadataError("non-double parameter layout")
-            for field in split_fields(re.sub(r"^double\s+", "", statement)):
+            for field in split_fields(declaration[1]):
                 entry = re.fullmatch(rf"({_IDENTIFIER})\s*((?:\[[^\]]+\])*)", field)
                 if entry is None:
                     raise CMetadataError("unsupported parameter field declaration")
