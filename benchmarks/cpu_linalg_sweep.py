@@ -129,6 +129,11 @@ def run_sweep(
         valid_timeout = False
     if not valid_timeout:
         raise ValueError("timeout_seconds must be finite and positive")
+    # Path("./probe") drops the slash; resolve existing local executables before
+    # subprocess would reinterpret the resulting name as a PATH-only lookup.
+    probe = Path(probe)
+    if probe.is_file():
+        probe = probe.resolve()
     records: list[dict[str, Any]] = []
     for provider in providers:
         for size in sizes:
