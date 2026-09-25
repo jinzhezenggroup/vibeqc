@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <string>
 #include <utility>
@@ -51,6 +53,130 @@ Gfn2RuntimeStatus map_status(vibeqc_xtb_status_t status) noexcept {
   }
 }
 
+
+double gfn2_radial_to_vibeqc(unsigned angular_momentum) {
+  double odd_double_factorial = 1.0;
+  for (unsigned factor = 1; factor < 2u * angular_momentum; factor += 2u)
+    odd_double_factorial *= static_cast<double>(factor);
+  return std::sqrt(odd_double_factorial);
+}
+
+bool convert_cpu_orbitals(const Gfn2RuntimeRequest& request,
+                          const vibeqc::xtb::detail::Gfn2CpuOrbitalSnapshot& snapshot,
+                          Gfn2RuntimeOrbitals& result, std::string& error) {
+  if (snapshot.orbital_count <= 0 ||
+      static_cast<std::uint64_t>(snapshot.orbital_count) >
+          std::numeric_limits<std::size_t>::max()) {
+    error = "GFN2 orbital snapshot has an invalid AO extent";
+    return false;
+  }
+  const std::size_t n = static_cast<std::size_t>(snapshot.orbital_count);
+  const std::size_t shell_count = snapshot.angular_momenta.size();
+  if (n > std::numeric_limits<std::size_t>::max() / n ||
+      snapshot.overlap.size() != n * n || snapshot.coefficients.size() != n * n ||
+      snapshot.occupations.size() != 2u * n ||
+      snapshot.shell_orbital_offsets.size() != shell_count + 1u ||
+      snapshot.shell_primitive_offsets.size() != shell_count + 1u ||
+      snapshot.shell_to_atom.size() != shell_count) {
+    error = "GFN2 orbital snapshot has inconsistent basis dimensions";
+    return false;
+  }
+
+  Gfn2RuntimeOrbitals converted;
+  auto& source = converted.source_system;
+  source.charge = request.charge;
+  source.multiplicity = request.multiplicity;
+  source.basis_representation = VIBEQC_BASIS_SPHERICAL;
+  source.atoms.reserve(request.atomic_numbers.size());
+  std::int64_t electrons = -static_cast<std::int64_t>(request.charge);
+  for (std::size_t atom = 0; atom < request.atomic_numbers.size(); ++atom) {
+    const auto atomic_number = request.atomic_numbers[atom];
+    if (atomic_number <= 0 ||
+        electrons > std::numeric_limits<std::int64_t>::max() - atomic_number) {
+      error = "GFN2 orbital source has an invalid nuclear charge";
+      return false;
+    }
+    electrons += atomic_number;
+    source.atoms.push_back(
+        {atomic_number,
+         {request.positions[3u * atom], request.positions[3u * atom + 1u],
+          request.positions[3u * atom + 2u]}});
+  }
+  if (electrons <= 0 || electrons > std::numeric_limits<int>::max()) {
+    error = "GFN2 orbital source has an invalid electron count";
+    return false;
+  }
+  source.electron_count = static_cast<int>(electrons);
+
+  source.shells.reserve(shell_count);
+  std::vector<std::size_t> new_to_old(n, n);
+  for (std::size_t shell_index = 0; shell_index < shell_count; ++shell_index) {
+    const auto atom64 = snapshot.shell_to_atom[shell_index];
+    const auto orbital_begin64 = snapshot.shell_orbital_offsets[shell_index];
+    const auto orbital_end64 = snapshot.shell_orbital_offsets[shell_index + 1u];
+    const auto primitive_begin64 = snapshot.shell_primitive_offsets[shell_index];
+    const auto primitive_end64 = snapshot.shell_primitive_offsets[shell_index + 1u];
+    const unsigned angular = snapshot.angular_momenta[shell_index];
+    if (angular > 2u || atom64 < 0 ||
+        static_cast<std::uint64_t>(atom64) >= source.atoms.size() ||
+        orbital_begin64 < 0 || orbital_end64 < orbital_begin64 ||
+        primitive_begin64 < 0 || primitive_end64 <= primitive_begin64 ||
+        static_cast<std::uint64_t>(orbital_end64) > n ||
+        static_cast<std::uint64_t>(primitive_end64) > snapshot.primitive_exponents.size() ||
+        snapshot.primitive_exponents.size() != snapshot.primitive_coefficients.size() ||
+        orbital_end64 - orbital_begin64 != static_cast<std::int64_t>(2u * angular + 1u)) {
+      error = "GFN2 orbital source shell metadata is inconsistent";
+      return false;
+    }
+
+    core::Shell shell;
+    shell.atom_index = static_cast<std::uint32_t>(atom64);
+    shell.angular_momentum = angular;
+    const double radial_scale = gfn2_radial_to_vibeqc(angular);
+    for (std::int64_t primitive = primitive_begin64; primitive < primitive_end64; ++primitive) {
+      const std::size_t p = static_cast<std::size_t>(primitive);
+      shell.primitives.push_back(
+          {snapshot.primitive_exponents[p], snapshot.primitive_coefficients[p] * radial_scale});
+    }
+    source.shells.push_back(std::move(shell));
+
+    const std::size_t begin = static_cast<std::size_t>(orbital_begin64);
+    if (angular == 1u) {
+      // Native GFN2 spherical p order is (y,z,x); VibeQC's public p order is
+      // Cartesian (x,y,z). d uses the same m=-2..2 order on both sides.
+      new_to_old[begin] = begin + 2u;
+      new_to_old[begin + 1u] = begin;
+      new_to_old[begin + 2u] = begin + 1u;
+    } else {
+      for (std::size_t ao = begin; ao < static_cast<std::size_t>(orbital_end64); ++ao)
+        new_to_old[ao] = ao;
+    }
+  }
+  if (std::any_of(new_to_old.begin(), new_to_old.end(), [n](std::size_t value) {
+        return value >= n;
+      })) {
+    error = "GFN2 orbital source AO permutation is incomplete";
+    return false;
+  }
+
+  converted.overlap.resize(n * n);
+  converted.coefficients.resize(n * n);
+  converted.occupations = snapshot.occupations;
+  for (std::size_t row = 0; row < n; ++row) {
+    const std::size_t old_row = new_to_old[row];
+    for (std::size_t column = 0; column < n; ++column) {
+      converted.overlap[row * n + column] =
+          snapshot.overlap[old_row * n + new_to_old[column]];
+      converted.coefficients[row * n + column] =
+          snapshot.coefficients[old_row * n + column];
+    }
+  }
+
+  result = std::move(converted);
+  error.clear();
+  return true;
+}
+
 }  // namespace
 
 struct Gfn2RuntimeBridge::Impl {
@@ -89,6 +215,11 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   if (request.multiplicity == 0u) {
     result.status = Gfn2RuntimeStatus::kInvalidArgument;
     result.detail = "GFN2 runtime multiplicity must be positive";
+    return result;
+  }
+  if (request.compute_orbitals && impl_->backend != Gfn2RuntimeBackend::kCpu) {
+    result.status = Gfn2RuntimeStatus::kNotSupported;
+    result.detail = "GFN2 orbital export is currently qualified only for the CPU runtime";
     return result;
   }
 
@@ -190,6 +321,24 @@ Gfn2RuntimeResult Gfn2RuntimeBridge::execute(const Gfn2RuntimeRequest& request) 
   result.atomic_charges = std::move(atomic_charges);
   result.iterations = iterations[0] < 0 ? 0u : static_cast<unsigned>(iterations[0]);
   result.converged = system_status == VIBEQC_XTB_STATUS_SUCCESS && converged[0] != 0u;
+  if (request.compute_orbitals && result.converged) {
+    vibeqc::xtb::detail::Gfn2CpuOrbitalSnapshot snapshot;
+    std::string snapshot_error;
+    const auto snapshot_status = vibeqc::xtb::detail::copy_restricted_gfn2_orbital_snapshot_cpu(
+        impl_->cpu_cache, snapshot, snapshot_error);
+    if (snapshot_status != VIBEQC_XTB_STATUS_SUCCESS) {
+      result.status = map_status(snapshot_status);
+      result.detail = std::move(snapshot_error);
+      return result;
+    }
+    Gfn2RuntimeOrbitals orbitals;
+    if (!convert_cpu_orbitals(request, snapshot, orbitals, snapshot_error)) {
+      result.status = Gfn2RuntimeStatus::kInternalError;
+      result.detail = std::move(snapshot_error);
+      return result;
+    }
+    result.orbitals = std::move(orbitals);
+  }
   return result;
 }
 
