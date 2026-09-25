@@ -98,18 +98,53 @@ def run_sweep(
     providers: tuple[str, ...] = DEFAULT_PROVIDERS,
     repeats: int = 5,
     threads: int = 1,
+    timeout_seconds: float = 120.0,
 ) -> dict[str, Any]:
-    if repeats <= 0 or threads <= 0:
-        raise ValueError("repeats and threads must be positive")
+    # Validate the public Python entry point as well as CLI-parsed arguments.
+    sizes, providers = tuple(sizes), tuple(providers)
+    if (
+        not sizes
+        or any(type(size) is not int or size <= 0 for size in sizes)
+        or len(set(sizes)) != len(sizes)
+    ):
+        raise ValueError("sizes must be positive, unique integers")
+    if (
+        not providers
+        or any(type(provider) is not str or provider not in {"auto", "scalar", "openblas"}
+               for provider in providers)
+        or len(set(providers)) != len(providers)
+    ):
+        raise ValueError("providers must be nonempty, supported and unique")
+    if any(type(value) is not int or value <= 0 for value in (repeats, threads)):
+        raise ValueError("repeats and threads must be positive integers")
+    try:
+        valid_timeout = (
+            type(timeout_seconds) in (int, float)
+            and math.isfinite(timeout_seconds)
+            and timeout_seconds > 0
+        )
+    except OverflowError:
+        valid_timeout = False
+    if not valid_timeout:
+        raise ValueError("timeout_seconds must be finite and positive")
     records: list[dict[str, Any]] = []
     for provider in providers:
         for size in sizes:
-            completed = subprocess.run(
-                [str(probe), str(size), str(repeats), provider, str(threads)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
+            try:
+                completed = subprocess.run(
+                    [str(probe), str(size), str(repeats), provider, str(threads)],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_seconds,
+                )
+            except subprocess.TimeoutExpired as error:
+                # subprocess.run kills and reaps this probe before raising.
+                # Do not publish a completed sweep after a timed-out sample.
+                raise RuntimeError(
+                    f"probe timed out for provider={provider} size={size} "
+                    f"after {timeout_seconds} seconds"
+                ) from error
             if completed.returncode:
                 detail = completed.stderr.strip() or completed.stdout.strip()
                 raise RuntimeError(
@@ -142,6 +177,10 @@ def main() -> int:
     parser.add_argument("--providers", type=parse_providers, default=DEFAULT_PROVIDERS)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument(
+        "--timeout-seconds", type=float, default=120.0,
+        help="finite positive wall-time limit for each probe invocation (default: 120)",
+    )
     parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     payload = run_sweep(
@@ -150,6 +189,7 @@ def main() -> int:
         providers=args.providers,
         repeats=args.repeats,
         threads=args.threads,
+        timeout_seconds=args.timeout_seconds,
     )
     rendered = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     if args.output is None:
