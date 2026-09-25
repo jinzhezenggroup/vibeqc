@@ -87,7 +87,13 @@ def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
         "run_lambda_independent_transpose_cuda",
     ):
         assert entry in text
-    assert text.count("auto* arena=s.response_arena;") == 14
+    assert text.count("auto* arena=s.response_arena;") == 17
+    for entry in (
+        "run_hamiltonian_weights_cuda",
+        "run_fock_weights_cuda",
+        "run_orbital_jvp_cuda",
+    ):
+        assert entry in text
     for parameter in (
         "foo",
         "fov",
