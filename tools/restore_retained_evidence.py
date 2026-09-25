@@ -123,7 +123,8 @@ def _read(entry: dict) -> bytes:
         actual = hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
         if actual != entry["git_blob_sha1"]:
             raise ValueError("historical evidence checksum/size mismatch")
-    elif hashlib.sha256(data).hexdigest() != entry["sha256"]:
+    # Verify every declared identity; an added Git digest cannot bypass SHA-256.
+    if "sha256" in entry and hashlib.sha256(data).hexdigest() != entry["sha256"]:
         raise ValueError("historical evidence checksum/size mismatch")
     return data
 
