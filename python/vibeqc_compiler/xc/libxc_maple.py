@@ -1592,10 +1592,14 @@ class _Evaluator:
             coefficients: tuple[object, ...] = arguments[0]
             order_raw, t_raw = arguments[1], arguments[2]
             if not isinstance(order_raw, Fraction) or order_raw.denominator != 1:
-                raise MapleImportError("mgga_series_w order must be an integer constant")
+                raise MapleImportError(
+                    "mgga_series_w order must be an integer constant"
+                )
             order = int(order_raw)
             if order < 1 or order > len(coefficients) or order > 32:
-                raise MapleImportError("mgga_series_w order exceeds the coefficient list")
+                raise MapleImportError(
+                    "mgga_series_w order exceeds the coefficient list"
+                )
             t = self._as_expr(t_raw)
             k = self._as_expr(self._name("K_FACTOR_C", {}))
             w = (k - t) / (k + t)
