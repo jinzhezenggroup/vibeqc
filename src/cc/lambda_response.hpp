@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <span>
 #include <string>
 #include <vector>
@@ -95,6 +96,50 @@ struct CudaFixedOrbitalResponseResult {
 CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_source(
     const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
     std::span<const double> t2_source, int device, const LambdaOptions& options = {});
+
+/** Borrowed host views for the generated Hamiltonian/Fock/orbital CUDA response programs. */
+struct CudaRawHamiltonianView {
+  std::span<const double> density, g, h, rotation;
+};
+
+struct CudaParameterResponseView {
+  std::span<const double> foo, fov, fvv, ovov, ovvo, oovv, ovvv, ovoo, oooo, vvvv;
+};
+
+struct CudaHamiltonianResponseResult {
+  std::vector<double> hcore, eri, overlap, rotation_gradient, stationarity, orbital_rhs;
+};
+
+/** Reusable native owner for post-Lambda Hamiltonian/Fock/orbital response TensorIR.
+ *
+ * Raw Hamiltonian inputs are staged once and retained on the selected device.
+ * Scientific pullbacks/JVPs execute through the generated CUDA entry points;
+ * callers explicitly decide when detached host weights are needed.
+ */
+class CudaHamiltonianResponseOwner {
+ public:
+  CudaHamiltonianResponseOwner(std::size_t nocc, std::size_t nvir,
+                               CudaRawHamiltonianView raw, int device,
+                               std::size_t max_device_bytes);
+  ~CudaHamiltonianResponseOwner();
+
+  CudaHamiltonianResponseOwner(const CudaHamiltonianResponseOwner&) = delete;
+  CudaHamiltonianResponseOwner& operator=(const CudaHamiltonianResponseOwner&) = delete;
+
+  CudaHamiltonianResponseResult hamiltonian(CudaParameterResponseView parameters,
+                                            double reference_seed);
+  CudaHamiltonianResponseResult fock(std::span<const double> bar_fock);
+  std::vector<double> orbital_jvp(std::span<const double> d_rotation);
+
+  [[nodiscard]] std::size_t owned_device_bytes() const noexcept;
+  [[nodiscard]] std::size_t h2d_bytes() const noexcept;
+  [[nodiscard]] std::size_t d2h_bytes() const noexcept;
+  [[nodiscard]] std::size_t synchronizations() const noexcept;
+
+ private:
+  struct Impl;
+  std::unique_ptr<Impl> impl_;
+};
 #endif
 
 }  // namespace vibeqc::cc
