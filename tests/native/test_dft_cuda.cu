@@ -243,6 +243,83 @@ void density_feature_capture_case(const AoBasis& basis, const MolecularGrid& gri
   fixture.canary();
 }
 
+void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bool unrestricted) {
+  Fixture fixture(basis, grid, 4U, unrestricted, 7);
+  const auto d = density(basis.nao, unrestricted ? 2U : 1U);
+  fixture.submit(d);
+  const auto before_scalars = fixture.scalars();
+  const auto before = fixture.potential();
+
+  const auto points = grid.point_count(), n = basis.nao, matrix = n * n;
+  std::vector<double> gradient(3 * points), vrho(points), vsigma(points);
+  for (std::size_t p = 0; p < points; ++p) {
+    vrho[p] = 0.13 + 0.01 * p;
+    vsigma[p] = 0.02 + 0.001 * p;
+    gradient[3 * p] = 0.03 * (p + 1);
+    gradient[3 * p + 1] = -0.02 * (p + 1);
+    gradient[3 * p + 2] = 0.01 * (p + 1);
+  }
+  const double nonlocal_energy = 0.123456789;
+  double *d_weights{}, *d_gradient{}, *d_vrho{}, *d_vsigma{}, *d_energy{};
+  try {
+    check(cudaMalloc(&d_weights, points * sizeof(double)));
+    check(cudaMalloc(&d_gradient, gradient.size() * sizeof(double)));
+    check(cudaMalloc(&d_vrho, points * sizeof(double)));
+    check(cudaMalloc(&d_vsigma, points * sizeof(double)));
+    check(cudaMalloc(&d_energy, sizeof(double)));
+    check(cudaMemcpyAsync(d_weights, grid.weights().data(), points * sizeof(double),
+                          cudaMemcpyHostToDevice, fixture.stream));
+    check(cudaMemcpyAsync(d_gradient, gradient.data(), gradient.size() * sizeof(double),
+                          cudaMemcpyHostToDevice, fixture.stream));
+    check(cudaMemcpyAsync(d_vrho, vrho.data(), points * sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaMemcpyAsync(d_vsigma, vsigma.data(), points * sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaMemcpyAsync(d_energy, &nonlocal_energy, sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaStreamSynchronize(fixture.stream));
+    const auto transfers = fixture.plan->transfers();
+    fixture.plan->enqueue_nonlocal_potential(fixture.generation, d_weights, d_gradient, d_vrho,
+                                             d_vsigma, d_energy);
+    const auto after_enqueue = fixture.plan->transfers();
+    require(after_enqueue.output_d2h_bytes == transfers.output_d2h_bytes &&
+                after_enqueue.setup_h2d_bytes == transfers.setup_h2d_bytes &&
+                after_enqueue.synchronizations == transfers.synchronizations,
+            "CUDA nonlocal AO enqueue staged data or synchronized");
+
+    const auto after_scalars = fixture.scalars();
+    const auto after = fixture.potential();
+    close(after_scalars.energy - before_scalars.energy, nonlocal_energy,
+          "CUDA nonlocal energy composition", 2e-13);
+
+    std::vector<double> ao(4 * points * n), expected(matrix);
+    basis.evaluate(grid.points().data(), points, 1, 0, n, ao.data(), ao.size());
+    const auto phi = [&](unsigned jet, std::size_t p, std::size_t mu) {
+      return ao[(jet * points + p) * n + mu];
+    };
+    for (std::size_t p = 0; p < points; ++p)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          double weak = 0.0;
+          for (unsigned k = 0; k < 3; ++k)
+            weak += 2.0 * vsigma[p] * gradient[3 * p + k] *
+                    (phi(k + 1, p, mu) * phi(0, p, nu) + phi(0, p, mu) * phi(k + 1, p, nu));
+          expected[mu * n + nu] +=
+              grid.weights()[p] * (vrho[p] * phi(0, p, mu) * phi(0, p, nu) + weak);
+        }
+    for (unsigned spin = 0; spin < (unrestricted ? 2U : 1U); ++spin)
+      for (std::size_t i = 0; i < matrix; ++i)
+        close(after[spin * matrix + i] - before[spin * matrix + i], expected[i],
+              "CUDA nonlocal AO potential composition", 3e-12 + 2e-12 * std::abs(expected[i]));
+  } catch (...) {
+    for (auto* pointer : {d_energy, d_vsigma, d_vrho, d_gradient, d_weights})
+      if (pointer) cudaFree(pointer);
+    throw;
+  }
+  for (auto* pointer : {d_energy, d_vsigma, d_vrho, d_gradient, d_weights}) cudaFree(pointer);
+  fixture.canary();
+}
+
 /** Check AO/features against independent host contractions, then evaluate
  * r2SCAN or WB97M-V on the captured device features. This distinguishes point
  * math disagreements from feature-rounding sensitivity without relaxing the
@@ -579,6 +656,7 @@ int main(int argc, char** argv) {
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     for (bool unrestricted : {false, true}) density_feature_capture_case(basis, grid, unrestricted);
+    for (bool unrestricted : {false, true}) nonlocal_potential_case(basis, grid, unrestricted);
     for (unsigned functional : {0U, 1U, 2U, 4U})
       for (bool unrestricted : {false, true}) {
         graph_capture(basis, grid, functional, unrestricted);
