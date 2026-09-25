@@ -2,12 +2,14 @@
 
 from fractions import Fraction
 
+import numpy as np
 import pytest
 from vibeqc_compiler.xc.libxc_maple import MapleImportError
 
 from tools.libxc_split_hybrid import (
     available_split_global_hybrids,
     build_split_global_hybrid,
+    evaluate_split_global_hybrid_production,
 )
 
 
@@ -62,6 +64,36 @@ def test_split_hybrid_work_policies_follow_component_specific_libxc_thresholds()
     assert mn15.correlation_policy.density_threshold == pytest.approx(1.0e-15)
     assert mn15.exchange_policy.needs_tau
     assert mn15.correlation_policy.needs_tau
+
+
+@pytest.mark.parametrize("name", ("M06-2X", "MN15"))
+def test_split_hybrid_production_policy_zeroes_physical_vacuum(name: str) -> None:
+    method = build_split_global_hybrid(name)
+    values = tuple(0.0 for _ in method.exchange.features)
+    names, actual = evaluate_split_global_hybrid_production(name, values)
+    assert names == method.exchange.features
+    np.testing.assert_array_equal(actual, np.zeros(1 + len(names)))
+
+
+@pytest.mark.parametrize("name", ("M06-2X", "MN15"))
+def test_split_hybrid_production_policy_is_finite_at_zero_minority(name: str) -> None:
+    method = build_split_global_hybrid(name)
+    rho = 0.073
+    mapping = {
+        "rho_a": rho,
+        "rho_b": 0.0,
+        "sigma_aa": 4.0 * rho * rho,
+        "sigma_ab": 0.0,
+        "sigma_bb": 0.0,
+        "lapl_a": 0.0,
+        "lapl_b": 0.0,
+        "tau_a": 0.7 * rho,
+        "tau_b": 0.0,
+    }
+    values = tuple(mapping[name] for name in method.exchange.features)
+    _, actual = evaluate_split_global_hybrid_production(name, values)
+    assert actual.shape == (1 + len(method.exchange.features),)
+    assert np.isfinite(actual).all()
 
 
 def test_split_hybrid_builder_remains_fail_closed_for_unknown_method() -> None:
