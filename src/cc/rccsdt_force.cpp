@@ -81,7 +81,7 @@ ParameterWeights parameter_vjp(const Problem& p, const SolverResult& cc, const L
                                         generated::parameter_vvvv_arena_elements(o, v)});
   const auto required = checked_add(bytes(arena_elements), bytes(parameter_elements(o, v)));
   if (required > max_bytes)
-    throw std::length_error("RCCSD(T) fixed-orbital response exceeds host budget");
+    throw std::length_error("coupled-cluster fixed-orbital response exceeds host budget");
   std::vector<double> arena(arena_elements);
   const auto in = cc_inputs(p, cc);
   const double energy_seed = 1.0;
@@ -136,7 +136,7 @@ void add_projected_triples(ParameterWeights& target, const TriplesResponseResult
                            std::size_t o, std::size_t v) {
   if (triples.fov.size() != target.fov.size() || triples.ovov.size() != target.ovov.size() ||
       triples.ovvv.size() != target.ovvv.size() || triples.ovoo.size() != target.ovoo.size())
-    throw std::invalid_argument("RCCSD(T) direct triples parameter-source shape mismatch");
+    throw std::invalid_argument("coupled-cluster direct triples parameter-source shape mismatch");
   for (std::size_t index = 0; index < target.fov.size(); ++index)
     target.fov[index] += triples.fov[index];
   for (std::size_t i = 0; i < o; ++i)
@@ -174,9 +174,9 @@ RawHamiltonian raw_hamiltonian(const core::System& system, const scf::PhysicalRe
   const auto n = ref.nbf;
   const auto n2 = square(n), n4 = fourth(n);
   const auto required = bytes(checked_add(checked_mul(3, n2), n4));
-  if (required > max_bytes) throw std::length_error("RCCSD(T) raw Hamiltonian exceeds host budget");
+  if (required > max_bytes) throw std::length_error("coupled-cluster raw Hamiltonian exceeds host budget");
   if (ref.coefficients.size() != n2 || ref.hcore.size() != n2)
-    throw std::invalid_argument("RCCSD(T) reference one-electron shape mismatch");
+    throw std::invalid_argument("coupled-cluster reference one-electron shape mismatch");
   RawHamiltonian out;
   out.h.assign(n2, 0.0);
   for (std::size_t p = 0; p < n; ++p)
@@ -189,13 +189,13 @@ RawHamiltonian raw_hamiltonian(const core::System& system, const scf::PhysicalRe
   posthf::NativeBlockProvider provider(source, ref, max_bytes, 2);
   const auto all = range(n);
   out.g = provider.get({all, all, all, all}, false, 0);
-  if (out.g.size() != n4) throw std::runtime_error("RCCSD(T) full MO ERI shape mismatch");
+  if (out.g.size() != n4) throw std::runtime_error("coupled-cluster full MO ERI shape mismatch");
   out.density.assign(n2, 0.0);
   for (std::size_t i = 0; i < ref.nocc; ++i) out.density[i * n + i] = 2.0;
   out.rotation.assign(n2, 0.0);
   for (std::size_t p = 0; p < n; ++p) out.rotation[p * n + p] = 1.0;
   if (!finite(out.h) || !finite(out.g))
-    throw std::runtime_error("nonfinite RCCSD(T) raw Hamiltonian");
+    throw std::runtime_error("nonfinite coupled-cluster raw Hamiltonian");
   return out;
 }
 
@@ -222,7 +222,7 @@ ResponseWeights hamiltonian_pullback(const ParameterWeights& bar, double referen
   if (checked_add(bytes(arena_elements),
                   bytes(checked_add(checked_add(fourth(n), checked_mul(4, square(n))),
                                     checked_mul(o, v)))) > max_bytes)
-    throw std::length_error("RCCSD(T) Hamiltonian response exceeds host budget");
+    throw std::length_error("coupled-cluster Hamiltonian response exceeds host budget");
   std::vector<double> arena(arena_elements);
   generated::HamiltonianWeightInputs inputs{};
   inputs.bar_foo = bar.foo.data();
@@ -249,12 +249,12 @@ ResponseWeights fock_pullback(std::span<const double> bar_fock, const RawHamilto
                               std::size_t o, std::size_t v, std::size_t max_bytes) {
   const auto n = checked_add(o, v);
   if (bar_fock.size() != square(n))
-    throw std::invalid_argument("RCCSD(T) Fock response shape mismatch");
+    throw std::invalid_argument("coupled-cluster Fock response shape mismatch");
   const auto arena_elements = generated::fock_weights_arena_elements(o, v);
   if (bytes(
           checked_add(arena_elements, checked_add(checked_add(fourth(n), checked_mul(4, square(n))),
                                                   checked_mul(o, v)))) > max_bytes)
-    throw std::length_error("RCCSD(T) Fock response exceeds host budget");
+    throw std::length_error("coupled-cluster Fock response exceeds host budget");
   std::vector<double> arena(arena_elements);
   generated::FockWeightInputs inputs{};
   inputs.bar_fock = bar_fock.data();
@@ -268,7 +268,7 @@ ResponseWeights fock_pullback(std::span<const double> bar_fock, const RawHamilto
 
 void add_in_place(ResponseWeights& target, const ResponseWeights& source) {
   auto add = [](std::vector<double>& a, const std::vector<double>& b) {
-    if (a.size() != b.size()) throw std::invalid_argument("RCCSD(T) response shape mismatch");
+    if (a.size() != b.size()) throw std::invalid_argument("coupled-cluster response shape mismatch");
     for (std::size_t i = 0; i < a.size(); ++i) a[i] += b[i];
   };
   add(target.hcore, source.hcore);
@@ -297,14 +297,14 @@ ParameterWeights zero_parameters(std::size_t o, std::size_t v) {
 double max_abs(std::span<const double> values) {
   double result = 0.0;
   for (const double value : values) {
-    if (!std::isfinite(value)) throw std::runtime_error("nonfinite RCCSD(T) response weight");
+    if (!std::isfinite(value)) throw std::runtime_error("nonfinite coupled-cluster response weight");
     result = std::max(result, std::abs(value));
   }
   return result;
 }
 
 double minimum_symmetric_eigenvalue(std::vector<double> matrix, std::size_t n) {
-  if (matrix.size() != square(n)) throw std::invalid_argument("RCCSD(T) response matrix shape");
+  if (matrix.size() != square(n)) throw std::invalid_argument("coupled-cluster response matrix shape");
   if (!n) return std::numeric_limits<double>::infinity();
   const auto max_sweeps = checked_mul(std::size_t{100}, square(n));
   for (std::size_t sweep = 0; sweep < max_sweeps; ++sweep) {
@@ -338,13 +338,14 @@ double minimum_symmetric_eigenvalue(std::vector<double> matrix, std::size_t n) {
 
 }  // namespace
 
-RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
-                                      const scf::PhysicalReference& reference, const Problem& p,
-                                      const SolverResult& cc, std::size_t max_bytes) {
+static RccsdtForcePlan plan_force_cpu(const core::System& system,
+                                         const scf::PhysicalReference& reference, const Problem& p,
+                                         const SolverResult& cc, std::size_t max_bytes,
+                                         bool with_triples) {
   const auto o = p.nocc, v = p.nvir, n = checked_add(o, v);
   if (!o || !v || n > 12 || reference.nbf != n || reference.nocc != o ||
       molecule::ao_count(system) != n || !max_bytes)
-    throw std::invalid_argument("invalid RCCSD(T) force resource dimensions");
+    throw std::invalid_argument("invalid coupled-cluster force resource dimensions");
   const auto n2 = square(n), n4 = fourth(n), ov = checked_mul(o, v),
              amplitudes = checked_add(ov, square(ov));
   auto sum = [](std::initializer_list<std::size_t> values) {
@@ -367,18 +368,25 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
            bytes(cc.t1.capacity()), bytes(cc.t2.capacity()), bytes(n),
            posthf::source_capacity(system)});
   const auto triples_retained =
-      bytes(sum({checked_mul(o, checked_mul(v, square(v))), checked_mul(ov, square(o)),
-                 checked_mul(2, square(ov)), checked_mul(2, ov), n}));
-  const auto pages = std::min<std::size_t>(TriplesResponseOptions{}.batch_capacity,
-                                           checked_mul(v, checked_mul(v + 1, v + 2)) / 6);
+      with_triples
+          ? bytes(sum({checked_mul(o, checked_mul(v, square(v))), checked_mul(ov, square(o)),
+                       checked_mul(2, square(ov)), checked_mul(2, ov), n}))
+          : 0;
+  const auto pages =
+      with_triples
+          ? std::min<std::size_t>(TriplesResponseOptions{}.batch_capacity,
+                                  checked_mul(v, checked_mul(v + 1, v + 2)) / 6)
+          : 0;
   plan.triples_phase_bytes =
-      sum({plan.retained_input_bytes, bytes(n), triples_retained,
-           bytes(generated::triples_response_arena_elements(o, v, pages)),
-           checked_mul(pages, 3 * sizeof(std::int64_t) + 2 * sizeof(double))});
+      with_triples
+          ? sum({plan.retained_input_bytes, bytes(n), triples_retained,
+                 bytes(generated::triples_response_arena_elements(o, v, pages)),
+                 checked_mul(pages, 3 * sizeof(std::int64_t) + 2 * sizeof(double))})
+          : 0;
   LambdaOptions lambda_options;
   lambda_options.max_bytes = max_bytes;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
-  const auto lambda_capacity = lambda_cpu_numeric_capacity(p, cc, lambda_options, true);
+  const auto lambda_capacity = lambda_cpu_numeric_capacity(p, cc, lambda_options, with_triples);
   if (lambda_capacity < lambda_borrowed) throw std::logic_error("Lambda capacity underflow");
   plan.lambda_phase_bytes =
       sum({plan.retained_input_bytes, triples_retained, lambda_capacity - lambda_borrowed});
@@ -449,35 +457,44 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
       std::max({plan.triples_phase_bytes, plan.lambda_phase_bytes, plan.parameter_phase_bytes,
                 plan.raw_phase_bytes, plan.response_phase_bytes, plan.derivative_phase_bytes});
   if (plan.peak_bytes > max_bytes)
-    throw std::length_error("RCCSD(T) complete force exceeds simultaneous host budget");
+    throw std::length_error("coupled-cluster complete force exceeds simultaneous host budget");
   return plan;
 }
 
-RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+RccsdForcePlan plan_rccsd_force_cpu(const core::System& system,
+                                    const scf::PhysicalReference& reference,
+                                    const Problem& problem, const SolverResult& cc_result,
+                                    std::size_t max_bytes) {
+  return plan_force_cpu(system, reference, problem, cc_result, max_bytes, false);
+}
+
+RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
+                                      const scf::PhysicalReference& reference,
+                                      const Problem& problem, const SolverResult& cc_result,
+                                      std::size_t max_bytes) {
+  return plan_force_cpu(system, reference, problem, cc_result, max_bytes, true);
+}
+
+static RccsdtForceResult force_cpu(const core::System& system,
                                    const scf::PhysicalReference& reference, const Problem& problem,
                                    const SolverResult& cc_result, std::span<const double> eps_o,
                                    std::span<const double> eps_v, std::size_t max_bytes,
-                                   double denominator_threshold) {
+                                   double denominator_threshold, bool with_triples) {
   validate_problem(problem);
   if (!cc_result.converged())
-    throw std::invalid_argument("RCCSD(T) force requires converged RCCSD amplitudes");
+    throw std::invalid_argument("coupled-cluster force requires converged RCCSD amplitudes");
   if (!max_bytes || reference.nbf > 12 || reference.nbf != problem.nocc + problem.nvir ||
-      reference.nocc != problem.nocc || eps_o.size() != problem.nocc ||
-      eps_v.size() != problem.nvir || !std::isfinite(denominator_threshold) ||
-      denominator_threshold <= 0.0)
-    throw std::invalid_argument("RCCSD(T) force is outside the qualified CPU domain");
+      reference.nocc != problem.nocc ||
+      (with_triples &&
+       (eps_o.size() != problem.nocc || eps_v.size() != problem.nvir ||
+        !std::isfinite(denominator_threshold) || denominator_threshold <= 0.0)))
+    throw std::invalid_argument("coupled-cluster force is outside the qualified CPU domain");
   const auto o = problem.nocc, v = problem.nvir, n = reference.nbf;
   if (reference.orbital_energies.size() != n || !finite(reference.orbital_energies))
-    throw std::invalid_argument("RCCSD(T) force requires finite canonical orbital energies");
-  const auto resources = plan_rccsdt_force_cpu(system, reference, problem, cc_result, max_bytes);
+    throw std::invalid_argument("coupled-cluster force requires finite canonical orbital energies");
+  const auto resources = plan_force_cpu(system, reference, problem, cc_result, max_bytes, with_triples);
 
-  TriplesResponseOptions triples_options;
-  triples_options.denominator_threshold = denominator_threshold;
-  triples_options.max_bytes = max_bytes;
-  const auto triples =
-      triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
-                           std::vector<double>(eps_v.begin(), eps_v.end()), triples_options);
-
+  TriplesResponseResult triples;
   LambdaOptions lambda_options;
   lambda_options.max_bytes = max_bytes;
   lambda_options.cc_tolerance = 1e-9;
@@ -485,22 +502,36 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   lambda_options.gmres.absolute_tolerance = 1e-12;
   lambda_options.gmres.relative_tolerance = 0.0;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
-  const auto corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1,
-                                                             triples.t2, lambda_options);
 
-  auto parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
-  add_projected_triples(parameters, triples, o, v);
+  LambdaResult relaxed;
+  if (with_triples) {
+    TriplesResponseOptions triples_options;
+    triples_options.denominator_threshold = denominator_threshold;
+    triples_options.max_bytes = max_bytes;
+    triples =
+        triples_response_cpu(problem, cc_result, std::vector<double>(eps_o.begin(), eps_o.end()),
+                             std::vector<double>(eps_v.begin(), eps_v.end()), triples_options);
+    relaxed =
+        solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1, triples.t2, lambda_options);
+  } else {
+    relaxed = solve_lambda_cpu(problem, cc_result, lambda_options);
+  }
+
+  auto parameters = parameter_vjp(problem, cc_result, relaxed, max_bytes);
+  if (with_triples) add_projected_triples(parameters, triples, o, v);
   const auto raw = raw_hamiltonian(system, reference, max_bytes);
   auto correlation = hamiltonian_pullback(parameters, 0.0, raw, o, v, max_bytes);
 
   std::vector<double> bar_fock(square(n), 0.0);
-  for (std::size_t i = 0; i < o; ++i) bar_fock[i * n + i] = triples.eps_o[i];
-  for (std::size_t a = 0; a < v; ++a) bar_fock[(o + a) * n + o + a] = triples.eps_v[a];
-  const auto denominator = fock_pullback(bar_fock, raw, o, v, max_bytes);
-  add_in_place(correlation, denominator);
+  if (with_triples) {
+    for (std::size_t i = 0; i < o; ++i) bar_fock[i * n + i] = triples.eps_o[i];
+    for (std::size_t a = 0; a < v; ++a) bar_fock[(o + a) * n + o + a] = triples.eps_v[a];
+    const auto denominator = fock_pullback(bar_fock, raw, o, v, max_bytes);
+    add_in_place(correlation, denominator);
+    std::fill(bar_fock.begin(), bar_fock.end(), 0.0);
+  }
 
   double minimum_same_space_gap = std::numeric_limits<double>::infinity();
-  std::fill(bar_fock.begin(), bar_fock.end(), 0.0);
   for (const auto& bounds :
        {std::pair<std::size_t, std::size_t>{0, o}, std::pair<std::size_t, std::size_t>{o, n}}) {
     for (std::size_t p = bounds.first; p < bounds.second; ++p)
@@ -508,7 +539,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
         const double gap = reference.orbital_energies[p] - reference.orbital_energies[q];
         minimum_same_space_gap = std::min(minimum_same_space_gap, std::abs(gap));
         if (std::abs(gap) <= kMinimumSameSpaceGap)
-          throw std::runtime_error("degenerate RCCSD(T) canonical occupied/virtual subspace");
+          throw std::runtime_error("degenerate coupled-cluster canonical occupied/virtual subspace");
         const double value = -correlation.stationarity[p * n + q] / (2.0 * gap);
         bar_fock[p * n + q] = value;
         bar_fock[q * n + p] = value;
@@ -524,11 +555,11 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
         same_space_stationarity =
             std::max(same_space_stationarity, std::abs(correlation.stationarity[p * n + q]));
   if (same_space_stationarity > kStationarityTolerance)
-    throw std::runtime_error("RCCSD(T) same-space canonicalization response failed");
+    throw std::runtime_error("coupled-cluster same-space canonicalization response failed");
 
   const auto orbital_arena_elements = generated::orbital_jvp_arena_elements(o, v);
   if (bytes(orbital_arena_elements) > max_bytes)
-    throw std::length_error("RCCSD(T) orbital-response action exceeds host budget");
+    throw std::length_error("coupled-cluster orbital-response action exceeds host budget");
   std::vector<double> orbital_arena(orbital_arena_elements);
   std::vector<double> d_rotation(square(n), 0.0);
   generated::OrbitalJvpInputs orbital_inputs{};
@@ -539,7 +570,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   orbital_inputs.rotation = raw.rotation.data();
   auto apply = [&](std::span<const double> input, std::span<double> output) {
     if (input.size() != checked_mul(o, v) || output.size() != input.size())
-      throw std::invalid_argument("RCCSD(T) orbital-response vector shape mismatch");
+      throw std::invalid_argument("coupled-cluster orbital-response vector shape mismatch");
     std::fill(d_rotation.begin(), d_rotation.end(), 0.0);
     for (std::size_t i = 0; i < o; ++i)
       for (std::size_t a = 0; a < v; ++a) {
@@ -568,10 +599,10 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
       asymmetry = std::max(asymmetry, std::abs(response_matrix[i * dimension + j] -
                                                response_matrix[j * dimension + i]));
   if (asymmetry > 1e-10)
-    throw std::runtime_error("generated RCCSD(T) RHF response is not symmetric");
+    throw std::runtime_error("generated coupled-cluster RHF response is not symmetric");
   const double minimum_curvature = minimum_symmetric_eigenvalue(response_matrix, dimension);
   if (!(minimum_curvature > kMinimumOrbitalCurvature))
-    throw std::runtime_error("RCCSD(T) RHF orbital response is unstable or near-singular");
+    throw std::runtime_error("coupled-cluster RHF orbital response is unstable or near-singular");
 
   response::GmresOptions z_options;
   z_options.relative_tolerance = 0.0;
@@ -582,7 +613,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   const auto z_plan = response::prepare_gmres(dimension, z_options);
   auto z = response::solve_gmres(z_plan, apply, correlation.orbital_rhs);
   if (!z.converged())
-    throw std::runtime_error("RCCSD(T) physical orbital response did not converge");
+    throw std::runtime_error("coupled-cluster physical orbital response did not converge");
   std::vector<double> independent(dimension, 0.0);
   for (std::size_t row = 0; row < dimension; ++row) {
     for (std::size_t column = 0; column < dimension; ++column)
@@ -591,7 +622,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   }
   const double independent_residual = response::stable_norm(independent);
   if (std::max(z.residual_norm, independent_residual) > kOrbitalResidualTolerance)
-    throw std::runtime_error("independent RCCSD(T) physical Z-vector residual failed");
+    throw std::runtime_error("independent coupled-cluster physical Z-vector residual failed");
 
   auto orbital_parameters = zero_parameters(o, v);
   for (std::size_t index = 0; index < dimension; ++index)
@@ -602,7 +633,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   add_in_place(total, orbital);
   const double stationarity = max_abs(total.stationarity);
   if (stationarity > kStationarityTolerance)
-    throw std::runtime_error("complete HF+RCCSD(T)+Z orbital stationarity failed");
+    throw std::runtime_error("complete HF+coupled-cluster+Z orbital stationarity failed");
 
   mp2::LagrangianWeights weights;
   weights.orbitals = n;
@@ -613,20 +644,35 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   weights.stationarity_residual = stationarity;
   auto gradient = mp2::conventional_derivative_cpu(system, reference, weights);
   for (double& value : gradient) value = -value;
-  if (!finite(gradient)) throw std::runtime_error("nonfinite RCCSD(T) analytic force");
+  if (!finite(gradient)) throw std::runtime_error("nonfinite coupled-cluster analytic force");
 
   RccsdtForceResult result;
   result.forces = std::move(gradient);
-  result.lambda = corrected.diagnostic;
+  result.lambda = relaxed.diagnostic;
   result.orbital_response = std::move(z);
   result.independent_orbital_residual = independent_residual;
   result.orbital_stationarity = stationarity;
   result.minimum_orbital_curvature = minimum_curvature;
   result.minimum_same_space_gap = minimum_same_space_gap;
-  result.triples_response_pages = triples.pages;
+  result.triples_response_pages = with_triples ? triples.pages : 0;
   result.numeric_capacity_bytes = resources.peak_bytes;
   result.response_operator_hash = generated::orbital_jvp_program_hash;
   return result;
+}
+
+RccsdForceResult rccsd_force_cpu(const core::System& system,
+                                 const scf::PhysicalReference& reference, const Problem& problem,
+                                 const SolverResult& cc_result, std::size_t max_bytes) {
+  return force_cpu(system, reference, problem, cc_result, {}, {}, max_bytes, 1e-10, false);
+}
+
+RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+                                   const scf::PhysicalReference& reference, const Problem& problem,
+                                   const SolverResult& cc_result, std::span<const double> eps_o,
+                                   std::span<const double> eps_v, std::size_t max_bytes,
+                                   double denominator_threshold) {
+  return force_cpu(system, reference, problem, cc_result, eps_o, eps_v, max_bytes,
+                   denominator_threshold, true);
 }
 
 }  // namespace vibeqc::cc
