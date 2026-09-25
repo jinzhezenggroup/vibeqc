@@ -272,9 +272,7 @@ def ptxas_resources(log: str) -> dict[str, int | None]:
     declared = re.findall(r"Function properties for (\S+)", log)
     # The shared parser returns complete records only. Never let a truncated
     # or unsupported function record disappear from the artifact-level gate.
-    if not records or sorted(record.function for record in records) != sorted(
-        declared
-    ):
+    if not records or sorted(record.function for record in records) != sorted(declared):
         return {
             "registers": None,
             "stack_bytes": None,
