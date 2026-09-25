@@ -1157,25 +1157,19 @@ def cuda_source() -> str:
                 hamiltonian_weights,
                 "hamiltonian_weights",
                 "DeviceHamiltonianOutputs",
-                input_overrides={
-                    name: f"s.{name}" for name in hamiltonian_input_names
-                },
+                input_overrides={name: f"s.{name}" for name in hamiltonian_input_names},
             ),
             _cuda_program(
                 fock_weights,
                 "fock_weights",
                 "DeviceHamiltonianOutputs",
-                input_overrides={
-                    name: f"s.{name}" for name in fock_weight_input_names
-                },
+                input_overrides={name: f"s.{name}" for name in fock_weight_input_names},
             ),
             _cuda_program(
                 orbital_jvp,
                 "orbital_jvp",
                 "DeviceOrbitalJvpOutput",
-                input_overrides={
-                    name: f"s.{name}" for name in orbital_jvp_input_names
-                },
+                input_overrides={name: f"s.{name}" for name in orbital_jvp_input_names},
             ),
             "DeviceIterationOutputs run_iteration_cuda(CudaState& state){return run_iteration(state);}",
             "DeviceReplayOutputs run_replay_cuda(CudaState& state){return run_replay(state);}",
