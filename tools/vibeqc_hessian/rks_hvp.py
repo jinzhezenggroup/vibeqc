@@ -299,7 +299,9 @@ def rks_hvp(
             "native-rks-plan-weighted-coulomb-v1",
             integral("coulomb"),
         ),
-        StationaryHVPContributor("xc_ao", "native-rks-xc-scf-domain-ao-v2", xc("xc_ao")),
+        StationaryHVPContributor(
+            "xc_ao", "native-rks-xc-scf-domain-ao-v2", xc("xc_ao")
+        ),
         StationaryHVPContributor(
             "xc_grid", "native-rks-xc-scf-domain-grid-v2", xc("xc_grid")
         ),
