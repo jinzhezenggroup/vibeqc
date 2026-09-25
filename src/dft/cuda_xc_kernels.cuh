@@ -21,6 +21,16 @@ __global__ void validate_density(const double* density, I n, I spins, int* error
   }
 }
 
+__global__ void add_nonlocal_energy(const double* energy, double* totals, int* error) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) return;
+  const double value = *energy;
+  if (!isfinite(value) || !isfinite(totals[0])) {
+    atomicCAS(error, 0, 6);
+    return;
+  }
+  totals[0] += value;
+}
+
 }  // namespace
 
 void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStream_t stream,
@@ -87,5 +97,30 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
                         begin != 0, error);
     cuda_check(cudaGetLastError());
   }
+}
+
+void enqueue_nonlocal_potential(const CudaXcLayout& l, cudaStream_t stream, const double* basis,
+                                const double* points, const double* effective_weights,
+                                const double* total_gradient, const double* vrho,
+                                const double* vsigma, const double* nonlocal_energy, double* ao,
+                                double* coefficients, double* potential, double* totals,
+                                int* error) {
+  if (l.feature_terms < 4 || l.ao_precision != CudaXcAoPrecision::Fp64)
+    throw std::invalid_argument("CUDA nonlocal AO assembly requires strict-FP64 GGA ingredients");
+  for (std::size_t begin = 0; begin < l.npoint; begin += l.tile_points) {
+    const I count = std::min(l.tile_points, l.npoint - begin);
+    ao_kernel<<<blocks(l.jets * count * l.nao, 128), 128, 0, stream>>>(
+        basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error, nullptr);
+    cuda_check(cudaGetLastError());
+    scheduled_nonlocal_feature_coefficients(stream, total_gradient, vrho, vsigma, begin, count,
+                                            l.spins, l.feature_terms, coefficients, error);
+    cuda_check(cudaGetLastError());
+    assemble_potential<<<blocks(l.spins * l.nao * l.nao, 128), 128, 0, stream>>>(
+        ao, coefficients, effective_weights + begin, l.nao, count, l.spins, l.feature_terms,
+        potential, error);
+    cuda_check(cudaGetLastError());
+  }
+  add_nonlocal_energy<<<1, 1, 0, stream>>>(nonlocal_energy, totals, error);
+  cuda_check(cudaGetLastError());
 }
 }  // namespace vibeqc::dft::cuda_xc_detail

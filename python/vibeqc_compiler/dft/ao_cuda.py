@@ -347,6 +347,28 @@ inline void scheduled_total_density_features(cudaStream_t stream, const double* 
       features,count,spins,feature_terms,begin,total_density,total_gradient,error);
 }
 
+__global__ void nonlocal_feature_coefficients(const double* total_gradient, const double* vrho,
+                                              const double* vsigma, I begin, I count, I spins,
+                                              I feature_terms, double* coefficients, int* error) {
+  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * count;
+       i += I(blockDim.x) * gridDim.x) {
+    const I spin = i / count, point = i % count, global = begin + point;
+    coefficients[(spin * feature_terms) * count + point] = finite(vrho[global], error, 2);
+    for (I k = 0; k < 3; ++k)
+      coefficients[(spin * feature_terms + k + 1) * count + point] =
+          finite(2.0 * vsigma[global] * total_gradient[3 * global + k], error, 2);
+    if (feature_terms == 5)
+      coefficients[(spin * feature_terms + 4) * count + point] = 0.0;
+  }
+}
+
+inline void scheduled_nonlocal_feature_coefficients(
+    cudaStream_t stream, const double* total_gradient, const double* vrho, const double* vsigma,
+    I begin, I count, I spins, I feature_terms, double* coefficients, int* error) {
+  nonlocal_feature_coefficients<<<vibeqc_tensor::blocks(spins*count,128),128,0,stream>>>(
+      total_gradient,vrho,vsigma,begin,count,spins,feature_terms,coefficients,error);
+}
+
 struct DevicePointValue {
   double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};
   bool valid{true};

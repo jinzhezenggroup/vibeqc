@@ -219,6 +219,38 @@ void CudaXcPlan::enqueue_response(const double* density, const double* direction
   enqueue_impl(density, direction, elements, generation);
 }
 
+void CudaXcPlan::enqueue_nonlocal_potential(std::uint64_t generation,
+                                            const double* effective_weights,
+                                            const double* total_gradient, const double* vrho,
+                                            const double* vsigma, const double* nonlocal_energy) {
+  check_device();
+  if (layout_.response)
+    throw std::invalid_argument("XC response plan cannot accumulate a physical nonlocal potential");
+  if (layout_.feature_terms < 4 || layout_.ao_precision != CudaXcAoPrecision::Fp64)
+    throw std::invalid_argument("CUDA nonlocal AO assembly requires strict-FP64 GGA ingredients");
+  generations_.require(generation);
+  if (!effective_weights || !total_gradient || !vrho || !vsigma || !nonlocal_energy)
+    throw std::invalid_argument("CUDA nonlocal AO assembly received a null device input");
+  const auto scalar_bytes =
+      size_mul(layout_.npoint, sizeof(double), "CUDA nonlocal AO input size overflow");
+  const auto gradient_bytes =
+      size_mul(size_mul(3, layout_.npoint, "CUDA nonlocal AO input size overflow"), sizeof(double),
+               "CUDA nonlocal AO input size overflow");
+  for (const auto* pointer : {effective_weights, vrho, vsigma, nonlocal_energy})
+    device_pointer(pointer, device_);
+  device_pointer(total_gradient, device_);
+  const auto overlaps_arena = [&](const void* pointer, std::size_t bytes) {
+    return vibeqc::runtime::ranges_overlap(pointer, bytes, arena_, layout_.device_bytes);
+  };
+  if (overlaps_arena(effective_weights, scalar_bytes) ||
+      overlaps_arena(total_gradient, gradient_bytes) || overlaps_arena(vrho, scalar_bytes) ||
+      overlaps_arena(vsigma, scalar_bytes) || overlaps_arena(nonlocal_energy, sizeof(double)))
+    throw std::invalid_argument("CUDA nonlocal AO inputs alias the semilocal XC workspace");
+  cuda_xc_detail::enqueue_nonlocal_potential(layout_, stream_, basis_, points_, effective_weights,
+                                             total_gradient, vrho, vsigma, nonlocal_energy, ao_,
+                                             coefficients_, potential_, totals_, error_);
+}
+
 void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,
                               std::uint64_t generation, double* total_density,
                               double* total_gradient) {

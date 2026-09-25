@@ -102,6 +102,12 @@ class CudaXcPlan {
   void enqueue_density_features(const double* density, std::size_t elements,
                                 std::uint64_t generation, double* total_density,
                                 double* total_gradient);
+  /** Accumulate a total-density nonlocal contribution into the already
+   * submitted physical XC potential/totals for the same generation. All
+   * inputs are caller-owned full-grid device arrays/scalars. */
+  void enqueue_nonlocal_potential(std::uint64_t generation, const double* effective_weights,
+                                  const double* total_gradient, const double* vrho,
+                                  const double* vsigma, const double* nonlocal_energy);
   /** Differentiate the fixed native density on GPU, including AO/feature and
    * matrix assembly. Signed directions use the same input layout as density. */
   void enqueue_response(const double* density, const double* direction, std::size_t elements,
@@ -139,5 +145,11 @@ void enqueue(const CudaXcLayout& layout, CudaXcPointLauncher point_launcher, cud
              double* coefficients, double* point_totals, double* potential, double* totals,
              int* error, const double* direction = nullptr, double* delta_features = nullptr,
              double* total_density = nullptr, double* total_gradient = nullptr);
+void enqueue_nonlocal_potential(const CudaXcLayout& layout, cudaStream_t stream,
+                                const double* basis, const double* points,
+                                const double* effective_weights, const double* total_gradient,
+                                const double* vrho, const double* vsigma,
+                                const double* nonlocal_energy, double* ao, double* coefficients,
+                                double* potential, double* totals, int* error);
 }  // namespace cuda_xc_detail
 }  // namespace vibeqc::dft
