@@ -31,6 +31,21 @@ def test_native_bridge_exposes_atomic_charges_only_by_explicit_request() -> None
     assert "result.atomic_charges = std::move(atomic_charges);" in source
 
 
+def test_native_bridge_exposes_orbitals_only_by_explicit_cpu_request() -> None:
+    header = (ROOT / "src/methods/gfn2_runtime_bridge.hpp").read_text()
+    source = (ROOT / "src/methods/gfn2_runtime_bridge.cpp").read_text()
+    cpu = (ROOT / "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp").read_text()
+    assert "bool compute_orbitals = false;" in header
+    assert "std::optional<Gfn2RuntimeOrbitals> orbitals;" in header
+    assert "request.compute_orbitals" in source
+    assert "copy_restricted_gfn2_orbital_snapshot_cpu" in source
+    assert "kCpu" in source
+    assert "GFN2 orbital export is currently qualified only for the CPU runtime" in source
+    assert "copy_restricted_gfn2_orbital_snapshot_cpu" in cpu
+    assert "wavefunction.coefficients" in cpu
+    assert "wavefunction.occupations" in cpu
+
+
 def test_method_layer_has_no_vendor_abi() -> None:
     methods = ROOT / "src/methods"
     for path in methods.glob("*"):
