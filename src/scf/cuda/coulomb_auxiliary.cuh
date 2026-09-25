@@ -2,6 +2,7 @@
 
 #include <cuda_runtime.h>
 
+#include "integrals/range_moments.hpp"
 #include "scf/cuda/boys_table.cuh"
 #include "scf/cuda/gaussian_geometry.cuh"
 
@@ -99,6 +100,64 @@ __device__ inline void fill_coulomb(EvaluationReal<Scalar> exponent, const Vec3<
       }
     }
   }
+}
+
+/** Value-only SR/LR radial owner for exact CUDA exchange.
+ *
+ * Range moments are shared with the CPU/generated range-ERI path. Keep this
+ * separate from fill_coulomb so the established full-range Boys path and its
+ * rounding remain unchanged.
+ */
+template <unsigned MaximumAngular>
+__device__ inline bool fill_range_coulomb(
+    double exponent, const Vec3<double>& product, const Vec3<double>& center,
+    vibeqc::integrals::CoulombRange range, double omega,
+    CoulombAuxiliary<double, MaximumAngular>& auxiliary) {
+  static_assert(MaximumAngular <= kMaximumCoulombOrder);
+  if (range == vibeqc::integrals::CoulombRange::Full) return false;
+  for (unsigned item = 0; item < CoulombAuxiliary<double, MaximumAngular>::kStateCount; ++item)
+    auxiliary.data[item] = 0.0;
+
+  const Vec3<double> pc{product.x - center.x, product.y - center.y, product.z - center.z};
+  double moments[MaximumAngular + 1];
+  if (!vibeqc::integrals::bounded_range_moments<MaximumAngular>(
+          MaximumAngular, exponent * distance_squared(product, center), exponent, range, omega,
+          moments))
+    return false;
+
+  double factor = 1.0;
+  for (unsigned n = 0; n <= MaximumAngular; ++n) {
+    auxiliary.at(n, 0, 0, 0) = factor * moments[n];
+    factor *= -2.0 * exponent;
+  }
+  for (unsigned v = 1; v <= MaximumAngular; ++v) {
+    for (unsigned n = 0; n + v <= MaximumAngular; ++n) {
+      double value = pc.z * auxiliary.at(n + 1, 0, 0, v - 1);
+      if (v > 1) value += static_cast<double>(v - 1) * auxiliary.at(n + 1, 0, 0, v - 2);
+      auxiliary.at(n, 0, 0, v) = value;
+    }
+  }
+  for (unsigned v = 0; v <= MaximumAngular; ++v) {
+    for (unsigned u = 1; u + v <= MaximumAngular; ++u) {
+      for (unsigned n = 0; n + u + v <= MaximumAngular; ++n) {
+        double value = pc.y * auxiliary.at(n + 1, 0, u - 1, v);
+        if (u > 1) value += static_cast<double>(u - 1) * auxiliary.at(n + 1, 0, u - 2, v);
+        auxiliary.at(n, 0, u, v) = value;
+      }
+    }
+  }
+  for (unsigned v = 0; v <= MaximumAngular; ++v) {
+    for (unsigned u = 0; u + v <= MaximumAngular; ++u) {
+      for (unsigned t = 1; t + u + v <= MaximumAngular; ++t) {
+        for (unsigned n = 0; n + t + u + v <= MaximumAngular; ++n) {
+          double value = pc.x * auxiliary.at(n + 1, t - 1, u, v);
+          if (t > 1) value += static_cast<double>(t - 1) * auxiliary.at(n + 1, t - 2, u, v);
+          auxiliary.at(n, t, u, v) = value;
+        }
+      }
+    }
+  }
+  return true;
 }
 
 }  // namespace vibeqc::scf::cuda_execution
