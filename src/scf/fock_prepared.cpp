@@ -255,8 +255,10 @@ struct PreparedFockPlan::Impl {
       // Fixed-density/composed Fock APIs have no occupied-rank promise. An
       // explicit packed owner reserves bounded panels and accepts arbitrary D.
       const auto plan_values = [&](std::size_t n, std::size_t a, std::size_t fixed) {
-        return data.value_storage == DfPairStorage::SymmetricLower
-                   ? plan_packed_density_fitting_tiles(1, n, a, 0, plan_budget, fixed)
+        return df_packed_pairs(data.value_storage)
+                   ? plan_packed_density_fitting_tiles(
+                         1, n, a, 0, plan_budget, fixed, 0,
+                         df_retains_packed_raw(data.value_storage))
                    : plan_density_fitting_tiles(1, n, a, n, plan_budget, fixed, true);
       };
       // Reuse the existing tile planner before and after source metadata is

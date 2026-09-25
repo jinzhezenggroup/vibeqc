@@ -351,7 +351,7 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
     // them before plan creation; retaining only dimensions and one-electron
     // response data keeps setup peak bounded by the resolved resource envelope.
     if (data.resolved_budget.value_bytes != 0U ||
-        requested_df_pair_storage() == DfPairStorage::SymmetricLower) {
+        df_packed_pairs(requested_df_pair_storage())) {
       integrals::DensityFittingIntegralData metadata;
       metadata.nbf = molecule::ao_count(system);
       metadata.naux = molecule::ao_count(auxiliary_system);
@@ -1241,9 +1241,10 @@ DensityFittingTilePlan plan_cuda_density_fitting_tiles(
     throw std::bad_alloc();
   fixed_device_bytes += diis_bytes;
   try {
-    if (generated_source && requested_df_pair_storage() == DfPairStorage::SymmetricLower)
+    if (generated_source && df_packed_pairs(requested_df_pair_storage()))
       return plan_packed_density_fitting_tiles(batch, nbf, naux, occupied, budget,
-                                               fixed_device_bytes, automatic_rhf_rank);
+                                               fixed_device_bytes, automatic_rhf_rank,
+                                               df_retains_packed_raw(requested_df_pair_storage()));
     return plan_density_fitting_tiles(batch, nbf, naux, occupied, budget, fixed_device_bytes,
                                       generated_source, automatic_rhf_rank);
   } catch (const DensityFittingBudgetError&) {
@@ -1302,7 +1303,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_plan(
   std::string detail;
   std::size_t auxiliary_tile = 0;
   std::size_t ao_pair_tile = 0;
-  const bool packed = requested_df_pair_storage() == DfPairStorage::SymmetricLower;
+  const bool packed = df_packed_pairs(requested_df_pair_storage());
   // Packing is valid only for physical symmetric sources. Never silently
   // reinterpret an arbitrary public tensor when its source is unavailable.
   if (packed && (!orbital_system || !auxiliary_system))
@@ -1417,7 +1418,7 @@ CudaDensityFittingPlanPtr make_cuda_density_fitting_batch_plan(
   std::vector<double> metrics;
   std::vector<double> three_center;
   std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
-  const bool packed = requested_df_pair_storage() == DfPairStorage::SymmetricLower;
+  const bool packed = df_packed_pairs(requested_df_pair_storage());
   if (packed && (!orbital_systems || !auxiliary_systems || orbital_systems->size() != data.size() ||
                  auxiliary_systems->size() != data.size()))
     throw std::invalid_argument(
@@ -1565,7 +1566,7 @@ std::vector<std::optional<DensityFittingScfData>> prepare_cuda_density_fitting_b
   }
   trace_df_resolved_budget(resolved);
   const bool source_values =
-      resolved.value_bytes != 0U || pair_storage == DfPairStorage::SymmetricLower;
+      resolved.value_bytes != 0U || df_packed_pairs(pair_storage);
   std::vector<DfPreparationStorage> storage(count);
   std::size_t retained_host_bytes = 0;
   if (resolved.total_bytes != 0U) {

@@ -34,7 +34,7 @@ vibeqc_status build_coulomb(CudaDensityFittingJkPlan& plan, const double* densit
   TraceOperation trace(
       "ri_j", plan.stream,
       {plan.batch_size, plan.nbf, plan.naux, plan.integral_source != nullptr, plan.streamed});
-  if (plan.value_storage.pairs == DfPairStorage::SymmetricLower) {
+  if (df_packed_pairs(plan.value_storage.pairs)) {
     const double one = 1, zero = 0;
     const auto a = static_cast<int>(plan.naux), pairs = static_cast<int>(plan.stored_pair_count);
     // The packed density dies after rho=B*d. Its same scratch is then the

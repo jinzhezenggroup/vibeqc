@@ -62,9 +62,9 @@ vibeqc_status whiten_factor_panel(CudaDensityFittingJkPlan& plan, std::size_t sy
 
 /** Materialize a fixed-geometry source once, reusing bounded resident K staging.
  * Every raw (pair,P) is generated once and feeds ALL Q directly into retained
- * B. Dense storage uses bounded raw panels; packed storage writes its separate
- * immutable raw owner directly. A singleton with complete dense K staging
- * preserves raw A in the existing contribution buffer for exact response.
+ * B. The explicit single-factor variant transforms each lower-pair panel
+ * immediately, freeing raw scratch before the next panel. Force response must
+ * regenerate raw values from the immutable physical source in that variant.
  * The caller handles failure after the plan's stream is drained.
  */
 vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const double* inverse,
@@ -73,17 +73,60 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
   runtime::cuda_trace::TraceOperation trace("resident_three_center_materialization", plan.stream,
                                             {plan.batch_size, plan.nbf, plan.naux, true, false});
   const double one = 1.0, zero = 0.0;
-  if (plan.value_storage.pairs == DfPairStorage::SymmetricLower) {
-    // Each lower row is a contiguous slice of the public dense pair domain.
-    // Write it directly into packed A; no dense A/B tensor is constructed.
+  if (df_packed_pairs(plan.value_storage.pairs)) {
+    // The retained raw owner accepts whole lower rows independently of the
+    // bounded scratch. Only single-owner transformation needs pair panels.
+    std::size_t generated_panels = 0;
     for (std::size_t system = 0; system < plan.batch_size; ++system) {
-      auto* raw = plan.packed_raw + system * plan.stored_tensor_elements_per_system;
+      auto* raw = plan.packed_raw
+                      ? plan.packed_raw + system * plan.stored_tensor_elements_per_system
+                      : nullptr;
       for (std::size_t mu = 0; mu < plan.nbf; ++mu) {
-        const auto status = generate_cuda_density_fitting_raw_tile(
-            plan.integral_source, system, mu * plan.nbf, mu + 1, 0, plan.naux, -1,
-            reinterpret_cast<void*>(plan.stream), raw + mu * (mu + 1) / 2 * plan.naux, detail);
-        if (status != VIBEQC_STATUS_SUCCESS) return status;
+        if (raw) {
+          const auto status = generate_cuda_density_fitting_raw_tile(
+              plan.integral_source, system, mu * plan.nbf, mu + 1, 0, plan.naux, -1,
+              reinterpret_cast<void*>(plan.stream), raw + mu * (mu + 1) / 2 * plan.naux,
+              detail);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+          ++generated_panels;
+          continue;
+        }
+        const auto pair_capacity = std::min(plan.projection_capacity, plan.panel_capacity) /
+                                   plan.naux;
+        if (!pair_capacity) return VIBEQC_STATUS_OUT_OF_MEMORY;
+        for (std::size_t nu = 0; nu <= mu; nu += pair_capacity) {
+          const auto count = std::min(pair_capacity, mu + 1 - nu);
+          auto* panel = plan.auxiliary_tile_values;
+          const auto status = generate_cuda_density_fitting_raw_tile(
+              plan.integral_source, system, mu * plan.nbf + nu, count, 0, plan.naux, -1,
+              reinterpret_cast<void*>(plan.stream), panel, detail);
+          if (status != VIBEQC_STATUS_SUCCESS) return status;
+          ++generated_panels;
+          auto* output = plan.three_center +
+                         (system * plan.stored_pair_count + mu * (mu + 1) / 2 + nu) * plan.naux;
+          const auto transform = plan.metric_full_rank[system]
+                                     ? whiten_factor_panel(plan, system, count, panel, output,
+                                                           eigenvectors, scaled_eigenvectors,
+                                                           detail)
+                                     : VIBEQC_STATUS_SUCCESS;
+          if (transform != VIBEQC_STATUS_SUCCESS) return transform;
+          if (!plan.metric_full_rank[system]) {
+            const auto blas_status = runtime::cuda_trace::trace_call(
+                "resident_metric_transform", plan.stream, [&] {
+                  return cublasDgemm(plan.blas, CUBLAS_OP_N, CUBLAS_OP_N,
+                                     static_cast<int>(plan.naux), static_cast<int>(count),
+                                     static_cast<int>(plan.naux), &one,
+                                     inverse + system * plan.naux * plan.naux,
+                                     static_cast<int>(plan.naux), panel,
+                                     static_cast<int>(plan.naux), &zero,
+                                     output, static_cast<int>(plan.naux));
+                });
+            if (blas_status != CUBLAS_STATUS_SUCCESS)
+              return blas_failure(blas_status, "whiten single packed DF values", detail);
+          }
+        }
       }
+      if (!raw) continue;
       if (plan.metric_full_rank[system] && plan.panel_capacity >= plan.naux) {
         const auto tile = plan.panel_capacity / plan.naux;
         for (std::size_t pair = 0; pair < plan.stored_pair_count; pair += tile) {
@@ -110,12 +153,13 @@ vibeqc_status materialize_generated_tensor(CudaDensityFittingJkPlan& plan, const
       if (status != CUBLAS_STATUS_SUCCESS)
         return blas_failure(status, "whiten packed CUDA DF values", detail);
     }
-    plan.resident_raw_valid = true;
+    plan.resident_raw_valid = plan.packed_raw != nullptr;
     runtime::cuda_trace::trace_counter("value_packed_pairs", plan.stored_pair_count);
-    runtime::cuda_trace::trace_counter("packed_raw_generation_calls", plan.batch_size * plan.nbf);
+    runtime::cuda_trace::trace_counter("packed_raw_generation_calls", generated_panels);
     runtime::cuda_trace::trace_counter(
         "resident_raw_bytes",
-        plan.batch_size * plan.stored_tensor_elements_per_system * sizeof(double));
+        plan.packed_raw ? plan.batch_size * plan.stored_tensor_elements_per_system * sizeof(double)
+                        : 0);
     runtime::cuda_trace::trace_counter(
         "resident_transformed_bytes",
         plan.batch_size * plan.stored_tensor_elements_per_system * sizeof(double));
@@ -237,7 +281,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     return fail_before_plan(VIBEQC_STATUS_INVALID_ARGUMENT);
   }
   *plan = nullptr;
-  const bool packed = storage.pairs == DfPairStorage::SymmetricLower;
+  const bool packed = df_packed_pairs(storage.pairs);
   if ((storage.pairs != DfPairStorage::Dense && !packed) || storage.rank_capacity > nbf ||
       (!packed && storage.rank_capacity) ||
       (packed && (!integral_source || !retain_three_center))) {
@@ -327,7 +371,8 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
   if (packed) {
     try {
       packed_capacity =
-          df_packed_value_capacity(batch_size, nbf, naux, storage.rank_capacity, auxiliary_tile);
+          df_packed_value_capacity(batch_size, nbf, naux, storage.rank_capacity, auxiliary_tile,
+                                   df_retains_packed_raw(storage.pairs));
     } catch (const std::exception& error) {
       detail = error.what();
       return fail_before_plan(VIBEQC_STATUS_OUT_OF_MEMORY);
@@ -440,7 +485,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     status = allocate_permanent(&candidate->three_center, tensor_bytes,
                                 "allocate transformed CUDA DF tensor");
   }
-  if (status == VIBEQC_STATUS_SUCCESS && packed) {
+  if (status == VIBEQC_STATUS_SUCCESS && df_retains_packed_raw(storage.pairs)) {
     status = allocate_permanent(&candidate->packed_raw, tensor_bytes,
                                 "allocate immutable packed raw CUDA DF tensor");
   }
@@ -788,7 +833,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
           : static_cast<std::size_t>(persistent_scf_estimate);
   const std::size_t persistent_device_bytes =
       6 * matrix_bytes + auxiliary_bytes + (candidate->streamed ? 0 : tensor_bytes) +
-      projection_bytes + 2 * tile_bytes + (packed ? tensor_bytes : 0) + matrix_bytes +
+      projection_bytes + 2 * tile_bytes + (candidate->packed_raw ? tensor_bytes : 0) + matrix_bytes +
       (candidate->streamed ? tile_bytes : 0) + persistent_scf_bytes + 2 * metric_bytes +
       auxiliary_vector_bytes +
       (candidate->integral_source != nullptr
@@ -846,7 +891,7 @@ vibeqc_status create_cuda_density_fitting_jk_plan_tiled_impl(
     diagnostic.streamed = candidate->streamed;
     diagnostic.pair_storage = storage.pairs;
     diagnostic.stored_factor_bytes = candidate->streamed ? 0 : tensor_bytes;
-    diagnostic.raw_factor_bytes = packed                          ? tensor_bytes
+    diagnostic.raw_factor_bytes = candidate->packed_raw           ? tensor_bytes
                                   : candidate->resident_raw_valid ? tile_bytes
                                                                   : 0;
     diagnostic.contraction_scratch_bytes =

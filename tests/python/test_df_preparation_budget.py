@@ -255,3 +255,114 @@ int main() {
         check=True,
     )
     subprocess.run([str(executable)], check=True)
+
+
+def test_single_packed_value_owner_has_distinct_capacity_and_identity(
+    tmp_path: Path,
+) -> None:
+    """A single fitted owner cannot silently reserve or advertise raw storage."""
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    source = tmp_path / "single_packed.cpp"
+    source.write_text(r"""
+#include "scf/df_value_storage.hpp"
+#include <cstdlib>
+int main() {
+  using namespace vibeqc::scf;
+  const auto full = df_packed_value_capacity(1,768,3712,160,8);
+  const auto single = df_packed_value_capacity(1,768,3712,160,8,false);
+  if (single.factor_bytes != 8769110016ULL ||
+      single.factor_bytes != full.factor_bytes ||
+      single.scratch_bytes != full.scratch_bytes) return 1;
+  if (setenv("VIBEQC_DF_VALUE_STORAGE","packed-single",1)) return 2;
+  const auto selected = requested_df_pair_storage();
+  if (!df_packed_pairs(selected) || df_retains_packed_raw(selected) ||
+      selected == DfPairStorage::SymmetricLower) return 3;
+  if (df_packed_pairs(static_cast<DfPairStorage>(123))) return 4;
+  return 0;
+}
+""")
+    executable = tmp_path / "single_packed"
+    root = Path(__file__).resolve().parents[2]
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)
+
+
+def test_single_packed_96_atom_plan_keeps_values_when_occupied_scratch_does_not_fit(
+    tmp_path: Path,
+) -> None:
+    """A 96-atom default allowance admits B without forcing raw regeneration."""
+    compiler = shutil.which("c++")
+    if compiler is None:
+        pytest.skip("host C++ compiler unavailable")
+    root = Path(__file__).resolve().parents[2]
+    generated = root / "build/cuda-release-sm120/generated"
+    if not (generated / "generated_df_exchange_schedule.hpp").exists():
+        pytest.skip("requires configured CUDA source schedule")
+    source = tmp_path / "single_packed_plan.cpp"
+    source.write_text(r"""
+#include <iostream>
+#include "src/scf/density_fitting.cpp"
+int main() {
+  using namespace vibeqc::scf;
+  const auto default_budget = plan_packed_density_fitting_tiles(
+      1,768,3712,160,13685173124ULL,0,160,false);
+  if (!default_budget.stores_full_three_center ||
+      default_budget.value_storage.pairs != DfPairStorage::SymmetricLowerSingle ||
+      default_budget.value_storage.rank_capacity != 0 ||
+      default_budget.peak_workspace_bytes > 13685173124ULL) return 1;
+  const auto more_values = plan_packed_density_fitting_tiles(
+      1,768,3712,160,16421977600ULL,0,160,false);
+  if (more_values.value_storage.rank_capacity != 160 ||
+      more_values.automatic_rhf_rank != 160 ||
+      more_values.peak_workspace_bytes > 16421977600ULL) return 2;
+  try {
+    (void)plan_packed_density_fitting_tiles(1,768,3712,160,1,0,160,false);
+    return 3;
+  } catch (const DensityFittingBudgetError&) {
+  }
+  const auto narrow = plan_packed_density_fitting_tiles(1,1,256,0,0,0,0,false);
+  if (narrow.auxiliary_tile != 256) return 4;
+  try {
+    (void)plan_packed_density_fitting_tiles(
+        1,1,256,0,narrow.peak_workspace_bytes-1,0,0,false);
+    return 5;
+  } catch (const DensityFittingBudgetError&) {
+  }
+  return 0;
+}
+""")
+    executable = tmp_path / "single_packed_plan"
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-O0",
+            "-ffunction-sections",
+            "-fdata-sections",
+            "-Wl,--gc-sections",
+            "-I" + str(root),
+            "-I" + str(root / "include"),
+            "-I" + str(root / "src"),
+            "-I" + str(generated),
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    subprocess.run([str(executable)], check=True)

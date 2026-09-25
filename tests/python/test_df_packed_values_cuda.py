@@ -16,6 +16,112 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.mark.parametrize("response_space", ["auto", "dense", "occupied"])
+def test_single_packed_factor_cold_warm_and_force_replay(
+    monkeypatch: typing.Any, tmp_path: typing.Any, response_space: str
+) -> None:
+    """A retained fitted B must reproduce independent energies and forces.
+
+    The raw owner is absent even when response recomputes physical values;
+    changing the owner policy must rebuild the prepared value plan.
+    """
+    from pyscf import gto, scf
+
+    assert os.environ.get("SLURM_JOB_ID")
+    atoms = [("O", (0.0, 0.0, 0.0)), ("H", (0.0, 0.0, 1.8)), ("H", (1.5, 0.0, -0.5))]
+    moved = list(atoms)
+    moved[1] = ("H", (0.0, 0.0, 1.801))
+    references = []
+    for geometry in (atoms, moved):
+        molecule = gto.M(atom=geometry, unit="Bohr", basis="def2-svp", verbose=0)
+        reference = scf.RHF(molecule).density_fit(auxbasis="def2-svp")
+        reference.conv_tol = 1e-12
+        reference.kernel()
+        assert reference.converged
+        references.append((reference.e_tot, -reference.nuc_grad_method().kernel()))
+
+    monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "packed-single")
+    monkeypatch.setenv("VIBEQC_DF_RESPONSE_SPACE", response_space)
+    if response_space == "occupied":
+        monkeypatch.setenv("VIBEQC_DF_EXCHANGE", "occupied")
+        monkeypatch.setenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES", "135000")
+    calculator = Calculator(
+        device="cuda",
+        method="rhf",
+        basis="def2-svp",
+        basis_representation="spherical",
+        auxiliary_basis="def2-svp",
+        density_fitting="cuda",
+        energy_tolerance=1e-12,
+        density_tolerance=1e-10,
+    )
+    occupied_responses = 0
+    borrowed_fitted_responses = 0
+    with calculator.prepare_batch([atoms], warm_start=True) as batch:
+        for index, geometry in enumerate((None, None, moved)):
+            trace = tmp_path / f"single-packed-{index}.jsonl"
+            monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
+            result = batch.execute(
+                [np.asarray([position for _, position in geometry])]
+                if geometry is not None
+                else None,
+                strict=True,
+            )
+            item = result.items[0]
+            energy, forces = references[int(index == 2)]
+            assert item.energy == pytest.approx(energy, abs=1e-8, rel=0)
+            np.testing.assert_allclose(item.forces, forces, atol=1e-7, rtol=0)
+            records = read_trace(trace)
+            occupied_responses += sum(
+                record["counters"].get("response_owned_occupied_projection_bytes", 0) > 0
+                for record in records
+                if record["operation"] == "force_response"
+            )
+            borrowed_fitted_responses += sum(
+                record["counters"].get("response_borrowed_whitened_bytes", 0) > 0
+                for record in records
+                if record["operation"] == "force_response"
+            )
+            jk = [
+                record
+                for record in records
+                if record["operation"] in ("ri_j", "ri_k", "ri_jk_shared")
+            ]
+            assert jk
+            assert all(
+                not record["counters"].get("raw_panel_source_auxiliary_evaluations", 0)
+                and not record["counters"].get("shared_raw_source_values", 0)
+                for record in jk
+            )
+            if index != 1:
+                owners = [
+                    record
+                    for record in records
+                    if record["operation"] == "resident_three_center_materialization"
+                ]
+                assert len(owners) == 1
+                assert owners[0]["counters"].get("resident_raw_bytes", 0) == 0
+                assert owners[0]["counters"].get("resident_transformed_bytes", 0) > 0
+        monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "packed")
+        trace = tmp_path / "dual-packed-after-single.jsonl"
+        monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
+        result = batch.execute(strict=True).items[0]
+        assert result.energy == pytest.approx(references[0][0], abs=1e-8, rel=0)
+        np.testing.assert_allclose(result.forces, references[0][1], atol=1e-7, rtol=0)
+        owners = [
+            record
+            for record in read_trace(trace)
+            if record["operation"] == "resident_three_center_materialization"
+        ]
+        assert len(owners) == 1
+        assert owners[0]["counters"].get("resident_raw_bytes", 0) > 0
+    if response_space == "occupied":
+        assert occupied_responses > 0
+    elif response_space == "auto":
+        assert occupied_responses == 0
+        assert borrowed_fitted_responses > 0
+
+
 @pytest.mark.parametrize("batch_size", [1, 2])
 @pytest.mark.parametrize("budget", [0, 256 << 20])
 @pytest.mark.parametrize(
@@ -208,8 +314,9 @@ def test_packed_global_ledger_and_raw_reuse_ablation(
 
 
 @pytest.mark.parametrize("spin", ["restricted", "unrestricted"])
+@pytest.mark.parametrize("storage", ["packed", "packed-single"])
 def test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback(
-    monkeypatch: typing.Any, spin: typing.Any
+    monkeypatch: typing.Any, spin: typing.Any, storage: typing.Any
 ) -> None:
     """Unknown-rank Fock inputs retain exact bounded K and frozen provenance."""
     from vibeqc.fock import FockBuildSpec, FockPlan
@@ -227,16 +334,16 @@ def test_packed_composed_fock_keeps_prepared_identity_and_dense_fallback(
         FockPlan(basis, spec, device="cpu") as oracle,
         FockPlan(basis, spec, device="cuda", device_budget_bytes=16 << 20) as dense,
     ):
-        monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "packed")
+        monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", storage)
         with FockPlan(
             basis, spec, device="cuda", device_budget_bytes=16 << 20
         ) as packed:
             assert packed.identity == dense.identity
             assert packed.execution_identity != dense.execution_identity
             assert dense.diagnostics["df_pair_storage"] == "dense"
-            assert packed.diagnostics["df_pair_storage"] == "packed"
+            assert packed.diagnostics["df_pair_storage"] == storage
             monkeypatch.setenv("VIBEQC_DF_VALUE_STORAGE", "dense")
-            assert packed.diagnostics["df_pair_storage"] == "packed"
+            assert packed.diagnostics["df_pair_storage"] == storage
             for symmetric in (True, False):
                 density = d.copy()
                 if not symmetric:

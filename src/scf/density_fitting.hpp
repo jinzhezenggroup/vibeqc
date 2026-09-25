@@ -293,16 +293,15 @@ class DensityFittingBudgetError : public std::invalid_argument {
     std::size_t memory_budget_bytes, std::size_t fixed_device_bytes = 0,
     bool generated_source = false, std::size_t automatic_rhf_rank = 0);
 
-/** Explicit exact packed resident plan, including both A/B and bounded dense
- * fallback panels. rank_capacity reserves complete U; ranks beyond that bound
- * remain executable through panel projection. No budget can authorize omitting
- * raw A or materializing an uncharged dense copy. Insufficient positive budgets
- * fail explicitly, so a caller may select the distinct streamed representation.
+/** Explicit packed resident plan with bounded dense fallback panels.
+ * Retaining raw A is the default; the single-factor experiment regenerates
+ * source slices for force response instead of retaining a second full tensor.
+ * Insufficient positive budgets fail explicitly.
  */
 [[nodiscard]] DensityFittingTilePlan plan_packed_density_fitting_tiles(
     std::size_t batch_size, std::size_t nbf, std::size_t naux, std::size_t rank_capacity,
     std::size_t memory_budget_bytes, std::size_t fixed_device_bytes = 0,
-    std::size_t automatic_rhf_rank = 0);
+    std::size_t automatic_rhf_rank = 0, bool retain_raw = true);
 
 /** Additional lazy SCF DIIS capacity, conservatively covering joined-spin UHF.
  * Add this to fixed_device_bytes before choosing K panels, and to native

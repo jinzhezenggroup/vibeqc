@@ -188,7 +188,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
     return VIBEQC_STATUS_SUCCESS;
   };
   // Keep the final-state ablation independent of the seed control.
-  const bool packed = plan && plan->value_storage.pairs == DfPairStorage::SymmetricLower &&
+  const bool packed = plan && df_packed_pairs(plan->value_storage.pairs) &&
                       plan->integral_source && plan->packed_raw;
   const bool source_dense_resident = plan && plan->integral_source && !packed &&
                                      plan->resident_raw_valid && plan->row_tile == plan->nbf &&

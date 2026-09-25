@@ -318,7 +318,7 @@ The explicit `create_cuda_density_fitting_jk_plan_from_source` overload accepts
 `DfValueStorageOptions{DfPairStorage::SymmetricLower, rank_capacity}`. This route
 requires a retained physical integral source and complete AO rows. Physical CUDA
 SCF and composed Fock preparation accept the diagnostic selector
-`VIBEQC_DF_VALUE_STORAGE=auto|dense|packed`; unset/`auto` remains dense. The
+`VIBEQC_DF_VALUE_STORAGE=auto|dense|packed|packed-single`; unset/`auto` remains dense. The
 explicit native constructor does not consult that selector, and arbitrary public
 tensor constructors remain dense. Packing is under qualification; component
 results do not establish a complete endpoint win.
@@ -339,6 +339,22 @@ reservation, then uses the existing Gram. Larger ranks and arbitrary densities
 use exact bounded expansion. The common planner charges both immutable owners,
 one `max(n*rank_capacity*a,n*n*q)` scratch buffer and two `n*n*q` buffers, plus
 the existing source, metric, library and SCF reservations.
+
+The explicit `packed-single` experiment retains only fitted B in the same
+lower-pair order. It generates raw A once in bounded panels during setup, but
+does not retain those panels. J/K reuses B; force response regenerates raw from
+the matching physical source rather than treating B as a raw owner. Validated
+canonical or strictly reconstructed corrected occupied factors can use a
+separately budgeted source-projected force response when explicitly requested
+with `VIBEQC_DF_RESPONSE_SPACE=occupied`. Automatic force response borrows
+fitted B instead: the source-projected occupied route regressed at 768 AOs
+despite reading raw A only once. Otherwise, the bounded general-density
+response remains exact. A constrained value allowance may
+drop optional automatic occupied K scratch without dropping B; explicit
+occupied requests still require their full reservation. The global small-HF
+resource inventory currently supports `packed` but not `packed-single`.
+The [single-owner qualification note](../../.agents/notes/implemented/performance/2026-09-25-single-fitted-df-owner.md)
+records the numerical gates and complete-endpoint evidence.
 
 `density_fitting_tile_plan(..., generated_source=True, pair_storage="packed")`
 queries these capacities without allocating a tensor or creating a CUDA context.
