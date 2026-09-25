@@ -38,7 +38,14 @@ def publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, 
         ("evidence.json", "evidence", b'{"energy": -1.25}\n'),
     ):
         (directory / name).write_bytes(raw)
-        files.append({"path": name, "role": role, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        files.append(
+            {
+                "path": name,
+                "role": role,
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        )
     (directory / "publication.json").write_text(json.dumps({"files": files}))
     monkeypatch.setattr(compact, "ROOT", root)
     monkeypatch.setattr(compact, "THRESHOLD", 1)
@@ -48,13 +55,20 @@ def publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, 
 def change_member(root: Path, name: str, raw: bytes) -> None:
     path = root / "campaign/publication.json"
     manifest = json.loads(path.read_text())
-    manifest["files"][0].update(path=name, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+    manifest["files"][0].update(
+        path=name, bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()
+    )
     path.write_text(json.dumps(manifest))
 
 
 @pytest.mark.parametrize("check", [False, True])
-@pytest.mark.parametrize("mode", ["traversal", "absolute", "alias", "symlink", "directory-symlink", "duplicate"])
-def test_bad_inventory_cannot_move_or_delete_outside_files(publication: tuple[Path, Path], check: bool, mode: str) -> None:
+@pytest.mark.parametrize(
+    "mode",
+    ["traversal", "absolute", "alias", "symlink", "directory-symlink", "duplicate"],
+)
+def test_bad_inventory_cannot_move_or_delete_outside_files(
+    publication: tuple[Path, Path], check: bool, mode: str
+) -> None:
     root, outside = publication
     directory = root / "campaign"
     name = "samples.json"
@@ -87,7 +101,9 @@ def test_bad_inventory_cannot_move_or_delete_outside_files(publication: tuple[Pa
 
 
 @pytest.mark.parametrize("check", [False, True])
-def test_legal_compaction_preserves_decoded_bytes(publication: tuple[Path, Path], check: bool) -> None:
+def test_legal_compaction_preserves_decoded_bytes(
+    publication: tuple[Path, Path], check: bool
+) -> None:
     root, outside = publication
     before = snapshot(root.parent)
     changes = compact.compact_publication("campaign/publication.json", check=check)
