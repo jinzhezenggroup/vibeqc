@@ -49,12 +49,15 @@ __global__ void diagnostic_kernel(std::size_t matrix, unsigned spins, const doub
                                   const double* exchange, double exchange_coefficient,
                                   const double* range_exchange, double range_exchange_coefficient,
                                   const double* xc_totals, const int* xc_error, const int* jk_error,
-                                  const int* range_jk_error, const int* solver_info,
+                                  const int* range_jk_error, const int* nonlocal_domain_error,
+                                  const int* nonlocal_pair_error, const int* solver_info,
                                   const std::uint8_t* enabled, Scalars* output) {
   if (enabled != nullptr && *enabled == 0) return;
   Scalars result{};
   result.failure = (*xc_error != 0 ? 1 : 0) | (*jk_error != 0 ? 2 : 0) |
-                   (range_jk_error != nullptr && *range_jk_error != 0 ? 16 : 0);
+                   (range_jk_error != nullptr && *range_jk_error != 0 ? 16 : 0) |
+                   (nonlocal_domain_error != nullptr && *nonlocal_domain_error != 0 ? 32 : 0) |
+                   (nonlocal_pair_error != nullptr && *nonlocal_pair_error != 0 ? 64 : 0);
   result.xc = xc_totals[0];
   result.grid_electrons[0] = xc_totals[1];
   result.grid_electrons[1] = xc_totals[2];
@@ -179,12 +182,14 @@ void diagnostics(cudaStream_t stream, std::size_t n, unsigned spins, const doubl
                  const double* overlap, const double* coulomb, const double* exchange,
                  double exchange_coefficient, const double* range_exchange,
                  double range_exchange_coefficient, const double* xc_totals, const int* xc_error,
-                 const int* jk_error, const int* range_jk_error, const int* solver_info,
+                 const int* jk_error, const int* range_jk_error, const int* nonlocal_domain_error,
+                 const int* nonlocal_pair_error, const int* solver_info,
                  const std::uint8_t* enabled, Scalars* output) {
   diagnostic_kernel<<<1, 1, 0, stream>>>(n * n, spins, density, proposal, residual, hcore, overlap,
                                          coulomb, exchange, exchange_coefficient, range_exchange,
                                          range_exchange_coefficient, xc_totals, xc_error, jk_error,
-                                         range_jk_error, solver_info, enabled, output);
+                                         range_jk_error, nonlocal_domain_error, nonlocal_pair_error,
+                                         solver_info, enabled, output);
 }
 
 void advance(cudaStream_t stream, std::size_t n, unsigned spins, double nuclear_repulsion,
