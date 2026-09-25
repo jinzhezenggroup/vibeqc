@@ -42,12 +42,8 @@ def test_runtime_index_maps_have_zero_floating_accumulation_cost(
 
 def test_integer_skip_keeps_mixed_float_reduction_accounting() -> None:
     index = Index("q", IndexSpace("selected", "batch", 7))
-    mapping = input_tensor(
-        "map", TensorSpec((index,), dtype="int64", role="input")
-    )
-    source = input_tensor(
-        "source", TensorSpec((index,), dtype="float32", role="input")
-    )
+    mapping = input_tensor("map", TensorSpec((index,), dtype="int64", role="input"))
+    source = input_tensor("source", TensorSpec((index,), dtype="float32", role="input"))
     reduced = reduce_sum(source, (0,))
     plan: typing.Any = SimpleNamespace(
         steps=tuple(SimpleNamespace(node=node) for node in (mapping, source, reduced)),
