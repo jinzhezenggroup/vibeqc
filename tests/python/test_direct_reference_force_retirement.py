@@ -23,6 +23,11 @@ def test_small_hf_force_requests_skip_persistent_eri_force_consumers() -> None:
     assert "launch_two_electron_uhf_force_kernel" not in force_dispatch
     assert "launch_generated_shell_class_forces" in force_dispatch
 
+    identity = (ROOT / "src/scf/cuda/rhf_bucket_internal.hpp").read_text(
+        encoding="utf-8"
+    )
+    assert "first.compute_forces == second.compute_forces" in identity
+
 
 def test_reference_force_file_keeps_only_matrix_direct_fallback() -> None:
     source = (ROOT / "src/scf/cuda/direct_reference_force.cu").read_text(encoding="utf-8")
