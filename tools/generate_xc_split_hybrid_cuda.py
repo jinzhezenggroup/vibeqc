@@ -55,7 +55,9 @@ def _selected_features(program) -> tuple[str, ...]:
     return _MGGA_FEATURES
 
 
-def _emit_component(program, type_name: str, function_name: str) -> str:
+def _emit_component(program, policy, type_name: str, function_name: str) -> str:
+    """Emit one raw Maple program behind the pinned Libxc work-GGA/MGGA boundary."""
+
     selected = _selected_features(program)
     by_name = dict(zip(program.features, program.variables, strict=True))
     roots = (
@@ -71,20 +73,83 @@ def _emit_component(program, type_name: str, function_name: str) -> str:
     emitter = CudaEmitter(program.graph, variables)
     emitter.emit(roots)
     signature = ", ".join(f"double {name}" for name in selected)
-    return "\n".join(
+    raw_name = f"{function_name}_raw"
+    density_name = f"k{type_name.removesuffix('DeviceValue')}{function_name.rsplit('_', 1)[-1].title()}DensityThreshold"
+    tau_name = f"k{type_name.removesuffix('DeviceValue')}{function_name.rsplit('_', 1)[-1].title()}TauThreshold"
+    lines = [
+        f"inline constexpr double {density_name} = {policy.density_threshold.hex()};",
+        f"inline constexpr double {tau_name} = {policy.tau_threshold.hex()};",
+        f"__device__ inline {type_name} {raw_name}({signature}) {{",
+        *emitter.lines,
+        "  return {"
+        + emitter.reference(roots[0])
+        + ", {"
+        + ", ".join(emitter.reference(root) for root in roots[1:])
+        + "}};",
+        "}",
+        "",
+        f"__device__ inline {type_name} {function_name}({signature}) {{",
+        f"  {type_name} out{{}};",
+        "  const double total_density = rho_a + rho_b;",
+        f"  if (total_density < {density_name}) return out;",
+        f"  const double work_rho_a = fmax({density_name}, rho_a);",
+        f"  const double work_rho_b = fmax({density_name}, rho_b);",
+        f"  const double sigma_threshold = pow({density_name}, 4.0 / 3.0);",
+        "  const double sigma_floor = sigma_threshold * sigma_threshold;",
+        "  double work_sigma_aa = fmax(sigma_floor, sigma_aa);",
+        "  double work_sigma_bb = fmax(sigma_floor, sigma_bb);",
+    ]
+    if len(selected) == 7:
+        if not policy.needs_tau:
+            raise MapleImportError(
+                f"split MGGA component {program.name} lacks XC_FLAGS_NEEDS_TAU"
+            )
+        lines.extend(
+            [
+                f"  const double work_tau_a = fmax({tau_name}, tau_a);",
+                f"  const double work_tau_b = fmax({tau_name}, tau_b);",
+            ]
+        )
+        if policy.enforce_fhc:
+            lines.extend(
+                [
+                    "  work_sigma_aa = fmin(work_sigma_aa, 8.0 * work_rho_a * work_tau_a);",
+                    "  work_sigma_bb = fmin(work_sigma_bb, 8.0 * work_rho_b * work_tau_b);",
+                ]
+            )
+    elif policy.needs_tau:
+        raise MapleImportError(
+            f"split GGA component {program.name} unexpectedly requires tau"
+        )
+    lines.extend(
         [
-            f"__device__ inline {type_name} {function_name}({signature}) {{",
-            *emitter.lines,
-            "  return {"
-            + emitter.reference(roots[0])
-            + ", {"
-            + ", ".join(emitter.reference(root) for root in roots[1:])
-            + "}};",
+            "  const double sigma_average = 0.5 * (work_sigma_aa + work_sigma_bb);",
+            "  const double work_sigma_ab =",
+            "      fmax(-sigma_average, fmin(sigma_average, sigma_ab));",
+        ]
+    )
+    call_args = [
+        "work_rho_a",
+        "work_rho_b",
+        "work_sigma_aa",
+        "work_sigma_ab",
+        "work_sigma_bb",
+    ]
+    if len(selected) == 7:
+        call_args.extend(("work_tau_a", "work_tau_b"))
+    lines.extend(
+        [
+            f"  const auto raw = {raw_name}({', '.join(call_args)});",
+            "  const double work_density = work_rho_a + work_rho_b;",
+            "  out.energy_density = raw.energy_density * total_density / work_density;",
+            f"  for (unsigned i = 0; i < {len(selected)}; ++i)",
+            "    out.feature_derivative[i] = raw.feature_derivative[i];",
+            "  return out;",
             "}",
             "",
         ]
     )
-
+    return "\n".join(lines)
 
 def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str, ...]]:
     """Return namespace body, type name and selected feature ABI for one method."""
@@ -106,19 +171,39 @@ def emit_split_hybrid_device_body(identifier: str) -> tuple[str, str, tuple[str,
     exact_name = f"k{type_stem}ExactExchange"
     expression_identity = canonical_hash(
         {
-            "schema": "split-global-hybrid-cuda-point/v1",
+            "schema": "split-global-hybrid-cuda-point/v2",
             "identifier": identifier,
             "exchange": method.exchange.identity,
             "correlation": method.correlation.identity,
             "exact_exchange": str(method.exact_exchange),
             "features": selected,
+            "exchange_work_policy": {
+                "density_threshold": method.exchange_work_policy.density_threshold.hex(),
+                "tau_threshold": method.exchange_work_policy.tau_threshold.hex(),
+                "needs_tau": method.exchange_work_policy.needs_tau,
+                "enforce_fhc": method.exchange_work_policy.enforce_fhc,
+            },
+            "correlation_work_policy": {
+                "density_threshold": method.correlation_work_policy.density_threshold.hex(),
+                "tau_threshold": method.correlation_work_policy.tau_threshold.hex(),
+                "needs_tau": method.correlation_work_policy.needs_tau,
+                "enforce_fhc": method.correlation_work_policy.enforce_fhc,
+            },
         }
     )
     signature = ", ".join(f"double {name}" for name in selected)
     arguments = ", ".join(selected)
-    exchange = _emit_component(method.exchange, type_name, f"{function_name}_exchange")
+    exchange = _emit_component(
+        method.exchange,
+        method.exchange_work_policy,
+        type_name,
+        f"{function_name}_exchange",
+    )
     correlation = _emit_component(
-        method.correlation, type_name, f"{function_name}_correlation"
+        method.correlation,
+        method.correlation_work_policy,
+        type_name,
+        f"{function_name}_correlation",
     )
     body = "\n".join(
         [
