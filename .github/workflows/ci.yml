@@ -6,6 +6,9 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Run required CI checks against GitHub's synthetic merge-queue commit.
+  merge_group:
+    types: [checks_requested]
   # Keep the exhaustive water Cartesian MP2-gradient finite difference off the
   # ordinary feedback path while still exercising it regularly.
   schedule:
