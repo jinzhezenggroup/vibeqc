@@ -6,7 +6,9 @@ import argparse
 import gzip
 import hashlib
 import json
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 if __package__ in (None, ""):
@@ -68,6 +70,68 @@ def _update_storage_references(
                 entry.update(path=new, bytes=len(data), sha256=digest(data))
                 changed = True
     return changed
+
+
+
+def _commit_publication(
+    manifest_path: Path, manifest: dict, changes: list[tuple[str, str, bytes]]
+) -> None:
+    """Stage one publication and roll back reported write/rename failures.
+
+    This is exception safety, not a crash-consistent multi-publication journal.
+    """
+    stage = Path(
+        tempfile.mkdtemp(prefix=".evidence-stage-", dir=manifest_path.parent)
+    )
+    backups: list[tuple[Path, Path]] = []
+    created: list[Path] = []
+    try:
+        for index, (_old, _new, data) in enumerate(changes):
+            (stage / f"new-{index}").write_bytes(data)
+        next_manifest = stage / "next-manifest"
+        next_manifest.write_bytes(json_bytes(manifest))
+
+        # Exclusive creation closes the gap after the earlier companion check.
+        for old, new, data in changes:
+            if old != new:
+                target = ROOT / new
+                with target.open("xb") as stream:
+                    created.append(target)
+                    stream.write(data)
+        # Retain exact original files until the new manifest is committed.
+        for index, (old, _new, _data) in enumerate(changes):
+            original, backup = ROOT / old, stage / f"old-{index}"
+            original.replace(backup)
+            backups.append((backup, original))
+        for index, (old, new, _data) in enumerate(changes):
+            if old == new:
+                target = ROOT / new
+                (stage / f"new-{index}").replace(target)
+                created.append(target)
+        next_manifest.replace(manifest_path)
+    except BaseException as failure:
+        rollback_errors = []
+        for target in reversed(created):
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as error:
+                rollback_errors.append(error)
+        for backup, original in reversed(backups):
+            try:
+                backup.replace(original)
+            except OSError as error:
+                rollback_errors.append(error)
+        if rollback_errors:
+            # Never remove the only remaining original if the filesystem also
+            # refuses rollback. Leave the recovery directory in the exception.
+            raise RuntimeError(
+                f"Compaction rollback incomplete; retained recovery files: {stage}"
+            ) from failure
+        else:
+            shutil.rmtree(stage)
+        raise
+    else:
+        shutil.rmtree(stage)
 
 
 def compact_publication(
@@ -181,13 +245,7 @@ def compact_publication(
     if check:
         return changes
 
-    for old, new, data in changes:
-        target = ROOT / new
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-        if old != new:
-            (ROOT / old).unlink()
-    manifest_path.write_bytes(json_bytes(manifest))
+    _commit_publication(manifest_path, manifest, changes)
     return changes
 
 
