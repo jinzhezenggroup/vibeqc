@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1539,7 +1540,9 @@ vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     const std::size_t n = static_cast<std::size_t>(orbital_count64);
-    if (n > std::numeric_limits<std::size_t>::max() / n) {
+    if (n > std::numeric_limits<std::size_t>::max() / n ||
+        n > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) / n ||
+        n > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) / 2u) {
       error = "GFN2 orbital snapshot matrix dimensions overflow";
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
