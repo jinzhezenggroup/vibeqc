@@ -50,9 +50,6 @@ def cuda_df_candidates(
     packed_values = storage == "packed"
     pair_storage = "packed" if packed_values else "dense"
     occupied_exchange = os.environ.get("VIBEQC_DF_EXCHANGE") == "occupied"
-    generated_one_electron = (
-        os.environ.get("VIBEQC_ONE_ELECTRON_DERIVATIVES") == "generated"
-    )
     buckets = {}
     for item in items:
         orbital, auxiliary = item["orbital"], item["auxiliary"]
@@ -137,14 +134,14 @@ def cuda_df_candidates(
             # retains all preceding items while preparing the next singleton.
             # This global request permits both properties, so use force data
             # for the selected provider even when a replay requests only E.
-            copies = 1 if generated_one_electron else d + 1
+            copies = 1
             retained = packed + 8 * (2 * n * n * copies + d)
             temporary = packed + 8 * (
                 2 * c * c * copies
                 + d
                 + 4 * c * c
                 + 1
-                + (0 if generated_one_electron else 2 * n * n)
+                + (0)
             )
             preparation_metadata += packed
             preparation_retained += retained
@@ -351,7 +348,7 @@ def cuda_df_candidates(
                 )
             )
             generation = row["source_bytes"] + 8 * b * (
-                (1 if generated_one_electron else d + 1) * 2 * c * c
+                (1) * 2 * c * c
                 + (0 if source else ac * ac + c * c * ac)
             )
             persistent_host = row["host_metadata"] + 8 * b * (32 * n * n + 16 * d)
@@ -361,7 +358,7 @@ def cuda_df_candidates(
             overlap_cache_host = 2 * matrix + 8 * b * d
             persistent_host += overlap_cache_host + ordinary_eigen_workspace + 64 * b
             one_electron = (
-                8 * b * ((1 if generated_one_electron else d + 1) * 2 * n * n + d)
+                8 * b * ((1) * 2 * n * n + d)
             )
             raw = 8 * b * (aux * aux + n * n * aux)
             persistent_host += one_electron
