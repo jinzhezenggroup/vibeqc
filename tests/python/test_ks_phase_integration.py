@@ -40,7 +40,19 @@ def _environment() -> dict[str, typing.Any]:
 
 def _load(name: str) -> typing.Any:
     namespace = _environment()
-    module = ast.Module(body=[_function(name)], type_ignores=[])
+    # Keep the real cache cap with the extracted function; do not replace it
+    # with an independent test value or skip the CPU inventory branch.
+    constants = [
+        node
+        for node in _tree().body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "_CPU_AO_GRID_CACHE_CAP"
+            for target in node.targets
+        )
+    ]
+    assert len(constants) == 1
+    module = ast.Module(body=[*constants, _function(name)], type_ignores=[])
     exec(compile(module, "inventory", "exec"), namespace)  # noqa: S102
     return namespace[name]
 
@@ -174,3 +186,51 @@ def test_request_does_not_read_retired_version_properties() -> None:
         "requires_schedule_v3",
     }
     assert {"has_nonlocal_correlation", "has_nondefault_composition"} <= attributes
+
+
+@pytest.mark.parametrize("delta", [-1, 0, 1])
+@pytest.mark.parametrize(
+    "backend,spins,pbe",
+    [("cpu", 1, True), ("cpu", 2, True), ("cpu", 1, False), ("cuda", 1, True)],
+)
+def test_cpu_ao_cache_boundary_keeps_exact_transient_charge(
+    delta: int, backend: str, spins: int, pbe: bool
+) -> None:
+    inventory = _load("_item_host_inventory")
+    cap = inventory.__globals__["_CPU_AO_GRID_CACHE_CAP"]
+    n = 8
+    points = cap // 32 // n + delta
+    item = {**_item(n), "grid_points": points, "spins": spins}
+    row = inventory(
+        item,
+        diis_history=8,
+        max_iterations=100,
+        pbe=pbe,
+        backend=backend,
+        model=_model(),
+    )
+    expected = (
+        32 * points * n if backend == "cpu" and pbe and spins == 1 and delta <= 0 else 0
+    )
+    assert row["ao_grid_cache"] == expected
+    matrix_work = 8 * spins * n * n * (128 + 2 * 9) + 16 * 9 * 9
+    tile = (
+        8 * min(points, 16) * n * (4 if pbe else 1) + 8 * spins * n * n
+        if backend == "cpu"
+        else 0
+    )
+    assert row["scf_workspace"] == matrix_work + tile + expected
+
+
+@pytest.mark.parametrize("symbol", [None, 1])
+def test_unusable_semantic_abi_symbol_is_explicitly_unsupported(symbol: object) -> None:
+    guard = next(
+        node
+        for node in ast.walk(_function("ks_resource_request"))
+        if isinstance(node, ast.If) and ast.unparse(node.test) == "library is not None"
+    )
+    namespace = _environment()
+    namespace["library"] = SimpleNamespace(vibeqc_ks_options_version=symbol)
+    module = ast.Module(body=[guard], type_ignores=[])
+    with pytest.raises(NotImplementedError, match="semantic KS execution-plan ABI"):
+        exec(compile(module, "inventory ABI", "exec"), namespace)  # noqa: S102

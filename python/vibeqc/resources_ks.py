@@ -484,9 +484,10 @@ def ks_resource_request(
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            options_version = library.vibeqc_ks_options_version
-            options_version.argtypes, options_version.restype = [], ctypes.c_uint32
-            if options_version() != 1:
+            options_version = getattr(library, "vibeqc_ks_options_version", None)
+            if callable(options_version):
+                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if not callable(options_version) or options_version() != 1:
                 raise NotImplementedError(
                     "native library does not support the current semantic KS execution-plan ABI"
                 )
