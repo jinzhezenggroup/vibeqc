@@ -6,9 +6,10 @@ generated native CPU energy evaluator, and generated response paths share that
 definition. `VIBEQC_METHOD_RCCSD_T` has native/public CPU and CUDA energy
 ownership and qualified analytic forces for the conventional closed-shell
 small-system domain, with homogeneous prepared-batch support. The CUDA force
-path executes the generated corrected-Lambda RHS/J^T actions on CUDA while
-retaining host GMRES orchestration for that solve; later parameter/Hamiltonian
-and physical Z response stages remain host-owned, and the final conventional
+path executes the generated corrected-Lambda RHS/J^T actions and fixed-orbital
+parameter VJPs on one shared CUDA state while retaining host GMRES orchestration
+for Lambda; later Hamiltonian and physical Z response stages remain host-owned,
+and the final conventional
 nuclear derivative contraction runs on CUDA. This is not yet a fully resident
 response chain.
 PySCF is used only by pinned validation tooling and is never a runtime dependency.
