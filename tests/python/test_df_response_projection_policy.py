@@ -1,8 +1,8 @@
 """Host-executed census and scratch-lifetime contracts; no GPU performance claim."""
 
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -61,8 +61,17 @@ int main() {
 """)
     executable = tmp_path / "response_projection"
     subprocess.run(
-        [compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
-         "-I" + str(root / "src"), str(source), "-o", str(executable)],
+        [
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-I" + str(root / "src"),
+            str(source),
+            "-o",
+            str(executable),
+        ],
         check=True,
     )
     subprocess.run([str(executable)], check=True)

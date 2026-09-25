@@ -30,7 +30,7 @@ inline std::size_t df_response_checked_sum(std::size_t a, std::size_t b) {
  * its occurrence in the inner traversal.
  */
 inline DfFittedPanelWork df_fitted_panel_work(std::size_t naux, std::size_t tile,
-                                            std::size_t stored_pairs) {
+                                              std::size_t stored_pairs) {
   if (!naux || !tile || !stored_pairs)
     throw std::invalid_argument("DF response census requires positive dimensions");
   const auto panels = naux / tile + (naux % tile != 0);
@@ -51,8 +51,8 @@ struct DfOccupiedProjectionBatch {
 };
 
 inline DfOccupiedProjectionBatch plan_df_occupied_projection_batch(
-    std::size_t nbf, std::size_t naux, std::size_t maximum_rank,
-    std::size_t reusable_elements, std::size_t column_cap, bool pair_major_source) {
+    std::size_t nbf, std::size_t naux, std::size_t maximum_rank, std::size_t reusable_elements,
+    std::size_t column_cap, bool pair_major_source) {
   if (!nbf || !naux || maximum_rank > nbf || !column_cap)
     throw std::invalid_argument("invalid occupied DF projection shape or cap");
   const auto matrix = df_response_checked_product(nbf, nbf);
