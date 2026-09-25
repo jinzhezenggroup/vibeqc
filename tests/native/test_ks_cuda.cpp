@@ -22,6 +22,9 @@
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1();
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1();
+
 namespace {
 using namespace vibeqc;
 using scf::reference::Matrix;
@@ -233,8 +236,10 @@ void run_range_exchange_case(bool restricted) {
       dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, false);
   const auto range_bytes =
       dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, true);
-  require(range_bytes > primary_bytes + spins * basis.nao * basis.nao * sizeof(double),
-          "CUDA KS range correction did not reserve its matrix and error state");
+  // The error flag can use alignment padding after the extra matrix, so the
+  // total allocation need not grow beyond the matrix's byte count.
+  require(range_bytes >= primary_bytes + spins * basis.nao * basis.nao * sizeof(double),
+          "CUDA KS range correction did not reserve its matrix");
 
   dft::CudaKsPlan plan(gpu_primary, basis, grid, options, dft::SemilocalFamily::Pbe, 257,
                        &gpu_strategy.correction);
@@ -394,11 +399,13 @@ void run_wb97mv_nonlocal_composition_case(bool restricted) {
   for (const auto* endpoint : {&host, &device}) {
     require(std::abs(reference.energy - endpoint->result.energy) < 2e-8,
             "CUDA WB97M-V complete composition endpoint disagrees with CPU");
-    require(std::abs(reference.dft_diagnostic.components.xc -
-                     endpoint->result.dft_diagnostic.components.xc) < 2e-8 &&
+    require(endpoint->result.dft_diagnostic.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
+                std::abs(reference.dft_diagnostic.components.xc -
+                         endpoint->result.dft_diagnostic.components.xc) < 2e-8 &&
                 std::abs(reference.dft_diagnostic.components.exact_exchange -
                          endpoint->result.dft_diagnostic.components.exact_exchange) < 1e-10,
-            "CUDA WB97M-V complete physical components disagree with CPU");
+            "CUDA WB97M-V diagnostic domain or physical components disagree with CPU");
     const auto& snapshot = endpoint->snapshot;
     require(snapshot.identity.model.scf_domain_version ==
                     dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
@@ -799,6 +806,157 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
 }
 /** Exercise the C validation layer, which can reject a request before the
  * prepared method's execute() invalidation is reached. */
+vibeqc_ks_options public_wb97mv_options(bool unrestricted) {
+  static const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"MGGA_X_WB97M_V", 1.0}, {"MGGA_C_WB97M_V", 1.0}}};
+  static const std::array<vibeqc_ks_exchange_term, 2> restricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.075},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -0.5},
+  }};
+  static const std::array<vibeqc_ks_exchange_term, 2> unrestricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.15},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -1.0},
+  }};
+  const auto& exchange = unrestricted ? unrestricted_exchange : restricted_exchange;
+  vibeqc_ks_options ks{};
+  ks.struct_size = sizeof(ks);
+  ks.abi_version = VIBEQC_ABI_VERSION;
+  ks.scf_domain = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
+  ks.grid_version = 1;
+  ks.radial_points = 12;
+  ks.angular_polar = 4;
+  ks.angular_azimuth = 8;
+  ks.partition_iterations = 3;
+  ks.coincident_tolerance = 1e-12;
+  ks.tile_points = 64;
+  ks.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+  ks.spin_channels = unrestricted ? 2 : 1;
+  ks.semilocal_components = components.data();
+  ks.semilocal_component_count = components.size();
+  ks.semilocal_range_omega = 0.3;
+  ks.exchange_terms = exchange.data();
+  ks.exchange_term_count = exchange.size();
+  ks.has_nonlocal_correlation = 1;
+  ks.nonlocal_variant = VIBEQC_NONLOCAL_VV10;
+  ks.nonlocal_b = 6.0;
+  ks.nonlocal_c = 0.01;
+  ks.nonlocal_coefficient = 1.0;
+  ks.nonlocal_maximum_bytes = 1 << 24;
+  return ks;
+}
+
+vibeqc_method_descriptor public_wb97mv_descriptor(const vibeqc_ks_options& ks) {
+  vibeqc_method_descriptor method{};
+  method.struct_size = sizeof(method);
+  method.abi_version = VIBEQC_ABI_VERSION;
+  method.method = ks.spin_channels == 2 ? VIBEQC_METHOD_WB97M_V_UKS : VIBEQC_METHOD_WB97M_V;
+  method.max_iterations = 250;
+  method.diis_history = 8;
+  method.energy_tolerance = 1e-10;
+  method.density_tolerance = 1e-8;
+  method.screening_tolerance = 1e-12;
+  method.precision_mode = VIBEQC_PRECISION_FP64;
+  method.density_fitting_mode = VIBEQC_DENSITY_FITTING_NONE;
+  method.ks_options = &ks;
+  return method;
+}
+
+void public_wb97mv_cuda_case(bool unrestricted) {
+  vibeqc_system system{hydrogens(unrestricted ? 3U : 2U, !unrestricted)};
+  auto ks = public_wb97mv_options(unrestricted);
+  auto method = public_wb97mv_descriptor(ks);
+  const auto execute = [&](vibeqc_backend backend) {
+    vibeqc_context_descriptor context_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                           backend};
+    vibeqc_context* raw_context{};
+    require(vibeqc_context_create(&context_spec, &raw_context) == VIBEQC_STATUS_SUCCESS,
+            "WB97M-V public context creation failed");
+    std::unique_ptr<vibeqc_context, decltype(&vibeqc_context_destroy)> context(
+        raw_context, vibeqc_context_destroy);
+    vibeqc_calculation* raw_calculation{};
+    require(vibeqc_calculation_prepare(context.get(), &system, &method, &raw_calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "WB97M-V public calculation preparation failed");
+    std::unique_ptr<vibeqc_calculation, decltype(&vibeqc_calculation_destroy)> calculation(
+        raw_calculation, vibeqc_calculation_destroy);
+    vibeqc_result_descriptor result{};
+    result.struct_size = sizeof(result);
+    result.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_execute(calculation.get(), &result) == VIBEQC_STATUS_SUCCESS &&
+                std::isfinite(result.energy) && result.converged &&
+                result.executed_backend == backend,
+            "WB97M-V public energy execution failed");
+    vibeqc_ks_diagnostic diagnostic{};
+    diagnostic.struct_size = sizeof(diagnostic);
+    diagnostic.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_get_ks_diagnostic(calculation.get(), &diagnostic, nullptr, 0) ==
+                    VIBEQC_STATUS_SUCCESS &&
+                diagnostic.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv),
+            "public WB97M-V diagnostic lost its domain identity");
+    return result.energy;
+  };
+  const auto cpu = execute(VIBEQC_BACKEND_CPU_REFERENCE);
+  const auto gpu = execute(VIBEQC_BACKEND_CUDA);
+  require(std::abs(cpu - gpu) < 2e-8, "public CUDA WB97M-V endpoint disagrees with public CPU");
+
+  auto unfused = ks;
+  unfused.xc_execution_schedule = VIBEQC_XC_EXECUTION_HOST_UNFUSED;
+  auto unfused_method = public_wb97mv_descriptor(unfused);
+  vibeqc_context_descriptor cuda_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                      VIBEQC_BACKEND_CUDA};
+  vibeqc_context* raw_context{};
+  require(vibeqc_context_create(&cuda_spec, &raw_context) == VIBEQC_STATUS_SUCCESS,
+          "WB97M-V rejection context creation failed");
+  std::unique_ptr<vibeqc_context, decltype(&vibeqc_context_destroy)> context(
+      raw_context, vibeqc_context_destroy);
+  vibeqc_calculation* rejected{};
+  require(vibeqc_calculation_prepare(context.get(), &system, &unfused_method, &rejected) ==
+                  VIBEQC_STATUS_NOT_IMPLEMENTED &&
+              rejected == nullptr,
+          "public CUDA WB97M-V accepted the host-unfused nonlocal route");
+
+  vibeqc_calculation* raw_calculation{};
+  require(vibeqc_calculation_prepare(context.get(), &system, &method, &raw_calculation) ==
+              VIBEQC_STATUS_SUCCESS,
+          "WB97M-V force-gate preparation failed");
+  std::unique_ptr<vibeqc_calculation, decltype(&vibeqc_calculation_destroy)> calculation(
+      raw_calculation, vibeqc_calculation_destroy);
+
+  using fail_function = void (*)();
+  const std::array<std::pair<fail_function, vibeqc_status>, 2> failures{{
+      {&xc_cuda_fail_next_nonlocal_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+      {&xc_cuda_fail_next_nonlocal_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY},
+  }};
+  for (const auto& [fail, expected] : failures) {
+    vibeqc_result_descriptor failed{};
+    failed.struct_size = sizeof(failed);
+    failed.abi_version = VIBEQC_ABI_VERSION;
+    fail();
+    require(vibeqc_calculation_execute(calculation.get(), &failed) == expected,
+            "public CUDA WB97M-V nonlocal failure lost its status");
+    vibeqc_ks_diagnostic stale{};
+    stale.struct_size = sizeof(stale);
+    stale.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_get_ks_diagnostic(calculation.get(), &stale, nullptr, 0) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "failed public CUDA WB97M-V execution retained a stale diagnostic");
+    require(vibeqc_calculation_execute(calculation.get(), &failed) == VIBEQC_STATUS_SUCCESS &&
+                failed.converged,
+            "public CUDA WB97M-V did not recover after a nonlocal failure");
+  }
+
+  std::vector<double> forces(3 * system.data.atoms.size());
+  vibeqc_result_descriptor force_result{};
+  force_result.struct_size = sizeof(force_result);
+  force_result.abi_version = VIBEQC_ABI_VERSION;
+  force_result.forces = forces.data();
+  force_result.force_count = forces.size();
+  require(
+      vibeqc_calculation_execute(calculation.get(), &force_result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+      "public CUDA WB97M-V force capability was promoted without qualification");
+}
+
 void rejected_api_requests_revoke_tokens() {
   vibeqc_context_descriptor context_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
                                          VIBEQC_BACKEND_CUDA};
@@ -918,6 +1076,8 @@ int main() {
       require(::unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
               "could not restore CUDA KS synchronization baseline");
     }
+    public_wb97mv_cuda_case(false);
+    public_wb97mv_cuda_case(true);
     rejected_api_requests_revoke_tokens();
     run_exact_exchange_case(true);
     run_exact_exchange_case(false);

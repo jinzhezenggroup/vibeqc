@@ -73,5 +73,8 @@ they do not establish broad chemical/grid convergence or CUDA performance.
 
 Refs #935 #491 #167
 
+The later internal CUDA host AO bridge admission is recorded in
+`../numerics/2026-09-25-cuda-wb97mv-molecular-vv10-bridge.md`.
+
 Agent: ChatGPT (WB97M-V integration)
 Model: GPT-6 Astra Pro
