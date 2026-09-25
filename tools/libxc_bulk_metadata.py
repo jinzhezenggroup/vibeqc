@@ -185,9 +185,19 @@ def array_values(text: str, name: str) -> list[str]:
 
 
 def parameter_layout(
-    text: str, type_name: str, definitions: dict[str, str | None]
+    text: str,
+    type_name: str,
+    definitions: dict[str, str | None],
+    *,
+    max_array_size: int = 32,
 ) -> list[tuple[str, int]]:
     """Extract scalar/double-array layout; reject mixed types and partial arrays."""
+    if (
+        isinstance(max_array_size, bool)
+        or not isinstance(max_array_size, int)
+        or max_array_size < 1
+    ):
+        raise ValueError("max_array_size must be a positive integer")
     layouts: list[list[tuple[str, int]]] = []
     for match in re.finditer(r"\btypedef\s+struct\s*\{", text):
         body, end = brace_body(text, match.end() - 1)
@@ -199,7 +209,9 @@ def parameter_layout(
             statement = raw_statement.strip()
             if not statement:
                 continue
-            declaration = re.fullmatch(r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL)
+            declaration = re.fullmatch(
+                r"(?:const\s+)?double\s+(.+)", statement, re.DOTALL
+            )
             if declaration is None:
                 raise CMetadataError("non-double parameter layout")
             for field in split_fields(declaration[1]):
@@ -211,7 +223,8 @@ def parameter_layout(
                     for size in re.findall(r"\[([^\]]+)\]", entry[2])
                 ]
                 if len(dimensions) > 1 or any(
-                    type(size) is not int or not 1 <= size <= 32 for size in dimensions
+                    type(size) is not int or not 1 <= size <= max_array_size
+                    for size in dimensions
                 ):
                     raise CMetadataError("parameter array exceeds supported dimensions")
                 fields.append((entry[1], dimensions[0] if dimensions else 0))
@@ -263,7 +276,10 @@ def extract_registrations(
                 and raw_family in ("XC_FAMILY_HYB_GGA", "XC_FAMILY_HYB_MGGA")
                 and fields[1] == "XC_EXCHANGE"
             )
-            if raw_family not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA") and not hybrid_exchange:
+            if (
+                raw_family not in ("XC_FAMILY_LDA", "XC_FAMILY_GGA", "XC_FAMILY_MGGA")
+                and not hybrid_exchange
+            ):
                 raise CMetadataError(
                     "non-semilocal family requires MethodIR composition"
                 )
@@ -328,7 +344,10 @@ def extract_registrations(
                 if hybrid_exchange:
                     record["exact_exchange_parameter"] = repr(float(values[-1]))
                 layout = parameter_layout(
-                    text + "\n" + header, next(iter(prefixes)), definitions
+                    text + "\n" + header,
+                    next(iter(prefixes)),
+                    definitions,
+                    max_array_size=copy_count if hybrid_exchange else 32,
                 )
                 offset = 0
                 for field, size in layout:
