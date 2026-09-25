@@ -2119,6 +2119,21 @@ def test_generated_task_packs_value_consumer_into_orientation_word() -> None:
     )
 
 
+def test_primary_streaming_route_partitions_paged_generated_classes() -> None:
+    """Selected generated classes must stream instead of being double-counted."""
+
+    source = _direct_cuda_source()
+    assert "host_primary_streaming_fock_shell_class_mask" in source
+    assert "host_primary_streaming_fock_flags" in source
+    assert "cudaMemcpyAsync(" in source
+    page_begin = source.index("const auto launch_bounded_paged_generated_fock")
+    page_end = source.index("const auto launch_bounded_generic_fock", page_begin)
+    page_source = source[page_begin:page_end]
+    assert "host_primary_streaming_fock_shell_class_mask" in page_source
+    assert "host_generated_streaming_fock_shell_class_mask" in source
+    assert "!mixed_precision_fock && requested_primary_streaming_fock_mask.has_value()" in source
+
+
 def test_direct_task_resource_domains_remain_separate() -> None:
     """Do not reuse fixed-topology storage to size bounded streaming pages."""
 
