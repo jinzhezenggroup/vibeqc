@@ -22,7 +22,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
@@ -115,9 +115,27 @@ struct RksEvaluation {
   dft::XcDensityDiagnostic density_diagnostic;
 };
 
-using RksXcEvaluator = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
-                                           const Matrix&, dft::XcDensitySource, std::size_t, double,
-                                           double);
+struct RksXcEvaluator {
+  using Direct = dft::XcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&, const Matrix&,
+                                     dft::XcDensitySource, std::size_t, double, double);
+  Direct direct{};
+  const dft::SemilocalPointProgram* program{};
+
+  RksXcEvaluator(Direct value) : direct(value) {}
+  RksXcEvaluator(const dft::SemilocalPointProgram& value) : program(&value) {}
+
+  dft::XcIntegral operator()(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                             const Matrix& density, dft::XcDensitySource source, std::size_t tile,
+                             double exchange_scale, double correlation_scale) const {
+    if (program) {
+      if (exchange_scale != 1.0 || correlation_scale != 1.0)
+        throw std::invalid_argument("generic semilocal RKS does not accept legacy XC scaling");
+      return dft::integrate_semilocal_rks(basis, grid, density, *program, tile, source);
+    }
+    if (!direct) throw std::logic_error("RKS XC evaluator is empty");
+    return direct(basis, grid, density, source, tile, exchange_scale, correlation_scale);
+  }
+};
 
 dft::XcIntegral evaluate_lda_xc_rks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                     const Matrix& density, dft::XcDensitySource source,
@@ -537,14 +555,17 @@ ScfResult run_rks(
   ks.occupations = {occupied, occupied};
   ks.grid_points = grid.point_count();
   ks.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  ks.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
-  ks.scf_domain_version = std::string_view(method_name) == "WB97M-V"
-                              ? 3U
-                              : (std::string_view(method_name) == "B3LYP" ? 2U : 1U);
+  ks.ao_order = evaluate_xc.program ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
+                                    : (std::string_view(method_name) == "LDA" ? 0U : 1U);
+  ks.scf_domain_version = evaluate_xc.program
+                              ? evaluate_xc.program->domain_version
+                              : (std::string_view(method_name) == "WB97M-V"
+                                     ? 3U
+                                     : (std::string_view(method_name) == "B3LYP" ? 2U : 1U));
   auto& diagnostic = result.xc_density_diagnostic;
   diagnostic.physical_residual = std::numeric_limits<double>::infinity();
   const bool incremental_xc = options.experimental_incremental_xc;
-  if (incremental_xc && (std::string_view(method_name) != "PBE" ||
+  if (incremental_xc && (evaluate_xc.program || std::string_view(method_name) != "PBE" ||
                          options.xc_density_route != dft::XcDensityRoute::DensityMatrix ||
                          nonlocal_correlation || options.incremental_xc_max_updates == 0 ||
                          !std::isfinite(options.incremental_xc_max_density_rms) ||
@@ -677,10 +698,10 @@ ScfResult run_rks(
     const double residual_tolerance = std::min(1.0e-9, options.density_tolerance);
     const auto run_stage = [&](Matrix stage_density, bool strict_full, unsigned iteration_offset,
                                unsigned iteration_budget) {
-      const solver::SelfConsistentPolicy stage_policy{iteration_budget, options.energy_tolerance,
-                                                      options.density_tolerance, residual_tolerance,
-                                                      true};
-      return solver::run_self_consistent(
+      const ::vibeqc::solver::SelfConsistentPolicy stage_policy{
+          iteration_budget, options.energy_tolerance, options.density_tolerance, residual_tolerance,
+          true};
+      return ::vibeqc::solver::run_self_consistent(
           std::move(stage_density), stage_policy,
           [&](const Matrix& current_density, unsigned) {
             const auto current_factor = factor;
@@ -705,7 +726,7 @@ ScfResult run_rks(
                                      physical_residual,       spin_electrons};
           },
           [&](Matrix& current_density, RksLoopEvaluation evaluation,
-              const solver::SelfConsistentProgress& progress) {
+              const ::vibeqc::solver::SelfConsistentProgress& progress) {
             if (strict_full && progress.converged) {
               // The independent final audit must rebuild the exact density that
               // actually passed the strict physical criteria, not an unchecked
@@ -721,7 +742,8 @@ ScfResult run_rks(
             }
             return std::move(evaluation.next_density);
           },
-          [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+          [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+              const RksLoopEvaluation& evaluation) {
             const unsigned reported_iteration = iteration_offset + progress.iteration;
             result.iterations = reported_iteration;
             result.energy = progress.energy;
@@ -803,10 +825,10 @@ ScfResult run_rks(
     return result;
   }
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance,
-                                            std::min(1.0e-9, options.density_tolerance), true};
-  auto outcome = solver::run_self_consistent(
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance,
+      std::min(1.0e-9, options.density_tolerance), true};
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       std::move(density), policy,
       [&](const Matrix& current_density, unsigned) {
         const auto current_factor = factor;
@@ -832,7 +854,7 @@ ScfResult run_rks(
                                  physical_residual,       spin_electrons};
       },
       [&](Matrix& current_density, RksLoopEvaluation evaluation,
-          const solver::SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         if (!progress.converged && progress.iteration == options.max_iterations) {
           // A failed return must keep E/residual/D/factor on the same physical
           // generation rather than publishing the last unchecked proposal.
@@ -842,7 +864,8 @@ ScfResult run_rks(
         }
         return std::move(evaluation.next_density);
       },
-      [&](const solver::SelfConsistentProgress& progress, const RksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const RksLoopEvaluation& evaluation) {
         result.iterations = progress.iteration;
         result.energy = progress.energy;
         result.energy_change = progress.energy_change;
@@ -935,6 +958,15 @@ ScfResult run_r2scan_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis
                          const std::vector<double>* initial_density) {
   return run_rks(plan, nullptr, basis, grid, options, initial_density, evaluate_r2scan_xc_rks,
                  "R2SCAN", nullptr);
+}
+
+ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density) {
+  dft::validate_semilocal_point_program(program);
+  return run_rks(plan, nullptr, basis, grid, options, initial_density, RksXcEvaluator(program),
+                 program.identifier, nullptr);
 }
 
 ScfResult run_b3lyp_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,

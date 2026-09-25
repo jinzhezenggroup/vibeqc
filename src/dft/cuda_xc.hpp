@@ -32,7 +32,7 @@ using CudaXcPointLauncher = void (*)(cudaStream_t, const double*, const double*,
 struct CudaXcLayout {
   std::size_t natom{}, nprimitive{}, nao{}, npoint{}, tile_points{}, spins{}, jets{};
   std::size_t work_jets{}, feature_terms{}, packed_elements{}, device_bytes{};
-  /** 0=LDA, 1=PBE, 2=r2SCAN. */
+  /** 0=LDA, 1=PBE, 2=r2SCAN, 4=omegaB97M-V semilocal. */
   std::uint32_t functional{};
   bool response{};
   CudaXcAoPrecision ao_precision{CudaXcAoPrecision::Fp64};

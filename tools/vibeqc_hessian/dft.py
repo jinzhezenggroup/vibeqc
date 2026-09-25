@@ -49,9 +49,10 @@ from .analytic import (
 )
 from .first_order import (
     checked_direction,
-    generated_coulomb_directional_first_order,
     generated_coulomb_relaxation_components,
+    generated_directional_semilocal_rks_integral_first_order,
 )
+from .rks_directional import _native_rks_xc_geometry_direction
 from .native import NativeRHFState
 from .perturbation import solve_stationary_nuclear_perturbation
 from .stationary_executor import (
@@ -369,94 +370,28 @@ def _native_mixed_geometry_directional(
     return value
 
 
-def _xc_frozen_fock_direction(
-    state: _NativeRKSIntegralState,
-    direction: np.ndarray,
-    *,
-    tile_points: int,
-) -> tuple[np.ndarray, dict[str, typing.Any]]:
-    """Differentiate the production semilocal XC AO potential at fixed D."""
-    ks, basis, grid, spec, atomic_weights, centers, ao_atoms = _grid_sources(state)
-    _, family, order = _xc_domain(state)
-    density = np.asarray(ks.density[0])
-    result = np.zeros((state.nbf, state.nbf), dtype=np.float64)
-    branches: list[str] = []
-    for begin, end in _tile_range(len(grid.points), tile_points):
-        points = np.asarray(grid.points[begin:end])
-        weights = np.asarray(grid.weights[begin:end])
-        owners = np.asarray(grid.owners[begin:end], dtype=np.int64)
-        point_motion = direction[owners]
-        partition = partition_response(
-            points,
-            centers,
-            point_motion=point_motion,
-            center_motion=direction,
-            iterations=spec.partition_iterations,
-            coincident_tolerance=spec.coincident_tolerance,
-        )
-        selected = (np.arange(end - begin), owners)
-        weight_motion = atomic_weights[begin:end] * partition.directional[selected]
-        raw_jets = basis.evaluate(points, order + 1)
-        base_count = len(jet_indices(order))
-        base_jets = raw_jets[:base_count]
-        directional_jets = directional_ao_jets(
-            raw_jets,
-            order,
-            ao_atoms=ao_atoms,
-            point_motion=point_motion,
-            center_motion=direction,
-        )
-        features, _, coefficients = _native_point_state(
-            state, base_jets, density, family
-        )
-        feature_direction = _geometry_feature_direction(
-            features,
-            base_jets,
-            directional_jets,
-            density,
-            np.zeros_like(density),
-            family,
-        )
-        directional_coefficients = _native_directional_coefficients(
-            state, features, feature_direction, family
-        )
-        matrices = assemble_coefficients_directional(
-            base_jets,
-            directional_jets,
-            coefficients,
-            directional_coefficients,
-            weights,
-            weight_motion,
-        )
-        if np.asarray(matrices).shape != (1, state.nbf, state.nbf):
-            raise ValueError("unpolarized XC geometry JVP returned invalid AO layout")
-        result += np.asarray(matrices[0])
-        branches.append(partition.branch_identity)
-    if not np.isfinite(result).all():
-        raise FloatingPointError("nonfinite RKS frozen XC Fock direction")
-    return result, {
-        "tiles": len(branches),
-        "partition_branch_identities": tuple(branches),
-        "point_model": ks.identity.regularization_identity,
-        "point_derivative": "native-scaled-scf-directional-v1",
-    }
-
 def _build_perturbation(
     state: _NativeRKSIntegralState,
     direction: np.ndarray,
     *,
     tile_points: int,
 ) -> _RKSPerturbation:
+    del tile_points
     started = time.perf_counter()
     integral_started = time.perf_counter()
-    frozen, overlap = generated_coulomb_directional_first_order(state, direction)
+    frozen, overlap = generated_directional_semilocal_rks_integral_first_order(
+        state.source,
+        state.P0,
+        direction,
+        cache=state.cache,
+    )
     integral_seconds = time.perf_counter() - integral_started
     xc_started = time.perf_counter()
-    xc_frozen, xc_diag = _xc_frozen_fock_direction(
-        state, direction, tile_points=tile_points
+    xc_frozen, branch_identity = _native_rks_xc_geometry_direction(
+        state.response, direction
     )
     xc_seconds = time.perf_counter() - xc_started
-    frozen = np.asarray(frozen) + xc_frozen
+    frozen = np.asarray(frozen) + np.asarray(xc_frozen)
     if not np.isfinite(frozen).all() or not np.isfinite(overlap).all():
         raise FloatingPointError("nonfinite RKS nuclear perturbation")
     return _RKSPerturbation(
@@ -468,11 +403,14 @@ def _build_perturbation(
                 "integral_first_seconds": integral_seconds,
                 "xc_frozen_fock_seconds": xc_seconds,
                 "complete_perturbation_seconds": time.perf_counter() - started,
-                "xc": xc_diag,
+                "xc": {
+                    "partition_branch_identity": branch_identity,
+                    "point_model": state.response.state.identity.regularization_identity,
+                    "point_derivative": "native-scaled-scf-directional-v1",
+                },
             }
         ),
     )
-
 
 def _second_integral_components(
     state: _NativeRKSIntegralState,

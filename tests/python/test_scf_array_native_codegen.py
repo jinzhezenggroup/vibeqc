@@ -9,7 +9,11 @@ import pytest
 if TYPE_CHECKING:
     from vibeqc_compiler.array_api import VibeArray
 from vibeqc_compiler.array_api.scf import density_program, weighted_density_program
-from vibeqc_compiler.tensor.scf import diis_extrapolation_program, diis_gram_program
+from vibeqc_compiler.tensor.scf import (
+    diis_extrapolation_program,
+    diis_gram_program,
+    hf_force_program,
+)
 
 from tools.generate_scf_array_native import native_header, template_hash
 
@@ -23,6 +27,10 @@ def test_array_scf_native_template_identity_is_shape_independent() -> None:
     assert template_hash(small_density) == template_hash(large_density)
     assert template_hash(small_weighted) == template_hash(large_weighted)
     assert template_hash(small_density) != template_hash(small_weighted)
+
+    small_force = hf_force_program(1, 3, spin_count=2, coordinate_count=3)
+    large_force = hf_force_program(4, 5, spin_count=2, coordinate_count=12)
+    assert template_hash(small_force) == template_hash(large_force)
 
     small_gram = diis_gram_program(1, 2, 3)
     large_gram = diis_gram_program(4, 7, 5, spin_count=2)
@@ -38,6 +46,7 @@ def test_generated_header_records_frontend_tensorir_templates() -> None:
     header = native_header()
     density_hash = template_hash(density_program(1, 3, orbital_count=2))
     weighted_hash = template_hash(weighted_density_program(1, 3, orbital_count=2))
+    force_hash = template_hash(hf_force_program(1, 2, spin_count=2))
     gram_hash = template_hash(diis_gram_program(1, 3, 2, spin_count=2))
     extrapolation_hash = template_hash(
         diis_extrapolation_program(1, 3, 2, spin_count=2)
@@ -45,10 +54,12 @@ def test_generated_header_records_frontend_tensorir_templates() -> None:
 
     assert density_hash in header
     assert weighted_hash in header
+    assert force_hash in header
     assert gram_hash in header
     assert extrapolation_hash in header
     assert "density_from_orbitals" in header
     assert "weighted_density_from_orbitals" in header
+    assert "hf_stationary_forces" in header
     assert "diis_gram" in header
     assert "diis_extrapolate" in header
     assert "SCF TensorIR equations" in header
@@ -112,6 +123,19 @@ def test_fixed_native_specialization_rejects_changed_coefficient_layout(
     program = trace(equation, specs, provenance={"construction": "array_frontend"})
     monkeypatch.setattr(generator, output + "_program", lambda *args, **kwargs: program)
     with pytest.raises(ValueError, match="layout|topology"):
+        generator.native_header()
+
+
+def test_fixed_native_specialization_rejects_changed_hf_force_topology(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tools import generate_scf_array_native as generator
+
+    replacement = diis_gram_program(1, 2, 2)
+    monkeypatch.setattr(
+        generator, "hf_force_program", lambda *args, **kwargs: replacement
+    )
+    with pytest.raises(ValueError, match="HF-force"):
         generator.native_header()
 
 

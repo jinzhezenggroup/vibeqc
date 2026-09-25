@@ -695,17 +695,9 @@ def _scf_point_energy(
     weights: np.ndarray,
 ) -> float:
     """Integrate one tile with the exact native SCF point regularization."""
-    family = (
-        "lda"
-        if functional.ingredients == ("rho",)
-        else "mgga"
-        if "tau" in functional.ingredients
-        else "gga"
-    )
-    code = {"lda": 0, "gga": 1, "mgga": 2}[family]
     npoint = len(weights)
     point_values = source.evaluate_xc_points(
-        code,
+        functional,
         features["rho"],
         features.get("gradient", np.zeros((2, npoint, 3))),
         features.get("tau"),

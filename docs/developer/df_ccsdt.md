@@ -1,8 +1,8 @@
 # DF-CCSD(T) same-Hamiltonian definition and factorized path
 
-Status: issue #157 slices A-B plus the first slice-C factorized-(T) validation
-endpoint. Public/native DF-CCSD(T) registration and performance qualification
-remain open.
+Status: issue #157 slices A-B, the first slice-C factorized-(T) endpoint, and
+C2a's explicit energy-only source facade are implemented. Native Calculator
+registration and production performance/memory qualification remain open.
 
 ## First supported method definition
 
@@ -90,9 +90,32 @@ into the occupied-space W tensor. It therefore forms neither a complete
 factorized energy with the dense oracle, and an independent random-factor test
 compares the factorized (T) correction with the audited dense triples equations.
 
-Remaining Slice-C work is public/native energy-only registration plus production
-performance/memory qualification (and later CUDA promotion); DF gradients remain
-#158.
+### C2a executable energy facade
+
+The source-level `df_rccsd_t_energy` facade now composes the already validated
+pieces without changing their scientific ownership:
+
+1. run a conventional unscreened CPU RHF export with no DF metric supplied;
+2. build and validate the auxiliary metric factor;
+3. relabel only the correlation Hamiltonian with
+   `correlation_df_reference`;
+4. execute the factorized DF-RCCSD + standard factorized (T) path.
+
+The facade reports the full method contract, metric rank/conditioning, DF
+provider statistics, and an explicit capability record. Its supported property
+set is exactly `{"energy"}`. A force request fails before source validation or
+solver work, so the conventional RCCSD(T) force capability cannot be inherited
+accidentally.
+
+C2a is deliberately not a native Calculator registration. It currently uses the
+existing native RHF snapshot-export bridge and therefore inherits that bridge's
+<=12-AO qualification boundary. The next registration slice must give the
+native method owner the same correlation-DF Hamiltonian semantics instead of
+merely enabling the existing conventional RCCSD(T) owner.
+
+Remaining Slice-C work is C2b native Calculator energy registration plus C3
+production performance/memory qualification (and later CUDA promotion); DF
+gradients remain #158.
 
 ## Validation rules
 
@@ -124,13 +147,16 @@ The internal validation helpers live in
 - `df_fitting_error` reports DF-versus-exact integral error separately.
 
 Slice B additionally exposes the internal `solve_df_ccsd` / `PreparedDFCCSD`
-validation path. It is factorized for the `ovvv`/`vvvv` contribution but still
-CPU-only and internal; it does not register a Calculator method.
+validation path. C2a adds `df_rccsd_t_method_capabilities` and
+`df_rccsd_t_energy` as the executable energy-only source facade. The latter
+requires a live `NativeSource` with an explicit auxiliary basis and records the
+conventional-reference/correlation-DF split in every successful result. It does
+not register a Calculator method.
 
 ## Non-goals after slice B
 
 - no production full-`NMO^4` DF integral storage;
-- no native/public DF-CCSD(T) method registration;
+- no native Calculator DF-CCSD(T) method registration in C2a;
 - no complete DF-CCSD(T) force or gradient claim (tracked by #158; the
   reusable B-to-A/M reverse edge is documented in [df_ccsdt_gradient.md](df_ccsdt_gradient.md));
 - no frozen-core, open-shell, ECP, local, or DLPNO variant.

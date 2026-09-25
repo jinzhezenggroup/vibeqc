@@ -8,7 +8,7 @@
 
 #include "molecule/basis.hpp"
 #include "scf/fleet.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 #include "vibeqc/vibeqc.h"
 
 namespace {

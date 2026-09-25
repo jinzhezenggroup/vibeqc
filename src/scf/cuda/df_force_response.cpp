@@ -145,6 +145,92 @@ vibeqc_status select_occupied_response_factors(CudaDensityFittingJkPlan& plan, s
     return VIBEQC_STATUS_OUT_OF_MEMORY;
   }
 }
+
+/** A strict final-state correction has no SCF factor of its own. Reconstruct
+ * its exact density independently before lending the value plan's reserved
+ * factor scratch; revoke the previous SCF generation before overwriting it.
+ */
+vibeqc_status select_corrected_occupied_response_factor(
+    CudaDensityFittingJkPlan& plan, std::size_t system, const CudaDfFinalStateToken* requested,
+    std::span<const DensityFittingDensityResponse> terms, std::size_t maximum_bytes,
+    CudaDfOccupiedResponseView& view, std::string& detail) {
+  auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state);
+  if (!requested || !state || state->unrestricted || !state->occupied_exchange ||
+      !state->final_frames_available || !plan.streamed || !plan.integral_source ||
+      plan.batch_size != 1 || system != 0 || terms.size() != 1 ||
+      terms[0].density.size() != plan.matrix_elements || terms[0].coulomb_coefficient != 1.0 ||
+      terms[0].exchange_coefficient != .25 || requested->identity.occupied.size() != 1 ||
+      !requested->identity.occupied[0] ||
+      !qualified_value_rhf_exchange(plan, requested->identity.occupied[0]))
+    return VIBEQC_STATUS_SUCCESS;
+  CudaDfFinalStateToken original;
+  const auto token_status = cuda_density_fitting_final_state_token(&plan, system, original, detail);
+  if (token_status == VIBEQC_STATUS_OUT_OF_MEMORY) return token_status;
+  if (token_status != VIBEQC_STATUS_SUCCESS) {
+    detail.clear();
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  const auto& current = original.identity;
+  const auto& corrected = requested->identity;
+  const auto density_generation = corrected.factor.density_generation;
+  const auto orbital_generation = corrected.factor.orbital_generation;
+  if (requested->version != original.version || corrected.factor.basis != current.factor.basis ||
+      corrected.factor.reference != current.factor.reference ||
+      corrected.solve_epoch != current.solve_epoch || corrected.model != current.model ||
+      corrected.occupied != current.occupied ||
+      density_generation <= current.factor.density_generation ||
+      orbital_generation <= current.factor.orbital_generation ||
+      density_generation - current.factor.density_generation > 16 ||
+      density_generation - current.factor.density_generation !=
+          orbital_generation - current.factor.orbital_generation ||
+      !std::all_of(terms[0].density.begin(), terms[0].density.end(),
+                   [](double value) { return std::isfinite(value); }))
+    return VIBEQC_STATUS_SUCCESS;
+  runtime::cuda_trace::TraceOperation trace("corrected_response_factor", plan.stream,
+                                            {1, plan.nbf, plan.naux, true, true, system});
+  const auto bytes = plan.matrix_elements * sizeof(double);
+  auto error = cudaSetDevice(plan.device_id);
+  if (error != cudaSuccess) return cuda_failure(error, "select corrected response device", detail);
+  // A later enqueue, eigensolver or host allocation may fail after the H2D
+  // upload borrows terms[0].density. Drain before returning/rethrowing so the
+  // caller can release its density even when no response bridge is entered.
+  struct UploadDrain {
+    cudaStream_t stream;
+    bool active{true};
+    ~UploadDrain() {
+      if (active) (void)cudaStreamSynchronize(stream);
+    }
+  } upload_drain{plan.stream};
+  error = cudaMemcpyAsync(plan.primary_density, terms[0].density.data(), bytes,
+                          cudaMemcpyHostToDevice, plan.stream);
+  if (error == cudaSuccess)
+    error =
+        cudaMemsetAsync(state->d_alpha_factor_generation, 0, sizeof(std::uint32_t), plan.stream);
+  if (error != cudaSuccess)
+    return cuda_failure(error, "upload corrected response density and revoke SCF factor", detail);
+  bool accepted = false;
+  std::size_t rank = 0;
+  const auto status =
+      factor_density_for_exchange(plan, *state, plan.primary_density, accepted, rank, detail);
+  if (status != VIBEQC_STATUS_SUCCESS) return status;
+  if (!accepted || rank != corrected.occupied[0] ||
+      rank * rank > maximum_bytes / plan.naux / view.factors.size()) {
+    runtime::cuda_trace::trace_counter("reconstruction_rejected", 1);
+    return VIBEQC_STATUS_SUCCESS;
+  }
+  // Accepted reconstruction has already drained its spectrum and full-density
+  // checks. Do not add a synchronization to the successful occupied path.
+  upload_drain.active = false;
+  view.factors[0] = {state->d_alpha_factor, rank, 1.0};
+  view.nbf = plan.nbf;
+  view.naux = plan.naux;
+  view.owner_identity = plan.factor_basis_identity;
+  runtime::cuda_trace::trace_counter("accepted", 1);
+  runtime::cuda_trace::trace_counter("correction_generations",
+                                     density_generation - current.factor.density_generation);
+  runtime::cuda_trace::trace_counter("borrowed_factor_bytes", plan.nbf * rank * sizeof(double));
+  return VIBEQC_STATUS_SUCCESS;
+}
 }  // namespace
 
 // Both value providers borrow forward device factors and bounded bridge
@@ -391,6 +477,11 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
       const auto selected = select_occupied_response_factors(
           *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
       if (selected != VIBEQC_STATUS_SUCCESS) return selected;
+      if (!streamed_factors.owner_identity && space == "occupied") {
+        const auto corrected = select_corrected_occupied_response_factor(
+            *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
+        if (corrected != VIBEQC_STATUS_SUCCESS) return corrected;
+      }
     }
     // The diagnostic upload route writes the former raw scratch buffer.
     // Revoke its immutable view before submission, so an interrupted copy

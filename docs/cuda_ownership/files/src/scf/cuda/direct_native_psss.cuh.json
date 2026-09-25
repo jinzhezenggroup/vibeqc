@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_native_psss.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "Native Direct-HF psss force scheduling/geometry adapter whose derivative algebra is compiler-generated through generated_weighted_eri::psss_force; the former handwritten psss value/Fock body is retired.",
+  "reason": "PSSS force adapter consumes generated_weighted_eri::psss_force but retains handwritten rho, ERI prefactor, Boys argument, decay derivatives and component normalization. Resident-bra scheduling is runtime; the whole operator-specific function remains conservatively scientific.",
   "regions": []
 }

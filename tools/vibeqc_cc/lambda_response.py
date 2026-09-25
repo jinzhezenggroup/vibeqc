@@ -1,7 +1,9 @@
-"""CPU block-streamed, amplitude-relaxed correlation-energy input weights.
+"""Block-streamed, amplitude-relaxed correlation-energy input weights.
 
-This is an internal consumer of generated mathematical VJPs, not an RDM,
-raw-Hamiltonian pullback, orbital-response or nuclear-force implementation.
+Scientific VJPs are backend-independent TensorIR. The default execution stays on
+the bound CPU owner; callers may provide an explicitly validated external tensor
+executor (for example the bounded CUDA CC response executor) without changing
+the mathematical response identity.
 """
 
 from __future__ import annotations
@@ -113,6 +115,7 @@ class BoundCCSDResponse:
     shared_lambda_residual_norm: float
     independent_lambda_residual_norm: float
     independent_lambda_residual_max: float
+    tensor_executor: typing.Any
 
     def __init__(
         self,
@@ -120,6 +123,7 @@ class BoundCCSDResponse:
         result: CCSDLambdaResult,
         *,
         max_bytes: int | None = None,
+        tensor_executor: typing.Any = None,
     ) -> None:
         if not isinstance(bound, BoundCCSDLambda) or not isinstance(
             result, CCSDLambdaResult
@@ -129,6 +133,13 @@ class BoundCCSDResponse:
             )
         max_bytes = bound.options.max_bytes if max_bytes is None else max_bytes
         _checked_bytes(max_bytes, "CC response host budget")
+        if tensor_executor is not None and (
+            not callable(getattr(tensor_executor, "execute", None))
+            or not isinstance(getattr(tensor_executor, "backend", None), str)
+        ):
+            raise TypeError(
+                "external CC tensor executor must expose execute() and backend"
+            )
         amplitude_bytes = sum(layout.spec.size * 8 for layout in bound.layouts)
         required = bound.logical_reserved_host_bytes + 8 * amplitude_bytes
         _checked_bytes(required, "CC response simultaneous logical host reservation")
@@ -191,6 +202,7 @@ class BoundCCSDResponse:
             ("shared_lambda_residual_norm", norms[0]),
             ("independent_lambda_residual_norm", norms[1]),
             ("independent_lambda_residual_max", norms[2]),
+            ("tensor_executor", tensor_executor),
         ):
             put(name, value)
         put(
@@ -246,6 +258,19 @@ class BoundCCSDResponse:
     @property
     def parameters(self) -> tuple[str, ...]:
         return PARAMETERS
+
+    @property
+    def tensor_backend(self) -> str:
+        return (
+            self.bound.tensor_backend
+            if self.tensor_executor is None
+            else self.tensor_executor.backend
+        )
+
+    def _execute_tensor(self, program: typing.Any, feeds: typing.Any) -> typing.Any:
+        if self.tensor_executor is None:
+            return self.bound._tensor_execute(program, feeds)
+        return self.tensor_executor.execute(program, feeds)
 
     def _prepare(self, parameter: typing.Any) -> typing.Any:
         if self.solver_region is not None:
@@ -304,7 +329,7 @@ class BoundCCSDResponse:
             values = []
             for program in (shared.program, independent.program):
                 bound._assert_current(reference_identity)
-                outputs = bound._tensor_execute(program, {**bound.feeds, **extra})
+                outputs = self._execute_tensor(program, {**bound.feeds, **extra})
                 # Retain independent immutable evidence before executing the
                 # other graph; shared executor buffers must not alias this check.
                 values.append(
@@ -333,7 +358,7 @@ class BoundCCSDResponse:
                 {
                     "parameter_vjp": shared.program.logical_hash,
                     "independent_parameter_vjp": independent.program.logical_hash,
-                    "tensor_backend": bound.tensor_backend,
+                    "tensor_backend": self.tensor_backend,
                     "inner_product": "dense Frobenius; declared input symmetry projector",
                     "scope": "amplitude-relaxed correlation-only fixed-orbital mathematical input weight",
                     "hf_reference_energy": "excluded",
@@ -401,8 +426,13 @@ class BoundCCSDResponse:
         with bound._lock:
             bound._assert_current(reference_identity)
             prepared = tuple((name, self._prepare(name)) for name in names)
-            if bound.tensor_executor is not None:
-                bound.tensor_executor.prewarm(
+            executor = (
+                self.tensor_executor
+                if self.tensor_executor is not None
+                else bound.tensor_executor
+            )
+            if executor is not None and callable(getattr(executor, "prewarm", None)):
+                executor.prewarm(
                     program
                     for _, (shared, independent, _, _) in prepared
                     for program in (shared.program, independent.program)

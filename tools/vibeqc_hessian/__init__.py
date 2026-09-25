@@ -27,6 +27,8 @@ _LAZY = {
     "NativeRHFState": "native",
     "DirectionalRHFResponse": "directional",
     "directional_rhf_response": "directional",
+    "DirectionalRKSResponse": "rks_directional",
+    "directional_rks_response": "rks_directional",
     "RHFHVPResult": "hvp",
     "RKSHVPResult": "dft",
     "rks_hvp": "dft",
@@ -56,6 +58,7 @@ _LAZY = {
 
 __all__ = [
     "DirectionalRHFResponse",
+    "DirectionalRKSResponse",
     "NativeRHFState",
     "RHFHVPBlockResult",
     "RHFHVPResult",
@@ -76,6 +79,7 @@ __all__ = [
     "build_stationary_nuclear_rhs",
     "cphf_relaxation",
     "directional_rhf_response",
+    "directional_rks_response",
     "forces_to_gradient",
     "generated_directional_first_order",
     "generated_directional_first_order_cuda",
