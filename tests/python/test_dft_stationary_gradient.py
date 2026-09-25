@@ -402,12 +402,36 @@ def test_stationary_state_requires_finite_scalar_physical_residual(
         replace(state(), physical_residual=residual)
 
 
-@pytest.mark.parametrize("method", ["b3lyp-rhf", "pbe-rhf"])
-def test_stationary_contract_rejects_unsupported_method_domain(
-    method: typing.Any,
+def test_noncurated_stationary_identity_requires_explicit_contract() -> None:
+    with pytest.raises(ValueError, match="explicit spin provenance"):
+        identity("LIBXC:GGA_X_PBE_SOL")
+
+    generic = replace(
+        identity(),
+        method="LIBXC:GGA_X_PBE_SOL",
+        model_identity="bulk-model",
+        functional_identity="bulk-functional",
+    )
+    contract = StationaryDerivativeContract(generic)
+
+    assert generic.spin == "unpolarized"
+    assert generic.ingredients == ("rho", "sigma")
+    assert contract.spin == "unpolarized"
+    assert contract.family == "gga"
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"spin": "polarized"}, "spin disagrees"),
+        ({"ingredients": ("rho",)}, "ingredients disagree"),
+    ],
+)
+def test_named_stationary_identity_rejects_contract_drift(
+    change: dict[str, typing.Any], message: str
 ) -> None:
-    with pytest.raises(ValueError, match="LDA/PBE/r2SCAN/global-hybrid RKS/UKS"):
-        replace(identity(), method=method)
+    with pytest.raises(ValueError, match=message):
+        replace(identity(), **change)
 
 
 @pytest.mark.parametrize(
@@ -472,18 +496,31 @@ def test_generated_xc_binding_rejects_actual_source_or_method_mismatch() -> None
 
     wrong = dc_replace(spec, components=(("GGA_X_PBE", Fraction(1)),))
     with NativeAO(**args) as basis:
-        relabeled = dc_replace(
-            value,
-            identity=dc_replace(value.identity, functional_identity=wrong.identity),
-        )
-        with pytest.raises(ValueError, match="canonical PBE"):
+        with pytest.raises(ValueError, match="functional identity mismatch"):
             _fixed_density_xc_geometry(
-                StationaryDerivativeContract(relabeled.identity),
-                relabeled,
+                StationaryDerivativeContract(value.identity),
+                value,
                 wrong,
                 basis,
                 grid,
             )
+
+        relabeled = dc_replace(
+            value,
+            identity=dc_replace(
+                value.identity,
+                functional_identity=wrong.identity,
+                regularization_identity=xc_regularization_identity(wrong),
+            ),
+        )
+        rebound = _fixed_density_xc_geometry(
+            StationaryDerivativeContract(relabeled.identity),
+            relabeled,
+            wrong,
+            basis,
+            grid,
+        )
+        assert rebound.functional_identity == wrong.identity
 
 
 def test_generated_xc_binding_rejects_out_of_range_grid_owner() -> None:

@@ -17,13 +17,17 @@ pytestmark = pytest.mark.skipif(
 
 
 @pytest.mark.parametrize("forces,budget_mib", [(False, 16), (True, 24)])
-@pytest.mark.parametrize("shared", [True, False])
+@pytest.mark.parametrize(
+    ("shared_policy", "expect_shared"),
+    [(None, True), ("auto", True), ("1", True), ("0", False)],
+)
 def test_streamed_auto_cold_warm_and_changed_geometry(
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
     forces: bool,
     budget_mib: int,
-    shared: bool,
+    shared_policy: str | None,
+    expect_shared: bool,
 ) -> None:
     """Independent libcint/PySCF gates cover all solves and geometry rebuilding."""
     from pyscf import gto, scf
@@ -53,7 +57,10 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
         "FINAL_PROJECTION",
     ):
         monkeypatch.setenv("VIBEQC_DF_" + control, "auto")
-    monkeypatch.setenv("VIBEQC_DF_JK_SHARED_SOURCE", "1" if shared else "0")
+    if shared_policy is None:
+        monkeypatch.delenv("VIBEQC_DF_JK_SHARED_SOURCE", raising=False)
+    else:
+        monkeypatch.setenv("VIBEQC_DF_JK_SHARED_SOURCE", shared_policy)
     calculator = Calculator(
         method="rhf",
         basis="def2-svp",
@@ -102,7 +109,7 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
             joint = [
                 record for record in records if record["operation"] == "ri_jk_shared"
             ]
-            if shared:
+            if expect_shared:
                 assert joint
                 for record in joint:
                     assert record["counters"]["shared_coulomb_charge_rows"] == 96

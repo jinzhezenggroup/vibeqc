@@ -104,9 +104,7 @@ def read_ks_diagnostic(
         if index is None
         else "vibeqc_batch_get_ks_diagnostic"
     )
-    query = getattr(library, name, None)
-    if query is None:
-        return None
+    query = getattr(library, name)
     prefix = (handle,) if index is None else (handle, index)
     summary = _native.KsDiagnosticDescriptor(
         ctypes.sizeof(_native.KsDiagnosticDescriptor), _native.ABI_VERSION
@@ -159,15 +157,13 @@ def read_ks_diagnostic(
 def read_ks_transport_diagnostic(
     library: typing.Any, handle: typing.Any, index: typing.Any = None
 ) -> typing.Any:
-    """Snapshot cumulative CUDA movement; old/CPU libraries return None."""
+    """Snapshot cumulative CUDA movement; unsupported/CPU execution returns None."""
     name = (
         "vibeqc_calculation_get_ks_transport_diagnostic"
         if index is None
         else "vibeqc_batch_get_ks_transport_diagnostic"
     )
-    query = getattr(library, name, None)
-    if query is None:
-        return None
+    query = getattr(library, name)
     prefix = (handle,) if index is None else (handle, index)
     value = _native.KsTransportDiagnosticDescriptor(
         ctypes.sizeof(_native.KsTransportDiagnosticDescriptor), _native.ABI_VERSION

@@ -20,6 +20,17 @@ def test_native_bridge_header_does_not_leak_execution_descriptors() -> None:
     assert "gfn2_cuda_execution" not in header
 
 
+def test_native_bridge_exposes_atomic_charges_only_by_explicit_request() -> None:
+    header = (ROOT / "src/methods/gfn2_runtime_bridge.hpp").read_text()
+    source = (ROOT / "src/methods/gfn2_runtime_bridge.cpp").read_text()
+    assert "bool compute_atomic_charges = false;" in header
+    assert "std::vector<double> atomic_charges;" in header
+    assert "request.compute_atomic_charges" in source
+    assert "VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES" in source
+    assert "output.atomic_charges = output_buffer(atomic_charges);" in source
+    assert "result.atomic_charges = std::move(atomic_charges);" in source
+
+
 def test_method_layer_has_no_vendor_abi() -> None:
     methods = ROOT / "src/methods"
     for path in methods.glob("*"):
@@ -33,6 +44,13 @@ def test_native_execution_is_confined_to_bridge_implementation() -> None:
     assert '"runtime/gfn2_cpu_execution.hpp"' in source
     assert "vibeqc::xtb::detail::execute_restricted_gfn2_cpu" in source
     assert "vibeqc::xtb::detail::Gfn2CpuExecutionCache" in source
+
+
+def test_cpu_scc_uses_shared_method_neutral_iteration_control() -> None:
+    source = (ROOT / "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp").read_text()
+    assert '"solver/iteration_control.hpp"' in source
+    assert "vibeqc::solver::run_bounded_iterations" in source
+    assert "while (driver_state.converged[0]" not in source
 
 
 def test_retired_runtime_and_external_api_cannot_reenter_production() -> None:
@@ -122,6 +140,9 @@ int main() {
     return vibeqc::xtb::detail::validate_molecular_request(batch, options, error);
   };
   assert(validate() == VIBEQC_XTB_STATUS_SUCCESS);
+  options.flags |= VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES;
+  assert(validate() == VIBEQC_XTB_STATUS_SUCCESS);
+  options.flags &= ~VIBEQC_XTB_COMPUTE_ATOMIC_CHARGES;
   const auto original = batch;
   const vibeqc_xtb_const_buffer_t poison{reinterpret_cast<void*>(1), 8,
                                        VIBEQC_XTB_MEMORY_HOST, 0};

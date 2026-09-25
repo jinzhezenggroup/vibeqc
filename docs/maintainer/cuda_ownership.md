@@ -25,7 +25,7 @@ Run the reproducible report with standard Python; no CUDA device is needed:
 python tools/report_cuda_ownership.py --check
 python tools/report_cuda_ownership.py --output .artifacts/cuda-ownership.json
 python tools/report_cuda_ownership.py --build build/cuda-release \
-  --baseline docs/cuda_ownership_baseline.json \
+  --baseline manifests/maintenance/cuda_ownership_baseline.json \
   --output .artifacts/cuda-ownership-with-build.json
 ```
 
@@ -232,7 +232,7 @@ Reproduce both the semantic report and physical edit accounting without a GPU:
 ```bash
 python tools/report_cuda_ownership.py --check
 python tools/report_cuda_ownership.py --build <matching-candidate-build> \
-  --baseline docs/cuda_ownership_baseline.json --output .artifacts/current.json
+  --baseline manifests/maintenance/cuda_ownership_baseline.json --output .artifacts/current.json
 python tools/compare_cuda_ownership.py \
   --baseline-root <phase-2-baseline-checkout> \
   --baseline-report benchmarks/results/cuda-ownership/df/ownership-baseline.json \

@@ -7,18 +7,21 @@ import argparse
 import hashlib
 import json
 import math
+import sys
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = (
-    ROOT / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1.json"
-)
-DEFAULT_MANIFEST = (
-    ROOT
-    / "upstream/xtbloom/2cbdf1db8661ccbd5cb7d3d4bfc868a848cbbff3/gfn1_manifest.json"
-)
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools import source_registry
+
 DEFAULT_OUTPUT = ROOT / "src/xtb/native/data/parameters/gfn1.hpp"
+PRODUCT_ID = "gfn1-parameter-header"
+PRODUCT_INPUTS = ("xtbloom-gfn1-parameters",)
+SOURCE_ID = PRODUCT_INPUTS[0]
+_REQUIRED_SOURCE_FILES = {"gfn1.json", "gfn1_manifest.json"}
 
 TOP_KEYS = {
     "charge",
@@ -480,10 +483,30 @@ def render_header(parameters: dict[str, Any], source_revision: str) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
-def load_and_render(source: Path, manifest_path: Path) -> bytes:
-    source_bytes = source.read_bytes()
+def load_registered_inputs(
+    *,
+    registry_path: Path = source_registry.REGISTRY,
+    cache_root: Path = source_registry.DEFAULT_CACHE,
+) -> tuple[bytes, dict[str, Any]]:
+    registered = source_registry.load_product_sources(
+        PRODUCT_ID,
+        generator=Path(__file__),
+        expected_inputs=PRODUCT_INPUTS,
+        expected_canonical_inputs=(),
+        registry_path=registry_path,
+    )
+    source = registered[SOURCE_ID]
+    texts = source_registry.read_source_texts(SOURCE_ID, source, cache_root=cache_root)
+    missing = _REQUIRED_SOURCE_FILES - set(texts)
+    if missing:
+        raise source_registry.SourceRegistryError(
+            f"registered GFN1 source is missing required files: {sorted(missing)}"
+        )
+    return texts["gfn1.json"].encode("utf-8"), json.loads(texts["gfn1_manifest.json"])
+
+
+def load_and_render(source_bytes: bytes, manifest: dict[str, Any]) -> bytes:
     parameters = json.loads(source_bytes)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     try:
         expected_json = manifest["outputs"]["gfn1.json"]["sha256"]
         expected_header = manifest["outputs"]["gfn1.hpp"]["sha256"]
@@ -510,13 +533,18 @@ def load_and_render(source: Path, manifest_path: Path) -> bytes:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
-    parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    parser.add_argument("--registry", type=Path, default=source_registry.REGISTRY)
+    parser.add_argument(
+        "--cache-root", type=Path, default=source_registry.DEFAULT_CACHE
+    )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
 
-    rendered = load_and_render(args.source, args.manifest)
+    source_bytes, manifest = load_registered_inputs(
+        registry_path=args.registry, cache_root=args.cache_root
+    )
+    rendered = load_and_render(source_bytes, manifest)
     if args.check:
         if not args.output.is_file() or args.output.read_bytes() != rendered:
             raise ParameterError(

@@ -18,7 +18,7 @@
 #include "scf/reference/mean_field.hpp"
 #include "scf/solver/diis.hpp"
 #include "scf/solver/proposal_control.hpp"
-#include "scf/solver/self_consistent.hpp"
+#include "solver/self_consistent.hpp"
 #include "xc_cpu_generated.hpp"
 
 namespace vibeqc::scf {
@@ -30,9 +30,27 @@ struct SpinEvaluation {
   dft::EnergyComponents components;
 };
 
-using SpinXcEvaluator = dft::SpinXcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
-                                                const Matrix&, const Matrix&, std::size_t, double,
-                                                double);
+struct SpinXcEvaluator {
+  using Direct = dft::SpinXcIntegral (*)(const dft::AoBasis&, const dft::MolecularGrid&,
+                                         const Matrix&, const Matrix&, std::size_t, double, double);
+  Direct direct{};
+  const dft::SemilocalPointProgram* program{};
+
+  SpinXcEvaluator(Direct value) : direct(value) {}
+  SpinXcEvaluator(const dft::SemilocalPointProgram& value) : program(&value) {}
+
+  dft::SpinXcIntegral operator()(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
+                                 const Matrix& alpha, const Matrix& beta, std::size_t tile,
+                                 double exchange_scale, double correlation_scale) const {
+    if (program) {
+      if (exchange_scale != 1.0 || correlation_scale != 1.0)
+        throw std::invalid_argument("generic semilocal UKS does not accept legacy XC scaling");
+      return dft::integrate_semilocal_uks(basis, grid, alpha, beta, *program, tile);
+    }
+    if (!direct) throw std::logic_error("UKS XC evaluator is empty");
+    return direct(basis, grid, alpha, beta, tile, exchange_scale, correlation_scale);
+  }
+};
 
 dft::SpinXcIntegral evaluate_lda_xc_uks(const dft::AoBasis& basis, const dft::MolecularGrid& grid,
                                         const Matrix& alpha, const Matrix& beta, std::size_t tile,
@@ -230,10 +248,13 @@ ScfResult run_uks_impl(
   diagnostic.occupations = {na, nb};
   diagnostic.grid_points = grid.point_count();
   diagnostic.tile_points = std::min(options.xc_tile_points, grid.point_count());
-  diagnostic.ao_order = std::string_view(method_name) == "LDA" ? 0 : 1;
-  diagnostic.scf_domain_version = std::string_view(method_name) == "WB97M-V"
-                                      ? 3U
-                                      : (std::string_view(method_name) == "B3LYP" ? 2U : 1U);
+  diagnostic.ao_order = evaluate_xc.program ? (evaluate_xc.program->ingredient_mask == 1U ? 0U : 1U)
+                                            : (std::string_view(method_name) == "LDA" ? 0U : 1U);
+  diagnostic.scf_domain_version =
+      evaluate_xc.program ? evaluate_xc.program->domain_version
+                          : (std::string_view(method_name) == "WB97M-V"
+                                 ? 3U
+                                 : (std::string_view(method_name) == "B3LYP" ? 2U : 1U));
   const double residual_gate = std::min(1.0e-9, options.density_tolerance);
   bool stabilize_occupations = false;
 
@@ -260,9 +281,10 @@ ScfResult run_uks_impl(
     bool stabilized{};
   };
 
-  const solver::SelfConsistentPolicy policy{options.max_iterations, options.energy_tolerance,
-                                            options.density_tolerance, residual_gate, true};
-  auto outcome = solver::run_self_consistent(
+  const ::vibeqc::solver::SelfConsistentPolicy policy{
+      options.max_iterations, options.energy_tolerance, options.density_tolerance, residual_gate,
+      true};
+  auto outcome = ::vibeqc::solver::run_self_consistent(
       UksState{std::move(alpha), std::move(beta)}, policy,
       [&](const UksState& state, unsigned) {
         const bool stabilized = stabilize_occupations;
@@ -301,7 +323,7 @@ ScfResult run_uks_impl(
                                  stabilized};
       },
       [&](UksState& state, UksLoopEvaluation evaluation,
-          const solver::SelfConsistentProgress& progress) {
+          const ::vibeqc::solver::SelfConsistentProgress& progress) {
         runtime::sample_cpu_capacity(runtime::add_capacity(
             runtime::add_capacity(
                 runtime::add_capacity(
@@ -330,7 +352,8 @@ ScfResult run_uks_impl(
           return UksState{std::move(state.alpha), std::move(state.beta)};
         return UksState{std::move(evaluation.next_alpha), std::move(evaluation.next_beta)};
       },
-      [&](const solver::SelfConsistentProgress& progress, const UksLoopEvaluation& evaluation) {
+      [&](const ::vibeqc::solver::SelfConsistentProgress& progress,
+          const UksLoopEvaluation& evaluation) {
         result.energy = progress.energy;
         result.iterations = progress.iteration;
         result.energy_change = progress.energy_change;
@@ -416,6 +439,15 @@ ScfResult run_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       pbe ? evaluate_pbe_xc_uks : evaluate_lda_xc_uks, pbe ? "PBE" : "LDA",
                       initial_density, nullptr);
 }
+ScfResult run_semilocal_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
+                            const dft::MolecularGrid& grid, const ScfOptions& options,
+                            const dft::SemilocalPointProgram& program,
+                            const std::vector<double>* initial_density) {
+  dft::validate_semilocal_point_program(program);
+  return run_uks_impl(plan, nullptr, basis, grid, options, SpinXcEvaluator(program),
+                      program.identifier, initial_density, nullptr);
+}
+
 ScfResult run_lda_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
                       const std::vector<double>* initial_density) {

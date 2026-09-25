@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from .interop import DLPACK_INTEROP_VERSION
+
 FRONTEND_VERSION = 1
 
 SUPPORTED_FUNCTIONS = frozenset(
@@ -47,6 +49,13 @@ def capabilities() -> dict[str, object]:
         "dynamic_shapes": False,
         "python_control_flow": False,
         "functions": tuple(sorted(SUPPORTED_FUNCTIONS)),
+        "dlpack_interop": {
+            "version": DLPACK_INTEROP_VERSION,
+            "import": "same-device-zero-copy",
+            "device_transfer": False,
+            "stream_handoff": "consumer-owned-protocol",
+            "raw_capsule_ownership": "not-retained",
+        },
         "tensorir_metadata": (
             "index_spaces",
             "representation",

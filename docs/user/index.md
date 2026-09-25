@@ -31,3 +31,24 @@ Use this guide to install VibeQC and run calculations. If the terminology is unf
 - [Local autotuning](local_autotuning.md)
 
 Exact lookup information belongs in [Reference](../reference/index.md); internals belong in the [Developer Guide](../developer/index.md).
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+installation
+quickstart
+methods
+batched_hf
+checkpoint
+basis_projection
+progressive_hf
+ks_options
+dft_density_fitting
+r2scan3c
+external_basis
+high_angular_momentum
+ecp
+accuracy
+local_autotuning
+```
