@@ -151,8 +151,15 @@ def restore(
     target = _target(output, ROOT / ".artifacts/retention-restore" / path)
     data = _read(matches[0])
     target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("xb") as stream:
-        stream.write(data)
+    # Acquire exclusively before entering cleanup: a competing destination is
+    # not ours to remove. Include close/flush errors in the rollback scope.
+    stream = target.open("xb")
+    try:
+        with stream:
+            stream.write(data)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
     return target
 
 
@@ -175,9 +182,15 @@ def restore_snapshot(
             member.parent.mkdir(parents=True, exist_ok=True)
             with member.open("xb") as stream:
                 stream.write(data)
-        # copytree refuses an existing destination, including one created while
-        # validation was running. Never overwrite a checkout or a previous copy.
-        shutil.copytree(staged, target)
+        # Reserve ownership exclusively before copying. If publication fails,
+        # remove only this invocation's partial tree so the restore can retry.
+        # A competing destination makes mkdir fail outside the cleanup scope.
+        target.mkdir(parents=True, exist_ok=False)
+        try:
+            shutil.copytree(staged, target, dirs_exist_ok=True)
+        except BaseException:
+            shutil.rmtree(target)
+            raise
     return target
 
 
