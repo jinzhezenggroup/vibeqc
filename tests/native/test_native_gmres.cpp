@@ -53,6 +53,10 @@ double explicit_residual(const DenseOperator& matrix, std::span<const double> x,
 
 
 struct ContractResidentBackend final : vibeqc::response::ResidentKrylovBackend {
+  ContractResidentBackend(std::size_t dimension, std::size_t vector_slots,
+                          std::size_t resident_bytes)
+      : n(dimension), slots(vector_slots), bytes(resident_bytes) {}
+
   std::size_t n{}, slots{}, bytes{};
 
   [[nodiscard]] std::size_t dimension() const noexcept override { return n; }
