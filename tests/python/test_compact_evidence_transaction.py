@@ -123,7 +123,6 @@ def test_success_keeps_payloads_and_idempotence(
     assert snapshot(publication) == before
 
 
-
 def test_companion_created_after_preflight_is_not_overwritten(
     publication: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
