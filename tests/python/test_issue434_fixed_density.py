@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from benchmarks.issue434_fixed_density import (\n    coulomb_from_raw,\n    coulomb_from_whitened_raw,\n    residuals,\n)
+from benchmarks.issue434_fixed_density import (
+    coulomb_from_raw,
+    coulomb_from_whitened_raw,
+    residuals,
+)
 
 
 def test_issue434_residuals_accept_exact_closed_shell_projector() -> None:
@@ -38,6 +42,7 @@ def test_issue434_coulomb_recomposition_matches_explicit_metric_inverse() -> Non
     np.testing.assert_allclose(
         coulomb_from_raw(raw, metric, density), expected, atol=1e-14, rtol=0
     )
+
 
 def test_issue434_whitened_recomposition_matches_metric_solve() -> None:
     raw = np.array(
@@ -80,4 +85,3 @@ def test_issue434_whitened_schedule_tracks_tiny_source_perturbations() -> None:
     )
 
     np.testing.assert_allclose(whitened_delta, direct_delta, atol=5e-15, rtol=5e-3)
-
