@@ -274,7 +274,6 @@ def energy_program(
     )
 
 
-
 def hf_force_program(
     batch_size: int,
     nbf: int,
@@ -335,6 +334,7 @@ def hf_force_program(
             "convention": "force_is_negative_energy_gradient",
         },
     )
+
 
 def diis_gram_program(
     batch_size: int,

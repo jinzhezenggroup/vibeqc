@@ -126,14 +126,15 @@ def test_fixed_native_specialization_rejects_changed_coefficient_layout(
         generator.native_header()
 
 
-
 def test_fixed_native_specialization_rejects_changed_hf_force_topology(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from tools import generate_scf_array_native as generator
 
     replacement = diis_gram_program(1, 2, 2)
-    monkeypatch.setattr(generator, "hf_force_program", lambda *args, **kwargs: replacement)
+    monkeypatch.setattr(
+        generator, "hf_force_program", lambda *args, **kwargs: replacement
+    )
     with pytest.raises(ValueError, match="HF-force"):
         generator.native_header()
 

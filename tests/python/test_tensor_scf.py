@@ -161,7 +161,6 @@ def test_energy_matches_current_cuda_kernel_equation(spin_count: int) -> None:
     np.testing.assert_allclose(result, expected, atol=1e-13, rtol=1e-13)
 
 
-
 @pytest.mark.parametrize("spin_count", [1, 2])
 def test_hf_force_assembly_matches_stationary_reference_equation(
     spin_count: int,

@@ -9,10 +9,11 @@ std::vector<double> analytic_forces(const integrals::IntegralData& ints, const M
                                     const Matrix& weighted_density,
                                     std::span<const double> two_electron) {
   std::vector<double> forces(ints.ncoord, 0.0);
-  generated::hf_stationary_forces<1>(
-      forces.data(), ints.ncoord, ints.nbf, std::array<const double*, 1>{density.data()},
-      std::array<const double*, 1>{weighted_density.data()}, ints.hcore_derivative.data(),
-      ints.overlap_derivative.data(), two_electron.data(), ints.nuclear_repulsion_derivative.data());
+  generated::hf_stationary_forces<1>(forces.data(), ints.ncoord, ints.nbf,
+                                     std::array<const double*, 1>{density.data()},
+                                     std::array<const double*, 1>{weighted_density.data()},
+                                     ints.hcore_derivative.data(), ints.overlap_derivative.data(),
+                                     two_electron.data(), ints.nuclear_repulsion_derivative.data());
   return forces;
 }
 
