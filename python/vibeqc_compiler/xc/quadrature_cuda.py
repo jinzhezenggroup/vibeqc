@@ -29,7 +29,7 @@ inline size_t sum(size_t a, size_t b) {
   return a + b;
 }
 struct Layout {
-  size_t atoms, points, tile, rules, geometry, distances, logs, xyz, weights;
+  size_t atoms, points, tile, rules, polar, azimuth, geometry, distances, logs, xyz, weights;
   size_t doubles, device_bytes;
 };
 // 4096 points bounds launch overhead and O(tile * atoms) scratch. The small
@@ -43,7 +43,9 @@ inline Layout layout(size_t atoms, size_t points) {
   l.points = points;
   l.tile = std::min(points, size_t{4096});
   l.rules = product(4, atoms); // xyz centers plus resolved radii
-  l.geometry = sum(l.rules, 2 * (512 + 256));
+  l.polar = sum(l.rules, 2 * (512 + 256));
+  l.azimuth = sum(l.polar, 3 * 256);
+  l.geometry = sum(l.azimuth, 3 * 1024);
   l.distances = sum(l.geometry, product(atoms, atoms));
   l.logs = sum(l.distances, product(l.tile, atoms));
   l.xyz = sum(l.logs, product(l.tile, atoms));
@@ -77,22 +79,48 @@ _KERNELS = r"""
 __device__ inline double distance(const double* a, const double* b) {
   return hypot(hypot(a[0] - b[0], a[1] - b[1]), a[2] - b[2]);
 }
-// Compute each unordered center distance once, before processing any points.
-__global__ void geometry_kernel(const double* centers, size_t na, double* separation) {
+// Compute each unordered center distance once, then retain its reciprocal for
+// the point-heavy Becke partition. Zero is the exact coincident/tolerance
+// sentinel. A negative entry retains the physical separation only when its
+// reciprocal overflows; that rare path keeps the original quotient.
+__global__ void geometry_kernel(const double* centers, size_t na, double tolerance,
+                                double* inverse_separation) {
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < na * na;
        i += size_t(blockDim.x) * gridDim.x) {
     const size_t a = i / na, b = i % na;
     if (b > a) continue;
-    const double value = distance(centers + 3 * a, centers + 3 * b);
-    separation[a * na + b] = separation[b * na + a] = value;
+    const double separation = distance(centers + 3 * a, centers + 3 * b);
+    const double inverse = separation > tolerance ? 1.0 / separation : 0.0;
+    const double retained = isfinite(inverse) ? inverse : -separation;
+    inverse_separation[a * na + b] = inverse_separation[b * na + a] = retained;
+  }
+}
+// Angular factors depend only on the fixed quadrature rules, not on atoms or
+// radial shells. Build them once on device so every molecular point reuses the
+// same device-math sqrt/sin/cos results instead of recomputing them.
+__global__ void polar_kernel(size_t nz, const double* zn, const double* zw, double* polar) {
+  for (size_t z = size_t(blockIdx.x) * blockDim.x + threadIdx.x; z < nz;
+       z += size_t(blockDim.x) * gridDim.x) {
+    polar[3 * z] = sqrt(fmax(0.0, 1.0 - zn[z] * zn[z]));
+    polar[3 * z + 1] = zn[z];
+    polar[3 * z + 2] = zw[z];
+  }
+}
+__global__ void azimuth_kernel(size_t nphi, double* azimuth) {
+  constexpr double pi = 3.141592653589793238462643383279502884;
+  for (size_t p = size_t(blockIdx.x) * blockDim.x + threadIdx.x; p < nphi;
+       p += size_t(blockDim.x) * gridDim.x) {
+    const double phi = 2.0 * pi * p / nphi;
+    azimuth[3 * p] = cos(phi);
+    azimuth[3 * p + 1] = sin(phi);
+    azimuth[3 * p + 2] = 2.0 * pi / nphi;
   }
 }
 // Atom/radial/polar/azimuth order is the public derivative-export contract.
 __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, size_t nphi,
                               const double* centers, const double* radii, const double* rn,
-                              const double* rw, const double* zn, const double* zw,
+                              const double* rw, const double* polar, const double* azimuth,
                               double* xyz, double* weights) {
-  constexpr double pi = 3.141592653589793238462643383279502884;
   for (size_t i = size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < count;
        i += size_t(blockDim.x) * gridDim.x) {
     size_t index = begin + i;
@@ -104,12 +132,12 @@ __global__ void points_kernel(size_t begin, size_t count, size_t nr, size_t nz, 
     const double t = 0.5 * (rn[radial] + 1.0);
     const double r = radii[owner] * t / (1.0 - t);
     const double wr = 0.5 * rw[radial] * radii[owner] * r * r / ((1.0 - t) * (1.0 - t));
-    const double ring = sqrt(fmax(0.0, 1.0 - zn[z] * zn[z]));
-    const double phi = 2.0 * pi * phi_index / nphi;
-    xyz[3*i] = centers[3*owner] + r * ring * cos(phi);
-    xyz[3*i+1] = centers[3*owner+1] + r * ring * sin(phi);
-    xyz[3*i+2] = centers[3*owner+2] + r * zn[z];
-    weights[i] = wr * zw[z] * (2.0 * pi / nphi);
+    const double* pz = polar + 3 * z;
+    const double* pp = azimuth + 3 * phi_index;
+    xyz[3*i] = centers[3*owner] + r * pz[0] * pp[0];
+    xyz[3*i+1] = centers[3*owner+1] + r * pz[0] * pp[1];
+    xyz[3*i+2] = centers[3*owner+2] + r * pz[1];
+    weights[i] = wr * pz[2] * pp[2];
   }
 }
 // Atom-major 2-D launch keeps adjacent point lanes coalesced without runtime
@@ -122,9 +150,8 @@ __global__ void distances_kernel(size_t count, size_t na, const double* xyz,
       distances[a * count + point] = distance(xyz + 3 * point, centers + 3 * a);
 }
 template <unsigned Iterations>
-__global__ void partition_kernel(size_t count, size_t na, double tolerance,
-                                 const double* distances, const double* separation,
-                                 double* logs) {
+__global__ void partition_kernel(size_t count, size_t na, const double* distances,
+                                 const double* inverse_separation, double* logs) {
   for (size_t a = blockIdx.y; a < na; a += gridDim.y) {
     for (size_t point = size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < count;
          point += size_t(blockDim.x) * gridDim.x) {
@@ -135,10 +162,15 @@ __global__ void partition_kernel(size_t count, size_t na, double tolerance,
       for (size_t b = 0; b < na; ++b) {
         if (a == b) continue;
         const size_t hi = a > b ? a : b, lo = a > b ? b : a;
-        const double sep = separation[hi * na + lo];
-        const double mu = sep > tolerance
-            ? fmin(1.0, fmax(-1.0, (distances[hi * count + point] -
-                                    distances[lo * count + point]) / sep)) : 0.0;
+        const double inverse = inverse_separation[hi * na + lo];
+        double coordinate = 0.0;
+        if (inverse > 0.0) {
+          coordinate = (distances[hi * count + point] - distances[lo * count + point]) * inverse;
+        } else if (inverse < 0.0) {
+          // Do not turn 0*infinity into a clipped endpoint for equidistant points.
+          coordinate = (distances[hi * count + point] - distances[lo * count + point]) / (-inverse);
+        }
+        const double mu = fmin(1.0, fmax(-1.0, coordinate));
         const double pair = fmin(1.0, fmax(0.0, becke<Iterations>(mu)));
         value += a > b ? log(pair) : log1p(-pair);
       }
@@ -160,8 +192,8 @@ __global__ void normalize_kernel(size_t begin, size_t count, size_t per_atom, si
     weights[p] = weight;
   }
 }
-inline void launch_partition(unsigned iterations, size_t count, size_t na, double tolerance,
-                             const double* distances, const double* separation,
+inline void launch_partition(unsigned iterations, size_t count, size_t na,
+                             const double* distances, const double* inverse_separation,
                              double* logs, cudaStream_t stream) {
   switch (iterations) {
 @PARTITION_CASES@
@@ -195,7 +227,7 @@ def emit_quadrature_cuda() -> str:
         )
         cases.append(
             f"    case {iterations}: partition_kernel<{iterations}><<<atom_point_grid(count, na), 128, 0, stream>>>"
-            "(count, na, tolerance, distances, separation, logs); break;"
+            "(count, na, distances, inverse_separation, logs); break;"
         )
     lines.append(_KERNELS.replace("@PARTITION_CASES@", "\n".join(cases)))
     return "\n".join(lines)
