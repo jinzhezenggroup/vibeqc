@@ -208,9 +208,7 @@ def _unpolarized_case(case_id: str) -> ProductionDomainCase:
     elif case_id == "tau/isoorbital":
         tau = (_tau_von_weizsaecker(rho[0], gradient[0]),)
     elif case_id == "tau/near-isoorbital":
-        tau = (
-            _tau_von_weizsaecker(rho[0], gradient[0]) * (1.0 + 1.0e-12),
-        )
+        tau = (_tau_von_weizsaecker(rho[0], gradient[0]) * (1.0 + 1.0e-12),)
     elif case_id == "tau/large-finite":
         tau = (1.0e8,)
     else:
@@ -234,9 +232,7 @@ def numerical_cases(
     return tuple(result)
 
 
-def control_case_ids(
-    profile: ProductionDomainProfile, *, spin: str
-) -> tuple[str, ...]:
+def control_case_ids(profile: ProductionDomainProfile, *, spin: str) -> tuple[str, ...]:
     """Return policy/control rows that must not be fabricated as numeric probes."""
     return tuple(
         case_id

@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from vibeqc_compiler.xc.bulk_runtime import build_bulk_runtime_program
 from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
 from vibeqc_compiler.xc.libxc_production_domain import ProductionDomainProfile
@@ -85,9 +84,7 @@ def _reference(
             gradient[5:7] = vxc[3].T
             for index, (left, right) in enumerate(((5, 5), (5, 6), (6, 6))):
                 hessian[left, right] = hessian[right, left] = fxc[4][:, index]
-            for index, (left, right) in enumerate(
-                ((0, 5), (0, 6), (1, 5), (1, 6))
-            ):
+            for index, (left, right) in enumerate(((0, 5), (0, 6), (1, 5), (1, 6))):
                 hessian[left, right] = hessian[right, left] = fxc[6][:, index]
             for index, (left, right) in enumerate(
                 ((2, 5), (2, 6), (3, 5), (3, 6), (4, 5), (4, 6))
@@ -180,8 +177,10 @@ def _run_numeric_case(
 
     shape_ok = observed.shape == expected.shape
     finite = bool(np.all(np.isfinite(observed)))
-    passed = shape_ok and finite and bool(
-        np.allclose(observed, expected, rtol=rtol, atol=atol)
+    passed = (
+        shape_ok
+        and finite
+        and bool(np.allclose(observed, expected, rtol=rtol, atol=atol))
     )
     max_abs = float(np.max(np.abs(observed - expected))) if shape_ok else None
     max_rel = _relative_error(observed, expected, atol=atol) if shape_ok else None
@@ -236,9 +235,7 @@ def main() -> int:
     from pyscf.dft import libxc
 
     if pyscf.__version__ != "2.14.0" or libxc.__version__ != "7.0.0":
-        raise RuntimeError(
-            "qualification requires exactly PySCF 2.14.0 / Libxc 7.0.0"
-        )
+        raise RuntimeError("qualification requires exactly PySCF 2.14.0 / Libxc 7.0.0")
     if args.rtol < 0.0 or args.atol < 0.0:
         raise ValueError("qualification tolerances must be nonnegative")
 
@@ -254,9 +251,7 @@ def main() -> int:
     rows: list[dict[str, Any]] = []
     details: list[dict[str, Any]] = []
     for spin in profile.spin_layouts:
-        by_id = {
-            case.case_id: case for case in numerical_cases(profile, spin=spin)
-        }
+        by_id = {case.case_id: case for case in numerical_cases(profile, spin=spin)}
         controls = set(control_case_ids(profile, spin=spin))
         for case_id in profile.case_ids_for_spin(spin):
             if case_id in controls:

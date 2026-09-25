@@ -17,9 +17,7 @@ from vibeqc_compiler.xc.production_domain_cases import (
     ("LDA_C_VWN_4", "GGA_X_PBE_SOL", "MGGA_X_R2SCAN01"),
 )
 @pytest.mark.parametrize("spin", ("polarized", "unpolarized"))
-def test_numeric_and_control_cases_cover_exact_profile(
-    name: str, spin: str
-) -> None:
+def test_numeric_and_control_cases_cover_exact_profile(name: str, spin: str) -> None:
     profile = functional_capability(name).production_domain_profile
     numeric = numerical_cases(profile, spin=spin)
     controls = control_case_ids(profile, spin=spin)
