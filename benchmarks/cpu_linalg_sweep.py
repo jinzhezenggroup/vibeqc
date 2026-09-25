@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run a bounded small/medium/large sweep through cpu_linalg_probe."""
 
 from __future__ import annotations
@@ -9,6 +8,11 @@ import math
 import subprocess
 from pathlib import Path
 from typing import Any
+
+try:
+    from benchmarks._retention import raw_output_path
+except ModuleNotFoundError:
+    from _retention import raw_output_path
 
 SWEEP_SCHEMA = "vibeqc.cpu-linalg-sweep.v1"
 PROBE_SCHEMA = "vibeqc.cpu-linalg-probe.v1"
@@ -44,7 +48,7 @@ def _validated(
     record: dict[str, Any], *, size: int, provider: str, repeats: int, threads: int
 ) -> dict[str, Any]:
     if not isinstance(record, dict):
-        raise ValueError("probe record must be a JSON object")
+        raise TypeError("probe record must be a JSON object")
     expected_provider = "automatic" if provider == "auto" else provider
     expected = {
         "schema": PROBE_SCHEMA,
@@ -138,7 +142,7 @@ def main() -> int:
     parser.add_argument("--providers", type=parse_providers, default=DEFAULT_PROVIDERS)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--threads", type=int, default=1)
-    parser.add_argument("--output", type=Path)
+    parser.add_argument("--output", type=raw_output_path)
     args = parser.parse_args()
     payload = run_sweep(
         args.probe,
@@ -151,8 +155,9 @@ def main() -> int:
     if args.output is None:
         print(rendered, end="")
     else:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(rendered, encoding="utf-8")
+        destination = raw_output_path(args.output)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(rendered, encoding="utf-8")
     return 0
 
 
