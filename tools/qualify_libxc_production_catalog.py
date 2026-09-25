@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from vibeqc_compiler.common.provenance import atomic_json, canonical_hash
-from vibeqc_compiler.xc.bulk_runtime import PRODUCTION_CANDIDATE_DOMAIN
+from vibeqc_compiler.xc.bulk_runtime import PRODUCTION_DENSITY_CANDIDATE_DOMAIN
 from vibeqc_compiler.xc.libxc_bulk_capabilities import (
     BulkFunctionalCapability,
     available_capabilities,
@@ -86,7 +86,7 @@ def _catalog_identity(
     return canonical_hash(
         {
             "schema": CATALOG_CAMPAIGN_SCHEMA,
-            "candidate_domain": PRODUCTION_CANDIDATE_DOMAIN,
+            "candidate_domain": PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
             "shard_count": shard_count,
             "shard_index": shard_index,
             "rtol": rtol,
@@ -124,7 +124,7 @@ def summarize_rows(
     return {
         "schema": CATALOG_CAMPAIGN_SCHEMA,
         "identity": catalog_identity,
-        "candidate_domain": PRODUCTION_CANDIDATE_DOMAIN,
+        "candidate_domain": PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
         "shard": {"count": shard_count, "index": shard_index},
         "tolerance": {"rtol": rtol, "atol": atol},
         "selected_functionals": len(rows),
