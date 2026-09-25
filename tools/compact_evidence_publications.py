@@ -78,7 +78,9 @@ def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
                 raw = path.read_bytes()
                 json.loads(gzip.decompress(raw))
                 if len(raw) != entry["bytes"] or digest(raw) != entry["sha256"]:
-                    raise ValueError(f"compressed publication identity mismatch: {path}")
+                    raise ValueError(
+                        f"compressed publication identity mismatch: {path}"
+                    )
         return []
 
     candidates = {
@@ -116,7 +118,9 @@ def compact_publication(relative: str) -> list[tuple[str, str, bytes]]:
     evidence_path = directory / evidence_name
     evidence = json.loads(evidence_path.read_text())
     evidence_changed = _update_storage_references(evidence, replacements)
-    evidence_data = json_bytes(evidence) if evidence_changed else evidence_path.read_bytes()
+    evidence_data = (
+        json_bytes(evidence) if evidence_changed else evidence_path.read_bytes()
+    )
 
     if evidence_name in candidates:
         new = evidence_name + ".gz"
@@ -163,7 +167,9 @@ def update_legacy_review(changes: list[tuple[str, str, bytes]]) -> None:
         row = rows.pop(old, None)
         if len(data) >= review["threshold_bytes"]:
             if row is None:
-                raise ValueError(f"missing legacy review row for compressed evidence: {old}")
+                raise ValueError(
+                    f"missing legacy review row for compressed evidence: {old}"
+                )
             row.update(path=new, bytes=len(data), sha256=digest(data))
             rows[new] = row
     review["files"] = sorted(rows.values(), key=lambda row: row["path"])

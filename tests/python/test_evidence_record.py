@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.vibeqc_validation.record import decode_json, decode_record, load_json, load_record
+from tools.vibeqc_validation.record import (
+    decode_json,
+    decode_record,
+    load_json,
+    load_record,
+)
 from tools.vibeqc_validation.retention import digest
 
 

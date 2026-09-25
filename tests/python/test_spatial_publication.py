@@ -34,7 +34,9 @@ def test_published_inventory_resource_plans_and_summary(
     manifest = json.loads((root / "publication.json").read_text())
     files = {e["path"]: (root / e["path"]).read_bytes() for e in manifest["files"]}
     validate_publication(manifest, files)
-    evidence_path = next(e["path"] for e in manifest["files"] if e["role"] == "evidence")
+    evidence_path = next(
+        e["path"] for e in manifest["files"] if e["role"] == "evidence"
+    )
     evidence = decode_json(files[evidence_path], path=evidence_path)
     assert evidence["revision"] == run["revision"]
     assert evidence["hashes"]["source"] == run["source_identity"]

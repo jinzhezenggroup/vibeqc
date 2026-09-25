@@ -7,17 +7,17 @@
   },
   "files": [
     {
-      "bytes": 888930,
-      "path": "evidence.json",
+      "bytes": 28667,
+      "path": "evidence.json.gz",
       "reason": "Complete quantitative per-case gates and five raw timing samples retain independent numerical evidence.",
       "role": "evidence",
-      "sha256": "135f97ee7f879449980d1aa42354805087be727796c32ce4f90f6c697636f068"
+      "sha256": "98be9704eff9c72d81ba178582edcf5e9ac05ee1abbbddc4a01d54f10198d72f"
     },
     {
-      "bytes": 183204,
-      "path": "samples.json",
+      "bytes": 18425,
+      "path": "samples.json.gz",
       "role": "samples",
-      "sha256": "fcbd00dbd2680e566d4f7c7cbbe7c6c89b140712afeb3b3237d864d8e77c5b93"
+      "sha256": "c1fbcb1f8fa1611584d45bcdc1053d30bd2b2fdfe49454aca18fbf4450d13466"
     },
     {
       "bytes": 40900,
@@ -27,27 +27,27 @@
       "sha256": "d4c4791e52cabd72e78485faf5629c2d64c0f0abbcba2b752a9e1a74be0f1c1f"
     },
     {
-      "path": "samples-cases/h2.json",
-      "bytes": 495628,
-      "sha256": "469b9d50a932107811bee78bb6c7a97695fff0eac63e1a6c4fcdb388e95d6378",
+      "path": "samples-cases/h2.json.gz",
+      "bytes": 20853,
+      "sha256": "393c527a005cb843950bae188b8e8d07957ee7fdb3759c386e3eead643834605",
       "role": "samples"
     },
     {
-      "path": "samples-cases/f_cartesian.json",
-      "bytes": 496810,
-      "sha256": "e492b31d7580fc4f991d817164c4c3bac9561c3c0796dcc4dce986eec1bfafb4",
+      "path": "samples-cases/f_cartesian.json.gz",
+      "bytes": 20911,
+      "sha256": "e5930b0a5e85795c0ec5385f580a23d30a32ce41461d19e4e9a285b4adfb4d2b",
       "role": "samples"
     },
     {
-      "path": "samples-cases/f_spherical.json",
-      "bytes": 496794,
-      "sha256": "a8868daded9482c4ad312dcd651cb109766f4ed298be27218a4203b2216f2a07",
+      "path": "samples-cases/f_spherical.json.gz",
+      "bytes": 20762,
+      "sha256": "874e8da075d67bf2f624ccab90edbf58d627447380ce95755f17e044cd18022d",
       "role": "samples"
     },
     {
-      "path": "samples-cases/separated_f.json",
-      "bytes": 508607,
-      "sha256": "b8dc889d4bdf179c85f543160993c662776a29aa9e62f83ab0eef5c9b424610e",
+      "path": "samples-cases/separated_f.json.gz",
+      "bytes": 21742,
+      "sha256": "523bffb0d8997f326d9f32fde513493b664c1a8fd9fbdc8f5f182582f64445c6",
       "role": "samples"
     }
   ],

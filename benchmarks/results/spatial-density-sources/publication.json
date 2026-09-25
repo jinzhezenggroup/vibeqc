@@ -7,10 +7,10 @@
   },
   "files": [
     {
-      "bytes": 819312,
-      "path": "evidence.json",
+      "bytes": 107031,
+      "path": "evidence.json.gz",
       "role": "evidence",
-      "sha256": "fedb67edad733b727d150fde69df2a8087c074a25e77e96ef24a7a134909669f"
+      "sha256": "5ee9c5ca003f997b2565a5c6f4a52e450868aa27646e73885df6789f65bcc350"
     },
     {
       "bytes": 24421,
@@ -25,27 +25,27 @@
       "sha256": "a5b792b55a5f55c390450081faeff526c7c9fc5be2abe53e2bc09e9f3410a7e7"
     },
     {
-      "path": "evidence-endpoint_cases/h2.json",
-      "bytes": 273253,
-      "sha256": "837d47d9e51fd8feb845dce854d188ee31bb2b1e328a4e2d75126f0c4d9ce656",
+      "path": "evidence-endpoint_cases/h2.json.gz",
+      "bytes": 9724,
+      "sha256": "b9437f55fe8bba07a91a31483e91b8b3e79f9ed6572ca2cf7186d18fdcc291de",
       "role": "samples"
     },
     {
-      "path": "evidence-endpoint_cases/water.json",
-      "bytes": 275395,
-      "sha256": "710069221adbac5f55d151548f0e6ebf102816d1d89e971c5a0c98ad6ebcdf6d",
+      "path": "evidence-endpoint_cases/water.json.gz",
+      "bytes": 10133,
+      "sha256": "bc78bba79e44788e42adf6089288aa99731160fce69a5eb7bb1a870166f82fc9",
       "role": "samples"
     },
     {
-      "path": "evidence-endpoint_cases/f_cartesian.json",
-      "bytes": 274013,
-      "sha256": "a7944b53500dfa7582bbd774b67c915430ea585a835b6d29922b5372a42bf148",
+      "path": "evidence-endpoint_cases/f_cartesian.json.gz",
+      "bytes": 9822,
+      "sha256": "94c467d78b7cefa525e9445e90e727fff9c1606e9cc8f3c73ee13a621edc9f16",
       "role": "samples"
     },
     {
-      "path": "evidence-endpoint_cases/f_spherical.json",
-      "bytes": 273999,
-      "sha256": "843b9615ebbb26f38c3ca0a707bbc14b88e1e7b90df1692a1309717b5384307a",
+      "path": "evidence-endpoint_cases/f_spherical.json.gz",
+      "bytes": 9851,
+      "sha256": "1e0f7fbfe72df2fe2a71e667b30d5e868a0bdbd6e28d58787e23d4206281dac2",
       "role": "samples"
     }
   ],
