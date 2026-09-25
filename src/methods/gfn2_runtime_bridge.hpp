@@ -29,6 +29,7 @@ struct Gfn2RuntimeRequest {
   int charge = 0;
   unsigned multiplicity = 1u;
   bool compute_forces = false;
+  bool compute_atomic_charges = false;
   std::int32_t maximum_iterations = 0;
   std::int32_t mixer_history = 0;
   double energy_tolerance = 0.0;
@@ -40,6 +41,7 @@ struct Gfn2RuntimeResult {
   std::string detail;
   double energy = 0.0;
   std::vector<double> forces;
+  std::vector<double> atomic_charges;
   unsigned iterations = 0u;
   bool converged = false;
 };

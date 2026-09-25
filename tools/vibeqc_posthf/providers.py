@@ -207,6 +207,10 @@ class ConventionalProvider:
                         tiles += 1
                     if engine is None:
                         values = immutable(values)
+                    else:
+                        validation_begin = time.perf_counter()
+                        engine.validate()
+                        transform_seconds += time.perf_counter() - validation_begin
             except BaseException:
                 if engine is not None:
                     engine.close()

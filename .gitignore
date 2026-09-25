@@ -31,3 +31,4 @@ __pycache__/
 /benchmarks/results/**/*.tar.xz
 /benchmarks/results/**/*.tar.zst
 /benchmarks/results/**/*.7z
+/docs/_build/

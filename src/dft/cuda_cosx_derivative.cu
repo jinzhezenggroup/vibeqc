@@ -13,6 +13,7 @@
 #include "dft/ao_grid.hpp"
 #include "dft/cuda_cosx.hpp"
 #include "dft/grid_task_view.cuh"
+#include "generated_cosx_derivative_contractions.cuh"
 #include "generated_one_electron_derivatives.cuh"
 #include "generated_one_electron_values.cuh"
 #include "molecule/basis.hpp"
@@ -269,8 +270,14 @@ __global__ void project_density_kernel(const double* ao, const double* density, 
     const std::size_t point = index / nbf;
     const std::size_t column = index % nbf;
     double value = 0.0;
-    for (std::size_t row = 0; row < nbf; ++row)
-      value += ao[point * nbf + row] * density[row * nbf + column];
+    for (std::size_t row = 0; row < nbf; ++row) {
+      if (!generated_cosx_derivative::accumulate_projection(ao[point * nbf + row],
+                                                            density[row * nbf + column], value)) {
+        atomicCAS(error, 0, 1);
+        value = 0.0;
+        break;
+      }
+    }
     projected[index] = finite_or_flag(value, error);
   }
 }
@@ -287,8 +294,14 @@ __global__ void project_density_derivative_kernel(const double* ao, const double
     const std::size_t column = index % nbf;
     const double* derivative = ao + (axis + 1) * jet_stride + point * nbf;
     double value = 0.0;
-    for (std::size_t row = 0; row < nbf; ++row)
-      value += derivative[row] * density[row * nbf + column];
+    for (std::size_t row = 0; row < nbf; ++row) {
+      if (!generated_cosx_derivative::accumulate_projection(derivative[row],
+                                                            density[row * nbf + column], value)) {
+        atomicCAS(error, 0, 1);
+        value = 0.0;
+        break;
+      }
+    }
     projected_derivative[index] = finite_or_flag(value, error);
   }
 }
@@ -303,9 +316,21 @@ __global__ void apply_esp_kernel(const double* esp, const double* projected, con
     const std::size_t row = index % nbf;
     const double* matrix = esp + point * nbf * nbf;
     double value = 0.0;
-    for (std::size_t column = 0; column < nbf; ++column)
-      value += matrix[row * nbf + column] * projected[point * nbf + column];
-    potential[index] = finite_or_flag(weights[point] * value, error);
+    bool valid = true;
+    for (std::size_t column = 0; column < nbf; ++column) {
+      if (!generated_cosx_derivative::accumulate_projection(
+              matrix[row * nbf + column], projected[point * nbf + column], value)) {
+        atomicCAS(error, 0, 1);
+        valid = false;
+        break;
+      }
+    }
+    double weighted = 0.0;
+    if (valid && !generated_cosx_derivative::scale(weights[point], value, weighted)) {
+      atomicCAS(error, 0, 1);
+      valid = false;
+    }
+    potential[index] = valid ? finite_or_flag(weighted, error) : 0.0;
   }
 }
 
@@ -327,11 +352,22 @@ __global__ void apply_esp_derivative_kernel(const double* esp, const double* esp
     const double* projected_value = projected + point * nbf;
     const double* projected_axis = projected_derivative + (axis * npoint + point) * nbf;
     double value = 0.0;
+    bool valid = true;
     for (std::size_t column = 0; column < nbf; ++column) {
-      value += matrix_derivative[row * nbf + column] * projected_value[column] +
-               matrix_value[row * nbf + column] * projected_axis[column];
+      if (!generated_cosx_derivative::accumulate_esp_derivative(
+              matrix_derivative[row * nbf + column], projected_value[column],
+              matrix_value[row * nbf + column], projected_axis[column], value)) {
+        atomicCAS(error, 0, 1);
+        valid = false;
+        break;
+      }
     }
-    potential_derivative[index] = finite_or_flag(weights[point] * value, error);
+    double weighted = 0.0;
+    if (valid && !generated_cosx_derivative::scale(weights[point], value, weighted)) {
+      atomicCAS(error, 0, 1);
+      valid = false;
+    }
+    potential_derivative[index] = valid ? finite_or_flag(weighted, error) : 0.0;
   }
 }
 
@@ -352,16 +388,25 @@ __global__ void contract_point_derivative_kernel(const double* ao, const double*
     const double* potential_value = potential + point * nbf;
     const double* potential_axis = potential_derivative + (axis * npoint + point) * nbf;
     double contraction = 0.0;
-    for (std::size_t row = 0; row < nbf; ++row) {
+    bool valid = true;
+    for (std::size_t row = 0; row < nbf && valid; ++row) {
       for (std::size_t column = 0; column < nbf; ++column) {
-        const double raw_rc =
-            phi_derivative[row] * potential_value[column] + phi[row] * potential_axis[column];
-        const double raw_cr =
-            phi_derivative[column] * potential_value[row] + phi[column] * potential_axis[row];
-        contraction += density[row * nbf + column] * 0.5 * (raw_rc + raw_cr);
+        if (!generated_cosx_derivative::accumulate_point_gradient(
+                density[row * nbf + column], phi_derivative[row], potential_value[column], phi[row],
+                potential_axis[column], phi_derivative[column], potential_value[row], phi[column],
+                potential_axis[row], contraction)) {
+          atomicCAS(error, 0, 1);
+          valid = false;
+          break;
+        }
       }
     }
-    point_gradient[index] = finite_or_flag(energy_factor * contraction, error);
+    double scaled = 0.0;
+    if (valid && !generated_cosx_derivative::scale(energy_factor, contraction, scaled)) {
+      atomicCAS(error, 0, 1);
+      valid = false;
+    }
+    point_gradient[index] = valid ? finite_or_flag(scaled, error) : 0.0;
   }
 }
 
@@ -374,9 +419,15 @@ __global__ void project_symmetric_density_kernel(const double* ao, const double*
     const std::size_t point = index / nbf;
     const std::size_t column = index % nbf;
     double value = 0.0;
-    for (std::size_t row = 0; row < nbf; ++row)
-      value +=
-          ao[point * nbf + row] * 0.5 * (density[row * nbf + column] + density[column * nbf + row]);
+    for (std::size_t row = 0; row < nbf; ++row) {
+      if (!generated_cosx_derivative::accumulate_symmetric_projection(
+              ao[point * nbf + row], density[row * nbf + column], density[column * nbf + row],
+              value)) {
+        atomicCAS(error, 0, 1);
+        value = 0.0;
+        break;
+      }
+    }
     projected[index] = finite_or_flag(value, error);
   }
 }
@@ -394,12 +445,18 @@ __global__ void apply_esp_bidirectional_kernel(const double* esp, const double* 
     const std::size_t row = index % nbf;
     const double* value = esp + point * matrix;
     double right = 0.0, left = 0.0;
+    bool valid = true;
     for (std::size_t column = 0; column < nbf; ++column) {
-      right += value[row * nbf + column] * projected[point * nbf + column];
-      left += value[column * nbf + row] * symmetric_projection[point * nbf + column];
+      if (!generated_cosx_derivative::accumulate_bidirectional(
+              value[row * nbf + column], value[column * nbf + row], projected[point * nbf + column],
+              symmetric_projection[point * nbf + column], right, left)) {
+        atomicCAS(error, 0, 1);
+        valid = false;
+        break;
+      }
     }
-    potential[index] = finite_or_flag(right, error);
-    left_potential[index] = finite_or_flag(left, error);
+    potential[index] = valid ? finite_or_flag(right, error) : 0.0;
+    left_potential[index] = valid ? finite_or_flag(left, error) : 0.0;
   }
 }
 
@@ -424,16 +481,31 @@ __global__ void contract_molecular_ao_kernel(const double* basis, std::size_t na
       continue;
     }
     double from_left = 0.0, from_right = 0.0;
+    bool valid = true;
     for (std::size_t column = 0; column < nbf; ++column) {
-      from_left += 0.5 * (density[orbital * nbf + column] + density[column * nbf + orbital]) *
-                   potential[point * nbf + column];
-      from_right += density[orbital * nbf + column] * left_potential[point * nbf + column];
+      if (!generated_cosx_derivative::accumulate_molecular_ao(
+              density[orbital * nbf + column], density[column * nbf + orbital],
+              potential[point * nbf + column], left_potential[point * nbf + column], from_left,
+              from_right)) {
+        atomicCAS(error, 0, 1);
+        valid = false;
+        break;
+      }
     }
-    const double cotangent =
-        finite_or_flag(energy_factor * weights[point] * (from_left + from_right), error);
+    double cotangent = 0.0;
+    if (valid && !generated_cosx_derivative::molecular_cotangent(
+                     energy_factor, weights[point], from_left, from_right, cotangent)) {
+      atomicCAS(error, 0, 1);
+      valid = false;
+    }
+    if (!valid) continue;
     for (unsigned axis = 0; axis < 3; ++axis) {
       const double spatial = ao[(axis + 1) * jet_stride + point * nbf + orbital];
-      const double response = finite_or_flag(cotangent * spatial, error);
+      double response = 0.0;
+      if (!generated_cosx_derivative::scale(cotangent, spatial, response)) {
+        atomicCAS(error, 0, 1);
+        break;
+      }
       atomicAdd(nuclear_gradient + 3 * owner + axis, response);
       atomicAdd(nuclear_gradient + 3 * atom + axis, -response);
     }
@@ -467,10 +539,21 @@ __global__ void contract_molecular_esp_kernel(const double* basis, std::size_t n
       atomicCAS(error, 0, 2);
       continue;
     }
-    double cotangent = symmetric_projection[point * nao + row] * projected[point * nao + column];
-    if (row != column)
-      cotangent += symmetric_projection[point * nao + column] * projected[point * nao + row];
-    cotangent = finite_or_flag(energy_factor * weights[point] * cotangent, error);
+    double cotangent = 0.0;
+    bool valid = generated_cosx_derivative::accumulate_projection(
+        symmetric_projection[point * nao + row], projected[point * nao + column], cotangent);
+    if (valid && row != column)
+      valid = generated_cosx_derivative::accumulate_projection(
+          symmetric_projection[point * nao + column], projected[point * nao + row], cotangent);
+    double scaled_cotangent = 0.0;
+    if (valid)
+      valid = generated_cosx_derivative::scale_pair(energy_factor, weights[point], cotangent,
+                                                    scaled_cotangent);
+    if (!valid) {
+      atomicCAS(error, 0, 1);
+      continue;
+    }
+    cotangent = scaled_cotangent;
     if (cotangent == 0.0) continue;
 
     const double* a = basis + 3 * atom_first;
@@ -498,11 +581,20 @@ __global__ void contract_molecular_esp_kernel(const double* basis, std::size_t n
                 static_cast<unsigned>(second[4 + 4 * tj]),
                 static_cast<unsigned>(second[5 + 4 * tj]),
                 static_cast<unsigned>(second[6 + 4 * tj]));
-            const double factor = primitive_weight * first[7 + 4 * ti] * second[7 + 4 * tj];
+            double factor = 0.0;
+            if (!generated_cosx_derivative::scale_pair(primitive_weight, first[7 + 4 * ti],
+                                                       second[7 + 4 * tj], factor)) {
+              atomicCAS(error, 0, 1);
+              continue;
+            }
             const auto value = derivative::attraction_gradient(pair, first_component,
                                                                second_component, c[0], c[1], c[2]);
             for (unsigned axis = 0; axis < 3; ++axis) {
-              const double scale = finite_or_flag(cotangent * factor, error);
+              double scale = 0.0;
+              if (!generated_cosx_derivative::scale(cotangent, factor, scale)) {
+                atomicCAS(error, 0, 1);
+                break;
+              }
               atomicAdd(nuclear_gradient + 3 * atom_first + axis, -scale * value.first[axis]);
               atomicAdd(nuclear_gradient + 3 * atom_second + axis, -scale * value.second[axis]);
               atomicAdd(nuclear_gradient + 3 * owner + axis,
@@ -522,9 +614,21 @@ __global__ void contract_weight_sensitivity_kernel(const double* symmetric_proje
   for (std::size_t point = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; point < npoint;
        point += std::size_t(blockDim.x) * gridDim.x) {
     double scalar = 0.0;
-    for (std::size_t row = 0; row < nbf; ++row)
-      scalar += symmetric_projection[point * nbf + row] * potential[point * nbf + row];
-    sensitivity[point] = finite_or_flag(energy_factor * scalar, error);
+    bool valid = true;
+    for (std::size_t row = 0; row < nbf; ++row) {
+      if (!generated_cosx_derivative::accumulate_projection(symmetric_projection[point * nbf + row],
+                                                            potential[point * nbf + row], scalar)) {
+        atomicCAS(error, 0, 1);
+        valid = false;
+        break;
+      }
+    }
+    double scaled = 0.0;
+    if (valid && !generated_cosx_derivative::scale(energy_factor, scalar, scaled)) {
+      atomicCAS(error, 0, 1);
+      valid = false;
+    }
+    sensitivity[point] = valid ? finite_or_flag(scaled, error) : 0.0;
   }
 }
 

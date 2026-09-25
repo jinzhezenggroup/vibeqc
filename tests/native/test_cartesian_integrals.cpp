@@ -13,7 +13,7 @@
 #include "molecule/basis.hpp"
 #include "posthf/raw_source.hpp"
 #include "scf/direct_task_layout.hpp"
-#include "scf/rhf.hpp"
+#include "scf/mean_field.hpp"
 
 namespace {
 

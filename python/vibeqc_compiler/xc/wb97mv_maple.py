@@ -7,12 +7,13 @@ from __future__ import annotations
 
 import math
 import typing
+from fractions import Fraction
 from functools import cache
 from pathlib import Path
 
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import file_hash
-from vibeqc_compiler.integral.expr import Graph
+from vibeqc_compiler.integral.expr import Expr, Graph
 
 from . import libxc_maple
 from .libxc_maple import IMPORTER_SEMANTICS, MapleModule, import_maple_file
@@ -106,6 +107,147 @@ def _coordinates(
     return density, zeta, rs, xs_a, xs_b, ts_a, ts_b
 
 
+def _restore_work_spin_density(
+    graph: Graph, energy: Expr, variables: tuple[Expr, ...], zeta: Expr
+) -> Expr:
+    """Screen on the work spin density, not a rounded reconstruction from rs/zeta.
+
+    At the pinned Libxc density floor the Maple n_spin(rs,zeta) expansion may
+    round to either side of the screen. The work driver compares rho directly.
+    Identify the two polarized screens structurally and fail closed if the
+    pinned Maple import changes rather than rewriting an unrelated predicate.
+    """
+    rho_a, rho_b = variables[:2]
+    plus, minus = 1 + zeta, 1 - zeta
+    threshold = graph.constant(Fraction(str(DENSITY_THRESHOLD)))
+    substitutions: dict[int, tuple[Expr, Expr]] = {}
+    for identifier in graph.topological_order((energy,)):
+        node = graph.nodes[identifier]
+        if node.operation != "select_le" or node.arguments[1] != threshold.identifier:
+            continue
+        if node.arguments[0] in (rho_a.identifier, rho_b.identifier):
+            continue
+        reconstructed = Expr(graph, node.arguments[0])
+        dependencies = set(graph.topological_order((reconstructed,)))
+        alpha, beta = plus.identifier in dependencies, minus.identifier in dependencies
+        if alpha == beta:
+            raise ValueError("omegaB97M-V work spin screen changed")
+        substitutions[reconstructed.identifier] = (
+            reconstructed,
+            rho_a if alpha else rho_b,
+        )
+    if len(substitutions) != 2:
+        raise ValueError("omegaB97M-V work spin screens changed")
+    return graph.replace_subexpressions((energy,), dict(substitutions.values()))[0]
+
+
+def _stable_pw_parallel_difference(graph: Graph, rs: Expr, fraction: Expr) -> Expr:
+    """Evaluate PW g(2,rs)-g(2,rs*(1-fraction)^(-1/3)) without subtraction.
+
+    The pinned modified PW parameters below come from lda_c_pw.mpl. The
+    logarithmic and radial increments are O(fraction), even at full spin
+    polarization where both individual PW energies remain O(1).
+    """
+    amplitude = Fraction("0.01554535")
+    alpha = Fraction("0.20548")
+    beta = tuple(map(Fraction, ("14.1189", "6.1977", "3.3662", "0.62517")))
+    log_radius = -graph.stable_unary("log1p", -fraction) / 3
+    radial_increment = rs * graph.stable_unary("expm1", log_radius)
+    sqrt_rs = rs.pow(0.5)
+    power_three_halves = rs.pow(1.5)
+    square_rs = rs.pow(2)
+    auxiliary = (
+        beta[0] * sqrt_rs
+        + beta[1] * rs
+        + beta[2] * power_three_halves
+        + beta[3] * square_rs
+    )
+    auxiliary_increment = (
+        beta[0] * sqrt_rs * graph.stable_unary("expm1", log_radius / 2)
+        + beta[1] * radial_increment
+        + beta[2] * power_three_halves * graph.stable_unary("expm1", 3 * log_radius / 2)
+        + beta[3] * square_rs * graph.stable_unary("expm1", 2 * log_radius)
+    )
+    denominator = 2 * amplitude * auxiliary
+    increment = 2 * amplitude * auxiliary_increment
+    new_log = graph.stable_unary("log1p", 1 / (denominator + increment))
+    log_difference = graph.stable_unary(
+        "log1p", increment / (denominator + 1)
+    ) - graph.stable_unary("log1p", increment / denominator)
+    return (
+        2
+        * amplitude
+        * (alpha * radial_increment * new_log + (1 + alpha * rs) * log_difference)
+    )
+
+
+def _stable_pw_stoll_perp(
+    graph: Graph, module: MapleModule, rs: Expr, major: Expr, minor: Expr
+) -> Expr:
+    """Evaluate the pinned Stoll antiparallel term near full polarization.
+
+    Analytically separate terms that vanish at the pure-spin limit before
+    evaluating them, rather than subtracting three O(1) PW correlation terms.
+    """
+    fraction = minor / (major + minor)
+    eta = 2 * fraction
+    two_power = graph.approximate_constant(2.0 ** (4.0 / 3.0))
+    one_minus_f = (
+        -two_power
+        * graph.stable_unary(
+            "expm1", Fraction(4, 3) * graph.stable_unary("log1p", -fraction)
+        )
+        - eta.pow(4.0 / 3.0)
+    ) / (two_power - 2)
+    spin_factor = 1 - one_minus_f
+    one_minus_zeta_fourth = eta * (4 - eta * (6 - eta * (4 - eta)))
+    correlation_zero = module.call(graph, "g", Fraction(1), rs)
+    correlation_one = module.call(graph, "g", Fraction(2), rs)
+    correlation_spin = module.call(graph, "g", Fraction(3), rs)
+    major_rs = rs * (1 - fraction).pow(-1.0 / 3.0)
+    minor_rs = rs * fraction.pow(-1.0 / 3.0)
+    # opz_pow_n(-1, 4/3) uses the zeta floor even for the nominally pure-spin
+    # PW parallel terms. Keep its small contribution separate: adding it to
+    # g(2) first would round it away before the antiparallel subtraction.
+    pure_spin_offset = graph.constant(Fraction(_ZETA_THRESHOLD)).pow(4.0 / 3.0) / (
+        two_power - 2
+    )
+    major_parallel_correction = (
+        (1 - fraction)
+        * pure_spin_offset
+        * (
+            module.call(graph, "g", Fraction(2), major_rs)
+            - module.call(graph, "g", Fraction(1), major_rs)
+        )
+    )
+    parallel_minor = graph.select_le(
+        minor,
+        graph.constant(Fraction(str(DENSITY_THRESHOLD))),
+        0,
+        fraction
+        * (
+            module.call(graph, "g", Fraction(2), minor_rs)
+            + pure_spin_offset
+            * (
+                module.call(graph, "g", Fraction(2), minor_rs)
+                - module.call(graph, "g", Fraction(1), minor_rs)
+            )
+        ),
+    )
+    return (
+        (one_minus_f + spin_factor * one_minus_zeta_fourth)
+        * (correlation_zero - correlation_one)
+        + _stable_pw_parallel_difference(graph, rs, fraction)
+        + fraction * module.call(graph, "g", Fraction(2), major_rs)
+        - major_parallel_correction
+        - parallel_minor
+        - spin_factor
+        * one_minus_zeta_fourth
+        * correlation_spin
+        / Fraction("1.709920934161365617563962776245")
+    )
+
+
 def energy_expression(spec: typing.Any) -> typing.Any:
     """Return the semilocal omegaB97M-V DAG from pinned Libxc Maple."""
     active = {name for name, coefficient in spec.components if coefficient}
@@ -131,6 +273,29 @@ def energy_expression(spec: typing.Any) -> typing.Any:
         for name, coefficient in spec.components
         if coefficient
     )
+    if spec.spin == "polarized":
+        if "MGGA_C_WB97M_V" in active:
+            os_term = module.call(graph, "b97mv_fos", rs, zeta, xs_a, xs_b, ts_a, ts_b)
+            os_node = graph.node(os_term)
+            if os_node.operation != "multiply" or len(os_node.arguments) != 2:
+                raise ValueError("omegaB97M-V Stoll decomposition changed")
+            original = Expr(graph, os_node.arguments[0])
+            if original.identifier not in graph.topological_order((total,)):
+                raise ValueError("omegaB97M-V Stoll decomposition is not shared")
+            rho_a, rho_b = variables[:2]
+            alpha_major = _stable_pw_stoll_perp(graph, module, rs, rho_a, rho_b)
+            beta_major = _stable_pw_stoll_perp(graph, module, rs, rho_b, rho_a)
+            zeta_floor = graph.constant(Fraction(_ZETA_THRESHOLD))
+            alpha_major = graph.select_le(1 - zeta, zeta_floor, original, alpha_major)
+            beta_major = graph.select_le(1 + zeta, zeta_floor, original, beta_major)
+            stabilized = graph.select_le(
+                1000 * rho_b,
+                rho_a,
+                alpha_major,
+                graph.select_le(1000 * rho_a, rho_b, beta_major, original),
+            )
+            total = graph.replace_subexpressions((total,), {original: stabilized})[0]
+        total = _restore_work_spin_density(graph, total, variables, zeta)
     return graph, total, variables
 
 

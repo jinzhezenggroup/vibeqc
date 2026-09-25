@@ -415,6 +415,77 @@ class ContractionProgram:
             result[index] = rows[(index,)]
         return result
 
+    def geometry_feature_direction(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        center_motion: typing.Any,
+        point_motion: typing.Any,
+        delta_density: typing.Any = None,
+    ) -> typing.Any:
+        """Prepare the common LDA/GGA AO-feature geometry direction.
+
+        This keeps AO motion and feature-chain-rule algebra under one compiler
+        owner while allowing either the generated scalar Graph or an external
+        SCF-domain point provider to supply the actual XC potential derivatives.
+        """
+        if self.contract.request.observable != "geometry":
+            raise ValueError(
+                "geometry feature direction requires a geometry contraction"
+            )
+        family = self.contract.ingredients.family
+        if family not in ("lda", "gga"):
+            raise UnsupportedXC("XC geometry JVP supports LDA/GGA only")
+        raw_jets = immutable(jets)
+        ingredient_order = self.contract.ingredients.ao_order
+        required = len(jet_indices(ingredient_order + 1))
+        if (
+            raw_jets.ndim != 3
+            or raw_jets.shape[0] not in (4, 10, 20)
+            or raw_jets.shape[0] < required
+        ):
+            raise ValueError("XC geometry JVP requires AO jets through order+1")
+        npoint, nao = raw_jets.shape[1:]
+        points = immutable(point_motion, shape=(npoint, 3))
+        centers = immutable(center_motion)
+        if centers.ndim != 2 or centers.shape[1:] != (3,):
+            raise ValueError("XC geometry JVP requires [atom,3] center motion")
+        atoms = np.asarray(ao_atoms)
+        if (
+            atoms.shape != (nao,)
+            or atoms.dtype.kind not in "iu"
+            or np.any(atoms < 0)
+            or (atoms.size and np.max(atoms) >= len(centers))
+        ):
+            raise ValueError("XC geometry JVP requires one valid atom per AO")
+        d = spin_densities(density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
+            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
+        if delta_density is None:
+            delta_density = np.zeros_like(np.asarray(density, dtype=float))
+        dd = spin_densities(delta_density, nao)
+        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
+            raise UnsupportedXC(
+                "unpolarized geometry JVP requires equal spin directions"
+            )
+
+        base_count = len(jet_indices(ingredient_order))
+        base_jets = raw_jets[:base_count]
+        directional_jets = directional_ao_jets(
+            raw_jets,
+            ingredient_order,
+            ao_atoms=atoms,
+            point_motion=points,
+            center_motion=centers,
+        )
+        features = self.features(base_jets, d)
+        direction = _geometry_feature_direction(
+            features, base_jets, directional_jets, d, dd, family
+        )
+        return base_jets, directional_jets, features, direction
+
     def potential_geometry_directional(
         self,
         jets: typing.Any,
@@ -434,64 +505,20 @@ class ContractionProgram:
         nuclear RHS normally passes zero and lets the shared CPKS operator own
         induced density-to-Fock physics.
         """
-        if self.contract.request.observable != "geometry":
-            raise ValueError("potential geometry JVP requires a geometry contraction")
-        family = self.contract.ingredients.family
-        if family not in ("lda", "gga"):
-            raise UnsupportedXC("XC potential geometry JVP supports LDA/GGA only")
         raw_jets = immutable(jets)
-        ingredient_order = self.contract.ingredients.ao_order
-        required = len(jet_indices(ingredient_order + 1))
-        if (
-            raw_jets.ndim != 3
-            or raw_jets.shape[0] not in (4, 10, 20)
-            or raw_jets.shape[0] < required
-        ):
-            raise ValueError(
-                "XC potential geometry JVP requires AO jets through order+1"
-            )
-        npoint, nao = raw_jets.shape[1:]
+        npoint = raw_jets.shape[1] if raw_jets.ndim == 3 else -1
         weights = immutable(weights, shape=(npoint,))
-        points = immutable(point_motion, shape=(npoint, 3))
         dweights = immutable(weight_motion, shape=(npoint,))
-        centers = immutable(center_motion)
-        if centers.ndim != 2 or centers.shape[1:] != (3,):
-            raise ValueError(
-                "XC potential geometry JVP requires [atom,3] center motion"
+        base_jets, directional_jets, features, direction = (
+            self.geometry_feature_direction(
+                raw_jets,
+                density,
+                ao_atoms=ao_atoms,
+                center_motion=center_motion,
+                point_motion=point_motion,
+                delta_density=delta_density,
             )
-        atoms = np.asarray(ao_atoms)
-        if (
-            atoms.shape != (nao,)
-            or atoms.dtype.kind not in "iu"
-            or np.any(atoms < 0)
-            or (atoms.size and np.max(atoms) >= len(centers))
-        ):
-            raise ValueError("XC potential geometry JVP requires one valid atom per AO")
-        d = spin_densities(density, nao)
-        if self.spec.spin == "unpolarized" and not np.array_equal(d[0], d[1]):
-            raise UnsupportedXC("unpolarized contractions require equal spin matrices")
-        if delta_density is None:
-            delta_density = np.zeros_like(np.asarray(density, dtype=float))
-        dd = spin_densities(delta_density, nao)
-        if self.spec.spin == "unpolarized" and not np.array_equal(dd[0], dd[1]):
-            raise UnsupportedXC(
-                "unpolarized potential geometry JVP requires equal spin directions"
-            )
-
-        base_count = len(jet_indices(ingredient_order))
-        base_jets = raw_jets[:base_count]
-        directional_jets = directional_ao_jets(
-            raw_jets,
-            ingredient_order,
-            ao_atoms=atoms,
-            point_motion=points,
-            center_motion=centers,
         )
-        features = self.features(base_jets, d)
-        direction = _geometry_feature_direction(
-            features, base_jets, directional_jets, d, dd, family
-        )
-
         second = ContractionProgram(self.spec, "response")
         rows = second.scalar_values(features)
         v = second._gradient(rows, npoint)
@@ -902,4 +929,82 @@ class ContractionProgram:
             np.add.at(centers[:, k], atoms, -panel.sum(axis=0))
         return GeometryPartials(
             immutable(centers), immutable(points), immutable(energy)
+        )
+
+
+class ExternalPointContraction(ContractionProgram):
+    """Reuse semilocal AO contractions with externally owned point derivatives.
+
+    The external provider owns the scalar XC energy and feature derivatives.
+    This adapter owns only the existing ingredient reductions, Cartesian
+    coefficient contraction, and AO/grid geometry pullback.  It therefore does
+    not build or authorize a scalar functional Graph on its own.
+    """
+
+    def __init__(self, spec: typing.Any, observable: typing.Any = "geometry") -> None:
+        if observable not in ("energy", "potential", "geometry"):
+            raise UnsupportedXC(
+                "external point contractions support energy, potential, or geometry"
+            )
+        self.contract = DiscreteEnergyContract(spec, DerivativeRequest(observable))
+        ingredients = self.contract.ingredients
+        self.coefficients = coefficient_program(
+            spec.spin,
+            ingredients.family,
+            kinetic=ingredients.family == "mgga",
+        )
+        self.response_coefficients = None
+        self.jet_pullback = (
+            jet_pullback_program(ingredients.family)
+            if observable == "geometry"
+            else None
+        )
+
+    def scalar_values(self, features: typing.Any) -> typing.Any:
+        raise RuntimeError(
+            "external point contraction requires provider-owned scalar derivatives"
+        )
+
+    def pack_features(self, features: typing.Any) -> typing.Any:
+        """Return the canonical feature-major scalar ABI for an external provider."""
+        return _pack(self.spec, features)
+
+    def geometry_from_feature_rows(
+        self,
+        jets: typing.Any,
+        density: typing.Any,
+        weights: typing.Any,
+        features: typing.Any,
+        rows: typing.Any,
+        *,
+        ao_atoms: typing.Any,
+        natom: typing.Any,
+    ) -> typing.Any:
+        """Convert provider-owned feature derivatives through the common pullback."""
+        if self.contract.request.observable != "geometry":
+            raise ValueError("feature-row geometry requires a geometry request")
+        npoint = np.asarray(jets).shape[1]
+        v = self._gradient(rows, npoint)
+        compact = self.coefficients.evaluate(
+            _functional_gradient(self.spec, features), v
+        )
+        rho = compact["rho"]
+        gradient = compact.get("gradient")
+        tau = compact.get("tau")
+        if self.spec.spin == "unpolarized":
+            rho = np.repeat(rho, 2, axis=0)
+            if gradient is not None:
+                gradient = np.repeat(gradient, 2, axis=0)
+            if tau is not None:
+                tau = np.repeat(tau, 2, axis=0)
+        return self.geometry_from_cartesian_coefficients(
+            jets,
+            density,
+            weights,
+            rows[()],
+            rho,
+            gradient,
+            tau,
+            ao_atoms=ao_atoms,
+            natom=natom,
         )

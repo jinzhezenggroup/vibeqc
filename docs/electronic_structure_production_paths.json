@@ -216,6 +216,222 @@
       "selector": "src/methods/registry.cpp",
       "state_owner": "src/cc/solver.hpp",
       "status": "production"
+    },
+    {
+      "artifact": "generated canonical MP2 CPU TensorIR tile evaluator consumed by the native method path",
+      "backend": "cpu",
+      "blocker": null,
+      "domain": "canonical-conventional-mp2",
+      "evidence": [
+        "tests/native/test_mp2_contract.cpp",
+        "tests/python/test_mp2_public.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/native/test_mp2_contract.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU conventional MP2 production path; CUDA conventional MP2 is tracked separately.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This row inventories the conventional MP2 energy path only; force production requires a separate product row.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/python/test_mp2_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/python/test_mp2_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_mp2_public.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "tools/vibeqc_mp2/equations.py"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/methods/mp2_method.cpp",
+      "id": "mp2-energy-cpu-conventional",
+      "method_family": "mp2",
+      "product": "energy",
+      "provider_owner": "src/posthf/native_provider.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/posthf/mp2_energy.cpp",
+      "scientific_owner": "tools/vibeqc_mp2/equations.py",
+      "selector": "src/methods/registry.cpp",
+      "state_owner": "src/core/electronic_reference.hpp",
+      "status": "production"
+    },
+    {
+      "artifact": "native CPU GFN2-xTB SCC energy executable",
+      "backend": "cpu",
+      "blocker": null,
+      "domain": "gfn2-xtb-restricted-scc",
+      "evidence": [
+        "tests/python/test_gfn2_runtime_bridge_boundary.py",
+        "tests/python/test_gfn2_xtb.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "compiled-cuda": {
+          "evidence": [],
+          "reason": "This ledger row describes the CPU GFN2-xTB production path; CUDA GFN2 is tracked separately.",
+          "state": "not-applicable"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This row inventories the GFN2-xTB energy product only; analytic forces require a separate product row.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "Real-device execution evidence applies to CUDA production rows.",
+          "state": "not-applicable"
+        },
+        "domain-qualified": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "molecular": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "src/xtb/native/src/model/gfn2/scc_driver.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp",
+      "id": "gfn2-energy-cpu-scc",
+      "method_family": "gfn",
+      "product": "energy",
+      "provider_owner": "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp",
+      "scientific_owner": "src/xtb/native/src/model/gfn2/scc_driver.cpp",
+      "selector": "src/methods/xtb_method.cpp",
+      "state_owner": "src/xtb/native/src/model/gfn2/scc_driver.hpp",
+      "status": "production"
+    },
+    {
+      "artifact": "native CUDA GFN2-xTB SCC energy executable",
+      "backend": "cuda",
+      "blocker": null,
+      "domain": "gfn2-xtb-restricted-scc",
+      "evidence": [
+        "cmake/VibeQCGfn2Runtime.cmake",
+        "src/methods/gfn2_runtime_bridge.cpp",
+        "tests/python/test_gfn2_xtb.py"
+      ],
+      "evidence_levels": {
+        "compiled-cpu": {
+          "evidence": [],
+          "reason": "This ledger row describes the CUDA GFN2-xTB production path.",
+          "state": "not-applicable"
+        },
+        "compiled-cuda": {
+          "evidence": [
+            "cmake/VibeQCGfn2Runtime.cmake"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "derivative": {
+          "evidence": [],
+          "reason": "This row inventories the GFN2-xTB energy product only; analytic forces require a separate product row.",
+          "state": "not-applicable"
+        },
+        "device-executed": {
+          "evidence": [],
+          "reason": "The repository contains an opt-in real-device qualification test, but this ledger row does not yet retain a source-bound execution receipt.",
+          "state": "missing"
+        },
+        "domain-qualified": {
+          "evidence": [],
+          "reason": "The CUDA qualification test defines the domain gate, but no retained exact-source qualification receipt is bound to this ledger row yet.",
+          "state": "missing"
+        },
+        "molecular": {
+          "evidence": [],
+          "reason": "The molecular CUDA endpoint is exercised by an opt-in qualification test, but this ledger row does not yet retain the corresponding execution receipt.",
+          "state": "missing"
+        },
+        "public": {
+          "evidence": [
+            "tests/python/test_gfn2_xtb.py"
+          ],
+          "reason": null,
+          "state": "present"
+        },
+        "represented": {
+          "evidence": [
+            "src/methods/gfn2_runtime_bridge.cpp"
+          ],
+          "reason": null,
+          "state": "present"
+        }
+      },
+      "execution_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "id": "gfn2-energy-cuda-scc",
+      "method_family": "gfn",
+      "product": "energy",
+      "provider_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "public_entry": "python/vibeqc/calculator.py",
+      "resource_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.cu",
+      "scientific_owner": "src/xtb/native/src/model/gfn2/scc_driver.cpp",
+      "selector": "src/methods/xtb_method.cpp",
+      "state_owner": "src/xtb/native/src/runtime/gfn2_cuda_execution.hpp",
+      "status": "production"
     }
   ],
   "schema": "vibeqc.electronic-production-paths.v2"
