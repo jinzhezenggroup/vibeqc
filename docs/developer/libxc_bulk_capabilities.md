@@ -141,10 +141,23 @@ Boundary admission is intentionally split into two facts:
 Only a retained evidence record covering the **entire required profile** may
 satisfy the `production-domain` stage. A finite value by itself is not a
 correctness claim. Oracle-nonfinite points remain unqualified instead of being
-coerced into a pass. The existing probe/oracle machinery is the numerical
-producer; the profile introduced for #1120 is the admission contract. Expanding
-that producer to every v2 matrix case is tracked as subsequent #1120 work and
-does not grant any new production capability in this slice.
+coerced into a pass.
+
+`vibeqc_compiler.xc.production_domain_cases` instantiates every numerical
+rho/sigma/tau row in the exact v2 cases-by-spin matrix from finite physical
+density, Cartesian-gradient, and kinetic-density coordinates.
+`tools/qualify_libxc_production_domain.py` evaluates those rows through the
+generic order-2 bulk candidate and compares energy, vxc, and packed fxc against
+the independent PySCF 2.14.0 / Libxc 7.0.0 oracle. The tool always writes a
+complete identity-bound receipt; zero-density/zero-gradient points rejected by
+the current interior-only candidate remain explicit failures rather than being
+silently clipped or skipped.
+
+The two generic control rows are intentionally reported as `not-run` until
+#1120 B3 supplies their shared policy semantics. Therefore running the campaign
+does not by itself imply that any imported registration is production-qualified.
+Use `--require-pass` only when the caller intends a fully qualified matrix to be
+a hard gate.
 
 The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
 machine-readable status `pass` for the compiled CPU FP64 production entry point,
