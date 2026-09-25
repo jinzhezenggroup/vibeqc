@@ -128,6 +128,10 @@ struct CudaDfResponseBuffers {
   // raw_auxiliary_major becomes bounded unpack scratch, never the raw owner.
   // Zero overrides preserve the legacy equal-size dense buffer contract.
   std::size_t staging_elements{}, raw_elements{}, exchange_elements{};
+  // Explicit full-rank experiment: project immutable forward B in occupied
+  // space before the second metric-root action. This is NOT a raw-A lease.
+  // The synchronous bridge validates this view and keeps it alive to drain.
+  const CudaDfWhitenedTensorView* fitted_occupied_source{};
   std::size_t staging_capacity() const noexcept {
     return staging_elements ? staging_elements : elements_per_buffer;
   }

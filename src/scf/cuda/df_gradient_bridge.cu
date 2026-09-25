@@ -680,7 +680,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
   if (occupied) {
     if (!device_metric || !device_metric->full_rank || !occupied->owner_identity ||
         occupied->owner_identity != device_metric->owner_identity || occupied->nbf != n ||
-        occupied->naux != a || !source || borrowed || whitened || packed_raw ||
+        occupied->naux != a || !source || borrowed || packed_raw ||
+        (whitened && !whitened->packed_pairs) ||
         terms.size() > occupied->factors.size()) {
       detail = "streamed occupied DF factors differ from the full-rank metric owner";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
@@ -1089,11 +1090,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // Both UHF projections coexist; the reusable projection/weight buffer
       // must hold the largest spin's all-Q projection and at least one AO slice.
       const bool owned_occupied =
-          occupied && panel_capacity <= a && occupied_retained <= factor_capacity &&
+          occupied && (whitened || panel_capacity <= a) && occupied_retained <= factor_capacity &&
           std::max(occupied_largest, n * n) <= factor_capacity - occupied_retained &&
           (!requested_algebra || std::string_view(requested_algebra) == "blas") &&
           (!requested_dot || std::string_view(requested_dot) != "1") &&
           (!requested_scatter || !*requested_scatter);
+      // A requested fitted occupied route must not silently fall through to
+      // the AO-space repeated-fit algorithm if its small factors cannot fit.
+      if (occupied && whitened && !owned_occupied) throw std::bad_alloc();
       // If two complete tensors do not fit, a streamed owner can still supply
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source
@@ -1143,9 +1147,15 @@ vibeqc_status execute_cuda_df_hf_gradient(
         owned_buffers.raw_elements = n * n;
         owned_buffers.occupied_factors = occupied->factors;
         owned_buffers.occupied_response = true;
+        owned_buffers.fitted_occupied_source = whitened;
         arena.stats.borrowed_device_bytes = occupied_coefficients * sizeof(double);
         runtime::cuda_trace::trace_counter("response_borrowed_occupied_factor_bytes",
                                            arena.stats.borrowed_device_bytes);
+        if (whitened) {
+          const auto forward_bytes = whitened->pair_count * a * sizeof(double);
+          arena.stats.borrowed_device_bytes += forward_bytes;
+          runtime::cuda_trace::trace_counter("response_borrowed_whitened_bytes", forward_bytes);
+        }
         runtime::cuda_trace::trace_counter(
             "response_owned_occupied_projection_bytes",
             (occupied_retained + owned_buffers.exchange_elements) * sizeof(double));
@@ -1293,7 +1303,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
-      if (whitened && !borrowed) {
+      if (whitened && !borrowed && !owned_occupied) {
         // The forward plan already owns this immutable tensor. Reading it is
         // an explicit borrow, not extra response allocation or raw regeneration.
         // Full-width panels must use the same reader: falling back to raw A
