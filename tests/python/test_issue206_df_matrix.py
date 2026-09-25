@@ -52,7 +52,7 @@ def test_manifest_hashes_requested_library_in_bounded_chunks(
         repeats=5,
         python=sys.executable,
         library=alias,
-        output_dir=output,
+        output_dir=tmp_path / "output",
     )
     assert payload["source"]["native_library"] == {
         "path": str(library.resolve()),
@@ -393,7 +393,7 @@ def test_matrix_retains_failures_and_finishes_remaining_cases(
     else:
         assert rows[0]["result"] is None
     assert Path(rows[0]["log"]).is_file()
-    assert Path(rows[1]["result"]).is_file()
+    assert Path(rows[1]["result"] .is_file())
 
 
 def test_slurm_runner_is_kept_out_of_repository_root() -> None:
