@@ -169,7 +169,12 @@ __global__ void build_device_density_kernel(std::size_t batch_size, std::size_t 
   const std::size_t column = local / nbf;
   // Production RHF/UHF use exact power-of-two occupation weights (2 or 1).
   // In that domain the density is symmetric, so contract each AO pair once.
-  const bool symmetric_density = occupation_weight == 1.0 || occupation_weight == 2.0;
+  // Mirroring can only replace a lower-triangle worker when the complete
+  // flat domain is launched. A clipped launch must retain every original write.
+  const auto launched = static_cast<std::uint64_t>(gridDim.x) * blockDim.x;
+  const bool symmetric_density =
+      (occupation_weight == 1.0 || occupation_weight == 2.0) &&
+      launched >= batch_size * matrix_elements;
   if (symmetric_density && row > column) return;
   const std::size_t offset = system * matrix_elements;
   double value = 0.0;
