@@ -39,24 +39,34 @@ void device_pointer(const void* pointer, int device) {
 
 CudaXcLayout cuda_xc_layout(const AoBasis& basis, const MolecularGrid& grid,
                             std::uint32_t functional, bool unrestricted, std::size_t tile_points,
-                            CudaXcAoPrecision ao_precision) {
+                            CudaXcAoPrecision ao_precision, double exchange_scale,
+                            double correlation_scale) {
   // Equal dimensions alone cannot bind a grid to its current geometry/basis.
   const AoBasis grid_basis(grid.system());
   if (basis.nao != grid_basis.nao || basis.natom != grid_basis.natom ||
       basis.nprimitive != grid_basis.nprimitive || basis.packed != grid_basis.packed)
     throw std::invalid_argument("CUDA XC grid/basis identity mismatch");
   return cuda_xc_layout_shape(basis.natom, basis.nprimitive, basis.nao, grid.point_count(),
-                              functional, unrestricted, tile_points, false, ao_precision);
+                              functional, unrestricted, tile_points, false, ao_precision,
+                              exchange_scale, correlation_scale);
 }
 
 CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std::size_t nao,
                                   std::size_t points, std::uint32_t functional, bool unrestricted,
                                   std::size_t tile_points, bool response,
-                                  CudaXcAoPrecision ao_precision) {
+                                  CudaXcAoPrecision ao_precision, double exchange_scale,
+                                  double correlation_scale) {
   const bool supported_functional = functional <= 2U || functional == 4U;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
+  if (!std::isfinite(exchange_scale) || !std::isfinite(correlation_scale) || exchange_scale < 0.0 ||
+      correlation_scale < 0.0)
+    throw std::invalid_argument("invalid CUDA XC component scale");
+  if (functional > 1U && (exchange_scale != 1.0 || correlation_scale != 1.0))
+    throw std::invalid_argument("scaled meta-GGA CUDA XC is not qualified");
+  if (response && (exchange_scale != 1.0 || correlation_scale != 1.0))
+    throw std::invalid_argument("scaled CUDA XC response is not qualified");
   if (response && functional > 1U)
     throw std::invalid_argument("CUDA XC response supports LDA/PBE only");
   if (ao_precision != CudaXcAoPrecision::Fp64 &&
@@ -86,6 +96,8 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                    packed,
                    0,
                    functional,
+                   exchange_scale,
+                   correlation_scale,
                    response,
                    ao_precision};
   std::size_t elements = size_add(out.packed_elements, size_mul(4, out.npoint, overflow), overflow);
@@ -108,8 +120,10 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
 
 CudaXcPlan::CudaXcPlan(const AoBasis& basis, const MolecularGrid& grid, std::uint32_t functional,
                        bool unrestricted, std::size_t tile_points, void* arena,
-                       std::size_t arena_bytes, cudaStream_t stream, CudaXcAoPrecision ao_precision)
-    : CudaXcPlan(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points, ao_precision),
+                       std::size_t arena_bytes, cudaStream_t stream, CudaXcAoPrecision ao_precision,
+                       double exchange_scale, double correlation_scale)
+    : CudaXcPlan(cuda_xc_layout(basis, grid, functional, unrestricted, tile_points, ao_precision,
+                                exchange_scale, correlation_scale),
                  basis.packed, grid.points(), grid.weights(), arena, arena_bytes, stream) {}
 
 CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_basis,
@@ -117,7 +131,8 @@ CudaXcPlan::CudaXcPlan(CudaXcLayout layout, const std::vector<double>& packed_ba
                        void* arena, std::size_t arena_bytes, cudaStream_t stream)
     : layout_(cuda_xc_layout_shape(layout.natom, layout.nprimitive, layout.nao, layout.npoint,
                                    layout.functional, layout.spins == 2, layout.tile_points,
-                                   layout.response, layout.ao_precision)),
+                                   layout.response, layout.ao_precision, layout.exchange_scale,
+                                   layout.correlation_scale)),
       point_launcher_(cuda_xc_detail::resolve_point_launcher(layout_.functional, layout_.response)),
       arena_(arena),
       stream_(stream) {
