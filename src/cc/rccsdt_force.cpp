@@ -214,9 +214,9 @@ CudaParameterResponseView cuda_parameter_view(const ParameterWeights& bar) {
 }
 
 ResponseWeights detach_cuda_response(CudaHamiltonianResponseResult result) {
-  return {std::move(result.hcore), std::move(result.eri), std::move(result.overlap),
-          std::move(result.rotation_gradient), std::move(result.stationarity),
-          std::move(result.orbital_rhs)};
+  return {std::move(result.hcore),        std::move(result.eri),
+          std::move(result.overlap),      std::move(result.rotation_gradient),
+          std::move(result.stationarity), std::move(result.orbital_rhs)};
 }
 #endif
 
