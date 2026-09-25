@@ -70,6 +70,12 @@ def _run(
     renderer.main()
 
 
+def test_direct_only_evidence_does_not_advertise_df_panel(renderer: ModuleType) -> None:
+    modes = renderer.hf_plot_modes([{"family": "hf", "mode": "direct"}])
+    assert modes == [("direct", "HF · direct J/K")]
+    assert len(renderer.hf_plot_modes([{"family": "hf", "mode": "df"}])) == 1
+
+
 @pytest.mark.parametrize("passed", [True, False])
 def test_hf_energy_and_force_records_are_both_retained(
     renderer: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, passed: bool

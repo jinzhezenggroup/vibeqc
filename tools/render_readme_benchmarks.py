@@ -282,6 +282,18 @@ def style_axes(ax: Any, title: str, ticks: list[int]) -> None:
     ax.spines[["top", "right"]].set_visible(False)
 
 
+def hf_plot_modes(records: list[dict]) -> list[tuple[str, str]]:
+    """Show only measured HF modes present in this evidence set."""
+    return [
+        (mode, title)
+        for mode, title in (
+            ("direct", "HF · direct J/K"),
+            ("df", "HF · DF J/K (cc-pVDZ-JKFIT)"),
+        )
+        if any(p["family"] == "hf" and p["mode"] == mode for p in records)
+    ]
+
+
 def figures(records: list[dict], destination: Path) -> None:
     """Keep hardware/property boundaries visible in every standalone artifact."""
     plt.rcParams.update(
@@ -293,13 +305,11 @@ def figures(records: list[dict], destination: Path) -> None:
         }
     )
     for family, filename, endpoint in (("hf", "hf.svg", "warm energy + forces"),):
-        fig, axes = plt.subplots(1, 2, figsize=(11.6, 3.6))
-        for ax, mode, title in zip(
-            axes,
-            ("direct", "df"),
-            ("HF · direct J/K", "HF · DF J/K (cc-pVDZ-JKFIT)"),
-            strict=True,
-        ):
+        modes = hf_plot_modes(records)
+        if not modes:
+            continue
+        fig, axes = plt.subplots(1, len(modes), figsize=(5.8 * len(modes), 3.6))
+        for ax, (mode, title) in zip(np.atleast_1d(axes), modes, strict=True):
             points = [p for p in records if p["family"] == family and p["mode"] == mode]
             for engine in ("VibeQC", "GPU4PySCF"):
                 plot_series(ax, points, engine, engine)
@@ -319,6 +329,9 @@ def figures(records: list[dict], destination: Path) -> None:
         fig.tight_layout()
         save_svg(fig, destination / filename)
         plt.close(fig)
+
+    if not any(row["family"] in ("dft", "cc") for row in records):
+        return
 
     fig, axes = plt.subplots(1, 3, figsize=(11.6, 3.6))
     for ax, method, title in zip(
@@ -491,7 +504,8 @@ def main() -> None:
             )
             and (method is None or record["method"] == method)
         ]
-        grouped.append((filename, selected))
+        if selected:
+            grouped.append((filename, selected))
     if sum(len(selected) for _, selected in grouped) != len(records):
         raise ValueError("unassigned benchmark records; refusing incomplete reduction")
     args.destination.mkdir(parents=True, exist_ok=True)
