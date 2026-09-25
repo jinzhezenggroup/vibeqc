@@ -651,9 +651,8 @@ static cudaError_t contract_occupied_response(
         const auto rank = factor.rank;
         if (!rank || terms[t].exchange_coefficient == 0) continue;
         checked(generated::df_occupied_project_panel(
-            blas, ni, static_cast<int>(rank), ai, static_cast<int>(begin),
-            static_cast<int>(count), factor.coefficients, panels, panel_temporary,
-            transformed_projected + offset));
+            blas, ni, static_cast<int>(rank), ai, static_cast<int>(begin), static_cast<int>(count),
+            factor.coefficients, panels, panel_temporary, transformed_projected + offset));
         offset += a * rank * rank;
         runtime::cuda_trace::trace_counter("response_occupied_projection_blas_calls", 2);
         runtime::cuda_trace::trace_counter("response_occupied_projection_products", 2 * count);
@@ -716,8 +715,8 @@ static cudaError_t contract_occupied_response(
       checked(cublasDgemm(blas, CUBLAS_OP_T, CUBLAS_OP_N, ai, ti, ai, &one, metric.eigenvectors, ai,
                           charges, ai, &zero, potentials, ai));
       if (fitted_occupied)
-        cuda_df::launch_scale_metric_projection(stream, a, terms.size(), metric.eigenvalues,
-                                                true, potentials);
+        cuda_df::launch_scale_metric_projection(stream, a, terms.size(), metric.eigenvalues, true,
+                                                potentials);
       else
         divide_charge_eigenvalues<<<blocks(a * terms.size()), threads, 0, stream>>>(
             a, terms.size(), metric.eigenvalues, potentials);
@@ -754,10 +753,10 @@ static cudaError_t contract_occupied_response(
         error = cudaMemcpyAsync(projected, transformed_projected + retained,
                                 a * rr * sizeof(double), cudaMemcpyDeviceToDevice, stream);
         if (error != cudaSuccess) return error;
-        runtime::cuda_trace::trace_counter(
-            fitted_occupied ? "response_fitted_occupied_projection_copy_bytes"
-                            : "response_streamed_raw_projection_copy_bytes",
-            a * rr * sizeof(double));
+        runtime::cuda_trace::trace_counter(fitted_occupied
+                                               ? "response_fitted_occupied_projection_copy_bytes"
+                                               : "response_streamed_raw_projection_copy_bytes",
+                                           a * rr * sizeof(double));
       } else if (buffers.final_occupied_projection) {
         // U is column-major (a*r,n); right multiplication by its exact C
         // yields G_whitened[a,i,j]. The tail is disjoint from G_raw[ij,a].
@@ -848,13 +847,13 @@ static cudaError_t contract_occupied_response(
       if (metric.full_rank) {
         auto* fitted = transformed_projected + retained;
         if (fitted_occupied) {
-          checked(generated::df_occupied_to_metric_eigenbasis(
-              blas, ai, rri, metric.eigenvectors, projected, fitted));
+          checked(generated::df_occupied_to_metric_eigenbasis(blas, ai, rri, metric.eigenvectors,
+                                                              projected, fitted));
           cuda_df::launch_scale_metric_projection(stream, a, rr, metric.eigenvalues, true, fitted);
           error = cudaGetLastError();
           if (error != cudaSuccess) return error;
-          checked(generated::df_occupied_from_metric_eigenbasis(
-              blas, ai, rri, metric.eigenvectors, fitted, projected));
+          checked(generated::df_occupied_from_metric_eigenbasis(blas, ai, rri, metric.eigenvectors,
+                                                                fitted, projected));
           runtime::cuda_trace::trace_counter("response_fitted_occupied_metric_root_gemms", 2);
         } else {
           checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
@@ -1075,14 +1074,14 @@ cudaError_t contract_cuda_df_response_weights(
         !read_values || !streamed_occupied->occupied_response)
       return cudaErrorInvalidValue;
     if (const auto* forward = streamed_occupied->fitted_occupied_source;
-        forward && (!forward->data || !forward->packed_pairs || forward->nbf != n ||
-                    forward->naux != a || forward->pair_count != n * (n + 1) / 2 ||
-                    forward->owner_identity != metric.owner_identity ||
-                    !forward->metric.full_rank ||
-                    forward->metric.inverse_square_root != metric.inverse_square_root ||
-                    forward->metric.eigenvectors != metric.eigenvectors ||
-                    forward->metric.eigenvalues != metric.eigenvalues ||
-                    forward->metric.relative_threshold != metric.relative_threshold))
+        forward &&
+        (!forward->data || !forward->packed_pairs || forward->nbf != n || forward->naux != a ||
+         forward->pair_count != n * (n + 1) / 2 ||
+         forward->owner_identity != metric.owner_identity || !forward->metric.full_rank ||
+         forward->metric.inverse_square_root != metric.inverse_square_root ||
+         forward->metric.eigenvectors != metric.eigenvectors ||
+         forward->metric.eigenvalues != metric.eigenvalues ||
+         forward->metric.relative_threshold != metric.relative_threshold))
       return cudaErrorInvalidValue;
     return contract_occupied_response(n, a, terms, densities, metric, tile, workspace, stream, blas,
                                       *streamed_occupied, {}, consume, false, {}, packed_block_rows,

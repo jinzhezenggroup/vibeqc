@@ -681,8 +681,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (!device_metric || !device_metric->full_rank || !occupied->owner_identity ||
         occupied->owner_identity != device_metric->owner_identity || occupied->nbf != n ||
         occupied->naux != a || !source || borrowed || packed_raw ||
-        (whitened && !whitened->packed_pairs) ||
-        terms.size() > occupied->factors.size()) {
+        (whitened && !whitened->packed_pairs) || terms.size() > occupied->factors.size()) {
       detail = "streamed occupied DF factors differ from the full-rank metric owner";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
