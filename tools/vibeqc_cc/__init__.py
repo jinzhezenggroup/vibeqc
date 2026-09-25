@@ -5,9 +5,9 @@ integral providers. RCCSD supports CPU, ordinary-stream CUDA and resident CUDA;
 RCCSD(T) composes CPU or resident CUDA RCCSD with audited bounded triples tiles
 and offers isolated homogeneous Python batch helpers. #155 additionally binds
 the validated complete RCCSD(T) analytic-gradient owner as an internal force API.
-#157 additionally exposes an explicit energy-only correlation-DF RCCSD(T) source
-facade. That DF facade does not register a native Calculator method and never
-borrows the conventional RCCSD(T) force capability.
+These APIs still do not register Calculator methods or a native CCSD(T) prepared
+owner; the C ABI remains fail-closed until the generated response graph has that
+owner.
 """
 
 from .api import (
@@ -41,11 +41,6 @@ from .complete_gradient import (
     CCSDGradientResult,
     complete_gradient_validation,
     gradient_capabilities,
-)
-from .df_api import (
-    DFRCCSDTCapabilities,
-    df_rccsd_t_energy,
-    df_rccsd_t_method_capabilities,
 )
 from .df_factorized import (
     DFCCSDResult,
@@ -96,6 +91,7 @@ from .triples import (
 )
 from .triples_complete_gradient import (
     BoundCCSDTGradient,
+    complete_ccsdt_cuda_response_gradient_validation,
     complete_ccsdt_gradient_validation,
 )
 from .triples_cuda import (
@@ -162,7 +158,6 @@ __all__ = [
     "CudaTriplesTiles",
     "DFCCSDResult",
     "DFCCSDTResult",
-    "DFRCCSDTCapabilities",
     "DFThreeIndexCotangent",
     "DFThreeIndexPullback",
     "FactorizedDFIntegralState",
@@ -199,11 +194,10 @@ __all__ = [
     "build_tile_triples_program",
     "build_tile_triples_vjp",
     "build_triples_program",
+    "complete_ccsdt_cuda_response_gradient_validation",
     "complete_ccsdt_gradient_validation",
     "complete_gradient_validation",
     "cpu_triples_tiles",
-    "df_rccsd_t_energy",
-    "df_rccsd_t_method_capabilities",
     "energy",
     "evaluate",
     "factorized_triples_energy",
