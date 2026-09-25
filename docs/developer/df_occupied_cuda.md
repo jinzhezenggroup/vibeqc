@@ -103,8 +103,15 @@ candidate K, and records K/Fock errors in the progress journal. This intrusive
 validation must be disabled for clean endpoint timing.
 
 `VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
-physical Fock evaluation; `occupied` enables retained-factor qualification,
-while `auto` uses the same resident capacity and work policy as the seed.
+physical Fock evaluation. Unset/`auto` selects occupied K whenever the same
+resident or streamed work/capacity and provenance gates qualify it; `occupied`
+keeps the explicit comparison override, and `dense` keeps the diagnostic dense
+fallback. For singleton generated streamed RHF, qualified exact final factors
+use occupied K automatically. A bounded strict-finalization correction may
+reconstruct an algebraic occupied factor after the owner/model/occupation and
+generation-advance checks. The streamed final projection is temporary and never
+grants a force-response projection lease; failed qualification, insufficient
+capacity or missing source storage retains the original bounded dense fallback.
 The singleton resident RHF route requires
 an exact current final-state token, matching device generation/solver status,
 and entry-for-entry equality of the supplied and retained densities. It uses
