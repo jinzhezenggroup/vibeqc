@@ -1,5 +1,7 @@
 #include "scf/fock_build.hpp"
 
+#include "tensor/cpu_linalg.hpp"
+
 #include <array>
 #include <cmath>
 #include <limits>
@@ -350,6 +352,15 @@ DirectJkMatrices build_exact_direct_jk(const ResolvedFockBuild& strategy, std::s
     result.exchange_alpha.resize(count);
     if (unrestricted) result.exchange_beta.resize(count);
   }
+
+  // Pure restricted Coulomb is exactly a dense (AO-pair)x(AO-pair) matrix-vector
+  // product in the stored chemists-order ERI layout. Reuse the shared CPU BLAS
+  // boundary instead of paying the generic scalar J/K quartet loop when K is absent.
+  if (strategy.spec.coulomb.present && !strategy.spec.exchange.present && !unrestricted) {
+    tensor::cpu_gemv('N', count, count, eri.data(), density.data(), result.coulomb.data());
+    return result;
+  }
+
   for (std::size_t i = 0; i < nbf; ++i) {
     for (std::size_t j = 0; j < nbf; ++j) {
       double coulomb = 0.0, exchange_alpha = 0.0, exchange_beta = 0.0;
