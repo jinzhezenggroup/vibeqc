@@ -56,10 +56,11 @@ def _method_inventory() -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for owner in owners:
         source = (root / owner).read_text(encoding="utf-8")
-        for row in extract_method_registrations(
-            source, PurePosixPath(owner).name
-        ):
-            if row.get("status") != "generated" or "split_exchange_component" not in row:
+        for row in extract_method_registrations(source, PurePosixPath(owner).name):
+            if (
+                row.get("status") != "generated"
+                or "split_exchange_component" not in row
+            ):
                 continue
             exchange = row["split_exchange_component"]
             correlation = row["paired_correlation_component"]
@@ -83,9 +84,7 @@ def available_split_global_hybrids() -> tuple[str, ...]:
     return tuple(sorted(_method_inventory()))
 
 
-def _bound_component(
-    name: str, *, allow_hybrid_exchange: bool
-) -> dict[str, Any]:
+def _bound_component(name: str, *, allow_hybrid_exchange: bool) -> dict[str, Any]:
     catalog = _catalog()
     records = _records(catalog)
     try:
@@ -125,12 +124,8 @@ def build_split_global_hybrid(
         ) from error
     exchange_name = method["split_exchange_component"]
     correlation_name = method["paired_correlation_component"]
-    exchange_record = _bound_component(
-        exchange_name, allow_hybrid_exchange=True
-    )
-    correlation_record = _bound_component(
-        correlation_name, allow_hybrid_exchange=False
-    )
+    exchange_record = _bound_component(exchange_name, allow_hybrid_exchange=True)
+    correlation_record = _bound_component(correlation_name, allow_hybrid_exchange=False)
     exact = Fraction(method["exact_exchange"])
     source_exact = Fraction(exchange_record["exact_exchange_parameter"])
     if source_exact != exact:

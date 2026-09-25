@@ -16,7 +16,6 @@ from vibeqc_compiler.xc.libxc_maple import MapleImportError
 
 from tools.libxc_split_hybrid import build_split_global_hybrid
 
-
 _GGA_FEATURES = ("rho_a", "rho_b", "sigma_aa", "sigma_ab", "sigma_bb")
 _MGGA_FEATURES = (*_GGA_FEATURES, "tau_a", "tau_b")
 
@@ -24,7 +23,9 @@ _MGGA_FEATURES = (*_GGA_FEATURES, "tau_a", "tau_b")
 def _selected_features(program) -> tuple[str, ...]:
     if program.family == "gga":
         if program.features != _GGA_FEATURES:
-            raise MapleImportError("split GGA CUDA lowering requires rho/sigma features")
+            raise MapleImportError(
+                "split GGA CUDA lowering requires rho/sigma features"
+            )
         return _GGA_FEATURES
     if program.family != "mgga":
         raise MapleImportError("split hybrid CUDA lowering requires GGA or MGGA")
@@ -40,7 +41,9 @@ def _selected_features(program) -> tuple[str, ...]:
         "tau_b",
     )
     if program.features != expected:
-        raise MapleImportError("split MGGA CUDA lowering found an unknown feature layout")
+        raise MapleImportError(
+            "split MGGA CUDA lowering found an unknown feature layout"
+        )
     by_name = dict(zip(program.features, program.variables, strict=True))
     for name in ("lapl_a", "lapl_b"):
         derivative = program.graph.differentiate(program.energy, by_name[name])
@@ -55,8 +58,16 @@ def _selected_features(program) -> tuple[str, ...]:
 def _emit_component(program, type_name: str, function_name: str) -> str:
     selected = _selected_features(program)
     by_name = dict(zip(program.features, program.variables, strict=True))
-    roots = (program.energy, *(program.graph.differentiate(program.energy, by_name[name]) for name in selected))
-    variables = {name: (name if name in selected else "0.0") for name in program.features}
+    roots = (
+        program.energy,
+        *(
+            program.graph.differentiate(program.energy, by_name[name])
+            for name in selected
+        ),
+    )
+    variables = {
+        name: (name if name in selected else "0.0") for name in program.features
+    }
     emitter = CudaEmitter(program.graph, variables)
     emitter.emit(roots)
     signature = ", ".join(f"double {name}" for name in selected)
@@ -81,7 +92,9 @@ def emit_split_hybrid_device(identifier: str) -> str:
         raise MapleImportError("split hybrid CUDA components use different families")
     selected = _selected_features(method.exchange)
     if _selected_features(method.correlation) != selected:
-        raise MapleImportError("split hybrid CUDA components use different feature layouts")
+        raise MapleImportError(
+            "split hybrid CUDA components use different feature layouts"
+        )
 
     type_stem = re.sub(r"[^A-Za-z0-9]", "", identifier)
     function_stem = re.sub(r"[^a-z0-9]+", "_", identifier.lower()).strip("_")
@@ -101,9 +114,7 @@ def emit_split_hybrid_device(identifier: str) -> str:
     )
     signature = ", ".join(f"double {name}" for name in selected)
     arguments = ", ".join(selected)
-    exchange = _emit_component(
-        method.exchange, type_name, f"{function_name}_exchange"
-    )
+    exchange = _emit_component(method.exchange, type_name, f"{function_name}_exchange")
     correlation = _emit_component(
         method.correlation, type_name, f"{function_name}_correlation"
     )
