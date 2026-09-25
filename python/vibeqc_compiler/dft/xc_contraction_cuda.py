@@ -31,6 +31,12 @@ class XcMatrixSchedule:
     def __post_init__(self) -> None:
         if type(self.tile) is not int or self.tile < 1 or self.tile & (self.tile - 1):
             raise ValueError("XC matrix tile must be a positive power of two")
+        # All three totals channels need an x lane; larger tiles can exceed
+        # CUDA block/shared-memory limits. Direct emitters share this boundary.
+        if self.tile not in (8, 16, 32):
+            raise ValueError(
+                "XC matrix tile must be a supported candidate (8, 16, 32)"
+            )
 
     @property
     def threads(self) -> int:
@@ -305,16 +311,19 @@ __global__ void tiled_potential(const double* ao, const double* work, I n, I cou
 // The compiler owns schedule admission; native only supplies borrowed buffers.
 // Tiny shapes and dimensions outside the two-dimensional launch domain retain
 // the bounded grid-stride scalar schedule. Both cover the same scientific work.
-inline bool tiled_xc_admitted(I n, I count) {
-  const I tiles = (n+@TILE_MINUS_ONE@)/@TILE@;
-  const I point_tiles = (count+@TILE_MINUS_ONE@)/@TILE@;
+inline bool tiled_xc_admitted(I n, I count, I spins, I work_jets) {
+  if (n < @TILE@ || count < @TILE@ || spins < 1 || work_jets < 1 ||
+      work_jets > 65535 || spins > 65535/work_jets) return false;
+  // Avoid overflow before rejecting an out-of-domain launch shape.
+  const I tiles = 1+(n-1)/@TILE@;
+  const I point_tiles = 1+(count-1)/@TILE@;
+  if (tiles > 65535 || point_tiles > 65535) return false;
   const I tile_pairs = tiles*(tiles+1)/2;
-  return n >= @TILE@ && count >= @TILE@ && tiles <= 65535 &&
-         point_tiles <= 65535 && tile_pairs <= 65535;
+  return tile_pairs <= 65535;
 }
 inline void scheduled_density_product(cudaStream_t stream, const double* density,
     const double* ao, I n, I count, I spins, I work_jets, double* work, int* error) {
-  if (tiled_xc_admitted(n, count)) {
+  if (tiled_xc_admitted(n, count, spins, work_jets)) {
     tiled_density_product<<<dim3((n+@TILE_MINUS_ONE@)/@TILE@, (count+@TILE_MINUS_ONE@)/@TILE@, spins*work_jets),
                             dim3(@TILE@,@TILE@), 0, stream>>>(density, ao, n, count, work_jets, work, error);
   } else {
@@ -326,7 +335,7 @@ inline void scheduled_potential(cudaStream_t stream, const double* ao,
     const double* coefficients, const double* weights, I n, I count, I spins,
     I terms, I work_jets, double* work, const double* point_totals,
     double* potential, double* totals, bool accumulate, int* error) {
-  if (tiled_xc_admitted(n, count)) {
+  if (tiled_xc_admitted(n, count, spins, work_jets)) {
     compact_potential_panels<<<vibeqc_tensor::blocks(spins*count*n,128),128,0,stream>>>(
         ao,coefficients,weights,n,count,spins,terms,work_jets,work,error);
     vibeqc_tensor::cuda_check(cudaGetLastError());
