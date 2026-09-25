@@ -113,3 +113,76 @@ def test_sweep_surfaces_probe_failure(monkeypatch: pytest.MonkeyPatch) -> None:
         cpu_linalg_sweep.run_sweep(
             Path("probe"), sizes=(16,), providers=("openblas",), repeats=1
         )
+
+
+def test_sweep_rejects_transpose_or_thread_ownership_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base = {
+        "schema": "vibeqc.cpu-linalg-probe.v1",
+        "operation": "gemm",
+        "m": 16,
+        "n": 16,
+        "k": 16,
+        "transpose_a": "N",
+        "transpose_b": "N",
+        "repeats": 1,
+        "cpu_target": "x86_64-generic",
+        "requested_provider": "scalar",
+        "provider": "scalar",
+        "provider_threads": 1,
+        "thread_ownership": "task_parallel",
+        "seconds": 0.001,
+        "gflops": 1.0,
+    }
+
+    for key, value, match in (
+        ("transpose_a", "T", "unexpected transpose_a"),
+        ("thread_ownership", "provider_parallel", "must remain task-parallel"),
+    ):
+        payload = dict(base)
+        payload[key] = value
+        monkeypatch.setattr(
+            cpu_linalg_sweep.subprocess,
+            "run",
+            lambda *args, payload=payload, **kwargs: subprocess.CompletedProcess(
+                args[0], 0, json.dumps(payload), ""
+            ),
+        )
+        with pytest.raises(ValueError, match=match):
+            cpu_linalg_sweep.run_sweep(
+                Path("probe"), sizes=(16,), providers=("scalar",), repeats=1
+            )
+
+
+def test_multithread_probe_requires_provider_owned_parallelism(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = {
+        "schema": "vibeqc.cpu-linalg-probe.v1",
+        "operation": "gemm",
+        "m": 16,
+        "n": 16,
+        "k": 16,
+        "transpose_a": "N",
+        "transpose_b": "N",
+        "repeats": 1,
+        "cpu_target": "x86_64-generic",
+        "requested_provider": "scalar",
+        "provider": "scalar",
+        "provider_threads": 2,
+        "thread_ownership": "task_parallel",
+        "seconds": 0.001,
+        "gflops": 1.0,
+    }
+    monkeypatch.setattr(
+        cpu_linalg_sweep.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0], 0, json.dumps(payload), ""
+        ),
+    )
+    with pytest.raises(ValueError, match="must own parallelism"):
+        cpu_linalg_sweep.run_sweep(
+            Path("probe"), sizes=(16,), providers=("scalar",), repeats=1, threads=2
+        )

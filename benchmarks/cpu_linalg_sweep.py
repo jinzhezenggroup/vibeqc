@@ -52,12 +52,21 @@ def _validated(
         "requested_provider": expected_provider,
         "repeats": repeats,
         "provider_threads": threads,
+        "transpose_a": "N",
+        "transpose_b": "N",
     }
     for key, value in expected.items():
         if record.get(key) != value:
             raise ValueError(f"probe record has unexpected {key}: {record.get(key)!r}")
     if not record.get("cpu_target") or not record.get("provider"):
         raise ValueError("probe record omitted target/provider identity")
+    ownership = record.get("thread_ownership")
+    if ownership not in {"task_parallel", "provider_parallel"}:
+        raise ValueError("probe record omitted valid thread ownership")
+    if threads > 1 and ownership != "provider_parallel":
+        raise ValueError("multi-thread provider probe must own parallelism")
+    if provider != "openblas" and threads == 1 and ownership != "task_parallel":
+        raise ValueError("single-thread auto/scalar probe must remain task-parallel")
     for key in ("seconds", "gflops"):
         if not isinstance(record.get(key), (int, float)) or record[key] <= 0:
             raise ValueError(f"probe record has invalid {key}")
