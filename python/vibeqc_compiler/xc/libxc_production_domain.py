@@ -76,9 +76,7 @@ class ProductionDomainProfile:
         """Return the stable union of case identifiers across spin layouts."""
         return tuple(
             dict.fromkeys(
-                case_id
-                for _, case_ids in self.cases_by_spin
-                for case_id in case_ids
+                case_id for _, case_ids in self.cases_by_spin for case_id in case_ids
             )
         )
 

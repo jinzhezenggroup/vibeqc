@@ -35,8 +35,6 @@ def _cases(name: str = NAME) -> list[dict]:
     ]
 
 
-
-
 def test_required_matrix_is_spin_aware() -> None:
     capability = functional_capability(NAME)
     matrix = set(required_matrix(capability))

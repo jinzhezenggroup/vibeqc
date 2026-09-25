@@ -50,8 +50,7 @@ def _normalize_case(
         raise ValueError(f"production-domain case has unsupported spin {spin!r}")
     if case_id not in profile.case_ids_for_spin(spin):
         raise ValueError(
-            "production-domain case is not valid for spin layout: "
-            f"{spin!r}:{case_id!r}"
+            f"production-domain case is not valid for spin layout: {spin!r}:{case_id!r}"
         )
     if status not in CASE_STATUSES:
         raise ValueError("production-domain case status must be pass, fail, or not-run")
