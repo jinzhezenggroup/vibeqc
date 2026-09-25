@@ -170,9 +170,12 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
     assert "__global__ void bulk_xc_census_probe" in probe
     assert "bulk_xc_point(features, outputs)" in probe
     resources = bulk_aot.ptxas_resources(
-        "ptxas info : Used 42 registers, 16 bytes smem\n"
-        "24 bytes stack frame, 0 bytes spill stores, 8 bytes spill loads\n"
-        "ptxas info : Used 60 registers\n"
+        "ptxas info : Function properties for bulk_xc_census_probe\n"
+        "    24 bytes stack frame, 0 bytes spill stores, 8 bytes spill loads\n"
+        "ptxas info : Used 42 registers, 16 bytes smem, 4 bytes lmem\n"
+        "ptxas info : Function properties for bulk_xc_point\n"
+        "    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+        "ptxas info : Used 60 registers, 2 bytes lmem\n"
     )
     assert resources == {
         "registers": 60,
@@ -180,8 +183,15 @@ def test_cuda_probe_retains_function_and_parses_observed_resources() -> None:
         "stack_bytes": 24,
         "spill_store_bytes": 0,
         "spill_load_bytes": 8,
-        "local_bytes": None,
+        "local_bytes": 4,
     }
+
+    zero_shared = bulk_aot.ptxas_resources(
+        "ptxas info : Function properties for bulk_xc_census_probe\n"
+        "    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads\n"
+        "ptxas info : Used 32 registers, 0 bytes lmem\n"
+    )
+    assert zero_shared["shared_bytes"] == 0
     with pytest.raises(ValueError, match="cuda_arch"):
         bulk_aot.compile_probe(variant(), cuda_arch="native")
 
