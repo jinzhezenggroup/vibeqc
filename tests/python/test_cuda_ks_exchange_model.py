@@ -39,20 +39,21 @@ enum class FockSpin {Restricted,Unrestricted};
 enum class FockPrecision {Float64,Float32};
 enum class FockApproximation {Exact,DensityFitted};
 enum class FockOperator {FullRange,LongRange};
-struct Term {bool present=true; double coefficient=1; FockOperator op=FockOperator::FullRange;
+struct Term {bool present=true; double coefficient=1,omega=0; FockOperator op=FockOperator::FullRange;
  FockApproximation approximation=FockApproximation::Exact;};
 struct Spec {FockSpin spin=FockSpin::Restricted; unsigned derivative_order=0;Term coulomb,exchange;};
 struct Fock {FockBackend backend=FockBackend::Cuda;FockPrecision precision=FockPrecision::Float64;
- Spec spec;};
+ Spec spec;double screening_tolerance=1e-12;};
 // Preserve the basic finite-coefficient contract of the independent validator.
 void validate_resolved_fock_build(const Fock& f) {
  if(!std::isfinite(f.spec.exchange.coefficient))throw std::invalid_argument("coefficient");
 }
-void require_wb97mv_composition(const Fock&,int,int) {throw std::invalid_argument("not this scope");}
+void require_wb97mv_composition(const Fock&,const Fock&,int) {throw std::invalid_argument("not this scope");}
 }
 struct Model {unsigned version=1,functional=1,scf_domain_version=1,tile_points=257,owner=1,spins=1;
  int device=0,grid=1;double semilocal_exchange_scale=1,semilocal_correlation_scale=1;
- std::optional<int> range_correction,nonlocal_correlation;
+ std::optional<scf::Fock> range_correction;
+ std::optional<int> nonlocal_correlation;
  nlc::Vv10DensityDomain nonlocal_density_domain=nlc::Vv10DensityDomain::MolecularV1;};
 struct KsFinalStateIdentity {
  Model model;
@@ -80,7 +81,7 @@ int main(int argc,char** argv) {
  else if(mode=="df-j")f.spec.coulomb.approximation=scf::FockApproximation::DensityFitted;
  else if(mode=="df-k")f.spec.exchange.approximation=scf::FockApproximation::DensityFitted;
  else if(mode=="range-k")f.spec.exchange.op=scf::FockOperator::LongRange;
- else if(mode=="range-decoration")state.model.range_correction=1;
+ else if(mode=="range-decoration")state.model.range_correction=scf::Fock{};
  else if(mode=="nlc-decoration")state.model.nonlocal_correlation=1;
  else if(mode=="scale-x")state.model.semilocal_exchange_scale=0.73;
  else if(mode=="scale-c")state.model.semilocal_correlation_scale=0.5;
@@ -89,7 +90,7 @@ int main(int argc,char** argv) {
    state.model.semilocal_exchange_scale=0.75;f.spec.exchange.coefficient=-0.2;
  }
  else if(mode=="pbe0-range-decoration") {
-   state.model.semilocal_exchange_scale=0.75;state.model.range_correction=1;
+   state.model.semilocal_exchange_scale=0.75;state.model.range_correction=scf::Fock{};
  }
  else if(mode=="pbe0-nlc-decoration") {
    state.model.semilocal_exchange_scale=0.75;state.model.nonlocal_correlation=1;
@@ -102,6 +103,26 @@ int main(int argc,char** argv) {
  else if(mode=="bad-grid")state.model.grid=0;
  else if(mode=="bad-spins")state.determinant.occupied.clear();
  else if(mode=="wrong-domain")state.model.scf_domain_version=2;
+ if(mode.rfind("rsh",0)==0) {
+   scf::Fock correction=f;
+   correction.spec.coulomb.present=false;
+   correction.spec.exchange.op=scf::FockOperator::LongRange;
+   correction.spec.exchange.omega=0.33;
+   if(mode=="rsh-no-primary")f.spec.exchange.present=false;
+   else if(mode=="rsh-wrong-spin")correction.spec.spin=spins==1?scf::FockSpin::Unrestricted:scf::FockSpin::Restricted;
+   else if(mode=="rsh-cpu-correction")correction.backend=scf::FockBackend::Cpu;
+   else if(mode=="rsh-derivative")correction.spec.derivative_order=1;
+   else if(mode=="rsh-coulomb")correction.spec.coulomb.present=true;
+   else if(mode=="rsh-missing-k")correction.spec.exchange.present=false;
+   else if(mode=="rsh-full-range")correction.spec.exchange.op=scf::FockOperator::FullRange;
+   else if(mode=="rsh-zero-omega")correction.spec.exchange.omega=0;
+   else if(mode=="rsh-nan-omega")correction.spec.exchange.omega=std::nan("");
+   else if(mode=="rsh-screening")correction.screening_tolerance=1e-8;
+   else if(mode=="rsh-df")correction.spec.exchange.approximation=scf::FockApproximation::DensityFitted;
+   else if(mode=="rsh-scaled")state.model.semilocal_exchange_scale=0.75;
+   else if(mode=="rsh-nonlocal")state.model.nonlocal_correlation=1;
+   state.model.range_correction=correction;
+ }
  if(valid_model(state)!=expected) {std::cerr<<mode<<" functional="<<functional<<" spins="<<spins;return 1;}
 }
 """
@@ -181,6 +202,44 @@ def test_final_identity_matches_bounded_primary_exchange_scope(
 ) -> None:
     result = subprocess.run(
         [str(model_probe), mode, str(functional), str(spins), str(int(accepted))],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("spins", (1, 2))
+@pytest.mark.parametrize(
+    "mode,accepted",
+    [
+        ("rsh", True),
+        ("rsh-no-primary", True),
+        *(
+            (mode, False)
+            for mode in (
+                "rsh-wrong-spin",
+                "rsh-cpu-correction",
+                "rsh-derivative",
+                "rsh-coulomb",
+                "rsh-missing-k",
+                "rsh-full-range",
+                "rsh-zero-omega",
+                "rsh-nan-omega",
+                "rsh-screening",
+                "rsh-df",
+                "rsh-scaled",
+                "rsh-nonlocal",
+            )
+        ),
+    ],
+)
+def test_final_identity_binds_complete_rsh_correction(
+    model_probe: Path, mode: str, spins: int, accepted: bool
+) -> None:
+    result = subprocess.run(
+        [str(model_probe), mode, "1", str(spins), str(int(accepted))],
         check=False,
         capture_output=True,
         text=True,

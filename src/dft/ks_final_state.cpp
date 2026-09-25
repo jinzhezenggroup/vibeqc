@@ -43,6 +43,24 @@ bool valid_model(const KsFinalStateIdentity& identity) {
       fock.spec.coulomb.approximation == scf::FockApproximation::Exact &&
       fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
       !model.range_correction && !model.nonlocal_correlation;
+  const bool cuda_range_exchange = [&] {
+    if (!pbe || fock.backend != scf::FockBackend::Cuda || !model.range_correction ||
+        model.nonlocal_correlation || model.semilocal_exchange_scale != 1.0 ||
+        model.semilocal_correlation_scale != 1.0)
+      return false;
+    const auto& correction = *model.range_correction;
+    return fock.spec.coulomb.approximation == scf::FockApproximation::Exact &&
+           (!fock.spec.exchange.present ||
+            (fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
+             fock.spec.exchange.op == scf::FockOperator::FullRange)) &&
+           correction.backend == scf::FockBackend::Cuda && correction.spec.spin == fock.spec.spin &&
+           correction.spec.derivative_order == 0 && !correction.spec.coulomb.present &&
+           correction.spec.exchange.present &&
+           correction.spec.exchange.approximation == scf::FockApproximation::Exact &&
+           correction.spec.exchange.op == scf::FockOperator::LongRange &&
+           correction.spec.exchange.omega > 0.0 &&
+           correction.screening_tolerance == fock.screening_tolerance;
+  }();
   if (model.version != 1 || model.scf_domain_version != semilocal_family_domain_version(family) ||
       !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
@@ -61,9 +79,11 @@ bool valid_model(const KsFinalStateIdentity& identity) {
         (fock.spec.exchange.approximation != scf::FockApproximation::Exact &&
          fock.spec.exchange.approximation != scf::FockApproximation::DensityFitted) ||
         fock.spec.exchange.coefficient >= 0)) ||
-      (!b3lyp && !wb97mv && (!pbe || (fock.backend == scf::FockBackend::Cuda && !cuda_pbe0)) &&
+      (!b3lyp && !wb97mv &&
+       (!pbe || (fock.backend == scf::FockBackend::Cuda && !cuda_pbe0 && !cuda_range_exchange)) &&
        (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
-        (fock.spec.exchange.present && !cuda_primary_exchange))) ||
+        (fock.spec.exchange.present && !cuda_primary_exchange && !cuda_range_exchange) ||
+        (model.range_correction && !cuda_range_exchange))) ||
       (b3lyp && (model.semilocal_exchange_scale != 1 || model.semilocal_correlation_scale != 1 ||
                  !fock.spec.exchange.present ||
                  fock.spec.exchange.coefficient != (model.spins == 1 ? -0.1 : -0.2) ||
@@ -81,6 +101,7 @@ bool valid_model(const KsFinalStateIdentity& identity) {
     }
     validate_grid_spec(model.grid);
     scf::validate_resolved_fock_build(fock);
+    if (model.range_correction) scf::validate_resolved_fock_build(*model.range_correction);
   } catch (const std::invalid_argument&) {
     return false;
   }
