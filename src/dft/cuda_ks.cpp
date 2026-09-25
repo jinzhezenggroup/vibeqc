@@ -175,7 +175,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool stabilize_occupations{}, final_closure{};
   bool mixed_j{}, strict_refinement{}, pending_mixed_j{}, mixed_j_executed{};
   unsigned final_corrections{}, refinement_iterations{};
-  std::uint32_t functional{};
+  SemilocalFamily functional{SemilocalFamily::Lda};
   bool final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
@@ -186,7 +186,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   runtime::CompiledExecutionBinding device_chunk_binding() const {
     return {"cuda-ks-device-chunk-v1:" + std::to_string(n) + ":" + std::to_string(spins) + ":" +
-                std::to_string(functional) + ":" + std::to_string(history) + ":" +
+                std::to_string(semilocal_family_code(functional)) + ":" + std::to_string(history) + ":" +
                 std::to_string(xc_layout.tile_points),
             // The prepared facade owns provider lifetime and replay identity;
             // device chunks are admitted only for its direct-Fock binding.
@@ -294,14 +294,15 @@ struct CudaKsPlan::Impl : KsStateStorage {
   }
 
   Impl(const scf::PreparedFockPlan& plan, const AoBasis& basis, const MolecularGrid& grid,
-       const scf::ScfOptions& control, std::uint32_t functional, std::size_t tile)
+       const scf::ScfOptions& control, SemilocalFamily functional, std::size_t tile)
       : provider(plan),
         basis(basis),
         grid(grid),
         options(control),
         grid_spec(grid.spec()),
         functional(functional) {
-    if (functional > 2U) throw std::invalid_argument("unknown CUDA KS semilocal functional");
+    if (!semilocal_family_has_cuda_ks(functional))
+      throw std::invalid_argument("CUDA KS semilocal family has no qualified device implementation");
     const auto& strategy = provider.strategy();
     scf::validate_resolved_fock_build(strategy);
     fock_binding = scf::prepared_cuda_fock_binding(provider);
@@ -321,7 +322,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       throw std::invalid_argument("CUDA KS received an unsupported execution policy");
     mixed_j = options.precision_mode && *options.precision_mode == VIBEQC_PRECISION_AUTO;
     if (mixed_j && fitted) throw std::invalid_argument("CUDA fitted KS requires strict FP64");
-    if (mixed_j && functional > 1U)
+    if (mixed_j && functional == SemilocalFamily::R2scan)
       throw std::invalid_argument("r2SCAN currently requires strict FP64");
     if (!options.max_iterations || !std::isfinite(options.energy_tolerance) ||
         !std::isfinite(options.density_tolerance) || options.energy_tolerance <= 0.0 ||
@@ -355,7 +356,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     device = fitted ? scf::cuda_density_fitting_device(fitted) : fock_binding.device_id;
     stream = fitted ? scf::cuda_density_fitting_stream(fitted) : fock_binding.stream;
     current_device();
-    xc_layout = cuda_xc_layout(basis, grid, functional, spins == 2, tile);
+    xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
     if (host_unfused) {
@@ -402,7 +403,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(final_enabled, &host_one, sizeof(host_one));
       if (!host_unfused) {
         // Device-fused XC setup drains this same stream.
-        xc = std::make_unique<CudaXcPlan>(basis, grid, functional, spins == 2, tile, xc_arena,
+        xc = std::make_unique<CudaXcPlan>(basis, grid, semilocal_family_code(functional), spins == 2, tile, xc_arena,
                                           resource.xc_device_bytes, stream);
       }
       // This owner uses ordinary stream execution. Reuse the common provider
@@ -461,7 +462,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.dft_diagnostic.occupations = occupations;
     output.dft_diagnostic.grid_points = xc_layout.npoint;
     output.dft_diagnostic.tile_points = xc_layout.tile_points;
-    output.dft_diagnostic.ao_order = xc_layout.functional == 0U ? 0 : 1;
+    output.dft_diagnostic.ao_order = xc_layout.functional == SemilocalFamily::Lda ? 0 : 1;
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;
     started = true;
@@ -728,9 +729,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
     host_xc_totals.fill(0.0);
     if (spins == 1) {
       XcIntegral value;
-      if (functional == 0U)
+      if (functional == SemilocalFamily::Lda)
         value = integrate_lda_xc_pw_rks(basis, grid, host_xc_density, xc_layout.tile_points);
-      else if (functional == 1U)
+      else if (functional == SemilocalFamily::Pbe)
         value = integrate_pbe_rks_with_tail(basis, grid, host_xc_density, xc_layout.tile_points);
       else
         value = integrate_r2scan_rks(basis, grid, host_xc_density, xc_layout.tile_points);
@@ -742,10 +743,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       std::copy_n(host_xc_density.begin(), matrix, host_xc_alpha.begin());
       std::copy_n(host_xc_density.begin() + matrix, matrix, host_xc_beta.begin());
       SpinXcIntegral value;
-      if (functional == 0U)
+      if (functional == SemilocalFamily::Lda)
         value = integrate_lda_xc_pw_uks(basis, grid, host_xc_alpha, host_xc_beta,
                                         xc_layout.tile_points);
-      else if (functional == 1U)
+      else if (functional == SemilocalFamily::Pbe)
         value = integrate_pbe_uks(basis, grid, host_xc_alpha, host_xc_beta, xc_layout.tile_points);
       else
         value =
@@ -1010,7 +1011,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     identity.determinant.model = provider.strategy();
     identity.determinant.occupied = {occupations[0]};
     if (spins == 2) identity.determinant.occupied.push_back(occupations[1]);
-    identity.model = {1, 1, grid_spec, xc_layout.tile_points, functional, spins, device, owner};
+    identity.model = {1, 1, grid_spec, xc_layout.tile_points, semilocal_family_code(functional),
+                      spins, device, owner};
     return identity;
   }
 
@@ -1142,7 +1144,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
 CudaKsPlan::CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis,
                        const MolecularGrid& grid, const scf::ScfOptions& options,
-                       std::uint32_t functional, std::size_t tile_points)
+                       SemilocalFamily functional, std::size_t tile_points)
     : impl_(std::make_unique<Impl>(fock, basis, grid, options, functional, tile_points)) {}
 CudaKsPlan::~CudaKsPlan() = default;
 void CudaKsPlan::begin(const std::vector<double>* seed, bool reuse_warm) {
