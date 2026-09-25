@@ -65,7 +65,13 @@ def main(argv: list[str] | None = None) -> int:
                 parser.error(
                     "all --cuda-max-* resource limits must be supplied together"
                 )
-            cuda_resource_limits = bulk_aot.CudaResourceLimits(*resource_bounds)
+            cuda_resource_limits = bulk_aot.CudaResourceLimits(
+                maximum_registers=int(args.cuda_max_registers),
+                maximum_stack_bytes=int(args.cuda_max_stack_bytes),
+                maximum_local_bytes=int(args.cuda_max_local_bytes),
+                maximum_shared_bytes=int(args.cuda_max_shared_bytes),
+                maximum_spill_bytes=int(args.cuda_max_spill_bytes),
+            )
         else:
             cuda_resource_limits = None
         plan = bulk_aot.census_catalog(
