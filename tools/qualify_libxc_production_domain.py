@@ -22,6 +22,7 @@ from vibeqc_compiler.xc.production_domain_cases import (
     control_case_ids,
     numerical_cases,
 )
+from vibeqc_compiler.xc.production_domain_controls import run_control_case
 from vibeqc_compiler.xc.production_domain_evidence import (
     build_result,
     stage_evidence,
@@ -256,27 +257,13 @@ def main() -> int:
         controls = set(control_case_ids(profile, spin=spin))
         for case_id in profile.case_ids_for_spin(spin):
             if case_id in controls:
-                reason = (
-                    "generic control policy is not a numeric oracle case; "
-                    "qualification remains fail-closed until #1120 B3"
+                row, detail = run_control_case(
+                    capability.name,
+                    spin=spin,
+                    case_id=case_id,
                 )
-                rows.append(
-                    {
-                        "spin": spin,
-                        "case_id": case_id,
-                        "status": "not-run",
-                        "outputs": list(profile.outputs),
-                        "reason": reason,
-                    }
-                )
-                details.append(
-                    {
-                        "spin": spin,
-                        "case_id": case_id,
-                        "status": "not-run",
-                        "reason": reason,
-                    }
-                )
+                rows.append(row)
+                details.append(detail)
                 continue
             row, detail = _run_numeric_case(
                 capability.name,
