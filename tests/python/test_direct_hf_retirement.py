@@ -78,10 +78,41 @@ def test_scientific_family_cannot_claim_independent_oracle_status() -> None:
         validate_retirement_ledger(ROOT, retirement, ownership)
 
 
-def test_order2_pair_gradient_owner_is_retired() -> None:
-    """Keep compiler-owned order-two force algebra out of native CUDA."""
+@pytest.mark.parametrize(
+    "name",
+    [
+        "direct_force_low_order.cuh",
+        "direct_force_order2.cuh",
+        "direct_force_order3.cuh",
+        "direct_native_psss.cuh",
+    ],
+)
+def test_low_order_force_geometry_remains_scientific(name: str) -> None:
+    """Generated scalar roots do not retire handwritten Gaussian geometry."""
+    retirement, ownership = _inputs()
+    path = f"src/scf/cuda/{name}"
+    roles = {row["path"]: row["role"] for row in ownership["files"]}
+    assert roles[path] == "scientific"
+    owners = [
+        family["id"] for family in retirement["families"] if path in family["files"]
+    ]
+    assert owners == ["native-low-order-force"]
 
+
+def test_generated_low_order_force_roots_remain_in_use() -> None:
+    """Preserve generated force roots while tracking their native inputs honestly."""
     assert not (ROOT / "src/scf/cuda/direct_native_pair_order2_gradient.cuh").exists()
-    source = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(encoding="utf-8")
+    low_order = (ROOT / "src/scf/cuda/direct_force_low_order.cuh").read_text(
+        encoding="utf-8"
+    )
+    assert "generated_weighted_eri::ssss_force" in low_order
+    psss = (ROOT / "src/scf/cuda/direct_native_psss.cuh").read_text(encoding="utf-8")
+    assert "generated_weighted_eri::psss_force" in psss
+
+    order2 = (ROOT / "src/scf/cuda/direct_force_order2.cuh").read_text(encoding="utf-8")
     for name in ("psps", "ppss", "dsss"):
-        assert f"generated_weighted_eri::{name}_force" in source
+        assert f"generated_weighted_eri::{name}_force" in order2
+
+    order3 = (ROOT / "src/scf/cuda/direct_force_order3.cuh").read_text(encoding="utf-8")
+    for name in ("ppps", "dsps", "dpss", "fsss"):
+        assert f"generated_weighted_eri::{name}_force" in order3

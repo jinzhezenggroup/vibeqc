@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/one_electron_force_reference.cu",
-  "reason": "Retained cooperative force schedule selected only by the explicit reference policy; the scalar native kernel and launch were retired after generated shell-warp promotion.",
-  "regions": [],
-  "role": "performance_exception",
-  "subsystem": "one_electron_derivatives"
-}
