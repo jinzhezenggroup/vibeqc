@@ -205,10 +205,10 @@ class RccsdtPrepared final : public PreparedCalculation {
                                           force.lambda.owned_device_bytes);
           execution_.observe_numeric_peak(runtime::ExecutionMemorySpace::Device,
                                           force.response_owned_device_bytes);
-          diagnostic.correlation_owned_device_bytes = std::max<std::uint64_t>(
-              diagnostic.correlation_owned_device_bytes,
-              std::max<std::uint64_t>(force.lambda.owned_device_bytes,
-                                      force.response_owned_device_bytes));
+          diagnostic.correlation_owned_device_bytes =
+              std::max<std::uint64_t>(diagnostic.correlation_owned_device_bytes,
+                                      std::max<std::uint64_t>(force.lambda.owned_device_bytes,
+                                                              force.response_owned_device_bytes));
         }
         state.result.forces = std::move(force.forces);
         diagnostic.response_iterations = force.orbital_response.iterations;
