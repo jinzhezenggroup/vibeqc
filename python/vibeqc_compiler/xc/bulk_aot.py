@@ -35,6 +35,41 @@ def _positive_int(value: int, name: str) -> None:
         raise ValueError(f"{name} must be a positive integer")
 
 
+def _nonnegative_int(value: int, name: str) -> None:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{name} must be a nonnegative integer")
+
+
+@dataclass(frozen=True)
+class CudaResourceLimits:
+    """Explicit PTXAS limits required before a CUDA probe is package-eligible."""
+
+    maximum_registers: int
+    maximum_stack_bytes: int
+    maximum_local_bytes: int
+    maximum_shared_bytes: int
+    maximum_spill_bytes: int
+
+    def __post_init__(self) -> None:
+        _positive_int(self.maximum_registers, "maximum_registers")
+        for name in (
+            "maximum_stack_bytes",
+            "maximum_local_bytes",
+            "maximum_shared_bytes",
+            "maximum_spill_bytes",
+        ):
+            _nonnegative_int(getattr(self, name), name)
+
+    def to_payload(self) -> dict[str, int]:
+        return {
+            "maximum_registers": self.maximum_registers,
+            "maximum_stack_bytes": self.maximum_stack_bytes,
+            "maximum_local_bytes": self.maximum_local_bytes,
+            "maximum_shared_bytes": self.maximum_shared_bytes,
+            "maximum_spill_bytes": self.maximum_spill_bytes,
+        }
+
+
 @dataclass(frozen=True)
 class PackageBudget:
     """Hard bounds on unique build tasks, not on scientific support claims."""
@@ -246,6 +281,76 @@ def ptxas_resources(log: str) -> dict[str, int | None]:
     }
 
 
+def gate_cuda_resources(
+    evidence: dict[str, Any], limits: CudaResourceLimits
+) -> dict[str, Any]:
+    """Fail closed unless every required PTXAS resource is observed and bounded.
+
+    This is a compiler-artifact gate only. Passing it does not imply numerical,
+    GPU-runtime, SCF, force, or public-method qualification.
+    """
+    if not isinstance(limits, CudaResourceLimits):
+        raise TypeError("limits must be CudaResourceLimits")
+    observed = evidence.get("resources")
+    if evidence.get("status") != "compiled":
+        return {
+            "status": "unavailable",
+            "package_eligible": False,
+            "reasons": [f"compile-status:{evidence.get('status', 'missing')}"],
+            "limits": limits.to_payload(),
+            "observed": None,
+        }
+    if not isinstance(observed, dict):
+        return {
+            "status": "unavailable",
+            "package_eligible": False,
+            "reasons": ["ptxas-resources-missing"],
+            "limits": limits.to_payload(),
+            "observed": None,
+        }
+    fields = (
+        "registers",
+        "stack_bytes",
+        "spill_store_bytes",
+        "spill_load_bytes",
+        "shared_bytes",
+        "local_bytes",
+    )
+    missing = [field for field in fields if type(observed.get(field)) is not int]
+    if missing:
+        return {
+            "status": "unavailable",
+            "package_eligible": False,
+            "reasons": ["unknown-resource:" + field for field in missing],
+            "limits": limits.to_payload(),
+            "observed": {field: observed.get(field) for field in fields},
+        }
+    values = {field: int(observed[field]) for field in fields}
+    if any(value < 0 for value in values.values()):
+        raise ValueError("PTXAS resource observations must be nonnegative")
+    reasons = []
+    if values["registers"] > limits.maximum_registers:
+        reasons.append("register-limit")
+    if values["stack_bytes"] > limits.maximum_stack_bytes:
+        reasons.append("stack-limit")
+    if values["local_bytes"] > limits.maximum_local_bytes:
+        reasons.append("local-memory-limit")
+    if values["shared_bytes"] > limits.maximum_shared_bytes:
+        reasons.append("shared-memory-limit")
+    if (
+        values["spill_store_bytes"] + values["spill_load_bytes"]
+        > limits.maximum_spill_bytes
+    ):
+        reasons.append("spill-limit")
+    return {
+        "status": "passed" if not reasons else "rejected",
+        "package_eligible": not reasons,
+        "reasons": reasons,
+        "limits": limits.to_payload(),
+        "observed": values,
+    }
+
+
 def compile_probe(
     variant: SourceVariant,
     *,
@@ -348,6 +453,7 @@ def measure_plan(
     compilers: dict[str, str | None] | None = None,
     timeout: float = 60,
     cuda_arch: str = "sm_80",
+    cuda_resource_limits: CudaResourceLimits | None = None,
 ) -> dict[str, Any]:
     """Rebuild and compile only selected groups, one source at a time.
 
@@ -373,7 +479,7 @@ def measure_plan(
             or variant.import_identity != record["import_identity"]
         ):
             raise ValueError("source or import identity changed after the census")
-        measurements[identity] = {
+        measurement = {
             **compile_probe(
                 variant,
                 compiler=(compilers or {}).get(variant.backend),
@@ -382,6 +488,17 @@ def measure_plan(
             ),
             "reemit_seconds": reemit_seconds,
         }
+        if variant.backend == "cuda":
+            measurement["resource_gate"] = (
+                gate_cuda_resources(measurement, cuda_resource_limits)
+                if cuda_resource_limits is not None
+                else {
+                    "status": "not-run",
+                    "package_eligible": False,
+                    "reasons": ["resource-policy-not-supplied"],
+                }
+            )
+        measurements[identity] = measurement
     return measurements
 
 
