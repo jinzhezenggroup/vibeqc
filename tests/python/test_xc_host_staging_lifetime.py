@@ -17,6 +17,12 @@ def test_host_xc_staging_keeps_copy_sources_alive(tmp_path: Path) -> None:
     body = source.split("  CudaXcView stage_xc(", 1)[1].split(
         "\n  void enqueue_legacy()", 1
     )[0]
+    # This probe executes the host route. Keep the extracted host body tied to
+    # production while excluding the independent resident VV10 enqueue path.
+    body = (
+        "std::uint64_t next_generation) {\n"
+        + body[body.index("    const auto bytes = elements * sizeof(double);") :]
+    )
     harness = r"""
 #include <algorithm>
 #include <array>
@@ -46,11 +52,16 @@ struct SpinXcIntegral { std::array<std::vector<double>,2> potential{
 template<class... T> XcIntegral integrate_lda_xc_pw_rks(T&&...) { selected_route=0; return {}; }
 template<class... T> XcIntegral integrate_pbe_rks_with_tail(T&&...) { selected_route=1; return {}; }
 template<class... T> XcIntegral integrate_r2scan_rks(T&&...) { selected_route=2; return {}; }
-template<class... T> XcIntegral integrate_wb97mv_rks(T&&...) { selected_route=6; return {}; }
 template<class... T> SpinXcIntegral integrate_lda_xc_pw_uks(T&&...) { selected_route=3; return {}; }
 template<class... T> SpinXcIntegral integrate_pbe_uks(T&&...) { selected_route=4; return {}; }
 template<class... T> SpinXcIntegral integrate_r2scan_uks(T&&...) { selected_route=5; return {}; }
+template<class... T> XcIntegral integrate_wb97mv_rks(T&&...) { selected_route=6; return {}; }
 template<class... T> SpinXcIntegral integrate_wb97mv_uks(T&&...) { selected_route=7; return {}; }
+namespace nlc {
+XcIntegral integrate_vv10_rks(int,int,std::vector<double>&,int&,std::size_t,
+                              std::vector<int>,int) { return {}; }
+template<class... T> SpinXcIntegral integrate_vv10_uks(T&&...) { return {}; }
+}
 constexpr int cudaMemcpyDeviceToHost=1,cudaMemcpyHostToDevice=2;
 struct Region { std::uintptr_t begin; std::size_t size; };
 std::vector<Region> owned;
@@ -70,6 +81,8 @@ void check(int status) { if(status) throw std::runtime_error("cuda error"); }
 struct Owner {
  scf::ScfOptions options;
  DeviceXC* xc=nullptr;
+ int* nonlocal_correlation=nullptr;
+ int nonlocal_domain=0;
  int basis=0,grid=0,stream=0;
  unsigned spins=1;
  SemilocalFamily functional=SemilocalFamily::Lda;
@@ -99,8 +112,8 @@ int main() {
    owner->host_xc_potential.size()*sizeof(double)});
   try {
    const auto result=owner->stage_xc(7);
-   const int expected_route = functional == 4U ? (spins == 1 ? 6 : 7)
-                                               : static_cast<int>(functional + 3 * (spins - 1));
+   const auto expected_route=functional==4U ? 6+static_cast<int>(spins-1)
+                                             : static_cast<int>(functional+3*(spins-1));
    if(selected_route!=expected_route)
     throw std::runtime_error("wrong semilocal route");
    for(auto copy:queued) std::memcpy(copy.destination,copy.source,copy.bytes);
