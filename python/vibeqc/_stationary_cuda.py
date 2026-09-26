@@ -1583,6 +1583,150 @@ def _complete_rks_cuda_gradient_diagnostic(
                     )
         with timeline.phase("source_d2h_publication"):
             components = sources.finish()
+        range_provider_records = 0
+        nonlocal_geometry = None
+        if wb97mv_candidate:
+            # Candidate closure: SR/LR derivative mathematics executes through
+            # the generated CUDA weighted-ERI provider. TensorIR still owns the
+            # density weights; only the bounded derivative result returns for
+            # atom scatter. This is not the final resident endpoint.
+            range_native = RangeExchangeExecutor(
+                basis,
+                cache,
+                primitive_tile,
+                compiler,
+                device_id=device,
+            )
+            try:
+                for range_source in plan.range_exchange_sources:
+                    name = range_source.name
+                    primitive = plan.range_exchange_primitive(name)
+                    components[name] = np.zeros((na, 3), dtype=np.float64)
+                    iterator = product(range(n), repeat=4)
+                    while tuples := tuple(islice(iterator, integral_terms)):
+                        ids = np.asarray(tuples, dtype=np.int64)
+                        block = plan.integral_block(name, terms=len(tuples))
+                        range_plan = plan_cuda(
+                            block.weights, target, max_bytes=available
+                        )
+                        if (
+                            grid_plan.peak_bytes
+                            + source_bytes
+                            + range_plan.peak_bytes
+                            > max_device_bytes
+                        ):
+                            raise ValueError(
+                                "range-exchange CUDA weight workspace exceeds the device budget"
+                            )
+                        feeds = {
+                            "density_left": np.ascontiguousarray(
+                                state.density[:, ids[:, 0], ids[:, 2]]
+                            ),
+                            "density_right": np.ascontiguousarray(
+                                state.density[:, ids[:, 1], ids[:, 3]]
+                            ),
+                        }
+                        with _tensor_execution(
+                            None,
+                            f"{name}:{len(tuples)}",
+                            range_plan,
+                            compiler,
+                            cache,
+                            device,
+                            artifacts,
+                            timeline,
+                        ) as weight_owner:
+                            with timeline.phase("range_exchange_weight_execution"):
+                                weighted = weight_owner.execute(feeds)
+                            record_tensor(weighted, feeds)
+                        weights = weighted.outputs["weights"]
+                        for indices, weight in zip(tuples, weights, strict=True):
+                            owners, values = range_native.integral(
+                                primitive, indices, weight
+                            )
+                            np.add.at(components[name], owners, values)
+                range_provider_records = range_native.records
+            finally:
+                range_native.close()
+
+            nonlocal_primitive = next(
+                (
+                    primitive
+                    for primitive in method.primitives
+                    if isinstance(primitive, NonlocalCorrelationPrimitive)
+                ),
+                None,
+            )
+            if nonlocal_primitive is None:
+                raise ValueError("WB97M-V candidate is missing its nonlocal primitive")
+            nonlocal_budget = min(available, max_host_bytes - host_bound)
+            if nonlocal_budget <= 0:
+                raise ValueError("WB97M-V nonlocal candidate has no remaining budget")
+            pair_provider = NativeNonlocalPairProvider(
+                device="cuda",
+                device_id=device,
+                memory_budget_bytes=nonlocal_budget,
+                library=state._source._library,
+            )
+            with timeline.phase("nonlocal_cuda_pair_and_host_pullback"):
+                nonlocal_geometry = FixedDensityNonlocalCorrelation(
+                    nonlocal_primitive.spec,
+                    coefficient=nonlocal_primitive.coefficient,
+                    pair_provider=pair_provider,
+                    density_policy=state._source.nonlocal_density_policy,
+                ).geometry(basis, grid, density, tile_points=tile_points)
+            if nonlocal_geometry.backend != "native-cuda":
+                raise RuntimeError(
+                    "WB97M-V candidate nonlocal pair provider did not execute on CUDA"
+                )
+            if (
+                grid_plan.peak_bytes
+                + source_bytes
+                + nonlocal_geometry.device_workspace_bytes
+                > max_device_bytes
+            ):
+                raise ValueError("WB97M-V nonlocal device workspace exceeds the budget")
+            components["nonlocal_ao"] = np.array(
+                nonlocal_geometry.centers, copy=True
+            )
+            components["nonlocal_grid"] = np.zeros((na, 3), dtype=np.float64)
+            owners = np.asarray(grid.owners, dtype=np.int64)
+            np.add.at(
+                components["nonlocal_grid"],
+                owners,
+                np.asarray(nonlocal_geometry.points),
+            )
+            components["nonlocal_weight"] = np.zeros((na, 3), dtype=np.float64)
+            centers = np.asarray(
+                basis.packed[: 3 * na].reshape(-1, 3), dtype=np.float64
+            )
+            # This chain-rule pullback is intentionally still host-side. The
+            # next stack slice must move it to the resident CUDA grid adjoint
+            # before any public force capability can be promoted.
+            for atom in range(na):
+                for axis in range(3):
+                    motion = np.zeros((na, 3), dtype=np.float64)
+                    motion[atom, axis] = 1.0
+                    for begin in range(0, len(grid.points), tile_points):
+                        end = min(begin + tile_points, len(grid.points))
+                        tile_owners = owners[begin:end]
+                        response = partition_response(
+                            grid.points[begin:end],
+                            centers,
+                            point_motion=motion[tile_owners],
+                            center_motion=motion,
+                            iterations=spec.partition_iterations,
+                            coincident_tolerance=spec.coincident_tolerance,
+                        )
+                        selected = (
+                            np.arange(end - begin),
+                            tile_owners,
+                        )
+                        components["nonlocal_weight"][atom, axis] += np.dot(
+                            nonlocal_geometry.weights[begin:end],
+                            state._source.atomic_weights[begin:end]
+                            * response.directional[selected],
+                        )
         if ecp:
             # Full ordered AO-pair contraction; the existing TensorIR supplies
             # spin summation and every scientific weight/reduction on CUDA.
