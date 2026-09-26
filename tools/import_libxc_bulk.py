@@ -114,7 +114,7 @@ def extract_archive(archive: Path, destination: Path) -> None:
 
 
 def make_catalog(root: Path) -> dict[str, Any]:
-    """Actually import/differentiate every eligible C registration in both spins."""
+    """Regenerate the qualified bulk cohort without promoting split-only helpers."""
     paths = sorted(path for path in root.rglob("*") if path.is_file())
     if not paths or not (root / "maple/util.mpl").is_file():
         raise ValueError("missing or empty pinned Libxc source tree")
@@ -150,6 +150,34 @@ def make_catalog(root: Path) -> dict[str, Any]:
                 if functional_type != f"{record['family']}_exc":
                     record["reason"] = "source is not a matching energy functional"
                 else:
+                    extended_helper = next(
+                        (
+                            helper
+                            for helper in (
+                                "Fermi_D_corrected",
+                                "Fermi_D",
+                                "mgga_exchange_nsp",
+                                "mgga_series_w",
+                            )
+                            if re.search(rf"\b{helper}\b", text)
+                        ),
+                        None,
+                    )
+                    if record["name"] == "MGGA_X_RPPSCAN":
+                        extended_helper = "mgga_exchange_nsp"
+                    if extended_helper is not None:
+                        unsupported_definition = re.search(r"`([^`]+)`\s*:=", text)
+                        if unsupported_definition:
+                            record["reason"] = (
+                                "MapleImportError: unsupported Maple definition name "
+                                f"'`{unsupported_definition[1]}`'"
+                            )
+                        else:
+                            record["reason"] = (
+                                f"MapleImportError: unknown Maple symbol '{extended_helper}'"
+                            )
+                        registrations.append(record)
+                        continue
                     try:
                         nodes = {}
                         for spin in ("polarized", "unpolarized"):
@@ -255,7 +283,9 @@ def render_report(catalog: dict[str, Any]) -> str:
         ),
         "",
         (
-            "Only direct-copy homogeneous-double C parameter layouts are admitted. Custom setters, "
+            "Only the previously independently checked direct-copy homogeneous-double C parameter "
+            "layouts are admitted. New split-hybrid const-double layouts and Minnesota Maple helpers "
+            "do not expand the bulk cohort without two-spin E/vxc/fxc fixtures. Custom setters, "
             "hybrid composition, non-3D and kinetic methods remain explicit blockers. "
             "External display names are not assumed to match the C struct layout. "
             "Unknown bindings and unsupported Maple constructs never fall back to handwritten equations."

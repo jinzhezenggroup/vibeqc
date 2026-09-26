@@ -24,7 +24,7 @@ Features are density only for LDA; density and sigma for GGA; density, sigma, la
 
 The import contract is the ordinary positive-density/positive-gradient interior, not vacuum, fully polarized, zero-gradient or extreme-tail production continuation. Independent point fixtures do not constitute molecular SCF, forces, response, GPU execution, performance or complete-domain qualification. Existing FunctionalSpec/MethodIR and public Calculator admission are unchanged (#744/#745).
 
-Only direct-copy homogeneous-double C parameter layouts are admitted. Custom setters, hybrid composition, non-3D and kinetic methods remain explicit blockers. External display names are not assumed to match the C struct layout. Unknown bindings and unsupported Maple constructs never fall back to handwritten equations.
+Only the previously independently checked direct-copy homogeneous-double C parameter layouts are admitted. New split-hybrid const-double layouts and Minnesota Maple helpers do not expand the bulk cohort without two-spin E/vxc/fxc fixtures. Custom setters, hybrid composition, non-3D and kinetic methods remain explicit blockers. External display names are not assumed to match the C struct layout. Unknown bindings and unsupported Maple constructs never fall back to handwritten equations.
 
 ## Reproduce
 
