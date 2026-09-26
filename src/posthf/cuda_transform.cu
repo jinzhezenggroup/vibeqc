@@ -264,4 +264,189 @@ int posthf_cuda_versions_v1(void* pointer, int* values, char* error, size_t size
     blas_check(cublasGetVersion(ctx.handle, values + 2));
   });
 }
+
+int posthf_cuda_batch_create_v1(int device, size_t nbf, size_t request_count,
+                                const size_t* shapes, const size_t* tile,
+                                const double* coefficients, size_t maximum_bytes, void** out,
+                                char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!out) throw std::invalid_argument("null batch output handle");
+    *out = nullptr;
+    if (!nbf || !request_count || request_count > static_cast<size_t>(INT_MAX) || !shapes || !tile ||
+        !coefficients || !maximum_bytes)
+      throw std::invalid_argument("invalid MO batch plan");
+    auto p = std::make_unique<BatchTransform>();
+    p->nbf = nbf;
+    size_t tile_elements = 1;
+    for (unsigned axis = 0; axis < 4; ++axis) {
+      if (!tile[axis] || tile[axis] > nbf)
+        throw std::invalid_argument("invalid MO batch tile dimensions");
+      p->tile[axis] = tile[axis];
+      tile_elements = size_mul(tile_elements, tile[axis]);
+    }
+    if (nbf > INT_MAX) throw std::invalid_argument("MO batch exceeds cuBLAS int32 indexing");
+
+    p->states.resize(request_count);
+    size_t coefficient_elements = 0;
+    size_t numeric_elements = 0;
+    for (size_t request = 0; request < request_count; ++request) {
+      auto& state = p->states[request];
+      size_t transformed = tile_elements;
+      state.output = 1;
+      for (unsigned axis = 0; axis < 4; ++axis) {
+        const auto m = shapes[4 * request + axis];
+        if (!m || m > nbf) throw std::invalid_argument("invalid MO batch block dimensions");
+        state.m[axis] = m;
+        state.c_offset[axis] = state.coefficients;
+        state.coefficients = size_add(state.coefficients, size_mul(nbf, m));
+        state.output = size_mul(state.output, m);
+      }
+      state.stage = tile_elements;
+      for (unsigned axis = 0; axis < 4; ++axis) {
+        transformed = size_mul(transformed / tile[axis], state.m[axis]);
+        state.stage = std::max(state.stage, transformed);
+      }
+      if (state.stage > INT_MAX)
+        throw std::invalid_argument("MO batch stage exceeds cuBLAS int32 indexing");
+      coefficient_elements = size_add(coefficient_elements, state.coefficients);
+      numeric_elements =
+          size_add(numeric_elements,
+                   size_add(size_mul(2, state.stage), state.output));
+    }
+    numeric_elements = size_add(numeric_elements, coefficient_elements);
+    const size_t numeric = size_mul(8, numeric_elements);
+    const size_t error_offset = size_mul(size_add(numeric, 255) / 256, 256);
+    const size_t workspace = size_add(error_offset, 256);
+    const size_t bytes = size_add(workspace, 4U << 20);
+    if (bytes > maximum_bytes)
+      throw std::length_error("shared MO batch allocation exceeds admitted capacity");
+
+    cudaDeviceProp prop{};
+    cuda_check(cudaGetDeviceProperties(&prop, device));
+    p->context.prepare(device, prop.major, prop.minor, bytes, error_offset, workspace, 4U << 20,
+                       96U << 20, true);
+    auto* base = reinterpret_cast<double*>(p->context.arena);
+    size_t coefficient_cursor = 0;
+    auto* scratch = base + coefficient_elements;
+    for (auto& state : p->states) {
+      state.c = base + coefficient_cursor;
+      coefficient_cursor = size_add(coefficient_cursor, state.coefficients);
+      state.first = scratch;
+      scratch += state.stage;
+      state.second = scratch;
+      scratch += state.stage;
+      state.result = scratch;
+      scratch += state.output;
+    }
+    p->raw = p->states.front().second;
+    p->context.section(true, p->context.metrics.input_ms, [&] {
+      cuda_check(cudaMemcpyAsync(base, coefficients, coefficient_elements * 8, cudaMemcpyHostToDevice,
+                                 p->context.stream));
+      for (const auto& state : p->states)
+        cuda_check(cudaMemsetAsync(state.result, 0, state.output * 8, p->context.stream));
+      cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), p->context.stream));
+    });
+    *out = p.release();
+  });
+}
+void posthf_cuda_batch_destroy_v1(void* pointer) { delete static_cast<BatchTransform*>(pointer); }
+int posthf_cuda_batch_add_v1(void* pointer, const double* values, const size_t* begin,
+                             const size_t* counts, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !values || !begin || !counts)
+      throw std::invalid_argument("null MO batch tile");
+    auto& p = *static_cast<BatchTransform*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    std::array<size_t, 4> shape{};
+    size_t elements = 1;
+    for (unsigned axis = 0; axis < 4; ++axis) {
+      if (!counts[axis] || counts[axis] > p.tile[axis] || begin[axis] > p.nbf ||
+          counts[axis] > p.nbf - begin[axis])
+        throw std::invalid_argument("MO batch tile outside prepared bounds");
+      shape[axis] = counts[axis];
+      elements = size_mul(elements, counts[axis]);
+    }
+    if (p.failed) throw std::runtime_error("MO batch accumulation failed; recreate the transform");
+    p.validated = false;
+    p.failed = true;
+    StreamDrain accumulation_drain{ctx.stream};
+    ctx.section(true, ctx.metrics.input_ms, [&] {
+      cuda_check(cudaMemcpyAsync(p.raw, values, elements * 8, cudaMemcpyHostToDevice, ctx.stream));
+    });
+    ctx.section(true, ctx.metrics.library_ms, [&] {
+      for (auto& state : p.states) {
+        const int dim = static_cast<int>(shape[0]);
+        const int rest = static_cast<int>(elements / shape[0]);
+        const int columns = static_cast<int>(state.m[0]);
+        const double alpha = 1, beta = 0;
+        blas_check(cublasDgemm(ctx.handle, CUBLAS_OP_N, CUBLAS_OP_T, columns, rest, dim, &alpha,
+                               state.c + state.c_offset[0] + begin[0] * state.m[0], columns, p.raw,
+                               rest, &beta, state.first, columns));
+      }
+      for (auto& state : p.states) {
+        auto transformed_shape = shape;
+        auto transformed_elements = size_mul(elements / shape[0], state.m[0]);
+        for (unsigned axis = 0; axis < 3; ++axis)
+          transformed_shape[axis] = transformed_shape[axis + 1];
+        transformed_shape[3] = state.m[0];
+        double* in = state.first;
+        double* out_state = state.second;
+        for (unsigned k = 1; k < 4; ++k) {
+          const int dim = static_cast<int>(transformed_shape[0]);
+          const int rest = static_cast<int>(transformed_elements / transformed_shape[0]);
+          const int columns = static_cast<int>(state.m[k]);
+          const double alpha = 1, beta = 0;
+          blas_check(cublasDgemm(ctx.handle, CUBLAS_OP_N, CUBLAS_OP_T, columns, rest, dim, &alpha,
+                                 state.c + state.c_offset[k] + begin[k] * state.m[k], columns, in,
+                                 rest, &beta, out_state, columns));
+          transformed_elements = size_mul(rest, state.m[k]);
+          for (unsigned axis = 0; axis < 3; ++axis)
+            transformed_shape[axis] = transformed_shape[axis + 1];
+          transformed_shape[3] = state.m[k];
+          std::swap(in, out_state);
+        }
+        const double one = 1;
+        blas_check(cublasDaxpy(ctx.handle, static_cast<int>(state.output), &one, in, 1,
+                               state.result, 1));
+      }
+    });
+    p.failed = false;
+    accumulation_drain.active = false;
+  });
+}
+int posthf_cuda_batch_download_v1(void* pointer, double* const* outputs, const size_t* elements,
+                                  size_t request_count, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !outputs || !elements)
+      throw std::invalid_argument("null MO batch download");
+    auto& p = *static_cast<BatchTransform*>(pointer);
+    auto& ctx = p.context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    if (request_count != p.states.size())
+      throw std::invalid_argument("MO batch download request count mismatch");
+    for (size_t request = 0; request < request_count; ++request)
+      if (!outputs[request] || elements[request] != p.states[request].output)
+        throw std::invalid_argument("MO batch download size mismatch");
+    validate(p);
+    ctx.section(true, ctx.metrics.output_ms, [&] {
+      for (size_t request = 0; request < request_count; ++request)
+        cuda_check(cudaMemcpyAsync(outputs[request], p.states[request].result,
+                                   elements[request] * 8, cudaMemcpyDeviceToHost, ctx.stream));
+    });
+  });
+}
+int posthf_cuda_batch_metrics_v1(void* pointer, Metrics* out, char* error, size_t size) {
+  return guarded(error, size, [&] {
+    if (!pointer || !out) throw std::invalid_argument("null MO batch metrics");
+    auto& ctx = static_cast<BatchTransform*>(pointer)->context;
+    std::lock_guard<std::mutex> lock(ctx.mutex);
+    ctx.check_device();
+    *out = ctx.metrics;
+    out->observed_device_delta = ctx.device_delta();
+    out->device_ms = out->input_ms + out->output_ms + out->library_ms + out->kernel_ms;
+  });
+}
 }
