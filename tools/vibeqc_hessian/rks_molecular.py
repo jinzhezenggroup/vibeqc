@@ -599,7 +599,12 @@ def rks_hessian(
     operator.validate_current()
     if not np.isfinite(matrix).all():
         raise FloatingPointError("nonfinite RKS Hessian; no result published")
-    symmetry_error = float(np.max(np.abs(matrix - matrix.T), initial=0.0))
+    # Keep at most one additional dense array alive. The nested expression
+    # abs(matrix - matrix.T) would allocate two and violate the output peak.
+    symmetry_scratch = matrix - matrix.T
+    np.abs(symmetry_scratch, out=symmetry_scratch)
+    symmetry_error = float(np.max(symmetry_scratch, initial=0.0))
+    del symmetry_scratch
     identity = canonical_hash(
         {
             "schema": "vibeqc.rks-hessian-block/v1",
