@@ -23,6 +23,13 @@ enum class CudaXcAoPrecision : std::uint8_t {
   Fp32ComputeFp64Storage = 1,
 };
 
+/** Density-times-AO arithmetic. Mixed evaluates products in explicit RN FP32
+ * while keeping storage, the long reduction, point XC, Vxc and scalar reductions FP64. */
+enum class CudaXcDensityPrecision : std::uint8_t {
+  Fp64 = 0,
+  Fp32ComputeFp64Accumulate = 1,
+};
+
 /** Compiler-selected point entry. The immutable functional/response key is
  * resolved at preparation; runtime execution only binds validated device data.
  * Spin remains a layout argument and every entry uses the same FP64 contract. */
@@ -72,6 +79,12 @@ struct CudaXcScalars {
   int error{};
 };
 
+struct CudaXcGridView {
+  const double *points{}, *weights{};
+  std::size_t point_count{};
+  cudaStream_t stream{};
+};
+
 /** Immutable geometry/basis/grid/functional owner with borrowed device arena
  * and stream. Both must outlive this object; destruction drains the stream.
  * Input density remains caller-owned and must survive the enqueued work.
@@ -95,7 +108,22 @@ class CudaXcPlan {
 
   const CudaXcLayout& layout() const noexcept { return layout_; }
   const CudaXcTransfers& transfers() const noexcept { return transfers_; }
-  void enqueue(const double* density, std::size_t elements, std::uint64_t generation);
+  /** Borrow immutable device quadrature owned by this plan. */
+  CudaXcGridView grid_view() const;
+  void enqueue(const double* density, std::size_t elements, std::uint64_t generation,
+               CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64);
+  /** Execute the ordinary physical XC evaluation while also publishing total
+   * rho and grad-rho to caller-owned full-grid device buffers. This adds no
+   * plan-owned storage and is admitted only for GGA/meta-GGA ingredient sets. */
+  void enqueue_density_features(const double* density, std::size_t elements,
+                                std::uint64_t generation, double* total_density,
+                                double* total_gradient);
+  /** Accumulate a total-density nonlocal contribution into the already
+   * submitted physical XC potential/totals for the same generation. All
+   * inputs are caller-owned full-grid device arrays/scalars. */
+  void enqueue_nonlocal_potential(std::uint64_t generation, const double* effective_weights,
+                                  const double* total_gradient, const double* vrho,
+                                  const double* vsigma, const double* nonlocal_energy);
   /** Differentiate the fixed native density on GPU, including AO/feature and
    * matrix assembly. Signed directions use the same input layout as density. */
   void enqueue_response(const double* density, const double* direction, std::size_t elements,
@@ -108,7 +136,8 @@ class CudaXcPlan {
  private:
   void check_device() const;
   void enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                    std::uint64_t generation);
+                    std::uint64_t generation, CudaXcDensityPrecision precision,
+                    double* total_density = nullptr, double* total_gradient = nullptr);
   CudaXcLayout layout_;
   CudaXcPointLauncher point_launcher_{};
   CudaXcTransfers transfers_;
@@ -130,6 +159,14 @@ void enqueue(const CudaXcLayout& layout, CudaXcPointLauncher point_launcher, cud
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
-             int* error, const double* direction = nullptr, double* delta_features = nullptr);
+             int* error, CudaXcDensityPrecision precision, const double* direction = nullptr,
+             double* delta_features = nullptr, double* total_density = nullptr,
+             double* total_gradient = nullptr);
+void enqueue_nonlocal_potential(const CudaXcLayout& layout, cudaStream_t stream,
+                                const double* basis, const double* points,
+                                const double* effective_weights, const double* total_gradient,
+                                const double* vrho, const double* vsigma,
+                                const double* nonlocal_energy, double* ao, double* coefficients,
+                                double* potential, double* totals, int* error);
 }  // namespace cuda_xc_detail
 }  // namespace vibeqc::dft

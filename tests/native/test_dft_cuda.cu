@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -15,6 +16,10 @@
 #include "dft/xc.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/cuda_resources.cuh"
+#include "vibeqc/vibeqc.hpp"
+
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1();
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1();
 
 namespace {
 using namespace vibeqc::dft;
@@ -86,19 +91,51 @@ struct Fixture {
     if (stream) cudaStreamDestroy(stream);
   }
   ~Fixture() { cleanup(); }
-  void submit(const std::vector<double>& d) {
+  void submit(const std::vector<double>& d,
+              CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     check(cudaMemcpyAsync(density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice,
                           stream));
     // Reference input transfer is an explicit test stage. Complete it before
     // a temporary host density can die; the measured native enqueue follows.
     check(cudaStreamSynchronize(stream));
     const auto before = plan->transfers();
-    plan->enqueue(density, d.size(), ++generation);
+    plan->enqueue(density, d.size(), ++generation, precision);
     const auto after = plan->transfers();
     require(after.output_d2h_bytes == before.output_d2h_bytes &&
                 after.setup_h2d_bytes == before.setup_h2d_bytes &&
                 after.synchronizations == before.synchronizations,
             "XC enqueue staged data or synchronized");
+  }
+  std::pair<std::vector<double>, std::vector<double>> submit_density_features(
+      const std::vector<double>& d) {
+    double *device_rho{}, *device_gradient{};
+    std::vector<double> rho(layout.npoint), gradient(3 * layout.npoint);
+    try {
+      check(cudaMalloc(&device_rho, rho.size() * sizeof(double)));
+      check(cudaMalloc(&device_gradient, gradient.size() * sizeof(double)));
+      check(cudaMemcpyAsync(density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice,
+                            stream));
+      check(cudaStreamSynchronize(stream));
+      const auto before = plan->transfers();
+      plan->enqueue_density_features(density, d.size(), ++generation, device_rho, device_gradient);
+      const auto after = plan->transfers();
+      require(after.output_d2h_bytes == before.output_d2h_bytes &&
+                  after.setup_h2d_bytes == before.setup_h2d_bytes &&
+                  after.synchronizations == before.synchronizations,
+              "XC density-feature enqueue staged data or synchronized");
+      check(cudaMemcpyAsync(rho.data(), device_rho, rho.size() * sizeof(double),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaMemcpyAsync(gradient.data(), device_gradient, gradient.size() * sizeof(double),
+                            cudaMemcpyDeviceToHost, stream));
+      check(cudaStreamSynchronize(stream));
+    } catch (...) {
+      if (device_gradient) cudaFree(device_gradient);
+      if (device_rho) cudaFree(device_rho);
+      throw;
+    }
+    cudaFree(device_gradient);
+    cudaFree(device_rho);
+    return {std::move(rho), std::move(gradient)};
   }
   CudaXcScalars scalars() { return plan->read_scalars(generation); }
   std::vector<double> potential() { return plan->download_potential(generation); }
@@ -177,6 +214,150 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
       }
     }
   }
+  fixture.canary();
+}
+
+void density_feature_capture_case(const AoBasis& basis, const MolecularGrid& grid,
+                                  bool unrestricted) {
+  Fixture fixture(basis, grid, 4U, unrestricted, 7);
+  const auto d = density(basis.nao, unrestricted ? 2U : 1U);
+  const auto captured = fixture.submit_density_features(d);
+  require(fixture.scalars().error == 0, "CUDA XC density-feature capture reported an error");
+
+  const auto count = grid.point_count(), n = basis.nao, matrix = n * n;
+  std::vector<double> ao(4 * count * n);
+  basis.evaluate(grid.points().data(), count, 1, 0, n, ao.data(), ao.size());
+  const auto phi = [&](unsigned jet, std::size_t point, std::size_t mu) {
+    return ao[(jet * count + point) * n + mu];
+  };
+  for (std::size_t p = 0; p < count; ++p) {
+    double rho = 0.0, gradient[3]{};
+    for (unsigned spin = 0; spin < (unrestricted ? 2U : 1U); ++spin)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          const double value = d[spin * matrix + mu * n + nu];
+          rho += phi(0, p, mu) * value * phi(0, p, nu);
+          for (unsigned k = 0; k < 3; ++k)
+            gradient[k] +=
+                value * (phi(k + 1, p, mu) * phi(0, p, nu) + phi(0, p, mu) * phi(k + 1, p, nu));
+        }
+    close(captured.first[p], rho, "captured total density", 2e-15 + 2e-13 * std::abs(rho));
+    for (unsigned k = 0; k < 3; ++k)
+      close(captured.second[3 * p + k], gradient[k], "captured total density gradient",
+            2e-15 + 2e-13 * std::abs(gradient[k]));
+  }
+  fixture.canary();
+}
+
+void nonlocal_potential_case(const AoBasis& basis, const MolecularGrid& grid, bool unrestricted) {
+  Fixture fixture(basis, grid, 4U, unrestricted, 7);
+  const auto d = density(basis.nao, unrestricted ? 2U : 1U);
+  fixture.submit(d);
+  const auto before_scalars = fixture.scalars();
+  const auto before = fixture.potential();
+
+  const auto points = grid.point_count(), n = basis.nao, matrix = n * n;
+  std::vector<double> gradient(3 * points), vrho(points), vsigma(points);
+  for (std::size_t p = 0; p < points; ++p) {
+    vrho[p] = 0.13 + 0.01 * p;
+    vsigma[p] = 0.02 + 0.001 * p;
+    gradient[3 * p] = 0.03 * (p + 1);
+    gradient[3 * p + 1] = -0.02 * (p + 1);
+    gradient[3 * p + 2] = 0.01 * (p + 1);
+  }
+  const double nonlocal_energy = 0.123456789;
+  double *d_weights{}, *d_gradient{}, *d_vrho{}, *d_vsigma{}, *d_energy{};
+  try {
+    check(cudaMalloc(&d_weights, points * sizeof(double)));
+    check(cudaMalloc(&d_gradient, gradient.size() * sizeof(double)));
+    check(cudaMalloc(&d_vrho, points * sizeof(double)));
+    check(cudaMalloc(&d_vsigma, points * sizeof(double)));
+    check(cudaMalloc(&d_energy, sizeof(double)));
+    check(cudaMemcpyAsync(d_weights, grid.weights().data(), points * sizeof(double),
+                          cudaMemcpyHostToDevice, fixture.stream));
+    check(cudaMemcpyAsync(d_gradient, gradient.data(), gradient.size() * sizeof(double),
+                          cudaMemcpyHostToDevice, fixture.stream));
+    check(cudaMemcpyAsync(d_vrho, vrho.data(), points * sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaMemcpyAsync(d_vsigma, vsigma.data(), points * sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaMemcpyAsync(d_energy, &nonlocal_energy, sizeof(double), cudaMemcpyHostToDevice,
+                          fixture.stream));
+    check(cudaStreamSynchronize(fixture.stream));
+    const auto transfers = fixture.plan->transfers();
+    fixture.plan->enqueue_nonlocal_potential(fixture.generation, d_weights, d_gradient, d_vrho,
+                                             d_vsigma, d_energy);
+    const auto after_enqueue = fixture.plan->transfers();
+    require(after_enqueue.output_d2h_bytes == transfers.output_d2h_bytes &&
+                after_enqueue.setup_h2d_bytes == transfers.setup_h2d_bytes &&
+                after_enqueue.synchronizations == transfers.synchronizations,
+            "CUDA nonlocal AO enqueue staged data or synchronized");
+
+    const auto after_scalars = fixture.scalars();
+    const auto after = fixture.potential();
+    close(after_scalars.energy - before_scalars.energy, nonlocal_energy,
+          "CUDA nonlocal energy composition", 2e-13);
+
+    std::vector<double> ao(4 * points * n), expected(matrix);
+    basis.evaluate(grid.points().data(), points, 1, 0, n, ao.data(), ao.size());
+    const auto phi = [&](unsigned jet, std::size_t p, std::size_t mu) {
+      return ao[(jet * points + p) * n + mu];
+    };
+    for (std::size_t p = 0; p < points; ++p)
+      for (std::size_t mu = 0; mu < n; ++mu)
+        for (std::size_t nu = 0; nu < n; ++nu) {
+          double weak = 0.0;
+          for (unsigned k = 0; k < 3; ++k)
+            weak += 2.0 * vsigma[p] * gradient[3 * p + k] *
+                    (phi(k + 1, p, mu) * phi(0, p, nu) + phi(0, p, mu) * phi(k + 1, p, nu));
+          expected[mu * n + nu] +=
+              grid.weights()[p] * (vrho[p] * phi(0, p, mu) * phi(0, p, nu) + weak);
+        }
+    for (unsigned spin = 0; spin < (unrestricted ? 2U : 1U); ++spin)
+      for (std::size_t i = 0; i < matrix; ++i)
+        close(after[spin * matrix + i] - before[spin * matrix + i], expected[i],
+              "CUDA nonlocal AO potential composition", 3e-12 + 2e-12 * std::abs(expected[i]));
+
+    using fail_function = void (*)();
+    const std::array<std::pair<fail_function, vibeqc_status>, 2> failures{{
+        {&xc_cuda_fail_next_nonlocal_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+        {&xc_cuda_fail_next_nonlocal_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY},
+    }};
+    for (const auto& [fail, expected_status] : failures) {
+      // Establish a fresh published semilocal generation, then fail the
+      // in-place nonlocal phase. That generation must be revoked rather than
+      // exposing a partially accumulated potential/totals.
+      fixture.submit(d);
+      fail();
+      bool mapped = false;
+      try {
+        fixture.plan->enqueue_nonlocal_potential(fixture.generation, d_weights, d_gradient, d_vrho,
+                                                 d_vsigma, d_energy);
+      } catch (const std::bad_alloc&) {
+        mapped = expected_status == VIBEQC_STATUS_OUT_OF_MEMORY;
+      } catch (const vibeqc::Error& error) {
+        mapped = error.status() == expected_status;
+      }
+      require(mapped, "CUDA nonlocal AO failure lost its typed status");
+
+      bool revoked = false;
+      try {
+        (void)fixture.plan->read_scalars(fixture.generation);
+      } catch (const std::invalid_argument&) {
+        revoked = true;
+      }
+      require(revoked, "failed CUDA nonlocal AO phase left a partial generation readable");
+
+      fixture.submit(d);
+      require(fixture.scalars().error == 0,
+              "CUDA nonlocal AO failure prevented the next semilocal generation");
+    }
+  } catch (...) {
+    for (auto* pointer : {d_energy, d_vsigma, d_vrho, d_gradient, d_weights})
+      if (pointer) cudaFree(pointer);
+    throw;
+  }
+  for (auto* pointer : {d_energy, d_vsigma, d_vrho, d_gradient, d_weights}) cudaFree(pointer);
   fixture.canary();
 }
 
@@ -290,6 +471,32 @@ std::vector<double> empty_spin_reference(const AoBasis& basis, const MolecularGr
 
 __global__ void halve_density(double* d, std::size_t n) {
   for (std::size_t i = threadIdx.x; i < n; i += blockDim.x) d[i] *= 0.5;
+}
+
+void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
+                               std::uint32_t functional, bool uks, std::size_t tile = 13) {
+  // Keep the strict reference on the scalar schedule; the candidate also
+  // exercises tiled mixed arithmetic when the caller supplies a large tile.
+  Fixture strict(basis, grid, functional, uks, 13), mixed(basis, grid, functional, uks, tile);
+  if (tile >= 16)
+    require(basis.nao >= 16 && mixed.layout.tile_points >= 16,
+            "mixed tiled qualification must admit its target schedule");
+  const auto d = density(basis.nao, uks ? 2 : 1);
+  strict.submit(d);
+  mixed.submit(d, CudaXcDensityPrecision::Fp32ComputeFp64Accumulate);
+  const auto reference = strict.scalars(), candidate = mixed.scalars();
+  require(reference.error == 0 && candidate.error == 0, "mixed-density XC rejected finite input");
+  const auto tol = [](double x) { return 2e-6 + 2e-6 * std::abs(x); };
+  close(candidate.energy, reference.energy, "mixed-density XC energy", tol(reference.energy));
+  for (unsigned spin = 0; spin < 2; ++spin)
+    close(candidate.electrons[spin], reference.electrons[spin], "mixed-density XC electrons",
+          tol(reference.electrons[spin]));
+  const auto expected = strict.potential(), actual = mixed.potential();
+  require(expected.size() == actual.size(), "mixed-density XC potential shape changed");
+  for (std::size_t i = 0; i < expected.size(); ++i)
+    close(actual[i], expected[i], "mixed-density XC potential", tol(expected[i]));
+  strict.canary();
+  mixed.canary();
 }
 
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
@@ -493,6 +700,7 @@ void matrix_schedule_cases() {
           for (std::size_t tile : {17U, 31U, 64U}) {
             Fixture test(large_basis, large_grid, functional, uks, tile);
             compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+            mixed_density_contraction(large_basis, large_grid, functional, uks, tile);
           }
       graph_capture(large_basis, large_grid, 1U, false, 33);
       for (unsigned functional : {0U, 1U})
@@ -515,6 +723,8 @@ int main(int argc, char** argv) {
     const auto molecule = system();
     const AoBasis basis(molecule);
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
+    for (bool unrestricted : {false, true}) density_feature_capture_case(basis, grid, unrestricted);
+    for (bool unrestricted : {false, true}) nonlocal_potential_case(basis, grid, unrestricted);
     for (unsigned functional : {0U, 1U, 2U, 4U})
       for (bool unrestricted : {false, true}) {
         graph_capture(basis, grid, functional, unrestricted);
@@ -585,6 +795,7 @@ int main(int argc, char** argv) {
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
+      for (bool uks : {false, true}) mixed_density_contraction(basis, grid, functional, uks);
       variational_and_state(basis, grid, functional);
       const MolecularGrid tail_grid(molecule);
       Fixture tail(basis, tail_grid, functional, true, 257);

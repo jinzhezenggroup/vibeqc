@@ -63,17 +63,19 @@ void require_wb97mv_composition(const ResolvedFockBuild& primary,
   validate_resolved_fock_build(primary);
   validate_resolved_fock_build(correction);
   const auto spin = primary.spec.spin;
+  const auto backend = primary.backend;
+  if (backend != FockBackend::Cpu && backend != FockBackend::Cuda)
+    throw std::invalid_argument("WB97M-V composition requires CPU or CUDA Fock execution");
   const auto expected_primary =
       resolve_fock_build(make_rsh_primary_fock_spec(spin, dft::generated::kWb97mvShortExchange),
-                         FockBackend::Cpu, primary.screening_tolerance);
+                         backend, primary.screening_tolerance);
   const auto expected_correction =
       resolve_fock_build(make_rsh_correction_fock_spec(spin, dft::generated::kWb97mvShortExchange,
                                                        dft::generated::kWb97mvLongExchange,
                                                        dft::generated::kWb97mvOmega),
-                         FockBackend::Cpu, primary.screening_tolerance);
-  if (primary.backend != FockBackend::Cpu || correction.backend != FockBackend::Cpu ||
-      primary != expected_primary || correction != expected_correction ||
-      nonlocal.variant != dft::nlc::Vv10Variant::vv10 ||
+                         backend, primary.screening_tolerance);
+  if (correction.backend != backend || primary != expected_primary ||
+      correction != expected_correction || nonlocal.variant != dft::nlc::Vv10Variant::vv10 ||
       nonlocal.b != dft::generated::kWb97mvNonlocalB ||
       nonlocal.c != dft::generated::kWb97mvNonlocalC ||
       nonlocal.coefficient != dft::generated::kWb97mvNonlocalCoefficient)

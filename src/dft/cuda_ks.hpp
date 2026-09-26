@@ -9,6 +9,8 @@
 #include "dft/ao_grid.hpp"
 #include "dft/cuda_ks_final_state.hpp"
 #include "dft/grid.hpp"
+#include "dft/nonlocal_correlation/vv10_integration.hpp"
+#include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/semilocal_family.hpp"
 #include "scf/fock_prepared.hpp"
 #include "scf/types.hpp"
@@ -53,7 +55,8 @@ struct CudaKsTransfers {
 /** State arena plus bounded ordinary-eigensolver workspace admission. The
  * provider's actual host/device queries are checked before allocation. This
  * shape query performs no CUDA call and allocates no numeric buffers. */
-std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history);
+std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_history,
+                                bool exact_exchange = false, bool range_correction = false);
 
 /** Native ordinary-stream LDA/PBE RKS/UKS trajectory. The borrowed common
  * Fock plan must outlive it. Model/grid/functional identity is immutable;
@@ -69,7 +72,10 @@ class CudaKsPlan {
  public:
   CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
              const scf::ScfOptions& options, SemilocalFamily functional,
-             std::size_t tile_points = 256);
+             std::size_t tile_points = 256,
+             const scf::ResolvedFockBuild* range_correction = nullptr,
+             nlc::Vv10Plan* nonlocal_correlation = nullptr,
+             nlc::Vv10DensityDomain nonlocal_domain = nlc::Vv10DensityDomain::StrictPositive);
   ~CudaKsPlan();
   CudaKsPlan(const CudaKsPlan&) = delete;
   CudaKsPlan& operator=(const CudaKsPlan&) = delete;

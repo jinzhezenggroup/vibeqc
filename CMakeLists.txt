@@ -33,6 +33,8 @@ option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
        "Share native direct numerical code through a bounded NVIDIA device link" ON)
 option(VIBEQC_CUDA_FAST_COMPILE
        "Use compiler-oriented CUDA options (never for release measurements)" OFF)
+option(VIBEQC_ENABLE_CXX_PCH
+       "Precompile stable standard-library headers for host C++ compilation" OFF)
 set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
     "Compiler cache launcher: auto, off, or an executable name/path")
 set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
@@ -40,7 +42,11 @@ set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
 set(VIBEQC_CUDA_COMPILE_ARCHITECTURES "" CACHE STRING
     "NVCC architecture values, retaining 120-real/120-virtual intent")
 set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
-    "Maximum concurrent CUDA compiler jobs in the Ninja job pool")
+    "Maximum concurrent native CUDA compiler jobs in the Ninja job pool")
+set(VIBEQC_AOT_COMPILE_JOBS "" CACHE STRING
+    "Optional independent generated-AOT CUDA job limit; empty shares the native CUDA pool")
+set(VIBEQC_AOT_SPLIT_COMPILE_THREADS "1" CACHE STRING
+    "NVCC split-compile threads for generated AOT kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
     "NVCC split-compile threads for native direct kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
@@ -114,6 +120,15 @@ endif()
 if(NOT VIBEQC_CUDA_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR "VIBEQC_CUDA_COMPILE_JOBS must be a positive integer")
 endif()
+if(NOT VIBEQC_AOT_COMPILE_JOBS STREQUAL ""
+   AND NOT VIBEQC_AOT_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR
+          "VIBEQC_AOT_COMPILE_JOBS must be empty or a positive integer")
+endif()
+if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR
+          "VIBEQC_AOT_SPLIT_COMPILE_THREADS must be a positive integer")
+endif()
 if(NOT VIBEQC_CUDA_PROVIDER STREQUAL "nvidia"
    AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
   message(FATAL_ERROR "VIBEQC_CUDA_PROVIDER must be nvidia or cumetal")
@@ -160,8 +175,15 @@ if(VIBEQC_ENABLE_CUDA)
     # Preserve NVCC's real/virtual suffixes for compilation. A separate
     # numeric profile identity is derived below for manifest and cache paths.
     set(_vibeqc_cuda_compile_architectures ${CMAKE_CUDA_ARCHITECTURES})
-    set_property(GLOBAL PROPERTY JOB_POOLS
-                 vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
+    set(_vibeqc_aot_compile_pool vibeqc_cuda_compile)
+    set(_vibeqc_cuda_job_pools
+        vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
+    if(NOT VIBEQC_AOT_COMPILE_JOBS STREQUAL "")
+      list(APPEND _vibeqc_cuda_job_pools
+           vibeqc_aot_compile=${VIBEQC_AOT_COMPILE_JOBS})
+      set(_vibeqc_aot_compile_pool vibeqc_aot_compile)
+    endif()
+    set_property(GLOBAL PROPERTY JOB_POOLS ${_vibeqc_cuda_job_pools})
     # XsyevBatched is the capture-safe production eigensolver for realistic
     # AO buckets and is available in the supported CUDA 12.9 toolkit. Native
     # SDK builds link the toolkit providers normally. Python wheels instead
@@ -235,6 +257,11 @@ target_include_directories(vibeqc
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+if(VIBEQC_ENABLE_CXX_PCH)
+  target_precompile_headers(vibeqc PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp>")
+endif()
 
 target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")

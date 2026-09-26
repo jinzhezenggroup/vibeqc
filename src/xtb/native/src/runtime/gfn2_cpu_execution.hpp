@@ -13,6 +13,22 @@
 
 namespace vibeqc::xtb::detail {
 
+struct Gfn2CpuOrbitalSnapshot {
+  std::int64_t orbital_count = 0;
+  double electron_count = 0.0;
+  double alpha_electron_count = 0.0;
+  double beta_electron_count = 0.0;
+  std::vector<std::int64_t> shell_orbital_offsets;
+  std::vector<std::int64_t> shell_primitive_offsets;
+  std::vector<std::int64_t> shell_to_atom;
+  std::vector<std::uint8_t> angular_momenta;
+  std::vector<double> primitive_exponents;
+  std::vector<double> primitive_coefficients;
+  std::vector<double> overlap;
+  std::vector<double> coefficients;
+  std::vector<double> occupations;
+};
+
 // Retains molecular topology and numerical workspaces across synchronous calls.
 // Every call resets SCC from the SAD state; VibeQC has no public warm-start API.
 class Gfn2CpuExecutionCache {
@@ -31,6 +47,8 @@ class Gfn2CpuExecutionCache {
       Gfn2CpuExecutionCache& cache, const vibeqc_xtb_batch_t& batch,
       const vibeqc_xtb_compute_options_t& options, vibeqc_xtb_batch_result_t& result,
       std::string& error);
+  friend vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
+      Gfn2CpuExecutionCache& cache, Gfn2CpuOrbitalSnapshot& snapshot, std::string& error);
 };
 
 /*
@@ -46,6 +64,12 @@ vibeqc_xtb_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
                                                 const vibeqc_xtb_compute_options_t& options,
                                                 vibeqc_xtb_batch_result_t& result,
                                                 std::string& error);
+
+/* Copy the last converged one-system restricted GFN2 orbital state.
+ * This is an internal bridge for SCF initialization, not a public xTB result
+ * descriptor. Coefficients remain in the native GFN2 spherical AO order. */
+vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
+    Gfn2CpuExecutionCache& cache, Gfn2CpuOrbitalSnapshot& snapshot, std::string& error);
 
 }  // namespace vibeqc::xtb::detail
 

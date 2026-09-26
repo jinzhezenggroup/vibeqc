@@ -195,6 +195,72 @@ def test_unavailable_cuda_hf_query_is_diagnosed_without_cpu_fallback() -> None:
     assert plan.requests[0].identity.backend == "cuda"
 
 
+def test_cuda_hf_inventory_marshals_exact_shell_topology_to_v2() -> None:
+    from types import SimpleNamespace
+
+    seen: dict[str, typing.Any] = {}
+
+    def query(
+        nbf: int,
+        direct_nbf: int,
+        atoms: int,
+        shells: int,
+        angular: typing.Any,
+        primitive_counts: typing.Any,
+        diis_history: int,
+        spins: int,
+        precision: int,
+        energy_tolerance: float,
+        screening_tolerance: float,
+        output: typing.Any,
+        count: int,
+    ) -> int:
+        seen.update(
+            nbf=nbf,
+            direct_nbf=direct_nbf,
+            atoms=atoms,
+            shells=shells,
+            angular=tuple(angular[:shells]),
+            primitive_counts=tuple(primitive_counts[:shells]),
+            diis_history=diis_history,
+            spins=spins,
+            precision=precision,
+            energy_tolerance=energy_tolerance,
+            screening_tolerance=screening_tolerance,
+            count=count,
+        )
+        output[0] = 4096
+        output[1] = 256
+        return 0
+
+    library = SimpleNamespace(vibeqc_resource_small_hf_cuda_v2=query)
+    plan = estimate_hf_resources([H2], backend="cuda", library=library)
+    assert plan.status == "feasible"
+    assert seen == {
+        "nbf": 2,
+        "direct_nbf": 2,
+        "atoms": 2,
+        "shells": 2,
+        "angular": (0, 0),
+        "primitive_counts": (3, 3),
+        "diis_history": 8,
+        "spins": 1,
+        "precision": 0,
+        "energy_tolerance": 1e-10,
+        "screening_tolerance": 1e-12,
+        "count": 2,
+    }
+
+
+def test_cuda_hf_inventory_refuses_aggregate_v1_fallback() -> None:
+    from types import SimpleNamespace
+
+    legacy = SimpleNamespace(vibeqc_resource_small_hf_cuda_v1=lambda *args: 0)
+    plan = estimate_hf_resources([H2], backend="cuda", library=legacy)
+    assert plan.status == "unsupported"
+    assert "topology-aware CUDA HF allocation inventory v2" in plan.diagnostic
+
+
 def test_retired_df_math_control_does_not_change_cuda_resource_identity(
     monkeypatch: typing.Any,
 ) -> None:

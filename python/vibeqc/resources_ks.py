@@ -447,38 +447,47 @@ def ks_resource_request(
                 kind="persistent",
             )
         )
+    # CPU force workspaces are transient. The prepared CUDA force owner is
+    # retained across calls and overlaps the next setup/SCF replay; reserve it
+    # separately rather than treating serialized execution as retired storage.
+    # Keep the established diagnostic labels; kind records allocation lifetime.
+    host_phase_peak = max(max(x["setup_workspace"], x["scf_workspace"]) for x in host)
+    if cpu_forces:
+        host_phase_peak = max(host_phase_peak, CPU_FORCE_HOST_CAP)
+        exclusions += (
+            "force JIT/compiler processes, loaded code, BLAS/runtime internal storage",
+        )
+    if backend == "cuda":
+        estimates.append(
+            ResourceEstimate(
+                "serialized generated KS force host staging cap",
+                256 << 20,
+                "pageable",
+                first_phase,
+                last_phase,
+                kind="persistent",
+            )
+        )
     estimates.append(
         ResourceEstimate(
-            "serialized KS setup/SCF/XC host workspace",
-            max(max(x["setup_workspace"], x["scf_workspace"]) for x in host),
+            "serialized KS transient host phase peak",
+            host_phase_peak,
             "pageable",
             first_phase,
             last_phase,
         )
     )
     device = []
-    if cpu_forces:
-        estimates.append(
-            ResourceEstimate(
-                "serialized generated KS CPU force host staging cap",
-                CPU_FORCE_HOST_CAP,
-                "pageable",
-                first_phase,
-                last_phase,
-            )
-        )
-        exclusions += (
-            "force JIT/compiler processes, loaded code, BLAS/runtime internal storage",
-        )
     try:
         if backend == "cuda" and library is None:
             from . import _native
 
             library = _native.load_library(device="cpu")
         if library is not None:
-            options_version = library.vibeqc_ks_options_version
-            options_version.argtypes, options_version.restype = [], ctypes.c_uint32
-            if options_version() != 1:
+            options_version = getattr(library, "vibeqc_ks_options_version", None)
+            if callable(options_version):
+                options_version.argtypes, options_version.restype = [], ctypes.c_uint32
+            if not callable(options_version) or options_version() != 1:
                 raise NotImplementedError(
                     "native library does not support the current semantic KS execution-plan ABI"
                 )
@@ -527,17 +536,18 @@ def ks_resource_request(
                 max(0, x["setup"] - sum(x[k] for k in ("state", "xc", "coulomb")))
                 for x in device
             )
+            # The prepared force arena remains live during a later SCF replay.
+            # Keep its reservation persistent and add only actual setup excess
+            # to the transient phase model; preserve resident execution reuse.
             estimates.append(
                 ResourceEstimate(
-                    "KS setup excess over retired owner",
+                    "serialized KS transient device phase peak",
                     extra,
                     f"device:{device_id}",
                     first_phase,
                     last_phase,
                 )
             )
-            # C2 executes one generated-force item at a time after the resident
-            # SCF owner. The public consumer enforces these same staging caps.
             estimates.append(
                 ResourceEstimate(
                     "serialized generated KS force device staging cap",
@@ -545,15 +555,7 @@ def ks_resource_request(
                     f"device:{device_id}",
                     first_phase,
                     last_phase,
-                )
-            )
-            estimates.append(
-                ResourceEstimate(
-                    "serialized generated KS force host staging cap",
-                    256 << 20,
-                    "pageable",
-                    first_phase,
-                    last_phase,
+                    kind="persistent",
                 )
             )
     except (NotImplementedError, RuntimeError, OSError) as error:
@@ -572,6 +574,10 @@ def ks_resource_request(
             (
                 "preparation",
                 "included in common observation and persistent device ledger",
+            ),
+            (
+                "transient_phase_accounting",
+                "transient phase maxima plus retained CUDA force owners across replays",
             ),
         ),
     )

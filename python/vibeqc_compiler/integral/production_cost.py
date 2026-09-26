@@ -50,6 +50,7 @@ class ProductionSelectionCostView(Protocol):
 _SelectionT = TypeVar("_SelectionT", bound=ProductionSelectionCostView)
 
 _STABLE_AOT_SHARD_MAP_VERSION = 1
+_STABLE_AOT_BASE_SHARDS = 8
 
 # The map is intentionally keyed by shell name rather than manifest position.
 # Its slots were chosen from the measured component/recurrence/consumer cost
@@ -132,11 +133,16 @@ def production_compile_cost(selection: ProductionSelectionCostView) -> float:
 
 
 def stable_aot_shard_slot(selection: ProductionSelectionCostView) -> int:
-    """Return the versioned, manifest-order-independent virtual shard slot."""
+    """Return the versioned, manifest-order-independent virtual shard slot.
+
+    The checked-in map records the measured eight-shard bucket. Extend that
+    bucket with the canonical shell-class index so divisors of eight preserve
+    the historical assignment while larger shard counts can use new buckets.
+    """
 
     slot = _STABLE_AOT_SHARD_SLOTS.get(selection.spec.name)
     if slot is not None:
-        return slot
+        return slot + _STABLE_AOT_BASE_SHARDS * shell_class_index(selection.spec)
     # Unknown classes remain stable across manifest edits. The triangular
     # index is part of the canonical shell ABI, unlike list ordering.
     return shell_class_index(selection.spec)

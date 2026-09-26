@@ -37,6 +37,15 @@ def test_grid_native_generator_matches_jit_policy(tmp_path: typing.Any) -> None:
     source, _, headers = emit_grid_source()
     native_contractions = emit_native_xc_contraction_kernels()
     assert native == source + native_contractions + '#include "cuda_xc_kernels.cuh"\n'
+    assert (
+        "template <bool Mixed>\n__global__ void density_product" in native_contractions
+    )
+    assert "__double2float_rn" in native_contractions
+    assert "__fmul_rn" in native_contractions
+    assert "__dadd_rn" in native_contractions
+    assert "template <bool Mixed>\n__global__ void tiled_density_product" in native
+    assert "tiled_density_product<true>" in native
+    assert "density_product<true>" in native
     runtime = source.index('#include "cuda_grid.cu"')
     for scientific in (
         "__global__ void ao_kernel",

@@ -163,12 +163,14 @@ inline std::size_t df_resident_value_admission_floor(DfBudgetWorkload workload) 
  * Live automatic mode bounds its workload target by available device memory,
  * not the probe-failure cap: a 1-GiB cap forces roomy multi-GiB tensors to
  * regenerate on every replay. When the live envelope can admit a complete
- * source-backed resident value owner, the target is raised to that admission
- * floor before splitting response capacity. Tight live envelopes retain the
- * smaller workload target and therefore the streamed fallback. If the probe
+ * source-backed resident device value owner, raise the target to its admission
+ * floor before splitting response capacity. This does not choose the
+ * materialized host raw owner; that separate route changed SCF work counts
+ * during qualification. Tight live envelopes retain the smaller target and
+ * streamed fallback. Explicit positive budgets remain hard caps. If the probe
  * is unavailable, the same dimensions deterministically resolve to a
- * conservative 32 MiB..1 GiB envelope. Force response and value ownership are
- * proportional to their estimated staged work, not an unconditional 50/50.
+ * conservative 32 MiB..1 GiB envelope. Force response and value ownership
+ * are proportional to their estimated staged work, not an unconditional 50/50.
  */
 inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceEnvelope resource,
                                           std::size_t requested_bytes) noexcept {
@@ -217,9 +219,9 @@ inline DfResolvedBudget resolve_df_budget(DfBudgetWorkload workload, DfResourceE
                                          : resource.free_bytes - resource.free_bytes / 2U;
     const auto after_absolute = resource.free_bytes - result.reserved_headroom_bytes;
     const auto available = after_absolute - after_absolute / 4U;
-    // Promote only when the complete resident value owner fits inside the
-    // actual post-reservation envelope. Otherwise preserve the smaller target
-    // so constrained devices still select the bounded streamed route.
+    // Keep host preparation source-backed while retaining the device-value
+    // floor when it fits the live post-headroom envelope. Tight devices remain
+    // on the bounded streamed target.
     const auto admitted_target =
         resident_target <= available ? std::max(workload_target, resident_target) : workload_target;
     result.total_bytes = std::min(admitted_target, available);

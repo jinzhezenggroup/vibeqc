@@ -188,21 +188,23 @@
     },
     {
       "id": "retained-reference-force-consumer",
-      "status": "performance-exception",
-      "capability": "Separately compiled native Direct force consumer used as a retained qualified execution candidate/control.",
-      "current_selector": "Available through explicit Direct execution policy; its filename does not grant independent-oracle status and the semantic ownership ledger continues to classify it as scientific.",
-      "generated_alternative": "Generated weighted-ERI derivative consumers are the retirement direction for overlapping mathematical capability.",
-      "schedule_requirements": "Keep this route explicit and bounded; never treat agreement between this consumer and another lowering of the same mathematics as independent validation.",
-      "resource_profile": "Retain only while its bounded execution/resource behavior provides a qualified control or measured production advantage.",
+      "status": "unsupported-fallback",
+      "capability": "Matrix-direct RHF/UHF force fallback retained for unsupported non-quartet shell domains.",
+      "current_selector": "Default force execution no longer selects the small-HF persistent-ERI reference consumers: compute_forces disables persistent_eri so supported s-p-d-f domains use generated quartet/weighted-ERI force dispatch. The retained matrix-direct force kernels serve unsupported non-quartet force requests. Explicit physical-reference export returns before force dispatch and does not select these kernels.",
+      "generated_alternative": "Generated shell-class and weighted-ERI derivative consumers own the supported production force domain.",
+      "schedule_requirements": "No production scheduling claim remains for this fallback. Keep it isolated from the generated production selector and use it only where the generated quartet domain is unavailable.",
+      "resource_profile": "Unsupported force-domain coverage only; it no longer justifies retention through a small-HF production performance claim.",
       "evidence": [
         "docs/maintainer/cuda_ownership.md",
-        "docs/developer/weighted_eri.md"
+        "docs/developer/weighted_eri.md",
+        "tests/python/test_direct_reference_force_retirement.py"
       ],
       "required_compiler_capabilities": [
+        "#356 generated force coverage for the remaining unsupported shell domains",
         "#832 profitability/resource planning",
         "#833 reusable schedule vocabulary"
       ],
-      "retirement_condition": "Remove when generated consumers cover the same production domain with independent numerical qualification and no measured complete-endpoint disadvantage.",
+      "retirement_condition": "Remove when generated quartet/weighted-ERI consumers cover the remaining unsupported non-quartet force domains, with independent numerical qualification.",
       "files": [
         "src/scf/cuda/direct_reference_force.cu"
       ]

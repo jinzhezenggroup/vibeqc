@@ -255,10 +255,14 @@ macro(vibeqc_configure_cuda_backend target)
               CUDA_STANDARD 20
               CUDA_STANDARD_REQUIRED ON
               POSITION_INDEPENDENT_CODE ON
-              JOB_POOL_COMPILE vibeqc_cuda_compile)
+              JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool})
           if(VIBEQC_CUDA_FAST_COMPILE)
             target_compile_options(${class_target} PRIVATE
               $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+          endif()
+          if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+            target_compile_options(${class_target} PRIVATE
+              $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
           endif()
           target_sources(${target} PRIVATE $<TARGET_OBJECTS:${class_target}>)
         endforeach()
@@ -275,10 +279,14 @@ macro(vibeqc_configure_cuda_backend target)
             CUDA_STANDARD 20
             CUDA_STANDARD_REQUIRED ON
             POSITION_INDEPENDENT_CODE ON
-            JOB_POOL_COMPILE vibeqc_cuda_compile)
+            JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool})
         if(VIBEQC_CUDA_FAST_COMPILE)
           target_compile_options(vibeqc_aot_${profile_architecture} PRIVATE
             $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+        endif()
+        if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+          target_compile_options(vibeqc_aot_${profile_architecture} PRIVATE
+            $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
         endif()
         target_sources(${target} PRIVATE
             $<TARGET_OBJECTS:vibeqc_aot_${profile_architecture}>)
@@ -426,12 +434,16 @@ macro(vibeqc_configure_cuda_backend target)
       target_compile_options(${_vibeqc_stationary_target} PRIVATE
           $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>
           $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+      if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+        target_compile_options(${_vibeqc_stationary_target} PRIVATE
+          $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
+      endif()
       set_target_properties(${_vibeqc_stationary_target} PROPERTIES
           CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
           CUDA_STANDARD 20
           CUDA_STANDARD_REQUIRED ON
           POSITION_INDEPENDENT_CODE ON
-          JOB_POOL_COMPILE vibeqc_cuda_compile
+          JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool}
           OUTPUT_NAME "vibeqc_stationary_${_vibeqc_stationary_name}")
       if(VIBEQC_PYTHON_WHEEL)
         vibeqc_attach_cuda_implib(${_vibeqc_stationary_target})

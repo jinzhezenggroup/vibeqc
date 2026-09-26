@@ -256,6 +256,7 @@ using vibeqc_tensor::I;
 
 // r2SCAN additionally keeps D*grad(phi) so tau is formed from the same
 // density matrix as rho/gradient; LDA/GGA retain the one-panel fast path.
+template <bool Mixed>
 __global__ void density_product(const double* density, const double* ao, I n, I count, I spins,
                                 I work_jets, double* work, int* error) {
   const I panel = count * n;
@@ -266,8 +267,18 @@ __global__ void density_product(const double* density, const double* ao, I n, I 
     const double* d = density + spin * n * n;
     const double* source = ao + jet * panel;
     double value = 0.0;
-    for (I nu = 0; nu < n; ++nu)
-      value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
+    for (I nu = 0; nu < n; ++nu) {
+      if constexpr (Mixed) {
+        // AUTO uses binary32 products while retaining the long AO reduction in binary64.
+        const float left = __double2float_rn(d[mu * n + nu]);
+        const float right = __double2float_rn(d[nu * n + mu]);
+        const float symmetric = __fadd_rn(__fmul_rn(0.5f, left), __fmul_rn(0.5f, right));
+        const float orbital = __double2float_rn(source[point * n + nu]);
+        value = __dadd_rn(value, static_cast<double>(__fmul_rn(symmetric, orbital)));
+      } else {
+        value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
+      }
+    }
     work[i] = finite(value, error, 1);
   }
 }
@@ -319,6 +330,54 @@ inline void scheduled_density_features(cudaStream_t stream, const double* ao, co
     density_features<false><<<vibeqc_tensor::blocks(spins*count,128),128,0,stream>>>(
         ao,work,n,count,spins,ao_jets,work_jets,feature_terms,functional,features,error);
   }
+}
+
+__global__ void capture_total_density_features(const double* features, I count, I spins,
+                                               I feature_terms, I begin, double* total_density,
+                                               double* total_gradient, int* error) {
+  for (I p = I(blockIdx.x) * blockDim.x + threadIdx.x; p < count;
+       p += I(blockDim.x) * gridDim.x) {
+    double rho = 0.0, gradient[3]{};
+    for (I spin = 0; spin < spins; ++spin) {
+      rho += features[(spin * feature_terms) * count + p];
+      for (I k = 0; k < 3; ++k)
+        gradient[k] += features[(spin * feature_terms + k + 1) * count + p];
+    }
+    const I target = begin + p;
+    total_density[target] = finite(rho, error, 1);
+    for (I k = 0; k < 3; ++k)
+      total_gradient[3 * target + k] = finite(gradient[k], error, 1);
+  }
+}
+
+inline void scheduled_total_density_features(cudaStream_t stream, const double* features,
+                                             I count, I spins, I feature_terms, I begin,
+                                             double* total_density, double* total_gradient,
+                                             int* error) {
+  capture_total_density_features<<<vibeqc_tensor::blocks(count,128),128,0,stream>>>(
+      features,count,spins,feature_terms,begin,total_density,total_gradient,error);
+}
+
+__global__ void nonlocal_feature_coefficients(const double* total_gradient, const double* vrho,
+                                              const double* vsigma, I begin, I count, I spins,
+                                              I feature_terms, double* coefficients, int* error) {
+  for (I i = I(blockIdx.x) * blockDim.x + threadIdx.x; i < spins * count;
+       i += I(blockDim.x) * gridDim.x) {
+    const I spin = i / count, point = i % count, global = begin + point;
+    coefficients[(spin * feature_terms) * count + point] = finite(vrho[global], error, 2);
+    for (I k = 0; k < 3; ++k)
+      coefficients[(spin * feature_terms + k + 1) * count + point] =
+          finite(2.0 * vsigma[global] * total_gradient[3 * global + k], error, 2);
+    if (feature_terms == 5)
+      coefficients[(spin * feature_terms + 4) * count + point] = 0.0;
+  }
+}
+
+inline void scheduled_nonlocal_feature_coefficients(
+    cudaStream_t stream, const double* total_gradient, const double* vrho, const double* vsigma,
+    I begin, I count, I spins, I feature_terms, double* coefficients, int* error) {
+  nonlocal_feature_coefficients<<<vibeqc_tensor::blocks(spins*count,128),128,0,stream>>>(
+      total_gradient,vrho,vsigma,begin,count,spins,feature_terms,coefficients,error);
 }
 
 struct DevicePointValue {
