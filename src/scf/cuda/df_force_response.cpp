@@ -468,7 +468,8 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
                   metric};
     }
     CudaDfOccupiedResponseView owned_factors;
-    if (!borrow && plan->integral_source && metric.full_rank && space != "dense") {
+    if (!borrow && plan->integral_source && metric.full_rank && space != "dense" &&
+        (plan->streamed || space == "occupied")) {
       // Canonical occupied factors are an immutable owner view, independent of
       // mutable J/K tensor storage. Retained-whitened and streamed source-backed
       // plans can lend C while the response bridge owns the bounded projection
@@ -481,6 +482,14 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
         const auto corrected = select_corrected_occupied_response_factor(
             *plan, system, final_state, terms, maximum_bytes, owned_factors, detail);
         if (corrected != VIBEQC_STATUS_SUCCESS) return corrected;
+      }
+      if (owned_factors.owner_identity) {
+        // The bridge's source-owned occupied path regenerates bounded raw A
+        // panels. Do not simultaneously lend its mutually exclusive tensor
+        // views. Retained plans keep their fitted-B route in automatic mode;
+        // switching to source projection remains an explicit occupied request.
+        whitened = {};
+        packed_raw = {};
       }
     }
     // The diagnostic upload route writes the former raw scratch buffer.
