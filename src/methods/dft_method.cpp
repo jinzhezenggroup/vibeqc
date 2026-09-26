@@ -196,11 +196,7 @@ SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
 
 std::string_view expected_scf_domain(const NativeKsExecutionPlan& plan) noexcept {
   if (plan.generated_split_hybrid) return "libxc-7.0/split-global-hybrid-v1";
-  if (plan.semilocal_family == dft::SemilocalFamily::Wb97mv)
-    return "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
-  if (plan.semilocal_family == dft::SemilocalFamily::B3lyp)
-    return "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
-  return "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+  return dft::semilocal_family_scf_domain(plan.semilocal_family);
 }
 
 scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,
