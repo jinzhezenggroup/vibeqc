@@ -39,4 +39,13 @@ void launch_independent_jk_derivative_kernel(
     bool unrestricted, DirectCoulombRange exchange_range, double exchange_omega, double screening,
     const double* bounds, const double* density, const double* beta, double* out);
 
+/** Fuse Coulomb and split-range exchange derivatives in one quartet traversal.
+ * Output is source-major [J, short-range K, long-range K].
+ */
+void launch_independent_rsh_derivative_kernel(
+    dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch,
+    std::size_t coordinates_per_item, std::size_t system_begin, std::size_t source_stride,
+    double cj, double short_ck, double long_ck, bool unrestricted, double omega, double screening,
+    const double* bounds, const double* density, const double* beta, double* out);
+
 }  // namespace vibeqc::scf::cuda_execution
