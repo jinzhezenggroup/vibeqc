@@ -1,6 +1,7 @@
 """CUDA AO translation pullback and Becke local partials from shared graphs."""
 
 import typing
+from dataclasses import replace
 
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
@@ -62,17 +63,22 @@ def _emit_stationary_point(
         )
 
     if functional == 4:
-        if not isinstance(semilocal, FunctionalSpec) or semilocal.spin != "polarized":
+        if not isinstance(semilocal, FunctionalSpec):
             raise ValueError(
-                "omegaB97M-V stationary geometry requires its polarized FunctionalSpec"
+                "omegaB97M-V stationary geometry requires its FunctionalSpec"
             )
         active = {name for name, coefficient in semilocal.components if coefficient}
         if active != set(WB97MV_COMPONENTS):
             raise ValueError(
                 "functional=4 stationary geometry requires canonical omegaB97M-V semilocal components"
             )
+        polarized_semilocal = (
+            semilocal
+            if semilocal.spin == "polarized"
+            else replace(semilocal, spin="polarized")
+        )
         raw = emit_polarized_semilocal(
-            semilocal,
+            polarized_semilocal,
             value_type="StationaryWb97mvRaw",
             function_name="stationary_wb97mv_raw",
             identity_constant="kStationaryWb97mvExpressionIdentity",
@@ -98,9 +104,9 @@ def _emit_stationary_point(
                 "      if (!isfinite(gradient[s][k])) { out.valid = false; return out; }",
                 "  }",
                 "  const double total = rho[0] + rho[1];",
-                f"  constexpr double density_threshold = {DENSITY_THRESHOLD.hex()};",
-                f"  constexpr double sigma_threshold = {SIGMA_THRESHOLD.hex()};",
-                f"  constexpr double tau_threshold = {TAU_THRESHOLD.hex()};",
+                f"  constexpr double density_threshold = {float(DENSITY_THRESHOLD).hex()};",
+                f"  constexpr double sigma_threshold = {float(SIGMA_THRESHOLD).hex()};",
+                f"  constexpr double tau_threshold = {float(TAU_THRESHOLD).hex()};",
                 "  if (total < density_threshold) return out;",
                 "  double sigma[3]{};",
                 "  for (unsigned k = 0; k < 3; ++k) {",
