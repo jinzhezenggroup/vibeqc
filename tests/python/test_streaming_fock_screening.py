@@ -139,3 +139,27 @@ int main() {
         timeout=30,
     )
     subprocess.run([str(executable)], check=True, timeout=10)
+
+
+@pytest.mark.parametrize("name", ["ssss", "dppp"])
+def test_row_streaming_binary_searches_monotonic_coarse_tail(name: str) -> None:
+    """Packed/subgroup streaming should not linearly probe the Schwarz tail."""
+
+    root = Path(__file__).resolve().parents[2]
+    profile = resolve_production_profile(
+        root / "python/vibeqc_compiler/integral/production_shell_classes.json", "sm_120"
+    )
+    selection = next(s for s in profile.selections if s.spec.name == name)
+    source = _streaming_fock_source(selection)
+    prefix = f"generated_{name}"
+    assert f"{prefix}_stream_coarse_ket_end" in source
+    assert "while (low < high)" in source
+    assert "bra_bound * topology.shell_pair_bounds[ket_pair]" in source
+    worker_marker = f"__device__ __forceinline__ void {prefix}_streaming_fock("
+    worker_start = source.index(worker_marker)
+    worker = source[worker_start:]
+    assert (
+        f"const std::uint32_t coarse_ket_end = {prefix}_stream_coarse_ket_end("
+        in worker
+    )
+    assert "ket_base < coarse_ket_end" in worker

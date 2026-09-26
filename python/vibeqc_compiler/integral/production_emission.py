@@ -506,6 +506,31 @@ __device__ __forceinline__ bool {prefix}_stream_survives(
   return contribution >= screening_tolerance;
 }}
 
+/** Find the first coarse-screened ket in a Schwarz-descending class segment. */
+__device__ __forceinline__ std::uint32_t {prefix}_stream_coarse_ket_end(
+    const vibeqc::scf::detail::GeneratedShellPairStream& topology,
+    std::uint32_t bra_pair, std::uint32_t ket_begin, std::uint32_t ket_end,
+    double system_density_bound, double screening_tolerance) {{
+  const std::int32_t system = topology.shell_pair_systems[bra_pair];
+  if (topology.active != nullptr && topology.active[system] == 0U) return ket_begin;
+  const double bra_bound = topology.shell_pair_bounds[bra_pair];
+  std::uint32_t low = ket_begin;
+  std::uint32_t high = ket_end;
+  while (low < high) {{
+    const std::uint32_t middle = low + (high - low) / 2U;
+    const std::uint32_t ket_pair = topology.pair_order[middle];
+    const bool past_tail =
+        bra_bound * topology.shell_pair_bounds[ket_pair] *
+            system_density_bound < screening_tolerance;
+    if (past_tail) {{
+      high = middle;
+    }} else {{
+      low = middle + 1U;
+    }}
+  }}
+  return low;
+}}
+
 /** Count the arithmetic route actually selected for one retained quartet. */
 __device__ __forceinline__ void {prefix}_record_fock_precision(
 {precision_parameters}) {{
@@ -651,23 +676,16 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
     const std::uint32_t ket_end = topology.pair_class_offsets[
         {low_pair_class}U * stride + system + 1U];
     const double system_density_bound = {system_density_bound};
-    for (std::uint32_t ket_base = ket_begin; ket_base < ket_end;
+    const std::uint32_t coarse_ket_end = {prefix}_stream_coarse_ket_end(
+        topology, bra_pair, ket_begin, ket_end, system_density_bound,
+        screening_tolerance);
+    for (std::uint32_t ket_base = ket_begin; ket_base < coarse_ket_end;
          ket_base += 32U) {{
       const std::uint32_t ket_ordinal = ket_base + threadIdx.x;
-      bool past_schwarz_tail = ket_ordinal >= ket_end;
-      std::uint32_t ket_pair = 0U;
-      if (!past_schwarz_tail) {{
-        ket_pair = topology.pair_order[ket_ordinal];
-        past_schwarz_tail =
-            topology.shell_pair_bounds[bra_pair] *
-                topology.shell_pair_bounds[ket_pair] *
-                system_density_bound < screening_tolerance;
-      }}
-      // Every class/system ket segment is Schwarz-descending.  The system
-      // density maximum makes this a conservative monotonic coarse gate, so
-      // once a whole warp is below it no later ket can survive.
-      if (__all_sync(0xffffffffU, past_schwarz_tail)) break;
-      bool keep = !past_schwarz_tail;
+      const bool in_coarse_range = ket_ordinal < coarse_ket_end;
+      const std::uint32_t ket_pair =
+          in_coarse_range ? topology.pair_order[ket_ordinal] : 0U;
+      bool keep = in_coarse_range;
       if (keep) {{
         if constexpr ({str(high_pair_class == low_pair_class).lower()}) {{
           keep = bra_pair >= ket_pair;
@@ -759,20 +777,17 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
     const std::uint32_t ket_end = topology.pair_class_offsets[
         {low_pair_class}U * stride + system + 1U];
     const double system_density_bound = {system_density_bound};
-    for (std::uint32_t ket_base = ket_begin; ket_base < ket_end;
+    const std::uint32_t coarse_ket_end = {prefix}_stream_coarse_ket_end(
+        topology, bra_pair, ket_begin, ket_end, system_density_bound,
+        screening_tolerance);
+    for (std::uint32_t ket_base = ket_begin; ket_base < coarse_ket_end;
          ket_base += {tasks_per_block}U) {{
       if (lane == 0U) {{
         const std::uint32_t ket_ordinal = ket_base + subgroup;
-        // State 2 marks the monotonic Schwarz/density tail, 1 retained work,
-        // and 0 an exact-density or canonical-triangle rejection.
-        std::uint32_t state = 2U;
-        if (ket_ordinal < ket_end) {{
+        std::uint32_t state = 0U;
+        if (ket_ordinal < coarse_ket_end) {{
           const std::uint32_t ket_pair = topology.pair_order[ket_ordinal];
-          const bool past_schwarz_tail =
-              topology.shell_pair_bounds[bra_pair] *
-                  topology.shell_pair_bounds[ket_pair] *
-                  system_density_bound < screening_tolerance;
-          bool keep = !past_schwarz_tail;
+          bool keep = true;
           if (keep &&
               {str(high_pair_class == low_pair_class).lower()}) {{
             keep = bra_pair >= ket_pair;
@@ -783,7 +798,7 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
                 topology, bra_pair, ket_pair, screening_tolerance,
                 &contribution_bound);
           }}
-          state = past_schwarz_tail ? 2U : (keep ? {retained_state} : 0U);
+          state = keep ? {retained_state} : 0U;
           if (keep) {{
             {record_precision("state")}
             {prefix}_stream_populate_task(
@@ -793,13 +808,6 @@ __device__ __forceinline__ void {prefix}_streaming_fock(
         stream_keep[subgroup] = state;
       }}
       __syncthreads();
-      bool all_past_schwarz_tail = true;
-#pragma unroll
-      for (unsigned candidate = 0U; candidate < {tasks_per_block}U;
-           ++candidate) {{
-        all_past_schwarz_tail &= stream_keep[candidate] == 2U;
-      }}
-      if (all_past_schwarz_tail) break;
       if (stream_keep[subgroup] == 1U) {{
         {prefix}_subgroup_fock_task<Unrestricted>(
             stream_tasks, primitive_pairs, primitive_pair_offsets,
