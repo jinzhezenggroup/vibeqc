@@ -237,8 +237,8 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
       {o, o, o, o},
       {v, v, v, v},
   }};
-  const std::array<std::vector<double>*, 7> targets{
-      &p.ovov, &p.ovvo, &p.oovv, &p.ovvv, &p.ovoo, &p.oooo, &p.vvvv};
+  const std::array<std::vector<double>*, 7> targets{&p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
+                                                    &p.ovoo, &p.oooo, &p.vvvv};
 
   const auto common_bytes = provider.batch_bytes(shapes.front(), 0, cuda);
   std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
@@ -248,11 +248,9 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
     if (single_bytes < common_bytes)
       throw std::logic_error("RCCSD provider request accounting underflow");
     std::size_t output_elements = 1;
-    for (const auto extent : shape)
-      output_elements = posthf::checked_mul(output_elements, extent);
+    for (const auto extent : shape) output_elements = posthf::checked_mul(output_elements, extent);
     schedule_requests.push_back(
-        {single_bytes - common_bytes,
-         posthf::checked_mul(output_elements, sizeof(double))});
+        {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
   }
   const auto reuse = posthf::generated::ordered_source_reuse_plan(
       common_bytes, p.reference_retained_bytes, options.max_bytes, schedule_requests);

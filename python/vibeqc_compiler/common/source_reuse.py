@@ -65,7 +65,9 @@ class SourceReuseRequest:
         checked_bytes(self.live_bytes, "source-reuse request live bytes")
         checked_bytes(self.retained_bytes, "source-reuse request retained bytes")
         if self.live_bytes < self.retained_bytes:
-            raise ValueError("source-reuse request live bytes must include its retained output")
+            raise ValueError(
+                "source-reuse request live bytes must include its retained output"
+            )
 
 
 @dataclass(frozen=True)
@@ -133,7 +135,9 @@ def ordered_source_reuse_plan(
         for request in requests[begin:end]:
             retained = _add(retained, request.retained_bytes)
         if retained > budget_bytes:
-            raise ValueError("retained source-reuse outputs exceed numeric memory budget")
+            raise ValueError(
+                "retained source-reuse outputs exceed numeric memory budget"
+            )
         peak = max(peak, retained)
         begin = end
 
