@@ -1,10 +1,20 @@
 """Method-neutral stationary second-order executor gates (#180/#932)."""
 
+import ast
 import typing
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
+import vibeqc.second_order as production_second_order
+from vibeqc.second_order import (
+    StationaryHVPContext,
+    StationaryHVPContributor,
+    StationaryPerturbationProvider,
+    StationaryResponseDriver,
+    StationarySecondOrderExecutor,
+)
 from vibeqc_compiler.method import (
     StationaryHVPPlan,
     StationaryMeanField,
@@ -12,13 +22,33 @@ from vibeqc_compiler.method import (
 )
 from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
 
-from tools.vibeqc_hessian.stationary_executor import (
-    StationaryHVPContext,
-    StationaryHVPContributor,
-    StationaryPerturbationProvider,
-    StationaryResponseDriver,
-    StationarySecondOrderExecutor,
-)
+
+def test_production_second_order_owner_has_no_tools_dependency() -> None:
+    """Installed orchestration must not depend on repository-only tools modules."""
+    source = Path(production_second_order.__file__).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    imported = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.extend(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module is not None:
+            imported.append(node.module)
+    assert not tuple(
+        name for name in imported if name == "tools" or name.startswith("tools.")
+    )
+
+
+def test_tools_compatibility_shim_reexports_production_owner() -> None:
+    """Repository tools must not retain a second second-order implementation."""
+    from tools.vibeqc_hessian import stationary_executor as compatibility
+
+    assert compatibility.StationaryHVPContext is StationaryHVPContext
+    assert compatibility.StationaryHVPContributor is StationaryHVPContributor
+    assert (
+        compatibility.StationaryPerturbationProvider is StationaryPerturbationProvider
+    )
+    assert compatibility.StationaryResponseDriver is StationaryResponseDriver
+    assert compatibility.StationarySecondOrderExecutor is StationarySecondOrderExecutor
 
 
 def _pbe_plan() -> StationaryHVPPlan:

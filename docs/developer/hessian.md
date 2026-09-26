@@ -55,16 +55,19 @@ support merely from energy or gradient support. Adding another functional
 inside an already qualified LDA/GGA primitive family must not add
 Hessian-specific scientific source code.
 
-Molecular execution is a separate method-neutral layer.
-`StationarySecondOrderExecutor` accepts only a plan identity and complete
-ordered source inventory, one perturbation provider, one opaque stationary
-response driver and exactly one contributor per declared source. It performs
-one response solve, passes the same response object to every contribution and
-publishes a result only after every source returns a finite Cartesian HVP.
-There is no HF/RKS/UKS or functional-name dispatch in this executor. A
-MethodIR-derived DFT plan and an HF second-order plan can therefore share the
-same orchestration while retaining their own perturbation, response and
-primitive providers. Missing or extra contributors fail before execution.
+Molecular execution is a separate method-neutral layer. Its canonical
+installed owner is now `vibeqc.second_order`; the former
+`tools.vibeqc_hessian.stationary_executor` module is a compatibility re-export
+and contains no second implementation. `StationarySecondOrderExecutor` accepts
+only a plan identity and complete ordered source inventory, one perturbation
+provider, one opaque stationary response driver and exactly one contributor per
+declared source. It performs one response solve, passes the same response object
+to every contribution and publishes a result only after every source returns a
+finite Cartesian HVP. There is no HF/RKS/UKS or functional-name dispatch in
+this executor. A MethodIR-derived DFT plan and an HF second-order plan can
+therefore share the same orchestration while retaining their own perturbation,
+response and primitive providers. Missing or extra contributors fail before
+execution.
 
 The plan now exposes bounded `integral_block` programs for the one-electron,
 Coulomb and overlap/Pulay sources. Each block reuses the stationary-gradient
@@ -86,10 +89,14 @@ density direction produces exchange and/or XC response. Existing
 the method-neutral entry points are `solve_stationary_nuclear_perturbation[s]`.
 This boundary alone does not supply DFT AO/grid/partition geometric derivatives.
 
-This is compiler/source-completeness progress only. Public Calculator DFT
-Hessian/HVP capability remains off until the native geometric directional
-consumers and complete molecular HVP pass independent finite-difference,
-raw-symmetry and failure-path gates.
+The CPU direct all-electron Cartesian LDA/PBE RKS tools path now has native
+geometric directional consumers, complete seven-source molecular HVPs, shared
+multi-RHS CPKS, raw full-Hessian assembly, finite-difference validation and
+resource-gated execution beyond the historical 12-AO validation boundary.
+Public Calculator DFT Hessian/HVP capability remains off because the
+method-specific RKS response/provider adapters are still repository tools rather
+than installed production owners, and no public Hessian capability/resource
+contract has been promoted.
 
 ## Scope of this slice
 
