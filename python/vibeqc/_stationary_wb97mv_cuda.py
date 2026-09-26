@@ -434,8 +434,10 @@ class PreparedWb97mvCudaGradient:
             "nonlocal_active_points": count,
             "nonlocal_pair_evaluations": count**2,
             "ordered_quartets_per_integral_source": n**4,
-            "quartet_visits_per_integral_source": n**4,
-            "maximum_center_dual3_evaluations_per_integral_source": 3 * n**4,
+            "two_electron_quartet_traversals": 1,
+            "ordered_quartet_visits_total": n**4,
+            "maximum_center_dual3_evaluations_total": 6 * n**4,
+            "range_recurrences_per_participating_center": 2,
             "additional_device_peak_bound": device_bound,
             "additional_host_numeric_bound": host_bound,
             "native_integral_resources": dict(
