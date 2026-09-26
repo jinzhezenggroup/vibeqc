@@ -24,6 +24,7 @@ namespace {
 
 using namespace cuda_execution;
 using cuda_policy::bounded_direct_fock_only_diagnostic_requested;
+using cuda_policy::bounded_direct_primary_streaming_fock_mask_requested;
 using cuda_policy::bounded_direct_streaming_override_requested;
 using cuda_policy::bounded_fock_class_timing_requested;
 using cuda_policy::graph_native_eigensolver_override_requested;
@@ -370,6 +371,8 @@ std::vector<RhfBucketItem> run_hf_cuda_bucket_cached(
        (*plan)->bounded_fock_class_timing != bounded_fock_class_timing_requested() ||
        (*plan)->bounded_streaming_override != bounded_direct_streaming_override_requested() ||
        (*plan)->fock_only_diagnostic != bounded_direct_fock_only_diagnostic_requested() ||
+       (*plan)->primary_streaming_fock_mask !=
+           bounded_direct_primary_streaming_fock_mask_requested().value_or(0U) ||
        (*plan)->graph_native_eigensolver_override != graph_native_eigensolver_override ||
        (*plan)->reuse_converged_fock != reuse_converged_fock ||
        (*plan)->one_electron_value_mapping != cuda_policy::one_electron_value_mapping_requested() ||

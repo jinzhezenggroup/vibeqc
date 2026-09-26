@@ -341,6 +341,9 @@ macro(vibeqc_add_native_tests)
                        LIBRARIES CUDA::cudart CUDA::cublas CUDA::cusolver)
     vibeqc_native_test(vibeqc_cuda_diis_tests tests/native/test_cuda_diis.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
+    vibeqc_native_test(vibeqc_direct_streaming_graph_cuda_tests
+                       tests/native/test_direct_streaming_graph_cuda.cpp
+                       LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_cuda_force_convergence_tests tests/native/test_cuda_force_convergence.cpp
                        LIBRARIES CUDA::cudart SKIP_77)
     vibeqc_native_test(vibeqc_df_shell_pairs_tests tests/native/test_df_shell_pairs.cpp

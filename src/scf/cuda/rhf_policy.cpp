@@ -1,6 +1,7 @@
 #include "scf/cuda/rhf_policy.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -383,6 +384,28 @@ bool bounded_direct_aot_only_diagnostic_requested() noexcept {
 
 bool bounded_direct_fock_only_diagnostic_requested() noexcept {
   return selected("VIBEQC_BOUNDED_DIRECT_FOCK_ONLY_DIAGNOSTIC", "fock");
+}
+
+std::optional<std::uint64_t> bounded_direct_primary_streaming_fock_mask_requested() noexcept {
+  const char* selection = std::getenv("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK");
+  if (selection == nullptr || *selection == '\0' || std::strcmp(selection, "0") == 0 ||
+      std::strcmp(selection, "none") == 0 || *selection == '-') {
+    return std::nullopt;
+  }
+  if (std::strcmp(selection, "all") == 0) {
+    return std::numeric_limits<std::uint64_t>::max();
+  }
+  // strtoull accepts leading whitespace and signs, wrapping negative values
+  // into the unsigned range. Diagnostic selection must reject those spellings.
+  if (*selection < '0' || *selection > '9') return std::nullopt;
+  char* end = nullptr;
+  errno = 0;
+  const unsigned long long value = std::strtoull(selection, &end, 0);
+  if (errno == ERANGE || end == selection || *end != '\0' || value == 0ULL ||
+      value > std::numeric_limits<std::uint64_t>::max()) {
+    return std::nullopt;
+  }
+  return static_cast<std::uint64_t>(value);
 }
 
 bool bounded_fock_class_timing_requested() noexcept {

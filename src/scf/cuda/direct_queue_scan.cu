@@ -6,6 +6,14 @@
 
 namespace vibeqc::scf::cuda_execution {
 
+/** Device-launchable graphs cannot borrow a call-local host upload buffer. */
+__global__ void reset_bounded_generated_streaming_flags_kernel(std::uint64_t selected_mask,
+                                                               std::uint32_t* flags) {
+  const unsigned shell_class = blockIdx.x * blockDim.x + threadIdx.x;
+  if (shell_class >= detail::kDirectQuartetShellClassCount) return;
+  flags[shell_class] = (selected_mask & (std::uint64_t{1} << shell_class)) != 0U;
+}
+
 /** Scan bounded signature chunks in parallel and reset them for scatter. */
 __global__ void scan_bounded_force_signature_counts_kernel(std::uint32_t* signature_counts,
                                                            std::uint32_t* signature_offsets,
@@ -120,6 +128,15 @@ __global__ void normalize_bounded_generated_task_counts_kernel(const std::uint32
     overflow[shell_class] = 1U;
   }
   task_heads[shell_class] = 0U;
+}
+
+void launch_reset_bounded_generated_streaming_flags_kernel(dim3 grid, dim3 block,
+                                                           std::size_t shared_bytes,
+                                                           cudaStream_t stream,
+                                                           std::uint64_t selected_mask,
+                                                           std::uint32_t* flags) {
+  reset_bounded_generated_streaming_flags_kernel<<<grid, block, shared_bytes, stream>>>(
+      selected_mask, flags);
 }
 
 void launch_scan_bounded_force_signature_counts_kernel(dim3 grid, dim3 block,
