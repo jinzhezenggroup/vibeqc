@@ -134,7 +134,10 @@ def make_catalog(root: Path) -> dict[str, Any]:
         records = []
         if functional_type and owner.is_file():
             records = extract_registrations(
-                owner.read_text(encoding="utf-8"), text, header
+                owner.read_text(encoding="utf-8"),
+                text,
+                header,
+                allow_const_double=False,
             )
         item["registrations"] = len(records)
         if functional_type and not records:

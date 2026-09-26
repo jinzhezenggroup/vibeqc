@@ -53,6 +53,12 @@ def test_bounded_double_arrays_have_both_upstream_spellings() -> None:
     ]
 
 
+def test_const_double_arrays_preserve_copy_parameter_layout() -> None:
+    result = record(SOURCE.replace("double kappa, mu;", "const double coeffs[2];"))
+    assert result["metadata_status"] == "bound"
+    assert result["bindings"]["params_a_coeffs"] == ["0.804", repr(float(10 / 81))]
+
+
 @pytest.mark.parametrize(
     ("old", "new", "reason"),
     [

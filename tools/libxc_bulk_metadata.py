@@ -185,7 +185,11 @@ def array_values(text: str, name: str) -> list[str]:
 
 
 def parameter_layout(
-    text: str, type_name: str, definitions: dict[str, str | None]
+    text: str,
+    type_name: str,
+    definitions: dict[str, str | None],
+    *,
+    allow_const_double: bool = True,
 ) -> list[tuple[str, int]]:
     """Extract scalar/double-array layout; reject mixed types and partial arrays."""
     layouts: list[list[tuple[str, int]]] = []
@@ -199,9 +203,18 @@ def parameter_layout(
             statement = raw_statement.strip()
             if not statement:
                 continue
-            if not re.match(r"double\s", statement):
+            declaration = re.fullmatch(
+                (
+                    r"(?:const\s+)?double\s+(.+)"
+                    if allow_const_double
+                    else r"double\s+(.+)"
+                ),
+                statement,
+                re.DOTALL,
+            )
+            if declaration is None:
                 raise CMetadataError("non-double parameter layout")
-            for field in split_fields(re.sub(r"^double\s+", "", statement)):
+            for field in split_fields(declaration[1]):
                 entry = re.fullmatch(rf"({_IDENTIFIER})\s*((?:\[[^\]]+\])*)", field)
                 if entry is None:
                     raise CMetadataError("unsupported parameter field declaration")
@@ -223,7 +236,11 @@ def parameter_layout(
 
 
 def extract_registrations(
-    c_source: str, maple_source: str, header_source: str
+    c_source: str,
+    maple_source: str,
+    header_source: str,
+    *,
+    allow_const_double: bool = True,
 ) -> list[dict[str, Any]]:
     """Extract each registration independently, retaining every rejection."""
     text, header = strip_c_comments(c_source), strip_c_comments(header_source)
@@ -299,7 +316,10 @@ def extract_registrations(
                         "parameter array length does not match registration"
                     )
                 layout = parameter_layout(
-                    text + "\n" + header, next(iter(prefixes)), definitions
+                    text + "\n" + header,
+                    next(iter(prefixes)),
+                    definitions,
+                    allow_const_double=allow_const_double,
                 )
                 offset = 0
                 for field, size in layout:
