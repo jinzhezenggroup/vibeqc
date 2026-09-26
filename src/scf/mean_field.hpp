@@ -30,6 +30,7 @@ namespace vibeqc::dft {
 class AoBasis;
 class MolecularGrid;
 struct SemilocalPointProgram;
+struct RksAoCache;
 namespace nlc {
 class Vv10Plan;
 struct Vv10Parameters;
@@ -54,7 +55,8 @@ ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 /** CPU energy-only PBE RKS using the versioned scaled-v1 domain policy. */
 ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
-                      const std::vector<double>* initial_density = nullptr);
+                      const std::vector<double>* initial_density = nullptr,
+                      const dft::RksAoCache* prepared_ao_cache = nullptr);
 
 /** PBE-family RKS with one MethodIR-owned VV10/rVV10 contribution. */
 ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
@@ -147,7 +149,8 @@ ScfResult run_r2scan_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis
 ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                                    const dft::MolecularGrid& grid, const ScfOptions& options,
                                    dft::SemilocalFamily family, unsigned spin_channels,
-                                   const std::vector<double>* initial_density = nullptr);
+                                   const std::vector<double>* initial_density = nullptr,
+                                   const dft::RksAoCache* prepared_rks_ao_cache = nullptr);
 
 /** UKS counterpart of run_semilocal_rks for qualification execution. */
 ScfResult run_semilocal_uks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
