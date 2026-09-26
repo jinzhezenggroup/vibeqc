@@ -1,4 +1,4 @@
-"""Project Direct-J/K Fock materialization into the shared schedule contract."""
+"""Project Direct-J/K Fock materialization into the shared operator route contract."""
 
 from __future__ import annotations
 
@@ -6,13 +6,9 @@ from vibeqc_compiler.common.gpu_profitability import (
     ENDPOINT_NOISE_FRACTION,
     GpuProfitability,
 )
-from vibeqc_compiler.common.provenance import canonical_hash
-from vibeqc_compiler.common.schedule import (
-    ScheduleContract,
-    ScheduleResources,
-    ScheduleTopology,
-    select_measured_schedule_contract,
-)
+from vibeqc_compiler.common.schedule import ScheduleContract, ScheduleTopology
+
+from .operator_route_schedule import operator_route_contract, select_operator_route
 
 DIRECT_FOCK_ROUTE_SCHEMA = "vibeqc.integral.direct-fock-route.v1"
 
@@ -45,16 +41,15 @@ def direct_fock_route_contract(
     if type(legal) is not bool:
         raise TypeError("Direct Fock route legality must be boolean")
 
-    return ScheduleContract(
+    return operator_route_contract(
+        route,
         consumer="integral.direct-fock",
-        schedule_hash=canonical_hash(
-            {
-                "schema": DIRECT_FOCK_ROUTE_SCHEMA,
-                "route": route,
-                "shell_class": shell_class,
-                "page_size": page_size,
-            }
+        schema=DIRECT_FOCK_ROUTE_SCHEMA,
+        identity_fields=(
+            ("shell_class", shell_class),
+            ("page_size", page_size),
         ),
+        profitability=profitability,
         workload_hash=workload_hash,
         profile_key=profile_key,
         target_hash=target_hash,
@@ -68,8 +63,6 @@ def direct_fock_route_contract(
             page_size=page_size if route == "paged" else None,
             bucket=f"shell-class-{shell_class}",
         ),
-        resources=ScheduleResources(),
-        profitability=profitability,
         provenance=(
             ("fock_route", route),
             ("shell_class", str(shell_class)),
@@ -92,7 +85,7 @@ def select_direct_fock_route(
     minimum_speedup: float = 1.02,
     endpoint_noise_fraction: float = ENDPOINT_NOISE_FRACTION,
 ) -> str:
-    """Choose materialization through the shared measured-schedule selector."""
+    """Choose materialization through the shared integral operator selector."""
 
     baseline = direct_fock_route_contract(
         "paged",
@@ -118,9 +111,8 @@ def select_direct_fock_route(
         legal=streaming_legal,
         reasons=candidate_reasons,
     )
-    selected = select_measured_schedule_contract(
-        (baseline, candidate),
+    return select_operator_route(
+        {"paged": baseline, "streaming": candidate},
         minimum_speedup=minimum_speedup,
         endpoint_noise_fraction=endpoint_noise_fraction,
     )
-    return "streaming" if selected.topology.materialization == "stream" else "paged"
