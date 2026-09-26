@@ -18,7 +18,7 @@ from vibeqc import _native
 from vibeqc.profiles import canonical_hash
 
 from .direct_cuda import CudaDirectJKBackend
-from .problem import ResponseProblem
+from vibeqc.response import ResponseProblem
 
 _DOUBLE = ct.POINTER(ct.c_double)
 
