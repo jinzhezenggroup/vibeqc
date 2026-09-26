@@ -82,9 +82,9 @@
     {
       "id": "native-low-order-force",
       "status": "performance-exception",
-      "capability": "Direct-force density contraction, low-order Gaussian geometry/decay derivatives, and generic quartet coordinate recovery remain handwritten. Weighted IntegralIR owns the order-0/1/2/3 scalar force roots, not all native scientific composition that supplies them.",
-      "current_selector": "Order-0/1/2/3 exact shell workers consume compiler-generated Weighted IntegralIR force roots. The four adapters remain scientific because they construct Gaussian prefactors, Boys arguments, decay derivatives and operator-specific force composition; native density and generic quartet consumers remain tracked alongside them.",
-      "generated_alternative": "Weighted IntegralIR already owns the low-order force roots. Remaining retirement work includes their Gaussian geometry/decay inputs, shared RHF/UHF density contraction and generic quartet scientific composition under generated/shared scientific owners.",
+      "capability": "Direct-force density contraction, AO/component normalization, shell canonicalization, coordinate recovery and atom accumulation remain native. Cached-pair Gaussian geometry/decay mathematics and order-0/1/2/3 scalar force roots are compiler-owned.",
+      "current_selector": "Order-0/1/2/3 exact shell workers call a compiler-generated cached-pair geometry binder followed by compiler-generated Weighted IntegralIR force roots. Boys evaluation remains the shared native numerical-policy owner; density/component composition and coordinate recovery remain tracked scientific code.",
+      "generated_alternative": "The shared packed-force geometry IR now owns rho, inverse exponents, pair shifts, product-center differences, decay gradients, Boys arguments and primitive prefactors for these adapters. Remaining retirement work is shared RHF/UHF density/component composition, canonicalization and coordinate recovery/scatter.",
       "schedule_requirements": "Preserve symmetry-reduced density folding, center recovery, screening domain, bounded quartet traversal and single-counted atom scatter while keeping scheduler-only plumbing runtime-owned.",
       "resource_profile": "Promotion must preserve the current bounded queue/tile memory profile and complete force endpoint behavior; ownership changes must not introduce materialized whole-quartet derivative tensors.",
       "evidence": [
@@ -96,7 +96,7 @@
         "#832 profitability/resource planning",
         "#833 reusable schedule vocabulary"
       ],
-      "retirement_condition": "Retire or narrowly reclassify native scientific regions only after their Gaussian geometry, decay derivatives, density contraction and coordinate-recovery semantics have qualified generated/shared scientific owners. A generated force-root call alone is insufficient; generic queueing and transport may remain runtime.",
+      "retirement_condition": "Retire or narrowly reclassify native scientific regions after density/component contraction, canonicalization and coordinate-recovery semantics gain qualified generated/shared owners. Cached-pair Gaussian geometry and decay derivatives are no longer a native blocker; generic queueing and transport may remain runtime.",
       "files": [
         "src/scf/cuda/direct_force_density.cuh",
         "src/scf/cuda/direct_force_low_order.cuh",

@@ -2131,6 +2131,17 @@ def test_bounded_force_keeps_fock_only_classes_out_of_force_dispatch() -> None:
     assert "cudaErrorNotSupported" in mask_source
 
 
+def test_direct_cached_geometry_is_generated_from_shared_ir() -> None:
+    """Keep Direct cached-pair Gaussian geometry compiler-owned."""
+    source = emit_low_order_weighted_header(inline_single_use=True)
+    assert "make_direct_cached_geometry" in source
+    assert "first_pair.reduced_exponent" in source
+    assert "second_pair.reduced_exponent" in source
+    assert "first_pair.weighted_coefficient" in source
+    assert "second_pair.weighted_coefficient" in source
+    assert "return boys_argument;" in source
+
+
 def test_psss_force_codegen_emits_only_independent_gradient_roots() -> None:
     """Keep the Direct-HF psss candidate free of unused value/center-four roots."""
 

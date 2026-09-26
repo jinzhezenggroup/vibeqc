@@ -87,8 +87,8 @@ def test_scientific_family_cannot_claim_independent_oracle_status() -> None:
         "direct_native_psss.cuh",
     ],
 )
-def test_low_order_force_geometry_remains_scientific(name: str) -> None:
-    """Generated scalar roots do not retire handwritten Gaussian geometry."""
+def test_low_order_force_adapters_remain_scientific(name: str) -> None:
+    """Generated geometry and roots do not yet retire native force composition."""
     retirement, ownership = _inputs()
     path = f"src/scf/cuda/{name}"
     roles = {row["path"]: row["role"] for row in ownership["files"]}
@@ -97,6 +97,24 @@ def test_low_order_force_geometry_remains_scientific(name: str) -> None:
         family["id"] for family in retirement["families"] if path in family["files"]
     ]
     assert owners == ["native-low-order-force"]
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "direct_force_low_order.cuh",
+        "direct_force_order2.cuh",
+        "direct_force_order3.cuh",
+        "direct_native_psss.cuh",
+    ],
+)
+def test_low_order_cached_geometry_is_compiler_owned(name: str) -> None:
+    """Keep cached Gaussian geometry out of the remaining native adapters."""
+    source = (ROOT / "src/scf/cuda" / name).read_text(encoding="utf-8")
+    assert "generated_weighted_eri::make_direct_cached_geometry" in source
+    assert "geometry.rho = p * q / (p + q)" not in source
+    assert "2.0 * pow(kPi, 2.5)" not in source
+    assert "geometry.decay[0][axis] =" not in source
 
 
 def test_generated_low_order_force_roots_remain_in_use() -> None:

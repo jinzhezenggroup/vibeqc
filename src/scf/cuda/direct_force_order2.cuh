@@ -60,81 +60,14 @@ contracted_eri_cartesian_source_order2_generated_weighted_gradient(
   for (std::int64_t first_primitive = first_pair_begin; first_primitive < first_pair_end;
        ++first_primitive) {
     const PrimitivePairData first_pair = batch.shell_primitive_pairs[first_primitive];
-    const double p = first_pair.exponent_sum;
-    const double mu = first_pair.reduced_exponent;
-    const Vec3<double> product_p = first_pair.product_center;
-    const double first_product_scale = first_pair_matches_canonical_order
-                                           ? first_pair.first_product_scale
-                                           : first_pair.second_product_scale;
-    const double second_product_scale = first_pair_matches_canonical_order
-                                            ? first_pair.second_product_scale
-                                            : first_pair.first_product_scale;
     for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
          ++second_primitive) {
       const PrimitivePairData second_pair = batch.shell_primitive_pairs[second_primitive];
-      const double q = second_pair.exponent_sum;
-      const double nu = second_pair.reduced_exponent;
-      const Vec3<double> product_q = second_pair.product_center;
-      const double third_product_scale = second_pair_matches_canonical_order
-                                             ? second_pair.first_product_scale
-                                             : second_pair.second_product_scale;
-
       generated_weighted_eri::Geometry geometry;
-      geometry.inverse_two_p = 0.5 / p;
-      if constexpr (TargetShellClass == kPspsShellClass) {
-        geometry.inverse_two_q = 0.5 / q;
-      }
-      geometry.rho = p * q / (p + q);
-      geometry.prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
-                           2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      geometry.product_scales[0] = first_product_scale;
-      geometry.product_scales[1] = second_product_scale;
-      geometry.product_scales[2] = third_product_scale;
-
-      const Vec3<double> difference{
-          product_p.x - product_q.x,
-          product_p.y - product_q.y,
-          product_p.z - product_q.z,
-      };
-      const Vec3<double> pa{
-          product_p.x - first.x,
-          product_p.y - first.y,
-          product_p.z - first.z,
-      };
-      Vec3<double> pb{};
-      Vec3<double> qc{};
-      if constexpr (TargetShellClass == kPpssShellClass) {
-        pb = {
-            product_p.x - second.x,
-            product_p.y - second.y,
-            product_p.z - second.z,
-        };
-      } else if constexpr (TargetShellClass == kPspsShellClass) {
-        qc = {
-            product_q.x - third.x,
-            product_q.y - third.y,
-            product_q.z - third.z,
-        };
-      }
-
-      boys_values<3>(
-          geometry.rho * distance_squared(first_pair.product_center, second_pair.product_center),
-          geometry.boys);
-#pragma unroll
-      for (unsigned axis = 0; axis < 3; ++axis) {
-        geometry.difference[axis] = vec_axis(difference, axis);
-        geometry.shifts[0][axis] = vec_axis(pa, axis);
-        if constexpr (TargetShellClass == kPpssShellClass) {
-          geometry.shifts[1][axis] = vec_axis(pb, axis);
-        } else if constexpr (TargetShellClass == kPspsShellClass) {
-          geometry.shifts[2][axis] = vec_axis(qc, axis);
-        }
-        const double first_separation = vec_axis(first, axis) - vec_axis(second, axis);
-        const double second_separation = vec_axis(third, axis) - vec_axis(fourth, axis);
-        geometry.decay[0][axis] = -2.0 * mu * first_separation;
-        geometry.decay[1][axis] = -geometry.decay[0][axis];
-        geometry.decay[2][axis] = -2.0 * nu * second_separation;
-      }
+      const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
+          first_pair, second_pair, !first_pair_matches_canonical_order,
+          !second_pair_matches_canonical_order, first, second, third, fourth, geometry);
+      boys_values<3>(boys_argument, geometry.boys);
 
       generated_weighted_eri::IndependentGradient primitive{};
       if constexpr (TargetShellClass == kPspsShellClass) {

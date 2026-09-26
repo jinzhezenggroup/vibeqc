@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_native_psss.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "PSSS force adapter consumes generated_weighted_eri::psss_force but retains handwritten rho, ERI prefactor, Boys argument, decay derivatives and component normalization. Resident-bra scheduling is runtime; the whole operator-specific function remains conservatively scientific.",
+  "reason": "PSSS force adapter consumes compiler-generated cached-pair Gaussian geometry and generated_weighted_eri::psss_force. Resident-bra traversal is runtime; AO normalization and density-weighted component composition remain native scientific ownership.",
   "regions": []
 }
