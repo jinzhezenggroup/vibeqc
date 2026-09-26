@@ -219,17 +219,10 @@ print(first.energies)
 
 | Method | Performance |
 | --- | --- |
-| HF (direct / DF) | <a href="benchmarks/results/df-one-step-warm-20260926/hf.svg"><img src="benchmarks/results/df-one-step-warm-20260926/hf.svg" width="900" alt="Direct and density-fitted RHF energy-plus-force latency with one-step warm reuse"></a> |
+| HF (direct / DF) | <a href="benchmarks/results/df-one-step-warm-20260926/hf.svg"><img src="benchmarks/results/df-one-step-warm-20260926/hf.svg" width="900" alt="VibeQC versus GPU4PySCF: direct and DF RHF energy-plus-force latency"></a> |
 
-HF: RTX 5090, spherical def2-SVP, 3–96 atoms (24–768 AOs), complete warm SCF
-energy plus analytic forces. DF uses cc-pVDZ-JKFIT and the qualified configuration
-in the protocol. Direct and DF share energy, density and physical-residual
-acceptance; all 184 endpoints pass independent energy/force gates. Both take
-one iteration in all five frozen warm repeats at each size. At 768 AOs, DF takes
-6.175 s versus direct's 3.048 s; disabling DF warm reuse takes 8.021 s / 3 steps.
-Cold and changed-geometry calculations still converge normally.
-See the [measurements and reproduction protocol](benchmarks/results/df-one-step-warm-20260926/README.md),
-and the [GPU4PySCF comparison from the preceding shared-acceptance build](benchmarks/results/hf-unified-acceptance-20260926/README.md).
+RTX 5090, spherical def2-SVP: complete warm RHF energy + forces, five repeats.
+[Protocol and results](benchmarks/results/df-one-step-warm-20260926/README.md).
 
 ## Documentation
 

@@ -12,7 +12,7 @@ This does not change the default DF storage/response planner. It qualifies safe 
 - Five forward/reverse control cycles from one frozen post-cold or post-move DF density. Direct uses its own frozen density and five repeats. The controls are same-binary ablations, not a separate historical build. Clean timings exclude tracing; diagnostic replays retain actual source/GEMM/byte work.
 - Cold includes `prepare_batch` plus first execution; imports, library/probe loading are outside timing. Cold and geometry updates are single observations from independent owners, not repeated paired speedup estimates. Iterations are retained; the public CUDA HF Fock-count API returns `null`, so DF Fock work is reported only from separate traces.
 
-The common tolerances above are public inputs; effective warm convergence policies differ in this measured binary. Direct retains a density/geometry-qualified energy baseline and uses a FP64 energy comparison guard (about `8.64e-12 Eh` here). DF resets that baseline to infinity and uses the unguarded `1e-12 Eh` comparison. A [subsequent iteration diagnosis](../../../.agents/notes/proposed/2026-09-26-df-warm-convergence-parity.md) reproduces five DF iterations despite satisfying the density-step criterion in the first iteration. These timings include that implementation difference; they do not isolate equal-work J/K performance. The later [shared-acceptance qualification](../hf-unified-acceptance-20260926/README.md) unifies the native comparison rule and supplies the current README measurements; this historical record retains its original binary and observations.
+The common tolerances above are public inputs; effective warm convergence policies differ in this measured binary. Direct retains a density/geometry-qualified energy baseline and uses a FP64 energy comparison guard (about `8.64e-12 Eh` here). DF resets that baseline to infinity and uses the unguarded `1e-12 Eh` comparison. A [subsequent iteration diagnosis](../../../.agents/notes/implemented/performance/2026-09-26-df-qualified-one-step-warm.md#historical-five-step-diagnosis) reproduces five DF iterations despite satisfying the density-step criterion in the first iteration. These timings include that implementation difference; they do not isolate equal-work J/K performance. The later [shared-acceptance qualification](https://github.com/njzjz-bot/vibeqc/blob/b2e57efe9af86bcaf08936c5a2ca287942658a27/benchmarks/results/hf-unified-acceptance-20260926/README.md) unifies the native comparison rule; the [current comparison](../df-one-step-warm-20260926/README.md) additionally qualifies one-step warm reuse; this historical record retains its original binary and observations.
 
 ## Clean warm medians (seconds)
 
@@ -60,10 +60,9 @@ Native source base: `013675d52d3b2857fc425c96c9a3bf7a3883ce21` plus [measured-so
 
 Slurm jobs: 11796 independent references, 11797 regression matrix, 11798 baseline reproduction / memcheck / smoke, 11799 large endpoints. CUDA 12.9.1; package versions and the loaded library's actual kernel profile are in the JSON records.
 
-The `record_parts` entries group work counters and reference arrays by workload
-in readable, checksum-pinned companions. `tools.vibeqc_validation.record.load_record`
-reconstructs each complete record; partitioning preserves every numerical value
-and the receipt's diagnostic/sample ordering.
+The receipt and independent-reference records contain all workload observations
+inline. They reconstruct identically to the earlier split companions, which are
+recoverable from commit `b2e57efe9af86bcaf08936c5a2ca287942658a27`.
 
 Build the measured source or this PR with a Python environment containing the compiler dependencies, PySCF, GPU4PySCF and CuPy:
 

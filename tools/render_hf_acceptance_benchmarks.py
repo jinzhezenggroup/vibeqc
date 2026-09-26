@@ -169,40 +169,202 @@ def checked_run(
     return compact, plot
 
 
-def main() -> None:
-    """Write small workload companions and a checksum-bound summary."""
-    from tools.render_readme_benchmarks import plot_series, plt, save_svg, style_axes
+def compact_table(samples: list[dict]) -> dict:
+    """Keep exact scalar observations once per row, including missing work counts."""
+    if not samples:
+        raise ValueError("empty endpoint table")
+    columns = list(samples[0])
+    if any(set(sample) != set(columns) for sample in samples):
+        raise ValueError("endpoint scalar fields differ")
+    return {
+        "columns": columns,
+        "rows": [[sample[k] for k in columns] for sample in samples],
+    }
 
+
+def write_collection(path: Path, records: list[dict]) -> dict:
+    """Retain one workload per line and verify lossless JSON before hashing it.
+
+    Grouped work counters and independent arrays remain complete. This replaces
+    per-size companion files without introducing archives or duplicating arrays.
+    """
+    path.write_text(
+        "[\n" + ",\n".join(json.dumps(r, allow_nan=False) for r in records) + "\n]\n"
+    )
+    if json.loads(path.read_text()) != records:
+        raise ValueError("compact retention changed measured values")
+    return {"path": path.name, "sha256": digest(path), "bytes": path.stat().st_size}
+
+
+def draw_hf(plots: dict[str, list], destination: Path, repeats: int) -> None:
+    """Compare both engines and both J/K methods on one complete-endpoint scale.
+
+    Every successful repeat enters the median/range, even when iteration counts
+    differ. Crosses additionally expose those variable-work repeats; connecting
+    their medians makes no equal-work or iteration-normalized timing claim.
+    """
+    from tools.render_readme_benchmarks import COLORS, plt, save_svg, style_axes
+
+    plt.rcParams.update(
+        {
+            "font.family": "DejaVu Sans",
+            "font.size": 10,
+            "svg.fonttype": "none",
+            "svg.hashsalt": "vibeqc-hf-comparison",
+        }
+    )
+    fig, ax = plt.subplots(figsize=(8.2, 4.1))
+    for engine in ("VibeQC", "GPU4PySCF"):
+        for route, label, style in (
+            ("direct", "direct J/K", "o-"),
+            ("df", "DF J/K", "s--"),
+        ):
+            points = sorted(plots[route], key=lambda p: p["aos"])
+            values = [
+                [r["ms"] for r in p["engines"][engine]["samples"]] for p in points
+            ]
+            medians = [statistics.median(v) for v in values]
+            ax.errorbar(
+                [p["aos"] for p in points],
+                medians,
+                yerr=[
+                    [m - min(v) for m, v in zip(medians, values, strict=True)],
+                    [max(v) - m for m, v in zip(medians, values, strict=True)],
+                ],
+                fmt=style,
+                color=COLORS[engine],
+                label=f"{engine} · {label}",
+                capsize=3,
+                linewidth=1.8,
+                markersize=4,
+            )
+            for point, times in zip(points, values, strict=True):
+                samples = point["engines"][engine]["samples"]
+                if len({r["convergence"][0]["iterations"] for r in samples}) > 1:
+                    ax.scatter(
+                        [point["aos"]] * len(times),
+                        times,
+                        marker="x",
+                        color=COLORS[engine],
+                        s=25,
+                        zorder=4,
+                    )
+    style_axes(ax, "RHF · spherical def2-SVP · RTX 5090", [24, 48, 96, 192, 384, 768])
+    ax.legend(frameon=False, loc="upper left", fontsize=9)
+    fig.text(
+        0.5,
+        0.01,
+        f"Warm energy + forces · median and min–max of {repeats} runs · × varying SCF iterations",
+        ha="center",
+        fontsize=9,
+    )
+    fig.tight_layout(rect=(0, 0.045, 1, 1))
+    save_svg(fig, destination / "hf.svg")
+    plt.close(fig)
+
+
+def main() -> None:
+    """Validate native/reference endpoints and emit one consolidated comparison."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--raw-directory", type=Path, required=True)
+    parser.add_argument(
+        "--reference-directory",
+        type=Path,
+        help="Defaults to raw-directory; allows independently retained reference runs",
+    )
     parser.add_argument("--destination", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument(
+        "--include-warm-controls",
+        action="store_true",
+        help="Retain 384/768-AO disabled-reuse ablations in evidence, outside the README plot",
+    )
     args = parser.parse_args()
+    reference_directory = args.reference_directory or args.raw_directory
     args.destination.mkdir(parents=True, exist_ok=True)
     plots: dict[str, list] = defaultdict(list)
-    summary: dict[str, Any] = {
-        "schema": "vibeqc.hf-unified-acceptance.v1",
+    summary = {
+        "schema": "vibeqc.hf-comparison.v2",
         "repeats": args.repeats,
-        "scope": "same native FP64 SCF acceptance; complete energy and analytic forces; explicit packed-single fitted DF",
-        "timing": "separate engine processes; cold includes prepare; five frozen warm replays; traces excluded from medians",
-        "work": "SCF iterations are not Fock counts; GPU4PySCF get_veff includes pre-loop; native public Fock counts stay null; DF trace counters retained",
+        "scope": "complete RHF energy and analytic forces; explicit packed-single fitted DF",
+        "timing": "separate engine processes; cold includes prepare; frozen warm replays; traces excluded",
+        "figure": "VibeQC/GPU4PySCF direct/DF medians and min-max over every warm repeat; crosses mark varying iteration counts",
         "cases": [],
         "parts": [],
         "native_endpoint_samples": 0,
+        "reference_endpoint_samples": 0,
         "maximum_energy_error": 0.0,
         "maximum_force_error": 0.0,
     }
-    hashes = set()
+    native_records, reference_records, work_records = [], [], []
     for aos in (24, 48, 96, 192, 384, 768):
-        for route in ("direct", "df"):
-            parent = args.raw_directory / str(aos)
+        routes = ["direct", "df"]
+        if args.include_warm_controls and aos >= 384:
+            routes.append("df-disabled")
+        for route in routes:
+            approximation = "direct" if route == "direct" else "df"
             record, plot = checked_run(
-                parent / route / "results.json",
-                parent / ("reference-" + route) / "results.json",
+                args.raw_directory / str(aos) / route / "results.json",
+                reference_directory
+                / str(aos)
+                / ("reference-" + approximation)
+                / "results.json",
                 args.repeats,
             )
-            hashes.add(record["native_identity"]["native_build"]["library_sha256"])
-            plots[route].append(plot)
+            identity = record["native_identity"]
+            disabled = identity["environment"].get("VIBEQC_DF_WARM_REUSE") == "0"
+            if disabled != (route == "df-disabled"):
+                raise ValueError("warm-reuse control differs from its label")
+            shared = {
+                key: identity[key]
+                for key in (
+                    "native_build",
+                    "source_revision",
+                    "native_acceptance",
+                    "packages",
+                    "slurm_job_id",
+                )
+            }
+            if "native_identity" not in summary:
+                summary["native_identity"] = shared
+            if summary["native_identity"] != shared:
+                raise ValueError(
+                    "native source/build/acceptance/job differs across points"
+                )
+            native_records.append(
+                {
+                    "aos": aos,
+                    "route": route,
+                    "reference_route": approximation,
+                    "raw_native_sha256": record["raw_native_sha256"],
+                    "raw_reference_sha256": record["raw_reference_sha256"],
+                    "environment": identity["environment"],
+                    "samples": compact_table(record["native_samples"]),
+                }
+            )
+            if route != "df-disabled":
+                reference_records.append(
+                    {
+                        "aos": aos,
+                        "route": route,
+                        "raw_reference_sha256": record["raw_reference_sha256"],
+                        "identity": record["reference_identity"],
+                        "independent_references": record["independent_references"],
+                        "samples": record["reference_samples"],
+                    }
+                )
+                summary["reference_endpoint_samples"] += len(
+                    record["reference_samples"]
+                )
+                plots[route].append(plot)
+            if record["diagnostic_work"]:
+                work_records.append(
+                    {
+                        "aos": aos,
+                        "route": route,
+                        "diagnostics": record["diagnostic_work"],
+                    }
+                )
             summary["cases"].append(
                 {"aos": aos, "route": route, "medians": record["medians"]}
             )
@@ -213,60 +375,16 @@ def main() -> None:
                     summary[key],
                     *(r[field + "_error"] for r in record["native_samples"]),
                 )
-            if record["diagnostic_work"]:
-                # Keep the full diagnostic work as an observable-specific list
-                # using the repository's checksum-verified record loader.
-                work_path = args.destination / f"{route}-{aos}-work.json"
-                work_path.write_text(
-                    json.dumps(record.pop("diagnostic_work"), indent=2, allow_nan=False)
-                    + "\n"
-                )
-                part = {
-                    "path": work_path.name,
-                    "sha256": digest(work_path),
-                    "bytes": work_path.stat().st_size,
-                }
-                record["record_parts"] = {"diagnostic_work": [part]}
-                summary["parts"].append(part)
-            filename = f"{route}-{aos}.json"
-            path = args.destination / filename
-            path.write_text(json.dumps(record, indent=2, allow_nan=False) + "\n")
-            summary["parts"].append(
-                {"path": filename, "sha256": digest(path), "bytes": path.stat().st_size}
-            )
-    if len(hashes) != 1:
-        raise ValueError("direct/DF were not measured on the same native library")
-    summary["library_sha256"] = hashes.pop()
+    for filename, records in (
+        ("samples.json", native_records),
+        ("references.json", reference_records),
+        ("work.json", work_records),
+    ):
+        summary["parts"].append(write_collection(args.destination / filename, records))
     (args.destination / "summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=False) + "\n"
     )
-    plt.rcParams.update(
-        {
-            "font.family": "DejaVu Sans",
-            "font.size": 10,
-            "svg.fonttype": "none",
-            "svg.hashsalt": "vibeqc-hf-unified",
-        }
-    )
-    # A shared time scale also makes direct versus DF readable across panels.
-    fig, axes = plt.subplots(1, 2, figsize=(11.6, 3.8), sharey=True)
-    for ax, route, title in zip(
-        axes,
-        ("direct", "df"),
-        ("HF · direct J/K", "HF · DF J/K (cc-pVDZ-JKFIT)"),
-        strict=True,
-    ):
-        for engine in ("VibeQC", "GPU4PySCF"):
-            plot_series(ax, plots[route], engine, engine)
-        style_axes(ax, title, [24, 48, 96, 192, 384, 768])
-        ax.legend(frameon=False, loc="lower right")
-    fig.suptitle(
-        f"RTX 5090 · spherical def2-SVP · complete warm energy + forces · {args.repeats} repeats",
-        fontsize=12,
-    )
-    fig.tight_layout()
-    save_svg(fig, args.destination / "hf.svg")
-    plt.close(fig)
+    draw_hf(plots, args.destination, args.repeats)
 
 
 if __name__ == "__main__":

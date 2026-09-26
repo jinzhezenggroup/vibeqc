@@ -1919,7 +1919,7 @@ def test_one_electron_force_uses_only_compiler_owned_derivatives() -> None:
 
 
 def test_batched_finalization_reuses_each_converged_raw_fock() -> None:
-    """Reuse requested-accuracy peers and restore shared force metadata."""
+    """Reuse converged peers; both spins delegate baseline admission to HF policy."""
 
     source = _direct_cuda_source()
     assert "template <bool RetainConvergedDensity>" in source
@@ -1935,7 +1935,7 @@ def test_batched_finalization_reuses_each_converged_raw_fock() -> None:
     # geometry change must re-run the warm-density normalization path.
     assert "plan.resident_warm_positions == host.positions" in source
     assert "plan.resident_warm_density == host.warm_density" in source
-    assert "iteration > 1 || has_energy_baseline" in source
+    assert source.count("hf_iteration_converged(") == 2
     assert "update_convergence_kernel<true>" in source
     assert "update_uhf_convergence_kernel<true>" in source
 

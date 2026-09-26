@@ -1,9 +1,9 @@
 {
-  "schema": "vibeqc.df-warm-reuse.v1",
+  "schema": "vibeqc.hf-comparison.v2",
   "repeats": 5,
-  "timing": "complete native energy and analytic forces; frozen warm repeats; traces excluded",
-  "control": "same native binary, independent owners; DF warm reuse disabled at 384/768 AOs",
-  "reference": "independent approximation-matched arrays retained in the earlier qualification; no new reference timing claim",
+  "scope": "complete RHF energy and analytic forces; explicit packed-single fitted DF",
+  "timing": "separate engine processes; cold includes prepare; frozen warm replays; traces excluded",
+  "figure": "VibeQC/GPU4PySCF direct/DF medians and min-max over every warm repeat; crosses mark varying iteration counts",
   "cases": [
     {
       "aos": 24,
@@ -11,26 +11,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 1.0334334787912667,
+          "gpu4pyscf_seconds": 12.39751091785729,
           "native_iterations": [
             19
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.08221699111163616,
+          "gpu4pyscf_seconds": 0.8804553467780352,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.5297181569039822,
+          "gpu4pyscf_seconds": 10.988660228904337,
           "native_iterations": [
             14
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.07466412568464875,
+          "gpu4pyscf_seconds": 0.8817134313285351,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -41,26 +69,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 0.27057999232783914,
+          "gpu4pyscf_seconds": 1.0353392632678151,
           "native_iterations": [
             17
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.01361992908641696,
+          "gpu4pyscf_seconds": 0.20723749930039048,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.048412447795271873,
+          "gpu4pyscf_seconds": 0.4569094334729016,
           "native_iterations": [
             12
+          ],
+          "reference_iterations": [
+            40
+          ],
+          "reference_scf_jk_builds": [
+            41
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.0138017563149333,
+          "gpu4pyscf_seconds": 0.20713199814781547,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -71,26 +127,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 1.1572116338647902,
+          "gpu4pyscf_seconds": 16.281824897043407,
           "native_iterations": [
             22
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.09144422318786383,
+          "gpu4pyscf_seconds": 0.940502162091434,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.6054357620887458,
+          "gpu4pyscf_seconds": 11.684518078807741,
           "native_iterations": [
             15
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.08441960997879505,
+          "gpu4pyscf_seconds": 0.9378732098266482,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -101,26 +185,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 0.36641285102814436,
+          "gpu4pyscf_seconds": 1.1752282977104187,
           "native_iterations": [
             19
+          ],
+          "reference_iterations": [
+            53
+          ],
+          "reference_scf_jk_builds": [
+            54
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.02743668295443058,
+          "gpu4pyscf_seconds": 0.2239007418975234,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.09892782615497708,
+          "gpu4pyscf_seconds": 0.5064067407511175,
           "native_iterations": [
             12
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.02750324970111251,
+          "gpu4pyscf_seconds": 0.2257041516713798,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -131,26 +243,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 1.8030554638244212,
+          "gpu4pyscf_seconds": 18.938100798986852,
           "native_iterations": [
             27
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.1304404861293733,
+          "gpu4pyscf_seconds": 1.1241175387986004,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.9365557739511132,
+          "gpu4pyscf_seconds": 14.071517487987876,
           "native_iterations": [
             16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.12087889341637492,
+          "gpu4pyscf_seconds": 1.1207973640412092,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -161,26 +301,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 0.5716695478186011,
+          "gpu4pyscf_seconds": 1.3529962049797177,
           "native_iterations": [
             23
+          ],
+          "reference_iterations": [
+            49
+          ],
+          "reference_scf_jk_builds": [
+            50
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.06508533004671335,
+          "gpu4pyscf_seconds": 0.2607152322307229,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.25218676682561636,
+          "gpu4pyscf_seconds": 0.6618880839087069,
           "native_iterations": [
             12
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.0652780793607235,
+          "gpu4pyscf_seconds": 0.2604998401366174,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -191,26 +359,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 3.3488858952187,
+          "gpu4pyscf_seconds": 23.721115314867347,
           "native_iterations": [
             20
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.26264404412359,
+          "gpu4pyscf_seconds": 1.6056677787564695,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 2.4504510234110057,
+          "gpu4pyscf_seconds": 20.725769786629826,
           "native_iterations": [
             15
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.26366649894043803,
+          "gpu4pyscf_seconds": 1.608630357310176,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -221,26 +417,54 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 1.1746488423086703,
+          "gpu4pyscf_seconds": 2.0784009099006653,
           "native_iterations": [
             18
+          ],
+          "reference_iterations": [
+            42
+          ],
+          "reference_scf_jk_builds": [
+            43
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.1819745870307088,
+          "gpu4pyscf_seconds": 0.530312106013298,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 0.7923245569691062,
+          "gpu4pyscf_seconds": 1.3748413999564946,
           "native_iterations": [
             13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.1810499601997435,
+          "gpu4pyscf_seconds": 0.5312069272622466,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         }
       }
@@ -251,26 +475,56 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 11.661949367262423,
+          "gpu4pyscf_seconds": 33.84021986508742,
           "native_iterations": [
             24
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.7660560910589993,
+          "gpu4pyscf_seconds": 2.3810992748476565,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 7.386264869011939,
+          "gpu4pyscf_seconds": 28.548862878233194,
           "native_iterations": [
             16
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.7680686330422759,
+          "gpu4pyscf_seconds": 2.395884314086288,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
           ]
         }
       }
@@ -281,26 +535,60 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 5.56459382455796,
+          "gpu4pyscf_seconds": 7.958878741133958,
           "native_iterations": [
             21
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
           ]
         },
         "warm": {
           "vibeqc_seconds": 0.803204009309411,
+          "gpu4pyscf_seconds": 1.7715042950585485,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4
           ]
         },
         "moved": {
           "vibeqc_seconds": 4.354593636933714,
+          "gpu4pyscf_seconds": 6.363677476067096,
           "native_iterations": [
             13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 0.8128552748821676,
+          "gpu4pyscf_seconds": 1.8931543100625277,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3
           ]
         }
       }
@@ -311,25 +599,59 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 5.558820293750614,
+          "gpu4pyscf_seconds": 7.958878741133958,
           "native_iterations": [
             21
+          ],
+          "reference_iterations": [
+            44
+          ],
+          "reference_scf_jk_builds": [
+            45
           ]
         },
         "warm": {
           "vibeqc_seconds": 1.0059499349445105,
+          "gpu4pyscf_seconds": 1.7715042950585485,
           "native_iterations": [
             3
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4
           ]
         },
         "moved": {
           "vibeqc_seconds": 4.33110425202176,
+          "gpu4pyscf_seconds": 6.363677476067096,
           "native_iterations": [
             13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 1.0110899950377643,
+          "gpu4pyscf_seconds": 1.8931543100625277,
           "native_iterations": [
+            3
+          ],
+          "reference_iterations": [
+            1,
+            2
+          ],
+          "reference_scf_jk_builds": [
+            2,
             3
           ]
         }
@@ -341,26 +663,60 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 41.559255071915686,
+          "gpu4pyscf_seconds": 54.3223240012303,
           "native_iterations": [
             26
+          ],
+          "reference_iterations": [
+            47
+          ],
+          "reference_scf_jk_builds": [
+            48
           ]
         },
         "warm": {
           "vibeqc_seconds": 3.0482525769621134,
+          "gpu4pyscf_seconds": 4.042482583317906,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1
+          ],
+          "reference_scf_jk_builds": [
+            2
           ]
         },
         "moved": {
           "vibeqc_seconds": 27.169431814923882,
+          "gpu4pyscf_seconds": 45.54239979200065,
           "native_iterations": [
             16
+          ],
+          "reference_iterations": [
+            39
+          ],
+          "reference_scf_jk_builds": [
+            40
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 3.050436330959201,
+          "gpu4pyscf_seconds": 5.159640040248632,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            4,
+            5
           ]
         }
       }
@@ -371,26 +727,62 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 47.02914954954758,
+          "gpu4pyscf_seconds": 58.28801310341805,
           "native_iterations": [
             24
+          ],
+          "reference_iterations": [
+            45
+          ],
+          "reference_scf_jk_builds": [
+            46
           ]
         },
         "warm": {
           "vibeqc_seconds": 6.174827445764095,
+          "gpu4pyscf_seconds": 11.254863393958658,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            2,
+            5,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            3,
+            6,
+            8
           ]
         },
         "moved": {
           "vibeqc_seconds": 36.55369979375973,
+          "gpu4pyscf_seconds": 48.99169735470787,
           "native_iterations": [
             13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 6.203995744232088,
+          "gpu4pyscf_seconds": 10.187480546999723,
           "native_iterations": [
             1
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            8
           ]
         }
       }
@@ -401,26 +793,62 @@
       "medians": {
         "cold": {
           "vibeqc_seconds": 47.022523486521095,
+          "gpu4pyscf_seconds": 58.28801310341805,
           "native_iterations": [
             24
+          ],
+          "reference_iterations": [
+            45
+          ],
+          "reference_scf_jk_builds": [
+            46
           ]
         },
         "warm": {
           "vibeqc_seconds": 8.021125746890903,
+          "gpu4pyscf_seconds": 11.254863393958658,
           "native_iterations": [
             3
+          ],
+          "reference_iterations": [
+            2,
+            5,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            3,
+            6,
+            8
           ]
         },
         "moved": {
           "vibeqc_seconds": 36.57119046477601,
+          "gpu4pyscf_seconds": 48.99169735470787,
           "native_iterations": [
             13
+          ],
+          "reference_iterations": [
+            37
+          ],
+          "reference_scf_jk_builds": [
+            38
           ]
         },
         "moved-warm": {
           "vibeqc_seconds": 8.040942395105958,
+          "gpu4pyscf_seconds": 10.187480546999723,
           "native_iterations": [
             3
+          ],
+          "reference_iterations": [
+            1,
+            2,
+            7
+          ],
+          "reference_scf_jk_builds": [
+            2,
+            3,
+            8
           ]
         }
       }
@@ -428,141 +856,89 @@
   ],
   "parts": [
     {
-      "path": "direct-24.json",
-      "sha256": "8b79940ecd42f0e717f6fd6361f35d6a40836305172569daef66934cd2af00a8",
-      "bytes": 3659
+      "path": "samples.json",
+      "sha256": "478edc74c0c8d3fd78641353d1772954de3d95a7b1b50c0891275a34873e86b4",
+      "bytes": 54150
     },
     {
-      "path": "df-24.json",
-      "sha256": "ae440961f9898bbb65b1617a50434007319da2f775a6c9eccb7dd3116b9c011c",
-      "bytes": 14651
+      "path": "references.json",
+      "sha256": "6342a524e0658e1a59394ccd085d5c418bdd0655937b44a5c75f0163e8702814",
+      "bytes": 229005
     },
     {
-      "path": "direct-48.json",
-      "sha256": "1b69e8f78eb8bd13c6c1812f042e13db7b9de81b184d285842112ec7ba2b99dd",
-      "bytes": 3721
-    },
-    {
-      "path": "df-48.json",
-      "sha256": "db7126493fab3cdead8543cfab79b43a606de18e2b781b269413709c59ff23b7",
-      "bytes": 27334
-    },
-    {
-      "path": "direct-96.json",
-      "sha256": "d042a28a670a204c69de263b4fce886dfb9ed9c4ec2a54e9a3c13a1238687d6d",
-      "bytes": 3761
-    },
-    {
-      "path": "df-96.json",
-      "sha256": "f35b8791e99dadfa9569cd505033c2c4c36aed21f9a938aaab658fb04151eabd",
-      "bytes": 27557
-    },
-    {
-      "path": "direct-192.json",
-      "sha256": "a273e969982ac51db782db80880a0a546bfb34d50b8d2c3afb6adcfc737e9435",
-      "bytes": 3792
-    },
-    {
-      "path": "df-192.json",
-      "sha256": "7f66fcccca190a9cef137f08f059463d422def60e72e9ff45740476b0ff95576",
-      "bytes": 30912
-    },
-    {
-      "path": "direct-384.json",
-      "sha256": "78fbc76c1f514f27800b267d78a14df53caaf8af35a8286e3c0b7e80a43a2de7",
-      "bytes": 3768
-    },
-    {
-      "path": "df-384.json",
-      "sha256": "0558de97920cecb7fb30f9c34388e6941173c9c5591dcd46e13c1b2a6832cb1a",
-      "bytes": 31160
-    },
-    {
-      "path": "df-disabled-384.json",
-      "sha256": "24515c62113cf2ace187523b7b935837bfd4a628d8898bfcd5c680c2263809e5",
-      "bytes": 31053
-    },
-    {
-      "path": "direct-768.json",
-      "sha256": "b62e59a1b7650dfa22a1240d8864e61f7dd829e7c44ebc66f64bbad0d09a90a9",
-      "bytes": 3697
-    },
-    {
-      "path": "df-768.json",
-      "sha256": "772d494027d0f14e2a5490c1eea73cee94fa82c7a0e866dd9291ad89e94c28d5",
-      "bytes": 31552
-    },
-    {
-      "path": "df-disabled-768.json",
-      "sha256": "949fb9930734c08f8dbb27d8b537993901de416d59a345b9720edde9c56236c4",
-      "bytes": 31573
+      "path": "work.json",
+      "sha256": "729c2687009cdd6e197dce27ea02507cc5cb4b2367b3cf56d2a59902d1f228f3",
+      "bytes": 202052
     }
   ],
-  "native_samples": 184,
+  "native_endpoint_samples": 184,
+  "reference_endpoint_samples": 144,
   "maximum_energy_error": 2.6420821086503565e-10,
   "maximum_force_error": 1.405107141749795e-10,
-  "native_build": {
-    "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
-    "library_sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
-    "probe": {
-      "source_identity": "f3c7de90e835ab4103b874b7465f1ef44fb2f9005a34d61540406111554585b5",
-      "native_abi": 0,
-      "schema": 1,
-      "policy": {
-        "precision": "fp64",
-        "spin": [
-          "rhf",
-          "uhf"
-        ],
-        "consumers": [
-          "fock",
-          "force"
-        ]
-      },
-      "host": {
-        "system": "Linux",
-        "machine": "x86_64",
-        "libc": [
-          "glibc",
-          "2.35"
-        ]
-      },
-      "device": {
-        "name": "NVIDIA GeForce RTX 5090",
-        "official_profile": "sm_120",
-        "major": 12,
-        "minor": 0,
-        "warp_size": 32,
-        "maximum_threads_per_block": 1024,
-        "maximum_threads_per_sm": 1536,
-        "maximum_blocks_per_sm": 24,
-        "registers_per_sm": 65536,
-        "maximum_registers_per_thread": 255,
-        "sm_count": 170,
-        "shared_memory_per_block": 49152,
-        "shared_memory_per_block_optin": 101376,
-        "shared_memory_per_sm": 102400,
-        "runtime_version": 12090,
-        "driver_version": 13000,
-        "toolkit_version": 12090,
-        "release_build": 1,
-        "fast_compile": 0,
-        "portable": 0
+  "native_identity": {
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
+      "probe": {
+        "source_identity": "f3c7de90e835ab4103b874b7465f1ef44fb2f9005a34d61540406111554585b5",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
       }
-    }
-  },
-  "source_revision": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
-  "native_acceptance": {
-    "policy": "shared_cuda_hf_fp64_v1",
-    "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
-    "density": "density_step_rms < density_tolerance",
-    "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
-    "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
-    "final": "strict physical final Fock validation remains required"
-  },
-  "packages": {
-    "numpy": "2.4.6",
-    "pyscf": "2.14.0"
-  },
-  "slurm_job_id": "11809"
+    },
+    "source_revision": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "slurm_job_id": "11809"
+  }
 }

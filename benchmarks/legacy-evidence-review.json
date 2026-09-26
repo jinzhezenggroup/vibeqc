@@ -20,6 +20,16 @@
       "reason": "Reviewed retained large evidence for Bounded GPU density sources (#235 B / #297). Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
       "review_document": "benchmarks/results/density-sources-gpu/README.md"
     },
+    "df-final-occupied-endpoint-20260926": {
+      "owner": "DF complete-endpoint qualification",
+      "reason": "Consolidated exact measured scalar samples, independent oracle arrays and grouped semantic work counters; replaces per-size companions without dropping observations. Historical intermediate runs remain in Git.",
+      "review_document": "benchmarks/results/df-final-occupied-endpoint-20260926/README.md"
+    },
+    "df-one-step-warm-20260926": {
+      "owner": "DF complete-endpoint qualification",
+      "reason": "Consolidated exact measured scalar samples, independent oracle arrays and grouped semantic work counters; replaces per-size companions without dropping observations. Historical intermediate runs remain in Git.",
+      "review_document": "benchmarks/results/df-one-step-warm-20260926/README.md"
+    },
     "ecp-consumers-171": {
       "owner": "ecp-consumers-171",
       "reason": "Reviewed retained large evidence for Generated ECP AO and fixed-weight consumers. Large members are limited to the exact roles and hashes below; execution-flow journals belong in ignored/artifact storage or the #488 Git-history snapshot.",
@@ -378,6 +388,30 @@
       "path": "benchmarks/results/density-sources-gpu/evidence.json",
       "role": "decision-or-audit-record",
       "sha256": "b6bdb078bf5506a501435b056d892941eeae82d28efe2a50fb169de737a862e8"
+    },
+    {
+      "path": "benchmarks/results/df-final-occupied-endpoint-20260926/receipt.json",
+      "family": "df-final-occupied-endpoint-20260926",
+      "bytes": 324689,
+      "sha256": "709b72edc673227844ed7ad0a38fe8c572e1d0ebbe39dadf36005fbf95e5d88a",
+      "classification": "required-compact-accepted-evidence",
+      "role": "Independent final-K/root ablations and all diagnostic counters, reconstructed losslessly from split companions."
+    },
+    {
+      "path": "benchmarks/results/df-one-step-warm-20260926/references.json",
+      "family": "df-one-step-warm-20260926",
+      "bytes": 229005,
+      "sha256": "6342a524e0658e1a59394ccd085d5c418bdd0655937b44a5c75f0163e8702814",
+      "classification": "required-compact-accepted-evidence",
+      "role": "All direct/DF independent original/moved force arrays and 144 reference timing/work observations."
+    },
+    {
+      "path": "benchmarks/results/df-one-step-warm-20260926/work.json",
+      "family": "df-one-step-warm-20260926",
+      "bytes": 202052,
+      "sha256": "729c2687009cdd6e197dce27ea02507cc5cb4b2367b3cf56d2a59902d1f228f3",
+      "classification": "required-compact-accepted-evidence",
+      "role": "All grouped semantic work counters for eight DF workloads; profiler launch arrays remain ignored."
     },
     {
       "bytes": 485607,

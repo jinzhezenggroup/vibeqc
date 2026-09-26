@@ -9,7 +9,7 @@ The measurements and missing-cache diagnosis below describe this earlier step.
 
 ## Problem
 
-The [warm convergence diagnosis](../../proposed/2026-09-26-df-warm-convergence-parity.md)
+The [warm convergence diagnosis](../performance/2026-09-26-df-qualified-one-step-warm.md#historical-five-step-diagnosis)
 found a five-step DF replay whose density-step criterion already passed at step
 one. Direct retained a qualified energy baseline and allowed a scale-dependent
 FP64 comparison guard; DF reconstructed its seed, discarded the baseline and
@@ -89,8 +89,8 @@ each engine's frozen post-cold/post-move density. GPU4PySCF's actual SCF
 `get_veff` count includes its pre-loop Fock; native unavailable Fock counters
 remain null and separate DF traces retain executed work. Counts are evidence,
 not a filter that discards inaccurate or slower branches. Diagnostic timings
-never enter the clean medians. The README figure is generated from the
-checksum-bound [qualification](../../../../benchmarks/results/hf-unified-acceptance-20260926/README.md).
+never enter the clean medians. That campaign's figure was generated from the
+checksum-bound [qualification](https://github.com/njzjz-bot/vibeqc/blob/b2e57efe9af86bcaf08936c5a2ca287942658a27/benchmarks/results/hf-unified-acceptance-20260926/README.md).
 
 All 156 native endpoints passed, with maximum errors `2.6421e-10 Eh` and
 `1.4052e-10 Eh/Bohr`; the convergence suite also passed Compute Sanitizer

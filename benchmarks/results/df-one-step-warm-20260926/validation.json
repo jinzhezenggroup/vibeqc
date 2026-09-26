@@ -1,17 +1,12 @@
 {
   "schema": "vibeqc.df-warm-validation.v1",
   "source_base": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
-  "measured_patch": {
-    "path": "benchmarks/results/df-one-step-warm-20260926/measured-source.patch",
-    "sha256": "7fa1317a8bcaf71a7ce6849643505a9b4afd81ccfbb28d91097d074e4270faf3",
-    "bytes": 50935
-  },
   "library": {
     "path": "build/cuda-release-sm120/libvibeqc.so",
     "sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
     "bytes": 406230216
   },
-  "source_verification": "git apply --reverse --check measured-source.patch passes against measured native/execution sources; subsequent changes are docs, evidence rendering and host tests",
+  "source_verification": "Native, compiler, CMake and benchmark execution files match the measured-source patch retained at source_checkpoint; subsequent edits affect docs, evidence rendering and host tests only.",
   "campaign": {
     "slurm_job_id": "11809",
     "partition": "main",
@@ -25,8 +20,8 @@
     "force_gate_eh_per_bohr": 1e-07,
     "summary": {
       "path": "benchmarks/results/df-one-step-warm-20260926/summary.json",
-      "sha256": "2381e688dcc35a8dabb01df8a4be66d6a1707b7bbba0c0660d2e3dc4097fb346",
-      "bytes": 13612
+      "bytes": 22826,
+      "sha256": "80d334d2dc2a20257fac5633876e86c9ec02d795caf759d67cf2e15a6801d365"
     }
   },
   "validation": [
@@ -153,5 +148,47 @@
       "scientific": 8
     },
     "unchanged_lines_reclassified": {}
+  },
+  "source_checkpoint": "b2e57efe9af86bcaf08936c5a2ca287942658a27",
+  "measured_patch_in_history": {
+    "path": "benchmarks/results/df-one-step-warm-20260926/measured-source.patch",
+    "sha256": "7fa1317a8bcaf71a7ce6849643505a9b4afd81ccfbb28d91097d074e4270faf3",
+    "bytes": 50935,
+    "revision": "b2e57efe9af86bcaf08936c5a2ca287942658a27"
+  },
+  "reference_campaign": {
+    "slurm_job_id": "11803",
+    "endpoints": 144,
+    "timings": "Previously measured GPU4PySCF direct/DF endpoints under the identical scientific and frozen-warm protocol. All timing samples and independent arrays are retained unchanged in references.json."
+  },
+  "cleanup": {
+    "checkpoint": "b2e57efe9af86bcaf08936c5a2ca287942658a27",
+    "exactly_preserved": "184 native samples, 144 reference samples, all independent force arrays and all grouped diagnostic work counters; historical final-K/root records reconstruct identically.",
+    "superseded_benchmark": "benchmarks/results/hf-unified-acceptance-20260926",
+    "historical_recovery": "git show <checkpoint>:<path>; no new external archive or release",
+    "host_tests": {
+      "path": ".artifacts/df-readme-cleanup-20260926/host-tests.log",
+      "bytes": 99,
+      "sha256": "1806c91c527d3727c7d7277f71c5678ec751086afc9d9a421bdf8c6a51977a0e"
+    },
+    "ci_regression": {
+      "failure": "https://github.com/jinzhezenggroup/vibeqc/actions/runs/36247621640/job/108419647056",
+      "cause": "Legacy codegen test searched for an inline first-iteration guard moved to the shared HF acceptance policy.",
+      "fix": "Assert both direct spin routes delegate to hf_iteration_converged; native numerical acceptance fixtures unchanged.",
+      "test": {
+        "path": ".artifacts/df-readme-cleanup-20260926/ci-regression.log",
+        "sha256": "036bb9390fb408c39eb19a61d865bc4044aa29eeea8139e62a988a5a83930a4d",
+        "bytes": 98
+      },
+      "result": "1 passed"
+    },
+    "file_audit": {
+      "benchmark_files_before": 55,
+      "benchmark_files_after": 12,
+      "pr_added_files_before": 70,
+      "pr_added_files_after": 25,
+      "removed": "superseded intermediate native measurements, split data companions, duplicate renderer, implemented proposal (diagnosis moved verbatim into the implemented note)",
+      "retained": "three private source/contract modules, focused regression tests, one runner/renderer, current benchmark/oracles and distinct final-K/root ablations"
+    }
   }
 }

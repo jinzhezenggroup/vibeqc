@@ -1,186 +1,146 @@
-# CUDA DF: qualified one-step warm endpoints
+# RHF direct and DF: VibeQC versus GPU4PySCF
 
-Native direct and occupied DF RHF both take **one iteration** in every frozen
-warm repeat at 24–768 AOs, including repeats after reconverging a moved geometry.
-The shared energy/density/physical-residual gates and strict final Fock validation
-are unchanged. At 768 AOs, DF takes **6.175 s**, direct **3.048 s**. Disabling warm
-reuse in the same binary gives **8.021 s / 3 iterations**: reuse reduces DF's
-complete endpoint by **23.0%**, while DF remains **2.03× direct**.
+![Complete warm energy and force endpoints](hf.svg)
 
-![Complete native HF endpoints](hf.svg)
+All four series share one axis. Lines show medians of **all five** complete warm
+energy-plus-analytic-force calls; bars show min/max. Crosses expose individual
+repeats whose SCF iteration counts vary. The plot compares endpoint cost, without
+dividing by iterations or implying equal J/K work.
 
-Lines show five-repeat medians and min/max bars for complete energy plus analytic
-forces. All plotted iteration counts are stable. The gray control uses the same
-library, separate owners and separately converged frozen seeds; it is not a
-paired comparison of identical intermediate densities. Diagnostic traces are
-separate from clean timings. No new GPU4PySCF timings were measured: the
-[preceding comparison](../hf-unified-acceptance-20260926/README.md) retains its
-own build and measurements.
+## Warm medians, seconds
 
-## Warm medians
+| Spherical AOs | VibeQC direct | GPU4PySCF direct | VibeQC DF | GPU4PySCF DF |
+| ---: | ---: | ---: | ---: | ---: |
+| 24 | 0.082217 | 0.880455 | 0.013620 | 0.207237 |
+| 48 | 0.091444 | 0.940502 | 0.027437 | 0.223901 |
+| 96 | 0.130440 | 1.124118 | 0.065085 | 0.260715 |
+| 192 | 0.262644 | 1.605668 | 0.181975 | 0.530312 |
+| 384 | 0.766056 | 2.381099 | 0.803204 | 1.771504 |
+| 768 | 3.048253 | 4.042483 | 6.174827 | 11.254863 |
 
-| Spherical AOs | Atoms | Direct, seconds | DF, seconds | DF reuse off, seconds | Direct / DF steps |
-| ---: | ---: | ---: | ---: | ---: | --- |
-| 24 | 3 | 0.082217 | 0.013620 | — | 1 / 1 |
-| 48 | 6 | 0.091444 | 0.027437 | — | 1 / 1 |
-| 96 | 12 | 0.130440 | 0.065085 | — | 1 / 1 |
-| 192 | 24 | 0.262644 | 0.181975 | — | 1 / 1 |
-| 384 | 48 | 0.766056 | 0.803204 | 1.005950 (3 steps) | 1 / 1 |
-| 768 | 96 | 3.048253 | 6.174827 | 8.021126 (3 steps) | 1 / 1 |
+VibeQC direct and DF take one iteration in every original and moved warm repeat.
+GPU4PySCF direct takes one iteration in the plotted original-geometry repeats;
+GPU4PySCF DF takes one through 192 AOs, {1, 2, 3} at 384 and {2, 5, 7} at 768.
+Those variable repeats remain in the plotted medians and ranges.
 
-DF is faster at 24–192 AOs, close to direct at 384 AOs (1.05×), and slower at
-768 AOs. Equal iterations do not imply equal work or force-response cost. At
-768 AOs, separate DF traces record **one SCF occupied-K build plus one final
-occupied-K build**, versus three plus one with reuse disabled. Baseline retention
-adds one energy reduction and **zero extra J/K builds**. It retains 19,857,408
-bytes per host record and restores 983,040 occupied-factor bytes. Two records
-and temporary snapshot readback are bounded by 64 MiB; no device buffer is added.
-Force-response scratch remains 1,980,551,200 bytes, with 8,769,110,016 fitted-B
-bytes borrowed from its existing owner. These complete-endpoint timings do not
-provide a clean component-time split. Public native Fock counts remain `null`
-where unavailable; the DF diagnostic companions retain actual work counters.
+At 768 AOs, native DF is 2.03× direct. Its separate trace records one SCF occupied
+K and one final occupied K; baseline retention adds zero J/K builds. Force-response
+scratch is 1,980,551,200 bytes and borrowed fitted B is 8,769,110,016 bytes.
+These clean timings do not provide a component-time split. Public native Fock
+counts remain `null` where unavailable; GPU4PySCF `get_veff` counts include the
+pre-loop Fock, and DF diagnostic work remains in [work.json](work.json).
 
-## Acceptance and scope
+The optional same-binary warm-reuse controls stay outside the README plot:
+384-AO DF is 0.803204 s with reuse versus 1.005950 s without it; 768-AO DF is
+6.174827 s versus 8.021126 s (23.0% less time). Disabled controls take three steps
+and use separate owners with their own converged frozen seeds.
 
-The production CUDA direct/DF acceptance rule remains:
+## Protocol and acceptance
 
-```text
-abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))
-density_step_rms < density_tolerance
-max_abs(FDS-SDF) <= min(1e-8,density_tolerance)
-```
-
-Values must be finite. The physical residual precedes DIIS; strict final Fock
-and determinant validation remains mandatory. This campaign uses `1e-12 Eh`
-energy and `1e-10` density tolerances, maximum 100 iterations and `1e-12`
-screening. The shared guard is unchanged from the preceding qualification.
-
-Warm reuse requires an exact match of density, Hcore, overlap, orthogonalizer,
-occupation, nuclear energy and immutable plan/source identity. Only a completed
-strict endpoint publishes the immutable density/orbital/compatible-energy record.
-The next call still builds physical J/K, diagonalizes, forms the next density
-and applies all gates. It is not a skipped calculation or a forced iteration
-count. The qualified scope is DIIS-enabled singleton occupied RHF; UHF, batches,
-no-DIIS, corrected final frames, mismatched geometry/data and unavailable cache
-capacity keep bounded fallbacks. Cold or changed geometry is not guaranteed one
-step. See the [current contract](../../../docs/developer/df_occupied_cuda.md)
-and [decision](../../../.agents/notes/implemented/performance/2026-09-26-df-qualified-one-step-warm.md).
-
-All **184 native endpoints** pass independent **1e-8 Eh / 1e-7 Eh/Bohr** gates.
-Maximum errors are **2.6421e-10 Eh / 1.4052e-10 Eh/Bohr**. The total comprises
-156 direct/enabled-DF endpoints and 28 disabled-DF controls: **168 clean plus
-16 diagnostic**. Cold, all five original warm, moved, all five moved-warm and
-every diagnostic endpoint are checked. Each approximation has its own
-geometry/protocol-matched independent GPU4PySCF reference from Slurm job 11803;
-direct and DF are never gated against each other. The reducer verifies the
-original raw reference hash and retained arrays before rechecking every new
-endpoint. Reusing independent reference arrays makes no new reference timing claim.
-
-## Cold and changed geometry
-
-Cold and moved are single observations; moved-warm is the median of five frozen
-repeats. Each cell is **seconds / iteration count**. The moved endpoint displaces
-the second atom by +0.001 Bohr along z and reconverges normally before freezing
-its new density. All individual values remain in the JSON companions.
-
-| AOs | Route | Cold | Moved | Moved-warm |
-| ---: | --- | --- | --- | --- |
-| 24 | direct | 1.033433 / 19 | 0.529718 / 14 | 0.074664 / 1 |
-| 24 | DF | 0.270580 / 17 | 0.048412 / 12 | 0.013802 / 1 |
-| 48 | direct | 1.157212 / 22 | 0.605436 / 15 | 0.084420 / 1 |
-| 48 | DF | 0.366413 / 19 | 0.098928 / 12 | 0.027503 / 1 |
-| 96 | direct | 1.803055 / 27 | 0.936556 / 16 | 0.120879 / 1 |
-| 96 | DF | 0.571670 / 23 | 0.252187 / 12 | 0.065278 / 1 |
-| 192 | direct | 3.348886 / 20 | 2.450451 / 15 | 0.263666 / 1 |
-| 192 | DF | 1.174649 / 18 | 0.792325 / 13 | 0.181050 / 1 |
-| 384 | direct | 11.661949 / 24 | 7.386265 / 16 | 0.768069 / 1 |
-| 384 | DF | 5.564594 / 21 | 4.354594 / 13 | 0.812855 / 1 |
-| 384 | DF reuse off | 5.558820 / 21 | 4.331104 / 13 | 1.011090 / 3 |
-| 768 | direct | 41.559255 / 26 | 27.169432 / 16 | 3.050436 / 1 |
-| 768 | DF | 47.029150 / 24 | 36.553700 / 13 | 6.203996 / 1 |
-| 768 | DF reuse off | 47.022523 / 24 | 36.571190 / 13 | 8.040942 / 3 |
-
-## Protocol and provenance
-
-- Nested prefixes of the README water32mer, neutral spherical def2-SVP RHF;
-  DF uses cc-pVDZ-JKFIT. Exact coordinates, auxiliary-basis hash and independent
-  original/moved arrays are linked by checksum from each companion.
-- Sequential separate native processes under Slurm **11809**, partition `main`,
-  `--gres=gpu:5090:1`, finite 15-minute limit. RTX 5090, 32,607 MiB,
-  driver 580.95.05, CUDA 12.9.1; eight OpenMP/OpenBLAS/MKL threads.
-  NumPy 2.4.6 and PySCF 2.14.0. Reference arrays were produced with GPU4PySCF
-  1.8.1 in the preceding campaign. Resident engine tensors never coexist.
-- Cold includes preparation plus the first synchronized complete execution;
-  imports/library probes are excluded. Geometry refresh is timed. Warm inputs
-  are frozen after cold or moved convergence, with density updates disabled.
-- DF explicitly selects `packed-single`, occupied exchange/response, fitted
-  occupied source, derivative schedule `qualify`, response algebra `blas`,
+- RTX 5090, 32,607 MiB, driver 580.95.05, CUDA 12.9.1; eight OpenMP/OpenBLAS/MKL
+  threads. Neutral RHF, spherical def2-SVP, nested water32mer prefixes with
+  3–96 atoms / 24–768 AOs. DF uses cc-pVDZ-JKFIT. Exact coordinates and basis
+  identities are retained in [references.json](references.json).
+- Native energy tolerance `1e-12 Eh`, density tolerance `1e-10`, screening
+  `1e-12`, maximum 100 iterations. Both native methods share finite-value FP64
+  energy comparison with `16*epsilon*max(1,|E|,|previous_E|)`, density-step RMS,
+  and physical pre-DIIS `max|FDS-SDF| <= min(1e-8,density_tolerance)` checks.
+  Strict final Fock/determinant validation remains mandatory.
+- GPU4PySCF 1.8.1 / PySCF 2.14.0 / NumPy 2.4.6 uses its own stopping logic,
+  energy tolerance `1e-12 Eh`, orbital-gradient tolerance `1e-10`, full Fock
+  builds and direct screening `1e-14`. Equal public tolerances do not imply
+  identical internal stopping policies.
+- Separate sequential engine processes prevent concurrent resident DF tensors.
+  Cold includes preparation and the first synchronized complete execution;
+  imports/library probes are excluded. Five warm calls use the frozen post-cold
+  density. The second atom then moves +0.001 Bohr along z, reconverges normally,
+  and supplies a frozen density for five moved-warm calls. Geometry refresh is
+  timed. Diagnostics are excluded from clean medians.
+- Native DF explicitly selects packed-single storage, occupied exchange/response,
+  fitted occupied source, derivative schedule `qualify`, response algebra `blas`,
   final exchange `auto` and occupied metric `auto`. Response allowances are
-  64 MiB through 96 AOs, 256 MiB at 192 AOs, 1,000,000,000 bytes at 384 AOs and
-  5,000,000,000 bytes at 768 AOs. Default storage/response planners are unchanged.
-- Shared Release sm_120 HF-AOT library SHA-256:
-  `7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e`.
-  Stationary DFT-force AOT disabled; RHF shell AOT enabled. Measured source is
-  `f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4` plus
-  [measured-source.patch](measured-source.patch). Later edits affect documentation,
-  evidence rendering and host tests, not native or benchmark execution logic.
+  64 MiB through 96 AOs, 256 MiB at 192, 1,000,000,000 bytes at 384 and
+  5,000,000,000 bytes at 768. Default storage/response planners are unchanged.
+- One-step reuse requires exact same-owner density/Hcore/S/X/occupation/nuclear
+  energy matches from a completed strict singleton occupied-RHF endpoint.
+  Cold, changed geometry, UHF, batches, no-DIIS and unqualified states retain
+  normal iteration and bounded fallbacks. See the
+  [current contract](../../../docs/developer/df_occupied_cuda.md).
 
-[summary.json](summary.json) binds all 14 workload records by hash and size and
-stores the shared build/source/acceptance identity. Each record contains exact
-scalar sample rows with explicit `columns`, grouped diagnostic work counters,
-raw result hashes and a checksum-bound link to its independent reference record.
-Read samples with `dict(zip(record["columns"], row, strict=True))`.
-[validation.json](validation.json) pins source/library and validation receipts.
-Full logs, traces and binaries remain in ignored local artifacts.
+All **184 native endpoints** pass independent **1e-8 Eh / 1e-7 Eh/Bohr** gates;
+maximum errors are **2.6421e-10 Eh / 1.4052e-10 Eh/Bohr**. This includes 168
+clean and 16 diagnostic calls, including the disabled controls. Each approximation
+has its own reference; direct and DF are not gated against each other.
+All 144 reference endpoints are retained and rechecked as well.
 
-Four native suites pass: final snapshot/cache, physical force convergence,
-occupied response and mixed precision. The new closed-form nonidentity-overlap
-fixture tests one-step iteration limits, missing baselines, mismatched inputs,
-stale tokens and failed-solve invalidation. There are 44 passing existing GPU
-cases plus four new molecular cases (frozen/advancing × two auxiliary bases),
-with independent PySCF gates of 1e-9 Eh / 1e-8 Eh/Bohr. The native snapshot suite
-passes Compute Sanitizer memcheck with zero errors (job 11810). The existing
-host endpoint/structure/ownership group passes 134 tests. Validation receipts
-preserve the initial fixture/test mistakes and missing sanitizer PATH retry;
-none required relaxing a production gate. The previously disclosed six
-[packed-cache replay assertions](../df-final-occupied-endpoint-20260926/README.md#numerical-and-robustness-validation)
-remain a separate baseline regression.
+The native calls were measured under Slurm **11809** (15-minute limit). The
+GPU4PySCF results are the unchanged measurements from **11803**, under the
+identical scientific/frozen-warm protocol and hardware setup. They were not
+rerun for this figure correction. All repeats are included; the reducer checks
+protocol and raw-reference hashes before validating each native endpoint.
+
+## Evidence and validation
+
+[summary.json](summary.json) retains cold/warm/moved/moved-warm medians, iteration
+and reference build-count sets, common native identity, and hashes of three files:
+
+- [samples.json](samples.json): all native scalar observations in named columns;
+  reconstruct each row with `dict(zip(table["columns"], row, strict=True))`.
+- [references.json](references.json): all independent original/moved force arrays,
+  protocols, identities, raw hashes and reference timing/work samples.
+- [work.json](work.json): all grouped DF diagnostic counters, including controls.
+
+The shared Release sm_120 HF-AOT library SHA-256 is
+`7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e`.
+Its native/compiler/benchmark execution sources match commit
+`b2e57efe9af86bcaf08936c5a2ca287942658a27`; only docs, rendering and host tests
+changed afterward. [validation.json](validation.json) preserves the build/test
+receipts and the exact historical source-patch identity.
+
+Four native suites, 44 existing GPU molecular cases and four new warm-cache
+cases pass. The new cases use independent PySCF gates of 1e-9 Eh / 1e-8 Eh/Bohr.
+Compute Sanitizer reports zero errors for the final-snapshot/cache suite.
+The final host endpoint/retention group passes 18 tests. Earlier validation
+receipts preserve test-fixture and sanitizer-PATH retries without relaxing
+production gates. The separate final-K/root
+[qualification](../df-final-occupied-endpoint-20260926/README.md) retains its
+controls and the previously disclosed six baseline packed-cache replay failures.
+
+The superseded three-step native benchmark and original split records are
+recoverable from commit `b2e57efe9af86bcaf08936c5a2ca287942658a27` using
+`git show <revision>:<path>`. Consolidation preserves all current scalar values,
+reference arrays and work counters exactly; historical diagnoses remain in
+Agent Notes. Full raw logs, traces and binaries stay in ignored local artifacts.
 
 ## Reproduce
 
-Use the Release build and Python dependency setup in the
-[preceding protocol](../hf-unified-acceptance-20260926/README.md#reproduce).
-From the repository root, regenerate independent references and enabled endpoints
-into a fresh directory, then add the same-binary disabled controls:
+Use Python with compiler dependencies, PySCF, GPU4PySCF, CuPy and Matplotlib.
+Build and run from the repository root:
 
 ```bash
-export HF_BENCHMARK_OUTPUT="$PWD/.artifacts/df-one-step-reproduction"
+cmake --preset cuda-release-sm120 \
+  -DCMAKE_CUDA_COMPILER=/group/software/cuda-12.9.1/bin/nvcc \
+  -DPython3_EXECUTABLE="$(command -v python)" \
+  -DVIBEQC_BUILD_TESTS=ON -DVIBEQC_ENABLE_AOT_SHELLS=ON \
+  -DVIBEQC_ENABLE_STATIONARY_FORCE_AOT=OFF
+cmake --build --preset cuda-release-sm120 --target vibeqc -j8
+export VIBEQC_LIBRARY="$PWD/build/cuda-release-sm120/libvibeqc.so"
+export CUDA_PATH=/group/software/cuda-12.9.1
+export LD_LIBRARY_PATH="$CUDA_PATH/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export HF_BENCHMARK_PYTHON="$(command -v python)"
-export PYTHONPATH=python:.
-export OMP_NUM_THREADS=8 OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8
+export HF_BENCHMARK_OUTPUT="$PWD/.artifacts/hf-df-reproduction"
 srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
   --time=00:35:00 bash benchmarks/run_hf_acceptance_benchmarks.sh
-srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
-  --time=00:10:00 bash -c '
-set -euo pipefail
-for aos in 384 768; do
-  "$HF_BENCHMARK_PYTHON" -m benchmarks.compare_df_direct_endpoint native \
-    --nested-water --aos "$aos" --route df --repeats 5 --disable-warm-reuse \
-    --reference "$HF_BENCHMARK_OUTPUT/$aos/reference-df/results.json" \
-    --output "$HF_BENCHMARK_OUTPUT/$aos/df-disabled"
-done'
-python -m tools.render_hf_acceptance_benchmarks \
+PYTHONPATH=python:. python -m tools.render_hf_acceptance_benchmarks \
   --raw-directory "$HF_BENCHMARK_OUTPUT" \
-  --destination .artifacts/df-one-step-reference-records
-python -m tools.render_df_warm_reuse_benchmarks \
-  --raw-directory "$HF_BENCHMARK_OUTPUT" \
-  --reference-directory "$HF_BENCHMARK_OUTPUT" \
-  --reference-records .artifacts/df-one-step-reference-records \
-  --destination .artifacts/df-one-step-figure
+  --destination .artifacts/hf-df-figure
 ```
 
-The renderer requires all six sizes and five repeats. For this retained campaign,
-the raw native directory was `.artifacts/df-warm-one-step-20260926/endpoints`,
-the raw reference directory `.artifacts/df-unified-acceptance-20260926/endpoints`,
-and `--reference-records` was `benchmarks/results/hf-unified-acceptance-20260926`.
-Slurm device visibility is preserved throughout.
+To reproduce this retained figure from the original local artifacts, use
+`--raw-directory .artifacts/df-warm-one-step-20260926/endpoints`,
+`--reference-directory .artifacts/df-unified-acceptance-20260926/endpoints`, and
+`--include-warm-controls`. The latter retains the optional 384/768-AO controls
+in evidence, never in the figure. Fresh controls use the native benchmark's
+`--disable-warm-reuse` option and output directories `<aos>/df-disabled`, under
+a finite Slurm GPU allocation. The renderer requires all six sizes and five
+repeats by default and preserves Slurm's assigned device visibility.
