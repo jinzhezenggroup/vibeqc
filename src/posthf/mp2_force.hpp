@@ -42,4 +42,15 @@ ConventionalForceResult conventional_force_cuda(
     std::size_t budget_bytes, double denominator_threshold, double same_space_threshold,
     const response::GmresOptions& response_options, int device_id);
 
+/** Complete CPU RI-MP2 analytic force for the same fitted RHF Hamiltonian.
+ *
+ * The response uses the factorized MO provider, the metric reverse delegates
+ * to the shared fixed-rank matrix-function VJP, and raw A/M cotangents are
+ * consumed by the bounded generated DF derivative path.
+ */
+ConventionalForceResult density_fitted_force_cpu(
+    const scf::PhysicalReference& reference, const posthf::RawSource& source,
+    std::size_t budget_bytes, double denominator_threshold, double metric_relative_threshold,
+    double same_space_threshold, const response::GmresOptions& response_options);
+
 }  // namespace vibeqc::mp2
