@@ -158,9 +158,9 @@ inline constexpr std::size_t kMixedFockShellKernelCount =
 inline constexpr std::uint64_t kPreferredStreamingFockShellClassMask =
     {preferred_streaming_fock_mask}ULL;
 
-inline constexpr std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {
+inline constexpr std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {{
   return kPreferredStreamingFockShellClassMask;
-}
+}}
 
 /** Return the exact-class bit mask selected by VIBEQC_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
