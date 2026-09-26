@@ -1186,6 +1186,22 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("stationary CUDA compiler/execution target mismatch")
     else:
         target = compiler.target
+    wb97mv_candidate = state.identity.method.startswith("wb97m-v")
+    if wb97mv_candidate:
+        if ecp:
+            raise NotImplementedError("WB97M-V CUDA force candidate is all-electron only")
+        if prepared is not None:
+            raise NotImplementedError(
+                "WB97M-V CUDA force candidate does not yet retain prepared owners"
+            )
+        if compiler is None:
+            raise TypeError(
+                "WB97M-V CUDA force candidate requires an explicit CUDA compiler adapter"
+            )
+        if any(shell.angular_momentum > 1 for shell in basis.shells):
+            raise NotImplementedError(
+                "WB97M-V CUDA force candidate currently qualifies s/p bases only"
+            )
     for value, name, cap in (
         (tile_points, "tile_points", 4096),
         (primitive_tile, "primitive_tile", 4096),
@@ -1222,29 +1238,41 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("grid point work budget exceeded")
     if pair_visits > max_grid_pair_visits:
         raise ValueError("grid work budget exceeded")
-    method, _ = resolve_ks_method(state.identity.method)
+    if wb97mv_candidate:
+        method = state._source.method_ir
+        point_model = state._source._batch._calculator._ks_options.scf_domain
+    else:
+        method, _ = resolve_ks_method(state.identity.method)
+        point_model = SCF_POINT_MODEL
     plan = StationaryGradientPlan(
         method,
         StationaryMeanField(
-            SCF_POINT_MODEL,
+            point_model,
             hamiltonian="scalar-semilocal-ecp" if ecp else "all-electron",
         ),
     )
     density = state.density if contract.spin == "polarized" else state.density[0]
-    if (
+    base_sources = tuple(name for name in plan.source_names if name in _SOURCE_NAMES)
+    if base_sources != _SOURCE_NAMES:
+        raise ValueError(
+            "CUDA runtime base-source coverage differs from StationaryGradientPlan"
+        )
+    if not wb97mv_candidate and (
         tuple(s for s in plan.source_names if s not in ("ecp_local", "ecp_nonlocal"))
         != _SOURCE_NAMES
     ):
         raise ValueError(
             "CUDA runtime source coverage differs from StationaryGradientPlan"
         )
-    functional = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
+    functional = 4 if wb97mv_candidate else {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
     if functional == 2 and ecp:
         raise NotImplementedError(
             "r2SCAN CUDA stationary gradients do not inherit ECP support"
         )
     needs_first = functional != 0
-    functional_name = ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
+    functional_name = (
+        "WB97M-V" if wb97mv_candidate else ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
+    )
     device = int(state._source.metadata[12])
     grid_plan = plan_tiles(
         basis,
