@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import shutil
+from copy import deepcopy
 
 import pytest
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.xc.bulk_point_program import (
     SemilocalPointBinding,
     bind_runtime_semilocal_point_program,
 )
 from vibeqc_compiler.xc.bulk_runtime import (
-    PRODUCTION_CANDIDATE_DOMAIN,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
     build_bulk_runtime_program,
 )
 from vibeqc_compiler.xc.compiled_cpu_evidence import (
@@ -31,7 +33,7 @@ def _binding(*, candidate: bool = True) -> SemilocalPointBinding:
         NAME,
         spin="polarized",
         order=1,
-        **({"domain": PRODUCTION_CANDIDATE_DOMAIN} if candidate else {}),
+        **({"domain": PRODUCTION_DENSITY_CANDIDATE_DOMAIN} if candidate else {}),
     )
     return bind_runtime_semilocal_point_program(program)
 
@@ -48,9 +50,10 @@ def _outcome() -> dict:
         "executable_sha256": "c" * 64,
         "smoke": {
             "status": "pass",
+            "case_labels": ["interior", "vacuum"],
             "input_identity": "d" * 64,
-            "expected": [1.0, 2.0, 3.0],
-            "observed": [1.0, 2.0, 3.0],
+            "expected": [float(index) for index in range(22)],
+            "observed": [float(index) for index in range(22)],
             "absolute_tolerance": 1.0e-12,
             "maximum_absolute_error": 0.0,
         },
@@ -74,9 +77,10 @@ def test_compiled_cpu_result_promotes_exact_binding_evidence() -> None:
     assert envelope["qualification"]["schema"] == QUALIFICATION_SCHEMA
     assert envelope["qualification"]["binding_identity"] == binding.identity
     assert envelope["qualification"]["binding"]["domain"] == (
-        PRODUCTION_CANDIDATE_DOMAIN
+        PRODUCTION_DENSITY_CANDIDATE_DOMAIN
     )
-    assert envelope["qualification"]["binding"]["domain_version"] == 2
+    assert envelope["qualification"]["binding"]["domain_version"] == 3
+    assert envelope["qualification"]["binding"]["density_threshold"] is not None
     assert result["identity"] in envelope["evidence"]
 
 
@@ -101,6 +105,20 @@ def test_compiled_cpu_result_rejects_wrong_domain_and_tampering() -> None:
     }
     with pytest.raises(ValueError, match="result identity mismatch"):
         validate_result(NAME, tampered)
+
+
+def test_rehashed_binding_cannot_change_pinned_density_threshold() -> None:
+    result = build_result(
+        NAME, _binding(), _outcome(), evidence="test://pinned-threshold"
+    )
+    forged = deepcopy(result)
+    forged["binding"]["density_threshold"] *= 2.0
+    forged["binding_identity"] = canonical_hash(forged["binding"])
+    payload = {key: value for key, value in forged.items() if key != "identity"}
+    forged["identity"] = canonical_hash(payload)
+
+    with pytest.raises(ValueError, match="pinned density threshold mismatch"):
+        validate_result(NAME, forged)
 
 
 def test_passing_compiled_cpu_smoke_must_be_numerically_valid() -> None:
@@ -163,9 +181,11 @@ def test_real_noncurated_gga_binding_compiles_and_executes() -> None:
 
     assert payload["stage_evidence"]["status"] == "pass"
     qualification = payload["stage_evidence"]["qualification"]
-    assert qualification["binding"]["domain"] == PRODUCTION_CANDIDATE_DOMAIN
-    assert qualification["binding"]["domain_version"] == 2
+    assert qualification["binding"]["domain"] == PRODUCTION_DENSITY_CANDIDATE_DOMAIN
+    assert qualification["binding"]["domain_version"] == 3
+    assert qualification["binding"]["density_threshold"] is not None
     assert qualification["smoke"]["status"] == "pass"
+    assert qualification["smoke"]["case_labels"] == ["interior", "vacuum"]
     assert (
         qualification["smoke"]["maximum_absolute_error"]
         <= (qualification["smoke"]["absolute_tolerance"])

@@ -10,6 +10,7 @@ all three without granting capability from source generation alone.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -18,17 +19,21 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from . import libxc_bulk
 from .bulk_aot import BACKENDS, SourceVariant
-from .bulk_runtime import PRODUCTION_CANDIDATE_DOMAIN
+from .bulk_runtime import (
+    PRODUCTION_CANDIDATE_DOMAIN,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
+)
 
 if TYPE_CHECKING:
     from .bulk_runtime import BulkRuntimeProgram
 
 # v2 isolates adapter symbols per translation unit; scalar AOT identity is unchanged.
-POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v3"
+POINT_PROGRAM_BINDING_SCHEMA = "vibeqc.libxc-bulk-point-program-binding/v4"
 
 _NATIVE_DOMAIN_VERSIONS = {
     libxc_bulk.BULK_SEMANTICS: 1,
     PRODUCTION_CANDIDATE_DOMAIN: 2,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN: 3,
 }
 
 _POINT_LAYOUTS = {
@@ -124,6 +129,7 @@ class SemilocalPointBinding:
     capability_identity: str
     point_expression_identity: str
     domain_version: int
+    density_threshold: float | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.variant, SourceVariant):
@@ -162,6 +168,20 @@ class SemilocalPointBinding:
             raise ValueError(
                 "domain_version disagrees with the compiler-owned runtime domain"
             )
+        if self.variant.domain == PRODUCTION_DENSITY_CANDIDATE_DOMAIN:
+            if (
+                not isinstance(self.density_threshold, (int, float))
+                or not math.isfinite(float(self.density_threshold))
+                or float(self.density_threshold) < 0.0
+            ):
+                raise ValueError(
+                    "density-screened point binding requires a finite "
+                    "nonnegative density_threshold"
+                )
+        elif self.density_threshold is not None:
+            raise ValueError(
+                "density_threshold is only valid for the density-screened domain"
+            )
 
     @property
     def ingredient_mask(self) -> int:
@@ -182,6 +202,7 @@ class SemilocalPointBinding:
             "import_identity": self.variant.import_identity,
             "domain": self.variant.domain,
             "domain_version": self.domain_version,
+            "density_threshold": self.density_threshold,
             "features": list(self.variant.features),
             "ingredient_mask": self.ingredient_mask,
         }
@@ -215,14 +236,24 @@ class SemilocalPointBinding:
                 + "};"
             )
 
-        mapping = [
-            f"  double outputs[{outputs}]{{}};",
-            "  bulk_xc_point(features, outputs);",
-            "  SemilocalPointValue out{};",
-            "  out.energy = outputs[0];",
-            "  out.rho[0] = outputs[1];",
-            "  out.rho[1] = outputs[2];",
-        ]
+        mapping = []
+        if self.density_threshold is not None:
+            mapping.extend(
+                [
+                    "  if (rho[0] + rho[1] < kDensityThreshold)",
+                    "    return {};",
+                ]
+            )
+        mapping.extend(
+            [
+                f"  double outputs[{outputs}]{{}};",
+                "  bulk_xc_point(features, outputs);",
+                "  SemilocalPointValue out{};",
+                "  out.energy = outputs[0];",
+                "  out.rho[0] = outputs[1];",
+                "  out.rho[1] = outputs[2];",
+            ]
+        )
         if self.ingredient_mask != 1:
             mapping.extend(
                 [
@@ -256,6 +287,11 @@ class SemilocalPointBinding:
             + f"inline constexpr const char* kCapabilityIdentity = {q(self.capability_identity)};\n"
             + f"inline constexpr const char* kArtifactEmissionIdentity = {q(self.variant.emission_identity)};\n"
             + f"inline constexpr const char* kPointExpressionIdentity = {q(self.point_expression_identity)};\n"
+            + (
+                f"inline constexpr double kDensityThreshold = {float(self.density_threshold).hex()};\n"
+                if self.density_threshold is not None
+                else ""
+            )
             + "inline SemilocalPointValue evaluate_point(const double rho[2],\n"
             + "                                         const double (&gradient)[2][3],\n"
             + "                                         const double tau[2]) {\n"
@@ -288,6 +324,7 @@ def bind_runtime_semilocal_point_program(
         capability_identity=program.spec.capability_identity,
         point_expression_identity=program.expression_hash,
         domain_version=native_domain_version(program.spec.domain),
+        density_threshold=program.spec.density_threshold,
     )
 
 

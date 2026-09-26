@@ -14,16 +14,17 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
+from . import libxc_bulk
 from .bulk_point_program import (
     POINT_PROGRAM_BINDING_SCHEMA,
     SemilocalPointBinding,
     native_domain_version,
 )
-from .bulk_runtime import PRODUCTION_CANDIDATE_DOMAIN
+from .bulk_runtime import PRODUCTION_DENSITY_CANDIDATE_DOMAIN
 from .libxc_bulk_capabilities import STAGE_EVIDENCE_SCHEMA, functional_capability
 
-RESULT_SCHEMA = "vibeqc.libxc-compiled-cpu-result/v1"
-QUALIFICATION_SCHEMA = "vibeqc.libxc-compiled-cpu-qualification/v1"
+RESULT_SCHEMA = "vibeqc.libxc-compiled-cpu-result/v2"
+QUALIFICATION_SCHEMA = "vibeqc.libxc-compiled-cpu-qualification/v2"
 _STATUSES = ("pass", "fail", "not-run")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -62,6 +63,11 @@ def _smoke(value: Any, *, required: bool) -> dict[str, Any] | None:
             raise ValueError("passing compiled-CPU result requires passing smoke")
         if status not in ("fail", "not-run"):
             raise ValueError("compiled-CPU smoke has invalid status")
+    case_labels = value.get("case_labels")
+    if case_labels != ["interior", "vacuum"]:
+        raise ValueError(
+            "compiled-CPU smoke must cover exact interior and vacuum cases"
+        )
     expected = value.get("expected")
     observed = value.get("observed")
     if not isinstance(expected, Sequence) or isinstance(expected, (str, bytes)):
@@ -105,15 +111,41 @@ def _smoke(value: Any, *, required: bool) -> dict[str, Any] | None:
             raise ValueError("compiled-CPU smoke reported error is inconsistent")
         if actual_error > float(tolerance):
             raise ValueError("passing compiled-CPU smoke exceeds its tolerance")
+    if required and len(expected_values) != 22:
+        raise ValueError("passing compiled-CPU smoke must contain two native vectors")
     return {
-        "schema": "vibeqc.libxc-compiled-cpu-smoke/v1",
+        "schema": "vibeqc.libxc-compiled-cpu-smoke/v2",
         "status": status,
+        "case_labels": ["interior", "vacuum"],
         "input_identity": _sha(value.get("input_identity"), "smoke input identity"),
         "expected": expected_values,
         "observed": observed_values,
         "absolute_tolerance": float(tolerance),
         "maximum_absolute_error": float(max_error),
     }
+
+
+def _pinned_density_threshold(name: str) -> float:
+    """Return the exact Libxc threshold bound into the current capability source."""
+    record = next(
+        (
+            item
+            for item in libxc_bulk.read_catalog()["registrations"]
+            if item["name"] == name
+        ),
+        None,
+    )
+    if record is None:
+        raise ValueError("compiled-CPU binding registration is unavailable")
+    try:
+        threshold = float(record["bindings"]["p_a_dens_threshold"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "compiled-CPU binding density threshold is unavailable"
+        ) from exc
+    if not math.isfinite(threshold) or threshold < 0.0:
+        raise ValueError("compiled-CPU pinned density threshold is invalid")
+    return threshold
 
 
 def _binding_payload(
@@ -129,7 +161,7 @@ def _binding_payload(
     if value.get("capability_identity") != capability_identity:
         raise ValueError("compiled-CPU binding capability identity mismatch")
     domain = value.get("domain")
-    if domain != PRODUCTION_CANDIDATE_DOMAIN:
+    if domain != PRODUCTION_DENSITY_CANDIDATE_DOMAIN:
         raise ValueError("compiled-CPU binding domain mismatch")
     if value.get("domain_version") != native_domain_version(domain):
         raise ValueError("compiled-CPU binding native domain version mismatch")
@@ -157,6 +189,18 @@ def _binding_payload(
     feature_tuple = tuple(features)
     if value.get("ingredient_mask") != layouts[feature_tuple]:
         raise ValueError("compiled-CPU binding ingredient mask mismatch")
+    density_threshold = value.get("density_threshold")
+    if (
+        isinstance(density_threshold, bool)
+        or not isinstance(density_threshold, (int, float))
+        or not math.isfinite(float(density_threshold))
+        or float(density_threshold) < 0.0
+    ):
+        raise ValueError(
+            "compiled-CPU binding requires finite nonnegative density threshold"
+        )
+    if float(density_threshold) != _pinned_density_threshold(capability_name):
+        raise ValueError("compiled-CPU binding pinned density threshold mismatch")
 
     payload = {
         "schema": POINT_PROGRAM_BINDING_SCHEMA,
@@ -174,6 +218,7 @@ def _binding_payload(
         "import_identity": _sha(value.get("import_identity"), "import identity"),
         "domain": domain,
         "domain_version": value["domain_version"],
+        "density_threshold": float(density_threshold),
         "features": list(feature_tuple),
         "ingredient_mask": value["ingredient_mask"],
     }
@@ -195,8 +240,10 @@ def build_result(
         raise ValueError("compiled-CPU binding functional mismatch")
     if binding.capability_identity != capability.identity:
         raise ValueError("compiled-CPU binding capability identity mismatch")
-    if binding.variant.domain != PRODUCTION_CANDIDATE_DOMAIN:
-        raise ValueError("compiled-CPU evidence requires production candidate domain")
+    if binding.variant.domain != PRODUCTION_DENSITY_CANDIDATE_DOMAIN:
+        raise ValueError(
+            "compiled-CPU evidence requires density-screened production candidate domain"
+        )
     if not isinstance(outcome, Mapping):
         raise TypeError("compiled-CPU outcome must be a mapping")
     if not isinstance(evidence, str) or not evidence.strip():
