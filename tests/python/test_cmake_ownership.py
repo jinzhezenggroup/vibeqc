@@ -180,3 +180,11 @@ def test_source_identity_hashing_runs_at_build_time(tmp_path: typing.Any) -> Non
     assert 'kVibeqcSourceIdentity = "' in rendered
     assert "#define VIBEQC_CUDA_FAST_COMPILE 0" in rendered
     assert "#define VIBEQC_TUNING_RELEASE_BUILD 1" in rendered
+
+
+def test_generated_commands_use_explicit_dependency_boundary_when_supported() -> None:
+    """Newer CMake/Ninja should not infer unrelated transitive custom-command edges."""
+    helper = _read("cmake/VibeQCGenerated.cmake")
+    assert 'CMAKE_VERSION VERSION_GREATER_EQUAL "3.27"' in helper
+    assert "DEPENDS_EXPLICIT_ONLY" in helper
+    assert "${_vibeqc_explicit_dependency_boundary}" in helper
