@@ -511,10 +511,10 @@
     "sm_90/vibeqc_generated_shell_sm90_shard_1.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_2.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
     "sm_90/vibeqc_generated_shell_sm90_shard_3.cu": "6317922732a5d7a6c03d19c1482ed05119d2008f87b3ec76573ce92acf2ad809",
-    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "9c2657c9e7974526e3b10079cb0f3c32a34821ab15aa32d3d58110de6f359d7c",
-    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "0d190b5485a58e1becf1720bed7b7a96a8105345587d4ab735616e13a63fd746",
-    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "e8aeb70826be1d7bca43f0f1eaa7794211156763ad862eb89dd27ccf3078a36f",
-    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "ad15e582d21d5e244720d41a42079555e937bb4ac5013d9be4ec93b41f077f1c",
+    "sm_120/vibeqc_generated_shell_sm120_shard_0.cu": "dd60b25d4070f1599e4ea40c2706b300ddb952972d84de090aedd5ba3835c4ce",
+    "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "3bb2efc3c3a9e6eb6471359c117649d9d8d94605aea38f4d1ed793162d3ab814",
+    "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "7628a114ca54e6aa416b7436ac6edb58dd48b1fe630e7658bf824f89f2ab8a0a",
+    "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "d8f869ddc5e335af5ad6704bac8b720c44b849b90219c0decbe3deb561042e30",
     "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
     "vibeqc_generated_shell_registry.cu": "f17aaa673a1637345ab1d8d4c548fe470b38683b6e0ed0824f8b6f8d1a2fdd1b"
   },
@@ -577,6 +577,17 @@
     {
       "issue": 1077,
       "reason": "Typed HartreeFock/Coulomb task consumer deliberately extends generated scatter and streaming task binding. The four sm_120 shards change; portable sm_90 shards, registry and shell catalog remain unchanged. Independent dense scatter and allocated through-d J / through-f fallback matrix tests pass.",
+      "paths": [
+        "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_2.cu",
+        "sm_120/vibeqc_generated_shell_sm120_shard_3.cu"
+      ]
+    },
+    {
+      "issue": 1358,
+      "source_revision": "5f9aa5d7944f1af39bc1e8f0e67923d0e9dd3d13",
+      "reason": "Binary-search the monotonic Schwarz/density tail once per streaming row instead of linearly probing screened ket blocks. The four tuned sm_120 shards change intentionally; portable sm_90 shards, registry artifacts, manifest and shell catalog remain byte-identical.",
       "paths": [
         "sm_120/vibeqc_generated_shell_sm120_shard_0.cu",
         "sm_120/vibeqc_generated_shell_sm120_shard_1.cu",
