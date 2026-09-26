@@ -144,6 +144,76 @@ def ordered_source_reuse_plan(
     return OrderedSourceReusePlan(tuple(batches), peak)
 
 
+
+@dataclass(frozen=True)
+class SourceTileCandidate:
+    """One feasible AO source-tile choice and its complete scan count."""
+
+    axis_tile: int
+    source_scans: int
+    peak_bytes: int
+
+    def __post_init__(self) -> None:
+        checked_bytes(self.axis_tile, "source axis tile")
+        checked_bytes(self.source_scans, "source scan count")
+        checked_bytes(self.peak_bytes, "source-tile peak bytes")
+        if not self.axis_tile or not self.source_scans:
+            raise ValueError("source-tile candidate requires nonzero tile and scan count")
+
+
+@dataclass(frozen=True)
+class SourceTilePlan:
+    axis_tile: int
+    source_reads: int
+    source_scans: int
+    peak_bytes: int
+
+
+def source_reads_per_scan(nbf: int, axis_tile: int) -> int:
+    """Return the exact rectangular AO-tile read count for one four-axis scan."""
+
+    checked_bytes(nbf, "source AO count")
+    checked_bytes(axis_tile, "source axis tile")
+    if not nbf or not axis_tile or axis_tile > nbf:
+        raise ValueError("invalid source-tile dimensions")
+    tiles = (nbf + axis_tile - 1) // axis_tile
+    squared = _mul(tiles, tiles)
+    return _mul(squared, squared)
+
+
+def select_source_tile(
+    nbf: int, candidates: tuple[SourceTileCandidate, ...] | list[SourceTileCandidate]
+) -> SourceTilePlan:
+    """Minimize semantic source reads, then scans and admitted peak bytes."""
+
+    checked_bytes(nbf, "source AO count")
+    candidates = tuple(candidates)
+    if not nbf or not candidates:
+        raise ValueError("source-tile selection requires AO count and candidates")
+    if not all(isinstance(candidate, SourceTileCandidate) for candidate in candidates):
+        raise TypeError("source-tile candidates must use SourceTileCandidate")
+
+    scored: list[tuple[tuple[int, int, int, int], SourceTilePlan]] = []
+    for candidate in candidates:
+        reads = _mul(
+            source_reads_per_scan(nbf, candidate.axis_tile), candidate.source_scans
+        )
+        plan = SourceTilePlan(
+            candidate.axis_tile, reads, candidate.source_scans, candidate.peak_bytes
+        )
+        scored.append(
+            (
+                (
+                    reads,
+                    candidate.source_scans,
+                    candidate.peak_bytes,
+                    -candidate.axis_tile,
+                ),
+                plan,
+            )
+        )
+    return min(scored, key=lambda item: item[0])[1]
+
 def native_header() -> str:
     """Emit the native runtime transcription of the generic schedule."""
 
@@ -222,6 +292,51 @@ inline OrderedSourceReusePlan ordered_source_reuse_plan(
     begin = end;
   }
   return result;
+}
+
+struct SourceTileCandidate {
+  std::size_t axis_tile;
+  std::size_t source_scans;
+  std::size_t peak_bytes;
+};
+struct SourceTilePlan {
+  std::size_t axis_tile;
+  std::size_t source_reads;
+  std::size_t source_scans;
+  std::size_t peak_bytes;
+};
+inline std::size_t source_reads_per_scan(std::size_t nbf, std::size_t axis_tile) {
+  if (!nbf || !axis_tile || axis_tile > nbf)
+    throw std::invalid_argument("invalid source-tile dimensions");
+  const auto tiles = (nbf + axis_tile - 1) / axis_tile;
+  const auto squared = posthf::checked_mul(tiles, tiles);
+  return posthf::checked_mul(squared, squared);
+}
+inline SourceTilePlan select_source_tile(
+    std::size_t nbf, const std::vector<SourceTileCandidate>& candidates) {
+  if (!nbf || candidates.empty())
+    throw std::invalid_argument("source-tile selection requires AO count and candidates");
+  SourceTilePlan best{};
+  bool selected = false;
+  for (const auto& candidate : candidates) {
+    if (!candidate.axis_tile || !candidate.source_scans || candidate.axis_tile > nbf)
+      throw std::invalid_argument("invalid source-tile candidate");
+    const auto reads =
+        posthf::checked_mul(source_reads_per_scan(nbf, candidate.axis_tile),
+                            candidate.source_scans);
+    const bool better =
+        !selected || reads < best.source_reads ||
+        (reads == best.source_reads && candidate.source_scans < best.source_scans) ||
+        (reads == best.source_reads && candidate.source_scans == best.source_scans &&
+         candidate.peak_bytes < best.peak_bytes) ||
+        (reads == best.source_reads && candidate.source_scans == best.source_scans &&
+         candidate.peak_bytes == best.peak_bytes && candidate.axis_tile > best.axis_tile);
+    if (better) {
+      best = {candidate.axis_tile, reads, candidate.source_scans, candidate.peak_bytes};
+      selected = true;
+    }
+  }
+  return best;
 }
 }  // namespace vibeqc::posthf::generated
 """
