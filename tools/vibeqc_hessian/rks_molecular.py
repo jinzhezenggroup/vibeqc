@@ -494,7 +494,9 @@ def rks_hvp_many(
             "strategy": strategy,
             "multi_rhs_calls": 1,
             "response_operator_actions": directional.solve_result.operator_actions,
-            "response_peak_workspace_bytes": directional.solve_result.peak_workspace_bytes,
+            "response_peak_workspace_bytes": (
+                directional.solve_result.peak_workspace_bytes
+            ),
             "rhs_rank": directional.solve_result.rhs_rank,
             "rank_deficient_rhs": directional.solve_result.rank_deficient_rhs,
             "full_molecular_hessian_allocated": False,
