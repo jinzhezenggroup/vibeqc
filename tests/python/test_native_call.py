@@ -1,5 +1,4 @@
 import pytest
-
 from vibeqc_compiler.common.native_call import checked_native_call
 
 
