@@ -124,12 +124,23 @@ def test_resident_response_budget_replans_without_reference_factors(
             index = len(panels)
             trace = tmp_path / f"response-{index}.jsonl"
             host = tmp_path / f"host-{index}.jsonl"
+            progress = tmp_path / f"policy-{index}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES", str(budget))
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
             monkeypatch.setenv("VIBEQC_DF_HOST_TRACE", str(host))
+            monkeypatch.setenv("VIBEQC_DF_PROGRESS_TRACE", str(progress))
             item = batch.execute(strict=True, properties=("energy", "forces")).items[0]
             assert item.energy == pytest.approx(energy, abs=1e-9, rel=0)
             np.testing.assert_allclose(item.forces, forces, atol=1e-8, rtol=0)
+            policies = [
+                {value["key"]: value["value"] for value in scope["values"]}
+                for scope in read_progress(progress)["scopes"].values()
+                if scope["begin"]["name"] == "df_resource_policy"
+            ]
+            assert policies, (
+                "response override change did not re-resolve the cached owner"
+            )
+            assert policies[-1]["resolved_response_budget_bytes"] == budget
             (response,) = [
                 r for r in read_trace(trace) if r["operation"] == "force_response"
             ]
@@ -137,6 +148,27 @@ def test_resident_response_budget_replans_without_reference_factors(
             assert response["counters"]["response_scratch_bytes"] <= budget
             assert aggregate_host(read_host_trace(host))["reference_eigensolves"] == []
             panels.append(response["counters"]["response_auxiliary_blocks"])
+        tight_budget = 512 << 10
+        tight_trace = tmp_path / "response-tight.jsonl"
+        tight_progress = tmp_path / "policy-tight.jsonl"
+        monkeypatch.setenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES", str(tight_budget))
+        monkeypatch.setenv("VIBEQC_DF_TRACE", str(tight_trace))
+        monkeypatch.setenv("VIBEQC_DF_PROGRESS_TRACE", str(tight_progress))
+        tight = batch.execute(strict=False, properties=("energy", "forces")).items[0]
+        policies = [
+            {value["key"]: value["value"] for value in scope["values"]}
+            for scope in read_progress(tight_progress)["scopes"].values()
+            if scope["begin"]["name"] == "df_resource_policy"
+        ]
+        assert policies, "tight response override did not re-resolve the cached owner"
+        assert policies[-1]["resolved_response_budget_bytes"] == tight_budget
+        if tight.status == _native.STATUS_SUCCESS:
+            (response,) = [
+                r for r in read_trace(tight_trace) if r["operation"] == "force_response"
+            ]
+            assert response["counters"]["response_scratch_bytes"] <= tight_budget
+        else:
+            assert tight.status == _native.STATUS_OUT_OF_MEMORY
     # A single occupied panel can fit both allowances. A larger allowance must
     # not require more panels, and returning to the same cap must be stable.
     assert panels[0] == panels[2] >= panels[1] >= 1

@@ -192,6 +192,17 @@ DfBudgetWorkload df_budget_workload(const core::System& orbital, const core::Sys
           forces};
 }
 
+std::size_t df_response_budget_override_bytes() {
+  const char* control = std::getenv("VIBEQC_DF_RESPONSE_BUDGET_BYTES");
+  if (!control || !*control) return 0U;
+  const std::string_view text(control);
+  std::size_t bytes{};
+  const auto parsed = std::from_chars(text.data(), text.data() + text.size(), bytes);
+  if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || !bytes)
+    throw std::invalid_argument("DF response budget override must be a positive byte count");
+  return bytes;
+}
+
 DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int device_id,
                                                 std::size_t requested) {
   auto result = resolve_df_budget(workload, df_resource_envelope(device_id), requested);
@@ -201,11 +212,8 @@ DfResolvedBudget resolve_df_budget_for_workload(DfBudgetWorkload workload, int d
       throw std::invalid_argument("DF response budget override requires a zero public DF budget");
     if (!workload.forces)
       throw std::invalid_argument("DF response budget override requires force response");
-    const std::string_view text(control);
-    std::size_t bytes{};
-    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), bytes);
-    if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() || !bytes)
-      throw std::invalid_argument("DF response budget override must be a positive byte count");
+    const auto bytes = df_response_budget_override_bytes();
+    result.response_override_bytes = bytes;
     if (result.total_bytes < 2U) {
       result.feasible = false;
     } else {
@@ -275,9 +283,18 @@ void bind_generated_df(DensityFittingScfData& data, const core::System& orbital,
                                                  std::size_t budget, double relative_threshold,
                                                  bool needs_cuda_response) {
 #if VIBEQC_HAS_CUDA
+  std::size_t response_override = 0U;
+  try {
+    response_override = df_response_budget_override_bytes();
+  } catch (const std::invalid_argument&) {
+    // Force a fresh preparation so the normal resolver reports the invalid
+    // diagnostic control instead of silently reusing an older owner.
+    return false;
+  }
   const bool generated = needs_cuda_response;
   return data.metric_relative_threshold == relative_threshold &&
          data.resolved_budget.requested_bytes == budget &&
+         data.resolved_budget.response_override_bytes == response_override &&
          data.df_gradient_orbital.has_value() == generated &&
          (!generated ||
           (data.df_gradient_mapping == cuda_policy::df_derivative_mapping_requested() &&
