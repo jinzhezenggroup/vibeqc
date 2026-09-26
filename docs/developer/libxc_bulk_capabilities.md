@@ -138,6 +138,12 @@ output, or numerical mismatch remains explicit fail/not-run stage evidence.
 Passing `compiled-cpu` alone grants neither production-domain, molecular-SCF,
 force, response, nor public-method capability.
 
+The generic bulk KS resolver does not trust the stage label alone. Before it can
+construct the qualification candidate it revalidates the exact compiled-CPU
+qualification and retains that receipt's point-binding identity and compiled
+result identity in `BulkKsResolution`. This keeps MethodIR/KS composition tied
+to the v2/version-3 executable that the evidence producer actually compiled.
+
 ## Bulk inventory queries
 
 ```python

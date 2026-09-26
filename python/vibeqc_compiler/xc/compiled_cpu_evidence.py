@@ -353,6 +353,51 @@ def validate_result(name: str, value: Mapping[str, Any]) -> dict[str, Any]:
     return {**payload, "identity": value["identity"]}
 
 
+def validate_qualification(
+    name: str,
+    value: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Validate the exact passing compiled-CPU qualification consumed by KS."""
+    if not isinstance(value, Mapping) or value.get("schema") != QUALIFICATION_SCHEMA:
+        raise ValueError("compiled-CPU pass requires exact qualification schema")
+    capability = functional_capability(name)
+    raw_binding = value.get("binding")
+    if not isinstance(raw_binding, Mapping):
+        raise TypeError("compiled-CPU qualification requires binding payload")
+    binding = _binding_payload(
+        raw_binding,
+        capability_name=capability.name,
+        capability_identity=capability.identity,
+    )
+    binding_identity = value.get("binding_identity")
+    if binding_identity != canonical_hash(binding):
+        raise ValueError("compiled-CPU qualification binding identity mismatch")
+
+    compiler = _compiler(value.get("compiler"))
+    if compiler is None:
+        raise ValueError("compiled-CPU qualification requires compiler identity")
+    smoke = _smoke(value.get("smoke"), required=True)
+    payload = {
+        "schema": QUALIFICATION_SCHEMA,
+        "result_identity": _sha(
+            value.get("result_identity"), "compiled result identity"
+        ),
+        "binding_identity": binding_identity,
+        "binding": binding,
+        "translation_unit_sha256": _sha(
+            value.get("translation_unit_sha256"), "translation unit"
+        ),
+        "executable_sha256": _sha(
+            value.get("executable_sha256"), "compiled executable"
+        ),
+        "compiler": compiler,
+        "smoke": smoke,
+    }
+    if dict(value) != payload:
+        raise ValueError("compiled-CPU qualification is not canonical")
+    return payload
+
+
 def stage_evidence(name: str, result: Mapping[str, Any]) -> dict[str, Any]:
     """Convert one exact result into the generic compiled-cpu stage envelope."""
     normalized = validate_result(name, result)
@@ -382,5 +427,6 @@ __all__ = [
     "RESULT_SCHEMA",
     "build_result",
     "stage_evidence",
+    "validate_qualification",
     "validate_result",
 ]
