@@ -6,6 +6,7 @@
 #include <limits>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "response/native_gmres.hpp"
@@ -73,6 +74,131 @@ struct ContractResidentBackend final : vibeqc::response::ResidentKrylovBackend {
   void apply(std::size_t, std::size_t) override {}
 };
 
+struct DenseResidentBackend final : vibeqc::response::ResidentKrylovBackend {
+  DenseResidentBackend(std::size_t dimension, std::size_t vector_slots,
+                       std::vector<double> matrix_values)
+      : n(dimension),
+        slot_count(vector_slots),
+        bytes(vector_slots * dimension * sizeof(double)),
+        storage(vector_slots * dimension, 0.0),
+        matrix(std::move(matrix_values)) {
+    require(matrix.size() == n * n, "resident test matrix shape mismatch");
+  }
+
+  std::size_t n{}, slot_count{}, bytes{};
+  std::vector<double> storage, matrix;
+  std::size_t uploads{}, downloads{}, actions{};
+
+  [[nodiscard]] std::size_t dimension() const noexcept override { return n; }
+  [[nodiscard]] std::size_t vector_slots() const noexcept override { return slot_count; }
+  [[nodiscard]] std::size_t owned_resident_bytes() const noexcept override { return bytes; }
+
+  std::span<double> values(std::size_t slot) {
+    require(slot < slot_count, "resident test slot out of range");
+    return {storage.data() + slot * n, n};
+  }
+  std::span<const double> values(std::size_t slot) const {
+    require(slot < slot_count, "resident test slot out of range");
+    return {storage.data() + slot * n, n};
+  }
+
+  void upload(std::size_t slot, std::span<const double> input) override {
+    require(input.size() == n, "resident test upload shape mismatch");
+    ++uploads;
+    std::copy(input.begin(), input.end(), values(slot).begin());
+  }
+  void download(std::size_t slot, std::span<double> output) override {
+    require(output.size() == n, "resident test download shape mismatch");
+    ++downloads;
+    std::copy(values(slot).begin(), values(slot).end(), output.begin());
+  }
+  void zero(std::size_t slot) override { std::fill(values(slot).begin(), values(slot).end(), 0.0); }
+  void copy(std::size_t destination, std::size_t source) override {
+    const auto input = values(source);
+    std::copy(input.begin(), input.end(), values(destination).begin());
+  }
+  void scale(std::size_t slot, double alpha) override {
+    for (double& value : values(slot)) value *= alpha;
+  }
+  void axpy(std::size_t destination, double alpha, std::size_t source) override {
+    const auto input = values(source);
+    auto output = values(destination);
+    for (std::size_t index = 0; index < n; ++index) output[index] += alpha * input[index];
+  }
+  [[nodiscard]] double dot(std::size_t left, std::size_t right) override {
+    const auto a = values(left), b = values(right);
+    double result = 0.0;
+    for (std::size_t index = 0; index < n; ++index) result += a[index] * b[index];
+    return result;
+  }
+  [[nodiscard]] double norm(std::size_t slot) override {
+    return vibeqc::response::stable_norm(values(slot));
+  }
+  void apply(std::size_t destination, std::size_t source) override {
+    ++actions;
+    const auto input = values(source);
+    std::vector<double> output(n, 0.0);
+    for (std::size_t row = 0; row < n; ++row)
+      for (std::size_t column = 0; column < n; ++column)
+        output[row] += matrix[row * n + column] * input[column];
+    std::copy(output.begin(), output.end(), values(destination).begin());
+  }
+};
+
+void resident_controller_executes_same_gmres() {
+  const std::array<double, 2> rhs{1.0, 2.0};
+  GmresOptions options;
+  options.relative_tolerance = 1e-13;
+  options.restart = 2;
+  options.max_iterations = 4;
+  const auto plan = vibeqc::response::prepare_gmres(2, options);
+  const auto workspace = vibeqc::response::resident_gmres_workspace(plan);
+  DenseResidentBackend resident{2, workspace.vector_slots, {4.0, 1.0, 2.0, 3.0}};
+  const auto solved = vibeqc::response::solve_gmres_resident(plan, resident, rhs);
+  require(solved.converged(), "resident 2x2 solve did not converge");
+  require(std::abs(solved.result.solution[0] - 0.1) < 1e-12 &&
+              std::abs(solved.result.solution[1] - 0.6) < 1e-12,
+          "resident 2x2 solution is wrong");
+  require(solved.result.operator_actions == resident.actions && resident.downloads == 1,
+          "resident GMRES action/download diagnostics are inconsistent");
+  require(solved.resident_owned_bytes == resident.bytes &&
+              solved.result.workspace_bytes ==
+                  workspace.host_scalar_bytes + workspace.host_result_bytes &&
+              solved.result.measured_workspace_peak_bytes == solved.result.workspace_bytes,
+          "resident GMRES resource accounting is inconsistent");
+
+  DenseOperator host_matrix{2, {4.0, 1.0, 2.0, 3.0}};
+  const auto host = vibeqc::response::solve_gmres(
+      plan, [&](auto input, auto output) { host_matrix(input, output); }, rhs);
+  require(host.converged() && std::abs(host.solution[0] - solved.result.solution[0]) < 1e-14 &&
+              std::abs(host.solution[1] - solved.result.solution[1]) < 1e-14,
+          "resident and host GMRES disagree on the same operator");
+
+  GmresOptions restarted = options;
+  restarted.relative_tolerance = 1e-11;
+  restarted.restart = 1;
+  restarted.max_iterations = 80;
+  const auto restarted_plan = vibeqc::response::prepare_gmres(3, restarted);
+  const auto restarted_workspace = vibeqc::response::resident_gmres_workspace(restarted_plan);
+  DenseResidentBackend restarted_backend{
+      3, restarted_workspace.vector_slots, {1.0, 0.0, 0.0, 0.0, 2.0, 0.0, 0.0, 0.0, 5.0}};
+  const std::array<double, 3> restarted_rhs{1.0, -2.0, 3.0};
+  const auto restarted_result =
+      vibeqc::response::solve_gmres_resident(restarted_plan, restarted_backend, restarted_rhs);
+  require(restarted_result.converged() && restarted_result.result.restarts > 0,
+          "resident restart-one solve did not exercise a restart");
+
+  auto short_options = options;
+  short_options.max_workspace_bytes = workspace.host_scalar_bytes + workspace.host_result_bytes - 1;
+  const auto short_plan = vibeqc::response::prepare_gmres(2, short_options);
+  DenseResidentBackend short_backend{2, workspace.vector_slots, {4.0, 1.0, 2.0, 3.0}};
+  const auto refused = vibeqc::response::solve_gmres_resident(short_plan, short_backend, rhs);
+  require(refused.result.status == GmresStatus::workspace_limit &&
+              refused.result.solution.empty() && short_backend.actions == 0 &&
+              short_backend.uploads == 0 && short_backend.downloads == 0,
+          "resident one-byte-short host workspace reached the backend");
+}
+
 void resident_krylov_contract() {
   GmresOptions options;
   options.restart = 7;
@@ -80,8 +206,9 @@ void resident_krylov_contract() {
   const auto plan = vibeqc::response::prepare_gmres(11, options);
   const auto workspace = vibeqc::response::resident_gmres_workspace(plan);
   require(workspace.vector_slots == 24, "resident GMRES vector-slot inventory is wrong");
-  require(workspace.host_scalar_bytes == (7 * 7 + 5 * 7 + 1) * sizeof(double),
-          "resident GMRES host-scalar workspace is wrong");
+  require(workspace.host_scalar_bytes == (7 * 7 + 5 * 7 + 1) * sizeof(double) &&
+              workspace.host_result_bytes == 11 * sizeof(double),
+          "resident GMRES host workspace is wrong");
 
   ContractResidentBackend backend{11, workspace.vector_slots, 4096};
   const auto admitted = vibeqc::response::validate_resident_gmres_backend(plan, backend);
@@ -497,6 +624,7 @@ int main() {
   try {
     modified_plans_are_rejected_before_execution();
     resident_krylov_contract();
+    resident_controller_executes_same_gmres();
     exact_solve_and_true_residual();
     linear_response_problem_contract();
     zero_rhs_is_transactional();
