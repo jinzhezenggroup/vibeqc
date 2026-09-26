@@ -319,9 +319,16 @@ void conventional_energy_batch_fallback_matches() {
   constexpr unsigned tile = 2;
   const auto kernel = vibeqc::mp2::generated::cpu_plan(tile);
   const auto reserve = kernel.numeric_bytes + 32ULL * tile * tile + 16ULL * tile + 64;
-  vibeqc::posthf::NativeBlockProvider minimum_provider(source, ref, 256ULL << 20, 1);
-  const auto minimum_budget =
-      minimum_provider.batch_bytes({1, tile, 1, tile}, 1) + reserve;
+  vibeqc::posthf::NativeBlockProvider widest_provider(
+      source, ref, 256ULL << 20, std::numeric_limits<unsigned>::max());
+  std::size_t minimum_provider_bytes = std::numeric_limits<std::size_t>::max();
+  for (std::size_t axis_tile = 1; axis_tile <= widest_provider.tile_shape()[0]; ++axis_tile) {
+    vibeqc::posthf::NativeBlockProvider candidate(source, ref, 256ULL << 20,
+                                                  static_cast<unsigned>(axis_tile));
+    minimum_provider_bytes =
+        std::min(minimum_provider_bytes, candidate.batch_bytes({1, tile, 1, tile}, 1));
+  }
+  const auto minimum_budget = minimum_provider_bytes + reserve;
   const auto roomy =
       vibeqc::mp2::conventional_energy(ref, source, 256ULL << 20, 1e-10, tile, false, 0);
   const auto tight =
