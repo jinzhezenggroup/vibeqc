@@ -105,14 +105,14 @@ void print_grid(std::string_view label, const dft::MolecularGrid& grid) {{
   std::cout << std::setprecision(17);
   for (double value : grid.points()) std::cout << ' ' << value;
   for (double value : grid.weights()) std::cout << ' ' << value;
-  std::cout << '\n';
+  std::cout << '\\n';
 }}
 
 void print_row(std::string_view spin, std::string_view phase, const scf::ScfResult& result) {{
   std::cout << "ROW " << spin << ' ' << phase << ' ' << (result.converged ? 1 : 0)
             << ' ' << result.iterations << ' ' << std::setprecision(17) << result.energy
             << ' ' << result.physical_residual_rms
-            << ' ' << (result.initial_density_used ? 1 : 0) << '\n';
+            << ' ' << (result.initial_density_used ? 1 : 0) << '\\n';
 }}
 
 void run_spin(std::string_view spin, bool unrestricted) {{
@@ -169,14 +169,14 @@ int main() {{
     const dft::MolecularGrid moved_grid(moved_system, grid_spec);
     const auto& program = dft::bulk_generated::qualification_program();
     std::cout << "META {binding_identity} " << program.expression_identity << ' '
-              << program.ingredient_mask << ' ' << program.domain_version << '\n';
+              << program.ingredient_mask << ' ' << program.domain_version << '\\n';
     print_grid("cold", cold_grid);
     print_grid("changed-geometry", moved_grid);
     run_spin("polarized", true);
     run_spin("unpolarized", false);
     return 0;
   }} catch (const std::exception& error) {{
-    std::cerr << error.what() << '\n';
+    std::cerr << error.what() << '\\n';
     return 1;
   }}
 }}
