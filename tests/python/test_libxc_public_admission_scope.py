@@ -49,9 +49,7 @@ def _evidence() -> dict:
     return {**prerequisites, "public-method": public}
 
 
-def _resolve(
-    evidence: dict, *, require_public: bool
-) -> EndpointCapabilityResolution:
+def _resolve(evidence: dict, *, require_public: bool) -> EndpointCapabilityResolution:
     return resolve_endpoint_capability(
         NAME,
         backend="cpu",
