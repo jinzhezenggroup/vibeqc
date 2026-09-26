@@ -191,19 +191,24 @@ executor rather than pretending that interpreted evidence is a compiled-CPU or
 CUDA result.
 
 The B1 campaign uses the explicit
-`libxc-bulk-production-candidate/v1` runtime domain. It differs from the default
-`libxc-bulk-interior/v1` only by admitting physical zero sigma into candidate
-evaluation. Negative sigma, non-positive density, non-positive tau, non-PSD
-polarized sigma Gram matrices, and nonfinite inputs remain rejected. Admission of
-zero sigma is **not** a generic pass: the imported first-order Graph must still
-produce finite E/vxc and match the independent Libxc oracle for that exact
-functional. Functionals whose imported algebra has a true or unresolved
-zero-gradient first-derivative singularity therefore remain blocked by their
-numerical matrix row.
+`libxc-bulk-production-candidate/v2` runtime domain. It keeps the v1
+zero-gradient expansion and additionally admits nonnegative rho/tau for
+qualification. Exact total-density rows below the pinned registration's Libxc
+`p_a_dens_threshold` are screened to zero before Graph evaluation, matching the
+outer Libxc work-driver boundary instead of forcing vacuum through an interior
+formula. Active empty-spin and zero-tau channels are **not** clipped or filled:
+they enter the imported first-order Graph exactly, and the independent oracle
+decides whether the functional's E/vxc is valid there. Negative rho/sigma/tau,
+non-PSD polarized sigma Gram matrices, and nonfinite inputs remain rejected.
+
+This expansion is still not a generic pass. Zero-gradient, empty-spin and
+near-boundary rows must produce finite E/vxc and match the independent Libxc
+oracle for that exact functional. Functionals with a true or unresolved endpoint
+singularity remain blocked by their numerical matrix row.
 
 Ordinary bulk runtime consumers continue to default to the original interior
-domain; the production-candidate domain is selected explicitly by the evidence
-campaign and is part of its execution identity.
+domain; both qualification-candidate versions are explicit opt-ins and their
+domain/threshold semantics are part of the retained execution identity.
 
 `vibeqc_compiler.xc.production_domain_cases` instantiates every numerical
 rho/sigma/tau row in the exact v3 cases-by-spin matrix from finite physical
