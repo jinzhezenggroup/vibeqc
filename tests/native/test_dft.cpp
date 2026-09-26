@@ -244,9 +244,9 @@ int main() {
       };
       require(expected.valid, "independent equal-spin PBE oracle rejected an interior point");
       for (unsigned i = 0; i < 9; ++i)
-        require(std::abs(generated[i] - reference[i]) <
-                    3.0e-13 * std::max(1.0, std::abs(reference[i])),
-                "equal-spin PBE specialization differs from the independent point oracle");
+        require(
+            std::abs(generated[i] - reference[i]) < 3.0e-13 * std::max(1.0, std::abs(reference[i])),
+            "equal-spin PBE specialization differs from the independent point oracle");
     }
 
     const auto cam_point =
