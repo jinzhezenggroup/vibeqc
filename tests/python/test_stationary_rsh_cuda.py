@@ -24,9 +24,7 @@ def _fake_s_basis() -> SimpleNamespace:
             [-0.21, 0.48, -0.63],
         ]
     )
-    primitives = np.array(
-        [[0.57, 0.83], [0.71, -0.19], [0.89, 0.67], [1.13, 0.42]]
-    )
+    primitives = np.array([[0.57, 0.83], [0.71, -0.19], [0.89, 0.67], [1.13, 0.42]])
     aos = np.zeros((4, 16))
     for index in range(4):
         aos[index, :8] = (index, index, 1, 1, 0, 0, 0, 1)
@@ -89,12 +87,8 @@ def test_cuda_range_exchange_derivative_matches_cpu(
         device_id=0,
     )
     try:
-        expected_owners, expected = cpu.integral(
-            primitive, (0, 1, 2, 3), 0.731
-        )
-        actual_owners, actual = cuda.integral(
-            primitive, (0, 1, 2, 3), 0.731
-        )
+        expected_owners, expected = cpu.integral(primitive, (0, 1, 2, 3), 0.731)
+        actual_owners, actual = cuda.integral(primitive, (0, 1, 2, 3), 0.731)
         assert cuda.backend == "cuda"
         assert cpu.backend == "cpu"
         assert actual_owners == expected_owners == [0, 1, 2, 3]
