@@ -4,9 +4,11 @@ Status: proposed; diagnosis measured, solver changes not implemented
 Date: 2026-09-26
 
 The subsequent [shared CUDA HF acceptance decision](../implemented/numerics/2026-09-26-shared-cuda-hf-acceptance.md)
-implements common iterative energy/density/physical-residual gates. The proposed
-provenance-bound DF warm baseline/frame reuse remains unimplemented; the
-historical measurements below describe the preceding solver policy.
+implements common iterative energy/density/physical-residual gates. The subsequent
+[qualified one-step warm implementation](../implemented/performance/2026-09-26-df-qualified-one-step-warm.md)
+implements provenance-bound baseline/frame reuse for singleton occupied RHF;
+UHF, batches and corrected frames retain their fallbacks. The historical
+measurements below describe the preceding solver policy.
 
 ## Problem
 

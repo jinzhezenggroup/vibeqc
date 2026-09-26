@@ -138,6 +138,7 @@ CUDA_MODULES["cuda_df_runtime"] = (
     "df_final_validation",
     "df_scf_factor",
     "df_scf_final_state",
+    "df_scf_warm",
     "df_rhf_scf",
     "df_uhf_scf",
 )

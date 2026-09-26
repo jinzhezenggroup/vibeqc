@@ -48,7 +48,8 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
                                             cudaStream_t stream, std::size_t batch_size,
                                             const std::uint32_t* iterations,
                                             const std::uint32_t* alpha_generations,
-                                            const std::uint32_t* beta_generations, int* error);
+                                            const std::uint32_t* beta_generations, int* error,
+                                            bool retained_seed = false);
 
 /** Forward the caller's exact launch configuration on its existing stream. */
 void launch_assemble_rhf_fock_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,

@@ -767,6 +767,9 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
     final_diagnostic = state.diagnostic;
     result.energy = state.diagnostic.energy;
     result.converged = true;
+    prepare_cuda_density_fitting_rhf_warm_state(
+        cuda_plan, response_token, density, data.one_electron.hcore, data.one_electron.overlap,
+        orthogonalizer, occupied, data.one_electron.nuclear_repulsion);
   } else {
     // Preserve the independent CPU oracle's established solve/project/rebuild
     // sequence and derivative convention; it does not share retained state.
@@ -819,6 +822,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
   }
   if (!options.compute_forces) {
     result.density = density;
+    if (cuda_plan) commit_cuda_density_fitting_rhf_warm_state(cuda_plan, response_token);
     return;
   }
 
@@ -865,6 +869,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
                                                      options.density_fitting_relative_threshold);
   }
   result.density = density;
+  if (cuda_plan) commit_cuda_density_fitting_rhf_warm_state(cuda_plan, response_token);
 }
 
 [[maybe_unused]] void finalize_density_fitting_uhf(
@@ -2340,9 +2345,20 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
           overlap_caches ? (*overlap_caches)[source] : nullptr, eigen);
       const auto occupied = static_cast<std::size_t>(systems[source].electron_count / 2);
       std::optional<EigenResult> initial;
-      densities[slot] = prepare_initial_density(
-          systems[source], data[slot].one_electron, orthogonalizers[slot], occupied,
-          initial_densities[source], initial, df_initial_orbital_request(), eigen);
+      const bool retained_warm =
+          initial_densities[source] && data.size() == 1 &&
+          cuda_density_fitting_rhf_warm_matches(
+              plan, *initial_densities[source], data[slot].one_electron.hcore,
+              data[slot].one_electron.overlap, orthogonalizers[slot], occupied,
+              data[slot].one_electron.nuclear_repulsion);
+      // Exact accepted same-geometry D already passed electron-trace and
+      // determinant checks. Normalizing it again breaks its retained frame.
+      densities[slot] =
+          retained_warm
+              ? *initial_densities[source]
+              : prepare_initial_density(systems[source], data[slot].one_electron,
+                                        orthogonalizers[slot], occupied, initial_densities[source],
+                                        initial, df_initial_orbital_request(), eigen);
       orbitals[slot] = std::move(initial).value_or(EigenResult{});
       survivors.push_back(slot);
     } catch (const std::bad_alloc&) {

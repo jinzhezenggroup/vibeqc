@@ -113,10 +113,11 @@ __global__ void store_device_occupied_kernel(std::size_t nbf, std::size_t maximu
 __global__ void validate_device_occupied_kernel(std::size_t batch_size,
                                                 const std::uint32_t* iterations,
                                                 const std::uint32_t* alpha_generations,
-                                                const std::uint32_t* beta_generations, int* error) {
+                                                const std::uint32_t* beta_generations, int* error,
+                                                bool retained_seed) {
   const auto system = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (system >= batch_size) return;
-  if (!iterations[system] || alpha_generations[system] != iterations[system] ||
+  if ((!iterations[system] && !retained_seed) || alpha_generations[system] != iterations[system] ||
       (beta_generations && beta_generations[system] != iterations[system]))
     atomicExch(error, 1);
 }
@@ -135,9 +136,10 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
                                             cudaStream_t stream, std::size_t batch_size,
                                             const std::uint32_t* iterations,
                                             const std::uint32_t* alpha_generations,
-                                            const std::uint32_t* beta_generations, int* error) {
+                                            const std::uint32_t* beta_generations, int* error,
+                                            bool retained_seed) {
   validate_device_occupied_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch_size, iterations, alpha_generations, beta_generations, error);
+      batch_size, iterations, alpha_generations, beta_generations, error, retained_seed);
 }
 
 // Existing DF arithmetic and reduction order; host orchestration compiles separately.

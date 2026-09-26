@@ -89,7 +89,9 @@ The energy guard accounts for FP64 contraction/reduction granularity. It never
 relaxes density, physical residual, final determinant or independent energy/force
 validation. Reported energy changes remain raw absolute differences. Direct can
 restore an energy baseline only for its exactly matched warm density/geometry;
-DF rebuilds that baseline and therefore requires at least two iterations.
+qualified singleton occupied DF can likewise restore its validated density,
+occupied factor and compatible energy baseline. Other DF seeds rebuild the
+baseline and therefore require at least two iterations.
 Equal acceptance does not imply equal iteration or Fock-build counts. Low-level
 no-DIIS compatibility calls lack iterative residual storage and still require
 strict final-state validation; host numerical recovery retains its stricter
@@ -97,11 +99,12 @@ unguarded energy comparison. Neither compatibility route licenses skipping
 final validation. Coarse direct mixed-precision stages still require subsequent
 FP64 target refinement before publication.
 
-Every device SCF invocation starts with one seed iteration. Imported and warm
+Every device SCF invocation starts with one seed iteration. Imported and unmatched warm
 densities have no trustworthy orbital factor, but a checked algebraic factor
 can replace its dense K. `VIBEQC_DF_SEED_EXCHANGE=dense|factor|auto` controls this
 choice; `factor` enables guarded factorization and `auto` uses the same
 resident capacity and occupied-work policy as SCF.
+
 Factorization requires an occupied-SCF singleton RHF plan with existing factor
 capacity and either a qualified resident layout or the streamed value schedule
 above. The experimental
@@ -122,6 +125,29 @@ device buffer. `VIBEQC_DF_SEED_VERIFY=1` additionally compares candidate and
 dense K for the identical density under max/RMS gates `1e-10`/`1e-11`, restores
 candidate K, and records K/Fock errors in the progress journal. This intrusive
 validation must be disabled for clean endpoint timing.
+
+For DIIS-enabled singleton RHF, a completed strict endpoint may retain two
+immutable host records: the latest returned density/frame and a matched frozen
+input. Admission compares every density, Hcore, overlap and orthogonalizer entry,
+occupation, nuclear energy and immutable plan/source identity. Only this exact
+match bypasses repeated seed normalization. The occupied factor is restored
+into existing storage and the first iteration still rebuilds J/K, solves the
+Fock problem and applies every convergence gate. Strict final Fock, determinant
+and force validation still run; one iteration is an outcome, never a forced
+count or a zero-work replay.
+
+The compatible energy baseline uses existing physical final J/K with the SCF
+Fock-assembly and energy-reduction kernels. This performs no additional J/K
+build. The record is staged before response scratch consumers and published
+only after the complete endpoint succeeds. New solve attempts revoke published
+readiness before input checks; stale tokens and corrected final frames cannot
+publish an exact retained entry. Host retention and temporary snapshot storage
+are bounded by 64 MiB, add no device allocation, and fall back on allocation
+failure. UHF, batches, no-DIIS, unmatched geometry/data, and unqualified final
+Fock owners retain the existing path. `VIBEQC_DF_WARM_REUSE=0` (or benchmark
+`--disable-warm-reuse`) provides the same-binary control. Work traces distinguish
+warm-factor, algebraic-factor and dense seed iterations and include retention
+transfers and the separate energy reduction.
 
 `VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
 physical Fock evaluation. Unset/`auto` selects occupied K whenever the same

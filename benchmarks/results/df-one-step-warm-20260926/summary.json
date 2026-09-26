@@ -1,0 +1,568 @@
+{
+  "schema": "vibeqc.df-warm-reuse.v1",
+  "repeats": 5,
+  "timing": "complete native energy and analytic forces; frozen warm repeats; traces excluded",
+  "control": "same native binary, independent owners; DF warm reuse disabled at 384/768 AOs",
+  "reference": "independent approximation-matched arrays retained in the earlier qualification; no new reference timing claim",
+  "cases": [
+    {
+      "aos": 24,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.0334334787912667,
+          "native_iterations": [
+            19
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.08221699111163616,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.5297181569039822,
+          "native_iterations": [
+            14
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.07466412568464875,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 24,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.27057999232783914,
+          "native_iterations": [
+            17
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.01361992908641696,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.048412447795271873,
+          "native_iterations": [
+            12
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.0138017563149333,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.1572116338647902,
+          "native_iterations": [
+            22
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.09144422318786383,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.6054357620887458,
+          "native_iterations": [
+            15
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.08441960997879505,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 48,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.36641285102814436,
+          "native_iterations": [
+            19
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.02743668295443058,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.09892782615497708,
+          "native_iterations": [
+            12
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.02750324970111251,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.8030554638244212,
+          "native_iterations": [
+            27
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.1304404861293733,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.9365557739511132,
+          "native_iterations": [
+            16
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.12087889341637492,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 96,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 0.5716695478186011,
+          "native_iterations": [
+            23
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.06508533004671335,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.25218676682561636,
+          "native_iterations": [
+            12
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.0652780793607235,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 3.3488858952187,
+          "native_iterations": [
+            20
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.26264404412359,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 2.4504510234110057,
+          "native_iterations": [
+            15
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.26366649894043803,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 192,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 1.1746488423086703,
+          "native_iterations": [
+            18
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.1819745870307088,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 0.7923245569691062,
+          "native_iterations": [
+            13
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.1810499601997435,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 11.661949367262423,
+          "native_iterations": [
+            24
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.7660560910589993,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 7.386264869011939,
+          "native_iterations": [
+            16
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.7680686330422759,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 5.56459382455796,
+          "native_iterations": [
+            21
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 0.803204009309411,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 4.354593636933714,
+          "native_iterations": [
+            13
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 0.8128552748821676,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 384,
+      "route": "df-disabled",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 5.558820293750614,
+          "native_iterations": [
+            21
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 1.0059499349445105,
+          "native_iterations": [
+            3
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 4.33110425202176,
+          "native_iterations": [
+            13
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 1.0110899950377643,
+          "native_iterations": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "direct",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 41.559255071915686,
+          "native_iterations": [
+            26
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 3.0482525769621134,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 27.169431814923882,
+          "native_iterations": [
+            16
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 3.050436330959201,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "df",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 47.02914954954758,
+          "native_iterations": [
+            24
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 6.174827445764095,
+          "native_iterations": [
+            1
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 36.55369979375973,
+          "native_iterations": [
+            13
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 6.203995744232088,
+          "native_iterations": [
+            1
+          ]
+        }
+      }
+    },
+    {
+      "aos": 768,
+      "route": "df-disabled",
+      "medians": {
+        "cold": {
+          "vibeqc_seconds": 47.022523486521095,
+          "native_iterations": [
+            24
+          ]
+        },
+        "warm": {
+          "vibeqc_seconds": 8.021125746890903,
+          "native_iterations": [
+            3
+          ]
+        },
+        "moved": {
+          "vibeqc_seconds": 36.57119046477601,
+          "native_iterations": [
+            13
+          ]
+        },
+        "moved-warm": {
+          "vibeqc_seconds": 8.040942395105958,
+          "native_iterations": [
+            3
+          ]
+        }
+      }
+    }
+  ],
+  "parts": [
+    {
+      "path": "direct-24.json",
+      "sha256": "8b79940ecd42f0e717f6fd6361f35d6a40836305172569daef66934cd2af00a8",
+      "bytes": 3659
+    },
+    {
+      "path": "df-24.json",
+      "sha256": "ae440961f9898bbb65b1617a50434007319da2f775a6c9eccb7dd3116b9c011c",
+      "bytes": 14651
+    },
+    {
+      "path": "direct-48.json",
+      "sha256": "1b69e8f78eb8bd13c6c1812f042e13db7b9de81b184d285842112ec7ba2b99dd",
+      "bytes": 3721
+    },
+    {
+      "path": "df-48.json",
+      "sha256": "db7126493fab3cdead8543cfab79b43a606de18e2b781b269413709c59ff23b7",
+      "bytes": 27334
+    },
+    {
+      "path": "direct-96.json",
+      "sha256": "d042a28a670a204c69de263b4fce886dfb9ed9c4ec2a54e9a3c13a1238687d6d",
+      "bytes": 3761
+    },
+    {
+      "path": "df-96.json",
+      "sha256": "f35b8791e99dadfa9569cd505033c2c4c36aed21f9a938aaab658fb04151eabd",
+      "bytes": 27557
+    },
+    {
+      "path": "direct-192.json",
+      "sha256": "a273e969982ac51db782db80880a0a546bfb34d50b8d2c3afb6adcfc737e9435",
+      "bytes": 3792
+    },
+    {
+      "path": "df-192.json",
+      "sha256": "7f66fcccca190a9cef137f08f059463d422def60e72e9ff45740476b0ff95576",
+      "bytes": 30912
+    },
+    {
+      "path": "direct-384.json",
+      "sha256": "78fbc76c1f514f27800b267d78a14df53caaf8af35a8286e3c0b7e80a43a2de7",
+      "bytes": 3768
+    },
+    {
+      "path": "df-384.json",
+      "sha256": "0558de97920cecb7fb30f9c34388e6941173c9c5591dcd46e13c1b2a6832cb1a",
+      "bytes": 31160
+    },
+    {
+      "path": "df-disabled-384.json",
+      "sha256": "24515c62113cf2ace187523b7b935837bfd4a628d8898bfcd5c680c2263809e5",
+      "bytes": 31053
+    },
+    {
+      "path": "direct-768.json",
+      "sha256": "b62e59a1b7650dfa22a1240d8864e61f7dd829e7c44ebc66f64bbad0d09a90a9",
+      "bytes": 3697
+    },
+    {
+      "path": "df-768.json",
+      "sha256": "772d494027d0f14e2a5490c1eea73cee94fa82c7a0e866dd9291ad89e94c28d5",
+      "bytes": 31552
+    },
+    {
+      "path": "df-disabled-768.json",
+      "sha256": "949fb9930734c08f8dbb27d8b537993901de416d59a345b9720edde9c56236c4",
+      "bytes": 31573
+    }
+  ],
+  "native_samples": 184,
+  "maximum_energy_error": 2.6420821086503565e-10,
+  "maximum_force_error": 1.405107141749795e-10,
+  "native_build": {
+    "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+    "library_sha256": "7ed5127ad22e919dbdc3e055ec8b2efd0c0725c4ebd620e80d546b8065483c3e",
+    "probe": {
+      "source_identity": "f3c7de90e835ab4103b874b7465f1ef44fb2f9005a34d61540406111554585b5",
+      "native_abi": 0,
+      "schema": 1,
+      "policy": {
+        "precision": "fp64",
+        "spin": [
+          "rhf",
+          "uhf"
+        ],
+        "consumers": [
+          "fock",
+          "force"
+        ]
+      },
+      "host": {
+        "system": "Linux",
+        "machine": "x86_64",
+        "libc": [
+          "glibc",
+          "2.35"
+        ]
+      },
+      "device": {
+        "name": "NVIDIA GeForce RTX 5090",
+        "official_profile": "sm_120",
+        "major": 12,
+        "minor": 0,
+        "warp_size": 32,
+        "maximum_threads_per_block": 1024,
+        "maximum_threads_per_sm": 1536,
+        "maximum_blocks_per_sm": 24,
+        "registers_per_sm": 65536,
+        "maximum_registers_per_thread": 255,
+        "sm_count": 170,
+        "shared_memory_per_block": 49152,
+        "shared_memory_per_block_optin": 101376,
+        "shared_memory_per_sm": 102400,
+        "runtime_version": 12090,
+        "driver_version": 13000,
+        "toolkit_version": 12090,
+        "release_build": 1,
+        "fast_compile": 0,
+        "portable": 0
+      }
+    }
+  },
+  "source_revision": "f535ebd5e3b4bb4180c3ede043ae37fcdfbed8f4",
+  "native_acceptance": {
+    "policy": "shared_cuda_hf_fp64_v1",
+    "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+    "density": "density_step_rms < density_tolerance",
+    "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+    "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
+    "final": "strict physical final Fock validation remains required"
+  },
+  "packages": {
+    "numpy": "2.4.6",
+    "pyscf": "2.14.0"
+  },
+  "slurm_job_id": "11809"
+}

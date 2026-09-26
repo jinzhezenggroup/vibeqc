@@ -16,8 +16,14 @@
 namespace vibeqc::scf::cuda_df {
 vibeqc_status begin_scf_final_state_solve(CudaDensityFittingJkPlan& plan, std::string& detail) {
   plan.final_projection_token.reset();
-  if (auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state))
+  if (auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state)) {
     state->final_frames_available = false;
+    state->warm_current.reset();
+    state->warm_frozen.reset();
+    state->warm_replay_seed.reset();
+    state->warm_pending.reset();
+    state->warm_pending_epoch = 0;
+  }
   if (!plan.factor_basis_identity ||
       plan.final_state_solve_epoch == std::numeric_limits<std::uint64_t>::max()) {
     detail = "CUDA DF final-state owner or solve epoch exhausted";

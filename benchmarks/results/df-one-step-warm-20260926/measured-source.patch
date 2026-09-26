@@ -1,0 +1,963 @@
+diff --git a/benchmarks/compare_df_direct_endpoint.py b/benchmarks/compare_df_direct_endpoint.py
+index 038950ea..98dc525d 100644
+--- a/benchmarks/compare_df_direct_endpoint.py
++++ b/benchmarks/compare_df_direct_endpoint.py
+@@ -134,6 +134,11 @@ def main() -> None:
+     )
+     parser.add_argument("--route", choices=("direct", *CONTROLS), required=True)
+     parser.add_argument("--repeats", type=int, default=5)
++    parser.add_argument(
++        "--disable-warm-reuse",
++        action="store_true",
++        help="same-binary DF control: rebuild the ordinary seed and baseline",
++    )
+     parser.add_argument(
+         "--interleave",
+         action="store_true",
+@@ -213,7 +218,7 @@ def main() -> None:
+             "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+             "density": "density_step_rms < density_tolerance",
+             "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+-            "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
++            "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
+             "final": "strict physical final Fock validation remains required",
+         },
+         "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+@@ -392,6 +397,8 @@ def main() -> None:
+         }.items():
+             os.environ["VIBEQC_DF_" + name] = value
+     select_control(args.route)
++    if args.disable_warm_reuse:
++        os.environ["VIBEQC_DF_WARM_REUSE"] = "0"
+     identity["environment"] = {
+         k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")
+     }
+diff --git a/cmake/VibeQCSources.cmake b/cmake/VibeQCSources.cmake
+index eceda035..3520037d 100644
+--- a/cmake/VibeQCSources.cmake
++++ b/cmake/VibeQCSources.cmake
+@@ -154,6 +154,7 @@ function(vibeqc_add_integrals_scf_sources target)
+       src/scf/cuda/df_occupied_exchange.cpp
+       src/scf/cuda/df_scf_factor.cpp
+       src/scf/cuda/df_scf_final_state.cpp
++      src/scf/cuda/df_scf_warm.cpp
+       src/scf/cuda/df_force_response.cpp
+       src/scf/cuda/df_jk.cpp
+       src/scf/cuda/df_jk_kernels.cu
+diff --git a/src/scf/cuda/df_final_validation.cpp b/src/scf/cuda/df_final_validation.cpp
+index 43f9532b..250b9411 100644
+--- a/src/scf/cuda/df_final_validation.cpp
++++ b/src/scf/cuda/df_final_validation.cpp
+@@ -26,6 +26,7 @@ struct Workspace {
+   // Borrowed J/K are consumed synchronously by one tagged selection request.
+   std::optional<solver::FinalStateIdentity> physical_identity;
+   const Matrix* physical_hcore{};
++  bool physical_occupied{};
+   ~Workspace() {
+     if (device >= 0) (void)cudaSetDevice(device);
+     (void)runtime::resource_cuda_free(storage);
+@@ -398,6 +399,14 @@ std::vector<Matrix> weighted_density(CudaDensityFittingJkPlan& plan,
+   return result;
+ }
+ }  // namespace
++bool final_occupied_fock_matches(const CudaDensityFittingJkPlan& plan,
++                                 const CudaDfFinalStateToken& token) noexcept {
++  const auto* w = static_cast<const Workspace*>(plan.final_validation);
++  return w && w->physical_occupied && w->physical_identity &&
++         *w->physical_identity == token.identity &&
++         token.identity.factor.basis == plan.factor_basis_identity &&
++         token.identity.solve_epoch == plan.final_state_solve_epoch;
++}
+ void destroy_final_validation(void*& opaque) noexcept {
+   delete static_cast<Workspace*>(opaque);
+   opaque = nullptr;
+@@ -423,6 +432,7 @@ solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
+   auto& w = prepare(*plan);
+   w.physical_identity.reset();
+   w.physical_hcore = nullptr;
++  w.physical_occupied = false;
+   const auto item = static_cast<std::size_t>(current.factor.reference - 1);
+   const auto count = plan->matrix_elements;
+   for (const auto& d : density)
+@@ -466,6 +476,7 @@ solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
+   }
+   w.physical_identity = current;
+   w.physical_hcore = &hcore;
++  w.physical_occupied = retained;
+   return {current, true, std::vector<Matrix>(density.size())};
+ }
+ 
+diff --git a/src/scf/cuda/df_final_validation.hpp b/src/scf/cuda/df_final_validation.hpp
+index 2f2f466f..4bb010ef 100644
+--- a/src/scf/cuda/df_final_validation.hpp
++++ b/src/scf/cuda/df_final_validation.hpp
+@@ -5,4 +5,8 @@
+ namespace vibeqc::scf::cuda_df {
+ /** One serialized workspace per prepared plan; never aliases captured state. */
+ void destroy_final_validation(void*& opaque) noexcept;
++/** Exact current physical occupied-J/K lease; queried before force scratch
++ * consumers run. It does not grant a raw response projection lease. */
++bool final_occupied_fock_matches(const CudaDensityFittingJkPlan& plan,
++                                 const CudaDfFinalStateToken& token) noexcept;
+ }  // namespace vibeqc::scf::cuda_df
+diff --git a/src/scf/cuda/df_rhf_scf.cpp b/src/scf/cuda/df_rhf_scf.cpp
+index d7765567..6aa82116 100644
+--- a/src/scf/cuda/df_rhf_scf.cpp
++++ b/src/scf/cuda/df_rhf_scf.cpp
+@@ -17,6 +17,7 @@
+ #include "scf/cuda/df_scf_final_state.hpp"
+ #include "scf/cuda/df_scf_kernels.hpp"
+ #include "scf/cuda/df_scf_library.hpp"
++#include "scf/cuda/df_scf_warm.hpp"
+ 
+ namespace vibeqc::scf {
+ using namespace cuda_df;
+@@ -45,6 +46,12 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+     std::string& detail, const std::vector<double>& overlap, unsigned diis_history) {
+   runtime::df_progress::Scope progress("compact_rhf_scf");
+   detail.clear();
++  // Hold at most the matching immutable input while revoking all published
++  // cache entries before even an invalid solve attempt can return.
++  auto warm_seed = occupied.size() == 1 && nuclear_repulsion.size() == 1
++                       ? find_rhf_warm_state(plan, initial_density, hcore, overlap, orthogonalizer,
++                                             occupied[0], nuclear_repulsion[0])
++                       : nullptr;
+   if (plan) {
+     const auto epoch_status = begin_scf_final_state_solve(*plan, detail);
+     if (epoch_status != VIBEQC_STATUS_SUCCESS) return epoch_status;
+@@ -98,6 +105,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+       (!occupied_exchange || (state->factor_alpha_ranks == occupied &&
+                               state->factor_beta_ranks == std::vector<std::int32_t>{}));
+   if (!compatible) {
++    warm_seed.reset();
+     destroy_persistent_scf_state(plan->persistent_scf_state);
+     state = new (std::nothrow) PersistentScfState{};
+     if (state == nullptr) {
+@@ -253,6 +261,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+   if (cuda_error != cudaSuccess)
+     return cuda_failure(cuda_error, "upload CUDA DF device RHF SCF state", detail);
+   std::vector<double> initial_previous(batch_size, std::numeric_limits<double>::infinity());
++  if (warm_seed) initial_previous[0] = warm_seed->energy;
+   cuda_error = cudaMemcpyAsync(d_previous_energy, initial_previous.data(),
+                                batch_size * sizeof(double), cudaMemcpyHostToDevice, plan->stream);
+   if (cuda_error != cudaSuccess)
+@@ -275,9 +284,20 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+   state->energy_tolerance = energy_tolerance;
+   state->density_tolerance = density_tolerance;
+   DeviceIterationGraph& iteration_graph = state->graph;
+-  const auto launch_iteration = [&](bool factors_ready, bool tail) -> vibeqc_status {
+-    vibeqc_status iteration_status =
+-        build_scf_occupied_jk(*plan, *state, d_density, nullptr, factors_ready, detail);
++  // Restored factors are pageable immutable snapshots. Any early provider or
++  // capture failure must drain their upload before dropping the final owner.
++  struct WarmSeedUploadDrain {
++    cudaStream_t stream;
++    bool pending;
++    ~WarmSeedUploadDrain() {
++      if (pending) (void)cudaStreamSynchronize(stream);
++    }
++  } warm_upload{plan->stream, bool(warm_seed)};
++  runtime::df_progress::number("warm_seed_reused", bool(warm_seed));
++  const auto launch_iteration = [&](bool factors_ready, bool tail,
++                                    bool retained_seed = false) -> vibeqc_status {
++    vibeqc_status iteration_status = build_scf_occupied_jk(*plan, *state, d_density, nullptr,
++                                                           factors_ready, detail, retained_seed);
+     if (iteration_status != VIBEQC_STATUS_SUCCESS) return iteration_status;
+     launch_assemble_rhf_fock_kernel(blocks_for(expected), kThreads, 0, plan->stream, expected,
+                                     d_hcore, plan->coulomb, plan->alpha_exchange, d_fock);
+@@ -321,15 +341,26 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+                ? VIBEQC_STATUS_SUCCESS
+                : cuda_failure(iteration_error, "advance CUDA DF device RHF SCF", detail);
+   };
+-  // Imported/warm D has no trustworthy C. The seed can use a checked algebraic
+-  // D=L L^T factor, then capture/replay only the canonical factor loop.
++  // Imported D uses the checked algebraic seed. A strictly validated warm
++  // snapshot supplies C and a compatible energy without another seed solve.
+   // The seed has no tail launch and is downloaded once even at max_iterations=1.
+   if (occupied_exchange) {
+     runtime::cuda_trace::TraceOperation seed_trace(
+         "scf_seed_iteration", plan->stream,
+         {batch_size, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
+     status = reset_scf_factors(*plan, *state, detail);
+-    if (status == VIBEQC_STATUS_SUCCESS) status = launch_iteration(false, false);
++    if (status == VIBEQC_STATUS_SUCCESS && warm_seed) {
++      cuda_error = cudaMemcpyAsync(state->d_alpha_factor, warm_seed->factor.data(),
++                                   warm_seed->factor.size() * sizeof(double),
++                                   cudaMemcpyHostToDevice, plan->stream);
++      if (cuda_error != cudaSuccess)
++        return cuda_failure(cuda_error, "restore qualified warm occupied factor", detail);
++      state->warm_seed_used = true;
++      runtime::cuda_trace::trace_counter("warm_factor_upload_bytes",
++                                         warm_seed->factor.size() * sizeof(double));
++    }
++    if (status == VIBEQC_STATUS_SUCCESS)
++      status = launch_iteration(bool(warm_seed), false, bool(warm_seed));
+     if (status != VIBEQC_STATUS_SUCCESS) return status;
+     runtime::cuda_trace::trace_counter("factorized", state->density_seed_used);
+   }
+@@ -431,6 +462,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+     if (cuda_error == cudaSuccess) cuda_error = cudaStreamSynchronize(plan->stream);
+     if (cuda_error != cudaSuccess)
+       return cuda_failure(cuda_error, "read CUDA DF device RHF SCF records", detail);
++    warm_upload.pending = false;
+     for (std::size_t system = 0; system < batch_size; ++system) {
+       runtime::df_progress::Scope readback("compact_iteration_readback");
+       runtime::df_progress::number("system", system);
+@@ -473,6 +505,7 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
+     if (!result.converged) result.status = VIBEQC_STATUS_SCF_NOT_CONVERGED;
+   }
+   publish_scf_final_frames(*state, results);
++  if (batch_size == 1 && results[0].converged) state->warm_replay_seed = std::move(warm_seed);
+   return VIBEQC_STATUS_SUCCESS;
+ }
+ 
+diff --git a/src/scf/cuda/df_scf_factor.cpp b/src/scf/cuda/df_scf_factor.cpp
+index 80f2f8ba..802681c0 100644
+--- a/src/scf/cuda/df_scf_factor.cpp
++++ b/src/scf/cuda/df_scf_factor.cpp
+@@ -242,6 +242,7 @@ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSta
+   // Every solve discards old provenance before attempting an algebraic seed.
+   // Only the first canonical SCF update may publish a new orbital generation.
+   state.density_seed_used = false;
++  state.warm_seed_used = false;
+   state.density_seed_rank = 0;
+   auto error = cudaMemsetAsync(state.d_factor_error, 0, sizeof(int), plan.stream);
+   if (error == cudaSuccess)
+@@ -256,7 +257,13 @@ vibeqc_status reset_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSta
+ 
+ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                     const double* alpha, const double* beta, bool ready,
+-                                    std::string& detail) {
++                                    std::string& detail, bool retained_seed) {
++  // Only the ordinary first iteration may consume the just-restored, qualified
++  // snapshot at generation zero. Captured iterations never enable this grant.
++  if (retained_seed && (!ready || !state.warm_seed_used || beta || plan.batch_size != 1)) {
++    detail = "invalid retained warm factor admission";
++    return VIBEQC_STATUS_INVALID_ARGUMENT;
++  }
+   bool seed = false;
+   std::size_t seed_rank = 0;
+   if (!ready && !beta && state.occupied_exchange) {
+@@ -305,7 +312,8 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
+   if (shared && ready)
+     launch_validate_device_occupied_kernel(
+         blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+-        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
++        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error,
++        retained_seed);
+   const JkTermSelection terms{true, !ready && !seed};
+   vibeqc_status status = VIBEQC_STATUS_SUCCESS;
+   if (shared) {
+@@ -369,7 +377,8 @@ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentSc
+   if (!shared)
+     launch_validate_device_occupied_kernel(
+         blocks_for(plan.batch_size), kThreads, 0, plan.stream, plan.batch_size, state.d_iterations,
+-        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error);
++        state.d_alpha_factor_generation, state.d_beta_factor_generation, state.d_factor_error,
++        retained_seed);
+   if (shared) return status;
+   for (std::size_t item = 0; item < plan.batch_size; ++item) {
+     status = build_occupied_exchange(
+@@ -423,10 +432,12 @@ vibeqc_status verify_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfSt
+     return VIBEQC_STATUS_NUMERICAL_FAILURE;
+   }
+   trace_counter("validated_density_generations", plan.batch_size);
+-  trace_counter("dense_seed_iterations", !state.density_seed_used);
++  trace_counter("dense_seed_iterations", !state.density_seed_used && !state.warm_seed_used);
+   trace_counter("factor_seed_iterations", state.density_seed_used);
++  trace_counter("warm_seed_iterations", state.warm_seed_used);
+   trace_counter("density_seed_rank", state.density_seed_rank);
+-  trace_counter("occupied_iterations", *std::max_element(iterations.begin(), iterations.end()) - 1);
++  trace_counter("occupied_iterations", *std::max_element(iterations.begin(), iterations.end()) -
++                                           (state.warm_seed_used ? 0 : 1));
+   trace_counter("occupied_state_bytes",
+                 plan.batch_size * plan.nbf * (state.alpha_factor_rank + state.beta_factor_rank) *
+                         sizeof(double) +
+diff --git a/src/scf/cuda/df_scf_factor.hpp b/src/scf/cuda/df_scf_factor.hpp
+index e6e54c8f..241ce01c 100644
+--- a/src/scf/cuda/df_scf_factor.hpp
++++ b/src/scf/cuda/df_scf_factor.hpp
+@@ -37,7 +37,7 @@ vibeqc_status factor_density_for_exchange(CudaDensityFittingJkPlan& plan, Persis
+                                           std::string& detail);
+ vibeqc_status build_scf_occupied_jk(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                                     const double* alpha, const double* beta, bool ready,
+-                                    std::string& detail);
++                                    std::string& detail, bool retained_seed = false);
+ void store_scf_factor(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+                       const double* coefficients, bool beta);
+ vibeqc_status verify_scf_factors(CudaDensityFittingJkPlan& plan, PersistentScfState& state,
+diff --git a/src/scf/cuda/df_scf_final_state.cpp b/src/scf/cuda/df_scf_final_state.cpp
+index fdb52e9e..44a4b86c 100644
+--- a/src/scf/cuda/df_scf_final_state.cpp
++++ b/src/scf/cuda/df_scf_final_state.cpp
+@@ -16,8 +16,14 @@
+ namespace vibeqc::scf::cuda_df {
+ vibeqc_status begin_scf_final_state_solve(CudaDensityFittingJkPlan& plan, std::string& detail) {
+   plan.final_projection_token.reset();
+-  if (auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state))
++  if (auto* state = static_cast<PersistentScfState*>(plan.persistent_scf_state)) {
+     state->final_frames_available = false;
++    state->warm_current.reset();
++    state->warm_frozen.reset();
++    state->warm_replay_seed.reset();
++    state->warm_pending.reset();
++    state->warm_pending_epoch = 0;
++  }
+   if (!plan.factor_basis_identity ||
+       plan.final_state_solve_epoch == std::numeric_limits<std::uint64_t>::max()) {
+     detail = "CUDA DF final-state owner or solve epoch exhausted";
+diff --git a/src/scf/cuda/df_scf_kernels.cu b/src/scf/cuda/df_scf_kernels.cu
+index 6e26bc82..e149745e 100644
+--- a/src/scf/cuda/df_scf_kernels.cu
++++ b/src/scf/cuda/df_scf_kernels.cu
+@@ -113,10 +113,11 @@ __global__ void store_device_occupied_kernel(std::size_t nbf, std::size_t maximu
+ __global__ void validate_device_occupied_kernel(std::size_t batch_size,
+                                                 const std::uint32_t* iterations,
+                                                 const std::uint32_t* alpha_generations,
+-                                                const std::uint32_t* beta_generations, int* error) {
++                                                const std::uint32_t* beta_generations, int* error,
++                                                bool retained_seed) {
+   const auto system = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+   if (system >= batch_size) return;
+-  if (!iterations[system] || alpha_generations[system] != iterations[system] ||
++  if ((!iterations[system] && !retained_seed) || alpha_generations[system] != iterations[system] ||
+       (beta_generations && beta_generations[system] != iterations[system]))
+     atomicExch(error, 1);
+ }
+@@ -135,9 +136,10 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
+                                             cudaStream_t stream, std::size_t batch_size,
+                                             const std::uint32_t* iterations,
+                                             const std::uint32_t* alpha_generations,
+-                                            const std::uint32_t* beta_generations, int* error) {
++                                            const std::uint32_t* beta_generations, int* error,
++                                            bool retained_seed) {
+   validate_device_occupied_kernel<<<grid, block, shared_bytes, stream>>>(
+-      batch_size, iterations, alpha_generations, beta_generations, error);
++      batch_size, iterations, alpha_generations, beta_generations, error, retained_seed);
+ }
+ 
+ // Existing DF arithmetic and reduction order; host orchestration compiles separately.
+diff --git a/src/scf/cuda/df_scf_kernels.hpp b/src/scf/cuda/df_scf_kernels.hpp
+index 8f8a42bd..6de5e4b8 100644
+--- a/src/scf/cuda/df_scf_kernels.hpp
++++ b/src/scf/cuda/df_scf_kernels.hpp
+@@ -48,7 +48,8 @@ void launch_validate_device_occupied_kernel(dim3 grid, dim3 block, std::size_t s
+                                             cudaStream_t stream, std::size_t batch_size,
+                                             const std::uint32_t* iterations,
+                                             const std::uint32_t* alpha_generations,
+-                                            const std::uint32_t* beta_generations, int* error);
++                                            const std::uint32_t* beta_generations, int* error,
++                                            bool retained_seed = false);
+ 
+ /** Forward the caller's exact launch configuration on its existing stream. */
+ void launch_assemble_rhf_fock_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
+diff --git a/src/scf/cuda/df_scf_state.hpp b/src/scf/cuda/df_scf_state.hpp
+index f107c03b..f9c4b2b6 100644
+--- a/src/scf/cuda/df_scf_state.hpp
++++ b/src/scf/cuda/df_scf_state.hpp
+@@ -5,12 +5,26 @@
+ 
+ #include <cstdint>
+ #include <cstdlib>
++#include <memory>
+ #include <vector>
+ 
+ #include "runtime/resource_cuda.cuh"
++#include "scf/cuda_density_fitting_final_state.hpp"
+ 
+ namespace vibeqc::scf::cuda_df {
+ 
++/** Detached, immutable warm input from strict final validation. Two entries
++ * suffice for the latest returned density and a frozen replay seed; neither
++ * borrows device scratch. Admission bounds their combined host storage. */
++struct RhfWarmState {
++  CudaDfFinalStateToken token;
++  std::uint64_t basis_identity{};
++  std::size_t occupied{};
++  double nuclear{}, energy{};
++  std::vector<double> density, hcore, overlap, orthogonalizer;
++  std::vector<double> factor;  // Column-major occupied C; occupation is not absorbed.
++};
++
+ /** Persistent replay owner retained by a prepared DF plan.
+  * Inputs refresh per solve; solver workspaces and graph handles survive until
+  * incompatible topology/options require rebuilding. Teardown selects its device.
+@@ -70,6 +84,13 @@ struct PersistentScfState {
+   double energy_tolerance{};
+   double density_tolerance{};
+ 
++  // Ready entries are revoked before every attempted solve. A matched entry
++  // survives privately until a successful final endpoint republishes it.
++  std::shared_ptr<const RhfWarmState> warm_current, warm_frozen;
++  std::shared_ptr<const RhfWarmState> warm_replay_seed, warm_pending;
++  std::uint64_t warm_pending_epoch{};
++  bool warm_seed_used{};
++
+   // Optional DIIS uses the existing shared update kernel. Histories are owned
+   // by this solve, reset on every invocation, and charged before tile planning.
+   unsigned diis_history{};
+diff --git a/src/scf/cuda/df_scf_warm.cpp b/src/scf/cuda/df_scf_warm.cpp
+new file mode 100644
+index 00000000..d873411b
+--- /dev/null
++++ b/src/scf/cuda/df_scf_warm.cpp
+@@ -0,0 +1,155 @@
++#include "scf/cuda/df_scf_warm.hpp"
++
++#include <cmath>
++#include <cstdlib>
++#include <cstring>
++#include <stdexcept>
++
++#include "runtime/cuda_component_trace.hpp"
++#include "scf/cuda/df_final_validation.hpp"
++#include "scf/cuda/df_runtime.hpp"
++#include "scf/cuda/df_scf_kernels.hpp"
++
++namespace vibeqc::scf::cuda_df {
++namespace {
++bool enabled() {
++  const auto* control = std::getenv("VIBEQC_DF_WARM_REUSE");
++  return !control || std::strcmp(control, "0") != 0;
++}
++}  // namespace
++
++std::shared_ptr<const RhfWarmState> find_rhf_warm_state(const CudaDensityFittingJkPlan* plan,
++                                                        const std::vector<double>& density,
++                                                        const std::vector<double>& hcore,
++                                                        const std::vector<double>& overlap,
++                                                        const std::vector<double>& orthogonalizer,
++                                                        std::size_t occupied, double nuclear) {
++  const auto* state =
++      plan ? static_cast<const PersistentScfState*>(plan->persistent_scf_state) : nullptr;
++  if (!enabled() || !state || state->unrestricted || !state->occupied_exchange ||
++      plan->batch_size != 1 || state->diis_history < 2)
++    return {};
++  for (const auto& entry : {state->warm_current, state->warm_frozen}) {
++    if (entry && entry->basis_identity == plan->factor_basis_identity &&
++        entry->occupied == occupied && entry->nuclear == nuclear && entry->density == density &&
++        entry->hcore == hcore && entry->overlap == overlap &&
++        entry->orthogonalizer == orthogonalizer)
++      return entry;
++  }
++  return {};
++}
++}  // namespace vibeqc::scf::cuda_df
++
++namespace vibeqc::scf {
++using namespace cuda_df;
++
++bool cuda_density_fitting_rhf_warm_matches(const CudaDensityFittingJkPlan* plan,
++                                           const reference::Matrix& density,
++                                           const reference::Matrix& hcore,
++                                           const reference::Matrix& overlap,
++                                           const reference::Matrix& orthogonalizer,
++                                           std::size_t occupied, double nuclear) {
++  return bool(
++      find_rhf_warm_state(plan, density, hcore, overlap, orthogonalizer, occupied, nuclear));
++}
++
++void prepare_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
++                                                 const CudaDfFinalStateToken& token,
++                                                 const reference::Matrix& density,
++                                                 const reference::Matrix& hcore,
++                                                 const reference::Matrix& overlap,
++                                                 const reference::Matrix& orthogonalizer,
++                                                 std::size_t occupied, double nuclear) {
++  auto* state = plan ? static_cast<PersistentScfState*>(plan->persistent_scf_state) : nullptr;
++  if (!state) return;
++  state->warm_pending.reset();
++  state->warm_pending_epoch = 0;
++  if (!enabled() || state->unrestricted || !state->occupied_exchange || plan->batch_size != 1 ||
++      state->diis_history < 2 || !occupied || occupied != state->alpha_factor_rank ||
++      !final_occupied_fock_matches(*plan, token) || density.size() != plan->matrix_elements ||
++      hcore.size() != density.size() || overlap.size() != density.size() ||
++      orthogonalizer.size() != density.size() || !finite_values(density) || !finite_values(hcore) ||
++      !finite_values(overlap) || !finite_values(orthogonalizer) || !std::isfinite(nuclear))
++    return;
++  // Bound both retained records plus the temporary detached full C/D/spectrum
++  // download. Larger systems keep the ordinary seed; no device allocation is
++  // added and cache retention cannot turn a successful endpoint into host OOM.
++  const long double peak =
++      sizeof(double) * (10.0L * plan->matrix_elements + 2.0L * plan->nbf * occupied + plan->nbf);
++  if (peak > 64.0L * 1024 * 1024) return;
++  try {
++    CudaDfFinalStateSnapshot snapshot;
++    std::string detail;
++    auto status = read_cuda_density_fitting_final_state(plan, token, snapshot, detail);
++    if (status == VIBEQC_STATUS_INVALID_ARGUMENT || status == VIBEQC_STATUS_OUT_OF_MEMORY) return;
++    if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
++    if (snapshot.density.size() != 1 || snapshot.density[0] != density) return;
++    auto candidate = std::make_shared<RhfWarmState>();
++    candidate->token = token;
++    candidate->basis_identity = plan->factor_basis_identity;
++    candidate->occupied = occupied;
++    candidate->nuclear = nuclear;
++    candidate->density = density;
++    candidate->hcore = hcore;
++    candidate->overlap = overlap;
++    candidate->orthogonalizer = orthogonalizer;
++    candidate->factor.resize(plan->nbf * occupied);
++    const auto& c = snapshot.candidate.spins[0].vectors;
++    for (std::size_t column = 0; column < occupied; ++column)
++      for (std::size_t row = 0; row < plan->nbf; ++row)
++        candidate->factor[column * plan->nbf + row] = c[row * plan->nbf + column];
++
++    runtime::cuda_trace::TraceOperation trace(
++        "warm_state_energy_baseline", plan->stream,
++        {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
++    // Final validation still owns physical J/K here. Reassemble with the SCF
++    // kernel so its FMA and reduction order match the next warm comparison;
++    // copying the differently reduced public final energy would not suffice.
++    auto error = cudaMemcpyAsync(state->d_hcore, hcore.data(), hcore.size() * sizeof(double),
++                                 cudaMemcpyHostToDevice, plan->stream);
++    if (error == cudaSuccess)
++      error = cudaMemcpyAsync(state->d_previous_energy, &candidate->nuclear, sizeof(double),
++                              cudaMemcpyHostToDevice, plan->stream);
++    if (error == cudaSuccess) {
++      launch_assemble_rhf_fock_kernel(blocks_for(plan->matrix_elements), kThreads, 0, plan->stream,
++                                      plan->matrix_elements, state->d_hcore, plan->coulomb,
++                                      plan->alpha_exchange, state->d_next_density);
++      launch_compute_device_energy_kernel(1, 32, 0, plan->stream, 1, plan->nbf, state->d_density,
++                                          state->d_hcore, state->d_next_density,
++                                          state->d_previous_energy, state->d_energy);
++      error = cudaGetLastError();
++    }
++    if (error == cudaSuccess)
++      error = cudaMemcpyAsync(&candidate->energy, state->d_energy, sizeof(double),
++                              cudaMemcpyDeviceToHost, plan->stream);
++    // Drain even on launch/copy failure before releasing pageable destinations.
++    const auto drained = cudaStreamSynchronize(plan->stream);
++    if (error == cudaSuccess) error = drained;
++    if (error != cudaSuccess) throw std::runtime_error(cudaGetErrorString(error));
++    if (!std::isfinite(candidate->energy)) return;
++    runtime::cuda_trace::trace_counter("extra_jk_builds", 0);
++    runtime::cuda_trace::trace_counter("energy_reductions", 1);
++    runtime::cuda_trace::trace_counter(
++        "retained_host_bytes", (4 * plan->matrix_elements + plan->nbf * occupied) * sizeof(double));
++    state->warm_pending = std::move(candidate);
++    state->warm_pending_epoch = plan->final_state_solve_epoch;
++  } catch (const std::bad_alloc&) {
++    state->warm_pending.reset();
++    state->warm_pending_epoch = 0;
++  }
++}
++
++void commit_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
++                                                const CudaDfFinalStateToken& token) noexcept {
++  auto* state = plan ? static_cast<PersistentScfState*>(plan->persistent_scf_state) : nullptr;
++  if (!state || !state->warm_pending ||
++      state->warm_pending_epoch != plan->final_state_solve_epoch ||
++      token != state->warm_pending->token ||
++      token.identity.solve_epoch != plan->final_state_solve_epoch ||
++      token.identity.factor.basis != plan->factor_basis_identity)
++    return;
++  state->warm_current = std::move(state->warm_pending);
++  state->warm_frozen = std::move(state->warm_replay_seed);
++  state->warm_pending_epoch = 0;
++}
++}  // namespace vibeqc::scf
+diff --git a/src/scf/cuda/df_scf_warm.hpp b/src/scf/cuda/df_scf_warm.hpp
+new file mode 100644
+index 00000000..b36a9c89
+--- /dev/null
++++ b/src/scf/cuda/df_scf_warm.hpp
+@@ -0,0 +1,16 @@
++#pragma once
++
++#include "scf/cuda/df_plan_internal.hpp"
++#include "scf/cuda/df_scf_state.hpp"
++
++namespace vibeqc::scf::cuda_df {
++/** Borrow an immutable qualified entry before begin_scf_final_state_solve
++ * revokes public readiness. Exact numerical inputs, not pointer equality or
++ * a density norm, bind this optimization to the previous physical state. */
++std::shared_ptr<const RhfWarmState> find_rhf_warm_state(const CudaDensityFittingJkPlan* plan,
++                                                        const std::vector<double>& density,
++                                                        const std::vector<double>& hcore,
++                                                        const std::vector<double>& overlap,
++                                                        const std::vector<double>& orthogonalizer,
++                                                        std::size_t occupied, double nuclear);
++}  // namespace vibeqc::scf::cuda_df
+diff --git a/src/scf/cuda_density_fitting_final_state.hpp b/src/scf/cuda_density_fitting_final_state.hpp
+index bf942a84..33efc630 100644
+--- a/src/scf/cuda_density_fitting_final_state.hpp
++++ b/src/scf/cuda_density_fitting_final_state.hpp
+@@ -29,6 +29,30 @@ struct CudaDfFinalStateSnapshot {
+   std::vector<reference::Matrix> density;
+ };
+ 
++/** Exact same-owner, same-input warm admission. Only a previously completed
++ * strict RHF endpoint can bypass seed normalization; false keeps the ordinary
++ * imported/changed-geometry path. UHF and batches retain their bounded path. */
++bool cuda_density_fitting_rhf_warm_matches(const CudaDensityFittingJkPlan* plan,
++                                           const reference::Matrix& density,
++                                           const reference::Matrix& hcore,
++                                           const reference::Matrix& overlap,
++                                           const reference::Matrix& orthogonalizer,
++                                           std::size_t occupied, double nuclear);
++
++/** Stage a bounded warm record from the current accepted final density/frame
++ * and still-live physical J/K. Computes only an SCF-order energy reduction;
++ * it never rebuilds J/K. Optional host allocation failure simply disables reuse.
++ * Commit only after all requested endpoint consumers succeed. */
++void prepare_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
++                                                 const CudaDfFinalStateToken& token,
++                                                 const reference::Matrix& density,
++                                                 const reference::Matrix& hcore,
++                                                 const reference::Matrix& overlap,
++                                                 const reference::Matrix& orthogonalizer,
++                                                 std::size_t occupied, double nuclear);
++void commit_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
++                                                const CudaDfFinalStateToken& token) noexcept;
++
+ /** Current attempted compact-solve epoch, including a nonconverged attempt
+  * followed by host DIIS recovery. Zero cannot authorize finalization. This
+  * read does not invalidate another item's candidate in the same bucket. */
+diff --git a/src/scf/cuda_density_fitting_stub.cpp b/src/scf/cuda_density_fitting_stub.cpp
+index a69ce77a..cc79da59 100644
+--- a/src/scf/cuda_density_fitting_stub.cpp
++++ b/src/scf/cuda_density_fitting_stub.cpp
+@@ -3,6 +3,19 @@
+ #include "scf/cuda_density_fitting_final_state.hpp"
+ 
+ namespace vibeqc::scf {
++bool cuda_density_fitting_rhf_warm_matches(const CudaDensityFittingJkPlan*,
++                                           const reference::Matrix&, const reference::Matrix&,
++                                           const reference::Matrix&, const reference::Matrix&,
++                                           std::size_t, double) {
++  return false;
++}
++void prepare_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan*,
++                                                 const CudaDfFinalStateToken&,
++                                                 const reference::Matrix&, const reference::Matrix&,
++                                                 const reference::Matrix&, const reference::Matrix&,
++                                                 std::size_t, double) {}
++void commit_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan*,
++                                                const CudaDfFinalStateToken&) noexcept {}
+ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan*,
+                                                     const CudaDfFinalStateToken&,
+                                                     const std::vector<double>&,
+diff --git a/src/scf/rhf.cpp b/src/scf/rhf.cpp
+index f1d3fb98..6081a91b 100644
+--- a/src/scf/rhf.cpp
++++ b/src/scf/rhf.cpp
+@@ -767,6 +767,9 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+     final_diagnostic = state.diagnostic;
+     result.energy = state.diagnostic.energy;
+     result.converged = true;
++    prepare_cuda_density_fitting_rhf_warm_state(
++        cuda_plan, response_token, density, data.one_electron.hcore, data.one_electron.overlap,
++        orthogonalizer, occupied, data.one_electron.nuclear_repulsion);
+   } else {
+     // Preserve the independent CPU oracle's established solve/project/rebuild
+     // sequence and derivative convention; it does not share retained state.
+@@ -819,6 +822,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+   }
+   if (!options.compute_forces) {
+     result.density = density;
++    if (cuda_plan) commit_cuda_density_fitting_rhf_warm_state(cuda_plan, response_token);
+     return;
+   }
+ 
+@@ -865,6 +869,7 @@ EigenResult device_df_eigen(const Matrix& matrix, const Matrix* overlap,
+                                                      options.density_fitting_relative_threshold);
+   }
+   result.density = density;
++  if (cuda_plan) commit_cuda_density_fitting_rhf_warm_state(cuda_plan, response_token);
+ }
+ 
+ [[maybe_unused]] void finalize_density_fitting_uhf(
+@@ -2340,9 +2345,20 @@ std::vector<RhfBucketItem> run_rhf_density_fitting_cuda_bucket_impl(
+           overlap_caches ? (*overlap_caches)[source] : nullptr, eigen);
+       const auto occupied = static_cast<std::size_t>(systems[source].electron_count / 2);
+       std::optional<EigenResult> initial;
+-      densities[slot] = prepare_initial_density(
+-          systems[source], data[slot].one_electron, orthogonalizers[slot], occupied,
+-          initial_densities[source], initial, df_initial_orbital_request(), eigen);
++      const bool retained_warm =
++          initial_densities[source] && data.size() == 1 &&
++          cuda_density_fitting_rhf_warm_matches(
++              plan, *initial_densities[source], data[slot].one_electron.hcore,
++              data[slot].one_electron.overlap, orthogonalizers[slot], occupied,
++              data[slot].one_electron.nuclear_repulsion);
++      // Exact accepted same-geometry D already passed electron-trace and
++      // determinant checks. Normalizing it again breaks its retained frame.
++      densities[slot] =
++          retained_warm
++              ? *initial_densities[source]
++              : prepare_initial_density(systems[source], data[slot].one_electron,
++                                        orthogonalizers[slot], occupied, initial_densities[source],
++                                        initial, df_initial_orbital_request(), eigen);
+       orbitals[slot] = std::move(initial).value_or(EigenResult{});
+       survivors.push_back(slot);
+     } catch (const std::bad_alloc&) {
+diff --git a/tests/native/test_df_final_snapshot.cpp b/tests/native/test_df_final_snapshot.cpp
+index 3017b225..45eeb890 100644
+--- a/tests/native/test_df_final_snapshot.cpp
++++ b/tests/native/test_df_final_snapshot.cpp
+@@ -305,12 +305,109 @@ void lifecycle(bool uhf, std::size_t batch) {
+               VIBEQC_STATUS_INVALID_ARGUMENT,
+           "epoch exhaustion preserved eligibility");
+ }
++/** A closed-form nonidentity-overlap determinant tests one-step admission
++ * independently of a molecular oracle, including unpublished/stale/failed
++ * states and exact input matching. There are no two-electron contributions. */
++void warm_replay() {
++  exchange_policy("occupied");
++#ifdef _WIN32
++  _putenv_s("VIBEQC_DF_FINAL_EXCHANGE", "occupied");
++#else
++  setenv("VIBEQC_DF_FINAL_EXCHANGE", "occupied", 1);
++#endif
++  CudaDensityFittingJkPlan* raw{};
++  std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
++  std::string detail;
++  require(
++      create_cuda_density_fitting_jk_plan_tiled(0, 1, 2, 1, Matrix{1}, Matrix(4, 0), 1e-10, 1, 4,
++                                                &raw, diagnostics, detail) == VIBEQC_STATUS_SUCCESS,
++      detail);
++  Plan plan(raw, &destroy_cuda_density_fitting_jk_plan);
++  const Matrix h{-2, 0, 0, 12}, s{2, 0, 0, 4}, x{1 / std::sqrt(2.), 0, 0, .5};
++  // This unbudgeted analytic tensor fixture explicitly admits the two-slot
++  // history normally reserved by the high-level molecular plan builder.
++  plan->scf_diis_history = 2;
++  Matrix input{1, 0, 0, 0}, final;
++  std::vector<CudaDensityFittingDeviceScfItem> records;
++  const auto matches = [&] {
++    return cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 1, .3);
++  };
++  const auto run = [&](unsigned maximum) {
++    return run_cuda_density_fitting_rhf_device_scf(plan.get(), h, x, input, {1}, {.3}, maximum,
++                                                   1e-12, 1e-10, final, records, detail, s, 2);
++  };
++  const auto publish = [&] {
++    CudaDfFinalStateToken token;
++    require(cuda_density_fitting_final_state_token(plan.get(), 0, token, detail) ==
++                VIBEQC_STATUS_SUCCESS,
++            detail);
++    const auto fock =
++        evaluate_cuda_density_fitting_final_fock(plan.get(), token.identity, {final}, h);
++    CudaDfFinalStateSnapshot snapshot;
++    require(read_cuda_density_fitting_final_state(plan.get(), token, snapshot, detail) ==
++                VIBEQC_STATUS_SUCCESS,
++            detail);
++    // CPU matrix products and the analytic -1.7 Eh energy are independent
++    // checks before the internal caller authorizes retention.
++    solver::FinalStateDiagnostic diagnostic;
++    require(
++        solver::validate_final_state(token.identity, s, h, .3, {final}, {token.identity, true, {h}},
++                                     snapshot.candidate, {}, diagnostic, detail),
++        detail);
++    require(std::abs(diagnostic.energy + 1.7) < 1e-12, "wrong analytic warm energy");
++    prepare_cuda_density_fitting_rhf_warm_state(plan.get(), token, final, h, s, x, 1, .3);
++    auto stale = token;
++    ++stale.identity.factor.density_generation;
++    commit_cuda_density_fitting_rhf_warm_state(plan.get(), stale);
++    require(!matches(), "unpublished or stale-token warm state escaped");
++    commit_cuda_density_fitting_rhf_warm_state(plan.get(), token);
++  };
++  require(!matches(), "cold plan manufactured a warm baseline");
++  require(run(8) == VIBEQC_STATUS_SUCCESS, detail);
++  require(records[0].converged && records[0].iterations > 1,
++          "cold determinant skipped its missing energy baseline");
++  input = final;
++  publish();
++  require(matches(), "strict accepted determinant did not become eligible");
++  auto changed = input;
++  changed[0] += 1e-14;
++  require(!cuda_density_fitting_rhf_warm_matches(plan.get(), changed, h, s, x, 1, .3),
++          "nearby imported density passed exact warm admission");
++  auto shifted_h = h;
++  shifted_h[0] += 1e-14;
++  require(!cuda_density_fitting_rhf_warm_matches(plan.get(), input, shifted_h, s, x, 1, .3) &&
++              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, x, x, 1, .3) &&
++              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, s, 1, .3) &&
++              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 0, .3) &&
++              !cuda_density_fitting_rhf_warm_matches(plan.get(), input, h, s, x, 1, .4),
++          "changed Hamiltonian/metric/projector/occupation/nuclear energy reused a baseline");
++  ++plan->factor_basis_identity;
++  require(!matches(), "another immutable source reused the warm frame");
++  --plan->factor_basis_identity;
++  for (int repeat = 0; repeat < 3; ++repeat) {
++    require(run(1) == VIBEQC_STATUS_SUCCESS && records[0].converged && records[0].iterations == 1,
++            "qualified frozen warm replay did not finish in exactly one iteration");
++    require(!matches(), "unfinalized solve published warm eligibility");
++    publish();
++    require(matches(), "frozen input was lost when the latest frame advanced");
++  }
++  require(run(0) == VIBEQC_STATUS_INVALID_ARGUMENT && !matches(),
++          "failed solve preserved a prior warm entry");
++  require(run(1) == VIBEQC_STATUS_SUCCESS && !records[0].converged && !matches(),
++          "failed/nonconverged solve manufactured first-step convergence");
++#ifdef _WIN32
++  _putenv_s("VIBEQC_DF_FINAL_EXCHANGE", "");
++#else
++  unsetenv("VIBEQC_DF_FINAL_EXCHANGE");
++#endif
++}
+ }  // namespace
+ 
+ int main() {
+   try {
+     for (const bool uhf : {false, true})
+       for (const std::size_t batch : {1U, 4U}) lifecycle(uhf, batch);
++    warm_replay();
+   } catch (const std::exception& error) {
+     std::cerr << error.what() << '\n';
+     return 1;
+diff --git a/tests/python/test_df_device_diis_cuda.py b/tests/python/test_df_device_diis_cuda.py
+index 1b62c75b..fb5d183c 100644
+--- a/tests/python/test_df_device_diis_cuda.py
++++ b/tests/python/test_df_device_diis_cuda.py
+@@ -114,7 +114,9 @@ def test_compact_diis_independent_forces_and_warm_reset(
+             if step == 1:
+                 assert "host:df_plan_setup" not in progress["phases"]
+                 assert any(
+-                    r["key"] == "host_graph_replay" for r in progress["observations"]
++                    r["key"] == "host_graph_replay"
++                    or (r["key"] == "warm_seed_reused" and r["value"] == 1)
++                    for r in progress["observations"]
+                 )
+             assert "host:diis_retry" not in progress["phases"]
+             assert not aggregate_host(read_host_trace(host_path))[
+diff --git a/tests/python/test_df_warm_state_cuda.py b/tests/python/test_df_warm_state_cuda.py
+new file mode 100644
+index 00000000..5b065cf8
+--- /dev/null
++++ b/tests/python/test_df_warm_state_cuda.py
+@@ -0,0 +1,122 @@
++"""Qualified warm frames save SCF work without skipping physical force checks."""
++
++import os
++from pathlib import Path
++
++import numpy as np
++import pytest
++
++pytestmark = pytest.mark.skipif(
++    os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
++    reason="requires an explicitly Slurm-allocated GPU",
++)
++
++
++@pytest.mark.parametrize("frozen", [False, True])
++@pytest.mark.parametrize("auxiliary", ["def2-svp", "cc-pvdz-jkfit"])
++def test_one_step_warm_force_endpoint(
++    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, frozen: bool, auxiliary: str
++) -> None:
++    """Frozen/latest entries survive repeats; geometry and disabled reuse miss."""
++    assert os.environ.get("SLURM_JOB_ID")
++    from pyscf import gto, scf
++    from vibeqc import Calculator
++
++    from benchmarks._cases import benchmark_cases
++    from benchmarks.df_component_ledger import read_trace
++
++    atoms = benchmark_cases()["water-tetramer-def2-svp-spherical"].atoms
++    moved = [
++        (z, tuple(np.asarray(x) + ((0, 0, 0.001) if i == 1 else (0, 0, 0))))
++        for i, (z, x) in enumerate(atoms)
++    ]
++    references = []
++    for geometry in (atoms, moved):
++        mol = gto.M(atom=geometry, unit="Bohr", basis="def2-svp", verbose=0)
++        mf = scf.RHF(mol).density_fit(auxbasis=auxiliary)
++        mf.conv_tol, mf.conv_tol_grad, mf.max_cycle = 1e-12, 1e-10, 100
++        mf.kernel()
++        assert mf.converged
++        gradient = mf.nuc_grad_method()
++        gradient.auxbasis_response = True
++        references.append((mf.e_tot, -gradient.kernel()))
++    for key in list(os.environ):
++        if key.startswith("VIBEQC_DF_"):
++            monkeypatch.delenv(key)
++    for key, value in {
++        "VALUE_STORAGE": "packed-single",
++        "EXCHANGE": "occupied",
++        "FINAL_EXCHANGE": "auto",
++        "RESPONSE_SPACE": "occupied",
++        "OCCUPIED_RESPONSE_SOURCE": "fitted",
++        "SOURCE_DERIVATIVE_SCHEDULE": "qualify",
++        "RESPONSE_ALGEBRA": "blas",
++        "RESPONSE_BUDGET_BYTES": str(64 << 20),
++    }.items():
++        monkeypatch.setenv("VIBEQC_DF_" + key, value)
++    record = (
++        auxiliary
++        if auxiliary == "def2-svp"
++        else Path(__file__).resolve().parents[2]
++        / "benchmarks/results/issue206-practical-auxiliary/identity/cc-pvdz-jkfit.json"
++    )
++    calc = Calculator(
++        device="cuda",
++        method="rhf",
++        basis="def2-svp",
++        basis_representation="spherical",
++        auxiliary_basis=record,
++        density_fitting="cuda",
++        energy_tolerance=1e-12,
++        density_tolerance=1e-10,
++        max_iterations=100,
++    )
++    with calc.prepare_batch([atoms], warm_start=True) as owner:
++
++        def execute(label: str, geometry: int = 0, *, reused: bool = False) -> None:
++            trace = tmp_path / (label + ".jsonl")
++            monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
++            item = owner.execute(
++                [np.asarray([x for _, x in moved])] if geometry else None, strict=True
++            ).items[0]
++            energy, forces = references[geometry]
++            assert item.energy == pytest.approx(energy, abs=1e-9, rel=0)
++            np.testing.assert_allclose(item.forces, forces, atol=1e-8, rtol=0)
++            rows = read_trace(trace)
++            provenance = [
++                r for r in rows if r["operation"] == "occupied_scf_provenance"
++            ]
++            assert len(provenance) == 1
++            assert provenance[0]["counters"]["warm_seed_iterations"] == int(reused)
++            if reused:
++                assert item.iterations == 1
++                assert not any(r["operation"] == "density_exchange_seed" for r in rows)
++                # One actual SCF K plus one separately validated final K.
++                assert (
++                    sum(
++                        r["operation"] == "ri_k_occupied" and r["execution"] == "stream"
++                        for r in rows
++                    )
++                    == 2
++                )
++            else:
++                assert item.iterations > 1
++
++        execute("cold")
++        owner.set_warm_start_updates(not frozen)
++        for repeat in range(3):
++            execute(f"warm-{repeat}", reused=True)
++        owner.set_warm_start_updates(True)
++        execute("moved", geometry=1)
++        owner.set_warm_start_updates(not frozen)
++        for repeat in range(3):
++            execute(f"moved-warm-{repeat}", geometry=1, reused=True)
++        monkeypatch.setenv("VIBEQC_DF_WARM_REUSE", "0")
++        execute("disabled", geometry=1)
++        monkeypatch.delenv("VIBEQC_DF_WARM_REUSE")
++        # Disabling reuse revokes the old record; one complete ordinary solve
++        # republishes a qualified frame, rather than resurrecting stale state.
++        owner.set_warm_start_updates(True)
++        execute("requalify", geometry=1)
++        owner.set_warm_start_updates(not frozen)
++        execute("requalified-warm", geometry=1, reused=True)
+diff --git a/tools/check_scf_structure.py b/tools/check_scf_structure.py
+index 99319405..a93cf74d 100644
+--- a/tools/check_scf_structure.py
++++ b/tools/check_scf_structure.py
+@@ -138,6 +138,7 @@ CUDA_MODULES["cuda_df_runtime"] = (
+     "df_final_validation",
+     "df_scf_factor",
+     "df_scf_final_state",
++    "df_scf_warm",
+     "df_rhf_scf",
+     "df_uhf_scf",
+ )

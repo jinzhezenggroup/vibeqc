@@ -1,0 +1,32 @@
+{
+  "aos": 48,
+  "route": "direct",
+  "protocol_and_independent_reference": {
+    "path": "../hf-unified-acceptance-20260926/direct-48.json",
+    "sha256": "6482853f415e4bad1d9f41df39d74735a629e05bb834578ccf32cf76638c1daa",
+    "bytes": 32616
+  },
+  "raw_native_sha256": "cb9db624418c309ee4d58bf8a731f3c247feff60f20afb4df45f04b6559d8061",
+  "raw_reference_sha256": "3b9a3acc4d16c765c71edc3fcea2a3a03c43b656f22089c34c1c5fd54a9d53c0",
+  "environment": {
+    "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so"
+  },
+  "diagnostic_work": [
+
+  ],
+  "columns": ["phase", "route", "repeat", "diagnostic", "seconds", "prepare_seconds", "complete_seconds", "energy", "converged", "status", "detail", "iterations", "energy_change", "density_rms", "warm_start_used", "warm_start_fallback", "fock_builds", "energy_error", "force_error", "gate"],
+  "samples": [
+    ["cold", "direct", 0, false, 1.1525874268263578, 0.00462420703843236, 1.1572116338647902, -151.9179520068431, true, 0, "success", 22, 1.4210854715202004e-13, 4.3548498888459845e-12, false, false, null, 2.6432189770275727e-12, 4.753213274366619e-11, true],
+    ["warm", "direct", 0, false, 0.08447140781208873, 0, 0.08447140781208873, -151.9179520068431, true, 0, "success", 1, 0.0, 4.355207502862078e-12, true, false, null, 2.6432189770275727e-12, 4.7529246163802163e-11, true],
+    ["warm", "direct", 1, false, 0.09217943903058767, 0, 0.09217943903058767, -151.9179520068431, true, 0, "success", 1, 0.0, 4.354857376030837e-12, true, false, null, 2.6432189770275727e-12, 4.7535463412740064e-11, true],
+    ["warm", "direct", 2, false, 0.09407442016527057, 0, 0.09407442016527057, -151.9179520068431, true, 0, "success", 1, 0.0, 4.354410213418431e-12, true, false, null, 2.6432189770275727e-12, 4.7534575234320364e-11, true],
+    ["warm", "direct", 3, false, 0.09144422318786383, 0, 0.09144422318786383, -151.9179520068431, true, 0, "success", 1, 0.0, 4.354710697658661e-12, true, false, null, 2.6432189770275727e-12, 4.7535463412740064e-11, true],
+    ["warm", "direct", 4, false, 0.0904161692596972, 0, 0.0904161692596972, -151.9179520068431, true, 0, "success", 1, 0.0, 4.354463242138388e-12, true, false, null, 2.6432189770275727e-12, 4.7532354788271114e-11, true],
+    ["moved", "direct", 0, false, 0.6054357620887458, 0, 0.6054357620887458, -151.91795403304874, true, 0, "success", 15, 1.1368683772161603e-13, 4.0478185829239314e-12, true, false, null, 2.6147972675971687e-12, 1.712639752238232e-11, true],
+    ["moved-warm", "direct", 0, false, 0.08579004881903529, 0, 0.08579004881903529, -151.91795403304874, true, 0, "success", 1, 0.0, 1.1659188203169051e-12, true, false, null, 2.6147972675971687e-12, 1.712684161159217e-11, true],
+    ["moved-warm", "direct", 1, false, 0.08405000297352672, 0, 0.08405000297352672, -151.91795403304877, true, 0, "success", 1, 2.842170943040401e-14, 1.1675357192640397e-12, true, false, null, 2.6432189770275727e-12, 1.712595343317247e-11, true],
+    ["moved-warm", "direct", 2, false, 0.08579702209681273, 0, 0.08579702209681273, -151.91795403304872, true, 0, "success", 1, 2.842170943040401e-14, 1.166386544938308e-12, true, false, null, 2.5863755581667647e-12, 1.713172659290052e-11, true],
+    ["moved-warm", "direct", 3, false, 0.08441960997879505, 0, 0.08441960997879505, -151.91795403304874, true, 0, "success", 1, 0.0, 1.166100644185771e-12, true, false, null, 2.6147972675971687e-12, 1.712417707633307e-11, true],
+    ["moved-warm", "direct", 4, false, 0.08434670977294445, 0, 0.08434670977294445, -151.91795403304872, true, 0, "success", 1, 2.842170943040401e-14, 1.1665829176667213e-12, true, false, null, 2.5863755581667647e-12, 1.713128250369067e-11, true]
+  ]
+}

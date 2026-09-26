@@ -135,6 +135,11 @@ def main() -> None:
     parser.add_argument("--route", choices=("direct", *CONTROLS), required=True)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument(
+        "--disable-warm-reuse",
+        action="store_true",
+        help="same-binary DF control: rebuild the ordinary seed and baseline",
+    )
+    parser.add_argument(
         "--interleave",
         action="store_true",
         help="alternate all DF controls on one frozen density",
@@ -213,7 +218,7 @@ def main() -> None:
             "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
             "density": "density_step_rms < density_tolerance",
             "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
-            "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+            "baseline": "finite previous energy required; direct and qualified singleton occupied DF may reuse an exactly matched validated warm state; other DF seeds rebuild it",
             "final": "strict physical final Fock validation remains required",
         },
         "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
@@ -392,6 +397,8 @@ def main() -> None:
         }.items():
             os.environ["VIBEQC_DF_" + name] = value
     select_control(args.route)
+    if args.disable_warm_reuse:
+        os.environ["VIBEQC_DF_WARM_REUSE"] = "0"
     identity["environment"] = {
         k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")
     }

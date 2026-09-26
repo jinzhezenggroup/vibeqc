@@ -29,6 +29,30 @@ struct CudaDfFinalStateSnapshot {
   std::vector<reference::Matrix> density;
 };
 
+/** Exact same-owner, same-input warm admission. Only a previously completed
+ * strict RHF endpoint can bypass seed normalization; false keeps the ordinary
+ * imported/changed-geometry path. UHF and batches retain their bounded path. */
+bool cuda_density_fitting_rhf_warm_matches(const CudaDensityFittingJkPlan* plan,
+                                           const reference::Matrix& density,
+                                           const reference::Matrix& hcore,
+                                           const reference::Matrix& overlap,
+                                           const reference::Matrix& orthogonalizer,
+                                           std::size_t occupied, double nuclear);
+
+/** Stage a bounded warm record from the current accepted final density/frame
+ * and still-live physical J/K. Computes only an SCF-order energy reduction;
+ * it never rebuilds J/K. Optional host allocation failure simply disables reuse.
+ * Commit only after all requested endpoint consumers succeed. */
+void prepare_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
+                                                 const CudaDfFinalStateToken& token,
+                                                 const reference::Matrix& density,
+                                                 const reference::Matrix& hcore,
+                                                 const reference::Matrix& overlap,
+                                                 const reference::Matrix& orthogonalizer,
+                                                 std::size_t occupied, double nuclear);
+void commit_cuda_density_fitting_rhf_warm_state(CudaDensityFittingJkPlan* plan,
+                                                const CudaDfFinalStateToken& token) noexcept;
+
 /** Current attempted compact-solve epoch, including a nonconverged attempt
  * followed by host DIIS recovery. Zero cannot authorize finalization. This
  * read does not invalidate another item's candidate in the same bucket. */

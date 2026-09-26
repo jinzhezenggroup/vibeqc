@@ -26,6 +26,7 @@ struct Workspace {
   // Borrowed J/K are consumed synchronously by one tagged selection request.
   std::optional<solver::FinalStateIdentity> physical_identity;
   const Matrix* physical_hcore{};
+  bool physical_occupied{};
   ~Workspace() {
     if (device >= 0) (void)cudaSetDevice(device);
     (void)runtime::resource_cuda_free(storage);
@@ -398,6 +399,14 @@ std::vector<Matrix> weighted_density(CudaDensityFittingJkPlan& plan,
   return result;
 }
 }  // namespace
+bool final_occupied_fock_matches(const CudaDensityFittingJkPlan& plan,
+                                 const CudaDfFinalStateToken& token) noexcept {
+  const auto* w = static_cast<const Workspace*>(plan.final_validation);
+  return w && w->physical_occupied && w->physical_identity &&
+         *w->physical_identity == token.identity &&
+         token.identity.factor.basis == plan.factor_basis_identity &&
+         token.identity.solve_epoch == plan.final_state_solve_epoch;
+}
 void destroy_final_validation(void*& opaque) noexcept {
   delete static_cast<Workspace*>(opaque);
   opaque = nullptr;
@@ -423,6 +432,7 @@ solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
   auto& w = prepare(*plan);
   w.physical_identity.reset();
   w.physical_hcore = nullptr;
+  w.physical_occupied = false;
   const auto item = static_cast<std::size_t>(current.factor.reference - 1);
   const auto count = plan->matrix_elements;
   for (const auto& d : density)
@@ -466,6 +476,7 @@ solver::PhysicalFockFrame evaluate_cuda_density_fitting_final_fock(
   }
   w.physical_identity = current;
   w.physical_hcore = &hcore;
+  w.physical_occupied = retained;
   return {current, true, std::vector<Matrix>(density.size())};
 }
 

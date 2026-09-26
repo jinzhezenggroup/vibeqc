@@ -8,7 +8,41 @@ import numpy as np
 import pytest
 
 from benchmarks.compare_df_direct_endpoint import check_endpoint, reference_work_counter
+from tools.render_df_warm_reuse_benchmarks import write_samples
 from tools.render_hf_acceptance_benchmarks import checked_run, digest
+
+
+@pytest.mark.parametrize(
+    "diagnostics",
+    [[], [{"phase": "warm", "counters": {"bytes": 8769110016, "extra_jk_builds": 0}}]],
+)
+def test_warm_retention_preserves_missing_counts_and_work(
+    tmp_path: Path, diagnostics: list[dict]
+) -> None:
+    """Compact rows must preserve null work counts, FP64 values and large counters."""
+    metadata = {"aos": 768, "diagnostic_work": diagnostics}
+    samples = [
+        {"energy": -2431.1197119999997, "scf_jk_builds": None, "gate": True},
+        {"gate": True, "energy": -2431.1197120000006, "scf_jk_builds": 2},
+    ]
+    path = tmp_path / "samples.json"
+    write_samples(path, metadata, samples)
+    record = json.loads(path.read_text())
+    assert record["diagnostic_work"] == diagnostics
+    assert [
+        dict(zip(record["columns"], row, strict=True)) for row in record["samples"]
+    ] == samples
+    assert metadata == {"aos": 768, "diagnostic_work": diagnostics}
+
+
+def test_warm_retention_rejects_nonfinite_diagnostics(tmp_path: Path) -> None:
+    """An invalid work counter cannot survive a seemingly valid scalar sample."""
+    with pytest.raises(ValueError):
+        write_samples(
+            tmp_path / "samples.json",
+            {"diagnostic_work": [{"counter": float("nan")}]},
+            [{"gate": True}],
+        )
 
 
 @pytest.mark.parametrize(

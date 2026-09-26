@@ -1,5 +1,10 @@
 # CUDA HF: common direct/DF acceptance
 
+Later qualification: [bounded one-step DF warm reuse](../df-one-step-warm-20260926/README.md)
+uses a newer native build and retains its own same-binary controls. This page
+preserves the preceding three-step measurements and GPU4PySCF comparison.
+
+
 Complete energy plus analytic-force endpoints on an RTX 5090. Native direct and
 DF share the FP64 iterative acceptance rule below and retain strict final Fock
 validation. This explicit DF route is faster than direct at 24–192 AOs, but

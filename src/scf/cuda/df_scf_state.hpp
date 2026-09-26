@@ -5,11 +5,25 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
 #include "runtime/resource_cuda.cuh"
+#include "scf/cuda_density_fitting_final_state.hpp"
 
 namespace vibeqc::scf::cuda_df {
+
+/** Detached, immutable warm input from strict final validation. Two entries
+ * suffice for the latest returned density and a frozen replay seed; neither
+ * borrows device scratch. Admission bounds their combined host storage. */
+struct RhfWarmState {
+  CudaDfFinalStateToken token;
+  std::uint64_t basis_identity{};
+  std::size_t occupied{};
+  double nuclear{}, energy{};
+  std::vector<double> density, hcore, overlap, orthogonalizer;
+  std::vector<double> factor;  // Column-major occupied C; occupation is not absorbed.
+};
 
 /** Persistent replay owner retained by a prepared DF plan.
  * Inputs refresh per solve; solver workspaces and graph handles survive until
@@ -69,6 +83,13 @@ struct PersistentScfState {
   unsigned max_iterations{};
   double energy_tolerance{};
   double density_tolerance{};
+
+  // Ready entries are revoked before every attempted solve. A matched entry
+  // survives privately until a successful final endpoint republishes it.
+  std::shared_ptr<const RhfWarmState> warm_current, warm_frozen;
+  std::shared_ptr<const RhfWarmState> warm_replay_seed, warm_pending;
+  std::uint64_t warm_pending_epoch{};
+  bool warm_seed_used{};
 
   // Optional DIIS uses the existing shared update kernel. Histories are owned
   // by this solve, reset on every invocation, and charged before tile planning.

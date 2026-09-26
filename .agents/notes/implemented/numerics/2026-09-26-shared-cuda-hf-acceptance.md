@@ -3,6 +3,10 @@
 Status: implemented
 Date: 2026-09-26
 
+The subsequent [qualified singleton RHF warm-state change](../performance/2026-09-26-df-qualified-one-step-warm.md)
+adds exact density/frame/energy reuse without changing this acceptance rule.
+The measurements and missing-cache diagnosis below describe this earlier step.
+
 ## Problem
 
 The [warm convergence diagnosis](../../proposed/2026-09-26-df-warm-convergence-parity.md)
