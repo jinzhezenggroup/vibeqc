@@ -843,6 +843,9 @@ int main() {
                 cuda_result.iterations <= cold.iterations &&
                 std::abs(cuda_result.energy - cold.energy) < 1e-11,
             "public CUDA KS compatible replay changed the endpoint");
+        if (!uks)
+          require(cuda_result.iterations == 1,
+                  "same-geometry CUDA RKS warm replay did not reuse its validated energy baseline");
 
         auto auto_method = method;
         auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
