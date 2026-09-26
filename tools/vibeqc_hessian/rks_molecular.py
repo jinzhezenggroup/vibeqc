@@ -451,8 +451,7 @@ def rks_hvp_many(
         or not np.isfinite(raw).all()
     ):
         raise ValueError(
-            "RKS HVP block directions must be finite real with shape "
-            "(nrhs, natoms, 3)"
+            "RKS HVP block directions must be finite real with shape (nrhs, natoms, 3)"
         )
     vectors = tuple(checked_direction(item, natom) for item in raw)
     cache_path = Path(cache)

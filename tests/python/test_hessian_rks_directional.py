@@ -192,9 +192,7 @@ def test_rks_nuclear_response_multi_rhs_matches_single(
         atol=2e-10,
         rtol=2e-9,
     )
-    for response, expected in zip(
-        result.responses, (direction, other), strict=True
-    ):
+    for response, expected in zip(result.responses, (direction, other), strict=True):
         assert response.response.solve_result.converged
         np.testing.assert_array_equal(response.direction, expected)
 
