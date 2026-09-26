@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <cmath>
 
-#include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/direct_eri_symmetry.cuh"
+#include "scf/cuda/direct_jk_kernels.hpp"
 #include "scf/cuda/direct_native_contraction.cuh"
 #include "scf/cuda/direct_queue_index.cuh"
 
@@ -203,11 +203,13 @@ __global__ void independent_jk_derivative_kernel(DeviceBatch batch, std::size_t 
  * permutations contribute through one density coefficient and one canonical
  * integral derivative.
  */
-__global__ void independent_rsh_derivative_kernel(
-    DeviceBatch batch, std::size_t system_begin, std::size_t system_count,
-    std::size_t source_stride, double cj, double short_ck, double long_ck, bool unrestricted,
-    double omega, double screening, const double* bounds, const double* density,
-    const double* beta, double* out) {
+__global__ void independent_rsh_derivative_kernel(DeviceBatch batch, std::size_t system_begin,
+                                                  std::size_t system_count,
+                                                  std::size_t source_stride, double cj,
+                                                  double short_ck, double long_ck,
+                                                  bool unrestricted, double omega, double screening,
+                                                  const double* bounds, const double* density,
+                                                  const double* beta, double* out) {
   const std::size_t n = batch.nbf, matrix = n * n;
   const std::size_t pair_count = n * (n + 1) / 2;
   const std::size_t unique_quartets = pair_count * (pair_count + 1) / 2;
@@ -234,14 +236,11 @@ __global__ void independent_rsh_derivative_kernel(
       eri_symmetry_permutation(permutation, i, j, k, l, a, b, cc, d);
       const std::size_t ab = a * n + b, cd = cc * n + d;
       const std::size_t ac = a * n + cc, bd = b * n + d;
-      const double total_ab =
-          density[offset + ab] + (unrestricted ? beta[offset + ab] : 0.0);
-      const double total_cd =
-          density[offset + cd] + (unrestricted ? beta[offset + cd] : 0.0);
+      const double total_ab = density[offset + ab] + (unrestricted ? beta[offset + ab] : 0.0);
+      const double total_cd = density[offset + cd] + (unrestricted ? beta[offset + cd] : 0.0);
       j_weight += 0.5 * cj * total_ab * total_cd;
-      exchange_weight +=
-          0.5 * (density[offset + ac] * density[offset + bd] +
-                 (unrestricted ? beta[offset + ac] * beta[offset + bd] : 0.0));
+      exchange_weight += 0.5 * (density[offset + ac] * density[offset + bd] +
+                                (unrestricted ? beta[offset + ac] * beta[offset + bd] : 0.0));
     }
     const double short_weight = short_ck * exchange_weight;
     const double long_weight = long_ck * exchange_weight;
