@@ -5,7 +5,6 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from vibeqc.second_order import (
     StationaryHVPContributor,
     StationaryPerturbationProvider,

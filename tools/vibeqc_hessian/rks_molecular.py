@@ -20,6 +20,12 @@ from types import MappingProxyType
 
 import numpy as np
 from vibeqc.profiles import canonical_hash
+from vibeqc.second_order import (
+    StationaryHVPContributor,
+    StationaryPerturbationProvider,
+    StationaryResponseDriver,
+    StationarySecondOrderExecutor,
+)
 from vibeqc_compiler.method import StationaryHVPPlan, StationaryMeanField
 from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
 from vibeqc_compiler.tensor import execute
@@ -41,12 +47,6 @@ from .rks_directional import (
     directional_rks_response,
     directional_rks_responses,
     native_rks_xc_hvp_components,
-)
-from vibeqc.second_order import (
-    StationaryHVPContributor,
-    StationaryPerturbationProvider,
-    StationaryResponseDriver,
-    StationarySecondOrderExecutor,
 )
 
 
