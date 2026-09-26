@@ -59,8 +59,6 @@
 #include "runtime/nvidia_host_api.h"
 
 namespace vibeqc::xtb::detail {
-enum class Gfn2CudaSccStartMode : std::uint32_t { kFresh = 1u, kWarm = 2u };
-
 namespace {
 
 using namespace vibeqc::xtb::detail::cuda;
@@ -76,13 +74,6 @@ constexpr std::size_t kArenaAlignment = 256u;
  * inclusive 25/30-bohr predicates and never infer physical membership solely
  * from list presence. */
 constexpr double kD4PairlistBuilderCutoffBohr = 50.0;
-
-Gfn2CudaSccStartMode public_scc_start_mode(const vibeqc_xtb_compute_options_t& options) noexcept {
-  return options.struct_size >= VIBEQC_XTB_COMPUTE_OPTIONS_V2_SIZE &&
-                 options.scc_start_mode == VIBEQC_XTB_SCC_START_WARM
-             ? Gfn2CudaSccStartMode::kWarm
-             : Gfn2CudaSccStartMode::kFresh;
-}
 
 /* ABI-v3 mixer and reproducibility controls form one complete suffix. A
  * caller that supplies only a prefix of the suffix receives the established
@@ -997,85 +988,6 @@ __global__ void commit_gfn2_numerical_refresh_kernel(NumericalRefreshDeviceBindi
     }
   }
   if (threadIdx.x == 0) binding.committed_generations[system] = generation;
-}
-
-/*
- * Warm execution reuses the device wavefunction and published multipoles.
- * Same-epoch reuse also retains modified-Broyden history, while predecessor-
- * epoch migration starts a new mixer history window for the refreshed
- * operator. The driver-visible terminal trace belongs to one inference
- * attempt and must always be restarted or the bounded loop would treat the
- * prior converged state as inactive.
- */
-struct WarmSccResetDeviceBinding {
-  std::int64_t batch_size = 0;
-  std::uint64_t plan_token = 0u;
-  Gfn2GeometryEpochDevice geometry_epoch{};
-  const std::uint8_t* eligible = nullptr;
-  const std::uint64_t* committed_generations = nullptr;
-  const std::uint64_t* refresh_predecessor_generations = nullptr;
-  std::uint64_t* warm_checkpoint_generations = nullptr;
-  const std::uint8_t* committed_field_attached = nullptr;
-  const double* committed_field_vectors = nullptr;
-  const std::uint8_t* checkpoint_field_attached = nullptr;
-  const double* checkpoint_field_vectors = nullptr;
-  std::uint32_t* request_error = nullptr;
-  const std::uint32_t* interaction_error = nullptr;
-  Gfn2SccMixerDeviceState mixer{};
-  Gfn2SccDeviceState scc{};
-};
-
-static_assert(std::is_trivially_copyable_v<WarmSccResetDeviceBinding>);
-
-__global__ void reset_gfn2_warm_scc_trace_kernel(WarmSccResetDeviceBinding binding) {
-  const std::int64_t system = static_cast<std::int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (system >= binding.batch_size) return;
-  const Gfn2DeviceAdmission admission{binding.interaction_error, 1, binding.plan_token};
-  if (!gfn2_request_mutation_allowed(admission)) return;
-  const std::uint64_t epoch = *binding.geometry_epoch.value;
-  const std::uint64_t checkpoint = atomicAdd(
-      reinterpret_cast<unsigned long long*>(binding.warm_checkpoint_generations + system), 0ULL);
-  const std::uint64_t predecessor = binding.refresh_predecessor_generations[system];
-  const bool same_field =
-      binding.committed_field_attached[system] == binding.checkpoint_field_attached[system] &&
-      binding.committed_field_vectors[3 * system] == binding.checkpoint_field_vectors[3 * system] &&
-      binding.committed_field_vectors[3 * system + 1] ==
-          binding.checkpoint_field_vectors[3 * system + 1] &&
-      binding.committed_field_vectors[3 * system + 2] ==
-          binding.checkpoint_field_vectors[3 * system + 2];
-  const bool compatible = epoch != 0u && checkpoint != 0u && binding.eligible[system] == 1u &&
-                          binding.committed_generations[system] == epoch &&
-                          (checkpoint == epoch || checkpoint == predecessor) && same_field;
-  if (!same_field) return;
-  atomicExch(reinterpret_cast<unsigned long long*>(binding.warm_checkpoint_generations + system),
-             0ULL);
-  const bool migrated = compatible && checkpoint != epoch && checkpoint == predecessor;
-
-  /* A geometry-epoch migration keeps the converged multipoles/wavefunction
-   * but starts a new Broyden history window. The old finite-difference basis
-   * belongs to the predecessor operator and can be substantially worse than
-   * simple damping after even a small coordinate change. Setting iteration
-   * zero makes subsequent slots overwrite old history before it can be read. */
-  if (migrated) {
-    binding.mixer.residual_rms[system] = 0.0;
-    binding.mixer.residual_maximum[system] = 0.0;
-    binding.mixer.iterations[system] = 0u;
-    binding.mixer.system_statuses[system] = VIBEQC_XTB_STATUS_SUCCESS;
-    binding.mixer.residual_converged[system] = 0u;
-  }
-
-  /* iteration==0 deliberately seeds the first warm energy delta from zero,
-   * matching fresh driver accounting while retaining the expensive electronic
-   * checkpoint and, for same-epoch reuse, the mixer history. */
-  binding.scc.free_energies[system] = 0.0;
-  binding.scc.previous_free_energies[system] = 0.0;
-  binding.scc.free_energy_changes[system] = 0.0;
-  binding.scc.residual_rms[system] = 0.0;
-  binding.scc.iterations[system] = 0u;
-  binding.scc.converged[system] = 0u;
-  binding.scc.system_statuses[system] = compatible || binding.eligible[system] == 0u
-                                            ? VIBEQC_XTB_STATUS_SUCCESS
-                                            : VIBEQC_XTB_STATUS_INTERNAL_ERROR;
 }
 
 struct WarmCheckpointPublicationDeviceBinding {
@@ -6266,8 +6178,7 @@ struct Gfn2CudaExecutionCache::Impl {
     return VIBEQC_XTB_STATUS_SUCCESS;
   }
 
-  vibeqc_xtb_status_t execute_inference_locked(Prepared& current, Gfn2CudaSccStartMode mode,
-                                               std::string& error) {
+  vibeqc_xtb_status_t execute_inference_locked(Prepared& current, std::string& error) {
     if (!current.inference.ready || !current.numerical.ready) {
       error = "CUDA GFN2 inference requires a prepared numerical/runtime binding";
       return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
@@ -6278,15 +6189,7 @@ struct Gfn2CudaExecutionCache::Impl {
       error = "CUDA GFN2 inference has an incomplete warm-checkpoint binding";
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
-    if (mode != Gfn2CudaSccStartMode::kFresh && mode != Gfn2CudaSccStartMode::kWarm) {
-      error = "CUDA GFN2 inference received an unknown SCC start mode";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
     auto& inference = current.inference;
-    if (mode == Gfn2CudaSccStartMode::kWarm && !inference.warm_checkpoint_ready) {
-      error = "CUDA GFN2 warm inference requires a previously submitted checkpoint";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
 
     cudaError_t cuda_status = cudaSetDevice(device_id);
     if (cuda_status != cudaSuccess) {
@@ -6294,66 +6197,37 @@ struct Gfn2CudaExecutionCache::Impl {
       return VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE;
     }
 
-    if (mode == Gfn2CudaSccStartMode::kFresh) {
-      /* A fresh attempt consumes every old checkpoint before any state image
-       * is restored. If a later enqueue fails, no stale warm token can survive
-       * and masquerade as the failed attempt's checkpoint. */
-      const auto checkpoint_elements = current.host.basis.batch_size;
-      constexpr int kInvalidateThreads = 256;
-      const auto invalidate_blocks = static_cast<unsigned int>(
-          (static_cast<std::uint64_t>(checkpoint_elements) + kInvalidateThreads - 1u) /
-          kInvalidateThreads);
-      invalidate_gfn2_warm_checkpoint_if_admitted_kernel<<<invalidate_blocks, kInvalidateThreads, 0,
-                                                           stream>>>(
-          inference.warm_checkpoint_generations, checkpoint_elements,
-          current.public_result.request_topology_error);
-      cuda_status = cudaPeekAtLastError();
-      if (cuda_status != cudaSuccess) {
-        error = cuda_error_message("CUDA fresh warm-checkpoint invalidation", cuda_status);
-        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-      }
-      current.submitted = true;
-      inference.warm_checkpoint_ready = false;
-      const auto diagnostic = current.initializer.upload_if_admitted_async(
-          current.iteration_arena.get(), current.iteration_arena.bytes(), current.ready,
-          current.public_result.request_topology_error, stream);
-      if (!diagnostic.success()) {
-        error = setup_error_message("CUDA SCC fresh-state restore", diagnostic.status,
-                                    static_cast<std::uint32_t>(diagnostic.error),
-                                    static_cast<std::uint32_t>(diagnostic.field), diagnostic.index);
-        return diagnostic.status;
-      }
-      current.submitted = true;
-    } else {
-      const WarmSccResetDeviceBinding warm{
-          current.host.basis.batch_size,
-          current.host.plan_token,
-          inference.epoch_consumer.epoch,
-          inference.epoch_consumer.eligible_mask,
-          inference.epoch_consumer.committed_generations,
-          current.numerical.device.refresh_predecessor_generations,
-          inference.warm_checkpoint_generations,
-          current.numerical.device.committed_field_attached,
-          current.numerical.device.committed_field_vectors,
-          inference.warm_checkpoint_field_attached,
-          inference.warm_checkpoint_field_vectors,
-          current.public_result.request_topology_error,
-          current.public_result.request_topology_error,
-          current.state_seed.mixer,
-          current.state_seed.scc,
-      };
-      constexpr int kThreads = 256;
-      const auto blocks = static_cast<unsigned int>(
-          (static_cast<std::uint64_t>(warm.batch_size) + kThreads - 1u) / kThreads);
-      reset_gfn2_warm_scc_trace_kernel<<<blocks, kThreads, 0, stream>>>(warm);
-      cuda_status = cudaPeekAtLastError();
-      if (cuda_status != cudaSuccess) {
-        error = cuda_error_message("CUDA warm SCC trace reset", cuda_status);
-        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-      }
-      current.submitted = true;
-      inference.warm_checkpoint_ready = false;
+    /*
+     * Public admission requires FRESH SCC. Invalidate every old checkpoint
+     * before restoring the canonical fresh state so a failed attempt cannot
+     * leave a stale warm token associated with the new request.
+     */
+    const auto checkpoint_elements = current.host.basis.batch_size;
+    constexpr int kInvalidateThreads = 256;
+    const auto invalidate_blocks = static_cast<unsigned int>(
+        (static_cast<std::uint64_t>(checkpoint_elements) + kInvalidateThreads - 1u) /
+        kInvalidateThreads);
+    invalidate_gfn2_warm_checkpoint_if_admitted_kernel<<<invalidate_blocks, kInvalidateThreads, 0,
+                                                         stream>>>(
+        inference.warm_checkpoint_generations, checkpoint_elements,
+        current.public_result.request_topology_error);
+    cuda_status = cudaPeekAtLastError();
+    if (cuda_status != cudaSuccess) {
+      error = cuda_error_message("CUDA fresh warm-checkpoint invalidation", cuda_status);
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
+    current.submitted = true;
+    inference.warm_checkpoint_ready = false;
+    const auto diagnostic = current.initializer.upload_if_admitted_async(
+        current.iteration_arena.get(), current.iteration_arena.bytes(), current.ready,
+        current.public_result.request_topology_error, stream);
+    if (!diagnostic.success()) {
+      error = setup_error_message("CUDA SCC fresh-state restore", diagnostic.status,
+                                  static_cast<std::uint32_t>(diagnostic.error),
+                                  static_cast<std::uint32_t>(diagnostic.field), diagnostic.index);
+      return diagnostic.status;
+    }
+    current.submitted = true;
 
     const vibeqc_xtb_status_t body_status = execute_inference_body_locked(current, error);
     if (body_status != VIBEQC_XTB_STATUS_SUCCESS) return body_status;
@@ -6885,20 +6759,6 @@ vibeqc_xtb_status_t execute_restricted_gfn2_cuda_impl(Gfn2CudaExecutionCache& ca
     Gfn2CudaExecutionCache::Impl::Prepared* working = implementation.prepared.get();
     const bool reuse_runtime =
         working != nullptr && topology_snapshot_matches(*topology, options, working->host.key);
-    const Gfn2CudaSccStartMode start_mode = public_scc_start_mode(options);
-    if (start_mode == Gfn2CudaSccStartMode::kWarm) {
-      if (!reuse_runtime) {
-        abort_topology_candidate();
-        error =
-            "CUDA strict WARM SCC start requires the existing compatible fixed-topology runtime";
-        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-      }
-      if (!working->inference.warm_checkpoint_ready) {
-        abort_topology_candidate();
-        error = "CUDA strict WARM SCC start requires a preceding successful public checkpoint";
-        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-      }
-    }
     std::unique_ptr<Gfn2CudaExecutionCache::Impl::Prepared> candidate;
     if (!reuse_runtime) {
       TopologyKey key;
@@ -6948,7 +6808,7 @@ vibeqc_xtb_status_t execute_restricted_gfn2_cuda_impl(Gfn2CudaExecutionCache& ca
     const bool prior_warm_checkpoint_ready = working->inference.warm_checkpoint_ready;
     status = implementation.refresh_numerical_locked(*working, batch.positions, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return fail_working_transaction(status);
-    status = implementation.execute_inference_locked(*working, start_mode, error);
+    status = implementation.execute_inference_locked(*working, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return fail_working_transaction(status);
     /* Public synchronous readiness is finalized only after the completion
      * event and aggregate bridge diagnostics are known to have succeeded. */
