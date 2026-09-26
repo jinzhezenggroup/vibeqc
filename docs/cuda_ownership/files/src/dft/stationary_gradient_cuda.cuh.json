@@ -2,6 +2,6 @@
   "path": "src/dft/stationary_gradient_cuda.cuh",
   "role": "runtime",
   "subsystem": "xc",
-  "reason": "Finite stationary-gradient owner for resource state, validation, stream leases, transfers, launch orchestration and failure-before-publication boundaries. Primitive and XC geometry contraction bodies are compiler-emitted by method/stationary_cuda.py.",
+  "reason": "Finite stationary-gradient owner for resource state, validation, stream leases, transfers, external VV10 seeds, launch orchestration and failure-before-publication boundaries. Primitive and shared semilocal/nonlocal AO/grid/partition contractions are compiler-emitted by method/stationary_cuda.py.",
   "regions": []
 }

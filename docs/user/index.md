@@ -17,6 +17,7 @@ Use this guide to install VibeQC and run calculations. If the terminology is unf
 - [Progressive HF](progressive_hf.md)
 - [KS options](ks_options.md)
 - [Density-fitted DFT energies](dft_density_fitting.md)
+- [WB97M-V CUDA energy and forces](wb97mv_cuda.md)
 - [r2SCAN-3c](r2scan3c.md)
 
 ## Basis and Hamiltonian
@@ -45,6 +46,7 @@ basis_projection
 progressive_hf
 ks_options
 dft_density_fitting
+wb97mv_cuda
 r2scan3c
 external_basis
 high_angular_momentum

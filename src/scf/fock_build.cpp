@@ -287,7 +287,8 @@ ResolvedFockBuild resolve_fock_build(FockBuildSpec spec, FockBackend backend,
   };
   validate_term(spec.coulomb, true);
   validate_term(spec.exchange, false);
-  if (spec.derivative_order && spec.exchange.present && spec.exchange.op != FockOperator::FullRange)
+  if (backend == FockBackend::Cpu && spec.derivative_order && spec.exchange.present &&
+      spec.exchange.op != FockOperator::FullRange)
     throw std::invalid_argument(
         "range-separated Fock derivatives are not integrated into the common provider");
   const bool fitted =

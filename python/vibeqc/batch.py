@@ -499,6 +499,33 @@ class PreparedBatch:
         )
 
         calculator = self._calculator
+        if calculator._method_name.startswith("wb97m-v"):
+            from ._stationary_wb97mv_cuda import PreparedWb97mvCudaGradient
+
+            if self._stationary_cuda_execution is None:
+                self._stationary_cuda_execution = PreparedWb97mvCudaGradient()
+            with NativeAO(
+                atoms,
+                basis=calculator._basis,
+                representation=calculator._representation_name,
+                charge=self._charges[index],
+                multiplicity=self._multiplicities[index],
+            ) as basis:
+                state = StationaryKsState.from_native(self, basis, index=index)
+                try:
+                    return self._stationary_cuda_execution.execute(
+                        state,
+                        basis,
+                        compiler=self._stationary_cuda_compiler(),
+                        cache=Path(
+                            os.environ.get(
+                                "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
+                            )
+                        ),
+                        library=Path(str(self._library._name)).resolve(),
+                    )
+                finally:
+                    state._source.close()
         prepared = self._stationary_cuda_execution
         if prepared is None:
             prepared = PreparedStationaryCudaExecution()

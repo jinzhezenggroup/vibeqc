@@ -101,24 +101,36 @@ __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begi
  * Relabel exchange indices so a single ERI derivative serves J and both K
  * terms. The 1/2 energy factor is separate from signed Fock coefficients.
  */
-__global__ void independent_jk_derivative_kernel(DeviceBatch batch,
-                                                 std::size_t coordinates_per_item,
-                                                 std::size_t system_begin, double cj, double ck,
-                                                 bool unrestricted, double screening,
-                                                 const double* bounds, const double* density,
-                                                 const double* beta, double* out) {
+__global__ void independent_jk_derivative_kernel(
+    DeviceBatch batch, std::size_t coordinates_per_item, std::size_t system_begin, unsigned chunks,
+    double cj, double ck, bool unrestricted, vibeqc::integrals::CoulombRange exchange_range,
+    double exchange_omega, double screening, const double* bounds, const double* density,
+    const double* beta, double* out) {
   __shared__ double sums[kIndependentJkThreads];
   const std::size_t n = batch.nbf, matrix = n * n, quartets = matrix * matrix;
-  const std::size_t coordinate = system_begin * coordinates_per_item + blockIdx.x;
+  const std::size_t coordinate = system_begin * coordinates_per_item + blockIdx.x / chunks;
   const auto system = static_cast<std::int32_t>(coordinate / coordinates_per_item);
   const std::size_t offset = static_cast<std::size_t>(system) * matrix;
   double sum = 0.0;
-  for (std::size_t quartet = threadIdx.x; quartet < quartets; quartet += blockDim.x) {
+  // Several blocks share a coordinate so small molecules can occupy the GPU.
+  // Each quartet still belongs to exactly one lane; only the bounded block
+  // sums are atomically accumulated into the zeroed coordinate output.
+  for (std::size_t quartet = (blockIdx.x % chunks) * blockDim.x + threadIdx.x; quartet < quartets;
+       quartet += static_cast<std::size_t>(chunks) * blockDim.x) {
     const std::size_t ij = quartet / matrix, kl = quartet % matrix;
     if (bounds[offset + ij] * bounds[offset + kl] < screening) continue;
     const auto i = static_cast<std::int32_t>(ij / n), j = static_cast<std::int32_t>(ij % n);
     const auto k = static_cast<std::int32_t>(kl / n), l = static_cast<std::int32_t>(kl % n);
-    double weight = 0.0;
+    // A coordinate absent from the quartet has an exactly zero derivative.
+    // Reject it before the primitive recurrence, including spherical expansion.
+    const auto atom = static_cast<std::int32_t>(coordinate / 3);
+    const auto base = static_cast<std::size_t>(system) * n;
+    if (batch.shell_atoms[batch.ao_shells[base + i]] != atom &&
+        batch.shell_atoms[batch.ao_shells[base + j]] != atom &&
+        batch.shell_atoms[batch.ao_shells[base + k]] != atom &&
+        batch.shell_atoms[batch.ao_shells[base + l]] != atom)
+      continue;
+    double weight = 0.0, range_weight = 0.0;
     // An absent/zero-weight term must not evaluate a quadratic that can
     // overflow, even when the requested total-density contribution is finite.
     if (cj != 0.0) {
@@ -130,13 +142,21 @@ __global__ void independent_jk_derivative_kernel(DeviceBatch batch,
       const std::size_t ik = i * n + k, jl = j * n + l;
       const double exchange = density[offset + ik] * density[offset + jl] +
                               (unrestricted ? beta[offset + ik] * beta[offset + jl] : 0.0);
-      weight += ck * exchange;
+      if (exchange_range == vibeqc::integrals::CoulombRange::Full)
+        weight += ck * exchange;
+      else
+        range_weight = 0.5 * ck * exchange;
     }
     weight *= 0.5;
     if (weight != 0.0)
       sum += weight *
              contracted_eri<Dual>(batch, system, i, j, k, l, static_cast<std::int64_t>(coordinate))
                  .derivative;
+    if (range_weight != 0.0)
+      sum += range_weight * contracted_eri<Dual>(batch, system, i, j, k, l,
+                                                 static_cast<std::int64_t>(coordinate),
+                                                 exchange_range, exchange_omega)
+                                .derivative;
   }
   sums[threadIdx.x] = sum;
   __syncthreads();
@@ -144,7 +164,7 @@ __global__ void independent_jk_derivative_kernel(DeviceBatch batch,
     if (threadIdx.x < stride) sums[threadIdx.x] += sums[threadIdx.x + stride];
     __syncthreads();
   }
-  if (threadIdx.x == 0) out[coordinate] = sums[0];
+  if (threadIdx.x == 0) atomicAdd(out + coordinate, sums[0]);
 }
 
 }  // namespace
@@ -180,16 +200,18 @@ void launch_independent_jk_kernel(dim3 grid, dim3 block, std::size_t shared_byte
         exchange_omega, screening, bounds, density, beta, j_out, ka_out, kb_out);
 }
 
-void launch_independent_jk_derivative_kernel(dim3 grid, dim3 block, std::size_t shared_bytes,
-                                             cudaStream_t stream, DeviceBatch batch,
-                                             std::size_t coordinates_per_item,
-                                             std::size_t system_begin, double cj, double ck,
-                                             bool unrestricted, double screening,
-                                             const double* bounds, const double* density,
-                                             const double* beta, double* out) {
-  independent_jk_derivative_kernel<<<grid, block, shared_bytes, stream>>>(
-      batch, coordinates_per_item, system_begin, cj, ck, unrestricted, screening, bounds, density,
-      beta, out);
+void launch_independent_jk_derivative_kernel(
+    dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch,
+    std::size_t coordinates_per_item, std::size_t system_begin, double cj, double ck,
+    bool unrestricted, DirectCoulombRange exchange_range, double exchange_omega, double screening,
+    const double* bounds, const double* density, const double* beta, double* out) {
+  const std::size_t matrix = static_cast<std::size_t>(batch.nbf) * batch.nbf;
+  const unsigned chunks = static_cast<unsigned>(std::min<std::size_t>(
+      {256, (matrix * matrix + block.x - 1) / block.x, 2147483647U / grid.x}));
+  const dim3 parallel_grid(grid.x * chunks);
+  independent_jk_derivative_kernel<<<parallel_grid, block, shared_bytes, stream>>>(
+      batch, coordinates_per_item, system_begin, chunks, cj, ck, unrestricted,
+      integral_range(exchange_range), exchange_omega, screening, bounds, density, beta, out);
 }
 
 }  // namespace cuda_execution

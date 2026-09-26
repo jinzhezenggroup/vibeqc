@@ -6,7 +6,7 @@
       "start": "void enqueue_vv10_molecular_domain_cuda(",
       "stop": null,
       "role": "runtime",
-      "reason": "Caller-owned MolecularV1 padding, resident CUDA layout/enqueue and the compatibility host wrapper share one bounded execution family: validation precedes screening, pair algebra remains unchanged, ordered device reduction is deterministic, and H2D/D2H staging exists only in the wrapper."
+      "reason": "Caller-owned MolecularV1 padding, resident CUDA layout/enqueue and the compatibility host wrapper share one bounded execution family: validation precedes screening, pair algebra remains unchanged, ordered device reduction is deterministic, and H2D/D2H staging exists only in the wrapper. Independent resident row tiles share a launch with a finite grid-limit fallback; row arithmetic and ordered energy reduction are unchanged."
     }
   ],
   "role": "scientific",

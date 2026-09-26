@@ -22,6 +22,7 @@
 
 struct vibeqc_ks_snapshot {
   std::size_t index{};
+  std::size_t atoms{};
   vibeqc::dft::CudaKsFinalStateToken token;
   std::vector<double> values;
   double energy{};
@@ -81,6 +82,7 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
       return status;
     }
     const auto& state = source.state;
+    result->atoms = source.system.atoms.size();
     result->all_electron = source.system.ecp_terms.empty() &&
                            std::all_of(source.system.atoms.begin(), source.system.atoms.end(),
                                        [](const auto& atom) { return atom.ecp_core == 0; });
@@ -193,8 +195,11 @@ vibeqc_status vibeqc_ks_snapshot_wb97mv_model_v1(const vibeqc_batch* batch,
     const auto& identity = snapshot->token.identity;
     const auto& model = identity.model;
     const auto& primary = identity.determinant.model;
-    if (!snapshot->all_electron || primary.backend != vibeqc::scf::FockBackend::Cpu ||
-        model.functional != 4 || !model.range_correction || !model.nonlocal_correlation)
+    // Both backends retain the full-range short fraction plus the LR
+    // correction in this identity. The live owner token, rather than a CPU
+    // backend tag, proves the complete model for the stationary consumer.
+    if (!snapshot->all_electron || model.functional != 4 || !model.range_correction ||
+        !model.nonlocal_correlation)
       return VIBEQC_STATUS_NOT_IMPLEMENTED;
     const double spin_factor = model.spins == 1 ? -0.5 : -1.0;
     const double short_exchange = primary.spec.exchange.coefficient / spin_factor;
@@ -445,6 +450,38 @@ vibeqc_status vibeqc_ks_snapshot_ecp_derivatives_v1(vibeqc_batch* batch,
     if (status != VIBEQC_STATUS_SUCCESS) return status;
     std::copy(ecp.local_derivative.begin(), ecp.local_derivative.end(), values);
     std::copy(ecp.nonlocal_derivative.begin(), ecp.nonlocal_derivative.end(), values + count / 2);
+    return VIBEQC_STATUS_SUCCESS;
+  } catch (...) {
+    return vibeqc::api::map_exception(&batch->context->last_detail);
+  }
+}
+
+// A private, token-checked stationary consumer. Publish all integral sources
+// together only after the current CUDA owner has completed successfully.
+vibeqc_status vibeqc_ks_snapshot_cuda_integral_gradient_v1(
+    vibeqc_batch* batch, const vibeqc_ks_snapshot* snapshot, double* values, std::size_t count,
+    std::size_t maximum_bytes, std::uint64_t* work, std::size_t work_count) {
+  if (!batch || !snapshot || !values || !work || work_count != 9 || !maximum_bytes)
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  std::lock_guard<std::recursive_mutex> lock(batch->context->mutex);
+  try {
+    auto status = check_current(*batch, *snapshot);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    if (count != 15 * snapshot->atoms) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    std::vector<double> candidate;
+    std::array<std::uint64_t, 9> usage{};
+    std::string detail;
+    status = vibeqc::methods::detail::dft_cuda_integral_gradient(
+        *batch->plan, snapshot->index, snapshot->token, candidate, maximum_bytes, usage, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) {
+      batch->context->last_detail = detail;
+      return status;
+    }
+    if (candidate.size() != count) return VIBEQC_STATUS_INVALID_ARGUMENT;
+    status = check_current(*batch, *snapshot);
+    if (status != VIBEQC_STATUS_SUCCESS) return status;
+    std::copy(candidate.begin(), candidate.end(), values);
+    std::copy(usage.begin(), usage.end(), work);
     return VIBEQC_STATUS_SUCCESS;
   } catch (...) {
     return vibeqc::api::map_exception(&batch->context->last_detail);

@@ -304,7 +304,8 @@ __global__ void validate_centers(const double* centers, size_t na, double tolera
 __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* work,
                                 const int64_t* ao_atoms, const int64_t* owners,
                                 const double* centers, size_t na, const double* weights,
-                                const double* raw, double* partial, double* scratch, int* error) {
+                                const double* raw, const double* external,
+                                double* partial, double* scratch, int* error) {
   const size_t lane = threadIdx.x;
   const size_t np = view.npoint, n = view.nactive, stride = np * n;
   double* grad = partial + lane * 9 * na;
@@ -324,7 +325,22 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
     if (stationary_functional == 2 || stationary_functional == 4)
       for (size_t s = 0; s < 2; ++s) tau[s] = view.features[(5 * s + 4) * np + p];
     // The exact shared SCF point model, including vacuum/spin boundaries.
-    const auto xc = stationary_evaluate_point(rho, g, tau);
+    StationaryPointValue xc;
+    if (external) {
+      // Nonlocal E supplies partials in total rho/sigma, explicit pair
+      // coordinates and both weight legs. The existing AO/Becke pullbacks
+      // consume these seeds just like semilocal partials; tau is absent.
+      xc.energy = external[5 * np + p];
+      for (size_t s = 0; s < 2; ++s) {
+        xc.rho[s] = external[p];
+        for (size_t k = 0; k < 3; ++k)
+          xc.gradient[s][k] = 2.0 * external[np + p] * (g[0][k] + g[1][k]);
+      }
+      for (size_t k = 0; k < 3; ++k)
+        grad[3 * na + 3 * owners[p] + k] += external[(2 + k) * np + p];
+    } else {
+      xc = stationary_evaluate_point(rho, g, tau);
+    }
     if (!xc.valid) {
       atomicExch(error, 1);
       return;

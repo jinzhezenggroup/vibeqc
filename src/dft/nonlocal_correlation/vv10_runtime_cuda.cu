@@ -31,7 +31,7 @@ __device__ double pair_kernel(double r2, double wi, double wj, double ki, double
 
 unsigned launch_blocks(std::size_t count, unsigned threads) {
   const auto blocks = 1 + (count - 1) / threads;
-  if (blocks > std::numeric_limits<unsigned>::max())
+  if (blocks > static_cast<std::size_t>(std::numeric_limits<int>::max()))
     throw std::overflow_error("nonlocal CUDA launch grid overflow");
   return static_cast<unsigned>(blocks);
 }
@@ -63,7 +63,8 @@ __global__ void local_scales_kernel(std::size_t npoint, double b, double c, cons
     atomicExch(failed, 1);
 }
 
-__global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::size_t npoint,
+__global__ void pair_kernel_ordered(std::size_t row_offset, std::size_t tile_points,
+                                    std::size_t blocks_per_tile, std::size_t npoint,
                                     Vv10Parameters parameters, const double* points,
                                     const double* density, const double* omega, const double* kappa,
                                     const double* domega_drho, const double* domega_dsigma,
@@ -71,9 +72,11 @@ __global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::s
                                     double beta, double* energy_terms, double* vrho, double* vsigma,
                                     double* point_derivative, double* weight_derivative,
                                     int* failed) {
-  const auto lane = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (lane >= count) return;
-  const auto i = begin + lane;
+  const auto tile = static_cast<std::size_t>(blockIdx.x) / blocks_per_tile;
+  const auto lane =
+      (static_cast<std::size_t>(blockIdx.x) % blocks_per_tile) * blockDim.x + threadIdx.x;
+  const auto i = row_offset + tile * tile_points + lane;
+  if (lane >= tile_points || i >= npoint) return;
   double sum_phi = 0.0;
   double sum_rho = 0.0;
   double sum_sigma = 0.0;
@@ -272,13 +275,22 @@ void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters
       domega_drho, domega_dsigma, dkappa_drho, weighted_density, layout.features, numerical_error);
   runtime::cuda_resource_check(cudaGetLastError());
   const double beta = std::pow(3.0 / (parameters.b * parameters.b), 0.75) / 32.0;
-  for (std::size_t begin = 0; begin < npoint; begin += layout.tile_points) {
-    const auto count = std::min(layout.tile_points, npoint - begin);
-    const auto tile_blocks = launch_blocks(count, threads);
-    pair_kernel_ordered<<<tile_blocks, threads, 0, stream>>>(
-        begin, count, npoint, parameters, points_xyz, density, omega, kappa, domega_drho,
-        domega_dsigma, dkappa_drho, weighted_density, beta, energy_terms, vrho, vsigma,
-        point_derivative, weight_derivative, numerical_error);
+  // All point inputs, outputs and scales are already resident. Enqueue the
+  // independent logical row tiles together instead of serializing a stream
+  // into one/two-block kernels. Each row keeps its EXACT ordered j loop and
+  // the final ordered energy reduction; no pair tensor or new scratch exists.
+  const auto tile_blocks = launch_blocks(layout.tile_points, threads);
+  const auto tiles = 1 + (npoint - 1) / layout.tile_points;
+  const auto tiles_per_launch =
+      static_cast<std::size_t>(std::numeric_limits<int>::max()) / tile_blocks;
+  // Preserve a bounded launch fallback for layouts whose tile count exceeds
+  // CUDA's x-grid limit. Normal resident molecular layouts need one launch.
+  for (std::size_t first = 0; first < tiles; first += tiles_per_launch) {
+    const auto count = std::min(tiles_per_launch, tiles - first);
+    pair_kernel_ordered<<<static_cast<unsigned>(count * tile_blocks), threads, 0, stream>>>(
+        first * layout.tile_points, layout.tile_points, tile_blocks, npoint, parameters, points_xyz,
+        density, omega, kappa, domega_drho, domega_dsigma, dkappa_drho, weighted_density, beta,
+        energy_terms, vrho, vsigma, point_derivative, weight_derivative, numerical_error);
     runtime::cuda_resource_check(cudaGetLastError());
   }
   reduce_energy_ordered_kernel<<<1, 1, 0, stream>>>(npoint, energy_terms, energy, numerical_error);

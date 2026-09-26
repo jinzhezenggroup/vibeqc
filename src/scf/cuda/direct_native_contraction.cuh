@@ -99,7 +99,7 @@ __device__ inline Scalar contracted_eri_order(
   const std::int32_t shell_k = batch.ao_shells[ao_k];
   const std::int32_t shell_l = batch.ao_shells[ao_l];
   if (range != vibeqc::integrals::CoulombRange::Full) {
-    if constexpr (std::is_same_v<Scalar, double>)
+    if constexpr (!std::is_same_v<Scalar, MixedPrecisionFloat>)
       return contracted_eri_cartesian<MaximumAngular, Scalar>(batch, ao_i, ao_j, ao_k, ao_l,
                                                               shell_i, shell_j, shell_k, shell_l,
                                                               derivative_coordinate, range, omega);

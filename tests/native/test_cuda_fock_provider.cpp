@@ -198,7 +198,9 @@ void device_selection() {
 std::vector<double> reference_range_exchange(const vibeqc::core::System& system,
                                              const std::vector<double>& density,
                                              vibeqc::integrals::CoulombRange range, double omega) {
-  const auto eri = vibeqc::integrals::build_range_eri(system, range, omega);
+  const auto eri = range == vibeqc::integrals::CoulombRange::Full
+                       ? vibeqc::integrals::build_integrals(system, false, true).eri
+                       : vibeqc::integrals::build_range_eri(system, range, omega);
   const std::size_t n = vibeqc::molecule::ao_count(system);
   std::vector<double> exchange(n * n);
   for (std::size_t i = 0; i < n; ++i)
@@ -324,6 +326,92 @@ void range_exchange_provider() {
     for (std::size_t i = 0; i < ka.size(); ++i)
       require(std::isfinite(ka[i]) && std::abs(ka[i] - screened_expected[i]) < 2e-10,
               "screened CUDA range exchange differs from the screened CPU oracle");
+  }
+}
+
+/** Independent displaced CPU values check radial seeds and public AO ordering.
+ * Use two geometries in one owner to catch atom-offset mistakes, both spin
+ * contractions, and s/p/d/f including spherical expansions. No GPU value is
+ * reused as the finite-difference oracle.
+ */
+void range_exchange_derivatives() {
+  constexpr double omega = 0.3, coefficient = -0.37, step = 1e-4;
+  for (unsigned angular : {0U, 1U, 2U, 3U}) {
+    for (auto representation : {VIBEQC_BASIS_CARTESIAN, VIBEQC_BASIS_SPHERICAL}) {
+      vibeqc::core::System first;
+      first.atoms = {{1, {0.1, -0.2, -0.8}}, {1, {0.3, 0.1, 0.7}}};
+      first.shells = {{0, 0, {{0.8, 1.0}}}, {1, angular, {{0.6, 1.0}}}};
+      first.electron_count = 2;
+      first.basis_representation = representation;
+      std::string detail;
+      require(vibeqc::molecule::validate_and_normalize(first, detail) == VIBEQC_STATUS_SUCCESS,
+              detail.c_str());
+      auto second = first;
+      second.atoms[1].position[0] += 0.23;
+      const std::size_t n = vibeqc::molecule::ao_count(first), matrix = n * n;
+      std::vector<double> a(matrix), b(matrix), packed_a, packed_b;
+      for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = 0; j < n; ++j) {
+          a[i * n + j] = std::cos(0.3 * i + 0.3 * j) / n;
+          b[i * n + j] = std::sin(0.4 * i + 0.4 * j) / (2 * n);
+        }
+      packed_a = a;
+      packed_a.insert(packed_a.end(), a.begin(), a.end());
+      packed_b = b;
+      packed_b.insert(packed_b.end(), b.begin(), b.end());
+      CudaDirectJkPlan* raw{};
+      CudaDirectJkDiagnostic diagnostic;
+      require(create_cuda_direct_jk_plan(0, {first, second}, 1, 0.0, 32U << 20, &raw, diagnostic,
+                                         detail) == VIBEQC_STATUS_SUCCESS,
+              detail.c_str());
+      std::unique_ptr<CudaDirectJkPlan, decltype(&destroy_cuda_direct_jk_plan)> plan(
+          raw, &destroy_cuda_direct_jk_plan);
+      for (auto spin : {FockSpin::Restricted, FockSpin::Unrestricted}) {
+        std::vector<std::vector<double>> gradients;
+        for (auto [op, radial] :
+             {std::pair{FockOperator::FullRange, vibeqc::integrals::CoulombRange::Full},
+              std::pair{FockOperator::ShortRange, vibeqc::integrals::CoulombRange::Short},
+              std::pair{FockOperator::LongRange, vibeqc::integrals::CoulombRange::Long}}) {
+          FockBuildSpec spec;
+          spec.spin = spin;
+          spec.derivative_order = 1;
+          spec.coulomb.present = false;
+          spec.exchange = {true, coefficient, op,
+                           radial == vibeqc::integrals::CoulombRange::Full ? 0.0 : omega};
+          std::vector<double> gradient;
+          require(execute_cuda_direct_energy_derivative(
+                      plan.get(), spec, packed_a,
+                      spin == FockSpin::Unrestricted ? packed_b : std::vector<double>{}, gradient,
+                      detail) == VIBEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          for (std::size_t item = 0; item < 2; ++item) {
+            const auto energy = [&](double shift) {
+              auto displaced = item == 0 ? first : second;
+              displaced.atoms[1].position[0] += shift;
+              const auto ka = reference_range_exchange(displaced, a, radial, omega);
+              const auto kb = reference_range_exchange(displaced, b, radial, omega);
+              double value = 0.0;
+              for (std::size_t ij = 0; ij < matrix; ++ij)
+                value += 0.5 * coefficient *
+                         (a[ij] * ka[ij] + (spin == FockSpin::Unrestricted ? b[ij] * kb[ij] : 0.0));
+              return value;
+            };
+            const double fd = (energy(step) - energy(-step)) / (2 * step);
+            require(std::isfinite(gradient[item * 6 + 3]) &&
+                        std::abs(gradient[item * 6 + 3] - fd) < 3e-8,
+                    "CUDA radial derivative disagrees with displaced CPU range energy");
+            for (std::size_t axis = 0; axis < 3; ++axis)
+              require(std::abs(gradient[item * 6 + axis] + gradient[item * 6 + 3 + axis]) < 2e-11,
+                      "CUDA radial derivative violates translation invariance");
+          }
+          gradients.push_back(std::move(gradient));
+        }
+        for (std::size_t coordinate = 0; coordinate < 12; ++coordinate)
+          require(std::abs(gradients[0][coordinate] - gradients[1][coordinate] -
+                           gradients[2][coordinate]) < 2e-11,
+                  "CUDA radial full derivative is not short plus long range");
+      }
+    }
   }
 }
 
@@ -526,12 +614,18 @@ void direct_providers(bool through_f_response) {
 }  // namespace
 int main(int argc, char** argv) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--range-response-only") {
+      range_exchange_derivatives();
+      std::cout << "CUDA s/p/d/f SR/LR derivative gates PASS\n";
+      return 0;
+    }
     require(argc == 1 || (argc == 2 && std::string(argv[1]) == "--through-f-response"),
             "expected optional --through-f-response");
     const bool through_f_response = argc == 2;
     direct_value_dispatch_selection();
     device_selection();
     range_exchange_provider();
+    range_exchange_derivatives();
     direct_providers(through_f_response);
     std::cout << "CUDA independent J/K: DF layouts/selection and direct through-f values, "
               << (through_f_response ? "through-f" : "s/p") << " derivatives PASS\n";

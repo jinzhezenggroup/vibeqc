@@ -51,7 +51,7 @@ __device__ inline __noinline__ Scalar eri_cartesian_value(
     double omega = 0.0) {
   static_assert(MaximumAngular <= kMaximumCoulombOrder);
   CoulombAuxiliary<Scalar, MaximumAngular> auxiliary;
-  if constexpr (std::is_same_v<Scalar, double>) {
+  if constexpr (!std::is_same_v<Scalar, MixedPrecisionFloat>) {
     if (range == vibeqc::integrals::CoulombRange::Full)
       fill_coulomb<MaximumAngular>(rho, product_p, product_q, auxiliary);
     else if (!fill_range_coulomb<MaximumAngular>(rho, product_p, product_q, range, omega,

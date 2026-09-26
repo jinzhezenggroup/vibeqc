@@ -46,7 +46,7 @@ struct Owner {
 // Caps make all products below representable before any allocation or pointer
 // dereference. The fixed worker count bounds O(worker*natom) adjoint scratch.
 size_t allocation(size_t na, size_t n, size_t nprimitive, size_t np, size_t ntask, size_t ns) {
-  if (!na || na > 32 || !n || n > 128 || !nprimitive || nprimitive > 4096 || !np || np > 4096 ||
+  if (!na || na > 128 || !n || n > 1024 || !nprimitive || nprimitive > 16384 || !np || np > 4096 ||
       !ntask || ntask > 4096 || (ns != 1 && ns != 2) || ns != stationary_spin_blocks)
     throw std::invalid_argument("stationary CUDA shape exceeds small-domain caps");
   return 8 * (2 * nprimitive + 4 * n + 22 * ntask + 600 * na + 3 * np + 2 * ns * n * n) + 256;
@@ -118,7 +118,8 @@ __global__ void validate_centers(const double* centers, size_t na, double tolera
 __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* work,
                                 const int64_t* ao_atoms, const int64_t* owners,
                                 const double* centers, size_t na, const double* weights,
-                                const double* raw, double* partial, double* scratch, int* error);
+                                const double* raw, const double* external, double* partial,
+                                double* scratch, int* error);
 __global__ void geometry_reduce(const double* partial, size_t na, double* output, int* error);
 __global__ void source_reduce(const double* input, size_t na, double* output, int* error);
 }  // namespace vibeqc_stationary_cuda
@@ -326,9 +327,10 @@ int stationary_nuclear(void* pointer, unsigned kind, int64_t a, int64_t b, doubl
     profile_elapsed(*p, p->primitive_kernel_ms, p->stage0, p->stage1);
   });
 }
-int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, const double* work,
-                        const int64_t* owners, const double* weights, const double* raw,
-                        char* error, size_t size) {
+int stationary_geometry_external(void* pointer, const vibeqc::dft::GridTaskView* view,
+                                 const double* work, const int64_t* owners, const double* weights,
+                                 const double* raw, const double* external, char* error,
+                                 size_t size) {
   using namespace vibeqc_stationary_cuda;
   auto* p = static_cast<Owner*>(pointer);
   return guarded(p, error, size, [&] {
@@ -338,6 +340,16 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
       throw std::invalid_argument("invalid geometry task lease");
     check(*p);
     auto stream = view->stream;
+    // This optional bounded tile is accounted separately by the nonlocal
+    // caller (6*npoint FP64 values). It lives through the borrowed stream.
+    vibeqc::runtime::OwnedCudaBuffer<double> seeds;
+    if (external) {
+      for (size_t i = 0; i < 6 * view->npoint; ++i)
+        if (!std::isfinite(external[i]))
+          throw std::invalid_argument("nonfinite nonlocal geometry seed");
+      seeds.allocate(p->context.device, 6 * view->npoint, stream);
+      upload(*p, seeds.get(), external, 6 * view->npoint, stream);
+    }
     // CudaGrid synchronized its producer before lending this view. Finish on
     // the SAME borrowed stream before the lease ends; retain no task pointers.
     try {
@@ -346,9 +358,9 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
       upload(*p, p->weights, weights, view->npoint, stream);
       upload(*p, p->raw, raw, view->npoint, stream);
       profile_record(*p, p->stage1, stream);
-      geometry_kernel<<<1, workers, 0, stream>>>(*view, work, p->ao_atoms, p->point_atoms,
-                                                 p->centers, p->atoms, p->weights, p->raw,
-                                                 p->partial, p->scratch, p->context.error);
+      geometry_kernel<<<1, workers, 0, stream>>>(
+          *view, work, p->ao_atoms, p->point_atoms, p->centers, p->atoms, p->weights, p->raw,
+          seeds.get(), p->partial, p->scratch, p->context.error);
       profile_record(*p, p->stage2, stream);
       geometry_reduce<<<blocks(9 * p->atoms, 64), 64, 0, stream>>>(
           p->partial, p->atoms, p->sources + 6 * p->atoms, p->context.error);
@@ -376,6 +388,12 @@ int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, co
       throw;
     }
   });
+}
+int stationary_geometry(void* pointer, const vibeqc::dft::GridTaskView* view, const double* work,
+                        const int64_t* owners, const double* weights, const double* raw,
+                        char* error, size_t size) {
+  return stationary_geometry_external(pointer, view, work, owners, weights, raw, nullptr, error,
+                                      size);
 }
 int stationary_finish(void* pointer, double* output, size_t count, char* error, size_t size) {
   using namespace vibeqc_stationary_cuda;

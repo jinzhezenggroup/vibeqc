@@ -106,15 +106,12 @@ FockBuildSpec direct_jk_strategy(const CudaDirectJkPlan* plan, FockBuildSpec spe
   direct_jk_require(begin < plan->diagnostic.batch_size && count > 0 &&
                         count <= plan->diagnostic.batch_size - begin,
                     "direct J/K item range is invalid");
-  spec = resolve_fock_build(spec, FockBackend::Cpu).spec;  // Mathematical validation only.
+  spec = resolve_fock_build(spec, FockBackend::Cuda).spec;
   for (const auto* term : {&spec.coulomb, &spec.exchange})
     direct_jk_require(!term->present || term->approximation == FockApproximation::Exact,
                       "exact direct source cannot execute a fitted provider");
   direct_jk_require(!spec.coulomb.present || spec.coulomb.op == FockOperator::FullRange,
                     "direct CUDA Coulomb supports only the full-range operator");
-  const bool range_exchange = spec.exchange.present && spec.exchange.op != FockOperator::FullRange;
-  direct_jk_require(!range_exchange || spec.derivative_order == 0,
-                    "range-separated CUDA exchange is value-only");
   // The existing full-range Schwarz matrix is a conservative bound for both
   // erf(omega r)/r and erfc(omega r)/r: their Fourier multipliers are
   // nonnegative and bounded above by the full Coulomb multiplier.
@@ -546,9 +543,12 @@ static vibeqc_status execute_cuda_direct_energy_derivative_range(
     if (cj != 0.0 || ck != 0.0) {
       DirectJkDownloadFence fence{plan->stream};
       direct_jk_upload_density(*plan, density, beta, offset);
+      direct_jk_check(cudaMemsetAsync(plan->derivative + begin * plan->coordinates_per_item, 0,
+                                      result.size() * sizeof(double), plan->stream));
       launch_independent_jk_derivative_kernel(
           static_cast<unsigned>(result.size()), kIndependentJkThreads, 0, plan->stream, plan->batch,
           plan->coordinates_per_item, begin, cj, ck, spec.spin == FockSpin::Unrestricted,
+          direct_exchange_range(spec.exchange), spec.exchange.present ? spec.exchange.omega : 0.0,
           plan->screening_tolerance, plan->bounds, plan->density, plan->beta, plan->derivative);
       direct_jk_check(cudaGetLastError());
       direct_jk_check(
