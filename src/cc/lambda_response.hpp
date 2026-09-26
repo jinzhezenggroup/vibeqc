@@ -31,6 +31,11 @@ struct LambdaDiagnostic {
   std::size_t iterations{};
   std::size_t operator_actions{};
   std::size_t numeric_capacity_bytes{};
+  std::size_t owned_device_bytes{};
+  std::size_t h2d_bytes{};
+  std::size_t d2h_bytes{};
+  std::size_t synchronizations{};
+  bool cuda_actions{};
   const char* shared_program_hash{};
   const char* independent_program_hash{};
 };
@@ -59,5 +64,21 @@ LambdaResult solve_lambda_cpu_with_energy_source(const Problem& problem,
                                                  std::span<const double> t1_source,
                                                  std::span<const double> t2_source,
                                                  const LambdaOptions& options = {});
+
+#if VIBEQC_HAS_CUDA
+/** Solve RCCSD Lambda with generated RHS/J^T actions executed on CUDA.
+ *
+ * GMRES control and packed symmetry projection remain host-owned in this first
+ * native residency slice. The generated scientific actions execute on the
+ * selected CUDA device without a CPU response fallback.
+ */
+LambdaResult solve_lambda_cuda(const Problem& problem, const SolverResult& cc_result, int device,
+                               const LambdaOptions& options = {});
+LambdaResult solve_lambda_cuda_with_energy_source(const Problem& problem,
+                                                  const SolverResult& cc_result,
+                                                  std::span<const double> t1_source,
+                                                  std::span<const double> t2_source, int device,
+                                                  const LambdaOptions& options = {});
+#endif
 
 }  // namespace vibeqc::cc
