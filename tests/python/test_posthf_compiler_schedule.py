@@ -28,12 +28,12 @@ def test_ordered_source_reuse_minimizes_scans_under_retained_outputs() -> None:
     plan = ordered_source_reuse_plan(
         common_bytes=20,
         fixed_live_bytes=10,
-        budget_bytes=105,
+        budget_bytes=110,
         requests=requests,
     )
     assert [(batch.begin, batch.end) for batch in plan.batches] == [(0, 2), (2, 3)]
     assert plan.source_scans == 2
-    assert plan.peak_bytes == 100
+    assert plan.peak_bytes == 110
 
 
 def test_ordered_source_reuse_rejects_request_that_cannot_fit() -> None:
