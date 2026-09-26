@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import typing
 import weakref
 from types import SimpleNamespace
 
@@ -11,7 +12,7 @@ import pytest
 from tools.vibeqc_hessian import rks_molecular
 
 
-def _stub_operator(monkeypatch: pytest.MonkeyPatch):
+def _stub_operator(monkeypatch: pytest.MonkeyPatch) -> typing.Any:
     class Operator:
         xc_kernel = SimpleNamespace(basis=SimpleNamespace(natom=2))
         state = SimpleNamespace(
@@ -40,7 +41,11 @@ def test_symmetry_check_reuses_scratch_before_immutable_publication(
     original_abs = np.abs
     original_immutable = rks_molecular.immutable
 
-    def fake_many(_operator, directions, **kwargs):
+    def fake_many(
+        _operator: typing.Any,
+        directions: typing.Any,
+        **kwargs: typing.Any,
+    ) -> SimpleNamespace:
         vectors = np.asarray(directions).reshape(len(directions), 6)
         calls.append(len(directions))
         return SimpleNamespace(
@@ -49,13 +54,17 @@ def test_symmetry_check_reuses_scratch_before_immutable_publication(
             diagnostics={"multi_rhs_calls": 1},
         )
 
-    def checked_abs(value, *args, **kwargs):
+    def checked_abs(
+        value: typing.Any,
+        *args: typing.Any,
+        **kwargs: typing.Any,
+    ) -> typing.Any:
         if np.shape(value) == expected.shape:
             assert kwargs.get("out") is value, "second dense scratch allocation"
             scratch_refs.append(weakref.ref(value))
         return original_abs(value, *args, **kwargs)
 
-    def checked_immutable(value, **kwargs):
+    def checked_immutable(value: typing.Any, **kwargs: typing.Any) -> typing.Any:
         assert scratch_refs, "symmetry check was not exercised"
         assert all(ref() is None for ref in scratch_refs)
         return original_immutable(value, **kwargs)
@@ -82,7 +91,7 @@ def test_one_byte_short_output_budget_refuses_before_block_work(
 ) -> None:
     operator = _stub_operator(monkeypatch)
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
         raise AssertionError("HVP started before output admission")
 
     monkeypatch.setattr(rks_molecular, "rks_hvp_many", forbidden)
