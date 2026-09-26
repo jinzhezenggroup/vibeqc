@@ -15,6 +15,18 @@ def test_split_hybrid_registry_uses_stable_libxc_encoded_codes() -> None:
     assert entries["MN15"]["family"] == "mgga"
     assert entries["M06-2X"]["code"] == (MGGA_CODE_BASE | 450)
     assert entries["MN15"]["code"] == (MGGA_CODE_BASE | 268)
+    assert entries["M06-2X"]["exchange_registration"] == "HYB_MGGA_X_M06_2X"
+    assert entries["M06-2X"]["correlation_registration"] == "MGGA_C_M06_2X"
+    assert entries["MN15"]["exchange_registration"] == "HYB_MGGA_X_MN15"
+    assert entries["MN15"]["correlation_registration"] == "MGGA_C_MN15"
+    assert (
+        entries["M06-2X"]["exact_exchange_numerator"],
+        entries["M06-2X"]["exact_exchange_denominator"],
+    ) == (27, 50)
+    assert (
+        entries["MN15"]["exact_exchange_numerator"],
+        entries["MN15"]["exact_exchange_denominator"],
+    ) == (11, 25)
     assert GGA_CODE_BASE != MGGA_CODE_BASE
 
 
@@ -23,7 +35,15 @@ def test_split_hybrid_registry_is_host_safe_and_device_generated() -> None:
     assert "kM062XFunctionalCode = 0x201c2U" in source
     assert "kMN15FunctionalCode = 0x2010cU" in source
     assert "split_hybrid_registered" in source
+    assert "split_hybrid_functional_code" in source
+    assert "HYB_MGGA_X_M06_2X" in source
+    assert "MGGA_C_M06_2X" in source
+    assert "HYB_MGGA_X_MN15" in source
+    assert "MGGA_C_MN15" in source
     assert "split_hybrid_is_mgga" in source
+    assert "split_hybrid_composition" in source
+    assert "return {27U, 50U, true};" in source
+    assert "return {11U, 25U, true};" in source
     assert "#if defined(__CUDACC__)" in source
     assert "evaluate_split_hybrid" in source
     assert "m06_2x_device" in source

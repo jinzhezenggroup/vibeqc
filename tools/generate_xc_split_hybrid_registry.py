@@ -87,6 +87,10 @@ def registry_entries(path: Path = MANIFEST) -> tuple[dict[str, object], ...]:
                 "type_name": type_name,
                 "function_name": f"{function_stem}_device",
                 "features": features,
+                "exchange_registration": method.exchange_registration,
+                "correlation_registration": method.correlation_registration,
+                "exact_exchange_numerator": method.exact_exchange.numerator,
+                "exact_exchange_denominator": method.exact_exchange.denominator,
             }
         )
     return tuple(entries)
@@ -107,6 +111,37 @@ def emit_registry(path: Path = MANIFEST) -> str:
         for entry in entries
         if entry["family"] == "mgga"
     )
+    component_cases = []
+    for entry in entries:
+        component_cases.extend(
+            [
+                (
+                    '  if ((first == "'
+                    f"{entry['exchange_registration']}"
+                    '" && second == "'
+                    f"{entry['correlation_registration']}"
+                    '") || (first == "'
+                    f"{entry['correlation_registration']}"
+                    '" && second == "'
+                    f"{entry['exchange_registration']}"
+                    '"))'
+                ),
+                f"    return 0x{entry['code']:x}U;",
+            ]
+        )
+    composition_cases = []
+    for entry in entries:
+        composition_cases.extend(
+            [
+                f"    case 0x{entry['code']:x}U:",
+                (
+                    "      return {"
+                    f"{entry['exact_exchange_numerator']}U, "
+                    f"{entry['exact_exchange_denominator']}U, true"
+                    "};"
+                ),
+            ]
+        )
     device_bodies = "\n".join(str(entry["body"]).rstrip("\n") for entry in entries)
     dispatch_cases = []
     for entry in entries:
@@ -131,6 +166,9 @@ def emit_registry(path: Path = MANIFEST) -> str:
             "// Generated from manifests/cuda_split_hybrids.json; do not edit.",
             "#pragma once",
             "#include <cstdint>",
+            "#if !defined(__CUDA_ARCH__)",
+            "#include <string_view>",
+            "#endif",
             "#if defined(__CUDACC__)",
             "#include <cmath>",
             "#define VIBEQC_SPLIT_HYBRID_HD __host__ __device__",
@@ -142,6 +180,13 @@ def emit_registry(path: Path = MANIFEST) -> str:
             "inline constexpr std::uint32_t kSplitHybridMggaCodeBase = 0x20000U;",
             "inline constexpr std::uint32_t kSplitHybridFamilyMask = 0xf0000U;",
             code_constants,
+            "#if !defined(__CUDA_ARCH__)",
+            "inline constexpr std::uint32_t split_hybrid_functional_code(",
+            "    std::string_view first, std::string_view second) noexcept {",
+            *component_cases,
+            "  return 0U;",
+            "}",
+            "#endif",
             "VIBEQC_SPLIT_HYBRID_HD inline constexpr bool split_hybrid_registered(",
             "    std::uint32_t functional) noexcept {",
             "  switch (functional) {",
@@ -158,6 +203,19 @@ def emit_registry(path: Path = MANIFEST) -> str:
             "      return true;",
             "    default:",
             "      return false;",
+            "  }",
+            "}",
+            "struct SplitHybridComposition {",
+            "  std::uint32_t exact_exchange_numerator{};",
+            "  std::uint32_t exact_exchange_denominator{};",
+            "  bool matched{};",
+            "};",
+            "VIBEQC_SPLIT_HYBRID_HD inline constexpr SplitHybridComposition",
+            "split_hybrid_composition(std::uint32_t functional) noexcept {",
+            "  switch (functional) {",
+            *composition_cases,
+            "    default:",
+            "      return {};",
             "  }",
             "}",
             "#if defined(__CUDACC__)",
