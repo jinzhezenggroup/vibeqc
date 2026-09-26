@@ -106,8 +106,8 @@ contracted_eri_cartesian_source_order3_generated_weighted_gradient(
       generated_weighted_eri::Geometry geometry;
       const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
           first_data, second_data, !first_pair_matches_canonical_order,
-          !second_pair_matches_canonical_order, position[0], position[1], position[2],
-          position[3], geometry);
+          !second_pair_matches_canonical_order, position[0], position[1], position[2], position[3],
+          geometry);
       boys_values<4>(boys_argument, geometry.boys);
 
       generated_weighted_eri::IndependentGradient primitive{};
