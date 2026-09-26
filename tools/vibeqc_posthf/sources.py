@@ -12,6 +12,7 @@ from math import prod
 import numpy as np
 from vibeqc import Atom, Calculator, _native
 from vibeqc.profiles import canonical_hash
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.integral.blocks import (
     BlockRequest,
     BlockResponse,
@@ -349,9 +350,7 @@ class NativeSource:
         )
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
-        error = ct.create_string_buffer(2048)
-        if getattr(self._library, name)(*args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        checked_native_call(getattr(self._library, name), *args)
 
     def _check_open(self) -> None:
         if not self._handle:
