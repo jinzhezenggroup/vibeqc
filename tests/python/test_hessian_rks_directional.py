@@ -431,6 +431,7 @@ def test_complete_rks_hvp_many_reuses_one_multi_rhs_response(
             rtol=0,
         )
 
+
 def test_rks_hessian_assembles_raw_columns_in_blocks(
     case: typing.Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
