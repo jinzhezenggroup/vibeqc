@@ -52,6 +52,9 @@ def test_primary_streaming_partition_replay_matches_libcint(
         reference = (scf.UHF if separate else scf.RHF)(molecule)
         reference.conv_tol = 1e-13
         reference.conv_tol_grad = 1e-10
+        # The cation needs about 60 cycles at this gradient tolerance; PySCF's
+        # default limit of 50 would stop before the independent oracle converges.
+        reference.max_cycle = 100
         reference.kernel()
         assert reference.converged
         references.append((reference.e_tot, -reference.nuc_grad_method().kernel()))
