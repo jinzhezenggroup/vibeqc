@@ -606,11 +606,10 @@ vibeqc_status execute_cuda_direct_rsh_energy_derivatives_item(
   return direct_jk_guard(plan, detail, [&] {
     direct_jk_require(plan != nullptr && item < plan->diagnostic.batch_size,
                       "invalid fused RSH derivative item");
-    direct_jk_require(std::isfinite(coulomb_coefficient) &&
-                          std::isfinite(short_exchange_coefficient) &&
-                          std::isfinite(long_exchange_coefficient) && std::isfinite(omega) &&
-                          omega >= 0.0,
-                      "nonfinite fused RSH derivative coefficient");
+    direct_jk_require(
+        std::isfinite(coulomb_coefficient) && std::isfinite(short_exchange_coefficient) &&
+            std::isfinite(long_exchange_coefficient) && std::isfinite(omega) && omega >= 0.0,
+        "nonfinite fused RSH derivative coefficient");
     FockBuildSpec spec;
     spec.spin = spin;
     spec.derivative_order = 1;

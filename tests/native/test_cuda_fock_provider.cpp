@@ -428,11 +428,9 @@ void range_exchange_derivatives() {
           for (std::size_t coordinate = 0; coordinate < 6; ++coordinate) {
             require(std::abs(fused[coordinate] - j_gradient[coordinate]) < 2e-11,
                     "fused CUDA RSH Coulomb derivative changed");
-            require(std::abs(fused[6 + coordinate] -
-                             gradients[1][item * 6 + coordinate]) < 2e-11,
+            require(std::abs(fused[6 + coordinate] - gradients[1][item * 6 + coordinate]) < 2e-11,
                     "fused CUDA short-range derivative changed");
-            require(std::abs(fused[12 + coordinate] -
-                             gradients[2][item * 6 + coordinate]) < 2e-11,
+            require(std::abs(fused[12 + coordinate] - gradients[2][item * 6 + coordinate]) < 2e-11,
                     "fused CUDA long-range derivative changed");
           }
         }
