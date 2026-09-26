@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.resources import MAX_BYTES, checked_bytes
+from vibeqc_compiler.common.source_reuse import uniform_source_reuse_plan
 
 
 def _add(a: int, b: int) -> int:
@@ -44,14 +45,10 @@ def conventional_reuse_plan(
 ) -> ConventionalReusePlan:
     """Plan paired direct/exchange requests without changing job order."""
 
-    checked_bytes(request_capacity, "MP2 provider request capacity")
-    checked_bytes(total_jobs, "MP2 total jobs")
-    if not total_jobs:
-        raise ValueError("MP2 reuse schedule requires at least one job")
-    if request_capacity < 2:
-        return ConventionalReusePlan(False, 1, 1)
-    jobs = min(request_capacity // 2, total_jobs)
-    return ConventionalReusePlan(True, jobs, _mul(2, jobs))
+    plan = uniform_source_reuse_plan(request_capacity, 2, total_jobs)
+    return ConventionalReusePlan(
+        plan.shared_scan, plan.jobs_per_batch, plan.provider_requests
+    )
 
 
 @dataclass(frozen=True)
@@ -195,6 +192,7 @@ def native_header() -> str:
 #include <cstddef>
 #include <stdexcept>
 #include "posthf/capacity.hpp"
+#include "posthf/source_reuse_schedule_generated.hpp"
 namespace vibeqc::mp2::generated {
 struct ConventionalReusePlan {
   bool shared_scan;
@@ -203,10 +201,9 @@ struct ConventionalReusePlan {
 };
 inline ConventionalReusePlan conventional_reuse_plan(std::size_t request_capacity,
                                                        std::size_t total_jobs) {
-  if (!total_jobs) throw std::invalid_argument("MP2 reuse schedule requires at least one job");
-  if (request_capacity < 2) return {false, 1, 1};
-  const auto jobs = std::min(request_capacity / 2, total_jobs);
-  return {true, jobs, posthf::checked_mul(2, jobs)};
+  const auto plan =
+      posthf::generated::uniform_source_reuse_plan(request_capacity, 2, total_jobs);
+  return {plan.shared_scan, plan.jobs_per_batch, plan.provider_requests};
 }
 struct RiMp2ResidencyPlan {
   std::size_t virtual_block;

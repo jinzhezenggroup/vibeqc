@@ -1,6 +1,7 @@
 #include "methods/rccsd_method.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -8,6 +9,7 @@
 #include <mutex>
 #include <numeric>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +20,7 @@
 #include "posthf/capacity.hpp"
 #include "posthf/native_provider.hpp"
 #include "posthf/raw_source.hpp"
+#include "posthf/source_reuse_schedule_generated.hpp"
 #include "runtime/execution_context.hpp"
 #include "scf/mean_field.hpp"
 
@@ -216,29 +219,59 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
   posthf::RawSource source(system);
   posthf::NativeBlockProvider provider(source, ref, options.max_bytes, 2);
   const auto occ = range(0, o), vir = range(o, n);
-  std::size_t retained = 0, peak = p.reference_retained_bytes;
-  auto fetch = [&](posthf::MOSlots slots, std::array<std::size_t, 4> shape) {
-    const auto plan = provider.plan(shape, cuda);
-    auto live = posthf::checked_add(
-        p.reference_retained_bytes,
-        posthf::checked_add(retained, posthf::checked_add(plan.host_bytes, plan.device_bytes)));
-    peak = std::max(peak, live);
-    if (peak > options.max_bytes)
-      throw std::length_error(
-          "RCCSD reference, MO provider, and retained blocks exceed memory budget");
-    auto values = provider.get(slots, cuda, device);
-    retained = posthf::checked_add(retained, posthf::checked_mul(values.size(), sizeof(double)));
-    peak = std::max(peak, posthf::checked_add(p.reference_retained_bytes, retained));
-    return values;
-  };
-  p.ovov = fetch({occ, vir, occ, vir}, {o, v, o, v});
-  p.ovvo = fetch({occ, vir, vir, occ}, {o, v, v, o});
-  p.oovv = fetch({occ, occ, vir, vir}, {o, o, v, v});
-  p.ovvv = fetch({occ, vir, vir, vir}, {o, v, v, v});
-  p.ovoo = fetch({occ, vir, occ, occ}, {o, v, o, o});
-  p.oooo = fetch({occ, occ, occ, occ}, {o, o, o, o});
-  p.vvvv = fetch({vir, vir, vir, vir}, {v, v, v, v});
-  p.provider_peak_bytes = peak;
+  const std::array<posthf::MOSlots, 7> requests{{
+      {occ, vir, occ, vir},
+      {occ, vir, vir, occ},
+      {occ, occ, vir, vir},
+      {occ, vir, vir, vir},
+      {occ, vir, occ, occ},
+      {occ, occ, occ, occ},
+      {vir, vir, vir, vir},
+  }};
+  const std::array<std::array<std::size_t, 4>, 7> shapes{{
+      {o, v, o, v},
+      {o, v, v, o},
+      {o, o, v, v},
+      {o, v, v, v},
+      {o, v, o, o},
+      {o, o, o, o},
+      {v, v, v, v},
+  }};
+  const std::array<std::vector<double>*, 7> targets{&p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
+                                                    &p.ovoo, &p.oooo, &p.vvvv};
+
+  const auto common_bytes = provider.batch_bytes(shapes.front(), 0, cuda);
+  std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
+  schedule_requests.reserve(requests.size());
+  for (const auto& shape : shapes) {
+    const auto single_bytes = provider.batch_bytes(shape, 1, cuda);
+    if (single_bytes < common_bytes)
+      throw std::logic_error("RCCSD provider request accounting underflow");
+    std::size_t output_elements = 1;
+    for (const auto extent : shape) output_elements = posthf::checked_mul(output_elements, extent);
+    schedule_requests.push_back(
+        {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
+  }
+  const auto reuse = posthf::generated::ordered_source_reuse_plan(
+      common_bytes, p.reference_retained_bytes, options.max_bytes, schedule_requests);
+
+  std::size_t retained = 0;
+  for (const auto& batch : reuse.batches) {
+    std::vector<posthf::MOSlots> batch_requests;
+    batch_requests.reserve(batch.end - batch.begin);
+    for (std::size_t request = batch.begin; request < batch.end; ++request)
+      batch_requests.push_back(requests[request]);
+    auto outputs = provider.get_many(batch_requests, cuda, device);
+    if (outputs.size() != batch_requests.size())
+      throw std::runtime_error("RCCSD MO provider returned an invalid batch");
+    for (std::size_t local = 0; local < outputs.size(); ++local) {
+      const auto request = batch.begin + local;
+      retained =
+          posthf::checked_add(retained, posthf::checked_mul(outputs[local].size(), sizeof(double)));
+      *targets[request] = std::move(outputs[local]);
+    }
+  }
+  p.provider_peak_bytes = reuse.peak_bytes;
   p.provider_host_bytes = retained;
 
   p.initial_t1.assign(o * v, 0.0);
