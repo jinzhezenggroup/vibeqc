@@ -7,18 +7,11 @@ from dataclasses import dataclass
 from fractions import Fraction
 from typing import ClassVar
 
+from vibeqc_compiler.common.exact import require_fraction
 from vibeqc_compiler.common.nonlocal_correlation import (
     NonlocalCorrelationSpec,
     UnsupportedNonlocalCorrelation,
 )
-
-
-def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
-    if not isinstance(value, Fraction):
-        raise UnsupportedNonlocalCorrelation(
-            f"{label} requires an exact Fraction parameter"
-        )
-    return value
 
 
 @dataclass(frozen=True)
@@ -32,7 +25,12 @@ class NonlocalCorrelationPrimitive:
     def __post_init__(self) -> None:
         if not isinstance(self.spec, NonlocalCorrelationSpec):
             raise TypeError("nonlocal primitive requires NonlocalCorrelationSpec")
-        _require_fraction(self.coefficient, "nonlocal-correlation coefficient")
+        require_fraction(
+            self.coefficient,
+            "nonlocal-correlation coefficient",
+            UnsupportedNonlocalCorrelation,
+            role="parameter",
+        )
         if self.coefficient <= 0:
             raise UnsupportedNonlocalCorrelation(
                 "nonlocal-correlation coefficient must be positive"
