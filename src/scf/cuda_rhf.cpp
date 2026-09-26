@@ -581,8 +581,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const bool bounded_direct_count_diagnostic = bounded_direct_count_diagnostic_requested();
   const bool bounded_direct_aot_only_diagnostic = bounded_direct_aot_only_diagnostic_requested();
   const bool bounded_direct_fock_only_diagnostic = bounded_direct_fock_only_diagnostic_requested();
+  const auto primary_streaming_fock_override =
+      bounded_direct_primary_streaming_fock_mask_requested();
   const std::uint64_t requested_primary_streaming_fock_mask =
-      bounded_direct_primary_streaming_fock_mask_requested().value_or(0U);
+      primary_streaming_fock_override.value_or(
+          generated::preferred_streaming_fock_shell_class_mask());
   const bool bounded_fock_class_timing = bounded_fock_class_timing_requested();
   const auto direct_tile_validation_policy = cuda_policy::resolve_direct_tile_validation_policy();
   const bool direct_tile_validation = direct_tile_validation_policy.requested;
