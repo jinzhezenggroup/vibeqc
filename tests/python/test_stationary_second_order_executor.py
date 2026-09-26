@@ -12,13 +12,27 @@ from vibeqc_compiler.method import (
 )
 from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
 
-from tools.vibeqc_hessian.stationary_executor import (
+from vibeqc.second_order import (
     StationaryHVPContext,
     StationaryHVPContributor,
     StationaryPerturbationProvider,
     StationaryResponseDriver,
     StationarySecondOrderExecutor,
 )
+
+
+
+
+
+def test_tools_compatibility_shim_reexports_production_owner() -> None:
+    """Repository tools must not retain a second second-order implementation."""
+    from tools.vibeqc_hessian import stationary_executor as compatibility
+
+    assert compatibility.StationaryHVPContext is StationaryHVPContext
+    assert compatibility.StationaryHVPContributor is StationaryHVPContributor
+    assert compatibility.StationaryPerturbationProvider is StationaryPerturbationProvider
+    assert compatibility.StationaryResponseDriver is StationaryResponseDriver
+    assert compatibility.StationarySecondOrderExecutor is StationarySecondOrderExecutor
 
 
 def _pbe_plan() -> StationaryHVPPlan:
