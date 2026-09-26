@@ -27,8 +27,10 @@ def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
         source, "posthf_cuda_download_v1", "posthf_cuda_metrics_v1"
     )
     helper_begin = source.index("void validate(Transform& p)")
-    helper_end = source.index("}  // namespace", helper_begin)
-    helper = source[helper_begin:helper_end]
+    batch_helper_begin = source.index("void validate(BatchTransform& p)")
+    helper = source[helper_begin:batch_helper_begin]
+    batch_helper_end = source.index("}  // namespace", batch_helper_begin)
+    batch_helper = source[batch_helper_begin:batch_helper_end]
 
     assert "cublasDaxpy" in add
     assert "check_scale<<<" not in add
@@ -36,8 +38,10 @@ def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
     assert "cudaStreamSynchronize" not in add
     assert "p.validated = false" in add
 
-    assert source.count("check_scale<<<") == 1
+    assert helper.count("check_scale<<<") == 1
+    assert batch_helper.count("check_scale<<<") == 1
     assert "if (p.validated) return" in helper
+    assert "if (p.validated) return" in batch_helper
     validation = helper.index("check_scale<<<")
     status = helper.index("cudaMemcpyAsync(&invalid")
     failure = helper.index(
@@ -74,3 +78,26 @@ def test_cuda_mo_validation_work_scales_with_publications_not_source_tiles() -> 
         source_tiles = _source_tiles(nbf)
         measured = (source_tiles, 1, source_tiles * 4, 4)
         assert measured == census
+
+
+def test_native_multi_request_cuda_reuses_one_raw_upload_and_context() -> None:
+    source = NATIVE.read_text(encoding="utf-8")
+    provider = (ROOT / "src/posthf/native_provider.cpp").read_text(encoding="utf-8")
+
+    batch_add = _function_body(
+        source, "posthf_cuda_batch_add_v1", "posthf_cuda_batch_download_v1"
+    )
+    batch_download = _function_body(
+        source, "posthf_cuda_batch_download_v1", "posthf_cuda_batch_metrics_v1"
+    )
+
+    assert batch_add.count("cudaMemcpyAsync(p.raw, values") == 1
+    assert "for (auto& state : p.states)" in batch_add
+    assert batch_add.count("ctx.section(true, ctx.metrics.input_ms") == 1
+    assert batch_add.count("ctx.section(true, ctx.metrics.library_ms") == 1
+    assert batch_download.count("ctx.section(true, ctx.metrics.output_ms") == 1
+
+    assert "posthf_cuda_batch_create_v1(" in provider
+    assert "posthf_cuda_batch_add_v1(" in provider
+    assert "posthf_cuda_batch_download_v1(" in provider
+    assert "device_blocks.pointers" not in provider

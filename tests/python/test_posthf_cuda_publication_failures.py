@@ -30,9 +30,12 @@ constexpr int cudaMemcpyHostToDevice=1, cudaMemcpyDeviceToHost=2;
 constexpr int CUBLAS_OP_N=0,CUBLAS_OP_T=1;
 static std::vector<std::function<void()>> pending;
 static bool late_library=false, late_input=false, fail_sync=false, wrong_device=false;
-static int scans=0, drains=0;
+static int scans=0, drains=0, fail_output_copy=0;
+static bool late_output=false;
 void flush() { auto work=std::move(pending); pending.clear(); for(auto& fn:work) fn(); }
-int cudaMemcpyAsync(void* d,const void* s,std::size_t n,int,cudaStream_t) {
+int cudaMemcpyAsync(void* d,const void* s,std::size_t n,int kind,cudaStream_t) {
+  if(kind==cudaMemcpyDeviceToHost && n==sizeof(double) && fail_output_copy>0 &&
+      --fail_output_copy==0)return 1;
   pending.emplace_back([=]{std::memcpy(d,s,n);}); return 0;
 }
 int cudaStreamSynchronize(cudaStream_t) {
@@ -64,6 +67,7 @@ struct Context {
   template<class F> void section(bool,double& metric,F fn){
     fn();
     if(&metric==&metrics.input_ms && late_input){late_input=false;throw std::runtime_error("input event failed");}
+    if(&metric==&metrics.output_ms && late_output){late_output=false;throw std::runtime_error("output event failed");}
     flush();
     if(&metric==&metrics.library_ms && late_library){late_library=false;throw std::runtime_error("elapsed-time failed");}
   }
@@ -122,8 +126,51 @@ int main(int argc,char**argv){
     if(add()||posthf_cuda_pointer_v1(&p)!=p.result||scans!=1)return 24;
     if(posthf_cuda_pointer_v1(&p)!=p.result||scans!=1)return 25;
     if(posthf_cuda_pointer_v1(nullptr)!=nullptr)return 26;
+  }else if(mode==12){
+    if(add()||validate())return 32;
+    const auto before=drains;
+    late_output=true;
+    if(read()==0||!pending.empty()||drains!=before+1)return 33;
+    download=12345;
+    flush();
+    if(download!=12345||read()||download!=2)return 34;
+  }else if(mode==10||mode==11||mode==13||mode==14){
+    BatchTransform batch;
+    batch.nbf=1; batch.tile.fill(1); batch.states.resize(2); batch.context.error=&invalid;
+    double raw=0,coeff[8]{1,1,1,1,1,1,1,1};
+    double first[2]{},second_batch[2]{},result_batch[2]{};
+    batch.raw=&raw;
+    for(std::size_t request=0;request<2;++request){
+      auto& state=batch.states[request];
+      state.stage=state.output=1; state.coefficients=4; state.m.fill(1);
+      state.c_offset={0,1,2,3}; state.c=coeff+4*request;
+      state.first=&first[request];state.second=&second_batch[request];
+      state.result=&result_batch[request];
+    }
+    double batch_value=mode==11?std::numeric_limits<double>::quiet_NaN():2;
+    double out0=12345,out1=12345; double* outs[2]{&out0,&out1};
+    std::size_t sizes[2]{1,1};
+    if(posthf_cuda_batch_add_v1(&batch,&batch_value,begin,count,error,sizeof(error)))return 28;
+    const auto before=drains;
+    if(mode==13)late_output=true;
+    if(mode==14)fail_output_copy=2;
+    int status=posthf_cuda_batch_download_v1(&batch,outs,sizes,2,error,sizeof(error));
+    if(mode==10){
+      if(status||scans!=2||out0!=2||out1!=2)return 29;
+    }else if(mode==11){
+      if(status==0||scans!=2||out0!=12345||out1!=12345)return 30;
+    }else{
+      // A transport error may partially write outputs. It must not retain
+      // borrowed host pointers after return, and a retry may read valid data.
+      if(status==0||!pending.empty()||drains!=before+2)return 35;
+      out0=out1=12345;
+      flush();
+      if(out0!=12345||out1!=12345)return 36;
+      if(posthf_cuda_batch_download_v1(&batch,outs,sizes,2,error,sizeof(error))||
+          out0!=2||out1!=2)return 37;
+    }
   }else return 98;
-  return pending.empty()?0:27;
+  return pending.empty()?0:31;
 }
 """
 
@@ -143,8 +190,15 @@ def executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "int posthf_cuda_versions_v1"
         )
     ]
+    batch_actions = text[
+        text.index("int posthf_cuda_batch_add_v1") : text.index(
+            "int posthf_cuda_batch_metrics_v1"
+        )
+    ]
     # Only erase the CUDA launch syntax; actual validation/guard/add bodies run.
-    code = re.sub(r"<<<.*?>>>", "", helpers + actions + pointer, flags=re.DOTALL)
+    code = re.sub(
+        r"<<<.*?>>>", "", helpers + actions + pointer + batch_actions, flags=re.DOTALL
+    )
     directory = tmp_path_factory.mktemp("mo-publication")
     source = directory / "publication.cpp"
     source.write_text(_SHIM + code + _MAIN)
@@ -157,6 +211,6 @@ def executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return output
 
 
-@pytest.mark.parametrize("mode", range(10))
+@pytest.mark.parametrize("mode", range(15))
 def test_actual_native_publication_boundaries(executable: Path, mode: int) -> None:
     subprocess.run([str(executable), str(mode)], check=True, timeout=10)

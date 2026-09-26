@@ -14,4 +14,13 @@ int posthf_cuda_validate_v1(void*, char*, std::size_t);
 int posthf_cuda_download_v1(void*, double*, std::size_t, char*, std::size_t);
 int posthf_cuda_metrics_v1(void*, vibeqc_tensor::Metrics*, char*, std::size_t);
 void* posthf_cuda_pointer_v1(void*);
+int posthf_cuda_batch_create_v1(int, std::size_t, std::size_t, const std::size_t*,
+                                const std::size_t*, const double*, std::size_t, void**, char*,
+                                std::size_t);
+void posthf_cuda_batch_destroy_v1(void*);
+int posthf_cuda_batch_add_v1(void*, const double*, const std::size_t*, const std::size_t*, char*,
+                             std::size_t);
+int posthf_cuda_batch_download_v1(void*, double* const*, const std::size_t*, std::size_t, char*,
+                                  std::size_t);
+int posthf_cuda_batch_metrics_v1(void*, vibeqc_tensor::Metrics*, char*, std::size_t);
 }
