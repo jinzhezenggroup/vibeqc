@@ -108,9 +108,9 @@ class Mp2Prepared final : public PreparedCalculation {
         response_options.max_workspace_bytes = budget_;
         force_diagnostic =
             density_fitted_
-                ? mp2::density_fitted_force_cpu(
-                      ref, source, budget_, threshold_,
-                      options_.density_fitting_relative_threshold, 1e-10, response_options)
+                ? mp2::density_fitted_force_cpu(ref, source, budget_, threshold_,
+                                                options_.density_fitting_relative_threshold, 1e-10,
+                                                response_options)
                 : (cuda ? mp2::conventional_force_cuda(ref, source, budget_, threshold_, 1e-10,
                                                        response_options, context_.device_id)
                         : mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10,

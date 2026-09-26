@@ -199,8 +199,8 @@ ConventionalForceResult density_fitted_force_cpu(
 
   const auto h = hcore_mo(reference);
   const auto adjoint = energy_adjoint(reference, provider, denominator_threshold, false, 0);
-  const auto orbital = canonical_orbital_rhs_streamed(
-      reference, h, provider, adjoint, same_space_threshold, false, 0);
+  const auto orbital = canonical_orbital_rhs_streamed(reference, h, provider, adjoint,
+                                                      same_space_threshold, false, 0);
   const auto virtuals = reference.nbf - reference.nocc;
   std::vector<double> diagonal(posthf::checked_mul(reference.nocc, virtuals));
   for (std::size_t i = 0; i < reference.nocc; ++i)
@@ -208,16 +208,15 @@ ConventionalForceResult density_fitted_force_cpu(
       diagonal[i * virtuals + a] =
           reference.orbital_energies[reference.nocc + a] - reference.orbital_energies[i];
   auto response_result =
-      response::solve_response(problem, orbital.response_rhs, diagonal, response_options);
-  if (!response_result.converged)
+      response::solve_response(response_plan, problem, orbital.response_rhs, {}, diagonal);
+  if (!response_result.converged())
     throw std::runtime_error("RI-MP2 orbital response did not converge");
 
   auto weights = canonical_lagrangian_weights_streamed(
       reference, h, provider, adjoint, response_result.solution, same_space_threshold, false, 0);
   if (!std::isfinite(weights.stationarity_residual) || weights.stationarity_residual > 1e-7)
     throw std::runtime_error("RI-MP2 relaxed Lagrangian is not stationary");
-  auto fitted =
-      density_fitted_lagrangian_weights(reference, provider, weights, budget_bytes);
+  auto fitted = density_fitted_lagrangian_weights(reference, provider, weights, budget_bytes);
   if (fitted.planned_peak_bytes > resources.peak_bytes)
     throw std::runtime_error("RI-MP2 reverse exceeded its composed resource plan");
 

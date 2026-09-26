@@ -1,9 +1,9 @@
-#include "integrals/s_integrals.hpp"
-#include "posthf/mp2_derivative.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+
+#include "integrals/s_integrals.hpp"
+#include "posthf/mp2_derivative.hpp"
 #include "posthf/mp2_derivative_common.hpp"
 
 namespace vibeqc::mp2 {
@@ -21,12 +21,13 @@ std::vector<double> conventional_derivative_cpu(const core::System& system,
       });
 }
 
-std::vector<double> density_fitted_derivative_cpu(
-    const core::System& orbital, const core::System& auxiliary,
-    const DensityFittedLagrangianWeights& weights, std::size_t stage_budget) {
+std::vector<double> density_fitted_derivative_cpu(const core::System& orbital,
+                                                  const core::System& auxiliary,
+                                                  const DensityFittedLagrangianWeights& weights,
+                                                  std::size_t stage_budget) {
   if (!stage_budget) throw std::invalid_argument("RI-MP2 derivative requires a memory budget");
-  auto gradient = integrals::contract_weighted_one_electron_derivative(
-      orbital, weights.overlap, weights.one_electron, true);
+  auto gradient = integrals::contract_weighted_one_electron_derivative(orbital, weights.overlap,
+                                                                       weights.one_electron, true);
   auto density_fitting = integrals::contract_weighted_density_fitting_derivative(
       orbital, auxiliary, weights.three_center, weights.metric, stage_budget);
   if (gradient.size() != density_fitting.size())

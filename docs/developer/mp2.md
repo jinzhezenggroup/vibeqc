@@ -1,11 +1,15 @@
-# Canonical RHF-MP2 energy and conventional analytic forces
+# Canonical RHF-MP2 energy and analytic forces
 
 VibeQC exposes real FP64, closed-shell, all-electron conventional canonical RHF-MP2
-on CPU and CUDA. Conventional four-centre execution provides total energies and
-analytic nuclear forces; RI-MP2 provides energy only. This capability does not
-include UMP2, ROHF-MP2, frozen core, ECP, complex orbitals, screened or
-approximate correlation, Hessians, or mixed precision. No performance
-replacement is implied by the numerical qualification.
+on CPU and CUDA, plus RI-MP2 on CPU. Conventional four-centre execution provides
+total energies and analytic nuclear forces on both backends. CPU RI-MP2 analytic
+forces use the same fitted RHF/correlation Hamiltonian, fixed-rank metric branch,
+native response solver, and bounded generated DF derivative consumers. CUDA
+RI-MP2 currently provides energy only; a CUDA force request fails explicitly
+instead of falling back to the host. This capability does not include UMP2,
+ROHF-MP2, frozen core, ECP, complex orbitals, screened or approximate
+correlation, Hessians, or mixed precision. No performance replacement is implied
+by the numerical qualification.
 
 ```python
 from vibeqc import Calculator
@@ -32,30 +36,34 @@ when omitted, the orbital basis is used as the auxiliary basis.
 ri = Calculator(
     method="mp2",
     basis="sto-3g",
-    device="cuda",
-    density_fitting="auto",
+    device="cpu",
+    density_fitting="cpu",
     density_fitting_relative_threshold=1e-10,
 )
 result = ri.singlepoint(
     [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))],
-    properties=("energy",),
+    properties=("energy", "forces"),
 )
 ```
 
-RI-MP2 forces remain unsupported C2 work. An RI force request fails explicitly
-without selecting conventional correlation or returning RHF-only forces. The C
-ABI publishes the energy, complete force array, and correlation/response
-diagnostic as one transaction; any reference, denominator, response,
-derivative, CUDA, nonfinite, or output-buffer failure leaves caller storage
-unchanged and invalidates prior diagnostics.
+CPU RI-MP2 analytic forces complete C2 by composing the native MP2 adjoint and
+true-residual RHF response with the shared fixed-rank inverse-square-root VJP and
+the bounded #143 raw three-center/metric derivative consumers. No coordinate-major
+DF derivative tensor is materialized. CUDA RI-MP2 analytic forces remain
+unsupported: the public request fails explicitly before force publication and
+never returns RHF-only forces or silently delegates the RI response/derivative
+chain to the CPU. The C ABI publishes the energy, complete force array, and
+correlation/response diagnostic as one transaction; any reference, denominator,
+response, derivative, CUDA, nonfinite, or output-buffer failure leaves caller
+storage unchanged and invalidates prior diagnostics.
 
 Homogeneous prepared MP2 batches support conventional energy and force
 requests. Each item owns its reference, response, provider, diagnostics, and
 candidate outputs; immutable method options alone are shared. A failed item
 sets only its per-item status and does not overwrite its output storage or
 poison successful neighbours or a later replay. MP2 batches explicitly reject
-warm-start and HF profiling flags, RI force requests, invalid coordinates, and
-unknown flags.
+warm-start and HF profiling flags, all RI batch requests, invalid coordinates,
+and unknown flags.
 
 ## Fixed mathematical contract
 
@@ -151,10 +159,11 @@ uploads them through CG09's host-input ABI.
 RI mode builds the RHF reference and correlation integrals from the same
 orbital/auxiliary systems and metric threshold. `density_fitting="cpu"` selects
 CPU DF even when the calculator device is CUDA. `density_fitting="cuda"`
-requires a CUDA context; `"auto"` follows the calculator device. CPU supports
-auxiliary shells through g, while CUDA supports through f. The whitened
-occupied-virtual three-center tensor replaces the four-center AO/MO transform
-and is contracted into bounded energy blocks.
+requires a CUDA context; `"auto"` follows the calculator device. CPU RI energy
+supports auxiliary shells through g; the bounded analytic-force derivative
+consumer requires s/p/d/f orbital and auxiliary shells. CUDA RI energy supports
+through f. The whitened occupied-virtual three-center tensor replaces the
+four-center AO/MO transform and is contracted into bounded energy blocks.
 
 For CUDA RI-MP2 correlation, the existing generated DF source and CUDA metric
 plan own the public-basis transform, cuSOLVER eigendecomposition, cutoff and
@@ -255,7 +264,7 @@ factor checks; VibeQC HF→public conventional/RI MP2 for H2/H2O/LiH/f-shell
 fixtures; a 14-AO independent PySCF 2.14.0 conventional system exercising an
 eight-plus-four virtual tail; bad states, nonconvergence, nonfinite arithmetic,
 metric rank, mixed backend, denominator and budget boundaries; C/Python force
-rejection and invalidation. Preserve the existing `1e-9 Eh` energy and
+publication, failure and invalidation. Preserve the existing `1e-9 Eh` energy and
 `atol=1e-11, rtol=1e-10` controlled component gates. PySCF is a test-only oracle.
 
 The reproducible driver is `tools/validate_mp2_public_force.py`. It creates a
@@ -273,6 +282,9 @@ or acceptance gate is removed. CUDA qualification requires `--fd-workers 1`.
 
 Compilation or a skipped CUDA test is not endpoint qualification. CUDA
 evidence additionally includes real-device public single/batch execution and
-compute-sanitizer results. Issue #193 B2 covers only conventional canonical
-RHF-MP2 public forces. RI-MP2 forces remain unsupported C2 work and never
-return HF or placeholder forces.
+compute-sanitizer results. Issue #193 B2 covers conventional canonical RHF-MP2
+public forces. C2 promotes the already independently validated RI derivative
+mathematics to the bounded native/public CPU force endpoint, with ordinary-CI
+H2 and water fully re-solved finite-difference checks and distinct fitted
+response provenance. CUDA RI-MP2 forces remain an explicit unsupported backend
+capability and never return host, HF-only, or placeholder forces.

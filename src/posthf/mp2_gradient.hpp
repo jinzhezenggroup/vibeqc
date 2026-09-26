@@ -116,9 +116,9 @@ GradientResourcePlan conventional_gradient_plan(
     std::size_t derivative_backend_staging_bytes = 0);
 
 DensityFittedGradientResourcePlan density_fitted_gradient_plan(
-    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries,
-    std::size_t provider_bytes, const response::GmresPlan& response_plan,
-    std::size_t cartesian_orbitals, std::size_t cartesian_auxiliaries,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes);
+    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries, std::size_t provider_bytes,
+    const response::GmresPlan& response_plan, std::size_t cartesian_orbitals,
+    std::size_t cartesian_auxiliaries, std::size_t coordinate_count,
+    std::size_t candidate_output_bytes, std::size_t budget_bytes);
 
 }  // namespace vibeqc::mp2

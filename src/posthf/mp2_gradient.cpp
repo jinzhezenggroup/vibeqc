@@ -554,10 +554,10 @@ GradientResourcePlan conventional_gradient_plan(
 }
 
 DensityFittedGradientResourcePlan density_fitted_gradient_plan(
-    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries,
-    std::size_t provider_bytes, const response::GmresPlan& response_plan,
-    std::size_t cartesian_orbitals, std::size_t cartesian_auxiliaries,
-    std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes) {
+    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries, std::size_t provider_bytes,
+    const response::GmresPlan& response_plan, std::size_t cartesian_orbitals,
+    std::size_t cartesian_auxiliaries, std::size_t coordinate_count,
+    std::size_t candidate_output_bytes, std::size_t budget_bytes) {
   if (!orbitals || !occupied || occupied >= orbitals || !auxiliaries || !cartesian_orbitals ||
       !cartesian_auxiliaries || !coordinate_count ||
       response_plan.dimension != posthf::checked_mul(occupied, orbitals - occupied))
@@ -591,12 +591,10 @@ DensityFittedGradientResourcePlan density_fitted_gradient_plan(
   reverse_workspace_elements =
       posthf::checked_add(reverse_workspace_elements, posthf::checked_mul(2, auxiliaries));
   reverse_workspace_elements = posthf::checked_add(reverse_workspace_elements, n2);
-  plan.reverse_workspace_bytes =
-      posthf::checked_mul(sizeof(double), reverse_workspace_elements);
+  plan.reverse_workspace_bytes = posthf::checked_mul(sizeof(double), reverse_workspace_elements);
 
   const auto cartesian_matrix = square(cartesian_orbitals);
-  const auto cartesian_three =
-      posthf::checked_mul(cartesian_matrix, cartesian_auxiliaries);
+  const auto cartesian_three = posthf::checked_mul(cartesian_matrix, cartesian_auxiliaries);
   const auto cartesian_metric = square(cartesian_auxiliaries);
   auto derivative_elements =
       posthf::checked_add(cartesian_three, posthf::checked_add(cartesian_metric, coordinate_count));
