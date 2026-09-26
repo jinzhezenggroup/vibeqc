@@ -97,6 +97,10 @@ SHARED_INFRASTRUCTURE = {
         "owner": "solver/diis.hpp",
         "required_consumer_areas": ("cc",),
     },
+    "diis_coefficients": {
+        "owner": "solver/diis_coefficients.hpp",
+        "required_consumer_areas": ("cc", "scf"),
+    },
     "diis_history": {
         "owner": "solver/diis_history.hpp",
         "required_consumer_areas": ("cc", "scf"),
