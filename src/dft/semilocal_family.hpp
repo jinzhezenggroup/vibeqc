@@ -74,10 +74,6 @@ constexpr bool semilocal_family_has_cuda_ks(SemilocalFamily family) noexcept {
   return semilocal_family_metadata(family).cuda_ks;
 }
 
-constexpr bool curated_semilocal_functional(std::uint32_t code) noexcept {
-  return semilocal_family_metadata_from_code(code) != nullptr;
-}
-
 inline SemilocalFamily semilocal_family_from_code(std::uint32_t code) {
   if (const auto* metadata = semilocal_family_metadata_from_code(code))
     return metadata->family;
