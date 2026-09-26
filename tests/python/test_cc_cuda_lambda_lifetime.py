@@ -102,7 +102,7 @@ int main(int argc,char** argv) {
   const std::string op=argv[1], mode=argv[2]; const int index=std::atoi(argv[3]);
   Problem p; SolverResult cc; LambdaOptions options;
   {
-    CudaLambdaActions owner(p,cc,options,1,false);
+    CudaLambdaActions owner(p,cc,options,1,false,true);
     copies=sync_count=0;
     fail_copy=mode=="copy"?index:0;
     fail_sync=mode=="sync"?1:0;
@@ -113,6 +113,10 @@ int main(int argc,char** argv) {
       if(op=="replay") {
         double energy=0.0;
         owner.fresh_replay(energy,one,two);
+      } else if(op=="seeds") {
+        owner.set_parameter_seeds(cc.t1,cc.t2);
+      } else if(op=="parameter") {
+        (void)owner.parameter(generated::parameter_stub,1);
       } else if(op=="rhs" || op=="independent-rhs") {
         owner.rhs(op=="independent-rhs",one,two);
       } else {
@@ -161,6 +165,10 @@ DeviceReplayOutputs run_replay_cuda(CudaState& s) {
   if(fail_generated)throw std::runtime_error("injected generated failure");
   return {s.replay_arena,s.replay_arena,s.replay_arena};
 }
+DeviceParameterOutput parameter_stub(CudaState& s) {
+  if(fail_generated)throw std::runtime_error("injected generated failure");
+  return {s.response_arena};
+}
 """
     )
     response_programs = (
@@ -169,7 +177,19 @@ DeviceReplayOutputs run_replay_cuda(CudaState& s) {
         "lambda_independent_rhs",
         "lambda_independent_transpose",
     )
-    for name in ("replay", *response_programs):
+    parameters = (
+        "foo",
+        "fov",
+        "fvv",
+        "ovov",
+        "ovvo",
+        "oovv",
+        "ovvv",
+        "ovoo",
+        "oooo",
+        "vvvv",
+    )
+    for name in ("replay", *response_programs, *(f"parameter_{p}" for p in parameters)):
         generated += (
             f"std::size_t {name}_arena_elements(std::size_t,std::size_t)"
             "{return 1024;}\n"
@@ -211,6 +231,8 @@ OPERATIONS = (
     ("independent-rhs", 4),
     ("transpose", 5),
     ("independent-transpose", 5),
+    ("seeds", 3),
+    ("parameter", 2),
 )
 
 
@@ -221,6 +243,7 @@ OPERATIONS = (
             (op, mode, 0)
             for op, _ in OPERATIONS
             for mode in ("success", "sync", "generated")
+            if op != "seeds" or mode != "generated"
         ),
         *(
             (op, "copy", index)
