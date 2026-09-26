@@ -435,12 +435,11 @@ B3GgaPointValue map_gga_point(const Raw& raw, const double (&gradient)[2][3], co
   return out;
 }
 
-using SemilocalEvaluator = SemilocalPointEvaluator;
-
+template <class Evaluator>
 XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& grid,
                                    const std::vector<double>& density, std::size_t tile_points,
                                    XcDensitySource source, unsigned ingredient_mask,
-                                   SemilocalEvaluator evaluate, const char* method) {
+                                   Evaluator&& evaluate, const char* method) {
   const std::size_t n = basis.nao;
   validate_density_matrix(basis, grid, density, tile_points);
   const bool need_first = (ingredient_mask & 14U) != 0;
@@ -500,11 +499,12 @@ XcIntegral integrate_semilocal_rks(const AoBasis& basis, const MolecularGrid& gr
   return result;
 }
 
+template <class Evaluator>
 SpinXcIntegral integrate_semilocal_uks(const AoBasis& basis, const MolecularGrid& grid,
                                        const std::vector<double>& alpha_density,
                                        const std::vector<double>& beta_density,
                                        std::size_t tile_points, unsigned ingredient_mask,
-                                       SemilocalEvaluator evaluate, const char* method) {
+                                       Evaluator&& evaluate, const char* method) {
   validate_density_matrix(basis, grid, alpha_density, tile_points);
   validate_density_matrix(basis, grid, beta_density, tile_points);
   const bool need_first = (ingredient_mask & 14U) != 0;
