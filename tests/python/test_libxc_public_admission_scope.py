@@ -9,6 +9,7 @@ from vibeqc_compiler.xc import libxc_bulk_capabilities
 from vibeqc_compiler.xc.capability_resolution import CapabilityNotQualified
 from vibeqc_compiler.xc.endpoint_capability import (
     ENDPOINT_COVERAGE_SCHEMA,
+    EndpointCapabilityResolution,
     resolve_endpoint_capability,
 )
 from vibeqc_compiler.xc.public_method_evidence import build_result, stage_evidence
@@ -48,7 +49,9 @@ def _evidence() -> dict:
     return {**prerequisites, "public-method": public}
 
 
-def _resolve(evidence: dict, *, require_public: bool):
+def _resolve(
+    evidence: dict, *, require_public: bool
+) -> EndpointCapabilityResolution:
     return resolve_endpoint_capability(
         NAME,
         backend="cpu",
