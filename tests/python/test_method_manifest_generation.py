@@ -31,6 +31,10 @@ EXPECTED_ABI_IDS = {
     "b3lyp-uks": 17,
     "pbe-d4-rks": 18,
     "wb97m-v-uks": 19,
+    "m06-2x-rks": 20,
+    "m06-2x-uks": 21,
+    "mn15-rks": 22,
+    "mn15-uks": 23,
 }
 
 
@@ -63,7 +67,7 @@ def test_public_method_abi_ids_are_explicit_and_stable() -> None:
 def test_public_method_provider_sets_are_generated() -> None:
     assert _generated_methods.HF_METHOD_IDS == frozenset({1, 2})
     assert _generated_methods.NATIVE_DFT_METHOD_IDS == frozenset(
-        {3, 6, 7, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19}
+        {3, 6, 7, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23}
     )
 
 

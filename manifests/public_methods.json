@@ -249,6 +249,58 @@
       "supports_batch": true,
       "compiler_method": "WB97M-V",
       "spin": "polarized"
+    },
+    {
+      "name": "m06-2x-rks",
+      "symbol": "M06_2X_RKS",
+      "abi_id": 20,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "M06-2X",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "m06-2x-uks",
+      "symbol": "M06_2X_UKS",
+      "abi_id": 21,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "M06-2X",
+      "spin": "polarized"
+    },
+    {
+      "name": "mn15-rks",
+      "symbol": "MN15_RKS",
+      "abi_id": 22,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "MN15",
+      "spin": "unpolarized"
+    },
+    {
+      "name": "mn15-uks",
+      "symbol": "MN15_UKS",
+      "abi_id": 23,
+      "family": "density_functional",
+      "provider": "dft",
+      "properties": [
+        "energy"
+      ],
+      "supports_batch": true,
+      "compiler_method": "MN15",
+      "spin": "polarized"
     }
   ]
 }

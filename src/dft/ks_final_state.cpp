@@ -8,6 +8,10 @@
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
+#if VIBEQC_HAS_CUDA
+#include "generated_split_hybrid_registry.cuh"
+#endif
+
 namespace vibeqc::dft {
 namespace {
 
@@ -19,9 +23,14 @@ bool finite(const auto& values) {
 bool valid_model(const KsFinalStateIdentity& identity) {
   const auto& model = identity.model;
   const auto& fock = identity.determinant.model;
+#if VIBEQC_HAS_CUDA
+  const bool split_hybrid = generated::split_hybrid_registered(model.functional);
+#else
+  const bool split_hybrid = false;
+#endif
   SemilocalFamily family;
   try {
-    family = semilocal_family_from_code(model.functional);
+    family = split_hybrid ? SemilocalFamily::R2scan : semilocal_family_from_code(model.functional);
   } catch (const std::invalid_argument&) {
     return false;
   }
@@ -61,8 +70,26 @@ bool valid_model(const KsFinalStateIdentity& identity) {
            correction.spec.exchange.omega > 0.0 &&
            correction.screening_tolerance == fock.screening_tolerance;
   }();
-  if (model.version != 1 || model.scf_domain_version != semilocal_family_domain_version(family) ||
-      !model.tile_points || !model.owner || (model.spins != 1 && model.spins != 2) ||
+#if VIBEQC_HAS_CUDA
+  const auto split_composition = generated::split_hybrid_composition(model.functional);
+  const bool valid_split_exchange =
+      !split_hybrid ||
+      (fock.backend == scf::FockBackend::Cuda && split_composition.matched &&
+       split_composition.exact_exchange_denominator && fock.spec.exchange.present &&
+       fock.spec.coulomb.approximation == scf::FockApproximation::Exact &&
+       fock.spec.exchange.approximation == scf::FockApproximation::Exact &&
+       !model.range_correction && !model.nonlocal_correlation &&
+       fock.spec.exchange.coefficient ==
+           -static_cast<double>(split_composition.exact_exchange_numerator) /
+               static_cast<double>(split_composition.exact_exchange_denominator) /
+               (model.spins == 1 ? 2.0 : 1.0));
+#else
+  const bool valid_split_exchange = true;
+#endif
+  if (model.version != 1 ||
+      model.scf_domain_version != (split_hybrid ? 4U : semilocal_family_domain_version(family)) ||
+      !valid_split_exchange || !model.tile_points || !model.owner ||
+      (model.spins != 1 && model.spins != 2) ||
       !((fock.backend == scf::FockBackend::Cpu && model.device == -1) ||
         (fock.backend == scf::FockBackend::Cuda && model.device >= 0)) ||
       identity.determinant.occupied.size() != model.spins ||

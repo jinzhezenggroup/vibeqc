@@ -10,7 +10,8 @@ from pathlib import Path
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 
-from . import libxc_bulk
+from . import _generated_split_hybrids, libxc_bulk
+from ._generated_split_hybrids import SPLIT_HYBRID_COMPONENTS, SPLIT_HYBRIDS
 from .b88_vwn_maple import b88_vwn_maple_provenance
 from .ityh_maple import ityh_maple_provenance
 from .libxc_bulk_capabilities import claimable_components, functional_capability
@@ -57,7 +58,9 @@ POINTWISE_BULK_COMPONENTS = claimable_components(
 AUTO_BULK_COMPONENTS = tuple(
     name for name in POINTWISE_BULK_COMPONENTS if name not in CURATED_COMPONENTS
 )
-COMPONENTS = CURATED_COMPONENTS + AUTO_BULK_COMPONENTS
+COMPONENTS = (
+    CURATED_COMPONENTS + AUTO_BULK_COMPONENTS + tuple(sorted(SPLIT_HYBRID_COMPONENTS))
+)
 CATALOG = {
     **{name: ((name, Fraction(1)),) for name in PUBLIC_COMPONENTS},
     "LDA_XC_PW": (("LDA_X", Fraction(1)), ("LDA_C_PW", Fraction(1))),
@@ -145,12 +148,12 @@ class FunctionalSpec:
     @property
     def ingredients(self) -> typing.Any:
         if any(
-            name.startswith("MGGA") and coefficient
+            name.startswith(("MGGA", "HYB_MGGA")) and coefficient
             for name, coefficient in self.components
         ):
             return ("rho", "sigma", "tau")
         if any(
-            name.startswith("GGA") and coefficient
+            name.startswith(("GGA", "HYB_GGA")) and coefficient
             for name, coefficient in self.components
         ):
             return ("rho", "sigma")
@@ -165,6 +168,53 @@ class FunctionalSpec:
         active_names = tuple(
             name for name, coefficient in self.components if coefficient
         )
+        split_only = tuple(
+            name for name in active_names if name in SPLIT_HYBRID_COMPONENTS
+        )
+        if split_only:
+            if len(split_only) != len(active_names):
+                raise UnsupportedXC(
+                    "split-hybrid components cannot mix with another semilocal family"
+                )
+            active = frozenset(active_names)
+            match = next(
+                (
+                    (identifier, record)
+                    for identifier, record in SPLIT_HYBRIDS.items()
+                    if frozenset(name for name, _ in record["components"]) == active
+                ),
+                None,
+            )
+            if match is None:
+                raise UnsupportedXC(
+                    "split-hybrid components do not form a qualified pair"
+                )
+            identifier, record = match
+            if any(coefficient != Fraction(1) for _, coefficient in self.components):
+                raise UnsupportedXC(
+                    "split-hybrid semilocal component scales must remain unity"
+                )
+            generated_path = Path(_generated_split_hybrids.__file__)
+            return {
+                **payload,
+                "ingredients": self.ingredients,
+                "features": self.features,
+                "derivative_orders": [0, 1],
+                "energy": "hartree/bohr^3; e_xc=(rho_a+rho_b)*epsilon_xc",
+                "license": "MPL-2.0",
+                "source_manifest_sha256": file_hash(libxc_bulk.CATALOG_PATH),
+                "expression_source_sha256": file_hash(generated_path),
+                "expression_provenance": {
+                    "kind": "libxc-split-global-hybrid",
+                    "method": identifier,
+                    "functional_code": record["functional_code"],
+                    "exact_exchange": record["exact_exchange"],
+                    "components": record["components"],
+                },
+                "domain": "libxc-7.0.0/split-global-hybrid-v1",
+                "qualification": "cuda-point-validated",
+                "production_admitted": False,
+            }
         bulk_only = tuple(name for name in active_names if name in AUTO_BULK_COMPONENTS)
         if bulk_only:
             if any(name not in POINTWISE_BULK_COMPONENTS for name in active_names):

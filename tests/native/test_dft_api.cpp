@@ -938,6 +938,105 @@ int main() {
         vibeqc_calculation_destroy(cuda_calculation);
         vibeqc_system_destroy(cuda_system);
       }
+      struct SplitHybridEndpoint {
+        vibeqc_method method;
+        bool unrestricted;
+        const char* exchange_component;
+        const char* correlation_component;
+        double exact_exchange;
+      };
+      const std::array<SplitHybridEndpoint, 4> split_hybrids{{
+          {VIBEQC_METHOD_M06_2X_RKS, false, "HYB_MGGA_X_M06_2X", "MGGA_C_M06_2X", 0.54},
+          {VIBEQC_METHOD_M06_2X_UKS, true, "HYB_MGGA_X_M06_2X", "MGGA_C_M06_2X", 0.54},
+          {VIBEQC_METHOD_MN15_RKS, false, "HYB_MGGA_X_MN15", "MGGA_C_MN15", 0.44},
+          {VIBEQC_METHOD_MN15_UKS, true, "HYB_MGGA_X_MN15", "MGGA_C_MN15", 0.44},
+      }};
+      for (const auto& endpoint : split_hybrids) {
+        const auto charge = endpoint.unrestricted ? 1 : 0;
+        const auto multiplicity = endpoint.unrestricted ? 2 : 1;
+        Fixture cpu_fixture(VIBEQC_BACKEND_CPU_REFERENCE, charge, multiplicity);
+        vibeqc_system* cuda_system = Fixture::create_system(cuda_context, charge, multiplicity);
+        method = lda_method();
+        method.method = endpoint.method;
+
+        const std::array<vibeqc_ks_semilocal_component, 2> components{{
+            {endpoint.exchange_component, 1.0},
+            {endpoint.correlation_component, 1.0},
+        }};
+        std::array<vibeqc_ks_exchange_term, 1> exchange{{
+            {VIBEQC_KS_EXCHANGE_FULL_RANGE, endpoint.exact_exchange, 0.0,
+             -endpoint.exact_exchange / (endpoint.unrestricted ? 1.0 : 2.0)},
+        }};
+        vibeqc_ks_options split_options{};
+        split_options.struct_size = sizeof(split_options);
+        split_options.abi_version = VIBEQC_ABI_VERSION;
+        split_options.scf_domain = "libxc-7.0/split-global-hybrid-v1";
+        split_options.grid_version = 1;
+        split_options.radial_points = 64;
+        split_options.angular_polar = 12;
+        split_options.angular_azimuth = 24;
+        split_options.partition_iterations = 3;
+        split_options.coincident_tolerance = 1e-12;
+        split_options.tile_points = 256;
+        split_options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+        split_options.spin_channels = endpoint.unrestricted ? 2 : 1;
+        split_options.semilocal_components = components.data();
+        split_options.semilocal_component_count = components.size();
+        split_options.exchange_terms = exchange.data();
+        split_options.exchange_term_count = exchange.size();
+        method.ks_options = &split_options;
+
+        vibeqc_calculation* cpu_calculation = nullptr;
+        require(vibeqc_calculation_prepare(cpu_fixture.context, cpu_fixture.system, &method,
+                                           &cpu_calculation) == VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                    cpu_calculation == nullptr,
+                "split-global-hybrid public selector unexpectedly admitted CPU execution");
+
+        vibeqc_calculation* cuda_calculation = nullptr;
+        const auto prepare_status =
+            vibeqc_calculation_prepare(cuda_context, cuda_system, &method, &cuda_calculation);
+        const char* prepare_detail = vibeqc_context_get_last_detail(cuda_context);
+        require(prepare_status == VIBEQC_STATUS_SUCCESS && cuda_calculation != nullptr,
+                ("split-global-hybrid public CUDA preparation failed: method=" +
+                 std::to_string(endpoint.method) + " status=" + std::to_string(prepare_status) +
+                 " detail=" + (prepare_detail ? prepare_detail : ""))
+                    .c_str());
+        auto result = unconverged;
+        const auto execute_status = vibeqc_calculation_execute(cuda_calculation, &result);
+        const char* execute_detail = vibeqc_context_get_last_detail(cuda_context);
+        require(execute_status == VIBEQC_STATUS_SUCCESS && result.converged &&
+                    result.executed_backend == VIBEQC_BACKEND_CUDA &&
+                    std::isfinite(result.energy) && result.density_rms < 1e-9,
+                ("split-global-hybrid public CUDA endpoint failed: method=" +
+                 std::to_string(endpoint.method) + " status=" + std::to_string(execute_status) +
+                 " detail=" + (execute_detail ? execute_detail : ""))
+                    .c_str());
+
+        auto auto_method = method;
+        auto_method.precision_mode = VIBEQC_PRECISION_AUTO;
+        vibeqc_calculation* auto_calculation = nullptr;
+        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method,
+                                           &auto_calculation) == VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                    auto_calculation == nullptr,
+                "split-global-hybrid public CUDA endpoint lost strict-FP64 admission");
+
+        auto bad_exchange = exchange;
+        bad_exchange[0].coefficient -= 0.01;
+        bad_exchange[0].fock_coefficient =
+            -bad_exchange[0].coefficient / (endpoint.unrestricted ? 1.0 : 2.0);
+        auto bad_options = split_options;
+        bad_options.exchange_terms = bad_exchange.data();
+        auto bad_method = method;
+        bad_method.ks_options = &bad_options;
+        vibeqc_calculation* bad_calculation = nullptr;
+        require(vibeqc_calculation_prepare(cuda_context, cuda_system, &bad_method,
+                                           &bad_calculation) == VIBEQC_STATUS_NOT_IMPLEMENTED &&
+                    bad_calculation == nullptr,
+                "split-global-hybrid CUDA admission accepted the wrong exact-exchange fraction");
+
+        vibeqc_calculation_destroy(cuda_calculation);
+        vibeqc_system_destroy(cuda_system);
+      }
       vibeqc_context_destroy(cuda_context);
     }
 #endif

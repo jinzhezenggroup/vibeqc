@@ -15,6 +15,7 @@ from types import MappingProxyType
 from typing import ClassVar
 
 from vibeqc_compiler.common.provenance import canonical_hash
+from vibeqc_compiler.xc._generated_split_hybrids import SPLIT_HYBRIDS
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
 from vibeqc_compiler.xc.spec import VERSION as XC_VERSION
 
@@ -629,6 +630,35 @@ def _generated_libxc_method_specs() -> dict[str, MethodSpec]:
 _GENERATED_LIBXC_METHOD_SPECS = MappingProxyType(_generated_libxc_method_specs())
 
 
+def _generated_split_hybrid_method_specs() -> dict[str, MethodSpec]:
+    result: dict[str, MethodSpec] = {}
+    for identifier, record in SPLIT_HYBRIDS.items():
+        components = tuple(
+            (
+                name,
+                _generated_fraction(coefficient, "split-hybrid component coefficient"),
+            )
+            for name, coefficient in record["components"]
+        )
+        if any(name not in COMPONENTS for name, _ in components):
+            raise UnsupportedMethod(
+                f"generated split-hybrid components are unavailable for {identifier}"
+            )
+        result[identifier] = MethodSpec(
+            identifier,
+            components,
+            exact_exchange=_generated_fraction(
+                record["exact_exchange"], "split-hybrid exact exchange"
+            ),
+        )
+    return result
+
+
+_GENERATED_SPLIT_HYBRID_METHOD_SPECS = MappingProxyType(
+    _generated_split_hybrid_method_specs()
+)
+
+
 METHOD_CATALOG = MappingProxyType(
     {
         "LDA_XC_PW": MethodSpec(
@@ -771,6 +801,7 @@ METHOD_CATALOG = MappingProxyType(
             dispersion=pbe0_d3_zero_spec(),
         ),
         **_GENERATED_LIBXC_METHOD_SPECS,
+        **_GENERATED_SPLIT_HYBRID_METHOD_SPECS,
     }
 )
 

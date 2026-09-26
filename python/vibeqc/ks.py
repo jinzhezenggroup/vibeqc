@@ -29,6 +29,7 @@ from vibeqc_compiler.method import (
     compile_ks_execution_plan,
     resolve_method,
 )
+from vibeqc_compiler.xc._generated_split_hybrids import SPLIT_HYBRIDS
 from vibeqc_compiler.xc.spec import CATALOG, FunctionalSpec, functional
 
 from ._generated_methods import METHOD_METADATA
@@ -36,7 +37,10 @@ from ._generated_methods import METHOD_METADATA
 SCF_DOMAIN = "semilocal-scaled-v1/pbe-spin-c2-1e-18"
 B3LYP_SCF_DOMAIN = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
 WB97MV_SCF_DOMAIN = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16"
-_NATIVE_SCF_DOMAINS = frozenset((SCF_DOMAIN, B3LYP_SCF_DOMAIN, WB97MV_SCF_DOMAIN))
+SPLIT_HYBRID_SCF_DOMAIN = "libxc-7.0/split-global-hybrid-v1"
+_NATIVE_SCF_DOMAINS = frozenset(
+    (SCF_DOMAIN, B3LYP_SCF_DOMAIN, WB97MV_SCF_DOMAIN, SPLIT_HYBRID_SCF_DOMAIN)
+)
 
 # Manifest aliases share exactly the canonical method/spin binding.
 _NATIVE_KS_METHODS = {
@@ -260,6 +264,29 @@ def _native_semilocal(method_ir: typing.Any) -> typing.Any:
     return _native_execution_plan(method_ir).semilocal.functional
 
 
+def _split_hybrid_record(method_ir: typing.Any) -> typing.Any:
+    """Return the generated split-hybrid record for one exact canonical MethodIR."""
+
+    plan = _native_execution_plan(method_ir)
+    components = dict(plan.semilocal.functional.components)
+    for record in SPLIT_HYBRIDS.values():
+        expected = {
+            name: Fraction(coefficient) for name, coefficient in record["components"]
+        }
+        if components != expected:
+            continue
+        if len(plan.exchange) != 1:
+            continue
+        exchange = plan.exchange[0]
+        if (
+            exchange.operator == "full-range"
+            and exchange.coefficient == Fraction(record["exact_exchange"])
+            and exchange.omega == 0
+        ):
+            return record
+    return None
+
+
 def _native_semilocal_family(method_ir: typing.Any) -> int:
     """Return the primitive-family selector consumed by native KS execution."""
     # The named PBE-D4 ABI retains its separately qualified native correction
@@ -268,6 +295,9 @@ def _native_semilocal_family(method_ir: typing.Any) -> int:
     if _is_pbe_d4_composition(method_ir):
         return 1
     plan = _native_execution_plan(method_ir)
+    split = _split_hybrid_record(method_ir)
+    if split is not None:
+        return int(split["functional_code"])
     components = dict(plan.semilocal.functional.components)
     if components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}:
         return 0
@@ -309,7 +339,10 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     plan = _native_execution_plan(method_ir)
     spec = plan.semilocal.functional
     components = dict(spec.components)
-    if set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
+    split = _split_hybrid_record(method_ir)
+    if split is not None:
+        exchange_scale = correlation_scale = Fraction(1)
+    elif set(components) <= {"GGA_X_PBE", "GGA_C_PBE"}:
         exchange_scale = components.get("GGA_X_PBE", Fraction(0))
         correlation_scale = components.get("GGA_C_PBE", Fraction(0))
     elif (
@@ -419,12 +452,18 @@ def resolve_ks_method(method: typing.Any) -> typing.Any:
     return method_ir, semilocal
 
 
+def _scf_domain_for_ir(method_ir: typing.Any) -> str:
+    """Select the native work domain from the resolved, possibly renamed IR."""
+    code = _native_semilocal_family(method_ir)
+    if code >= 0x10000:
+        return SPLIT_HYBRID_SCF_DOMAIN
+    return {3: B3LYP_SCF_DOMAIN, 4: WB97MV_SCF_DOMAIN}.get(code, SCF_DOMAIN)
+
+
 def scf_domain_for_method(method: typing.Any) -> str:
     """Return the exact native point-domain identity for one public KS method."""
     method_ir, _ = resolve_ks_method(method)
-    return {3: B3LYP_SCF_DOMAIN, 4: WB97MV_SCF_DOMAIN}.get(
-        _native_semilocal_family(method_ir), SCF_DOMAIN
-    )
+    return _scf_domain_for_ir(method_ir)
 
 
 def native_xc_functional_code(method: typing.Any) -> int:
@@ -507,11 +546,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
             )
         else:
             grid = GridPolicy(options.grid_accuracy).resolve(method, derivative_order=0)
-    domain = (
-        WB97MV_SCF_DOMAIN
-        if _native_semilocal_family(method_ir) == 4
-        else scf_domain_for_method(method)
-    )
+    domain = _scf_domain_for_ir(method_ir)
     if options.scf_domain not in (SCF_DOMAIN, domain):
         raise NotImplementedError(
             "KS tail/spin domain does not match the selected method"

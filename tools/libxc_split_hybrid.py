@@ -15,6 +15,10 @@ from typing import Any
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.xc import libxc_bulk
 from vibeqc_compiler.xc.libxc_maple import MapleImportError
+from vibeqc_compiler.xc.split_hybrid_domain import (
+    exact_spin_density_screens,
+    stabilize_m06_2x_stoll,
+)
 
 from tools.libxc_bulk_metadata import extract_registrations
 from tools.libxc_method_metadata import extract_method_registrations
@@ -141,6 +145,17 @@ def build_split_global_hybrid(
     correlation = libxc_bulk.build_record(
         correlation_record, catalog["source_files"], root, spin=spin
     )
+    if spin == "polarized":
+        if identifier == "M06-2X":
+            correlation = stabilize_m06_2x_stoll(
+                correlation,
+                libxc_bulk.import_record(
+                    correlation_record, catalog["source_files"], root
+                ),
+                correlation_record,
+            )
+        exchange = exact_spin_density_screens(exchange, exchange_record)
+        correlation = exact_spin_density_screens(correlation, correlation_record)
     if exchange.features != correlation.features:
         raise MapleImportError(
             f"split-hybrid feature mismatch for {identifier}: "
