@@ -85,9 +85,10 @@ def test_xc_task_with_features_reuses_one_evaluated_tile(
             ingredients=("rho", "gradient", "tau"),
         ) as cuda:
             cuda.set_density(arrays["density"])
-            with cuda.xc_task_with_features(
-                arrays["points"][:7], ids, "WB97M-V"
-            ) as (features, task):
+            with cuda.xc_task_with_features(arrays["points"][:7], ids, "WB97M-V") as (
+                features,
+                task,
+            ):
                 check(features["rho"], arrays["rho"][:, :7])
                 check(features["gradient"], arrays["gradient"][:, :7])
                 check(features["tau"], arrays["tau"][:, :7])
