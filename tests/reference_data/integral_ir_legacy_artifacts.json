@@ -515,8 +515,8 @@
     "sm_120/vibeqc_generated_shell_sm120_shard_1.cu": "3bb2efc3c3a9e6eb6471359c117649d9d8d94605aea38f4d1ed793162d3ab814",
     "sm_120/vibeqc_generated_shell_sm120_shard_2.cu": "7628a114ca54e6aa416b7436ac6edb58dd48b1fe630e7658bf824f89f2ab8a0a",
     "sm_120/vibeqc_generated_shell_sm120_shard_3.cu": "d8f869ddc5e335af5ad6704bac8b720c44b849b90219c0decbe3deb561042e30",
-    "vibeqc_generated_shell_registry.hpp": "51ed327a1aef3d85580bd178474bdf80fa5eaac5ed2762eb0702abf8a47bd428",
-    "vibeqc_generated_shell_registry.cu": "f17aaa673a1637345ab1d8d4c548fe470b38683b6e0ed0824f8b6f8d1a2fdd1b"
+    "vibeqc_generated_shell_registry.hpp": "a6aa314c13d80edc4c3d5cc0df7db25236efa9779bdd20b505ee6f5d68f41bcf",
+    "vibeqc_generated_shell_registry.cu": "e4c5bda3269b46d4f0c785c81b3c704fd09875d689ac9d8ee0f450b257ad2c78"
   },
   "artifact_corrections": [
     {
