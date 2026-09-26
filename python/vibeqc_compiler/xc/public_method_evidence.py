@@ -93,10 +93,13 @@ def validate_result(
     """Validate a stored public receipt against current prerequisite evidence."""
     if not isinstance(value, Mapping) or value.get("schema") != RESULT_SCHEMA:
         raise ValueError("unsupported public-method result schema")
+    evidence = value.get("evidence")
+    if not isinstance(evidence, str) or not evidence.strip():
+        raise ValueError("public-method result requires an evidence reference")
     rebuilt = build_result(
         name,
         prerequisite_evidence=prerequisite_evidence,
-        evidence=value.get("evidence"),
+        evidence=evidence,
     )
     if value.get("identity") != rebuilt["identity"]:
         raise ValueError("public-method result identity mismatch")
