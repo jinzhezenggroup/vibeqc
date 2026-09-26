@@ -1,0 +1,1033 @@
+{
+  "native_identity": {
+    "protocol": {
+      "case": "water-3",
+      "aos": 24,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": false,
+      "auxiliary_sha256": null,
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "native",
+    "route": "direct",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_sha256": "c6e03b8cb8b59a0a58f58859172a20de7026d7b1846a00f1e0f205aabcec5ecb",
+    "environment": {
+      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so"
+    },
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "1a016b3da7ed149d5afe26935eef3f3c5fb49eb80dc787079695c52f2e6bfba3",
+      "probe": {
+        "source_identity": "e1da5957546653dd2442cb687c987660b65568dab5b1152d64db30835a46b8e7",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    }
+  },
+  "reference_identity": {
+    "protocol": {
+      "case": "water-3",
+      "aos": 24,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": false,
+      "auxiliary_sha256": null,
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "reference",
+    "route": "direct",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_timing": "separate process; complete synchronized endpoints; actual SCF get_veff calls counted"
+  },
+  "raw_native_sha256": "19b01772d733d1496cc6c115fc6418911dfb7fe17c3e55309964ba039f32c2d1",
+  "raw_reference_sha256": "c6e03b8cb8b59a0a58f58859172a20de7026d7b1846a00f1e0f205aabcec5ecb",
+  "native_samples": [
+    {
+      "phase": "cold",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 1.0454522501677275,
+      "prepare_seconds": 0.004342556931078434,
+      "complete_seconds": 1.049794807098806,
+      "energy": -75.95854574638037,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 19,
+      "energy_change": 1.4210854715202004e-14,
+      "density_rms": 7.603069841898905e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2789769243681803e-12,
+      "force_error": 3.148990790347028e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.07626487920060754,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07626487920060754,
+      "energy": -75.95854574638038,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.4210854715202004e-14,
+      "density_rms": 7.602467649384165e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2931877790833823e-12,
+      "force_error": 3.149012994807521e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.08287434186786413,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.08287434186786413,
+      "energy": -75.95854574638038,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.4210854715202004e-14,
+      "density_rms": 7.602148404940752e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2931877790833823e-12,
+      "force_error": 3.149057403728506e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.08361845603212714,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.08361845603212714,
+      "energy": -75.95854574638037,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.602690794079842e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2789769243681803e-12,
+      "force_error": 3.148968585886536e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.08192573674023151,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.08192573674023151,
+      "energy": -75.95854574638037,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.602916074077395e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2789769243681803e-12,
+      "force_error": 3.148968585886536e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.08085515024140477,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.08085515024140477,
+      "energy": -75.95854574638037,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.602574055406933e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2789769243681803e-12,
+      "force_error": 3.148879768044566e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.530404943972826,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.530404943972826,
+      "energy": -75.95854559562524,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 14,
+      "energy_change": 4.263256414560601e-14,
+      "density_rms": 1.2738863706631508e-11,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2079226507921703e-12,
+      "force_error": 1.804442012476315e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.07440739590674639,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07440739590674639,
+      "energy": -75.95854559562524,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 3.0797994610506697e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2079226507921703e-12,
+      "force_error": 1.8047306704627175e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.073487957008183,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.073487957008183,
+      "energy": -75.95854559562524,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 3.078886235556703e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2079226507921703e-12,
+      "force_error": 1.8047861816139488e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.07449430180713534,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07449430180713534,
+      "energy": -75.95854559562524,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 3.0792180105960895e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2079226507921703e-12,
+      "force_error": 1.8045974436997625e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.07389847282320261,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07389847282320261,
+      "energy": -75.95854559562524,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 3.0788219234188845e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2079226507921703e-12,
+      "force_error": 1.8048749994559188e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.07403708714991808,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07403708714991808,
+      "energy": -75.95854559562525,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.4210854715202004e-14,
+      "density_rms": 3.0793594022199322e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.2221335055073723e-12,
+      "force_error": 1.8045974436997625e-11,
+      "gate": true
+    }
+  ],
+  "reference_samples": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -75.95854574637909,
+      "converged": true,
+      "iterations": 42,
+      "scf_jk_builds": 43,
+      "convergence": {
+        "converged": true,
+        "iterations": 42,
+        "final_residuals": {
+          "energy_change_hartree": 0.0,
+          "density_rms": 4.128268384160943e-11,
+          "orbital_gradient_norm": 9.320653651103614e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 12.37328333221376,
+      "complete_seconds": 12.39751091785729,
+      "prepare_seconds": 0.024227585643529892
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -75.95854559562403,
+      "converged": true,
+      "iterations": 39,
+      "scf_jk_builds": 40,
+      "convergence": {
+        "converged": true,
+        "iterations": 39,
+        "final_residuals": {
+          "energy_change_hartree": 9.947598300641403e-14,
+          "density_rms": 4.8233795157011454e-11,
+          "orbital_gradient_norm": 9.98522758712845e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 10.985904086846858,
+      "complete_seconds": 10.988660228904337,
+      "prepare_seconds": 0.002756142057478428
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 0,
+      "energy": -75.95854574637914,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.2858671241882507e-10,
+          "orbital_gradient_norm": 4.325541554015792e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8801913829520345,
+      "complete_seconds": 0.8801913829520345,
+      "prepare_seconds": 0,
+      "energy_error": 5.684341886080802e-14,
+      "force_error": 9.679812507101815e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 1,
+      "energy": -75.95854574637917,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.2858923069711525e-10,
+          "orbital_gradient_norm": 4.3254362287935397e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8863009801134467,
+      "complete_seconds": 0.8863009801134467,
+      "prepare_seconds": 0,
+      "energy_error": 8.526512829121202e-14,
+      "force_error": 9.685585666829866e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 2,
+      "energy": -75.95854574637912,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.2858826761553382e-10,
+          "orbital_gradient_norm": 4.32545518720532e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8798568528145552,
+      "complete_seconds": 0.8798568528145552,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 9.686917934459416e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 3,
+      "energy": -75.95854574637912,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.2859290141341614e-10,
+          "orbital_gradient_norm": 4.3253029779718065e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.882758513558656,
+      "complete_seconds": 0.882758513558656,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 9.675371615003314e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 4,
+      "energy": -75.95854574637917,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.2858886049265836e-10,
+          "orbital_gradient_norm": 4.325556067933303e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8804553467780352,
+      "complete_seconds": 0.8804553467780352,
+      "prepare_seconds": 0,
+      "energy_error": 8.526512829121202e-14,
+      "force_error": 9.687362023669266e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 0,
+      "energy": -75.95854559562403,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5248393022992334e-10,
+          "orbital_gradient_norm": 4.8960172625325964e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.883336235769093,
+      "complete_seconds": 0.883336235769093,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 1.4072298881728784e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 1,
+      "energy": -75.95854559562402,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5247904100899332e-10,
+          "orbital_gradient_norm": 4.8962366405302435e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8796822060830891,
+      "complete_seconds": 0.8796822060830891,
+      "prepare_seconds": 0,
+      "energy_error": 1.4210854715202004e-14,
+      "force_error": 1.4062528919112083e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 2,
+      "energy": -75.95854559562405,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.524905183241703e-10,
+          "orbital_gradient_norm": 4.8960870130643086e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8812681897543371,
+      "complete_seconds": 0.8812681897543371,
+      "prepare_seconds": 0,
+      "energy_error": 1.4210854715202004e-14,
+      "force_error": 1.4071854792518934e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 3,
+      "energy": -75.95854559562403,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.524775350095462e-10,
+          "orbital_gradient_norm": 4.8960892189678533e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8817134313285351,
+      "complete_seconds": 0.8817134313285351,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 1.4064749365161333e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 4,
+      "energy": -75.95854559562406,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5248138474173603e-10,
+          "orbital_gradient_norm": 4.8959384341755226e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.8850086750462651,
+      "complete_seconds": 0.8850086750462651,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 1.4068746168049984e-11,
+      "gate": true
+    }
+  ],
+  "independent_references": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -75.95854574637909,
+      "forces": [
+        [
+          -0.01995550886267855,
+          -0.03409918656573696,
+          -0.010007342924291507
+        ],
+        [
+          0.03573061105672837,
+          0.034595574575385424,
+          -0.00012640930354707036
+        ],
+        [
+          -0.015775102194046653,
+          -0.0004963880096654494,
+          0.010133752227841741
+        ]
+      ],
+      "converged": true,
+      "iterations": 42,
+      "scf_jk_builds": 43,
+      "convergence": {
+        "converged": true,
+        "iterations": 42,
+        "final_residuals": {
+          "energy_change_hartree": 0.0,
+          "density_rms": 4.128268384160943e-11,
+          "orbital_gradient_norm": 9.320653651103614e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 12.37328333221376,
+      "complete_seconds": 12.39751091785729,
+      "prepare_seconds": 0.024227585643529892
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -75.95854559562403,
+      "forces": [
+        [
+          -0.019939321636939178,
+          -0.03404326469822605,
+          -0.009957255080081051
+        ],
+        [
+          0.035734907054005394,
+          0.03456583937657709,
+          -0.00017509349665811857
+        ],
+        [
+          -0.01579558541706727,
+          -0.0005225746783631413,
+          0.01013234857673373
+        ]
+      ],
+      "converged": true,
+      "iterations": 39,
+      "scf_jk_builds": 40,
+      "convergence": {
+        "converged": true,
+        "iterations": 39,
+        "final_residuals": {
+          "energy_change_hartree": 9.947598300641403e-14,
+          "density_rms": 4.8233795157011454e-11,
+          "orbital_gradient_norm": 9.98522758712845e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 10.985904086846858,
+      "complete_seconds": 10.988660228904337,
+      "prepare_seconds": 0.002756142057478428
+    }
+  ],
+  "diagnostic_work": [],
+  "medians": {
+    "cold": {
+      "vibeqc_seconds": 1.049794807098806,
+      "gpu4pyscf_seconds": 12.39751091785729,
+      "native_iterations": [
+        19
+      ],
+      "reference_iterations": [
+        42
+      ],
+      "reference_scf_jk_builds": [
+        43
+      ]
+    },
+    "warm": {
+      "vibeqc_seconds": 0.08192573674023151,
+      "gpu4pyscf_seconds": 0.8804553467780352,
+      "native_iterations": [
+        1
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    },
+    "moved": {
+      "vibeqc_seconds": 0.530404943972826,
+      "gpu4pyscf_seconds": 10.988660228904337,
+      "native_iterations": [
+        14
+      ],
+      "reference_iterations": [
+        39
+      ],
+      "reference_scf_jk_builds": [
+        40
+      ]
+    },
+    "moved-warm": {
+      "vibeqc_seconds": 0.07403708714991808,
+      "gpu4pyscf_seconds": 0.8817134313285351,
+      "native_iterations": [
+        1
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    }
+  }
+}

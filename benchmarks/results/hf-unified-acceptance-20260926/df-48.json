@@ -1,0 +1,1220 @@
+{
+  "native_identity": {
+    "protocol": {
+      "case": "water-6",
+      "aos": 48,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": true,
+      "auxiliary_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871",
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "native",
+    "route": "df",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_sha256": "c0d41c1cd583833a62c87ba57c8f6ddd0e122aa9de35d917c94957a1591002b4",
+    "environment": {
+      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so",
+      "VIBEQC_DF_VALUE_STORAGE": "packed-single",
+      "VIBEQC_DF_EXCHANGE": "occupied",
+      "VIBEQC_DF_RESPONSE_SPACE": "occupied",
+      "VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE": "fitted",
+      "VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE": "qualify",
+      "VIBEQC_DF_RESPONSE_ALGEBRA": "blas",
+      "VIBEQC_DF_RESPONSE_BUDGET_BYTES": "67108864",
+      "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+      "VIBEQC_DF_OCCUPIED_METRIC": "auto"
+    },
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "1a016b3da7ed149d5afe26935eef3f3c5fb49eb80dc787079695c52f2e6bfba3",
+      "probe": {
+        "source_identity": "e1da5957546653dd2442cb687c987660b65568dab5b1152d64db30835a46b8e7",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    }
+  },
+  "reference_identity": {
+    "protocol": {
+      "case": "water-6",
+      "aos": 48,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": true,
+      "auxiliary_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871",
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "reference",
+    "route": "df",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_timing": "separate process; complete synchronized endpoints; actual SCF get_veff calls counted"
+  },
+  "raw_native_sha256": "1ed7a0bc84d49e5ff062d8690b9c2bffd0631a46f44d178f8fba183fe5cd2791",
+  "raw_reference_sha256": "c0d41c1cd583833a62c87ba57c8f6ddd0e122aa9de35d917c94957a1591002b4",
+  "native_samples": [
+    {
+      "phase": "cold",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.37518385285511613,
+      "prepare_seconds": 0.006406495347619057,
+      "complete_seconds": 0.3815903482027352,
+      "energy": -151.91791296566439,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 19,
+      "energy_change": 1.4210854715202004e-13,
+      "density_rms": 6.815217161705925e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7053025658242404e-12,
+      "force_error": 2.181965719216805e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.030727499164640903,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030727499164640903,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1400659022674517e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.030483673326671124,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030483673326671124,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1395329952156317e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.030401845928281546,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030401845928281546,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1397328353600642e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.03046135976910591,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.03046135976910591,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1398438576625267e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.030440821312367916,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030440821312367916,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1401325156489293e-11,
+      "gate": true
+    },
+    {
+      "phase": "trace-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": true,
+      "seconds": 0.03202488087117672,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.03202488087117672,
+      "energy": -151.91791296566433,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 8.526512829121202e-14,
+      "density_rms": 4.314181110857033e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.6484591469634324e-12,
+      "force_error": 2.1396662219785867e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.09870520420372486,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.09870520420372486,
+      "energy": -151.91791499432003,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 12,
+      "energy_change": 1.7053025658242404e-13,
+      "density_rms": 1.0950994259438325e-11,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7053025658242404e-12,
+      "force_error": 2.6342039660676164e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.03062406089156866,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.03062406089156866,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.788214104043618e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.030606217216700315,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030606217216700315,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.7884805575695282e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.030503580812364817,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030503580812364817,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.788125286201648e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.030504772905260324,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030504772905260324,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.788391739727558e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.030498140025883913,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.030498140025883913,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.788125286201648e-11,
+      "gate": true
+    },
+    {
+      "phase": "trace-moved-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": true,
+      "seconds": 0.032026293221861124,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.032026293221861124,
+      "energy": -151.91791499432009,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 1.251637323972358e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 1.7621459846850485e-12,
+      "force_error": 2.788391739727558e-11,
+      "gate": true
+    }
+  ],
+  "reference_samples": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -151.91791296566268,
+      "converged": true,
+      "iterations": 53,
+      "scf_jk_builds": 54,
+      "convergence": {
+        "converged": true,
+        "iterations": 53,
+        "final_residuals": {
+          "energy_change_hartree": 1.4210854715202004e-13,
+          "density_rms": 4.6434321483920105e-11,
+          "orbital_gradient_norm": 9.383945886708293e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.150295773986727,
+      "complete_seconds": 1.1752282977104187,
+      "prepare_seconds": 0.024932523723691702
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -151.91791499431832,
+      "converged": true,
+      "iterations": 39,
+      "scf_jk_builds": 40,
+      "convergence": {
+        "converged": true,
+        "iterations": 39,
+        "final_residuals": {
+          "energy_change_hartree": 8.526512829121202e-14,
+          "density_rms": 4.641126281456426e-11,
+          "orbital_gradient_norm": 9.607922154520019e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.5035089580342174,
+      "complete_seconds": 0.5064067407511175,
+      "prepare_seconds": 0.0028977827169001102
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 0,
+      "energy": -151.91791296566265,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5425990864009347e-10,
+          "orbital_gradient_norm": 4.883705633147394e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22480830922722816,
+      "complete_seconds": 0.22480830922722816,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 8.86402062860725e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 1,
+      "energy": -151.91791296566265,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5425990864009347e-10,
+          "orbital_gradient_norm": 4.883705633147394e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22387811914086342,
+      "complete_seconds": 0.22387811914086342,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 8.86135609334815e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 2,
+      "energy": -151.91791296566265,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5425990864009347e-10,
+          "orbital_gradient_norm": 4.8837056331464903e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22393960691988468,
+      "complete_seconds": 0.22393960691988468,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 8.86934969912545e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 3,
+      "energy": -151.91791296566265,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5425990864009347e-10,
+          "orbital_gradient_norm": 4.8837056331464903e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22386212926357985,
+      "complete_seconds": 0.22386212926357985,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 8.86402062860725e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 4,
+      "energy": -151.91791296566265,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.5425990864009347e-10,
+          "orbital_gradient_norm": 4.883705633147394e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2239007418975234,
+      "complete_seconds": 0.2239007418975234,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 8.872902412804251e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 0,
+      "energy": -151.9179149943184,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4681902959364138e-10,
+          "orbital_gradient_norm": 4.715089218120105e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2255751551128924,
+      "complete_seconds": 0.2255751551128924,
+      "prepare_seconds": 0,
+      "energy_error": 8.526512829121202e-14,
+      "force_error": 1.369127033967743e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 1,
+      "energy": -151.9179149943184,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4681902959364138e-10,
+          "orbital_gradient_norm": 4.715089218120105e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2257041516713798,
+      "complete_seconds": 0.2257041516713798,
+      "prepare_seconds": 0,
+      "energy_error": 8.526512829121202e-14,
+      "force_error": 1.3701040302294132e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 2,
+      "energy": -151.91791499431835,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.468176352791539e-10,
+          "orbital_gradient_norm": 4.714937631204701e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22576240310445428,
+      "complete_seconds": 0.22576240310445428,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 1.0617284829095297e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 3,
+      "energy": -151.91791499431835,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.468176352791539e-10,
+          "orbital_gradient_norm": 4.714937631204701e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.22656761296093464,
+      "complete_seconds": 0.22656761296093464,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 1.0625278434872598e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 4,
+      "energy": -151.91791499431835,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.468176352791539e-10,
+          "orbital_gradient_norm": 4.714937631204701e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2237206781283021,
+      "complete_seconds": 0.2237206781283021,
+      "prepare_seconds": 0,
+      "energy_error": 2.842170943040401e-14,
+      "force_error": 1.0627942970131699e-11,
+      "gate": true
+    }
+  ],
+  "independent_references": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -151.91791296566268,
+      "forces": [
+        [
+          -0.01977385670258236,
+          -0.03305074837321653,
+          -0.011689835438087437
+        ],
+        [
+          0.035652425639207674,
+          0.033815586903732875,
+          0.002052519350198123
+        ],
+        [
+          -0.01592293387173571,
+          -0.0006817656245998172,
+          0.010471979269992548
+        ],
+        [
+          -0.034588032427300686,
+          0.019273870339713173,
+          0.008813371150260929
+        ],
+        [
+          -0.0003308478754701083,
+          0.015800409580542185,
+          -0.010019060536940794
+        ],
+        [
+          0.03496324523786831,
+          -0.035157352826160615,
+          0.00037102620458367985
+        ]
+      ],
+      "converged": true,
+      "iterations": 53,
+      "scf_jk_builds": 54,
+      "convergence": {
+        "converged": true,
+        "iterations": 53,
+        "final_residuals": {
+          "energy_change_hartree": 1.4210854715202004e-13,
+          "density_rms": 4.6434321483920105e-11,
+          "orbital_gradient_norm": 9.383945886708293e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.150295773986727,
+      "complete_seconds": 1.1752282977104187,
+      "prepare_seconds": 0.024932523723691702
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -151.91791499431832,
+      "forces": [
+        [
+          -0.01975760423819839,
+          -0.03299510339771272,
+          -0.011640051390753081
+        ],
+        [
+          0.035656462939589684,
+          0.03378536940315224,
+          0.002004800095647019
+        ],
+        [
+          -0.015943560027289916,
+          -0.0007078049145752829,
+          0.010470785726041987
+        ],
+        [
+          -0.03458765399190944,
+          0.01927474887133268,
+          0.008812409428647916
+        ],
+        [
+          -0.00033056426338506917,
+          0.01580009866969978,
+          -0.010019198575313082
+        ],
+        [
+          0.03496291958121156,
+          -0.035157308631871054,
+          0.00037125471571358704
+        ]
+      ],
+      "converged": true,
+      "iterations": 39,
+      "scf_jk_builds": 40,
+      "convergence": {
+        "converged": true,
+        "iterations": 39,
+        "final_residuals": {
+          "energy_change_hartree": 8.526512829121202e-14,
+          "density_rms": 4.641126281456426e-11,
+          "orbital_gradient_norm": 9.607922154520019e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.5035089580342174,
+      "complete_seconds": 0.5064067407511175,
+      "prepare_seconds": 0.0028977827169001102
+    }
+  ],
+  "medians": {
+    "cold": {
+      "vibeqc_seconds": 0.3815903482027352,
+      "gpu4pyscf_seconds": 1.1752282977104187,
+      "native_iterations": [
+        19
+      ],
+      "reference_iterations": [
+        53
+      ],
+      "reference_scf_jk_builds": [
+        54
+      ]
+    },
+    "warm": {
+      "vibeqc_seconds": 0.03046135976910591,
+      "gpu4pyscf_seconds": 0.2239007418975234,
+      "native_iterations": [
+        2
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    },
+    "moved": {
+      "vibeqc_seconds": 0.09870520420372486,
+      "gpu4pyscf_seconds": 0.5064067407511175,
+      "native_iterations": [
+        12
+      ],
+      "reference_iterations": [
+        39
+      ],
+      "reference_scf_jk_builds": [
+        40
+      ]
+    },
+    "moved-warm": {
+      "vibeqc_seconds": 0.030504772905260324,
+      "gpu4pyscf_seconds": 0.2257041516713798,
+      "native_iterations": [
+        2
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    }
+  },
+  "record_parts": {
+    "diagnostic_work": [
+      {
+        "path": "df-48-work.json",
+        "sha256": "bfa9f2d7e0a36653e3887b696133c98dc6628b4007cf3e17e59fac6972f57c42",
+        "bytes": 31617
+      }
+    ]
+  }
+}

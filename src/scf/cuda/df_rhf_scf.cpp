@@ -310,7 +310,8 @@ vibeqc_status run_cuda_density_fitting_rhf_device_scf(
     launch_update_device_convergence_kernel(
         static_cast<unsigned>(batch_size), 32, 0, plan->stream, batch_size, plan->nbf,
         energy_tolerance, density_tolerance, d_energy, d_previous_energy, d_next_density, d_density,
-        d_active, d_converged, d_iterations, d_energy_change, d_density_rms);
+        d_active, d_converged, d_iterations, d_energy_change, d_density_rms,
+        state->d_diis_residual);
     if (tail)
       launch_tail_cuda_density_fitting_scf_graph_kernel(1, 1, 0, plan->stream,
                                                         static_cast<std::int32_t>(batch_size),

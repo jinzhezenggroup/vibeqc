@@ -219,12 +219,14 @@ print(first.energies)
 
 | Method | Performance |
 | --- | --- |
-| HF direct J/K | <a href="benchmarks/results/readme-direct-hf-20260925/hf.svg"><img src="benchmarks/results/readme-direct-hf-20260925/hf.svg" width="900" alt="Direct RHF energy-plus-force latency: VibeQC versus GPU4PySCF"></a> |
+| HF (direct / DF) | <a href="benchmarks/results/hf-unified-acceptance-20260926/hf.svg"><img src="benchmarks/results/hf-unified-acceptance-20260926/hf.svg" width="900" alt="Direct and density-fitted RHF energy-plus-force latency: VibeQC versus GPU4PySCF"></a> |
 
-HF: RHF direct J/K on an RTX 5090; warm energy-plus-force replay from
-3 atoms/24 AOs to 96 atoms/768 AOs. These measurements use source commit
-`fe534ebf`, not this README's later `master` commit. See the
-[per-repeat measurements and protocol](benchmarks/results/readme-direct-hf-20260925/README.md).
+HF: RTX 5090, spherical def2-SVP, 3–96 atoms (24–768 AOs), complete warm SCF
+energy plus analytic forces. DF uses cc-pVDZ-JKFIT and the qualified configuration
+in the protocol. Native direct/DF share energy, density and physical-residual
+acceptance; all endpoints pass independent energy/force gates. Five frozen
+replays retain actual iteration/Fock work; × marks varying iteration branches.
+See the [measurements and reproduction protocol](benchmarks/results/hf-unified-acceptance-20260926/README.md).
 
 ## Documentation
 

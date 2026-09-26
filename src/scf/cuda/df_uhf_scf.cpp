@@ -384,7 +384,7 @@ vibeqc_status run_cuda_density_fitting_uhf_device_scf(
           static_cast<unsigned>(batch_size), 32, 0, plan->stream, batch_size, plan->nbf,
           energy_tolerance, density_tolerance, d_energy, d_previous_energy, d_next_alpha,
           d_next_beta, d_alpha_density, d_beta_density, d_active, d_converged, d_iterations,
-          d_energy_change, d_density_rms);
+          d_energy_change, d_density_rms, state->d_diis_residual);
     }
     if (tail)
       launch_tail_cuda_density_fitting_scf_graph_kernel(1, 1, 0, plan->stream,

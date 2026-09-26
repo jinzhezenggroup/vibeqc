@@ -3,6 +3,11 @@
 Status: proposed; diagnosis measured, solver changes not implemented
 Date: 2026-09-26
 
+The subsequent [shared CUDA HF acceptance decision](../implemented/numerics/2026-09-26-shared-cuda-hf-acceptance.md)
+implements common iterative energy/density/physical-residual gates. The proposed
+provenance-bound DF warm baseline/frame reuse remains unimplemented; the
+historical measurements below describe the preceding solver policy.
+
 ## Problem
 
 The [final occupied-K qualification](../../../benchmarks/results/df-final-occupied-endpoint-20260926/README.md)

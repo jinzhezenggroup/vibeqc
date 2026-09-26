@@ -1,0 +1,1472 @@
+{
+  "native_identity": {
+    "protocol": {
+      "case": "water-12",
+      "aos": 96,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": true,
+      "auxiliary_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871",
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "native",
+    "route": "df",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_sha256": "972bd103b3373282a46af0a2daffe4dcf0df9cab429fe21f0f9a6afe05652c9f",
+    "environment": {
+      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so",
+      "VIBEQC_DF_VALUE_STORAGE": "packed-single",
+      "VIBEQC_DF_EXCHANGE": "occupied",
+      "VIBEQC_DF_RESPONSE_SPACE": "occupied",
+      "VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE": "fitted",
+      "VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE": "qualify",
+      "VIBEQC_DF_RESPONSE_ALGEBRA": "blas",
+      "VIBEQC_DF_RESPONSE_BUDGET_BYTES": "67108864",
+      "VIBEQC_DF_FINAL_EXCHANGE": "auto",
+      "VIBEQC_DF_OCCUPIED_METRIC": "auto"
+    },
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "1a016b3da7ed149d5afe26935eef3f3c5fb49eb80dc787079695c52f2e6bfba3",
+      "probe": {
+        "source_identity": "e1da5957546653dd2442cb687c987660b65568dab5b1152d64db30835a46b8e7",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    }
+  },
+  "reference_identity": {
+    "protocol": {
+      "case": "water-12",
+      "aos": 96,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": true,
+      "auxiliary_sha256": "e2b3b46cc696396d01f3af18adc492cb38c0f086abb28aa977aacb933bbe3871",
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "reference",
+    "route": "df",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_timing": "separate process; complete synchronized endpoints; actual SCF get_veff calls counted"
+  },
+  "raw_native_sha256": "684f4b7f0e30602a78d61fdc34659827b7b64f52751b3c2a98ec55d973d1294e",
+  "raw_reference_sha256": "972bd103b3373282a46af0a2daffe4dcf0df9cab429fe21f0f9a6afe05652c9f",
+  "native_samples": [
+    {
+      "phase": "cold",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.5687601412646472,
+      "prepare_seconds": 0.0080986307002604,
+      "complete_seconds": 0.5768587719649076,
+      "energy": -303.8636140240301,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 23,
+      "energy_change": 0.0,
+      "density_rms": 4.870319397227873e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.229594535194337e-12,
+      "force_error": 1.5507928274871574e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.07416965905576944,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07416965905576944,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.672895155735432e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.073849115986377,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.073849115986377,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.6728285423539546e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.07380032306537032,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07380032306537032,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.6738499475366098e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.07385681010782719,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07385681010782719,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.672895155735432e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "df",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.07370689371600747,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07370689371600747,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.6731616092613422e-11,
+      "gate": true
+    },
+    {
+      "phase": "trace-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": true,
+      "seconds": 0.07570134894922376,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07570134894922376,
+      "energy": -303.8636140240302,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 6.821210263296962e-13,
+      "density_rms": 4.694497406816543e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 5.343281372915953e-12,
+      "force_error": 1.6727841334329696e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.2515235086902976,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.2515235086902976,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 12,
+      "energy_change": 1.7053025658242404e-13,
+      "density_rms": 3.948301274124972e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1512124586943173e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.07369882939383388,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07369882939383388,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1824763390677617e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.07360865594819188,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07360865594819188,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1824763390677617e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.07385696098208427,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07385696098208427,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1822987033838217e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.07388393208384514,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07388393208384514,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1825651569097317e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "df",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.07387366285547614,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07387366285547614,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1826095658307167e-11,
+      "gate": true
+    },
+    {
+      "phase": "trace-moved-warm",
+      "route": "df",
+      "repeat": 0,
+      "diagnostic": true,
+      "seconds": 0.07569564785808325,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.07569564785808325,
+      "energy": -303.86361548260106,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 2,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 6.057624387398253e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.069544618483633e-12,
+      "force_error": 1.1823431123048067e-11,
+      "gate": true
+    }
+  ],
+  "reference_samples": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -303.86361402402486,
+      "converged": true,
+      "iterations": 49,
+      "scf_jk_builds": 50,
+      "convergence": {
+        "converged": true,
+        "iterations": 49,
+        "final_residuals": {
+          "energy_change_hartree": 0.0,
+          "density_rms": 4.91807793094108e-11,
+          "orbital_gradient_norm": 9.966699592030684e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.3286629780195653,
+      "complete_seconds": 1.3529962049797177,
+      "prepare_seconds": 0.024333226960152388
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -303.863615482598,
+      "converged": true,
+      "iterations": 37,
+      "scf_jk_builds": 38,
+      "convergence": {
+        "converged": true,
+        "iterations": 37,
+        "final_residuals": {
+          "energy_change_hartree": 1.1368683772161603e-13,
+          "density_rms": 4.4961480973797194e-11,
+          "orbital_gradient_norm": 9.317947666364437e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.658956185914576,
+      "complete_seconds": 0.6618880839087069,
+      "prepare_seconds": 0.00293189799413085
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 0,
+      "energy": -303.8636140240251,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6314224033830926e-10,
+          "orbital_gradient_norm": 5.0649760551643944e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2612464176490903,
+      "complete_seconds": 0.2612464176490903,
+      "prepare_seconds": 0,
+      "energy_error": 2.2737367544323206e-13,
+      "force_error": 1.3529621867292008e-11,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 1,
+      "energy": -303.86361402402497,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6314114217736207e-10,
+          "orbital_gradient_norm": 5.06490348572182e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2608789848163724,
+      "complete_seconds": 0.2608789848163724,
+      "prepare_seconds": 0,
+      "energy_error": 1.1368683772161603e-13,
+      "force_error": 1.2742695787437697e-11,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 2,
+      "energy": -303.86361402402486,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.631394600638737e-10,
+          "orbital_gradient_norm": 5.0648754009860263e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.26070080464705825,
+      "complete_seconds": 0.26070080464705825,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 1.184119469144207e-11,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 3,
+      "energy": -303.8636140240251,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6314145310620459e-10,
+          "orbital_gradient_norm": 5.0647622191468535e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2607152322307229,
+      "complete_seconds": 0.2607152322307229,
+      "prepare_seconds": 0,
+      "energy_error": 2.2737367544323206e-13,
+      "force_error": 1.318634090807791e-11,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 4,
+      "energy": -303.8636140240251,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.631422573215336e-10,
+          "orbital_gradient_norm": 5.064644244284302e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2600275669246912,
+      "complete_seconds": 0.2600275669246912,
+      "prepare_seconds": 0,
+      "energy_error": 2.2737367544323206e-13,
+      "force_error": 1.3279599642146422e-11,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 0,
+      "energy": -303.863615482598,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4707227523555316e-10,
+          "orbital_gradient_norm": 4.485496322487601e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2604998401366174,
+      "complete_seconds": 0.2604998401366174,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 6.59472476627343e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 1,
+      "energy": -303.8636154825979,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4706983628613113e-10,
+          "orbital_gradient_norm": 4.4854000417599464e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2605562969110906,
+      "complete_seconds": 0.2605562969110906,
+      "prepare_seconds": 0,
+      "energy_error": 1.1368683772161603e-13,
+      "force_error": 6.158185072990818e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 2,
+      "energy": -303.863615482598,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.470692718361707e-10,
+          "orbital_gradient_norm": 4.485365366126284e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2601081910543144,
+      "complete_seconds": 0.2601081910543144,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 6.196820834247774e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 3,
+      "energy": -303.863615482598,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4706988620044842e-10,
+          "orbital_gradient_norm": 4.4853146940480335e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2603206872008741,
+      "complete_seconds": 0.2603206872008741,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 6.254552431528282e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 4,
+      "energy": -303.863615482598,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4707054048589304e-10,
+          "orbital_gradient_norm": 4.485412654290945e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.2605681400746107,
+      "complete_seconds": 0.2605681400746107,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 9.594991468020453e-12,
+      "gate": true
+    }
+  ],
+  "independent_references": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -303.86361402402486,
+      "forces": [
+        [
+          -0.008093044753012979,
+          -0.02278350628923409,
+          -0.013249532006460521
+        ],
+        [
+          0.03118653890927714,
+          0.028629935387100458,
+          0.0014885579886403377
+        ],
+        [
+          -0.01579686601417718,
+          0.0010065636330535144,
+          0.011664837872359612
+        ],
+        [
+          -0.027923393473897384,
+          0.005559059952524148,
+          0.008255419954963372
+        ],
+        [
+          0.0025360714327490874,
+          0.01416796219061034,
+          -0.010801858042417845
+        ],
+        [
+          0.02936341600639647,
+          -0.027799707119050332,
+          0.003015183212256245
+        ],
+        [
+          0.004304779178733398,
+          0.028410333541313948,
+          -0.02550653455772922
+        ],
+        [
+          0.004952994788490539,
+          0.0005389373668415187,
+          0.027969447668678704
+        ],
+        [
+          -0.014873803684358089,
+          -0.020918748960534916,
+          -0.0038688459644412587
+        ],
+        [
+          -0.03440873998659466,
+          0.006170089657508093,
+          0.012385626753947498
+        ],
+        [
+          0.004445518924305017,
+          0.004833227617023983,
+          -0.014521603537351213
+        ],
+        [
+          0.024306528671967254,
+          -0.01781414697709116,
+          0.0031693006574990967
+        ]
+      ],
+      "converged": true,
+      "iterations": 49,
+      "scf_jk_builds": 50,
+      "convergence": {
+        "converged": true,
+        "iterations": 49,
+        "final_residuals": {
+          "energy_change_hartree": 0.0,
+          "density_rms": 4.91807793094108e-11,
+          "orbital_gradient_norm": 9.966699592030684e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.3286629780195653,
+      "complete_seconds": 1.3529962049797177,
+      "prepare_seconds": 0.024333226960152388
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -303.863615482598,
+      "forces": [
+        [
+          -0.008074398405582883,
+          -0.022727034588712947,
+          -0.013195745910608916
+        ],
+        [
+          0.031189201535446687,
+          0.028599803876585783,
+          0.0014285946770770663
+        ],
+        [
+          -0.015818788546449802,
+          0.000981093865286553,
+          0.0116635103865812
+        ],
+        [
+          -0.027922697971224597,
+          0.005559690540196005,
+          0.008254883169565463
+        ],
+        [
+          0.00253628244664178,
+          0.014167777133709869,
+          -0.010801852844730675
+        ],
+        [
+          0.02936280951946335,
+          -0.027799421052349338,
+          0.003015319164938135
+        ],
+        [
+          0.004305464255129898,
+          0.0284099205827808,
+          -0.02550668588141658
+        ],
+        [
+          0.0049526664671732945,
+          0.0005390732650110697,
+          0.027969368100468017
+        ],
+        [
+          -0.014874055236065997,
+          -0.020918485756106442,
+          -0.00386870498179126
+        ],
+        [
+          -0.034403737777763066,
+          0.006171996883088227,
+          0.012395951560142393
+        ],
+        [
+          0.004439531342442002,
+          0.004828794686193794,
+          -0.01452232962228961
+        ],
+        [
+          0.024307722370863427,
+          -0.01781320943567688,
+          0.003167692181978321
+        ]
+      ],
+      "converged": true,
+      "iterations": 37,
+      "scf_jk_builds": 38,
+      "convergence": {
+        "converged": true,
+        "iterations": 37,
+        "final_residuals": {
+          "energy_change_hartree": 1.1368683772161603e-13,
+          "density_rms": 4.4961480973797194e-11,
+          "orbital_gradient_norm": 9.317947666364437e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 0.658956185914576,
+      "complete_seconds": 0.6618880839087069,
+      "prepare_seconds": 0.00293189799413085
+    }
+  ],
+  "medians": {
+    "cold": {
+      "vibeqc_seconds": 0.5768587719649076,
+      "gpu4pyscf_seconds": 1.3529962049797177,
+      "native_iterations": [
+        23
+      ],
+      "reference_iterations": [
+        49
+      ],
+      "reference_scf_jk_builds": [
+        50
+      ]
+    },
+    "warm": {
+      "vibeqc_seconds": 0.073849115986377,
+      "gpu4pyscf_seconds": 0.2607152322307229,
+      "native_iterations": [
+        2
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    },
+    "moved": {
+      "vibeqc_seconds": 0.2515235086902976,
+      "gpu4pyscf_seconds": 0.6618880839087069,
+      "native_iterations": [
+        12
+      ],
+      "reference_iterations": [
+        37
+      ],
+      "reference_scf_jk_builds": [
+        38
+      ]
+    },
+    "moved-warm": {
+      "vibeqc_seconds": 0.07385696098208427,
+      "gpu4pyscf_seconds": 0.2604998401366174,
+      "native_iterations": [
+        2
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    }
+  },
+  "record_parts": {
+    "diagnostic_work": [
+      {
+        "path": "df-96-work.json",
+        "sha256": "578fd4eec38d64ae82648efa5f3652086635f76b686ff40359e5847bbbd0fc98",
+        "bytes": 31941
+      }
+    ]
+  }
+}

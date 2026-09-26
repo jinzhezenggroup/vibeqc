@@ -22,14 +22,14 @@ void launch_compute_uhf_energy_kernel(dim3 grid, dim3 block, std::size_t shared_
                                       const std::uint8_t* active, double* energy);
 
 /** A supplied physical residual adds max|FPS-SPF| <= min(1e-8, density_tolerance)
- * to the iterative stop. Null preserves energy-only/reference behavior. Each
+ * to the iterative stop. Null is for compatibility callers/coarse refinement only. Each
  * block must contain exactly one warp; residuals precede DIIS extrapolation.
  * A nonzero per-item approximate census defers this test to target refinement;
  * exact neighbors retain the gate. Refinement must pass a null census. */
 void launch_update_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
-    double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
+    double density_tolerance, bool guard_energy_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
     std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual = nullptr,
@@ -39,7 +39,7 @@ void launch_update_convergence_kernel(
 void launch_update_uhf_convergence_kernel(
     bool retain_converged_density, dim3 grid, dim3 block, std::size_t shared_bytes,
     cudaStream_t stream, std::int32_t batch_size, std::int32_t nbf, double energy_tolerance,
-    double density_tolerance, bool guard_direct_fock_roundoff, const double* energy,
+    double density_tolerance, bool guard_energy_roundoff, const double* energy,
     double* previous_energy, const double* next_density, double* density, std::uint8_t* active,
     std::uint8_t* converged, std::uint32_t* iterations, double* energy_change, double* density_rms,
     const double* physical_residual = nullptr,

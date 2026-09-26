@@ -11,12 +11,9 @@ constexpr unsigned kMatrixReductionThreads = 32;
 // batch-size-one production runs can spread that setup scan across the GPU.
 constexpr unsigned kWarmDensityThreads = 256;
 static_assert(kWarmDensityThreads % 32 == 0);
-// Direct J/K scatters millions of independently evaluated AO quartets through
-// FP64 atomics. Their nondeterministic accumulation order changes the total
-// energy by a small number of representable values even after the density is
-// stationary. Add only a machine-precision-scaled comparison guard; the
-// requested absolute tolerance remains the dominant term for ordinary cases.
-constexpr double kDirectFockEnergyRoundoffFactor = 16.0;
+// A shared FP64 energy comparison budget for direct and fitted HF. The
+// independent density and physical-residual gates are never widened by it.
+constexpr double kHfEnergyRoundoffFactor = 16.0;
 constexpr double kDoubleMachineEpsilon = 2.2204460492503131e-16;
 
 }  // namespace vibeqc::scf::cuda_execution

@@ -183,7 +183,7 @@ CUDA_MODULES["cuda_df_kernels"] = (
 )
 CUDA_ALLOWED["cuda_df_kernels"] = tuple(
     "scf/cuda/" + stem + "." for stem in CUDA_MODULES["cuda_df_kernels"]
-) + ("scf/df_value_storage.hpp",)
+) + ("scf/df_value_storage.hpp", "scf/cuda/scf_convergence_policy.")
 CUDA_MODULES["cuda_scf_kernels"] = (
     "scf_constants",
     "scf_state_kernels",
@@ -191,6 +191,7 @@ CUDA_MODULES["cuda_scf_kernels"] = (
     "scf_density_kernels",
     "scf_diis_kernels",
     "scf_convergence_kernels",
+    "scf_convergence_policy",
     "basis_transform_kernels",
 )
 CUDA_ALLOWED["cuda_scf_kernels"] = tuple(

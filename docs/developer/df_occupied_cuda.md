@@ -76,6 +76,27 @@ cannot authorize use. A missing or incompatible factor runs dense K for that
 item while compatible neighbors retain factorized K. Factor upload borrows
 the existing density-transpose staging; no allocation is needed for host B.
 
+The production CUDA direct and DIIS-enabled DF RHF/UHF loops share the FP64
+stopping policy in `scf_convergence_policy.cuh`. They require a finite preceding
+energy and all three tests:
+
+- `abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1, abs(E), abs(previous_E))`;
+- `density_step_rms < density_tolerance`; and
+- `max_abs(FDS-SDF) <= min(1e-8, density_tolerance)` for the current physical
+  pre-DIIS Fock, including both spin channels for UHF.
+
+The energy guard accounts for FP64 contraction/reduction granularity. It never
+relaxes density, physical residual, final determinant or independent energy/force
+validation. Reported energy changes remain raw absolute differences. Direct can
+restore an energy baseline only for its exactly matched warm density/geometry;
+DF rebuilds that baseline and therefore requires at least two iterations.
+Equal acceptance does not imply equal iteration or Fock-build counts. Low-level
+no-DIIS compatibility calls lack iterative residual storage and still require
+strict final-state validation; host numerical recovery retains its stricter
+unguarded energy comparison. Neither compatibility route licenses skipping
+final validation. Coarse direct mixed-precision stages still require subsequent
+FP64 target refinement before publication.
+
 Every device SCF invocation starts with one seed iteration. Imported and warm
 densities have no trustworthy orbital factor, but a checked algebraic factor
 can replace its dense K. `VIBEQC_DF_SEED_EXCHANGE=dense|factor|auto` controls this

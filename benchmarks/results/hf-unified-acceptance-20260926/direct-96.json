@@ -1,0 +1,1411 @@
+{
+  "native_identity": {
+    "protocol": {
+      "case": "water-12",
+      "aos": 96,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": false,
+      "auxiliary_sha256": null,
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "native",
+    "route": "direct",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_sha256": "de065e236f5c6a7ae27f9d71d9296092f2635ad39f8c9ec2a06693660aa47ae3",
+    "environment": {
+      "VIBEQC_LIBRARY": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so"
+    },
+    "native_build": {
+      "library_path": "/home/jzzeng/codes/qc-df-endpoint-20260926/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+      "library_sha256": "1a016b3da7ed149d5afe26935eef3f3c5fb49eb80dc787079695c52f2e6bfba3",
+      "probe": {
+        "source_identity": "e1da5957546653dd2442cb687c987660b65568dab5b1152d64db30835a46b8e7",
+        "native_abi": 0,
+        "schema": 1,
+        "policy": {
+          "precision": "fp64",
+          "spin": [
+            "rhf",
+            "uhf"
+          ],
+          "consumers": [
+            "fock",
+            "force"
+          ]
+        },
+        "host": {
+          "system": "Linux",
+          "machine": "x86_64",
+          "libc": [
+            "glibc",
+            "2.35"
+          ]
+        },
+        "device": {
+          "name": "NVIDIA GeForce RTX 5090",
+          "official_profile": "sm_120",
+          "major": 12,
+          "minor": 0,
+          "warp_size": 32,
+          "maximum_threads_per_block": 1024,
+          "maximum_threads_per_sm": 1536,
+          "maximum_blocks_per_sm": 24,
+          "registers_per_sm": 65536,
+          "maximum_registers_per_thread": 255,
+          "sm_count": 170,
+          "shared_memory_per_block": 49152,
+          "shared_memory_per_block_optin": 101376,
+          "shared_memory_per_sm": 102400,
+          "runtime_version": 12090,
+          "driver_version": 13000,
+          "toolkit_version": 12090,
+          "release_build": 1,
+          "fast_compile": 0,
+          "portable": 0
+        }
+      }
+    }
+  },
+  "reference_identity": {
+    "protocol": {
+      "case": "water-12",
+      "aos": 96,
+      "method": "rhf",
+      "orbital_basis": "def2-svp",
+      "representation": "spherical",
+      "geometries_bohr": [
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8921348693023314
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ],
+        [
+          [
+            "O",
+            [
+              -5.68695864870603,
+              -9.653477530875584,
+              -2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -6.934741636687752,
+              -11.0488257295427,
+              -2.8911348693023315
+            ]
+          ],
+          [
+            "H",
+            [
+              -4.339681395600782,
+              -10.03509801091492,
+              -3.923524987977727
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.653477530875584,
+              -13.210302597551673,
+              2.7688817211501036
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.03509801091492,
+              -14.557579850656921,
+              3.923524987977727
+            ]
+          ],
+          [
+            "H",
+            [
+              -11.0488257295427,
+              -11.96251960956995,
+              2.8921348693023314
+            ]
+          ],
+          [
+            "O",
+            [
+              -13.112343224611836,
+              -9.496961557199665,
+              2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -13.553997598721192,
+              -9.398815932861053,
+              0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -12.092024916334609,
+              -7.999127260240872,
+              2.9564098944273542
+            ]
+          ],
+          [
+            "O",
+            [
+              -9.400299689058038,
+              -13.112343224611836,
+              -2.648657577077294
+            ]
+          ],
+          [
+            "H",
+            [
+              -9.49844531339665,
+              -13.553997598721192,
+              -0.8661927624563385
+            ]
+          ],
+          [
+            "H",
+            [
+              -10.89813398601683,
+              -12.092024916334609,
+              -2.9564098944273542
+            ]
+          ]
+        ]
+      ],
+      "properties": [
+        "energy",
+        "forces"
+      ],
+      "density_fitting": false,
+      "auxiliary_sha256": null,
+      "energy_tolerance": 1e-12,
+      "density_tolerance": 1e-10,
+      "reference_gradient_tolerance": 1e-10,
+      "screening_tolerance": 1e-12,
+      "reference_direct_scf_tolerance": 1e-14,
+      "max_iterations": 100,
+      "energy_gate": 1e-08,
+      "force_gate": 1e-07,
+      "threads": {
+        "OMP_NUM_THREADS": "8",
+        "OPENBLAS_NUM_THREADS": "8",
+        "MKL_NUM_THREADS": "8"
+      }
+    },
+    "mode": "reference",
+    "route": "direct",
+    "slurm_job_id": "11803",
+    "cuda_visible_devices": "0",
+    "source_revision": "ac4cdc46da55feb6c1ac8baca3a60a7b415702a4",
+    "source_status": "M  benchmarks/compare_df_direct_endpoint.py\nA  benchmarks/run_hf_acceptance_benchmarks.sh\nM  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_kernels.cu.json\nA  docs/cuda_ownership/files/src/scf/cuda/scf_convergence_policy.cuh.json\nM  src/scf/cuda/df_rhf_scf.cpp\nM  src/scf/cuda/df_scf_kernels.cu\nM  src/scf/cuda/df_scf_kernels.hpp\nM  src/scf/cuda/df_uhf_scf.cpp\nM  src/scf/cuda/scf_constants.hpp\nM  src/scf/cuda/scf_convergence_kernels.cu\nM  src/scf/cuda/scf_convergence_kernels.hpp\nA  src/scf/cuda/scf_convergence_policy.cuh\nM  src/scf/cuda_rhf.cpp\nM  tests/native/test_cuda_force_convergence.cpp\nM  tests/python/test_df_direct_endpoint_protocol.py\n",
+    "packages": {
+      "numpy": "2.4.6",
+      "pyscf": "2.14.0",
+      "gpu4pyscf": "1.8.1"
+    },
+    "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
+    "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
+    "native_acceptance": {
+      "policy": "shared_cuda_hf_fp64_v1",
+      "energy": "abs(E - previous_E) < energy_tolerance + 16*epsilon*max(1,abs(E),abs(previous_E))",
+      "density": "density_step_rms < density_tolerance",
+      "physical": "max_abs(FDS-SDF) <= min(1e-8,density_tolerance), both UHF spins",
+      "baseline": "finite previous energy required; direct may reuse an exactly qualified warm baseline; DF rebuilds it",
+      "final": "strict physical final Fock validation remains required"
+    },
+    "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
+    "ablations": {
+      "df-baseline": [
+        "dense",
+        "spectral"
+      ],
+      "df-final-k": [
+        "auto",
+        "spectral"
+      ],
+      "df": [
+        "auto",
+        "auto"
+      ]
+    },
+    "reference_timing": "separate process; complete synchronized endpoints; actual SCF get_veff calls counted"
+  },
+  "raw_native_sha256": "a462c2fa0422755ba4cfa797e7c1475d69ae1f9a650e7fd754a62b96b316d4da",
+  "raw_reference_sha256": "de065e236f5c6a7ae27f9d71d9296092f2635ad39f8c9ec2a06693660aa47ae3",
+  "native_samples": [
+    {
+      "phase": "cold",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 1.7786694569513202,
+      "prepare_seconds": 0.005117930006235838,
+      "complete_seconds": 1.783787386957556,
+      "energy": -303.8636979270916,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 27,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 2.2926377449682786e-12,
+      "warm_start_used": false,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.865352482534945e-12,
+      "force_error": 1.7535618790365248e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.13670127606019378,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.13670127606019378,
+      "energy": -303.8636979270917,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 2.2925450837269998e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.979039320256561e-12,
+      "force_error": 1.7556858744605108e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.1337215257808566,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.1337215257808566,
+      "energy": -303.8636979270917,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 2.2923737452071758e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.979039320256561e-12,
+      "force_error": 1.7545749575464953e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.13038105610758066,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.13038105610758066,
+      "energy": -303.8636979270916,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 2.2924179094871914e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.865352482534945e-12,
+      "force_error": 1.7551148034922193e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.12750943284481764,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12750943284481764,
+      "energy": -303.8636979270916,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 2.2905004332825133e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.865352482534945e-12,
+      "force_error": 1.7542418906391077e-11,
+      "gate": true
+    },
+    {
+      "phase": "warm",
+      "route": "direct",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.12225182633846998,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12225182633846998,
+      "energy": -303.8636979270917,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 1.1368683772161603e-13,
+      "density_rms": 2.2909240145068884e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.979039320256561e-12,
+      "force_error": 1.7547879815893452e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.9325505956076086,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.9325505956076086,
+      "energy": -303.8636993808132,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 16,
+      "energy_change": 0.0,
+      "density_rms": 2.1643594166002207e-12,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.808509063674137e-12,
+      "force_error": 1.1559923157600238e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 0,
+      "diagnostic": false,
+      "seconds": 0.12120390078052878,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12120390078052878,
+      "energy": -303.8636993808132,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.888263366847203e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.808509063674137e-12,
+      "force_error": 1.1556790247002624e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 1,
+      "diagnostic": false,
+      "seconds": 0.12025521602481604,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12025521602481604,
+      "energy": -303.86369938081316,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 5.684341886080802e-14,
+      "density_rms": 7.8856345965817e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.751665644813329e-12,
+      "force_error": 1.1551957307398553e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 2,
+      "diagnostic": false,
+      "seconds": 0.12051860010251403,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12051860010251403,
+      "energy": -303.86369938081316,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 5.684341886080802e-14,
+      "density_rms": 7.883389970289899e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.751665644813329e-12,
+      "force_error": 1.155006992825669e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 3,
+      "diagnostic": false,
+      "seconds": 0.12151942495256662,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12151942495256662,
+      "energy": -303.8636993808132,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.87511522279281e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.808509063674137e-12,
+      "force_error": 1.15601209160765e-11,
+      "gate": true
+    },
+    {
+      "phase": "moved-warm",
+      "route": "direct",
+      "repeat": 4,
+      "diagnostic": false,
+      "seconds": 0.12170579098165035,
+      "prepare_seconds": 0,
+      "complete_seconds": 0.12170579098165035,
+      "energy": -303.8636993808132,
+      "converged": true,
+      "status": 0,
+      "detail": "success",
+      "iterations": 1,
+      "energy_change": 0.0,
+      "density_rms": 7.879477861225312e-13,
+      "warm_start_used": true,
+      "warm_start_fallback": false,
+      "fock_builds": null,
+      "energy_error": 3.808509063674137e-12,
+      "force_error": 1.1557522300309486e-11,
+      "gate": true
+    }
+  ],
+  "reference_samples": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -303.86369792708774,
+      "converged": true,
+      "iterations": 49,
+      "scf_jk_builds": 50,
+      "convergence": {
+        "converged": true,
+        "iterations": 49,
+        "final_residuals": {
+          "energy_change_hartree": 2.2737367544323206e-13,
+          "density_rms": 4.9141715264081914e-11,
+          "orbital_gradient_norm": 9.958622577853623e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 18.913993313908577,
+      "complete_seconds": 18.938100798986852,
+      "prepare_seconds": 0.024107485078275204
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -303.8636993808094,
+      "converged": true,
+      "iterations": 37,
+      "scf_jk_builds": 38,
+      "convergence": {
+        "converged": true,
+        "iterations": 37,
+        "final_residuals": {
+          "energy_change_hartree": 1.1368683772161603e-13,
+          "density_rms": 4.49727602062432e-11,
+          "orbital_gradient_norm": 9.31916505359604e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 14.068675952963531,
+      "complete_seconds": 14.071517487987876,
+      "prepare_seconds": 0.002841535024344921
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 0,
+      "energy": -303.86369792708786,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6300939785449225e-10,
+          "orbital_gradient_norm": 5.060458442665467e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1285199020057917,
+      "complete_seconds": 1.1285199020057917,
+      "prepare_seconds": 0,
+      "energy_error": 1.1368683772161603e-13,
+      "force_error": 8.567369036427408e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 1,
+      "energy": -303.86369792708786,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6301156232134372e-10,
+          "orbital_gradient_norm": 5.060271640364487e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1235157386399806,
+      "complete_seconds": 1.1235157386399806,
+      "prepare_seconds": 0,
+      "energy_error": 1.1368683772161603e-13,
+      "force_error": 8.558931341440257e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 2,
+      "energy": -303.86369792708774,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6300950078803807e-10,
+          "orbital_gradient_norm": 5.060410668611061e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.122507771011442,
+      "complete_seconds": 1.122507771011442,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 8.565148590378158e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 3,
+      "energy": -303.8636979270881,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.630123467417884e-10,
+          "orbital_gradient_norm": 5.060600270751327e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1241175387986004,
+      "complete_seconds": 1.1241175387986004,
+      "prepare_seconds": 0,
+      "energy_error": 3.410605131648481e-13,
+      "force_error": 8.563372233538757e-12,
+      "gate": true
+    },
+    {
+      "geometry": 0,
+      "phase": "warm",
+      "repeat": 4,
+      "energy": -303.86369792708797,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.6301419509544497e-10,
+          "orbital_gradient_norm": 5.060513383408469e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.125871033873409,
+      "complete_seconds": 1.125871033873409,
+      "prepare_seconds": 0,
+      "energy_error": 2.2737367544323206e-13,
+      "force_error": 8.561595876699357e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 0,
+      "energy": -303.8636993808094,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4715119230925108e-10,
+          "orbital_gradient_norm": 4.4864289923541475e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1194323939271271,
+      "complete_seconds": 1.1194323939271271,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 5.367262190247857e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 1,
+      "energy": -303.8636993808094,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4714677216606434e-10,
+          "orbital_gradient_norm": 4.486271674968382e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1199127631261945,
+      "complete_seconds": 1.1199127631261945,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 5.373479439185758e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 2,
+      "energy": -303.8636993808092,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4714869274314831e-10,
+          "orbital_gradient_norm": 4.486423832160387e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1207973640412092,
+      "complete_seconds": 1.1207973640412092,
+      "prepare_seconds": 0,
+      "energy_error": 2.2737367544323206e-13,
+      "force_error": 5.373923528395608e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 3,
+      "energy": -303.8636993808094,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4714791350028572e-10,
+          "orbital_gradient_norm": 4.4865645622337854e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1211552391760051,
+      "complete_seconds": 1.1211552391760051,
+      "prepare_seconds": 0,
+      "energy_error": 0.0,
+      "force_error": 5.3730353499759076e-12,
+      "gate": true
+    },
+    {
+      "geometry": 1,
+      "phase": "moved-warm",
+      "repeat": 4,
+      "energy": -303.8636993808095,
+      "converged": true,
+      "iterations": 1,
+      "scf_jk_builds": 2,
+      "convergence": {
+        "converged": true,
+        "iterations": 1,
+        "final_residuals": {
+          "energy_change_hartree": null,
+          "density_rms": 1.4714857222300963e-10,
+          "orbital_gradient_norm": 4.4864719568317746e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 1.1240030769258738,
+      "complete_seconds": 1.1240030769258738,
+      "prepare_seconds": 0,
+      "energy_error": 1.1368683772161603e-13,
+      "force_error": 5.367706279457707e-12,
+      "gate": true
+    }
+  ],
+  "independent_references": [
+    {
+      "geometry": 0,
+      "phase": "cold",
+      "repeat": 0,
+      "energy": -303.86369792708774,
+      "forces": [
+        [
+          -0.008100248708151181,
+          -0.022780005492127664,
+          -0.013242320018680878
+        ],
+        [
+          0.031199921580753465,
+          0.02863546982926901,
+          0.0014836890288681959
+        ],
+        [
+          -0.01579761529667012,
+          0.0010021020148642812,
+          0.011662014533255327
+        ],
+        [
+          -0.027922594398729572,
+          0.005565310023508907,
+          0.008251551699784088
+        ],
+        [
+          0.002533322489713885,
+          0.014168319574248578,
+          -0.01079917008981024
+        ],
+        [
+          0.02936955667699337,
+          -0.027809910053091524,
+          0.003018810227215618
+        ],
+        [
+          0.0042960876311743945,
+          0.028412855547563787,
+          -0.02550248489229956
+        ],
+        [
+          0.0049579076327617155,
+          0.0005425652488622035,
+          0.027970230817185637
+        ],
+        [
+          -0.014874277241222478,
+          -0.02092031394317395,
+          -0.003874651395337936
+        ],
+        [
+          -0.034411872435655244,
+          0.006161742822146543,
+          0.012385303203124032
+        ],
+        [
+          0.004443198280184177,
+          0.004834777557951586,
+          -0.014527939381668853
+        ],
+        [
+          0.02430661378893939,
+          -0.01781291312975175,
+          0.0031749662683515645
+        ]
+      ],
+      "converged": true,
+      "iterations": 49,
+      "scf_jk_builds": 50,
+      "convergence": {
+        "converged": true,
+        "iterations": 49,
+        "final_residuals": {
+          "energy_change_hartree": 2.2737367544323206e-13,
+          "density_rms": 4.9141715264081914e-11,
+          "orbital_gradient_norm": 9.958622577853623e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 18.913993313908577,
+      "complete_seconds": 18.938100798986852,
+      "prepare_seconds": 0.024107485078275204
+    },
+    {
+      "geometry": 1,
+      "phase": "moved",
+      "repeat": 0,
+      "energy": -303.8636993808094,
+      "forces": [
+        [
+          -0.008081592955059058,
+          -0.022723542251391393,
+          -0.013188559306363881
+        ],
+        [
+          0.03120256449765635,
+          0.0286053349361739,
+          0.0014237609081023117
+        ],
+        [
+          -0.01581952174482648,
+          0.0009766487371726251,
+          0.01166068873210313
+        ],
+        [
+          -0.027921899795104732,
+          0.00556594081261963,
+          0.008251014690002112
+        ],
+        [
+          0.0025335342233093194,
+          0.014168134304871405,
+          -0.010799164923345206
+        ],
+        [
+          0.029368949956724233,
+          -0.02780962404199716,
+          0.0030189465458687614
+        ],
+        [
+          0.004296773178899649,
+          0.028412442433064733,
+          -0.025502636493615505
+        ],
+        [
+          0.0049575789307321205,
+          0.0005427012299685785,
+          0.02797015133884706
+        ],
+        [
+          -0.014874528950414634,
+          -0.02092005048149037,
+          -0.0038745102134999376
+        ],
+        [
+          -0.034406879470109786,
+          0.00616364058060892,
+          0.01239561353982932
+        ],
+        [
+          0.00443721146099639,
+          0.0048303490229633095,
+          -0.014528665899586235
+        ],
+        [
+          0.024307810667209218,
+          -0.017811975282717496,
+          0.0031733610818076574
+        ]
+      ],
+      "converged": true,
+      "iterations": 37,
+      "scf_jk_builds": 38,
+      "convergence": {
+        "converged": true,
+        "iterations": 37,
+        "final_residuals": {
+          "energy_change_hartree": 1.1368683772161603e-13,
+          "density_rms": 4.49727602062432e-11,
+          "orbital_gradient_norm": 9.31916505359604e-11
+        },
+        "warm_start": {
+          "used": true,
+          "fallback": false
+        }
+      },
+      "seconds": 14.068675952963531,
+      "complete_seconds": 14.071517487987876,
+      "prepare_seconds": 0.002841535024344921
+    }
+  ],
+  "diagnostic_work": [],
+  "medians": {
+    "cold": {
+      "vibeqc_seconds": 1.783787386957556,
+      "gpu4pyscf_seconds": 18.938100798986852,
+      "native_iterations": [
+        27
+      ],
+      "reference_iterations": [
+        49
+      ],
+      "reference_scf_jk_builds": [
+        50
+      ]
+    },
+    "warm": {
+      "vibeqc_seconds": 0.13038105610758066,
+      "gpu4pyscf_seconds": 1.1241175387986004,
+      "native_iterations": [
+        1
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    },
+    "moved": {
+      "vibeqc_seconds": 0.9325505956076086,
+      "gpu4pyscf_seconds": 14.071517487987876,
+      "native_iterations": [
+        16
+      ],
+      "reference_iterations": [
+        37
+      ],
+      "reference_scf_jk_builds": [
+        38
+      ]
+    },
+    "moved-warm": {
+      "vibeqc_seconds": 0.12120390078052878,
+      "gpu4pyscf_seconds": 1.1207973640412092,
+      "native_iterations": [
+        1
+      ],
+      "reference_iterations": [
+        1
+      ],
+      "reference_scf_jk_builds": [
+        2
+      ]
+    }
+  }
+}
