@@ -138,16 +138,14 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
     states.push_back(std::move(state));
   }
 
-  struct DeviceBlocks {
-    std::vector<void*> pointers;
-    ~DeviceBlocks() {
+  struct DeviceBatch {
+    void* pointer{};
+    ~DeviceBatch() {
 #if VIBEQC_HAS_CUDA
-      for (auto* pointer : pointers)
-        if (pointer) posthf_cuda_destroy_v1(pointer);
+      if (pointer) posthf_cuda_batch_destroy_v1(pointer);
 #endif
     }
-  } device_blocks;
-  device_blocks.pointers.resize(requests.size());
+  } device_batch;
 #if VIBEQC_HAS_CUDA
   char error[2048]{};
   auto check = [&](int status) {
@@ -157,19 +155,29 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
 #endif
   if (cuda) {
 #if VIBEQC_HAS_CUDA
-    for (std::size_t request = 0; request < states.size(); ++request) {
-      const auto& state = states[request];
-      std::vector<double> panels;
-      panels.reserve(state.plan.coefficient_elements);
+    std::vector<std::size_t> batch_shapes;
+    std::vector<double> panels;
+    batch_shapes.reserve(4 * states.size());
+    std::size_t coefficient_elements = 0;
+    std::size_t maximum_allocation_bytes = 0;
+    for (const auto& state : states) {
+      batch_shapes.insert(batch_shapes.end(), state.shape.begin(), state.shape.end());
+      coefficient_elements = checked_add(coefficient_elements, state.plan.coefficient_elements);
+      maximum_allocation_bytes =
+          checked_add(maximum_allocation_bytes, state.plan.allocation_bytes);
+    }
+    panels.reserve(coefficient_elements);
+    for (const auto& state : states)
       for (const auto& panel : state.coefficients)
         panels.insert(panels.end(), panel.begin(), panel.end());
-      check(posthf_cuda_create_v1(device, ref_.nbf, state.shape.data(), tile_.data(), panels.data(),
-                                  state.plan.allocation_bytes, &device_blocks.pointers[request],
-                                  error, sizeof(error)));
-      if (work)
-        work->h2d_bytes = checked_add(work->h2d_bytes,
-                                      checked_mul(state.plan.coefficient_elements, sizeof(double)));
-    }
+    if (panels.size() != coefficient_elements)
+      throw std::logic_error("native MO batch coefficient accounting mismatch");
+    check(posthf_cuda_batch_create_v1(
+        device, ref_.nbf, states.size(), batch_shapes.data(), tile_.data(), panels.data(),
+        maximum_allocation_bytes, &device_batch.pointer, error, sizeof(error)));
+    if (work)
+      work->h2d_bytes =
+          checked_add(work->h2d_bytes, checked_mul(coefficient_elements, sizeof(double)));
 #else
     (void)device;
     throw std::runtime_error("CUDA MO provider is not compiled");
@@ -218,14 +226,13 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
 #if VIBEQC_HAS_CUDA
             if (work) {
               work->cuda_transform_calls =
-                  checked_add(work->cuda_transform_calls, device_blocks.pointers.size());
+                  checked_add(work->cuda_transform_calls, states.size());
+              work->cuda_batch_calls = checked_add(work->cuda_batch_calls, 1);
               work->h2d_bytes =
-                  checked_add(work->h2d_bytes, checked_mul(checked_mul(elements, sizeof(double)),
-                                                           device_blocks.pointers.size()));
+                  checked_add(work->h2d_bytes, checked_mul(elements, sizeof(double)));
             }
-            for (auto* pointer : device_blocks.pointers)
-              check(posthf_cuda_add_v1(pointer, raw.data(), begin.data(), current.data(), error,
-                                       sizeof(error)));
+            check(posthf_cuda_batch_add_v1(device_batch.pointer, raw.data(), begin.data(),
+                                           current.data(), error, sizeof(error)));
 #endif
             continue;
           }
@@ -264,31 +271,31 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
 
   if (cuda) {
 #if VIBEQC_HAS_CUDA
-    std::size_t batch_owned = 0, batch_retained = 0;
-    for (std::size_t request = 0; request < states.size(); ++request) {
-      auto& state = states[request];
-      check(posthf_cuda_download_v1(device_blocks.pointers[request], state.output.data(),
-                                    state.output.size(), error, sizeof(error)));
+    std::vector<double*> output_pointers;
+    std::vector<std::size_t> output_sizes;
+    output_pointers.reserve(states.size());
+    output_sizes.reserve(states.size());
+    for (auto& state : states) {
+      output_pointers.push_back(state.output.data());
+      output_sizes.push_back(state.output.size());
       if (work)
         work->d2h_bytes =
             checked_add(work->d2h_bytes, checked_mul(state.output.size(), sizeof(double)));
-      if (metrics) {
-        vibeqc_tensor::Metrics measured;
-        check(posthf_cuda_metrics_v1(device_blocks.pointers[request], &measured, error,
-                                     sizeof(error)));
-        batch_owned = checked_add(batch_owned, measured.owned_device_bytes);
-        batch_retained = checked_add(batch_retained, measured.provider_retained_bytes);
-        metrics->input_ms += measured.input_ms;
-        metrics->output_ms += measured.output_ms;
-        metrics->library_ms += measured.library_ms;
-        metrics->kernel_ms += measured.kernel_ms;
-      }
     }
+    check(posthf_cuda_batch_download_v1(device_batch.pointer, output_pointers.data(),
+                                        output_sizes.data(), output_sizes.size(), error,
+                                        sizeof(error)));
     if (metrics) {
-      metrics->owned_device_bytes =
-          std::max<decltype(metrics->owned_device_bytes)>(metrics->owned_device_bytes, batch_owned);
+      vibeqc_tensor::Metrics measured{};
+      check(posthf_cuda_batch_metrics_v1(device_batch.pointer, &measured, error, sizeof(error)));
+      metrics->input_ms += measured.input_ms;
+      metrics->output_ms += measured.output_ms;
+      metrics->library_ms += measured.library_ms;
+      metrics->kernel_ms += measured.kernel_ms;
+      metrics->owned_device_bytes = std::max<decltype(metrics->owned_device_bytes)>(
+          metrics->owned_device_bytes, measured.owned_device_bytes);
       metrics->provider_retained_bytes = std::max<decltype(metrics->provider_retained_bytes)>(
-          metrics->provider_retained_bytes, batch_retained);
+          metrics->provider_retained_bytes, measured.provider_retained_bytes);
     }
 #else
     (void)metrics;
