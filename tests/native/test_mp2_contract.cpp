@@ -246,6 +246,7 @@ void provider_and_reference() {
   require(batched_work.transform_fmas == sequential_work.transform_fmas,
           "native MO batch changed AO-to-MO transform work");
 
+  const std::array<std::size_t, 4> batch_shape{2, 2, 2, 2};
   const auto cuda_plan = provider.plan(batch_shape, true);
   const auto cpu_common = provider.batch_bytes(batch_shape, 0, false);
   const auto cuda_common = provider.batch_bytes(batch_shape, 0, true);
@@ -262,7 +263,6 @@ void provider_and_reference() {
   require(shared_cuda_provider.batch_capacity(batch_shape, true) >= 2,
           "shared CUDA owner capacity was charged once per request");
 
-  const std::array<std::size_t, 4> batch_shape{2, 2, 2, 2};
   require(provider.batch_capacity(batch_shape) >= 2,
           "native MO batch capacity is unexpectedly one");
   const auto single_request_bytes = provider.batch_bytes(batch_shape, 1);
