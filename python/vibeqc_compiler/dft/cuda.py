@@ -658,11 +658,8 @@ class CudaGrid:
             return result
 
     @contextmanager
-    def _task(
-        self, points: typing.Any, ao_ids: typing.Any, *, stamp: typing.Any = None
-    ) -> typing.Any:
-        """Evaluate local features and lend their current private device view."""
-        self.evaluate(points, ao_ids=ao_ids, download_features=False, stamp=stamp)
+    def _borrow_current_task(self) -> typing.Any:
+        """Lend the buffers from the immediately preceding evaluated tile."""
         view = GridTaskView()
         self._call("grid_cuda_view_v1", self._handle, ct.byref(view))
         self._borrowed = True
@@ -672,6 +669,15 @@ class CudaGrid:
         finally:
             lease._active = False
             self._borrowed = False
+
+    @contextmanager
+    def _task(
+        self, points: typing.Any, ao_ids: typing.Any, *, stamp: typing.Any = None
+    ) -> typing.Any:
+        """Evaluate local features and lend their current private device view."""
+        self.evaluate(points, ao_ids=ao_ids, download_features=False, stamp=stamp)
+        with self._borrow_current_task() as lease:
+            yield lease
 
     @contextmanager
     def task(
@@ -721,6 +727,37 @@ class CudaGrid:
                 raise ValueError("prepared CUDA features do not cover native XC")
             with self._task(points, ao_ids, stamp=stamp) as lease:
                 yield lease
+
+    @contextmanager
+    def xc_task_with_features(
+        self,
+        points: typing.Any,
+        ao_ids: typing.Any,
+        functional: typing.Any,
+        *,
+        stamp: typing.Any = None,
+    ) -> typing.Any:
+        """Evaluate one XC tile once, return features, and lend the same device buffers."""
+        if functional not in ("LDA_XC_PW", "PBE", "R2SCAN", "WB97M-V"):
+            raise ValueError(
+                "native CUDA XC task supports LDA_XC_PW, PBE, R2SCAN, or WB97M-V"
+            )
+        required = (
+            {"rho"}
+            if functional == "LDA_XC_PW"
+            else {"rho", "gradient"}
+            if functional == "PBE"
+            else {"rho", "gradient", "tau"}
+        )
+        with self._lock:
+            self._check_open()
+            if self.plan.active_ao_capacity is None:
+                raise ValueError("native CUDA XC requires a local CUDA plan")
+            if not required.issubset(self.ingredients):
+                raise ValueError("prepared CUDA features do not cover native XC")
+            features = self.evaluate(points, ao_ids=ao_ids, stamp=stamp)
+            with self._borrow_current_task() as lease:
+                yield features, lease
 
     def metrics(self) -> typing.Any:
         """Synchronized cumulative timings, owned allocations and loaded versions."""
