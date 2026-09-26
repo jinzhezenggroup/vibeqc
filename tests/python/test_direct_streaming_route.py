@@ -15,6 +15,13 @@ def test_primary_streaming_route_partitions_paged_generated_classes() -> None:
     assert "host_primary_streaming_fock_flags" not in source
     assert "generated::preferred_streaming_fock_shell_class_mask()" in source
     assert "primary_streaming_fock_override.value_or(" in source
+    registry_header = (
+        REPOSITORY_ROOT / "src/scf/aot_shell_registry.hpp"
+    ).read_text()
+    assert (
+        "std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept;"
+        in registry_header
+    )
 
     page_begin = source.index("const auto launch_bounded_paged_generated_fock")
     page_end = source.index("const auto launch_bounded_generic_fock", page_begin)
