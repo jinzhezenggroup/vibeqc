@@ -304,17 +304,8 @@ def _split_hybrid_record(method_ir: typing.Any) -> typing.Any:
     return None
 
 
-def _native_semilocal_family(method_ir: typing.Any) -> int:
-    """Return the stable curated/generated selector consumed by native KS execution."""
-    # The named PBE-D4 ABI retains its separately qualified native correction
-    # owner. Do not route that explicit composition through electronic-only
-    # admission, or generalize its exception to arbitrary post-SCF corrections.
-    if _is_pbe_d4_composition(method_ir):
-        return _NativeSemilocalFamily.PBE
-    plan = _native_execution_plan(method_ir)
-    split = _split_hybrid_record(method_ir)
-    if split is not None:
-        return int(split["functional_code"])
+def _curated_semilocal_family(plan: typing.Any) -> _NativeSemilocalFamily:
+    """Classify one curated semilocal component inventory without method promotion."""
     components = dict(plan.semilocal.functional.components)
     if components == {"LDA_X": Fraction(1), "LDA_C_PW": Fraction(1)}:
         return _NativeSemilocalFamily.LDA
@@ -332,6 +323,23 @@ def _native_semilocal_family(method_ir: typing.Any) -> int:
     ):
         return _NativeSemilocalFamily.B3LYP
     if components == {"MGGA_X_WB97M_V": Fraction(1), "MGGA_C_WB97M_V": Fraction(1)}:
+        return _NativeSemilocalFamily.WB97MV
+    raise NotImplementedError("native KS semilocal family has no qualified lowerer")
+
+
+def _native_semilocal_family(method_ir: typing.Any) -> int:
+    """Return the stable curated/generated selector consumed by native KS execution."""
+    # The named PBE-D4 ABI retains its separately qualified native correction
+    # owner. Do not route that explicit composition through electronic-only
+    # admission, or generalize its exception to arbitrary post-SCF corrections.
+    if _is_pbe_d4_composition(method_ir):
+        return _NativeSemilocalFamily.PBE
+    plan = _native_execution_plan(method_ir)
+    split = _split_hybrid_record(method_ir)
+    if split is not None:
+        return int(split["functional_code"])
+    family = _curated_semilocal_family(plan)
+    if family == _NativeSemilocalFamily.WB97MV:
         canonical = compile_ks_execution_plan(
             resolve_method("WB97M-V", spin=method_ir.spin)
         )
@@ -345,8 +353,7 @@ def _native_semilocal_family(method_ir: typing.Any) -> int:
             raise NotImplementedError(
                 "native B97M lowerer requires canonical WB97M-V composition"
             )
-        return _NativeSemilocalFamily.WB97MV
-    raise NotImplementedError("native KS semilocal family has no qualified lowerer")
+    return family
 
 
 def ks_coefficients(method_ir: typing.Any) -> typing.Any:
@@ -359,7 +366,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     if split is not None:
         exchange_scale = correlation_scale = Fraction(1)
     else:
-        family = _native_semilocal_family(method_ir)
+        family = _curated_semilocal_family(plan)
         if family == _NativeSemilocalFamily.PBE:
             exchange_scale = components.get("GGA_X_PBE", Fraction(0))
             correlation_scale = components.get("GGA_C_PBE", Fraction(0))
