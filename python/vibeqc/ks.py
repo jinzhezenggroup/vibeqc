@@ -348,6 +348,7 @@ def _native_semilocal_family(method_ir: typing.Any) -> int:
         return _NativeSemilocalFamily.WB97MV
     raise NotImplementedError("native KS semilocal family has no qualified lowerer")
 
+
 def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     """Lower one supported MethodIR graph to explicit native X/C/K coefficients."""
     if not isinstance(method_ir, MethodIR):
@@ -386,6 +387,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
     ):
         raise NotImplementedError("native KS composition coefficients are invalid")
     return values
+
 
 def ks_range_exchange_parameters(method_ir: typing.Any) -> typing.Any:
     """Return MethodIR-owned (short, long, omega) RSH parameters, if present."""
@@ -523,10 +525,7 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
 
     grid = options.grid
     if grid is None:
-        if (
-            _native_semilocal_family(named_ir)
-            == _NativeSemilocalFamily.R2SCAN
-        ):
+        if _native_semilocal_family(named_ir) == _NativeSemilocalFamily.R2SCAN:
             # The v2 policy has no qualified meta-GGA profile. Preserve the
             # existing explicit v1 default rather than assigning a GGA grid.
             if options.grid_accuracy != "standard":

@@ -27,12 +27,9 @@ struct SemilocalFamilyMetadata {
   bool cuda_ks;
 };
 
-inline constexpr const char* kSemilocalScfDomain =
-    "semilocal-scaled-v1/pbe-spin-c2-1e-18";
-inline constexpr const char* kB3lypScfDomain =
-    "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
-inline constexpr const char* kWb97mvScfDomain =
-    "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
+inline constexpr const char* kSemilocalScfDomain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+inline constexpr const char* kB3lypScfDomain = "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
+inline constexpr const char* kWb97mvScfDomain = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
 
 inline constexpr std::array<SemilocalFamilyMetadata, 5> kSemilocalFamilyMetadata{{
     {SemilocalFamily::Lda, "LDA", kSemilocalScfDomain, 1U, true},
@@ -75,8 +72,7 @@ constexpr bool semilocal_family_has_cuda_ks(SemilocalFamily family) noexcept {
 }
 
 inline SemilocalFamily semilocal_family_from_code(std::uint32_t code) {
-  if (const auto* metadata = semilocal_family_metadata_from_code(code))
-    return metadata->family;
+  if (const auto* metadata = semilocal_family_metadata_from_code(code)) return metadata->family;
   throw std::invalid_argument("unknown native KS semilocal family code");
 }
 
