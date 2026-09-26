@@ -14,10 +14,14 @@ using MOSlots = std::array<std::vector<std::size_t>, 4>;
 inline constexpr std::size_t padded_mo = static_cast<std::size_t>(-1);
 
 struct ProviderWork {
+  std::size_t source_scans{};
   std::size_t source_reads{};
   std::size_t source_values{};
   std::size_t transform_fmas{};
   std::size_t mo_blocks{};
+  std::size_t cuda_transform_calls{};
+  std::size_t h2d_bytes{};
+  std::size_t d2h_bytes{};
 };
 
 /** Common molecular-orbital two-electron block boundary used by response code.
