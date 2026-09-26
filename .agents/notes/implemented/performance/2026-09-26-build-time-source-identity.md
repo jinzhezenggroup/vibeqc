@@ -58,6 +58,23 @@ Incremental source edits avoid an unnecessary configure pass. The build graph ha
 one additional generated-header target, while compatibility identity remains
 conservative and file-membership changes retain CMake's configure-time discovery.
 
+### Membership invalidation follow-up
+
+Reconfiguring after a glob change alone does not invalidate the generated header:
+when a member is deleted, no surviving input becomes newer, and the generator's
+command is unchanged. An incremental Ninja build can therefore complete with a
+stale native identity even though Python computes the new checkout identity.
+
+The configured, sorted inventory is now persisted as
+`generated/build_identity_inputs.txt` and included in the header dependencies.
+`file(GENERATE)` changes its timestamp only when membership changes. This covers
+deletions, renames and additions with old timestamps while preserving the fast
+path for ordinary content edits and unchanged configure passes.
+
+`tests/python/test_build_identity_incremental.py` exercises the production build
+graph with Ninja and Unix Makefiles, checking native-header/Python hash agreement
+after those transitions and after manifest updates followed by content edits.
+
 ## Revisit when
 
 Revisit if CMake gains a cheaper native content-hash dependency primitive that

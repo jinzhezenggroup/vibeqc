@@ -240,6 +240,13 @@ vibeqc_register_host_generated_sources(vibeqc)
 # header is actually out of date. Ordinary source edits therefore do not force
 # a CMake reconfigure before compilation can resume.
 vibeqc_collect_source_identity_inputs(_vibeqc_identity_inputs)
+# A removed dependency cannot make the remaining inputs newer than the header.
+# Persist membership separately so deletions, renames and backdated additions
+# invalidate identity too. file(GENERATE) preserves mtime when the list is unchanged.
+set(_vibeqc_identity_inventory
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/build_identity_inputs.txt")
+file(GENERATE OUTPUT "${_vibeqc_identity_inventory}"
+     CONTENT "${_vibeqc_identity_inputs}\n")
 set(_vibeqc_identity_dependencies)
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
   list(APPEND _vibeqc_identity_dependencies
@@ -257,6 +264,7 @@ vibeqc_register_generated_sources(
   GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_build_identity.py"
   OUTPUTS "${VIBEQC_BUILD_IDENTITY_HEADER}"
   DEPENDS
+    "${_vibeqc_identity_inventory}"
     ${_vibeqc_identity_dependencies}
     "${CMAKE_CURRENT_SOURCE_DIR}/src/api/build_identity.hpp.in"
   ARGS
