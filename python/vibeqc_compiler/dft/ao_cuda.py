@@ -418,10 +418,17 @@ __device__ inline DevicePointValue response_point(const double* features, const 
 
 __device__ inline DevicePointValue evaluate_semilocal_point(I functional, const double rho[2],
                                                             const double gradient[2][3],
-                                                            const double tau[2]) {
+                                                            const double tau[2],
+                                                            double exchange_scale,
+                                                            double correlation_scale) {
   DevicePointValue out;
   if (functional < 2) {
-    return from_point(point::evaluate(functional == 1, rho, gradient));
+    return from_point(
+        point::evaluate(functional == 1, rho, gradient, exchange_scale, correlation_scale));
+  }
+  if (exchange_scale != 1.0 || correlation_scale != 1.0) {
+    out.valid = false;
+    return out;
   }
   // Meta-GGA device consumers share the host physical-domain gate before
   // functional-specific Libxc continuation policies are applied.
@@ -520,8 +527,9 @@ __device__ inline DevicePointValue evaluate_semilocal_point(I functional, const 
 // before register allocation. All variants reuse the canonical point source.
 template <I functional, bool response>
 __global__ void evaluate_points(const double* features, const double* weights, I count, I spins,
-                                double* coefficients,
-                                double* point_totals, int* error, const double* delta) {
+                                double* coefficients, double* point_totals, int* error,
+                                double exchange_scale, double correlation_scale,
+                                const double* delta) {
   static_assert(((functional >= 0 && functional <= 2) || functional == 4) &&
                 (!response || functional < 2));
   constexpr I feature_terms = functional == 0 ? 1 : (functional == 1 ? 4 : 5);
@@ -540,7 +548,8 @@ __global__ void evaluate_points(const double* features, const double* weights, I
     if constexpr (response)
       xc = response_point(features, delta, p, count, spins, feature_terms, functional);
     else
-      xc = evaluate_semilocal_point(functional, rho, gradient, tau);
+      xc = evaluate_semilocal_point(functional, rho, gradient, tau, exchange_scale,
+                                    correlation_scale);
     if (!xc.valid) atomicCAS(error, 0, 3);
     point_totals[p] = finite(weights[p] * xc.energy, error, 2);
     for (I s = 0; s < 2; ++s)
@@ -565,10 +574,12 @@ __global__ void evaluate_points(const double* features, const double* weights, I
 template <I functional, bool response>
 void launch_points(cudaStream_t stream, const double* features, const double* weights,
                     std::size_t count, std::size_t spins, double* coefficients,
-                    double* point_totals, int* error, const double* delta) {
+                    double* point_totals, int* error, double exchange_scale,
+                    double correlation_scale, const double* delta) {
   constexpr I threads = functional == 1 && !response ? 32 : 128;
   evaluate_points<functional, response><<<vibeqc_tensor::blocks(count, threads), threads, 0, stream>>>(
-      features, weights, count, spins, coefficients, point_totals, error, delta);
+      features, weights, count, spins, coefficients, point_totals, error, exchange_scale,
+      correlation_scale, delta);
 }
 
 __global__ void assemble_potential(const double* ao, const double* coefficients,
