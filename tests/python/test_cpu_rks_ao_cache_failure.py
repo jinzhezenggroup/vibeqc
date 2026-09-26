@@ -49,6 +49,7 @@ bool select() {
   const struct { bool cached_direct; } evaluate_xc{mode!=7};
   const int basis=0, grid=0;
   const struct { unsigned ao_order; } ks{1};
+  const dft::RksAoCache* prepared_ao_cache=nullptr;
 """
         + region
         + r"""
