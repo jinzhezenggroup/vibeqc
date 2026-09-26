@@ -619,6 +619,15 @@ vibeqc_status execute_cuda_direct_rsh_energy_derivatives_item(
     spec = direct_jk_spec(plan, spec, density, beta, item, 1);
     direct_jk_require(spec.derivative_order == 1,
                       "direct J/K first derivatives were not requested");
+    const std::size_t n = plan->diagnostic.nbf;
+    for (const auto* spin_density : {&density, &beta}) {
+      if (spin_density->empty()) continue;
+      for (std::size_t i = 0; i < n; ++i)
+        for (std::size_t j = 0; j < i; ++j)
+          direct_jk_require(
+              std::abs((*spin_density)[i * n + j] - (*spin_density)[j * n + i]) <= 1e-10,
+              "symmetry-reduced RSH derivatives require symmetric densities");
+    }
 
     const std::size_t coordinates = plan->coordinates_per_item;
     const std::size_t coordinate_offset = item * coordinates;
