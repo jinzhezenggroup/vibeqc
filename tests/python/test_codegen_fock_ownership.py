@@ -8,6 +8,7 @@ from pathlib import Path
 
 from vibeqc_compiler.integral.lowering.fock_accumulation import (
     emit_direct_fock_accumulation_header,
+    emit_direct_force_density_coefficient,
     emit_generated_shell_fock_accumulation,
 )
 
@@ -35,6 +36,24 @@ def test_direct_fock_scatter_has_one_compiler_equation_owner() -> None:
     assert "-0.5 * density_bd * integral" not in shell_lowering
     assert "total_cd * integral" not in shell_lowering
     assert '#include "generated_direct_fock_accumulation.cuh"' in native
+
+
+def test_direct_force_density_has_one_compiler_equation_owner() -> None:
+    """Keep the exact RHF/UHF force density contraction out of native CUDA."""
+
+    generated = emit_direct_force_density_coefficient()
+    native = (REPOSITORY_ROOT / "src/scf/cuda/direct_force_density.cuh").read_text(
+        encoding="utf-8"
+    )
+    for equation in (
+        "0.5 * total_ab * total_cd",
+        "0.25 * density[physical_offset + ac]",
+        "unique_eri_symmetry_permutation",
+    ):
+        assert equation in generated
+        assert equation not in native
+    assert '#include "generated_direct_fock_accumulation.cuh"' in native
+    assert "direct_force_density_coefficient" in emit_direct_fock_accumulation_header()
 
 
 def test_generated_shell_and_native_scatter_share_spin_semantics() -> None:

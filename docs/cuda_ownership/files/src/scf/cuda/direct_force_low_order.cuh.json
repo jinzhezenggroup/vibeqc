@@ -2,6 +2,6 @@
   "path": "src/scf/cuda/direct_force_low_order.cuh",
   "role": "scientific",
   "subsystem": "direct_integrals",
-  "reason": "SSSS/PSSS force adapters consume generated Weighted IntegralIR roots but retain handwritten Gaussian prefactors, Boys arguments, decay derivatives, normalization and center recovery. Operator-specific geometry/contraction remains scientific until its generated replacement is qualified.",
+  "reason": "SSSS/PSSS force adapters consume compiler-generated cached-pair Gaussian geometry and Weighted IntegralIR force roots. Native density folding, AO normalization, center recovery and atom accumulation remain operator-specific scientific composition.",
   "regions": []
 }

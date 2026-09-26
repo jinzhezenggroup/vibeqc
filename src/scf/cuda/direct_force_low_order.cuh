@@ -42,35 +42,13 @@ contracted_eri_cartesian_source_ssss_generated_weighted_gradient(
   for (std::int64_t first_primitive = first_pair_begin; first_primitive < first_pair_end;
        ++first_primitive) {
     const PrimitivePairData first_pair = batch.shell_primitive_pairs[first_primitive];
-    const double p = first_pair.exponent_sum;
     for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
          ++second_primitive) {
       const PrimitivePairData second_pair = batch.shell_primitive_pairs[second_primitive];
-      const double q = second_pair.exponent_sum;
       generated_weighted_eri::Geometry geometry;
-      geometry.rho = p * q / (p + q);
-      geometry.prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
-                           2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      geometry.product_scales[0] = first_pair.first_product_scale;
-      geometry.product_scales[1] = first_pair.second_product_scale;
-      geometry.product_scales[2] = second_pair.first_product_scale;
-      const Vec3<double> difference{
-          first_pair.product_center.x - second_pair.product_center.x,
-          first_pair.product_center.y - second_pair.product_center.y,
-          first_pair.product_center.z - second_pair.product_center.z,
-      };
-      boys_values<1>(
-          geometry.rho * distance_squared(first_pair.product_center, second_pair.product_center),
-          geometry.boys);
-#pragma unroll
-      for (unsigned axis = 0; axis < 3; ++axis) {
-        geometry.difference[axis] = vec_axis(difference, axis);
-        const double first_separation = vec_axis(first, axis) - vec_axis(second, axis);
-        const double second_separation = vec_axis(third, axis) - vec_axis(fourth, axis);
-        geometry.decay[0][axis] = -2.0 * first_pair.reduced_exponent * first_separation;
-        geometry.decay[1][axis] = -geometry.decay[0][axis];
-        geometry.decay[2][axis] = -2.0 * second_pair.reduced_exponent * second_separation;
-      }
+      const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
+          first_pair, second_pair, false, false, first, second, third, fourth, geometry);
+      boys_values<1>(boys_argument, geometry.boys);
       const auto gradient = generated_weighted_eri::ssss_force(geometry, weights);
 #pragma unroll
       for (unsigned center = 0; center < 3; ++center) {

@@ -100,65 +100,15 @@ contracted_eri_cartesian_source_order3_generated_weighted_gradient(
   for (std::int64_t first_primitive = first_pair_begin; first_primitive < first_pair_end;
        ++first_primitive) {
     const PrimitivePairData first_data = batch.shell_primitive_pairs[first_primitive];
-    const double p = first_data.exponent_sum;
-    const double mu = first_data.reduced_exponent;
-    const Vec3<double> product_p = first_data.product_center;
-    const double first_product_scale = first_pair_matches_canonical_order
-                                           ? first_data.first_product_scale
-                                           : first_data.second_product_scale;
-    const double second_product_scale = first_pair_matches_canonical_order
-                                            ? first_data.second_product_scale
-                                            : first_data.first_product_scale;
     for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
          ++second_primitive) {
       const PrimitivePairData second_data = batch.shell_primitive_pairs[second_primitive];
-      const double q = second_data.exponent_sum;
-      const double nu = second_data.reduced_exponent;
-      const Vec3<double> product_q = second_data.product_center;
-      const double third_product_scale = second_pair_matches_canonical_order
-                                             ? second_data.first_product_scale
-                                             : second_data.second_product_scale;
-      const double fourth_product_scale = second_pair_matches_canonical_order
-                                              ? second_data.second_product_scale
-                                              : second_data.first_product_scale;
-
-      generated_weighted_eri::Geometry geometry{};
-      geometry.inverse_two_p = 0.5 / p;
-      geometry.inverse_two_q = 0.5 / q;
-      geometry.rho = p * q / (p + q);
-      geometry.prefactor = first_data.weighted_coefficient * second_data.weighted_coefficient *
-                           2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      geometry.product_scales[0] = first_product_scale;
-      geometry.product_scales[1] = second_product_scale;
-      geometry.product_scales[2] = third_product_scale;
-      geometry.product_scales[3] = fourth_product_scale;
-
-      const Vec3<double> difference{
-          product_p.x - product_q.x,
-          product_p.y - product_q.y,
-          product_p.z - product_q.z,
-      };
-      const Vec3<double> shift[4] = {
-          {product_p.x - position[0].x, product_p.y - position[0].y, product_p.z - position[0].z},
-          {product_p.x - position[1].x, product_p.y - position[1].y, product_p.z - position[1].z},
-          {product_q.x - position[2].x, product_q.y - position[2].y, product_q.z - position[2].z},
-          {product_q.x - position[3].x, product_q.y - position[3].y, product_q.z - position[3].z},
-      };
-      boys_values<4>(geometry.rho * distance_squared(product_p, product_q), geometry.boys);
-#pragma unroll
-      for (unsigned axis = 0; axis < 3; ++axis) {
-        geometry.difference[axis] = vec_axis(difference, axis);
-#pragma unroll
-        for (unsigned center = 0; center < 4; ++center) {
-          geometry.shifts[center][axis] = vec_axis(shift[center], axis);
-        }
-        const double first_separation = vec_axis(position[0], axis) - vec_axis(position[1], axis);
-        const double second_separation = vec_axis(position[2], axis) - vec_axis(position[3], axis);
-        geometry.decay[0][axis] = -2.0 * mu * first_separation;
-        geometry.decay[1][axis] = -geometry.decay[0][axis];
-        geometry.decay[2][axis] = -2.0 * nu * second_separation;
-        geometry.decay[3][axis] = -geometry.decay[2][axis];
-      }
+      generated_weighted_eri::Geometry geometry;
+      const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
+          first_data, second_data, !first_pair_matches_canonical_order,
+          !second_pair_matches_canonical_order, position[0], position[1], position[2], position[3],
+          geometry);
+      boys_values<4>(boys_argument, geometry.boys);
 
       generated_weighted_eri::IndependentGradient primitive{};
       if constexpr (TargetShellClass == kPppsShellClass) {

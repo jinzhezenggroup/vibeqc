@@ -71,60 +71,14 @@ contracted_eri_cartesian_source_psss_weighted_gradient(
        ++first_primitive) {
     const PrimitivePairData first_pair = ResidentBra ? resident_first_pairs[first_primitive]
                                                      : batch.shell_primitive_pairs[first_primitive];
-    const double p = first_pair.exponent_sum;
-    const double mu = first_pair.reduced_exponent;
-    const Vec3<double> product_p = first_pair.product_center;
-    const double first_product_scale = first_pair_matches_canonical_order
-                                           ? first_pair.first_product_scale
-                                           : first_pair.second_product_scale;
-    const double second_product_scale = first_pair_matches_canonical_order
-                                            ? first_pair.second_product_scale
-                                            : first_pair.first_product_scale;
     for (std::int64_t second_primitive = second_pair_begin; second_primitive < second_pair_end;
          ++second_primitive) {
       const PrimitivePairData second_pair = batch.shell_primitive_pairs[second_primitive];
-      const double q = second_pair.exponent_sum;
-      const double nu = second_pair.reduced_exponent;
-      const double rho = p * q / (p + q);
-      const Vec3<double> product_q = second_pair.product_center;
-      const Vec3<double> product_difference{
-          product_p.x - product_q.x,
-          product_p.y - product_q.y,
-          product_p.z - product_q.z,
-      };
-      const Vec3<double> pa{
-          product_p.x - first.x,
-          product_p.y - first.y,
-          product_p.z - first.z,
-      };
-      double boys[3];
-      boys_values<2>(rho * distance_squared(product_p, product_q), boys);
-      const double prefactor = first_pair.weighted_coefficient * second_pair.weighted_coefficient *
-                               2.0 * pow(kPi, 2.5) / (p * q * sqrt(p + q));
-      // Retain resident-bra reuse, primitive orientation, normalization, and
-      // one traversal across all p outputs. The force-only helper reads only
-      // the fields initialized below; the scientific derivative algebra is
-      // unconditionally compiler-owned.
       generated_weighted_eri::Geometry geometry;
-      geometry.inverse_two_p = 0.5 / p;
-      geometry.rho = rho;
-      geometry.prefactor = prefactor;
-      geometry.product_scales[0] = first_product_scale;
-      geometry.product_scales[1] = second_product_scale;
-      geometry.product_scales[2] = second_pair_matches_canonical_order
-                                       ? second_pair.first_product_scale
-                                       : second_pair.second_product_scale;
-#pragma unroll
-      for (unsigned coordinate = 0; coordinate < 3; ++coordinate) {
-        geometry.shifts[0][coordinate] = vec_axis(pa, coordinate);
-        geometry.difference[coordinate] = vec_axis(product_difference, coordinate);
-        geometry.boys[coordinate] = boys[coordinate];
-        geometry.decay[0][coordinate] =
-            -2.0 * mu * (vec_axis(first, coordinate) - vec_axis(second, coordinate));
-        geometry.decay[1][coordinate] = -geometry.decay[0][coordinate];
-        geometry.decay[2][coordinate] =
-            -2.0 * nu * (vec_axis(third, coordinate) - vec_axis(fourth, coordinate));
-      }
+      const double boys_argument = generated_weighted_eri::make_direct_cached_geometry(
+          first_pair, second_pair, !first_pair_matches_canonical_order,
+          !second_pair_matches_canonical_order, first, second, third, fourth, geometry);
+      boys_values<2>(boys_argument, geometry.boys);
       const auto generated = generated_weighted_eri::psss_force(geometry, axis_weight);
 #pragma unroll
       for (unsigned center = 0; center < 3; ++center) {
