@@ -72,18 +72,26 @@ def test_occupied_response_independent_replay(
     )
     if route == "raw-batched":
         monkeypatch.setenv("VIBEQC_DF_SOURCE_PROJECTION", "batched")
+    # The practical auxiliary is an external record, not a bundled basis name.
+    auxiliary_record = (
+        auxiliary
+        if auxiliary == "def2-svp"
+        else Path(__file__).resolve().parents[2]
+        / "benchmarks/results/issue206-practical-auxiliary/identity/cc-pvdz-jkfit.json"
+    )
     calculator = Calculator(
         device="cuda",
         method="rhf",
         basis="def2-svp",
         basis_representation="spherical",
-        auxiliary_basis=auxiliary,
+        auxiliary_basis=auxiliary_record,
         density_fitting="cuda",
         energy_tolerance=1e-12,
         density_tolerance=1e-10,
     )
     with calculator.prepare_batch([atoms], warm_start=True) as batch:
-        for phase, geometry in enumerate((None, None, moved, None)):
+        # None restores the prepared geometry, so replay moved coordinates explicitly.
+        for phase, geometry in enumerate((None, None, moved, moved)):
             trace = tmp_path / f"{route}-{auxiliary}-{consumer}-{phase}.jsonl"
             monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
             result = batch.execute(
