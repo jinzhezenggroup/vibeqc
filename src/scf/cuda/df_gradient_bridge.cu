@@ -681,8 +681,7 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (!device_metric || !device_metric->full_rank || !occupied->owner_identity ||
         occupied->owner_identity != device_metric->owner_identity || occupied->nbf != n ||
         occupied->naux != a || !source || borrowed || packed_raw ||
-        (whitened && !whitened->packed_pairs) ||
-        terms.size() > occupied->factors.size()) {
+        (whitened && !whitened->packed_pairs) || terms.size() > occupied->factors.size()) {
       detail = "streamed occupied DF factors differ from the full-rank metric owner";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
@@ -851,17 +850,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    const char* source_schedule_control =
-        std::getenv("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE");
+    const char* source_schedule_control = std::getenv("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE");
     const std::string_view source_schedule =
         source_schedule_control ? source_schedule_control : "auto";
     if (source_schedule != "auto" && source_schedule != "qualify")
-      throw std::invalid_argument(
-          "VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE requires auto or qualify");
+      throw std::invalid_argument("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE requires auto or qualify");
     const bool source_schedule_eligible = df_response_shell_source_eligible(
         source != nullptr, packed_raw != nullptr, whitened != nullptr,
-        occupied && device_metric && device_metric->full_rank,
-        source_schedule == "qualify");
+        occupied && device_metric && device_metric->full_rank, source_schedule == "qualify");
     runtime::cuda_trace::trace_counter("response_source_derivative_qualification_requested",
                                        source_schedule == "qualify");
     if (device_metric && schedule == 0 && source_schedule_eligible &&

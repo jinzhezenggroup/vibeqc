@@ -3,6 +3,7 @@
 The runtime reuses the existing DF occupied adjoint; this module only emits
 three dense contractions. No runtime, oracle or device import is required.
 """
+
 from __future__ import annotations
 
 PROJECTION_EQUATIONS = ("qmn,ni->qmi", "mj,qmi->qji")
@@ -11,7 +12,7 @@ METRIC_EQUATIONS = ("pq,pij->qij", "pq,qij->pij")
 
 def emit_occupied_response_helpers() -> str:
     """Return allocation-free C++ helpers for the established cuBLAS provider."""
-    return r'''
+    return r"""
 /** Bounded auxiliary panel size. extra_raw=1 reserves a second raw panel
  * for source-major -> auxiliary-major conversion. All storage is already
  * owned; neither the emitter nor the caller may widen its allowance.
@@ -80,4 +81,4 @@ inline cublasStatus_t df_occupied_from_metric_eigenbasis(
                      eigenfactors, auxiliary, eigenvectors, auxiliary,
                      &zero, projected, rank_squared);
 }
-'''
+"""

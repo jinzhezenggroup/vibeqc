@@ -1,7 +1,8 @@
 """Host-only source/derivative policy regression; no GPU or runtime import."""
-from pathlib import Path
+
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -35,6 +36,18 @@ int main() {
 }
 """)
     executable = tmp_path / "source_policy"
-    subprocess.run([compiler, "-std=c++20", "-Wall", "-Wextra", "-Werror",
-                    f"-I{root / 'src'}", str(source), "-o", str(executable)], check=True)
+    subprocess.run(
+        [
+            compiler,
+            "-std=c++20",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            f"-I{root / 'src'}",
+            str(source),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
     subprocess.run([str(executable)], check=True)
