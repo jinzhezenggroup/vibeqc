@@ -27,8 +27,10 @@ def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
         source, "posthf_cuda_download_v1", "posthf_cuda_metrics_v1"
     )
     helper_begin = source.index("void validate(Transform& p)")
-    helper_end = source.index("}  // namespace", helper_begin)
-    helper = source[helper_begin:helper_end]
+    batch_helper_begin = source.index("void validate(BatchTransform& p)")
+    helper = source[helper_begin:batch_helper_begin]
+    batch_helper_end = source.index("}  // namespace", batch_helper_begin)
+    batch_helper = source[batch_helper_begin:batch_helper_end]
 
     assert "cublasDaxpy" in add
     assert "check_scale<<<" not in add
@@ -36,8 +38,10 @@ def test_cuda_mo_validation_occurs_once_per_completed_block() -> None:
     assert "cudaStreamSynchronize" not in add
     assert "p.validated = false" in add
 
-    assert source.count("check_scale<<<") == 1
+    assert helper.count("check_scale<<<") == 1
+    assert batch_helper.count("check_scale<<<") == 1
     assert "if (p.validated) return" in helper
+    assert "if (p.validated) return" in batch_helper
     validation = helper.index("check_scale<<<")
     status = helper.index("cudaMemcpyAsync(&invalid")
     failure = helper.index(
