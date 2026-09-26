@@ -114,7 +114,9 @@ def select_operator_route(
     for name, contract in materialized:
         _nonempty_text(name, "operator route name")
         if not isinstance(contract, ScheduleContract):
-            raise TypeError("operator route selection requires ScheduleContract records")
+            raise TypeError(
+                "operator route selection requires ScheduleContract records"
+            )
 
     selected = select_measured_schedule_contract(
         tuple(contract for _, contract in materialized),
