@@ -7,7 +7,10 @@
 
 namespace vibeqc::scf {
 
-/** Work census, not a latency estimate. All sizes count double elements. */
+/** Cumulative work, not a latency estimate or a peak allocation budget.
+ * panels/reader_calls count visits, projected_columns counts auxiliary columns,
+ * and staging_elements counts double elements across all repeated projections.
+ */
 struct DfFittedPanelWork {
   std::size_t panels{}, reader_calls{}, projected_columns{}, staging_elements{};
 };
@@ -27,7 +30,8 @@ inline std::size_t df_response_checked_sum(std::size_t a, std::size_t b) {
 /** The general-density fallback recomputes every fitted Q panel for each P
  * panel. Keep this cost visible: a smaller tile increases actual work, not
  * only launch overhead. The diagonal visit replaces, rather than adds to,
- * its occurrence in the inner traversal.
+ * its occurrence in the inner traversal. This census applies to the fitted
+ * reader route, not a retained all-fitted tensor or an occupied projection.
  */
 inline DfFittedPanelWork df_fitted_panel_work(std::size_t naux, std::size_t tile,
                                               std::size_t stored_pairs) {
@@ -50,6 +54,12 @@ struct DfOccupiedProjectionBatch {
   std::size_t total_elements{};
 };
 
+/** Plan at most column_cap auxiliary columns using double-element capacity.
+ * maximum_rank is the largest occupied rank sharing this scratch sequentially;
+ * rank zero is valid and needs no product panel. Insufficient capacity returns
+ * an empty batch. Invalid dimensions and unrepresentable strides throw instead
+ * of wrapping into an apparently admissible allocation.
+ */
 inline DfOccupiedProjectionBatch plan_df_occupied_projection_batch(
     std::size_t nbf, std::size_t naux, std::size_t maximum_rank, std::size_t reusable_elements,
     std::size_t column_cap, bool pair_major_source) {

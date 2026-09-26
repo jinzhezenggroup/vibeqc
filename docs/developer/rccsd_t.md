@@ -3,10 +3,15 @@
 `tools.vibeqc_cc/triples.py` provides the auditable standard closed-shell
 non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
 generated native CPU energy evaluator, and generated response paths share that
-definition. `VIBEQC_METHOD_RCCSD_T` now has native/public CPU energy and
-analytic-force ownership plus a native CUDA energy owner, with homogeneous
-prepared-batch support. CUDA analytic forces remain fail-closed. PySCF is used
-only by pinned validation tooling and is never a runtime dependency.
+definition. `VIBEQC_METHOD_RCCSD_T` has native/public CPU and CUDA energy
+ownership and qualified analytic forces for the conventional closed-shell
+small-system domain, with homogeneous prepared-batch support. The CUDA force path executes the generated corrected-Lambda RHS/J^T actions and
+fixed-orbital parameter VJPs on CUDA, then reuses one native CUDA owner for the
+Hamiltonian/Fock pullbacks and orbital JVP. Lambda GMRES and the physical Z-vector
+Krylov control flow remain host-owned, while the final conventional nuclear
+derivative contraction runs on CUDA. This is not yet a fully resident response
+chain.
+PySCF is used only by pinned validation tooling and is never a runtime dependency.
 
 ## Mathematical contract
 
@@ -210,10 +215,11 @@ projection is applied after assembly.
 Pinned PySCF 2.14.0 analytic gradients for H2O and NH3 are independent acceptance
 oracles in `tests/python/test_ccsd_t_complete_gradient.py`; complete-energy
 finite differences and omission controls remain in
-`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU
-energy/force owner and CUDA energy owner, including homogeneous prepared batches,
-are covered by `tests/python/test_rccsdt_public.py`; CUDA force publication
-remains a separate capability. The ownership rationale is recorded in
+`tests/python/test_ccsd_t_gradient_validation.py`. The native/public CPU and
+CUDA energy/force owners, including homogeneous prepared batches, are covered by
+`tests/python/test_rccsdt_public.py`. CUDA force tests additionally require
+explicit real-device qualification and assert a CUDA derivative-provenance bit.
+The ownership rationale is recorded in
 [the complete-gradient Agent Note](../../.agents/notes/implemented/numerics/2026-09-21-ccsdt-complete-gradient-assembly.md).
 
 ## Native CUDA public interface
@@ -221,14 +227,20 @@ remains a separate capability. The ownership rationale is recorded in
 `Calculator(method="ccsd(t)", device="cuda", basis="sto-3g")` executes native
 CUDA RHF, the existing conventional MO-block preparation, resident RCCSD with
 physical residual replay, and the generated CUDA standard `(T)` evaluator.
-Energy single points and homogeneous prepared batches use this owner. The CPU
-analytic-force owner is unchanged; CUDA force requests remain explicitly
-unsupported.
+Energy single points and homogeneous prepared batches use this owner. Force
+requests in the qualified <=12-AO conventional all-electron domain reuse the
+same native CCSD(T) response mathematics as CPU and send the final one-/two-
+electron nuclear derivative contractions to the existing CUDA consumers.
 
 The existing MO provider retains its explicit host preparation/staging contract.
 Accepted CC amplitudes and MO blocks are host-owned between the resident CC solve
-and `(T)`; the triples owner stages those inputs once. This is GPU execution of
-the correlation stages, not an end-to-end device-residency or performance claim.
+and `(T)`; the triples owner stages those inputs once. The corrected-Lambda
+scientific RHS and transpose actions are now generated CUDA programs, with the
+symmetry-packed GMRES control flow still on host. Parameter/Hamiltonian response
+and the physical Z-vector remain host-owned in the native C++ force owner. The
+fully CUDA-resident response composition introduced by #1215-#1225 remains the
+qualification target for later slices. Therefore this path still does not make an
+end-to-end device-residency or performance claim.
 
 The generated evaluator shares the CPU audited permutation inventory, evaluates
 the triangular virtual domain, and uses fixed-order block/final reductions.

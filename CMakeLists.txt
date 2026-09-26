@@ -33,6 +33,8 @@ option(VIBEQC_CUDA_DIRECT_DEVICE_LINK
        "Share native direct numerical code through a bounded NVIDIA device link" ON)
 option(VIBEQC_CUDA_FAST_COMPILE
        "Use compiler-oriented CUDA options (never for release measurements)" OFF)
+option(VIBEQC_ENABLE_CXX_PCH
+       "Precompile stable standard-library headers for host C++ compilation" OFF)
 set(VIBEQC_COMPILER_CACHE "auto" CACHE STRING
     "Compiler cache launcher: auto, off, or an executable name/path")
 set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
@@ -40,7 +42,11 @@ set(VIBEQC_CUDA_ARCHITECTURES "" CACHE STRING
 set(VIBEQC_CUDA_COMPILE_ARCHITECTURES "" CACHE STRING
     "NVCC architecture values, retaining 120-real/120-virtual intent")
 set(VIBEQC_CUDA_COMPILE_JOBS "2" CACHE STRING
-    "Maximum concurrent CUDA compiler jobs in the Ninja job pool")
+    "Maximum concurrent native CUDA compiler jobs in the Ninja job pool")
+set(VIBEQC_AOT_COMPILE_JOBS "" CACHE STRING
+    "Optional independent generated-AOT CUDA job limit; empty shares the native CUDA pool")
+set(VIBEQC_AOT_SPLIT_COMPILE_THREADS "1" CACHE STRING
+    "NVCC split-compile threads for generated AOT kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_SPLIT_COMPILE_THREADS "1" CACHE STRING
     "NVCC split-compile threads for native direct kernels; 1 preserves production code generation")
 set(VIBEQC_CUDA_PROVIDER "nvidia" CACHE STRING
@@ -114,6 +120,15 @@ endif()
 if(NOT VIBEQC_CUDA_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR "VIBEQC_CUDA_COMPILE_JOBS must be a positive integer")
 endif()
+if(NOT VIBEQC_AOT_COMPILE_JOBS STREQUAL ""
+   AND NOT VIBEQC_AOT_COMPILE_JOBS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR
+          "VIBEQC_AOT_COMPILE_JOBS must be empty or a positive integer")
+endif()
+if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR
+          "VIBEQC_AOT_SPLIT_COMPILE_THREADS must be a positive integer")
+endif()
 if(NOT VIBEQC_CUDA_PROVIDER STREQUAL "nvidia"
    AND NOT VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")
   message(FATAL_ERROR "VIBEQC_CUDA_PROVIDER must be nvidia or cumetal")
@@ -160,8 +175,15 @@ if(VIBEQC_ENABLE_CUDA)
     # Preserve NVCC's real/virtual suffixes for compilation. A separate
     # numeric profile identity is derived below for manifest and cache paths.
     set(_vibeqc_cuda_compile_architectures ${CMAKE_CUDA_ARCHITECTURES})
-    set_property(GLOBAL PROPERTY JOB_POOLS
-                 vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
+    set(_vibeqc_aot_compile_pool vibeqc_cuda_compile)
+    set(_vibeqc_cuda_job_pools
+        vibeqc_cuda_compile=${VIBEQC_CUDA_COMPILE_JOBS})
+    if(NOT VIBEQC_AOT_COMPILE_JOBS STREQUAL "")
+      list(APPEND _vibeqc_cuda_job_pools
+           vibeqc_aot_compile=${VIBEQC_AOT_COMPILE_JOBS})
+      set(_vibeqc_aot_compile_pool vibeqc_aot_compile)
+    endif()
+    set_property(GLOBAL PROPERTY JOB_POOLS ${_vibeqc_cuda_job_pools})
     # XsyevBatched is the capture-safe production eigensolver for realistic
     # AO buckets and is available in the supported CUDA 12.9 toolkit. Native
     # SDK builds link the toolkit providers normally. Python wheels instead
@@ -212,20 +234,47 @@ vibeqc_register_host_generated_sources(vibeqc)
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
 # so the same installed build can be reused across homogeneous cluster nodes.
+#
+# Keep inventory discovery at configure time so additions/removals regenerate
+# the build graph, but hash file contents only when the generated identity
+# header is actually out of date. Ordinary source edits therefore do not force
+# a CMake reconfigure before compilation can resume.
 vibeqc_collect_source_identity_inputs(_vibeqc_identity_inputs)
-set(_vibeqc_identity_text "")
+# A removed dependency cannot make the remaining inputs newer than the header.
+# Persist membership separately so deletions, renames and backdated additions
+# invalidate identity too. file(GENERATE) preserves mtime when the list is unchanged.
+set(_vibeqc_identity_inventory
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/build_identity_inputs.txt")
+file(GENERATE OUTPUT "${_vibeqc_identity_inventory}"
+     CONTENT "${_vibeqc_identity_inputs}\n")
+set(_vibeqc_identity_dependencies)
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
-  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}" _vibeqc_file_hash)
-  string(APPEND _vibeqc_identity_text "${_vibeqc_identity_path}:${_vibeqc_file_hash}\n")
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-               "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
+  list(APPEND _vibeqc_identity_dependencies
+       "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
 endforeach()
-string(SHA256 VIBEQC_SOURCE_IDENTITY "${_vibeqc_identity_text}")
 set(VIBEQC_TUNING_RELEASE_BUILD OFF)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(VIBEQC_TUNING_RELEASE_BUILD ON)
 endif()
-configure_file(src/api/build_identity.hpp.in generated/build_identity.hpp @ONLY)
+set(VIBEQC_BUILD_IDENTITY_HEADER
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/build_identity.hpp")
+vibeqc_register_generated_sources(
+  NAME vibeqc_build_identity_codegen
+  TARGET vibeqc
+  GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_build_identity.py"
+  OUTPUTS "${VIBEQC_BUILD_IDENTITY_HEADER}"
+  DEPENDS
+    "${_vibeqc_identity_inventory}"
+    ${_vibeqc_identity_dependencies}
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/api/build_identity.hpp.in"
+  ARGS
+    --source-root "${CMAKE_CURRENT_SOURCE_DIR}"
+    --manifest "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.json"
+    --template "${CMAKE_CURRENT_SOURCE_DIR}/src/api/build_identity.hpp.in"
+    --output "${VIBEQC_BUILD_IDENTITY_HEADER}"
+    --cuda-fast-compile "${VIBEQC_CUDA_FAST_COMPILE}"
+    --release-build "${VIBEQC_TUNING_RELEASE_BUILD}"
+  COMMENT "Generating VibeQC build identity")
 target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 target_include_directories(vibeqc
@@ -235,6 +284,11 @@ target_include_directories(vibeqc
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+if(VIBEQC_ENABLE_CXX_PCH)
+  target_precompile_headers(vibeqc PRIVATE
+    "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/src/pch.hpp>")
+endif()
 
 target_compile_definitions(vibeqc PRIVATE VIBEQC_BUILDING_LIBRARY=1)
 if(VIBEQC_CUDA_PROVIDER STREQUAL "cumetal")

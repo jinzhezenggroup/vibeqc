@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <vector>
@@ -145,7 +146,144 @@ __global__ void pair_kernel_ordered(std::size_t begin, std::size_t count, std::s
     atomicExch(failed, 1);
 }
 
+__global__ void reduce_energy_ordered_kernel(std::size_t npoint, const double* energy_terms,
+                                             double* energy, int* failed) {
+  if (blockIdx.x != 0 || threadIdx.x != 0) return;
+  double sum = 0.0;
+  for (std::size_t i = 0; i < npoint; ++i) sum += energy_terms[i];
+  if (!isfinite(sum)) atomicExch(failed, 1);
+  *energy = sum;
+}
+
+__global__ void molecular_domain_kernel(std::size_t npoint, double threshold, const double* weights,
+                                        const double* density, const double* gradient,
+                                        double* effective_weights, double* effective_density,
+                                        double* effective_gradient, int* failed) {
+  for (std::size_t i = std::size_t(blockIdx.x) * blockDim.x + threadIdx.x; i < npoint;
+       i += std::size_t(blockDim.x) * gridDim.x) {
+    const double rho = density[i];
+    const double gx = gradient[3 * i];
+    const double gy = gradient[3 * i + 1];
+    const double gz = gradient[3 * i + 2];
+    const double weight = weights[i];
+    const bool valid = isfinite(rho) && rho >= 0.0 && isfinite(gx) && isfinite(gy) &&
+                       isfinite(gz) && isfinite(weight);
+    if (!valid) atomicExch(failed, 1);
+    const bool inactive = !valid || rho < threshold;
+    effective_weights[i] = inactive ? 0.0 : weight;
+    effective_density[i] = inactive ? 1.0 : rho;
+    effective_gradient[3 * i] = inactive ? 0.0 : gx;
+    effective_gradient[3 * i + 1] = inactive ? 0.0 : gy;
+    effective_gradient[3 * i + 2] = inactive ? 0.0 : gz;
+  }
+}
+
 }  // namespace
+
+void enqueue_vv10_molecular_domain_cuda(cudaStream_t stream, std::size_t point_count,
+                                        double density_threshold, const double* weights,
+                                        const double* density, const double* density_gradient,
+                                        double* effective_weights, double* effective_density,
+                                        double* effective_density_gradient, int* numerical_error) {
+  if (stream == nullptr || !point_count || !std::isfinite(density_threshold) ||
+      density_threshold <= 0.0 || weights == nullptr || density == nullptr ||
+      density_gradient == nullptr || effective_weights == nullptr || effective_density == nullptr ||
+      effective_density_gradient == nullptr || numerical_error == nullptr)
+    throw std::invalid_argument("invalid resident molecular VV10 domain request");
+  runtime::cuda_resource_check(cudaMemsetAsync(numerical_error, 0, sizeof(int), stream));
+  constexpr unsigned threads = 128;
+  molecular_domain_kernel<<<launch_blocks(point_count, threads), threads, 0, stream>>>(
+      point_count, density_threshold, weights, density, density_gradient, effective_weights,
+      effective_density, effective_density_gradient, numerical_error);
+  runtime::cuda_resource_check(cudaGetLastError());
+}
+
+Vv10CudaDeviceLayout vv10_cuda_device_layout(std::size_t point_count, std::size_t tile_points,
+                                             bool features, bool geometry) {
+  if (!point_count || !tile_points)
+    throw std::invalid_argument("resident VV10 CUDA layout requires nonzero point/tile counts");
+  const auto arrays = std::size_t{4} + (features ? 3u : 0u);
+  const auto doubles =
+      runtime::size_mul(arrays, point_count, "resident VV10 CUDA workspace extent overflow");
+  return {point_count, std::min(tile_points, point_count),
+          runtime::size_mul(doubles, sizeof(double), "resident VV10 CUDA workspace byte overflow"),
+          features, geometry};
+}
+
+void enqueue_vv10_cuda_device(const Vv10CudaDeviceLayout& layout, Vv10Parameters parameters,
+                              int device_id, cudaStream_t stream, const double* points_xyz,
+                              const double* weights, const double* density,
+                              const double* density_gradient, void* workspace,
+                              std::size_t workspace_bytes, double* energy, double* vrho,
+                              double* vsigma, double* point_derivative, double* weight_derivative,
+                              int* numerical_error) {
+  // The resident entry point can be called without Vv10Plan::prepare. Preserve
+  // that owner's scientific parameter domain before touching the caller stream.
+  if ((parameters.variant != Vv10Variant::vv10 && parameters.variant != Vv10Variant::rvv10) ||
+      !std::isfinite(parameters.b) || parameters.b <= 0.0 || !std::isfinite(parameters.c) ||
+      parameters.c <= 0.0 || !std::isfinite(parameters.coefficient) ||
+      parameters.coefficient <= 0.0)
+    throw std::invalid_argument(
+        "resident VV10 CUDA parameters must have a supported variant and finite positive values");
+  const auto canonical = vv10_cuda_device_layout(layout.point_count, layout.tile_points,
+                                                 layout.features, layout.geometry);
+  if (layout.point_count != canonical.point_count || layout.tile_points != canonical.tile_points ||
+      layout.workspace_bytes != canonical.workspace_bytes ||
+      workspace_bytes < layout.workspace_bytes)
+    throw std::invalid_argument("resident VV10 CUDA layout/workspace mismatch");
+  if (device_id < 0 || stream == nullptr || points_xyz == nullptr || weights == nullptr ||
+      density == nullptr || density_gradient == nullptr || workspace == nullptr ||
+      energy == nullptr || numerical_error == nullptr)
+    throw std::invalid_argument("resident VV10 CUDA execution received a null owner/input");
+  if (reinterpret_cast<std::uintptr_t>(workspace) % alignof(double))
+    throw std::invalid_argument("resident VV10 CUDA workspace is misaligned");
+  if (layout.features != (vrho != nullptr && vsigma != nullptr) ||
+      (vrho == nullptr) != (vsigma == nullptr))
+    throw std::invalid_argument("resident VV10 CUDA feature outputs disagree with layout");
+  if (layout.geometry != (point_derivative != nullptr && weight_derivative != nullptr) ||
+      (point_derivative == nullptr) != (weight_derivative == nullptr))
+    throw std::invalid_argument("resident VV10 CUDA geometry outputs disagree with layout");
+
+  runtime::CudaDeviceScope device(device_id);
+  auto* cursor = static_cast<double*>(workspace);
+  auto take = [&](std::size_t count) {
+    auto* out = cursor;
+    cursor += count;
+    return out;
+  };
+  const auto npoint = layout.point_count;
+  double* omega = take(npoint);
+  double* kappa = take(npoint);
+  double* domega_drho = layout.features ? take(npoint) : nullptr;
+  double* domega_dsigma = layout.features ? take(npoint) : nullptr;
+  double* dkappa_drho = layout.features ? take(npoint) : nullptr;
+  double* weighted_density = take(npoint);
+  double* energy_terms = take(npoint);
+  const auto expected_end =
+      static_cast<double*>(workspace) + layout.workspace_bytes / sizeof(double);
+  if (cursor != expected_end)
+    throw std::logic_error("resident VV10 CUDA workspace partition mismatch");
+
+  runtime::cuda_resource_check(cudaMemsetAsync(numerical_error, 0, sizeof(int), stream));
+  constexpr unsigned threads = 128;
+  const auto blocks = launch_blocks(npoint, threads);
+  local_scales_kernel<<<blocks, threads, 0, stream>>>(
+      npoint, parameters.b, parameters.c, weights, density, density_gradient, omega, kappa,
+      domega_drho, domega_dsigma, dkappa_drho, weighted_density, layout.features, numerical_error);
+  runtime::cuda_resource_check(cudaGetLastError());
+  const double beta = std::pow(3.0 / (parameters.b * parameters.b), 0.75) / 32.0;
+  for (std::size_t begin = 0; begin < npoint; begin += layout.tile_points) {
+    const auto count = std::min(layout.tile_points, npoint - begin);
+    const auto tile_blocks = launch_blocks(count, threads);
+    pair_kernel_ordered<<<tile_blocks, threads, 0, stream>>>(
+        begin, count, npoint, parameters, points_xyz, density, omega, kappa, domega_drho,
+        domega_dsigma, dkappa_drho, weighted_density, beta, energy_terms, vrho, vsigma,
+        point_derivative, weight_derivative, numerical_error);
+    runtime::cuda_resource_check(cudaGetLastError());
+  }
+  reduce_energy_ordered_kernel<<<1, 1, 0, stream>>>(npoint, energy_terms, energy, numerical_error);
+  runtime::cuda_resource_check(cudaGetLastError());
+}
 
 void execute_vv10_cuda(const double* points_xyz, const double* weights, const double* density,
                        const double* density_gradient, std::size_t npoint, std::size_t tile_points,
@@ -157,13 +295,15 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
     throw std::invalid_argument("nonlocal feature outputs must be requested together");
   const bool features = vrho != nullptr;
   const bool geometry = point_derivative != nullptr;
-  const auto effective_tile = std::min(tile_points, npoint);
-  const auto arrays = std::size_t{12} + (features ? 5u : 0u) + (geometry ? 4u : 0u);
-  const auto doubles =
-      runtime::size_add(runtime::size_mul(arrays, npoint, "VV10 CUDA workspace extent overflow"),
-                        std::size_t{1}, "VV10 CUDA failure-flag extent overflow");
-  // Host destinations must outlive stream/arena teardown on every error path.
-  std::vector<double> host_energy(npoint);
+  const auto layout = vv10_cuda_device_layout(npoint, tile_points, features, geometry);
+  const auto io_arrays = std::size_t{8} + (features ? 2u : 0u) + (geometry ? 4u : 0u);
+  const auto io_doubles =
+      runtime::size_mul(io_arrays, npoint, "VV10 CUDA resident I/O extent overflow");
+  const auto workspace_doubles = layout.workspace_bytes / sizeof(double);
+  const auto doubles = runtime::size_add(
+      runtime::size_add(io_doubles, workspace_doubles, "VV10 CUDA arena extent overflow"),
+      std::size_t{1}, "VV10 CUDA failure-slot extent overflow");
+
   int host_failed = 0;
   runtime::CudaDeviceScope device(device_id);
   runtime::OwnedCudaStream stream(device_id);
@@ -178,20 +318,18 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
   double* d_weights = take(npoint);
   double* d_density = take(npoint);
   double* d_gradient = take(3 * npoint);
-  double* omega = take(npoint);
-  double* kappa = take(npoint);
-  double* domega_drho = features ? take(npoint) : nullptr;
-  double* domega_dsigma = features ? take(npoint) : nullptr;
-  double* dkappa_drho = features ? take(npoint) : nullptr;
-  double* weighted_density = take(npoint);
-  double* energy_terms = take(npoint);
   double* d_vrho = features ? take(npoint) : nullptr;
   double* d_vsigma = features ? take(npoint) : nullptr;
   double* d_point_derivative = geometry ? take(3 * npoint) : nullptr;
   double* d_weight_derivative = geometry ? take(npoint) : nullptr;
-  int* failed = reinterpret_cast<int*>(cursor);
-  if (cursor + 1 != arena.get() + doubles)
+  double* workspace = take(workspace_doubles);
+  int* failed = reinterpret_cast<int*>(take(1));
+  if (cursor != arena.get() + doubles)
     throw std::logic_error("nonlocal CUDA arena layout mismatch");
+  // The ordered reduction runs after every pair kernel, so this scalar may
+  // safely reuse the first scratch double without extending the historical
+  // provider-owned device bound.
+  double* d_energy = workspace;
 
   const auto copy_h2d = [&](double* destination, const double* source, std::size_t count) {
     runtime::cuda_resource_check(cudaMemcpyAsync(destination, source, count * sizeof(double),
@@ -201,28 +339,13 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
   copy_h2d(d_weights, weights, npoint);
   copy_h2d(d_density, density, npoint);
   copy_h2d(d_gradient, density_gradient, 3 * npoint);
-  runtime::cuda_resource_check(cudaMemsetAsync(failed, 0, sizeof(int), stream.get()));
 
-  constexpr unsigned threads = 128;
-  const auto blocks = launch_blocks(npoint, threads);
-  local_scales_kernel<<<blocks, threads, 0, stream.get()>>>(
-      npoint, parameters.b, parameters.c, d_weights, d_density, d_gradient, omega, kappa,
-      domega_drho, domega_dsigma, dkappa_drho, weighted_density, features, failed);
-  runtime::cuda_resource_check(cudaGetLastError());
-  const double beta = std::pow(3.0 / (parameters.b * parameters.b), 0.75) / 32.0;
-  for (std::size_t begin = 0; begin < npoint; begin += effective_tile) {
-    const auto count = std::min(effective_tile, npoint - begin);
-    const auto tile_blocks = launch_blocks(count, threads);
-    pair_kernel_ordered<<<tile_blocks, threads, 0, stream.get()>>>(
-        begin, count, npoint, parameters, d_points, d_density, omega, kappa, domega_drho,
-        domega_dsigma, dkappa_drho, weighted_density, beta, energy_terms, d_vrho, d_vsigma,
-        d_point_derivative, d_weight_derivative, failed);
-    runtime::cuda_resource_check(cudaGetLastError());
-  }
+  enqueue_vv10_cuda_device(layout, parameters, device_id, stream.get(), d_points, d_weights,
+                           d_density, d_gradient, workspace, layout.workspace_bytes, d_energy,
+                           d_vrho, d_vsigma, d_point_derivative, d_weight_derivative, failed);
 
-  runtime::cuda_resource_check(cudaMemcpyAsync(host_energy.data(), energy_terms,
-                                               npoint * sizeof(double), cudaMemcpyDeviceToHost,
-                                               stream.get()));
+  runtime::cuda_resource_check(
+      cudaMemcpyAsync(&energy, d_energy, sizeof(double), cudaMemcpyDeviceToHost, stream.get()));
   if (vrho)
     runtime::cuda_resource_check(cudaMemcpyAsync(vrho, d_vrho, npoint * sizeof(double),
                                                  cudaMemcpyDeviceToHost, stream.get()));
@@ -241,8 +364,6 @@ void execute_vv10_cuda(const double* points_xyz, const double* weights, const do
       cudaMemcpyAsync(&host_failed, failed, sizeof(int), cudaMemcpyDeviceToHost, stream.get()));
   stream.synchronize();
   if (host_failed) throw std::overflow_error("nonfinite nonlocal CUDA result");
-  energy = 0.0;
-  for (double value : host_energy) energy += value;
   if (!std::isfinite(energy)) throw std::overflow_error("nonfinite nonlocal CUDA energy");
 }
 

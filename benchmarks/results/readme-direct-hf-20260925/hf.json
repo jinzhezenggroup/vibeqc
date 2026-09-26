@@ -1,0 +1,1448 @@
+[
+  {
+    "raw_file": "hf/direct-12.json",
+    "raw_sha256": "686d63f242ef6b6bd1044af99a4ddc6bf938d0fb489f53fec17b49b5fb2b79ee",
+    "timestamp_utc": "2026-09-25T08:41:55.773045+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 82.69,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2565.0,
+      "temperature_celsius": 41.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 12,
+    "aos": 96,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 5.4569682106375694e-12,
+      "maximum_force_error_hartree_per_bohr": 1.459981753548778e-10,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 5.115907697472721e-12,
+        "maximum_force_error_hartree_per_bohr": 1.4599424100203429e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 5.343281372915953e-12,
+        "maximum_force_error_hartree_per_bohr": 1.459981753548778e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 5.4569682106375694e-12,
+        "maximum_force_error_hartree_per_bohr": 1.4599430692152637e-10,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 1599.2981339804828,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 1.7636269054992545e-11,
+            "energy_change_hartree": 1.1368683772161603e-13,
+            "final_residuals": {
+              "density_rms": 1.7636269054992545e-11,
+              "energy_change_hartree": 1.1368683772161603e-13,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 23,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 128.97386588156223,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.76383372544848e-11,
+                "energy_change_hartree": 1.1368683772161603e-13,
+                "final_residuals": {
+                  "density_rms": 1.76383372544848e-11,
+                  "energy_change_hartree": 1.1368683772161603e-13,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 131.55695097520947,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.7637104025624636e-11,
+                "energy_change_hartree": 1.1368683772161603e-13,
+                "final_residuals": {
+                  "density_rms": 1.7637104025624636e-11,
+                  "energy_change_hartree": 1.1368683772161603e-13,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 127.89814220741391,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.763673567121166e-11,
+                "energy_change_hartree": 1.1368683772161603e-13,
+                "final_residuals": {
+                  "density_rms": 1.763673567121166e-11,
+                  "energy_change_hartree": 1.1368683772161603e-13,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 8025.337791070342,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.6490624509677325e-08,
+              "energy_change_hartree": 2.2737367544323206e-13,
+              "orbital_gradient_norm": 4.464986813765809e-09
+            },
+            "iterations": 20,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 1081.2798072583973,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 5.839965054237011e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 1.9604273545512764e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1079.1302528232336,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 5.839968147360292e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 1.960425936036418e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1083.436100743711,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 5.839964120977189e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 1.9604246665313468e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "5cdc60d0ad31858c8a8f651bf34dc9070660fe7cca1155bfde2244e2fc394263",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "d78d94a792394a221e313512d176468d220f3e9689e1de2616394a102713033b",
+        "name": "def2-svp",
+        "primitive_count": 88,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 48
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  },
+  {
+    "raw_file": "hf/direct-24.json",
+    "raw_sha256": "7aad66b24a9a7b666a9ab6c8673aaa3c67f0de17719540643dee70bca69eb692",
+    "timestamp_utc": "2026-09-25T08:42:15.563541+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 99.93,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2617.0,
+      "temperature_celsius": 43.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 24,
+    "aos": 192,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 1.0686562745831907e-11,
+      "maximum_force_error_hartree_per_bohr": 2.2628350235254224e-10,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.0686562745831907e-11,
+        "maximum_force_error_hartree_per_bohr": 2.2628350235254224e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.0231815394945443e-11,
+        "maximum_force_error_hartree_per_bohr": 2.262572056793699e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.0459189070388675e-11,
+        "maximum_force_error_hartree_per_bohr": 2.2625356969896426e-10,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 2944.444127846509,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 1.985562312769652e-11,
+            "energy_change_hartree": 4.547473508864641e-13,
+            "final_residuals": {
+              "density_rms": 1.985562312769652e-11,
+              "energy_change_hartree": 4.547473508864641e-13,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 17,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 262.9830678924918,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.9855002407098318e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 1.9855002407098318e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 264.0195591375232,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.985490643700568e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 1.985490643700568e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 260.275405831635,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.985569303789047e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 1.985569303789047e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 8166.637226939201,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 1.8700174230172056e-08,
+              "energy_change_hartree": 3.183231456205249e-12,
+              "orbital_gradient_norm": 8.35454030471212e-09
+            },
+            "iterations": 14,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 1481.026672758162,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.0882819342446097e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.7152537041264777e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1478.4510261379182,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.0882821484288636e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.7152455046556978e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 1465.998301282525,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.088282520344303e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.715257012969429e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "14468869198dc388faacbfb99bd2f4a4d3543d5aa9c59fce5622b718e30f050a",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "241d692df6c2fbc545dab585a3e7478e3f4ca4085338927034563a9e03927771",
+        "name": "def2-svp",
+        "primitive_count": 176,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 96
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  },
+  {
+    "raw_file": "hf/direct-3.json",
+    "raw_sha256": "9084bcd7295314943a5c02feea8d03a618313715c5b07c759c4dcbc8577fca68",
+    "timestamp_utc": "2026-09-25T08:41:26.249112+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 75.23,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2565.0,
+      "temperature_celsius": 39.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 3,
+    "aos": 24,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 1.2789769243681803e-12,
+      "maximum_force_error_hartree_per_bohr": 6.089411544452084e-10,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.2789769243681803e-12,
+        "maximum_force_error_hartree_per_bohr": 6.089411544452084e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.2647660696529783e-12,
+        "maximum_force_error_hartree_per_bohr": 6.089396001329739e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 1.2363443602225743e-12,
+        "maximum_force_error_hartree_per_bohr": 6.089411544452084e-10,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 949.0621071308851,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 8.579568235842191e-11,
+            "energy_change_hartree": 0.0,
+            "final_residuals": {
+              "density_rms": 8.579568235842191e-11,
+              "energy_change_hartree": 0.0,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 16,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 84.19234724715352,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 8.579546670638152e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 8.579546670638152e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 84.28006479516625,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 8.579492438199667e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 8.579492438199667e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 83.64907978102565,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 8.579606688284962e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 8.579606688284962e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 5123.131209053099,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 5.809862985702023e-09,
+              "energy_change_hartree": 1.4210854715202004e-14,
+              "orbital_gradient_norm": 8.532939023010533e-09
+            },
+            "iterations": 13,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 879.4352021068335,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.073846986646296e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.766941968371845e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 881.3561429269612,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.0738464927248174e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.766942079537147e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 878.8821888156235,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.0738470357019412e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.766943562312027e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "be157a0bef57181381e8fd077af848102552f377fb37e960d33c6530cde9b7b5",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "fb1045410a559957360c374b8a465e84a3a83ad917170121a0e178b7ad0461b9",
+        "name": "def2-svp",
+        "primitive_count": 22,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 12
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  },
+  {
+    "raw_file": "hf/direct-48.json",
+    "raw_sha256": "d064e55065cbc17d06b9206e6ffff5f6e63f13952d4acfa2c14cf7253d0b53cc",
+    "timestamp_utc": "2026-09-25T08:42:50.295192+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 120.92,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2857.0,
+      "temperature_celsius": 48.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 48,
+    "aos": 384,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 2.2737367544323206e-11,
+      "maximum_force_error_hartree_per_bohr": 1.986455375191376e-10,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.2737367544323206e-11,
+        "maximum_force_error_hartree_per_bohr": 1.986455375191376e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.2282620193436742e-11,
+        "maximum_force_error_hartree_per_bohr": 1.9863549693965865e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.091837814077735e-11,
+        "maximum_force_error_hartree_per_bohr": 1.9863188524538167e-10,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 9568.564892746508,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 1.259961785887474e-11,
+            "energy_change_hartree": 2.7284841053187847e-12,
+            "final_residuals": {
+              "density_rms": 1.259961785887474e-11,
+              "energy_change_hartree": 2.7284841053187847e-12,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 19,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 760.0051420740783,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.2598944128324845e-11,
+                "energy_change_hartree": 4.547473508864641e-13,
+                "final_residuals": {
+                  "density_rms": 1.2598944128324845e-11,
+                  "energy_change_hartree": 4.547473508864641e-13,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 758.6188879795372,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.2600251726054443e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 1.2600251726054443e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 758.4628709591925,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 1.2599549525779167e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 1.2599549525779167e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 11877.810800913721,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 7.95897100563891e-09,
+              "energy_change_hartree": 1.8189894035458565e-12,
+              "orbital_gradient_norm": 7.52896413810797e-09
+            },
+            "iterations": 16,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 2114.4240219146013,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 9.696704187322199e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.59231945649801e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 2133.482936769724,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 9.696711752759126e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.5923118514928953e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 2128.482924774289,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 9.69670735398601e-09,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 3.59231369998024e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "fe6c522517b11d56dbdd35f1075e9bd1adb347efcb51503a2fc9865b9b228f09",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "c24d0fbe7443fc60ccdce94896d42e8eea5bd735714ba85b79ff3d61303a9cbf",
+        "name": "def2-svp",
+        "primitive_count": 352,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 192
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  },
+  {
+    "raw_file": "hf/direct-6.json",
+    "raw_sha256": "d1dcc1edd20abd6b4ea346776fca191458af53de6d5d06cc1b1c7c8f27029100",
+    "timestamp_utc": "2026-09-25T08:41:39.623306+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 77.42,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2565.0,
+      "temperature_celsius": 40.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 6,
+    "aos": 48,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 2.5579538487363607e-12,
+      "maximum_force_error_hartree_per_bohr": 1.2402400825090032e-09,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.5579538487363607e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2402400825090032e-09,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.4726887204451486e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2402385281967687e-09,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.4158453015843406e-12,
+        "maximum_force_error_hartree_per_bohr": 1.2402391943305835e-09,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 1027.481502853334,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 5.222145889958458e-11,
+            "energy_change_hartree": 8.526512829121202e-14,
+            "final_residuals": {
+              "density_rms": 5.222145889958458e-11,
+              "energy_change_hartree": 8.526512829121202e-14,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 18,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 89.81279470026493,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.222121985845839e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 5.222121985845839e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 90.81046236678958,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.2221585459231385e-11,
+                "energy_change_hartree": 2.842170943040401e-14,
+                "final_residuals": {
+                  "density_rms": 5.2221585459231385e-11,
+                  "energy_change_hartree": 2.842170943040401e-14,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 87.83311396837234,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.222120435574814e-11,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 5.222120435574814e-11,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 6523.6886292696,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 2.0100608573906756e-08,
+              "energy_change_hartree": 1.7053025658242404e-13,
+              "orbital_gradient_norm": 8.500847609768011e-09
+            },
+            "iterations": 19,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 934.0475019998848,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.2737933889169254e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.4214636577314314e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 932.2520643472672,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.2737940832857297e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.421464583882648e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 934.285830706358,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.2737934431164359e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.421458612034289e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "d826a9fb7e53d4e75fe380dc68a74488fc5a52fe5dbd33076b97087f2ac0f944",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "7d1a5a1d8831862a46874bc75fbb5ed15a90e6034a61944ea296d7febad2789f",
+        "name": "def2-svp",
+        "primitive_count": 44,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 24
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  },
+  {
+    "raw_file": "hf/direct-96.json",
+    "raw_sha256": "49490aea242e84398009f47e8c5fd573b0d8d8b9cf4a9c6d6519dccedae0efa4",
+    "timestamp_utc": "2026-09-25T08:44:10.391808+00:00",
+    "device_state": {
+      "memory_clock_mhz": 13801.0,
+      "performance_state": "P1",
+      "power_draw_watts": 181.71,
+      "power_limit_watts": 575.0,
+      "sampling_point": "after benchmark measurements",
+      "sm_clock_mhz": 2880.0,
+      "temperature_celsius": 58.0
+    },
+    "family": "hf",
+    "method": "RHF",
+    "mode": "direct",
+    "atoms": 96,
+    "aos": 768,
+    "endpoint": "energy + analytic forces",
+    "basis": "def2-SVP spherical",
+    "auxiliary_basis": null,
+    "status": "measured",
+    "accuracy": {
+      "maximum_energy_error_hartree": 2.319211489520967e-11,
+      "maximum_force_error_hartree_per_bohr": 2.44438739215036e-10,
+      "pair_count": 3,
+      "selection": "all_measured_pairs"
+    },
+    "accuracy_pairs": [
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.0463630789890885e-11,
+        "maximum_force_error_hartree_per_bohr": 2.4437490312584353e-10,
+        "repeat": 0
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.1373125491663814e-11,
+        "maximum_force_error_hartree_per_bohr": 2.4440868426345297e-10,
+        "repeat": 1
+      },
+      {
+        "iteration_branches_match": true,
+        "maximum_energy_error_hartree": 2.319211489520967e-11,
+        "maximum_force_error_hartree_per_bohr": 2.44438739215036e-10,
+        "repeat": 2
+      }
+    ],
+    "gates": {
+      "maximum_energy_error_hartree": 1e-08,
+      "maximum_force_error_hartree_per_bohr": 1e-07,
+      "maximum_iteration_matched_vibeqc_over_gpu4pyscf": null,
+      "minimum_iteration_matched_speedup": null
+    },
+    "engines": {
+      "VibeQC": {
+        "cold_ms": 35693.420235067606,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "density_rms": 5.573749946595788e-12,
+            "energy_change_hartree": 4.547473508864641e-12,
+            "final_residuals": {
+              "density_rms": 5.573749946595788e-12,
+              "energy_change_hartree": 4.547473508864641e-12,
+              "orbital_gradient_norm": null
+            },
+            "iterations": 22,
+            "warm_start": {
+              "fallback": false,
+              "used": false
+            },
+            "warm_start_fallback": false,
+            "warm_start_used": false
+          }
+        ],
+        "samples": [
+          {
+            "ms": 3054.8427887260914,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.5735025443850446e-12,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 5.5735025443850446e-12,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 3054.144677706063,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.574782595523849e-12,
+                "energy_change_hartree": 0.0,
+                "final_residuals": {
+                  "density_rms": 5.574782595523849e-12,
+                  "energy_change_hartree": 0.0,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          },
+          {
+            "ms": 3054.080415982753,
+            "convergence": [
+              {
+                "converged": true,
+                "density_rms": 5.574465319547453e-12,
+                "energy_change_hartree": 9.094947017729282e-13,
+                "final_residuals": {
+                  "density_rms": 5.574465319547453e-12,
+                  "energy_change_hartree": 9.094947017729282e-13,
+                  "orbital_gradient_norm": null
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                },
+                "warm_start_fallback": false,
+                "warm_start_used": true
+              }
+            ]
+          }
+        ]
+      },
+      "GPU4PySCF": {
+        "cold_ms": 16266.774066723883,
+        "cold_convergence": [
+          {
+            "converged": true,
+            "final_residuals": {
+              "density_rms": 2.1416875921306863e-08,
+              "energy_change_hartree": 5.4569682106375694e-12,
+              "orbital_gradient_norm": 9.905464911406327e-09
+            },
+            "iterations": 15,
+            "warm_start": {
+              "fallback": false,
+              "used": true
+            }
+          }
+        ],
+        "samples": [
+          {
+            "ms": 3552.2766821086407,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.3048937426142853e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.778664435946672e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 3537.909086793661,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.304894768849123e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.778665051129373e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          },
+          {
+            "ms": 3544.258373323828,
+            "convergence": [
+              {
+                "converged": true,
+                "final_residuals": {
+                  "density_rms": 1.3048939176686616e-08,
+                  "energy_change_hartree": null,
+                  "orbital_gradient_norm": 4.778668355614925e-09
+                },
+                "iterations": 1,
+                "warm_start": {
+                  "fallback": false,
+                  "used": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "df_work": [],
+    "basis_identity": {
+      "model_identity": "dbef03bd70f239a7d28be1aebada59280d6d173c7cc43b7c3a4b057d629c2cc6",
+      "orbital": {
+        "basis_identity": "8b64ef81900d9389b50d718ffc8cc3952c3c29e2f5830eb5fe0c936d1fd4df89",
+        "mathematical_identity": "ab1f3173ff3f9aedf6dc5560861374023807a3ff85f438ddd59bcde34d68222c",
+        "name": "def2-svp",
+        "primitive_count": 704,
+        "provenance": {
+          "checksum": "6002092fea25331281cc095dc6dc41a6a3d7a2f0c88f82a1fbceac01225a897c",
+          "license": "BSD-3-Clause",
+          "source": "vibeqc/data/basis_pack.json; Basis Set Exchange",
+          "version": "Basis Set Exchange 0.11"
+        },
+        "representation": "spherical",
+        "role": "orbital",
+        "shell_count": 384
+      }
+    },
+    "provenance": "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a"
+  }
+]

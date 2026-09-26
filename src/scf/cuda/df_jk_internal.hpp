@@ -28,10 +28,13 @@ vibeqc_status build_occupied_exchange(CudaDensityFittingJkPlan& plan, std::size_
 /** Use the same exact raw traversal for a qualified RHF charge and occupied K.
  * The supplied factor must already be an admitted witness for density; this
  * function neither creates a final-projection lease nor changes J/K resources.
+ * Wider-than-two-block schedules are accepted only for an explicit
+ * profitability experiment selected by the caller.
  */
 vibeqc_status build_shared_coulomb_occupied_exchange(CudaDensityFittingJkPlan& plan,
                                                      const double* density,
                                                      const double* coefficients, std::size_t rank,
-                                                     double weight, std::string& detail);
+                                                     double weight, bool allow_multiblock,
+                                                     std::string& detail);
 
 }  // namespace vibeqc::scf::cuda_df

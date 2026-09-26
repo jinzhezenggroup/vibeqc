@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <stdexcept>
 #include <utility>
@@ -202,6 +203,22 @@ RawHamiltonian raw_hamiltonian(const core::System& system, const scf::PhysicalRe
 struct ResponseWeights {
   std::vector<double> hcore, eri, overlap, rotation_gradient, stationarity, orbital_rhs;
 };
+
+#if VIBEQC_HAS_CUDA
+CudaParameterResponseView cuda_parameter_view(const ParameterWeights& bar) {
+  return {std::span<const double>{bar.foo},  std::span<const double>{bar.fov},
+          std::span<const double>{bar.fvv},  std::span<const double>{bar.ovov},
+          std::span<const double>{bar.ovvo}, std::span<const double>{bar.oovv},
+          std::span<const double>{bar.ovvv}, std::span<const double>{bar.ovoo},
+          std::span<const double>{bar.oooo}, std::span<const double>{bar.vvvv}};
+}
+
+ResponseWeights detach_cuda_response(CudaHamiltonianResponseResult result) {
+  return {std::move(result.hcore),        std::move(result.eri),
+          std::move(result.overlap),      std::move(result.rotation_gradient),
+          std::move(result.stationarity), std::move(result.orbital_rhs)};
+}
+#endif
 
 ResponseWeights copy_hamiltonian_outputs(const generated::HamiltonianOutputs& output, std::size_t n,
                                          std::size_t o, std::size_t v) {
@@ -453,19 +470,23 @@ RccsdtForcePlan plan_rccsdt_force_cpu(const core::System& system,
   return plan;
 }
 
-RccsdtForceResult rccsdt_force_cpu(const core::System& system,
-                                   const scf::PhysicalReference& reference, const Problem& problem,
-                                   const SolverResult& cc_result, std::span<const double> eps_o,
-                                   std::span<const double> eps_v, std::size_t max_bytes,
-                                   double denominator_threshold) {
+static RccsdtForceResult rccsdt_force_impl(
+    const core::System& system, const scf::PhysicalReference& reference, const Problem& problem,
+    const SolverResult& cc_result, std::span<const double> eps_o, std::span<const double> eps_v,
+    std::size_t max_bytes, bool cuda_derivative, int device_id, std::size_t derivative_stage_budget,
+    double denominator_threshold) {
   validate_problem(problem);
+#if !VIBEQC_HAS_CUDA
+  if (cuda_derivative) throw std::runtime_error("RCCSD(T) CUDA force is unavailable in this build");
+#endif
   if (!cc_result.converged())
     throw std::invalid_argument("RCCSD(T) force requires converged RCCSD amplitudes");
   if (!max_bytes || reference.nbf > 12 || reference.nbf != problem.nocc + problem.nvir ||
       reference.nocc != problem.nocc || eps_o.size() != problem.nocc ||
       eps_v.size() != problem.nvir || !std::isfinite(denominator_threshold) ||
-      denominator_threshold <= 0.0)
-    throw std::invalid_argument("RCCSD(T) force is outside the qualified CPU domain");
+      denominator_threshold <= 0.0 ||
+      (cuda_derivative && (device_id < 0 || !derivative_stage_budget)))
+    throw std::invalid_argument("RCCSD(T) force is outside the qualified conventional domain");
   const auto o = problem.nocc, v = problem.nvir, n = reference.nbf;
   if (reference.orbital_energies.size() != n || !finite(reference.orbital_energies))
     throw std::invalid_argument("RCCSD(T) force requires finite canonical orbital energies");
@@ -485,18 +506,58 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   lambda_options.gmres.absolute_tolerance = 1e-12;
   lambda_options.gmres.relative_tolerance = 0.0;
   lambda_options.gmres.max_workspace_bytes = max_bytes;
-  const auto corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1,
-                                                             triples.t2, lambda_options);
+  LambdaResult corrected;
+  ParameterWeights parameters;
+#if VIBEQC_HAS_CUDA
+  if (cuda_derivative) {
+    auto fixed_orbital = solve_lambda_parameter_response_cuda_with_energy_source(
+        problem, cc_result, triples.t1, triples.t2, device_id, lambda_options);
+    corrected = std::move(fixed_orbital.lambda);
+    parameters = {std::move(fixed_orbital.foo),  std::move(fixed_orbital.fov),
+                  std::move(fixed_orbital.fvv),  std::move(fixed_orbital.ovov),
+                  std::move(fixed_orbital.ovvo), std::move(fixed_orbital.oovv),
+                  std::move(fixed_orbital.ovvv), std::move(fixed_orbital.ovoo),
+                  std::move(fixed_orbital.oooo), std::move(fixed_orbital.vvvv)};
+  } else
+#endif
+  {
+    corrected = solve_lambda_cpu_with_energy_source(problem, cc_result, triples.t1, triples.t2,
+                                                    lambda_options);
+    parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
+  }
+  if (cuda_derivative && !corrected.diagnostic.cuda_actions)
+    throw std::runtime_error("RCCSD(T) CUDA force lost CUDA Lambda action ownership");
 
-  auto parameters = parameter_vjp(problem, cc_result, corrected, max_bytes);
   add_projected_triples(parameters, triples, o, v);
   const auto raw = raw_hamiltonian(system, reference, max_bytes);
-  auto correlation = hamiltonian_pullback(parameters, 0.0, raw, o, v, max_bytes);
+#if VIBEQC_HAS_CUDA
+  std::unique_ptr<CudaHamiltonianResponseOwner> cuda_response;
+  if (cuda_derivative)
+    cuda_response = std::make_unique<CudaHamiltonianResponseOwner>(
+        o, v, CudaRawHamiltonianView{raw.density, raw.g, raw.h, raw.rotation}, device_id,
+        max_bytes);
+#endif
+  auto hamiltonian_dispatch = [&](const ParameterWeights& bar,
+                                  double reference_seed) -> ResponseWeights {
+#if VIBEQC_HAS_CUDA
+    if (cuda_response)
+      return detach_cuda_response(
+          cuda_response->hamiltonian(cuda_parameter_view(bar), reference_seed));
+#endif
+    return hamiltonian_pullback(bar, reference_seed, raw, o, v, max_bytes);
+  };
+  auto fock_dispatch = [&](std::span<const double> bar_fock) -> ResponseWeights {
+#if VIBEQC_HAS_CUDA
+    if (cuda_response) return detach_cuda_response(cuda_response->fock(bar_fock));
+#endif
+    return fock_pullback(bar_fock, raw, o, v, max_bytes);
+  };
+  auto correlation = hamiltonian_dispatch(parameters, 0.0);
 
   std::vector<double> bar_fock(square(n), 0.0);
   for (std::size_t i = 0; i < o; ++i) bar_fock[i * n + i] = triples.eps_o[i];
   for (std::size_t a = 0; a < v; ++a) bar_fock[(o + a) * n + o + a] = triples.eps_v[a];
-  const auto denominator = fock_pullback(bar_fock, raw, o, v, max_bytes);
+  const auto denominator = fock_dispatch(bar_fock);
   add_in_place(correlation, denominator);
 
   double minimum_same_space_gap = std::numeric_limits<double>::infinity();
@@ -514,7 +575,7 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
         bar_fock[q * n + p] = value;
       }
   }
-  const auto canonicalization = fock_pullback(bar_fock, raw, o, v, max_bytes);
+  const auto canonicalization = fock_dispatch(bar_fock);
   add_in_place(correlation, canonicalization);
   double same_space_stationarity = 0.0;
   for (const auto& bounds :
@@ -527,9 +588,10 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
     throw std::runtime_error("RCCSD(T) same-space canonicalization response failed");
 
   const auto orbital_arena_elements = generated::orbital_jvp_arena_elements(o, v);
-  if (bytes(orbital_arena_elements) > max_bytes)
+  if (!cuda_derivative && bytes(orbital_arena_elements) > max_bytes)
     throw std::length_error("RCCSD(T) orbital-response action exceeds host budget");
-  std::vector<double> orbital_arena(orbital_arena_elements);
+  std::vector<double> orbital_arena;
+  if (!cuda_derivative) orbital_arena.resize(orbital_arena_elements);
   std::vector<double> d_rotation(square(n), 0.0);
   generated::OrbitalJvpInputs orbital_inputs{};
   orbital_inputs.d_rotation = d_rotation.data();
@@ -547,6 +609,13 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
         d_rotation[i * n + o + a] = value;
         d_rotation[(o + a) * n + i] = -value;
       }
+#if VIBEQC_HAS_CUDA
+    if (cuda_response) {
+      const auto jvp = cuda_response->orbital_jvp(d_rotation);
+      for (std::size_t index = 0; index < output.size(); ++index) output[index] = -jvp[index];
+      return;
+    }
+#endif
     const auto jvp = generated::run_orbital_jvp_cpu(o, v, orbital_inputs, orbital_arena.data(),
                                                     orbital_arena.size());
     for (std::size_t index = 0; index < output.size(); ++index) output[index] = -jvp.d_fov[index];
@@ -596,8 +665,8 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   auto orbital_parameters = zero_parameters(o, v);
   for (std::size_t index = 0; index < dimension; ++index)
     orbital_parameters.fov[index] = -z.solution[index];
-  const auto orbital = hamiltonian_pullback(orbital_parameters, 0.0, raw, o, v, max_bytes);
-  auto total = hamiltonian_pullback(zero_parameters(o, v), 1.0, raw, o, v, max_bytes);
+  const auto orbital = hamiltonian_dispatch(orbital_parameters, 0.0);
+  auto total = hamiltonian_dispatch(zero_parameters(o, v), 1.0);
   add_in_place(total, correlation);
   add_in_place(total, orbital);
   const double stationarity = max_abs(total.stationarity);
@@ -611,7 +680,10 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   weights.two_electron = std::move(total.eri);
   weights.overlap = std::move(total.overlap);
   weights.stationarity_residual = stationarity;
-  auto gradient = mp2::conventional_derivative_cpu(system, reference, weights);
+  auto gradient = cuda_derivative
+                      ? mp2::conventional_derivative_cuda(system, reference, weights, device_id,
+                                                          derivative_stage_budget)
+                      : mp2::conventional_derivative_cpu(system, reference, weights);
   for (double& value : gradient) value = -value;
   if (!finite(gradient)) throw std::runtime_error("nonfinite RCCSD(T) analytic force");
 
@@ -625,8 +697,36 @@ RccsdtForceResult rccsdt_force_cpu(const core::System& system,
   result.minimum_same_space_gap = minimum_same_space_gap;
   result.triples_response_pages = triples.pages;
   result.numeric_capacity_bytes = resources.peak_bytes;
+#if VIBEQC_HAS_CUDA
+  if (cuda_response) {
+    result.response_owned_device_bytes = cuda_response->owned_device_bytes();
+    result.response_h2d_bytes = cuda_response->h2d_bytes();
+    result.response_d2h_bytes = cuda_response->d2h_bytes();
+    result.response_synchronizations = cuda_response->synchronizations();
+    result.cuda_response_actions = true;
+  }
+#endif
   result.response_operator_hash = generated::orbital_jvp_program_hash;
   return result;
+}
+
+RccsdtForceResult rccsdt_force_cpu(const core::System& system,
+                                   const scf::PhysicalReference& reference, const Problem& problem,
+                                   const SolverResult& cc_result, std::span<const double> eps_o,
+                                   std::span<const double> eps_v, std::size_t max_bytes,
+                                   double denominator_threshold) {
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, false, 0,
+                           0, denominator_threshold);
+}
+
+RccsdtForceResult rccsdt_force_cuda(const core::System& system,
+                                    const scf::PhysicalReference& reference, const Problem& problem,
+                                    const SolverResult& cc_result, std::span<const double> eps_o,
+                                    std::span<const double> eps_v, std::size_t max_bytes,
+                                    int device_id, std::size_t derivative_stage_budget,
+                                    double denominator_threshold) {
+  return rccsdt_force_impl(system, reference, problem, cc_result, eps_o, eps_v, max_bytes, true,
+                           device_id, derivative_stage_budget, denominator_threshold);
 }
 
 }  // namespace vibeqc::cc

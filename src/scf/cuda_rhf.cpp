@@ -555,8 +555,11 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
       static_cast<std::size_t>(host.system_shell_pair_block_offsets.back());
   const std::size_t total_shell_pair_block_quartets =
       static_cast<std::size_t>(host.system_shell_pair_block_quartet_offsets.back());
+  // Force requests use the compiler-owned quartet derivative consumers even for
+  // small HF systems. Persistent ERIs remain an energy-only profitability path;
+  // keeping their handwritten force consumer would duplicate generated science.
   const bool requested_persistent_eri =
-      !options.export_physical_reference && nbf <= kPersistentEriAoLimit;
+      !options.compute_forces && !options.export_physical_reference && nbf <= kPersistentEriAoLimit;
   const bool requested_quartet_direct =
       !options.export_physical_reference && !requested_persistent_eri &&
       std::all_of(host.shell_angular.begin(), host.shell_angular.end(),
@@ -676,13 +679,10 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   }
   std::size_t force_coordinate_count = 0;
   std::size_t force_matrix_elements = 0;
-  std::size_t persistent_force_elements = 0;
   std::size_t direct_force_elements = 0;
   if (!vibeqc::runtime::checked_multiply(total_atoms, 3, force_coordinate_count) ||
       !vibeqc::runtime::checked_multiply(force_coordinate_count, matrix_size,
                                          force_matrix_elements) ||
-      !vibeqc::runtime::checked_multiply(force_coordinate_count, eri_size,
-                                         persistent_force_elements) ||
       !vibeqc::runtime::checked_multiply(force_matrix_elements, pair_count,
                                          direct_force_elements)) {
     fill_global_failure(outputs, VIBEQC_STATUS_INVALID_ARGUMENT);
@@ -1788,6 +1788,29 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   const auto blocks_for = [](std::size_t elements) {
     return static_cast<unsigned>((elements + threads - 1) / threads);
   };
+  dim3 direct_shell_quartet_compaction_grid(1U, 1U, 1U);
+  if (requested_quartet_direct && !requested_bounded_direct_streaming) {
+    direct_shell_quartet_compaction_grid = dim3(blocks_for(total_shell_quartets), 1U, 1U);
+    if (batch_size > 1 &&
+        batch_size <= static_cast<std::size_t>(direct_device_properties.maxGridSize[1])) {
+      const std::int64_t first_count =
+          host.system_shell_quartet_offsets[1] - host.system_shell_quartet_offsets[0];
+      bool uniform_quartet_count = first_count > 0;
+      for (std::size_t system = 1; uniform_quartet_count && system < batch_size; ++system) {
+        uniform_quartet_count = host.system_shell_quartet_offsets[system + 1] -
+                                    host.system_shell_quartet_offsets[system] ==
+                                first_count;
+      }
+      if (uniform_quartet_count) {
+        // Compatible items share one launch but use grid.y as an implicit compact
+        // batch identifier. This keeps the existing 12-byte tile descriptor and
+        // removes one binary owner search per candidate quartet.
+        direct_shell_quartet_compaction_grid =
+            dim3(blocks_for(static_cast<std::size_t>(first_count)),
+                 static_cast<unsigned>(batch_size), 1U);
+      }
+    }
+  }
   const auto multiply_matrices = [&](const double* left, bool transpose_left, const double* right,
                                      double* output, double scale = 1.0) {
     const vibeqc_status product_status = launch_matrix_product(
@@ -1889,7 +1912,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return cudaPeekAtLastError();
       }
       launch_compact_active_shell_quartet_tiles_kernel(
-          true, DirectScreeningPurpose::Fock, blocks_for(total_shell_quartets), threads, 0,
+          true, DirectScreeningPurpose::Fock, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
@@ -1911,7 +1934,7 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         return cudaPeekAtLastError();
       }
       launch_compact_active_shell_quartet_tiles_kernel(
-          false, DirectScreeningPurpose::Fock, blocks_for(total_shell_quartets), threads, 0,
+          false, DirectScreeningPurpose::Fock, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles,
@@ -1948,14 +1971,14 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         fp32_shell_quartet_tile_counts, fp32_persistent_fock_task_heads);
     if (unrestricted) {
       launch_compact_active_shell_quartet_tiles_kernel(
-          true, DirectScreeningPurpose::Force, blocks_for(total_shell_quartets), threads, 0,
+          true, DirectScreeningPurpose::Force, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0, nullptr,
           nullptr, nullptr, nullptr);
     } else {
       launch_compact_active_shell_quartet_tiles_kernel(
-          false, DirectScreeningPurpose::Force, blocks_for(total_shell_quartets), threads, 0,
+          false, DirectScreeningPurpose::Force, direct_shell_quartet_compaction_grid, threads, 0,
           resources.stream_, device_batch, options.screening_tolerance, shell_pair_bounds,
           shell_pair_density_bounds, active, active_shell_quartet_tile_offsets,
           active_shell_quartet_tile_counts, active_shell_quartet_tiles, false, 0.0, 0.0, nullptr,
@@ -4304,10 +4327,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
   } else if (bounded_direct_fock_only_diagnostic && bounded_direct_streaming) {
     // Nuclear and one-electron forces above remain in the timing so this
     // diagnostic isolates only the bounded two-electron force tail.
-  } else if (unrestricted && persistent_eri) {
-    launch_two_electron_uhf_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                         resources.stream_, device_batch, final_density, active,
-                                         forces);
   } else if (unrestricted && quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening
@@ -4355,10 +4374,6 @@ std::vector<RhfBucketItem> execute_hf_cuda_bucket(CudaRhfBucketPlan& plan, const
         blocks_for(direct_force_elements), threads, 0, resources.stream_, device_batch,
         options.screening_tolerance, ao_pair_first, ao_pair_second, pair_count, schwarz_bounds,
         final_density, active, forces);
-  } else if (persistent_eri) {
-    launch_two_electron_force_kernel(blocks_for(persistent_force_elements), threads, 0,
-                                     resources.stream_, device_batch, final_density, active,
-                                     forces);
   } else if (quartet_direct) {
     if (bounded_direct_streaming) {
       const DirectScreeningPurpose bounded_force_purpose = force_density_product_screening

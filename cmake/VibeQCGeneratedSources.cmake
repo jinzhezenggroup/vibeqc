@@ -147,6 +147,21 @@ macro(vibeqc_register_host_generated_sources target)
     ARGS --output "${VIBEQC_SCF_ARRAY_CPU_HEADER}"
     COMMENT "Generating Array frontend SCF CPU tensor helpers")
 
+  if(VIBEQC_ENABLE_CUDA)
+    set(VIBEQC_SCF_DENSITY_CUDA_HEADER
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_scf_density_cuda.cuh")
+    vibeqc_register_generated_sources(
+      NAME vibeqc_scf_density_cuda_codegen
+      TARGET ${target}
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_scf_density_cuda.py"
+      OUTPUTS "${VIBEQC_SCF_DENSITY_CUDA_HEADER}"
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scf.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/scf_cuda.py"
+      ARGS --output "${VIBEQC_SCF_DENSITY_CUDA_HEADER}"
+      COMMENT "Generating compiler-owned CUDA SCF density kernel")
+  endif()
+
   set(VIBEQC_GFN2_PAIR_CPU_HEADER
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_gfn2_pair_native.hpp")
   vibeqc_register_generated_sources(
@@ -321,6 +336,7 @@ macro(vibeqc_register_host_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_occupied_response_cuda.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"
@@ -373,6 +389,7 @@ macro(vibeqc_register_cuda_generated_sources target)
     DEPENDS
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_contract.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_hf_response_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/df_occupied_response_cuda.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_dtype.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/cuda_gemm.py"
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/tensor/ir.py"

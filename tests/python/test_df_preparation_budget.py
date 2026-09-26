@@ -1,6 +1,7 @@
 """Preparation bounds distinguish properties, providers, copies and tiny budgets."""
 
 import json
+import os
 import shutil
 import subprocess
 import typing
@@ -310,9 +311,12 @@ def test_single_packed_96_atom_plan_keeps_values_when_occupied_scratch_does_not_
     if compiler is None:
         pytest.skip("host C++ compiler unavailable")
     root = Path(__file__).resolve().parents[2]
-    generated = root / "build/cuda-release-sm120/generated"
+    # CI passes the binary directory of its CPU build. Local preset/out-of-tree
+    # builds can supply the same variable; never borrow another preset's output.
+    binary_dir = Path(os.environ.get("VIBEQC_BUILD_DIR", root / "build"))
+    generated = binary_dir / "generated"
     if not (generated / "generated_df_exchange_schedule.hpp").exists():
-        pytest.skip("requires configured CUDA source schedule")
+        pytest.skip(f"requires generated DF source schedule in {generated}")
     source = tmp_path / "single_packed_plan.cpp"
     source.write_text(r"""
 #include <iostream>

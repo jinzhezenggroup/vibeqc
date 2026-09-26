@@ -48,6 +48,7 @@ struct D4PlanData {
 namespace {
 
 namespace d4_data = ::vibeqc::dft::dispersion::data;
+namespace d4_math = ::vibeqc::dft::dispersion::math;
 using D4ElementData = d4_data::D4ElementData;
 
 constexpr double kCoordinationCutoff = 30.0;
@@ -55,10 +56,6 @@ constexpr double kTwoBodyCutoff = 50.0;
 constexpr double kAtmCutoff = 25.0;
 constexpr double kD4CutoffSwitchWidth = 0.05;
 constexpr double kMinimumDistanceSquared = 1.0e-12;
-constexpr double kCoordinationSteepness = 7.5;
-constexpr double kEnK4 = 4.10451;
-constexpr double kEnK5 = 19.08857;
-constexpr double kEnK6 = 2.0 * 11.28174 * 11.28174;
 constexpr double kAtmExponent = 16.0;
 
 static_assert(d4_data::kElementCount == parameters::gfn2::kElementCount,
@@ -569,16 +566,13 @@ vibeqc_xtb_status_t make_d4_plan(std::int64_t batch_size, std::int64_t total_ato
         for (std::int64_t first = begin; first < second; ++first, ++packed_pair) {
           const D4ElementData& first_element = element(*created, first);
           const D4ElementData& second_element = element(*created, second);
-          created->pair_coordination_radii[packed_pair] =
-              first_element.covalent_radius + second_element.covalent_radius;
-          const double electronegativity_delta =
-              std::abs(first_element.electronegativity - second_element.electronegativity);
-          created->pair_en_factors[packed_pair] =
-              kEnK4 * std::exp(-std::pow(electronegativity_delta + kEnK5, 2.0) / kEnK6);
-          created->pair_rrij[packed_pair] = 3.0 * first_element.r4r2 * second_element.r4r2;
-          created->pair_damping_radii[packed_pair] =
-              parameters::gfn2::kGlobal.dispersion_a1 * std::sqrt(created->pair_rrij[packed_pair]) +
-              parameters::gfn2::kGlobal.dispersion_a2;
+          const auto coordination = d4_math::coordination_parameters(first_element, second_element);
+          created->pair_coordination_radii[packed_pair] = coordination.radius;
+          created->pair_en_factors[packed_pair] = coordination.electronegativity_factor;
+          created->pair_rrij[packed_pair] = d4_math::pair_rr(first_element, second_element);
+          created->pair_damping_radii[packed_pair] = d4_math::damping_radius(
+              first_element, second_element, parameters::gfn2::kGlobal.dispersion_a1,
+              parameters::gfn2::kGlobal.dispersion_a2);
         }
       }
     }
@@ -745,29 +739,21 @@ vibeqc_xtb_status_t update_d4_geometry_cache_cpu(
         }
         if (distance_squared <= kCoordinationCutoff * kCoordinationCutoff) {
           const double distance = std::sqrt(distance_squared);
-          const double radius = data.pair_coordination_radii[packed_pair];
-          const double exponent = kCoordinationSteepness * (distance - radius) / radius;
-          const double count =
-              0.5 * data.pair_en_factors[packed_pair] * (1.0 + std::erf(-exponent));
-          workspace.coordination_scratch[first] += count;
-          workspace.coordination_scratch[second] += count;
+          const auto coordination = d4_math::coordination_pair(
+              d4_math::CoordinationParameters{data.pair_coordination_radii[packed_pair],
+                                              data.pair_en_factors[packed_pair]},
+              distance);
+          workspace.coordination_scratch[first] += coordination.value;
+          workspace.coordination_scratch[second] += coordination.value;
         }
         pair[3] = 0.0;
         pair[4] = 0.0;
         if (distance_squared <= kTwoBodyCutoff * kTwoBodyCutoff) {
-          const double rrij = data.pair_rrij[packed_pair];
-          const double r0 = data.pair_damping_radii[packed_pair];
-          const double r2_squared = distance_squared * distance_squared;
-          const double r2_cubed = r2_squared * distance_squared;
-          const double r0_squared = r0 * r0;
-          const double r0_fourth = r0_squared * r0_squared;
-          const double r0_sixth = r0_fourth * r0_squared;
-          const double t6 = 1.0 / (r2_cubed + r0_sixth);
-          const double t8 = 1.0 / (r2_squared * r2_squared + r0_fourth * r0_fourth);
-          pair[3] = parameters::gfn2::kGlobal.dispersion_s6 * t6 +
-                    parameters::gfn2::kGlobal.dispersion_s8 * rrij * t8;
-          pair[4] = parameters::gfn2::kGlobal.dispersion_s6 * (-6.0 * r2_squared * t6 * t6) +
-                    parameters::gfn2::kGlobal.dispersion_s8 * rrij * (-8.0 * r2_cubed * t8 * t8);
+          const auto damping = d4_math::pair_damping(
+              distance_squared, data.pair_rrij[packed_pair], data.pair_damping_radii[packed_pair],
+              parameters::gfn2::kGlobal.dispersion_s6, parameters::gfn2::kGlobal.dispersion_s8);
+          pair[3] = damping.value;
+          pair[4] = damping.derivative;
         }
         if (!std::isfinite(pair[3]) || !std::isfinite(pair[4])) {
           error = "D4 geometry cache overflowed";

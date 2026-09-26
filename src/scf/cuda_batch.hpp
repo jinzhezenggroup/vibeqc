@@ -59,6 +59,21 @@ bool small_hf_cuda_resource_layout(std::size_t nbf, std::size_t direct_nbf, std:
                                    std::size_t diis_history, std::size_t spins,
                                    std::size_t& arena_bytes, std::size_t& plan_object_bytes);
 
+/** Topology-aware energy/force envelope for the small native CUDA HF route.
+ *
+ * Unlike the legacy aggregate query, this receives the shell topology needed
+ * to reproduce the production quartet layout. It remains device-free: exact
+ * generated-task storage is bounded by the complete compiler-valid tile
+ * census instead of querying a selected device profile.
+ */
+bool small_hf_cuda_resource_layout_v2(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                      const std::uint8_t* shell_angular,
+                                      const std::size_t* shell_primitive_counts, std::size_t shells,
+                                      std::size_t diis_history, std::size_t spins,
+                                      int precision_mode, double energy_tolerance,
+                                      double screening_tolerance, std::size_t& arena_bytes,
+                                      std::size_t& plan_object_bytes);
+
 /** Currently allocated numeric arenas/workspaces of an opaque direct plan. */
 std::size_t hf_cuda_owned_device_bytes(const CudaRhfBucketPlan* plan) noexcept;
 

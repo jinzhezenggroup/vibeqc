@@ -255,10 +255,14 @@ macro(vibeqc_configure_cuda_backend target)
               CUDA_STANDARD 20
               CUDA_STANDARD_REQUIRED ON
               POSITION_INDEPENDENT_CODE ON
-              JOB_POOL_COMPILE vibeqc_cuda_compile)
+              JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool})
           if(VIBEQC_CUDA_FAST_COMPILE)
             target_compile_options(${class_target} PRIVATE
               $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+          endif()
+          if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+            target_compile_options(${class_target} PRIVATE
+              $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
           endif()
           target_sources(${target} PRIVATE $<TARGET_OBJECTS:${class_target}>)
         endforeach()
@@ -275,10 +279,14 @@ macro(vibeqc_configure_cuda_backend target)
             CUDA_STANDARD 20
             CUDA_STANDARD_REQUIRED ON
             POSITION_INDEPENDENT_CODE ON
-            JOB_POOL_COMPILE vibeqc_cuda_compile)
+            JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool})
         if(VIBEQC_CUDA_FAST_COMPILE)
           target_compile_options(vibeqc_aot_${profile_architecture} PRIVATE
             $<$<COMPILE_LANGUAGE:CUDA>:--Ofast-compile=max>)
+        endif()
+        if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+          target_compile_options(vibeqc_aot_${profile_architecture} PRIVATE
+            $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
         endif()
         target_sources(${target} PRIVATE
             $<TARGET_OBJECTS:vibeqc_aot_${profile_architecture}>)
@@ -335,6 +343,52 @@ macro(vibeqc_configure_cuda_backend target)
       list(APPEND _vibeqc_stationary_compile_architecture_args
            --compile-architecture "${_vibeqc_stationary_arch}")
     endforeach()
+    # Component-expanded s/p/d derivatives are shared compiler output: generate
+    # the bounded primitive inventory once, then device-link it into each
+    # method/spin wrapper. The 23 x 16 layout is part of the versioned v3
+    # artifact contract and is checked again by the Python manifest writer.
+    set(_vibeqc_stationary_spd_primitive_sources)
+    set(_vibeqc_stationary_spd_primitive_args)
+    foreach(_vibeqc_stationary_shard RANGE 0 22)
+      set(_vibeqc_stationary_shard_source
+          "${VIBEQC_STATIONARY_AOT_DIRECTORY}/vibeqc_stationary_spd_primitive_${_vibeqc_stationary_shard}.cu")
+      list(APPEND _vibeqc_stationary_spd_primitive_sources
+           "${_vibeqc_stationary_shard_source}")
+      list(APPEND _vibeqc_stationary_spd_primitive_args
+           --primitive-source "${_vibeqc_stationary_shard_source}")
+    endforeach()
+    # One command owns every shard: separate Python processes cannot reuse the
+    # compiler's in-process inventory cache and would repeat all lowering work.
+    vibeqc_register_generated_sources(
+      NAME vibeqc_stationary_spd_primitives_codegen
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_stationary_force_aot.py"
+      OUTPUTS ${_vibeqc_stationary_spd_primitive_sources}
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
+      ARGS
+        --output "${VIBEQC_STATIONARY_AOT_DIRECTORY}"
+        --component-domain spd
+        --all-shards
+      COMMENT "Generating stationary CUDA s/p/d primitive inventory")
+    add_library(vibeqc_stationary_spd_primitives OBJECT
+                ${_vibeqc_stationary_spd_primitive_sources})
+    add_dependencies(vibeqc_stationary_spd_primitives
+                     vibeqc_stationary_spd_primitives_codegen)
+    target_include_directories(vibeqc_stationary_spd_primitives PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_compile_definitions(vibeqc_stationary_spd_primitives PRIVATE
+        VIBEQC_HAS_CUDA=1)
+    target_compile_options(vibeqc_stationary_spd_primitives PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>
+        $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+    set_target_properties(vibeqc_stationary_spd_primitives PROPERTIES
+        CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
+        CUDA_STANDARD 20
+        CUDA_STANDARD_REQUIRED ON
+        CUDA_SEPARABLE_COMPILATION ON
+        POSITION_INDEPENDENT_CODE ON
+        JOB_POOL_COMPILE vibeqc_cuda_compile)
+
     # Generated source weights are plan-bound after #665/#689. Keep RKS and
     # UKS artifacts distinct so one-spin D/W lowering cannot serve two-spin work.
     set(_vibeqc_stationary_functionals 0 0 1 1 2 2)
@@ -376,12 +430,16 @@ macro(vibeqc_configure_cuda_backend target)
       target_compile_options(${_vibeqc_stationary_target} PRIVATE
           $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>
           $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+      if(NOT VIBEQC_AOT_SPLIT_COMPILE_THREADS STREQUAL "1")
+        target_compile_options(${_vibeqc_stationary_target} PRIVATE
+          $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CUDA_COMPILER_ID:NVIDIA>>:--split-compile=${VIBEQC_AOT_SPLIT_COMPILE_THREADS}>)
+      endif()
       set_target_properties(${_vibeqc_stationary_target} PROPERTIES
           CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
           CUDA_STANDARD 20
           CUDA_STANDARD_REQUIRED ON
           POSITION_INDEPENDENT_CODE ON
-          JOB_POOL_COMPILE vibeqc_cuda_compile
+          JOB_POOL_COMPILE ${_vibeqc_aot_compile_pool}
           OUTPUT_NAME "vibeqc_stationary_${_vibeqc_stationary_name}")
       if(VIBEQC_PYTHON_WHEEL)
         vibeqc_attach_cuda_implib(${_vibeqc_stationary_target})
@@ -414,6 +472,85 @@ macro(vibeqc_configure_cuda_backend target)
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
       install(FILES "${_vibeqc_stationary_manifest}"
+        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+      set(_vibeqc_stationary_spd_source
+          "${VIBEQC_STATIONARY_AOT_DIRECTORY}/vibeqc_stationary_${_vibeqc_stationary_name}_spd.cu")
+      set(_vibeqc_stationary_spd_manifest
+          "${CMAKE_CURRENT_BINARY_DIR}/vibeqc_stationary_${_vibeqc_stationary_name}_spd.json")
+      set(_vibeqc_stationary_spd_codegen
+          "vibeqc_stationary_${_vibeqc_stationary_name}_spd_codegen")
+      vibeqc_register_generated_sources(
+        NAME "${_vibeqc_stationary_spd_codegen}"
+        GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_stationary_force_aot.py"
+        OUTPUTS "${_vibeqc_stationary_spd_source}"
+        DEPENDS
+          "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
+        ARGS
+          --output "${_vibeqc_stationary_spd_source}"
+          --functional "${_vibeqc_stationary_functional}"
+          --spin "${_vibeqc_stationary_spin}"
+          --iterations 3
+          --component-domain spd
+        COMMENT
+          "Generating ${_vibeqc_stationary_name} stationary CUDA s/p/d wrapper")
+      set(_vibeqc_stationary_spd_target
+          "vibeqc_stationary_${_vibeqc_stationary_name}_spd")
+      add_library(${_vibeqc_stationary_spd_target} SHARED
+                  "${_vibeqc_stationary_spd_source}"
+                  $<TARGET_OBJECTS:vibeqc_stationary_spd_primitives>)
+      add_dependencies(${_vibeqc_stationary_spd_target}
+                       "${_vibeqc_stationary_spd_codegen}"
+                       vibeqc_stationary_spd_primitives)
+      target_include_directories(${_vibeqc_stationary_spd_target} PRIVATE
+          "${CMAKE_CURRENT_SOURCE_DIR}/src")
+      target_compile_definitions(${_vibeqc_stationary_spd_target} PRIVATE
+          VIBEQC_HAS_CUDA=1)
+      target_compile_options(${_vibeqc_stationary_spd_target} PRIVATE
+          $<$<COMPILE_LANGUAGE:CUDA>:--fmad=false>
+          $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+      set_target_properties(${_vibeqc_stationary_spd_target} PROPERTIES
+          CUDA_ARCHITECTURES "${_vibeqc_cuda_compile_architectures}"
+          CUDA_STANDARD 20
+          CUDA_STANDARD_REQUIRED ON
+          CUDA_SEPARABLE_COMPILATION ON
+          CUDA_RESOLVE_DEVICE_SYMBOLS ON
+          POSITION_INDEPENDENT_CODE ON
+          JOB_POOL_COMPILE vibeqc_cuda_compile
+          OUTPUT_NAME "vibeqc_stationary_${_vibeqc_stationary_name}_spd")
+      if(VIBEQC_PYTHON_WHEEL)
+        vibeqc_attach_cuda_implib(${_vibeqc_stationary_spd_target})
+      else()
+        target_link_libraries(${_vibeqc_stationary_spd_target} PRIVATE
+                              CUDA::cudart CUDA::cublas)
+      endif()
+      vibeqc_register_generated_sources(
+        OUTPUTS "${_vibeqc_stationary_spd_manifest}"
+        GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/write_stationary_aot_manifest.py"
+        ARGS
+                --library "$<TARGET_FILE:${_vibeqc_stationary_spd_target}>"
+                --source "${_vibeqc_stationary_spd_source}"
+                --output "${_vibeqc_stationary_spd_manifest}"
+                --functional "${_vibeqc_stationary_functional}"
+                --spin "${_vibeqc_stationary_spin}"
+                --iterations 3
+                --component-domain spd
+                ${_vibeqc_stationary_spd_primitive_args}
+                ${_vibeqc_stationary_architecture_args}
+                ${_vibeqc_stationary_compile_architecture_args}
+        DEPENDS
+          ${_vibeqc_stationary_spd_target}
+          "${_vibeqc_stationary_spd_source}"
+          ${_vibeqc_stationary_spd_primitive_sources}
+          ${_vibeqc_stationary_contract_inputs}
+        COMMENT
+          "Recording ${_vibeqc_stationary_name} stationary CUDA s/p/d AOT identity")
+      add_custom_target(
+        "${_vibeqc_stationary_spd_target}_manifest" ALL
+        DEPENDS "${_vibeqc_stationary_spd_manifest}")
+      install(TARGETS ${_vibeqc_stationary_spd_target}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+      install(FILES "${_vibeqc_stationary_spd_manifest}"
         DESTINATION ${CMAKE_INSTALL_LIBDIR})
     endforeach()
   endif()

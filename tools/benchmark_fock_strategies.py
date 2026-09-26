@@ -37,6 +37,7 @@ def provenance(root: typing.Any, build: typing.Any) -> typing.Any:
         "VIBEQC_CUDA_FAST_COMPILE",
         "VIBEQC_ENABLE_AOT_SHELLS",
         "VIBEQC_AOT_PROFILE",
+        "VIBEQC_AOT_SPLIT_COMPILE_THREADS",
         "VIBEQC_CUDA_SPLIT_COMPILE_THREADS",
     )
     entries = dict(

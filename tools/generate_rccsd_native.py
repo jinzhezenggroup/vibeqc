@@ -900,8 +900,14 @@ def _cuda_kernel(
     size = _device_size(node.spec)
     arguments = [f"const double* a{i}" for i in range(len(node.inputs))]
     arguments += ["double* out", "std::size_t o", "std::size_t v", "int* error"]
+    uses_complete_orbital = any(
+        _dim(index) == "n"
+        for spec in (node.spec, *(source.spec for source in node.inputs))
+        for index in spec.indices
+    )
     lines = [
         f"__global__ void {prefix}_node_{number}({','.join(arguments)}){{",
+        *(["  const std::size_t n=o+v;"] if uses_complete_orbital else []),
         f"  const std::size_t count={size};",
         "  for(std::size_t flat=std::size_t(blockIdx.x)*blockDim.x+threadIdx.x;flat<count;flat+=std::size_t(blockDim.x)*gridDim.x){",
     ]
@@ -921,18 +927,18 @@ def _cuda_kernel(
     elif node.op == "einsum":
         labels = node.attrs["labels"]
         output = tuple(node.attrs["output"])
-        kinds = _label_kinds(node)
-        all_labels = sorted(kinds)
+        dims = _label_dims(node)
+        all_labels = sorted(dims)
         reduced = [label for label in all_labels if label not in output]
         if output:
             lines.append("    std::size_t rem=flat;")
         for label in reversed(output):
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines += [f"    const std::size_t l{label}=rem%{dim};", f"    rem/={dim};"]
         lines.append("    double sum=0.0;")
         indent = "    "
         for label in reduced:
-            dim = "o" if kinds[label] == "occupied" else "v"
+            dim = dims[label]
             lines.append(
                 f"{indent}for(std::size_t l{label}=0;l{label}<{dim};++l{label}){{"
             )
@@ -952,33 +958,134 @@ def _cuda_kernel(
             f"    const double value=__dmul_rn({coefficient},sum);",
             f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
         ]
+    elif node.op == "slice":
+        source = node.inputs[0]
+        ranges = tuple(node.attrs["ranges"])
+        rank = len(node.spec.indices)
+        if len(ranges) != rank:
+            raise ValueError("runtime RCCSD CUDA slice rank mismatch")
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        coords = [""] * rank
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [
+                f"    const std::size_t c{axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+            coords[axis] = f"(c{axis}+{_runtime_bound(ranges[axis][0])})"
+        source_index = _flat_coords(coords, source.spec)
+        lines += [
+            f"    const double value=a0[{source_index}];",
+            f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
+        ]
+    elif node.op == "scatter_add":
+        source = node.inputs[0]
+        axis = node.attrs["axis"]
+        positions = tuple(node.attrs["positions"])
+        if not positions or positions != tuple(range(positions[0], positions[-1] + 1)):
+            raise ValueError("runtime RCCSD CUDA scatter requires contiguous positions")
+        offset = _runtime_bound(positions[0])
+        source_dim = _dim(source.spec.indices[axis])
+        rank = len(node.spec.indices)
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        coords = [""] * rank
+        for target_axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[target_axis])
+            lines += [
+                f"    const std::size_t c{target_axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+            coords[target_axis] = f"c{target_axis}"
+        source_coords = list(coords)
+        source_coords[axis] = f"(c{axis}-{offset})"
+        source_index = _flat_coords(source_coords, source.spec)
+        lines += [
+            f"    if(c{axis}<{offset} || c{axis}>={offset}+{source_dim}){{",
+            "      out[flat]=0.0;",
+            "    }else{",
+            f"      const double value=a0[{source_index}];",
+            f"      out[flat]=vibeqc_tensor::finite(value,error,{number});",
+            "    }",
+        ]
+    elif node.op == "transpose":
+        source = node.inputs[0]
+        rank = len(node.spec.indices)
+        axes = tuple(node.attrs["axes"])
+        if len(axes) != rank or sorted(axes) != list(range(rank)):
+            raise ValueError("invalid native RCCSD CUDA transpose permutation")
+        source_coords: list[str | None] = [None] * rank
+        if rank:
+            lines.append("    std::size_t rem=flat;")
+        for axis in reversed(range(rank)):
+            dim = _dim(node.spec.indices[axis])
+            lines += [
+                f"    const std::size_t c{axis}=rem%{dim};",
+                f"    rem/={dim};",
+            ]
+        for out_axis, source_axis in enumerate(axes):
+            source_coords[source_axis] = f"c{out_axis}"
+        if any(coord is None for coord in source_coords):
+            raise ValueError("invalid native RCCSD CUDA transpose coordinate map")
+        index = typing.cast("list[str]", source_coords)[0] if source_coords else "0"
+        for coord, spec_index in zip(source_coords[1:], source.spec.indices[1:]):
+            index = f"({index}*{_dim(spec_index)}+{coord})"
+        lines += [
+            f"    const double value=a0[{index}];",
+            f"    out[flat]=vibeqc_tensor::finite(value,error,{number});",
+        ]
     else:
         raise ValueError(f"unsupported native RCCSD CUDA op {node.op}")
     lines += ["  }", "}"]
     return "\n".join(lines)
 
 
-def _cuda_program(program: Program, prefix: str, output_type: str) -> str:
+def _cuda_program(
+    program: Program,
+    prefix: str,
+    output_type: str,
+    *,
+    input_overrides: dict[str, str] | None = None,
+) -> str:
     names = _prepare_program(program)
+    input_overrides = {} if input_overrides is None else dict(input_overrides)
     kernels = []
     for number, node in enumerate(program.live_nodes):
         if node.op != "input":
             kernels.append(_cuda_kernel(node, number, prefix, names))
+    uses_complete_orbital = any(
+        _dim(index) == "n"
+        for node in program.live_nodes
+        if node.op != "input"
+        for index in node.spec.indices
+    )
     lines = kernels + [
         f"static {output_type} run_{prefix}(CudaState& s){{",
         "  auto* arena=s."
-        + ("iteration_arena" if prefix == "iteration" else "replay_arena")
+        + (
+            "iteration_arena"
+            if prefix == "iteration"
+            else "replay_arena"
+            if prefix == "replay"
+            else "response_arena"
+        )
         + ";",
         "  const auto o=s.o,v=s.v;",
+        *(["  const std::size_t n=checked_add(o,v);"] if uses_complete_orbital else []),
         "  std::size_t cursor=0;",
         "  auto allocate=[&](std::size_t count)->double*{double* p=arena+cursor;cursor=checked_add(cursor,count);return p;};",
         "  vibeqc_tensor::cuda_check(cudaMemsetAsync(s.error,0,sizeof(int),s.stream));",
     ]
     for number, node in enumerate(program.live_nodes):
         if node.op == "input":
-            lines.append(
-                f"  const double* {names[number]}={_input_access(node.attrs['name'], cuda=True)};"
+            input_name = node.attrs["name"]
+            access = (
+                input_overrides[input_name]
+                if input_name in input_overrides
+                else _input_access(input_name, cuda=True)
             )
+            lines.append(f"  const double* {names[number]}={access};")
             continue
         lines.append(f"  double* {names[number]}=allocate({_size(node.spec)});")
         sources = [names[x._emit_index] for x in node.inputs]
@@ -990,31 +1097,39 @@ def _cuda_program(program: Program, prefix: str, output_type: str) -> str:
     lines.append("  vibeqc_tensor::cuda_check(cudaGetLastError());")
     outputs = {key: names[value._emit_index] for key, value in program.outputs.items()}
     if output_type == "DeviceIterationOutputs":
-        lines.append(
-            "  return {"
-            + ",".join(
-                [
-                    outputs["correlation_energy"],
-                    outputs["singles_residual"],
-                    outputs["doubles_residual"],
-                    outputs["next_t1"],
-                    outputs["next_t2"],
-                ]
-            )
-            + "};"
-        )
+        returned = [
+            outputs["correlation_energy"],
+            outputs["singles_residual"],
+            outputs["doubles_residual"],
+            outputs["next_t1"],
+            outputs["next_t2"],
+        ]
+    elif output_type == "DeviceReplayOutputs":
+        returned = [
+            outputs["correlation_energy"],
+            outputs["singles_residual"],
+            outputs["doubles_residual"],
+        ]
+    elif output_type == "DeviceLambdaOutputs":
+        returned = [outputs["bar_t1"], outputs["bar_t2"]]
+    elif output_type == "DeviceParameterOutput":
+        if len(outputs) != 1:
+            raise ValueError("RCCSD CUDA parameter VJP must expose exactly one output")
+        returned = [next(iter(outputs.values()))]
+    elif output_type == "DeviceHamiltonianOutputs":
+        returned = [
+            outputs["hcore"],
+            outputs["eri"],
+            outputs["overlap"],
+            outputs["rotation_gradient"],
+            outputs["stationarity"],
+            outputs["orbital_rhs"],
+        ]
+    elif output_type == "DeviceOrbitalJvpOutput":
+        returned = [outputs["d_fov"]]
     else:
-        lines.append(
-            "  return {"
-            + ",".join(
-                [
-                    outputs["correlation_energy"],
-                    outputs["singles_residual"],
-                    outputs["doubles_residual"],
-                ]
-            )
-            + "};"
-        )
+        raise ValueError(f"unsupported RCCSD generated CUDA output type {output_type}")
+    lines.append("  return {" + ",".join(returned) + "};")
     lines.append("}")
     return "\n".join(lines)
 
@@ -1022,6 +1137,45 @@ def _cuda_program(program: Program, prefix: str, output_type: str) -> str:
 def cuda_source() -> str:
     iteration = iteration_program(*REPRESENTATIVE)
     replay = build_ccsd_program(*REPRESENTATIVE, form="expanded", diagnostics=False)
+    lambda_programs = build_lambda_programs(*REPRESENTATIVE, form="shared")
+    lambda_independent = build_lambda_programs(*REPRESENTATIVE, form="expanded")
+    lambda_rhs = lambda_programs.energy_vjp.program
+    lambda_transpose = lambda_programs.residual_vjp.program
+    independent_rhs = lambda_independent.energy_vjp.program
+    independent_transpose = lambda_independent.residual_vjp.program
+    parameter_vjps = {
+        parameter: build_parameter_vjp(lambda_programs.primal, parameter).program
+        for parameter in PARAMETERS
+    }
+    hamiltonian = build_hamiltonian_programs(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_weights = hamiltonian.weights
+    orbital_jvp = hamiltonian.orbital_jvp.program
+    fock_weights = build_fock_weight_program(
+        *REPRESENTATIVE, explicit_density_input=True
+    )
+    hamiltonian_input_names = tuple(
+        sorted(
+            n.attrs["name"] for n in hamiltonian_weights.live_nodes if n.op == "input"
+        )
+    )
+    orbital_jvp_input_names = tuple(
+        sorted(n.attrs["name"] for n in orbital_jvp.live_nodes if n.op == "input")
+    )
+    fock_weight_input_names = tuple(
+        sorted(n.attrs["name"] for n in fock_weights.live_nodes if n.op == "input")
+    )
+    energy_seed = {"bar_correlation_energy": "s.bar_correlation_energy"}
+    residual_seed = {
+        "bar_singles_residual": "s.bar_singles_residual",
+        "bar_doubles_residual": "s.bar_doubles_residual",
+    }
+    response_seed_overrides = {
+        "bar_correlation_energy": "s.bar_correlation_energy",
+        "bar_singles_residual": "s.bar_singles_residual",
+        "bar_doubles_residual": "s.bar_doubles_residual",
+    }
     return "\n".join(
         [
             "// Generated by tools/generate_rccsd_native.py from #148 TensorIR.",
@@ -1030,8 +1184,76 @@ def cuda_source() -> str:
             "namespace vibeqc::cc::generated {",
             _cuda_program(iteration, "iteration", "DeviceIterationOutputs"),
             _cuda_program(replay, "replay", "DeviceReplayOutputs"),
+            _cuda_program(
+                lambda_rhs,
+                "lambda_rhs",
+                "DeviceLambdaOutputs",
+                input_overrides=energy_seed,
+            ),
+            _cuda_program(
+                lambda_transpose,
+                "lambda_transpose",
+                "DeviceLambdaOutputs",
+                input_overrides=residual_seed,
+            ),
+            _cuda_program(
+                independent_rhs,
+                "lambda_independent_rhs",
+                "DeviceLambdaOutputs",
+                input_overrides=energy_seed,
+            ),
+            _cuda_program(
+                independent_transpose,
+                "lambda_independent_transpose",
+                "DeviceLambdaOutputs",
+                input_overrides=residual_seed,
+            ),
+            *[
+                _cuda_program(
+                    program,
+                    f"parameter_{parameter}",
+                    "DeviceParameterOutput",
+                    input_overrides=response_seed_overrides,
+                )
+                for parameter, program in parameter_vjps.items()
+            ],
+            _cuda_program(
+                hamiltonian_weights,
+                "hamiltonian_weights",
+                "DeviceHamiltonianOutputs",
+                input_overrides={name: f"s.{name}" for name in hamiltonian_input_names},
+            ),
+            _cuda_program(
+                fock_weights,
+                "fock_weights",
+                "DeviceHamiltonianOutputs",
+                input_overrides={name: f"s.{name}" for name in fock_weight_input_names},
+            ),
+            _cuda_program(
+                orbital_jvp,
+                "orbital_jvp",
+                "DeviceOrbitalJvpOutput",
+                input_overrides={name: f"s.{name}" for name in orbital_jvp_input_names},
+            ),
             "DeviceIterationOutputs run_iteration_cuda(CudaState& state){return run_iteration(state);}",
             "DeviceReplayOutputs run_replay_cuda(CudaState& state){return run_replay(state);}",
+            "DeviceLambdaOutputs run_lambda_rhs_cuda(CudaState& state){return run_lambda_rhs(state);}",
+            "DeviceLambdaOutputs run_lambda_transpose_cuda(CudaState& state){return run_lambda_transpose(state);}",
+            "DeviceLambdaOutputs run_lambda_independent_rhs_cuda(CudaState& state){return run_lambda_independent_rhs(state);}",
+            "DeviceLambdaOutputs run_lambda_independent_transpose_cuda(CudaState& state){return run_lambda_independent_transpose(state);}",
+            "DeviceParameterOutput run_parameter_foo_cuda(CudaState& state){return run_parameter_foo(state);}",
+            "DeviceParameterOutput run_parameter_fov_cuda(CudaState& state){return run_parameter_fov(state);}",
+            "DeviceParameterOutput run_parameter_fvv_cuda(CudaState& state){return run_parameter_fvv(state);}",
+            "DeviceParameterOutput run_parameter_ovov_cuda(CudaState& state){return run_parameter_ovov(state);}",
+            "DeviceParameterOutput run_parameter_ovvo_cuda(CudaState& state){return run_parameter_ovvo(state);}",
+            "DeviceParameterOutput run_parameter_oovv_cuda(CudaState& state){return run_parameter_oovv(state);}",
+            "DeviceParameterOutput run_parameter_ovvv_cuda(CudaState& state){return run_parameter_ovvv(state);}",
+            "DeviceParameterOutput run_parameter_ovoo_cuda(CudaState& state){return run_parameter_ovoo(state);}",
+            "DeviceParameterOutput run_parameter_oooo_cuda(CudaState& state){return run_parameter_oooo(state);}",
+            "DeviceParameterOutput run_parameter_vvvv_cuda(CudaState& state){return run_parameter_vvvv(state);}",
+            "DeviceHamiltonianOutputs run_hamiltonian_weights_cuda(CudaState& state){return run_hamiltonian_weights(state);}",
+            "DeviceHamiltonianOutputs run_fock_weights_cuda(CudaState& state){return run_fock_weights(state);}",
+            "DeviceOrbitalJvpOutput run_orbital_jvp_cuda(CudaState& state){return run_orbital_jvp(state);}",
             "}",
             "",
         ]

@@ -680,8 +680,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
   if (occupied) {
     if (!device_metric || !device_metric->full_rank || !occupied->owner_identity ||
         occupied->owner_identity != device_metric->owner_identity || occupied->nbf != n ||
-        occupied->naux != a || !source || borrowed || whitened || packed_raw ||
-        terms.size() > occupied->factors.size()) {
+        occupied->naux != a || !source || borrowed || packed_raw ||
+        (whitened && !whitened->packed_pairs) || terms.size() > occupied->factors.size()) {
       detail = "streamed occupied DF factors differ from the full-rank metric owner";
       return VIBEQC_STATUS_INVALID_ARGUMENT;
     }
@@ -850,7 +850,17 @@ vibeqc_status execute_cuda_df_hf_gradient(
     const char* upload_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_UPLOAD_PROBE");
     const char* scatter_diagnostic = std::getenv("VIBEQC_DF_RESPONSE_SCATTER_PROBE");
     const char* serial_diagnostic = std::getenv("VIBEQC_DF_SERIAL_RESPONSE_DOT");
-    if (device_metric && schedule == 0 && (!source || packed_raw || whitened) &&
+    const char* source_schedule_control = std::getenv("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE");
+    const std::string_view source_schedule =
+        source_schedule_control ? source_schedule_control : "auto";
+    if (source_schedule != "auto" && source_schedule != "qualify")
+      throw std::invalid_argument("VIBEQC_DF_SOURCE_DERIVATIVE_SCHEDULE requires auto or qualify");
+    const bool source_schedule_eligible = df_response_shell_source_eligible(
+        source != nullptr, packed_raw != nullptr, whitened != nullptr,
+        occupied && device_metric && device_metric->full_rank, source_schedule == "qualify");
+    runtime::cuda_trace::trace_counter("response_source_derivative_qualification_requested",
+                                       source_schedule == "qualify");
+    if (device_metric && schedule == 0 && source_schedule_eligible &&
         !(upload_diagnostic && *upload_diagnostic) &&
         !(scatter_diagnostic && *scatter_diagnostic) &&
         !(serial_diagnostic && std::string_view(serial_diagnostic) == "1")) {
@@ -866,6 +876,8 @@ vibeqc_status execute_cuda_df_hf_gradient(
     if (execution != "generic" && execution != "shell-sp" && execution != "shell")
       throw std::invalid_argument("unknown DF weighted execution (use generic, shell-sp or shell)");
     const bool shell_execution = execution != "generic" && device_metric && schedule == 0;
+    runtime::cuda_trace::trace_counter("response_derivative_shell_execution", shell_execution);
+    runtime::cuda_trace::trace_counter("response_derivative_profile_promoted", promoted_default);
     const bool full_shell_domain = execution == "shell";
     const char* pair_control = std::getenv("VIBEQC_DF_DERIVATIVE_PAIRS");
     const std::string_view pair_policy = pair_control ? pair_control : "auto";
@@ -1074,11 +1086,14 @@ vibeqc_status execute_cuda_df_hf_gradient(
       // Both UHF projections coexist; the reusable projection/weight buffer
       // must hold the largest spin's all-Q projection and at least one AO slice.
       const bool owned_occupied =
-          occupied && panel_capacity <= a && occupied_retained <= factor_capacity &&
+          occupied && (whitened || panel_capacity <= a) && occupied_retained <= factor_capacity &&
           std::max(occupied_largest, n * n) <= factor_capacity - occupied_retained &&
           (!requested_algebra || std::string_view(requested_algebra) == "blas") &&
           (!requested_dot || std::string_view(requested_dot) != "1") &&
           (!requested_scatter || !*requested_scatter);
+      // A requested fitted occupied route must not silently fall through to
+      // the AO-space repeated-fit algorithm if its small factors cannot fit.
+      if (occupied && whitened && !owned_occupied) throw std::bad_alloc();
       // If two complete tensors do not fit, a streamed owner can still supply
       // one raw tensor once. Transform it in place and retain a smaller W panel.
       // This prevents both the unstable raw-Gram fallback and repeated source
@@ -1128,9 +1143,15 @@ vibeqc_status execute_cuda_df_hf_gradient(
         owned_buffers.raw_elements = n * n;
         owned_buffers.occupied_factors = occupied->factors;
         owned_buffers.occupied_response = true;
+        owned_buffers.fitted_occupied_source = whitened;
         arena.stats.borrowed_device_bytes = occupied_coefficients * sizeof(double);
         runtime::cuda_trace::trace_counter("response_borrowed_occupied_factor_bytes",
                                            arena.stats.borrowed_device_bytes);
+        if (whitened) {
+          const auto forward_bytes = whitened->pair_count * a * sizeof(double);
+          arena.stats.borrowed_device_bytes += forward_bytes;
+          runtime::cuda_trace::trace_counter("response_borrowed_whitened_bytes", forward_bytes);
+        }
         runtime::cuda_trace::trace_counter(
             "response_owned_occupied_projection_bytes",
             (occupied_retained + owned_buffers.exchange_elements) * sizeof(double));
@@ -1277,8 +1298,35 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                            packed_raw->pair_count * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
+      std::function<void(std::size_t, std::size_t, double*, double*)> source_panel_reader;
+      const char* source_projection_control = std::getenv("VIBEQC_DF_SOURCE_PROJECTION");
+      const std::string_view source_projection =
+          source_projection_control ? source_projection_control : "auto";
+      if (source_projection != "auto" && source_projection != "batched")
+        throw std::invalid_argument("VIBEQC_DF_SOURCE_PROJECTION requires auto or batched");
+      if (source_projection == "batched") {
+        if (!source || !owned_occupied || whitened)
+          throw std::invalid_argument(
+              "batched source projection requires an admitted raw occupied response");
+        source_panel_reader = [&](std::size_t begin, std::size_t count, double* panels,
+                                  double* staging) {
+          const auto status = generate_cuda_density_fitting_raw_tile(
+              source, source_index, 0, n * n, begin, count, -1, stream_handle, staging, detail);
+          if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+          if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+          cuda_df::launch_gather_auxiliary_tile_kernel(dim3(cuda_df::blocks_for(n * n * count)),
+                                                       dim3(cuda_df::kThreads), 0, arena.stream,
+                                                       n * n, count, 0, 0, count, staging, panels);
+          check(cudaGetLastError());
+          arena.stats.recomputed_value_bytes += n * n * count * sizeof(double);
+          arena.stats.value_slices += count;
+          runtime::cuda_trace::trace_counter("response_batched_raw_source_calls", 1);
+          runtime::cuda_trace::trace_counter("response_batched_raw_source_values", n * n * count);
+        };
+        owned_buffers.read_occupied_panels = &source_panel_reader;
+      }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
-      if (whitened && !borrowed) {
+      if (whitened && !borrowed && !owned_occupied) {
         // The forward plan already owns this immutable tensor. Reading it is
         // an explicit borrow, not extra response allocation or raw regeneration.
         // Full-width panels must use the same reader: falling back to raw A

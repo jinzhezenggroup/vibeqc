@@ -21,6 +21,7 @@ pytestmark = pytest.mark.skipif(
     ("shared_policy", "expect_shared"),
     [(None, True), ("auto", True), ("1", True), ("0", False)],
 )
+@pytest.mark.parametrize("final_exchange", [None, "auto", "occupied"])
 def test_streamed_auto_cold_warm_and_changed_geometry(
     monkeypatch: typing.Any,
     tmp_path: typing.Any,
@@ -28,6 +29,7 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
     budget_mib: int,
     shared_policy: str | None,
     expect_shared: bool,
+    final_exchange: str | None,
 ) -> None:
     """Independent libcint/PySCF gates cover all solves and geometry rebuilding."""
     from pyscf import gto, scf
@@ -51,12 +53,15 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
     for control in (
         "EXCHANGE",
         "SEED_EXCHANGE",
-        "FINAL_EXCHANGE",
         "RESPONSE_SPACE",
         "RESPONSE_STORAGE",
         "FINAL_PROJECTION",
     ):
         monkeypatch.setenv("VIBEQC_DF_" + control, "auto")
+    if final_exchange is None:
+        monkeypatch.delenv("VIBEQC_DF_FINAL_EXCHANGE", raising=False)
+    else:
+        monkeypatch.setenv("VIBEQC_DF_FINAL_EXCHANGE", final_exchange)
     if shared_policy is None:
         monkeypatch.delenv("VIBEQC_DF_JK_SHARED_SOURCE", raising=False)
     else:
@@ -118,6 +123,13 @@ def test_streamed_auto_cold_warm_and_changed_geometry(
                     )
             else:
                 assert not joint
+            retained_final = [
+                record
+                for record in records
+                if record["operation"] == "final_state_retained_jk"
+            ]
+            assert retained_final
+            assert all(record["counters"].get("accepted") for record in retained_final)
             if forces:
                 # Temporary eigenbasis projections never become a resident
                 # symmetric-C force-response lease, even after warm SCF.

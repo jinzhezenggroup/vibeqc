@@ -15,11 +15,14 @@ triples approximations are not silently substituted.
 `rccsd_t_method_capabilities("rccsd(t)")` reports the internal Python
 composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
 `native_public=False` still describes that internal force facade. Separately,
-the public native registry exposes CPU `RCCSD(T)` energy and qualified
-small-system analytic forces, plus CUDA energy, through
+the public native registry exposes qualified conventional small-system
+`RCCSD(T)` energy and analytic forces on CPU and CUDA through
 `VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`. Homogeneous prepared
-batches follow the selected backend capability; CUDA analytic forces remain
-fail-closed.
+batches follow the selected backend capability. The CUDA force route executes the generated corrected-Lambda RHS/J^T actions and
+fixed-orbital parameter VJPs on CUDA, then routes Hamiltonian/Fock pullbacks and
+the orbital JVP through one reusable CUDA response owner. Lambda GMRES and the
+physical Z-vector Krylov control flow remain host-owned. The final conventional
+nuclear-derivative contraction also runs on CUDA.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
 `rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,
@@ -187,19 +190,23 @@ existing correlation memory budget. Diagnostics publish `E_(T)`, virtual-triple
 count, workspace bytes and the audited triples inventory hash separately from
 the RCCSD correlation diagnostics.
 
-The current public boundary is deliberately narrower than the internal gradient
-facade:
+The current public boundary remains deliberately bounded:
 
 ```text
-CPU energy:                 yes
+CPU energy + force:          yes (qualified conventional <=12-AO force domain)
 CPU homogeneous batch:      yes
-native CUDA RCCSD(T):        no
-native/public forces:        no
+CUDA energy + force:         yes (same force domain)
+CUDA homogeneous batch:     yes
+fully resident CUDA response:no (internal qualification path only)
 DF/frozen-core/open-shell:   no
 ```
 
-CUDA requests fail rather than running the CPU evaluator under a CUDA label.
-Force requests also fail rather than returning RCCSD/HF derivatives.
+CUDA force publication never substitutes RCCSD/HF derivatives. The force owner
+builds the complete CCSD(T) relaxed response before publication. Generated
+corrected-Lambda RHS/J^T actions and fixed-orbital parameter VJPs execute on one
+shared CUDA state, their packed Lambda GMRES control is still host-owned, later
+Hamiltonian/Z stages remain on host, and the final
+conventional nuclear derivative is executed by the CUDA consumer.
 
 The internal #746 CPU force chain now executes its generated Lambda, parameter-
 response, `(T)` VJP, raw-Hamiltonian, canonicalization and AO back-transform
@@ -210,19 +217,23 @@ generic backend keeps its 4096-node default. The qualified CC response owner
 explicitly requests an 8192-node ceiling so the NH3 final triples-response tile
 (5258 nodes) is admitted without widening unrelated TensorIR consumers.
 
-This does not yet advertise public `forces`: the remaining #155 C work is to
-bind the public C++ method-owner lifecycle/result publication to this already-
-native response/gradient chain. It must not add a handwritten CCSD(T)-specific
-Lambda/Z implementation.
+The public C++ method-owner lifecycle now publishes this complete force on CPU.
+For the CUDA domain it also dispatches corrected-Lambda generated actions and the
+final conventional nuclear derivative to CUDA. The remaining host response
+stages continue to reuse the same audited generated equations. The fully
+CUDA-resident response stack from #1215-#1225 remains the staged integration
+target; this slice does not claim that endpoint residency is complete.
 
 ## Validation
 
 CPU endpoint tests cover H2, He, H2O, NH3 and CH4 using committed reference
 inputs. H2/He exercise the approximately-zero triples limit; H2O/NH3/CH4 carry
 nonzero `(T)` corrections and are checked independently from the CCSD energy.
-The tests also cover nonconvergence, force/backend rejection, endpoint artifact
-serialization, homogeneous batch admission, ragged-batch rejection and
-per-item failure isolation.
+The tests also cover nonconvergence, unsupported-method rejection, endpoint
+artifact serialization, homogeneous batch admission, ragged-batch rejection and
+per-item failure isolation. Opt-in CUDA public-force cases compare H2O with the
+pinned independent PySCF analytic gradient and exercise CUDA prepared-batch
+force publication.
 
 ```bash
 PYTHONPATH=python:. python -m pytest tests/python/test_ccsd_t_api.py \

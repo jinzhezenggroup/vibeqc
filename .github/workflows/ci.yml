@@ -21,16 +21,54 @@ permissions:
 env:
   CCACHE_VERSION: "4.14"
 
-# Coalesce superseded PR and master-push runs separately. PR updates cancel
-# stale running work; master keeps the active run and replaces only the older
-# pending run with the newest push. Scheduled/manual qualification keeps its
-# own run ID.
+# Coalesce superseded PR and merge-group runs by their logical ref. A refreshed
+# merge-group ref cancels the stale run immediately; deleted queue refs are also
+# screened by the liveness job below. Master still keeps the active run and only
+# replaces the older pending run with the newest push.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.event_name == 'push' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || (github.event_name == 'push' || github.event_name == 'merge_group') && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
 
 jobs:
+  merge_queue_liveness:
+    name: Merge queue liveness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      active: ${{ steps.liveness.outputs.active }}
+    steps:
+      - name: Check merge-group ref still exists
+        id: liveness
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" != "merge_group" ]]; then
+            echo "active=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          ref="${GITHUB_REF#refs/}"
+          error_file="$(mktemp)"
+          if gh api --silent "/repos/${GITHUB_REPOSITORY}/git/ref/${ref}" 2>"${error_file}"; then
+            echo "active=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          if grep -q '(HTTP 404)' "${error_file}"; then
+            echo "::notice::Merge-group ref ${GITHUB_REF} no longer exists; skipping orphaned CI."
+            echo "active=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "::warning::Unable to verify merge-group ref; running CI fail-open."
+          cat "${error_file}" >&2
+          echo "active=true" >> "${GITHUB_OUTPUT}"
+
   cpu:
+    needs: merge_queue_liveness
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -127,6 +165,8 @@ jobs:
 
   cuda-compile:
     name: CUDA 12.9 compile (sm_120)
+    needs: merge_queue_liveness
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -388,6 +428,8 @@ jobs:
 
   python:
     name: python (${{ matrix.shard }})
+    needs: merge_queue_liveness
+    if: needs.merge_queue_liveness.outputs.active != 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -501,6 +543,7 @@ jobs:
       - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
+          VIBEQC_BUILD_DIR: ${{ github.workspace }}/build
         run: |
           extra_args=()
           coverage_args=()
@@ -974,11 +1017,15 @@ jobs:
   pass:
     name: Pass CI checks
     timeout-minutes: 5
-    needs: [cpu, cuda-compile, python]
+    needs: [merge_queue_liveness, cpu, cuda-compile, python]
     runs-on: ubuntu-24.04
-    if: always()
+    if: ${{ !cancelled() }}
     steps:
+      - name: Accept an orphaned merge-group run
+        if: needs.merge_queue_liveness.outputs.active == 'false'
+        run: echo "The merge-group ref is gone; expensive CI jobs were intentionally skipped."
       - name: Decide whether the needed jobs succeeded or failed
+        if: needs.merge_queue_liveness.outputs.active != 'false'
         uses: re-actors/alls-green@05ac9388f0aebcb5727afa17fcccfecd6f8ec5fe # v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}

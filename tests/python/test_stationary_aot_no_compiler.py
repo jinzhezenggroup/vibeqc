@@ -52,6 +52,15 @@ def _artifact_selector(function_name: str, artifact_name: str) -> ast.IfExp:
         )
     ]
     assert eager_sources == []
+    component_compiler_guards = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.If)
+        and {"component_mode", "compiler"}
+        <= {child.id for child in ast.walk(node.test) if isinstance(child, ast.Name)}
+        and any(isinstance(child, ast.Raise) for child in node.body)
+    ]
+    assert component_compiler_guards == []
     assignments = [
         node
         for node in ast.walk(function)
@@ -98,10 +107,10 @@ def _artifact_selector(function_name: str, artifact_name: str) -> ast.IfExp:
         (True, False, False, False),
         (False, False, False, True),
         (True, True, False, True),
-        (True, False, True, True),
+        (True, False, True, False),
         (False, True, True, True),
     ],
-    ids=("sp-aot", "missing-aot", "ecp-jit", "component-jit", "combined-jit"),
+    ids=("sp-aot", "missing-aot", "ecp-jit", "component-aot", "combined-jit"),
 )
 def test_stationary_artifact_selector_keeps_source_emission_in_jit_branch(
     function_name: str,
@@ -175,7 +184,7 @@ def test_public_aot_force_does_not_probe_nvcc(
     source.close.assert_called_once()
 
 
-def test_public_d_shell_force_uses_jit_instead_of_sp_aot(
+def test_public_d_shell_force_uses_component_aot_without_nvcc(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     class Basis:
@@ -194,12 +203,11 @@ def test_public_d_shell_force_uses_jit_instead_of_sp_aot(
         _dft_gradient.StationaryKsState, "from_native", lambda *args, **kwargs: state
     )
     target = cuda_target_info("sm_120")
-    compiler = object()
 
     def calculate(*args: object, **kwargs: object) -> SimpleNamespace:
-        assert kwargs["compiler"] is compiler
+        assert kwargs["compiler"] is None
         assert kwargs["target"] is target
-        assert kwargs["aot_directory"] is None
+        assert kwargs["aot_directory"] == tmp_path
         assert kwargs["native_grid_library"] == tmp_path / "libvibeqc.so"
         return SimpleNamespace(gradient=np.ones((2, 3)), work={"tensor_executions": 0})
 
@@ -216,7 +224,9 @@ def test_public_d_shell_force_uses_jit_instead_of_sp_aot(
         _charges=[0],
         _multiplicities=[1],
         _library=SimpleNamespace(_name=str(tmp_path / "libvibeqc.so")),
-        _stationary_cuda_compiler=lambda: compiler,
+        _stationary_cuda_compiler=lambda: pytest.fail(
+            "NVCC discovery before component AOT load"
+        ),
         _stationary_cuda_target=lambda: target,
     )
 

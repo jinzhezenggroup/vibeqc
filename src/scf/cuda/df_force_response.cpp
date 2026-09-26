@@ -295,6 +295,21 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
     detail = "unknown DF response space (use auto, dense or occupied)";
     return VIBEQC_STATUS_INVALID_ARGUMENT;
   }
+  const char* occupied_source_control = std::getenv("VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE");
+  const std::string_view occupied_source =
+      occupied_source_control ? occupied_source_control : "auto";
+  if (occupied_source != "auto" && occupied_source != "raw" && occupied_source != "fitted") {
+    detail = "VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE requires auto, raw or fitted";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
+  const bool fitted_occupied_requested = occupied_source == "fitted";
+  if (fitted_occupied_requested &&
+      (space != "occupied" || plan->streamed || !plan->integral_source ||
+       plan->value_storage.pairs != DfPairStorage::SymmetricLowerSingle ||
+       storage == "jk-scratch")) {
+    detail = "fitted occupied response requires explicit occupied single-B source storage";
+    return VIBEQC_STATUS_INVALID_ARGUMENT;
+  }
   bool borrow =
       storage == "jk-scratch" || (space == "occupied" && full_scratch && storage != "panel");
   bool automatic_occupied = false;
@@ -486,9 +501,15 @@ vibeqc_status execute_cuda_density_fitting_generated_force_response(
             *plan, system, final_state, terms, maximum_bytes, streamed_factors, detail);
         if (corrected != VIBEQC_STATUS_SUCCESS) return corrected;
       }
-      // The response bridge has mutually exclusive fitted-panel and physical
-      // raw-projection contracts; occupied factors must take the latter.
-      if (streamed_factors.owner_identity) whitened = {};
+      // The explicit fitted experiment projects forward B before applying
+      // the second metric root. Preserve the validated view only on that path;
+      // legacy source-occupied response continues to read physical raw A.
+      if (streamed_factors.owner_identity && !fitted_occupied_requested) whitened = {};
+    }
+    if (fitted_occupied_requested &&
+        (!streamed_factors.owner_identity || !whitened.data || !metric.full_rank)) {
+      detail = "fitted occupied response has no current full-rank canonical factor";
+      return VIBEQC_STATUS_NOT_IMPLEMENTED;
     }
     // The diagnostic upload route writes the former raw scratch buffer.
     // Revoke its immutable view before submission, so an interrupted copy

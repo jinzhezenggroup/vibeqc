@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "response/native_gmres.hpp"
+#include "response/resident_krylov.hpp"
 #include "response/solve.hpp"
 
 namespace {
@@ -48,6 +49,71 @@ double explicit_residual(const DenseOperator& matrix, std::span<const double> x,
     for (std::size_t column = 0; column < matrix.dimension; ++column)
       residual[row] -= matrix.values[row * matrix.dimension + column] * x[column];
   return vibeqc::response::stable_norm(residual);
+}
+
+struct ContractResidentBackend final : vibeqc::response::ResidentKrylovBackend {
+  ContractResidentBackend(std::size_t dimension, std::size_t vector_slots,
+                          std::size_t resident_bytes)
+      : n(dimension), slots(vector_slots), bytes(resident_bytes) {}
+
+  std::size_t n{}, slots{}, bytes{};
+
+  [[nodiscard]] std::size_t dimension() const noexcept override { return n; }
+  [[nodiscard]] std::size_t vector_slots() const noexcept override { return slots; }
+  [[nodiscard]] std::size_t owned_resident_bytes() const noexcept override { return bytes; }
+
+  void upload(std::size_t, std::span<const double>) override {}
+  void download(std::size_t, std::span<double>) override {}
+  void zero(std::size_t) override {}
+  void copy(std::size_t, std::size_t) override {}
+  void scale(std::size_t, double) override {}
+  void axpy(std::size_t, double, std::size_t) override {}
+  [[nodiscard]] double dot(std::size_t, std::size_t) override { return 0.0; }
+  [[nodiscard]] double norm(std::size_t) override { return 0.0; }
+  void apply(std::size_t, std::size_t) override {}
+};
+
+void resident_krylov_contract() {
+  GmresOptions options;
+  options.restart = 7;
+  options.max_iterations = 20;
+  const auto plan = vibeqc::response::prepare_gmres(11, options);
+  const auto workspace = vibeqc::response::resident_gmres_workspace(plan);
+  require(workspace.vector_slots == 24, "resident GMRES vector-slot inventory is wrong");
+  require(workspace.host_scalar_bytes == (7 * 7 + 5 * 7 + 1) * sizeof(double),
+          "resident GMRES host-scalar workspace is wrong");
+
+  ContractResidentBackend backend{11, workspace.vector_slots, 4096};
+  const auto admitted = vibeqc::response::validate_resident_gmres_backend(plan, backend);
+  require(admitted.vector_slots == workspace.vector_slots,
+          "resident GMRES backend validation changed its workspace");
+
+  bool rejected = false;
+  try {
+    ContractResidentBackend wrong_dimension{10, workspace.vector_slots, 4096};
+    (void)vibeqc::response::validate_resident_gmres_backend(plan, wrong_dimension);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "resident GMRES accepted a backend from another dimension");
+
+  rejected = false;
+  try {
+    ContractResidentBackend short_backend{11, workspace.vector_slots - 1, 4096};
+    (void)vibeqc::response::validate_resident_gmres_backend(plan, short_backend);
+  } catch (const std::length_error&) {
+    rejected = true;
+  }
+  require(rejected, "resident GMRES accepted insufficient vector slots");
+
+  rejected = false;
+  try {
+    ContractResidentBackend unowned{11, workspace.vector_slots, 0};
+    (void)vibeqc::response::validate_resident_gmres_backend(plan, unowned);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "resident GMRES accepted unowned resident storage");
 }
 
 void exact_solve_and_true_residual() {
@@ -430,6 +496,7 @@ void stable_norm_extremes() {
 int main() {
   try {
     modified_plans_are_rejected_before_execution();
+    resident_krylov_contract();
     exact_solve_and_true_residual();
     linear_response_problem_contract();
     zero_rhs_is_transactional();

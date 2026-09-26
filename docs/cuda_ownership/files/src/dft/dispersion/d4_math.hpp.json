@@ -1,0 +1,7 @@
+{
+  "path": "src/dft/dispersion/d4_math.hpp",
+  "role": "scientific",
+  "subsystem": "d4_dispersion",
+  "reason": "Shared handwritten D4 scalar mathematics consumed by the retained reference evaluator and GFN2 CUDA. This consolidates existing formulas; generated replacement and CPU/CUDA parity remain required before retirement.",
+  "regions": []
+}

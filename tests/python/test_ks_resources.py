@@ -199,7 +199,7 @@ def test_cli_ks_dry_run_does_not_load_a_native_runtime(
 @pytest.mark.parametrize(
     ("schema_version", "diagnostic"),
     (
-        (None, "vibeqc_ks_options_version"),
+        (None, "semantic KS execution-plan ABI"),
         (0, "semantic KS execution-plan ABI"),
         (1, "allocation inventory"),
     ),
@@ -225,14 +225,8 @@ def test_missing_inventory_and_foreign_plan_reject_before_preparation(
     if schema_version is not None:
         library.vibeqc_ks_options_version = lambda: schema_version
     monkeypatch.setattr(calculator, "_library", library)
-    if schema_version is None:
-        # A missing current ABI symbol is a broken library, not an optional
-        # capability. Both entry points must fail before native preparation.
-        with pytest.raises(AttributeError, match=diagnostic):
-            calculator.estimate_resources([H2])
-        with pytest.raises(AttributeError, match=diagnostic):
-            calculator.prepare_batch([H2])
-        return
+    # Missing, incompatible and inventory-less ABIs all produce an unsupported
+    # estimate; execution must still reject before native preparation.
     assert calculator.estimate_resources([H2]).status == "unsupported"
     with pytest.raises(NotImplementedError, match=diagnostic):
         calculator.prepare_batch([H2])

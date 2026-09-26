@@ -57,3 +57,68 @@ def test_generated_response_arena_expressions_have_bounded_depth(
             depth -= 1
     assert depth == 0
     assert maximum < 32, f"generated response expression nesting is {maximum}"
+
+
+def test_complete_rccsd_cuda_lambda_codegen_without_site_packages(
+    tmp_path: Path,
+) -> None:
+    root = Path(__file__).resolve().parents[2]
+    output = tmp_path / "generated_rccsd_cuda.cu"
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            str(root / "tools/generate_rccsd_native.py"),
+            "--cuda-source",
+            str(output),
+        ],
+        check=False,
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
+    text = output.read_text()
+    for entry in (
+        "run_lambda_rhs_cuda",
+        "run_lambda_transpose_cuda",
+        "run_lambda_independent_rhs_cuda",
+        "run_lambda_independent_transpose_cuda",
+    ):
+        assert entry in text
+    assert text.count("auto* arena=s.response_arena;") == 17
+    for entry in (
+        "run_hamiltonian_weights_cuda",
+        "run_fock_weights_cuda",
+        "run_orbital_jvp_cuda",
+    ):
+        assert entry in text
+    for parameter in (
+        "foo",
+        "fov",
+        "fvv",
+        "ovov",
+        "ovvo",
+        "oovv",
+        "ovvv",
+        "ovoo",
+        "oooo",
+        "vvvv",
+    ):
+        assert f"run_parameter_{parameter}_cuda" in text
+    assert "s.bar_correlation_energy" in text
+    assert "s.bar_singles_residual" in text
+    assert "s.bar_doubles_residual" in text
+    assert "const std::size_t n=o+v;" in text
+    assert "const std::size_t count=n*n*n*n;" in text
+    hamiltonian_start = text.index(
+        "static DeviceHamiltonianOutputs run_hamiltonian_weights(CudaState& s){"
+    )
+    fock_start = text.index(
+        "static DeviceHamiltonianOutputs run_fock_weights(CudaState& s){",
+        hamiltonian_start,
+    )
+    hamiltonian_program = text[hamiltonian_start:fock_start]
+    assert "const std::size_t n=checked_add(o,v);" in hamiltonian_program
+    assert "allocate(checked_product({n,n,n,n}))" in hamiltonian_program

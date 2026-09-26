@@ -146,6 +146,17 @@ class AsyncGeneration {
     published_ = generation;
   }
 
+  /** Revoke a published generation before a second in-place asynchronous
+   * phase mutates its buffers. A later successful phase may republish the same
+   * submitted generation with commit(); failure leaves no partial result
+   * observable.
+   */
+  void revoke(std::uint64_t generation) {
+    if (!generation || generation != submitted_)
+      throw std::invalid_argument("asynchronous generation was not submitted");
+    if (published_ == generation) published_ = 0;
+  }
+
   void require(std::uint64_t generation) const {
     if (!generation || generation != published_)
       throw std::invalid_argument("asynchronous result generation is stale");

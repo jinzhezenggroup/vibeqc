@@ -15,6 +15,7 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1509,6 +1510,92 @@ vibeqc_xtb_status_t execute_restricted_gfn2_cpu(Gfn2CpuExecutionCache& cache,
     return VIBEQC_XTB_STATUS_SUCCESS;
   } catch (const std::bad_alloc&) {
     error = "failed to allocate CPU GFN2 execution staging";
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
+  }
+}
+
+
+vibeqc_xtb_status_t copy_restricted_gfn2_orbital_snapshot_cpu(
+    Gfn2CpuExecutionCache& cache, Gfn2CpuOrbitalSnapshot& snapshot, std::string& error) {
+  try {
+    std::lock_guard<std::mutex> lock(cache.impl_->mutex);
+    const auto& implementation = *cache.impl_;
+    if (implementation.request.batch_size != 1 || implementation.systems.size() != 1u ||
+        implementation.system_statuses.size() != 1u || implementation.converged.size() != 1u) {
+      error = "GFN2 orbital snapshot requires one completed CPU system";
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
+    }
+    if (implementation.system_statuses[0] != VIBEQC_XTB_STATUS_SUCCESS ||
+        implementation.converged[0] == 0u) {
+      error = "GFN2 orbital snapshot requires a converged SCC state";
+      return VIBEQC_XTB_STATUS_SCC_NOT_CONVERGED;
+    }
+
+    const SystemExecution& system = *implementation.systems[0];
+    const auto orbital_count64 = system.basis.total_orbitals;
+    if (orbital_count64 <= 0 ||
+        static_cast<std::uint64_t>(orbital_count64) >
+            std::numeric_limits<std::size_t>::max()) {
+      error = "GFN2 orbital snapshot has an invalid orbital count";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+    const std::size_t n = static_cast<std::size_t>(orbital_count64);
+    if (n > std::numeric_limits<std::size_t>::max() / n ||
+        n > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) / n ||
+        n > static_cast<std::size_t>(std::numeric_limits<std::int64_t>::max()) / 2u) {
+      error = "GFN2 orbital snapshot matrix dimensions overflow";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+    const std::size_t matrix_size = n * n;
+    if (system.overlap.size() != matrix_size ||
+        system.wavefunction_layout.coefficients.element_count !=
+            static_cast<std::int64_t>(matrix_size) ||
+        system.wavefunction_layout.occupations.element_count !=
+            static_cast<std::int64_t>(2u * n) ||
+        system.wavefunction.coefficients == nullptr || system.wavefunction.occupations == nullptr) {
+      error = "GFN2 orbital snapshot disagrees with the converged wavefunction layout";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+
+    if (system.wavefunction_layout.electron_counts.size() != 1u ||
+        system.wavefunction_layout.alpha_electron_counts.size() != 1u ||
+        system.wavefunction_layout.beta_electron_counts.size() != 1u) {
+      error = "GFN2 orbital snapshot is missing valence electron metadata";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+
+    Gfn2CpuOrbitalSnapshot candidate;
+    candidate.orbital_count = orbital_count64;
+    candidate.electron_count = system.wavefunction_layout.electron_counts[0];
+    candidate.alpha_electron_count = system.wavefunction_layout.alpha_electron_counts[0];
+    candidate.beta_electron_count = system.wavefunction_layout.beta_electron_counts[0];
+    candidate.shell_orbital_offsets = system.basis.shell_orbital_offsets;
+    candidate.shell_primitive_offsets = system.basis.shell_primitive_offsets;
+    candidate.shell_to_atom = system.basis.shell_to_atom;
+    candidate.angular_momenta = system.basis.angular_momenta;
+    candidate.primitive_exponents = system.basis.primitive_exponents;
+    candidate.primitive_coefficients = system.basis.primitive_coefficients;
+    candidate.overlap = system.overlap;
+    candidate.coefficients.assign(system.wavefunction.coefficients,
+                                  system.wavefunction.coefficients + matrix_size);
+    candidate.occupations.assign(system.wavefunction.occupations,
+                                 system.wavefunction.occupations + 2u * n);
+
+    if (!std::isfinite(candidate.electron_count) ||
+        !std::isfinite(candidate.alpha_electron_count) ||
+        !std::isfinite(candidate.beta_electron_count) || !all_finite(candidate.overlap) ||
+        !all_finite(candidate.coefficients) || !all_finite(candidate.occupations)) {
+      error = "GFN2 converged orbital snapshot contains NaN or infinity";
+      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    }
+    snapshot = std::move(candidate);
+    error.clear();
+    return VIBEQC_XTB_STATUS_SUCCESS;
+  } catch (const std::bad_alloc&) {
+    error = "failed to allocate GFN2 orbital snapshot";
+    return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
+  } catch (const std::length_error&) {
+    error = "GFN2 orbital snapshot dimensions exceed host container limits";
     return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
   }
 }

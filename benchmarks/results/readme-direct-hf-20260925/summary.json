@@ -1,0 +1,126 @@
+{
+  "schema": "vibeqc.readme-benchmarks.v1",
+  "timing": "warm endpoint latency; stable-branch median with min/max; x marks unpooled unstable samples",
+  "comparison": "normal convergence, no cross-engine speedup claim; work counts retained per repeat",
+  "samples": [
+    {
+      "path": "hf.json",
+      "records": 6,
+      "bytes": 47028,
+      "sha256": "741f5e893a2ff58d242a66740c98170d31c355a0476be6ae129eedb3e94c7e2a"
+    }
+  ],
+  "provenance": {
+    "153e8f02879c645090ea36877ee5930dbdda866bfead5db34a40ae53827d7d6a": {
+      "environment": {
+        "accelerator": {
+          "backend": "cuda",
+          "clock_rate_khz": 2407000,
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_id": 0,
+          "driver_version": 13000,
+          "multiprocessor_count": 170,
+          "name": "NVIDIA GeForce RTX 5090",
+          "runtime_version": 12090,
+          "total_global_memory_bytes": 33666498560
+        },
+        "git": {
+          "commit": "fe534ebf563108aecadcd3b967c7652f6d62f79f",
+          "dirty": false,
+          "pending_generated_benchmark_artifacts": 0
+        },
+        "host": {
+          "machine": "x86_64",
+          "node": "node3",
+          "platform": "Linux-6.8.0-136-generic-x86_64-with-glibc2.35",
+          "processor": "x86_64"
+        },
+        "packages": {
+          "cupy": "14.2.0",
+          "gpu4pyscf": "1.8.1",
+          "numpy": "2.4.6",
+          "pyscf": "2.14.0"
+        },
+        "python": {
+          "executable": "/home/jzzeng/codes/vibeqc-task-20260912/df-benchmark-env/bin/python",
+          "version": "3.11.14"
+        },
+        "runtime": {
+          "cuda_visible_devices": "0",
+          "vibeqc_library": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so"
+        },
+        "toolchain": {
+          "cuobjdump": {
+            "path": "/group/software/cuda-12.9.1/bin/cuobjdump",
+            "version": "cuobjdump: NVIDIA (R) fat binary listing tool\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Mon_May_19_08:50:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.82\nBuild cuda_12.9.r12.9/compiler.36001619_0"
+          },
+          "host_cxx": {
+            "path": "/usr/bin/c++",
+            "version": "c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+          },
+          "nvcc": {
+            "path": "/group/software/cuda-12.9.1/bin/nvcc",
+            "version": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:21:03_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          },
+          "ptxas": {
+            "path": "/group/software/cuda-12.9.1/bin/ptxas",
+            "version": "ptxas: NVIDIA (R) Ptx optimizing assembler\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Tue_May_27_02:18:05_PDT_2025\nCuda compilation tools, release 12.9, V12.9.86\nBuild cuda_12.9.r12.9/compiler.36037853_0"
+          }
+        }
+      },
+      "native_build": {
+        "library_path": "/home/jzzeng/codes/qc-gencode/build/cuda-release-sm120/libvibeqc.so.0.1.0",
+        "library_sha256": "96c84d9daebf1f427cbf715136529a4afe729cc79ffc18ba25ca83c7729a9a8f",
+        "probe": {
+          "device": {
+            "driver_version": 13000,
+            "fast_compile": 0,
+            "major": 12,
+            "maximum_blocks_per_sm": 24,
+            "maximum_registers_per_thread": 255,
+            "maximum_threads_per_block": 1024,
+            "maximum_threads_per_sm": 1536,
+            "minor": 0,
+            "name": "NVIDIA GeForce RTX 5090",
+            "official_profile": "sm_120",
+            "portable": 0,
+            "registers_per_sm": 65536,
+            "release_build": 1,
+            "runtime_version": 12090,
+            "shared_memory_per_block": 49152,
+            "shared_memory_per_block_optin": 101376,
+            "shared_memory_per_sm": 102400,
+            "sm_count": 170,
+            "toolkit_version": 12090,
+            "warp_size": 32
+          },
+          "host": {
+            "libc": [
+              "glibc",
+              "2.35"
+            ],
+            "machine": "x86_64",
+            "system": "Linux"
+          },
+          "native_abi": 0,
+          "policy": {
+            "consumers": [
+              "fock",
+              "force"
+            ],
+            "precision": "fp64",
+            "spin": [
+              "rhf",
+              "uhf"
+            ]
+          },
+          "schema": 1,
+          "source_identity": "7fdc1fcb4815883379c3891e3b7325ee52407f8e255aa43eeb7139f3c4b29acb"
+        }
+      }
+    }
+  }
+}

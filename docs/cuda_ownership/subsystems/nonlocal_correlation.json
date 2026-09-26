@@ -1,8 +1,8 @@
 {
   "owner": "nonlocal_correlation",
-  "current_default": "Versioned VV10/rVV10 MethodIR semantics with an independent fixed-grid CPU oracle, bounded native CPU/CUDA ordered-pair provider, self-consistent CPU RKS/UKS composition, and public bounded CPU analytic forces on the existing qualified stationary-force domain.",
+  "current_default": "Versioned VV10/rVV10 MethodIR semantics with an independent fixed-grid CPU oracle, bounded native CPU/CUDA ordered-pair provider, self-consistent CPU RKS/UKS composition, public bounded CPU analytic forces, and device-fused CUDA WB97M-V RKS/UKS energy composition.",
   "generated_capability": "MethodIR owns immutable VV10/rVV10 mathematical identity, parameters and derivative capability. The shared stationary plan consumes nonlocal AO-center, grid-point and partition-weight sources without duplicating semilocal/grid terms.",
-  "missing_capability": "Self-consistent CUDA KS consumption remains fail-closed. Complete public omegaB97M-V qualification is owned by the separate final-composition line and still depends on #167 range-separated exchange; #164 is closed. No method enum or manifest alone advertises this primitive as a complete public method.",
+  "missing_capability": "CUDA analytic forces, mixed precision, density fitting, ECP execution, host-unfused public WB97M-V fallback, and generic range-separated or nonlocal method combinations remain unqualified. The public CUDA WB97M-V capability is energy-only and requires the complete canonical composition.",
   "retirement_condition": "Retain the direct CPU oracle and bounded native provider until a compiler-generated nonlocal device consumer reproduces the same energy, potential and complete geometric derivatives with independent numerical, resource and end-to-end performance gates.",
   "evidence": [
     "tests/python/test_vv10_reference.py",
@@ -15,5 +15,5 @@
     ".agents/notes/implemented/numerics/2026-09-21-vv10-native-cuda-provider.md",
     ".agents/notes/implemented/numerics/2026-09-22-vv10-public-cpu-force.md"
   ],
-  "status": "bounded_native_primitive_cpu_self_consistent_public_force"
+  "status": "bounded_native_primitive_cpu_force_cuda_wb97mv_energy"
 }

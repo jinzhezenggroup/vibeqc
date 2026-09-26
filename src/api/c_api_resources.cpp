@@ -180,6 +180,35 @@ int vibeqc_resource_small_hf_cuda_v1(std::size_t nbf, std::size_t direct_nbf, st
 #endif
 }
 
+/** Topology-aware small-HF envelope. Unlike v1 this can account for the
+ * quartet-direct force route while remaining a pure host-side shape query. */
+int vibeqc_resource_small_hf_cuda_v2(std::size_t nbf, std::size_t direct_nbf, std::size_t atoms,
+                                     std::size_t shells, const std::uint8_t* shell_angular,
+                                     const std::size_t* shell_primitive_counts,
+                                     std::size_t diis_history, std::size_t spins,
+                                     int precision_mode, double energy_tolerance,
+                                     double screening_tolerance, std::uint64_t* output,
+                                     std::size_t count) {
+  if (output == nullptr || count != 2 || shell_angular == nullptr ||
+      shell_primitive_counts == nullptr) {
+    return 1;
+  }
+#if VIBEQC_HAS_CUDA
+  std::size_t arena_bytes = 0;
+  std::size_t plan_bytes = 0;
+  if (!vibeqc::scf::small_hf_cuda_resource_layout_v2(
+          nbf, direct_nbf, atoms, shell_angular, shell_primitive_counts, shells, diis_history,
+          spins, precision_mode, energy_tolerance, screening_tolerance, arena_bytes, plan_bytes)) {
+    return 2;
+  }
+  output[0] = arena_bytes;
+  output[1] = plan_bytes;
+  return 0;
+#else
+  return 2;
+#endif
+}
+
 /** Shape-only adapter to the existing DF planner. No integrals, context or
  * workspace is allocated. Fixed source/other-provider bytes are supplied by
  * the composing planner, not independently spent again inside this budget.

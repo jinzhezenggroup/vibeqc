@@ -32,10 +32,9 @@ struct PreparedCudaFockBinding {
 /** Return the ordinary-stream device binding when the prepared plan can
  * execute its complete requested value-side Fock model through one resident
  * provider. The value seam covers full-range Coulomb plus exact full-/short-/
- * long-range exchange. Range-separated exchange may reuse the conservative
- * full-range Schwarz bounds for value screening; operator-specific tighter
- * bounds and range derivatives remain separate follow-ups. DF/mixed-provider
- * compositions remain explicit follow-ups.
+ * long-range exchange. Qualified SR/LR value execution may reuse the owner's
+ * conservative full-range Schwarz screening; derivatives remain a separate
+ * capability. DF/mixed-provider compositions remain explicit follow-ups.
  */
 PreparedCudaFockBinding prepared_cuda_fock_binding(const PreparedFockPlan& plan) noexcept;
 
@@ -49,6 +48,17 @@ vibeqc_status enqueue_prepared_cuda_fock(const PreparedFockPlan& plan, const dou
                                          double* coulomb, double* alpha_exchange,
                                          double* beta_exchange, int* numerical_error,
                                          bool mixed_coulomb, std::string& detail);
+
+/** Enqueue a separately resolved long-range exact-exchange correction through
+ * the same resident direct-J/K source as the primary prepared owner. The
+ * correction must preserve spin and screening identity and contain no Coulomb
+ * term. This keeps RSH composition on one stream/source without creating a
+ * second CUDA provider owner.
+ */
+vibeqc_status enqueue_prepared_cuda_exchange_correction(
+    const PreparedFockPlan& plan, const ResolvedFockBuild& correction, const double* density,
+    const double* beta, std::size_t matrix_elements, double* alpha_exchange, double* beta_exchange,
+    int* numerical_error, std::string& detail);
 
 }  // namespace vibeqc::scf
 

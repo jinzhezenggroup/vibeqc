@@ -22,6 +22,9 @@
 #include "scf/mean_field.hpp"
 #include "scf/reference/mean_field.hpp"
 
+extern "C" void xc_cuda_fail_next_nonlocal_runtime_for_test_v1();
+extern "C" void xc_cuda_fail_next_nonlocal_allocation_for_test_v1();
+
 namespace {
 using namespace vibeqc;
 using scf::reference::Matrix;
@@ -55,6 +58,29 @@ scf::ResolvedFockBuild strategy(bool restricted, scf::FockBackend backend) {
   return scf::resolve_fock_build(spec, backend, 1e-12);
 }
 
+scf::ResolvedFockBuild exact_exchange_strategy(bool restricted, scf::FockBackend backend) {
+  auto spec = scf::make_global_hybrid_fock_spec(
+      restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted, 0.25);
+  return scf::resolve_fock_build(spec, backend, 1e-12);
+}
+
+struct RshStrategies {
+  scf::ResolvedFockBuild primary;
+  scf::ResolvedFockBuild correction;
+};
+
+RshStrategies rsh_strategies(bool restricted, scf::FockBackend backend) {
+  const auto spin = restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted;
+  constexpr double short_exchange = 0.20;
+  constexpr double long_exchange = 0.65;
+  constexpr double omega = 0.33;
+  return {scf::resolve_fock_build(scf::make_rsh_primary_fock_spec(spin, short_exchange), backend,
+                                  1e-12),
+          scf::resolve_fock_build(
+              scf::make_rsh_correction_fock_spec(spin, short_exchange, long_exchange, omega),
+              backend, 1e-12)};
+}
+
 void prepared_cuda_fock_seam() {
   const auto system = hydrogens(2, true);
   const scf::PreparedFockPlan cpu(system, nullptr, strategy(true, scf::FockBackend::Cpu));
@@ -83,7 +109,7 @@ void prepared_cuda_fock_seam() {
   const auto screened_resolved = scf::resolve_fock_build(range_spec, scf::FockBackend::Cuda, 1e-12);
   const scf::PreparedFockPlan screened_range(system, nullptr, screened_resolved, 0);
   require(static_cast<bool>(scf::prepared_cuda_fock_binding(screened_range)),
-          "screened CUDA range exchange lacks the prepared execution binding");
+          "screened CUDA range exchange lost the qualified prepared binding");
 }
 
 /** Independently rebuild the retained density with CPU integrals/XC. This
@@ -133,6 +159,272 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
     require(residual < 1e-9, "CUDA reported convergence above the physical gate");
   require(std::abs(energy - (result.energy + xc_energy)) > 0.05,
           "CUDA endpoint gate does not detect XC double counting");
+}
+
+void run_exact_exchange_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const scf::PreparedFockPlan cpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cpu));
+  const scf::PreparedFockPlan gpu(system, nullptr,
+                                  exact_exchange_strategy(restricted, scf::FockBackend::Cuda), 0);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+  options.max_iterations = 200;
+
+  const unsigned spins = restricted ? 1U : 2U;
+  const auto plain_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history);
+  const auto hybrid_bytes = dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true);
+  require(hybrid_bytes == plain_bytes + spins * basis.nao * basis.nao * sizeof(double),
+          "CUDA KS exact-exchange buffer is missing from state admission");
+
+  dft::CudaKsPlan plan(gpu, basis, grid, options, dft::SemilocalFamily::Pbe, 257);
+  const auto result = plan.run(nullptr, false);
+  require(result.converged && !plan.failed(), "CUDA exact-exchange KS did not converge");
+  const auto reference = restricted ? scf::run_pbe_rks(cpu, basis, grid, options)
+                                    : scf::run_uks(cpu, basis, grid, options, true);
+  require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
+          "CUDA exact-exchange KS endpoint disagrees with CPU");
+  require(std::abs(result.dft_diagnostic.components.exact_exchange) > 1e-8 &&
+              std::abs(result.dft_diagnostic.components.exact_exchange -
+                       reference.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA exact-exchange energy component is absent or inconsistent");
+  const auto movement = plan.transfers();
+  require(movement.iteration_synchronizations == movement.iterations &&
+              movement.execution_region_bindings == 0,
+          "unqualified exact-exchange KS entered the device-chunk fast path");
+  physical_check(cpu, basis, grid, 1U, result);
+
+  // The converged exact-K endpoint must also survive the real device-to-host
+  // final-state validator; the host predicate probe alone cannot establish it.
+  dft::CudaKsFinalStateToken token;
+  std::string detail;
+  require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  dft::VerifiedKsFinalState snapshot;
+  require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  require(snapshot.density.size() == spins && snapshot.fock.size() == spins &&
+              snapshot.identity.determinant.model == gpu.strategy() &&
+              std::abs(snapshot.components.total() - result.energy) < 1e-10 &&
+              std::abs(snapshot.components.exact_exchange -
+                       result.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA exact-exchange final state lost the converged model or energy");
+}
+
+void run_range_exchange_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const auto cpu_strategy = rsh_strategies(restricted, scf::FockBackend::Cpu);
+  const auto gpu_strategy = rsh_strategies(restricted, scf::FockBackend::Cuda);
+  const scf::PreparedFockPlan cpu_primary(system, nullptr, cpu_strategy.primary);
+  const scf::PreparedFockPlan cpu_correction(system, nullptr, cpu_strategy.correction);
+  const scf::PreparedFockPlan gpu_primary(system, nullptr, gpu_strategy.primary, 0);
+
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-12;
+  options.density_tolerance = 1e-10;
+  options.max_iterations = 200;
+
+  const unsigned spins = restricted ? 1U : 2U;
+  const auto primary_bytes =
+      dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, false);
+  const auto range_bytes =
+      dft::cuda_ks_state_bytes(basis.nao, spins, options.diis_history, true, true);
+  // The error flag can use alignment padding after the extra matrix, so the
+  // total allocation need not grow beyond the matrix's byte count.
+  require(range_bytes >= primary_bytes + spins * basis.nao * basis.nao * sizeof(double),
+          "CUDA KS range correction did not reserve its matrix");
+
+  dft::CudaKsPlan plan(gpu_primary, basis, grid, options, dft::SemilocalFamily::Pbe, 257,
+                       &gpu_strategy.correction);
+  const auto result = plan.run(nullptr, false);
+  require(result.converged && !plan.failed(), "CUDA range-separated KS did not converge");
+  const auto reference =
+      restricted ? scf::run_pbe_rsh_rks(cpu_primary, cpu_correction, basis, grid, options)
+                 : scf::run_pbe_rsh_uks(cpu_primary, cpu_correction, basis, grid, options);
+  require(reference.converged && std::abs(reference.energy - result.energy) < 1e-10,
+          "CUDA range-separated KS endpoint disagrees with CPU");
+  require(std::abs(result.dft_diagnostic.components.exact_exchange -
+                   reference.dft_diagnostic.components.exact_exchange) < 1e-10,
+          "CUDA range-separated exact-exchange component disagrees with CPU");
+  const auto movement = plan.transfers();
+  require(movement.iteration_synchronizations == movement.iterations &&
+              movement.execution_region_bindings == 0,
+          "unqualified range-separated KS entered the device-chunk fast path");
+
+  dft::CudaKsFinalStateToken token;
+  std::string detail;
+  require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  dft::VerifiedKsFinalState snapshot;
+  require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+  require(snapshot.identity.model.range_correction &&
+              *snapshot.identity.model.range_correction == gpu_strategy.correction &&
+              snapshot.identity.determinant.model == gpu_strategy.primary &&
+              std::abs(snapshot.components.total() - result.energy) < 1e-10,
+          "CUDA range-separated final state lost correction identity or energy");
+}
+
+RshStrategies wb97mv_rsh_strategies(bool restricted, scf::FockBackend backend) {
+  const auto spin = restricted ? scf::FockSpin::Restricted : scf::FockSpin::Unrestricted;
+  constexpr double short_exchange = 0.15;
+  constexpr double long_exchange = 1.0;
+  constexpr double omega = 0.3;
+  return {scf::resolve_fock_build(scf::make_rsh_primary_fock_spec(spin, short_exchange), backend,
+                                  1e-12),
+          scf::resolve_fock_build(
+              scf::make_rsh_correction_fock_spec(spin, short_exchange, long_exchange, omega),
+              backend, 1e-12)};
+}
+
+void run_wb97mv_semilocal_rsh_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 24, 12, 24, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const auto model = wb97mv_rsh_strategies(restricted, scf::FockBackend::Cuda);
+
+  auto solve = [&](scf::ScfOptions::XcExecutionSchedule schedule) {
+    const scf::PreparedFockPlan gpu(system, nullptr, model.primary, 0);
+    scf::ScfOptions options;
+    options.compute_forces = false;
+    options.energy_tolerance = 1e-12;
+    options.density_tolerance = 1e-10;
+    options.max_iterations = 200;
+    options.xc_execution_schedule = schedule;
+    dft::CudaKsPlan plan(gpu, basis, grid, options, dft::SemilocalFamily::Wb97mv, 257,
+                         &model.correction);
+    const auto result = plan.run(nullptr, false);
+    require(result.converged && !plan.failed(),
+            "CUDA WB97M-V semilocal/RSH qualification solve did not converge");
+    const auto movement = plan.transfers();
+    require(movement.execution_region_bindings == 0 &&
+                movement.iteration_synchronizations == movement.iterations,
+            "WB97M-V semilocal/RSH entered an unqualified CUDA KS chunk path");
+    dft::CudaKsFinalStateToken token;
+    std::string detail;
+    require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS,
+            "converged internal WB97M-V semilocal/RSH state lacks an owner token");
+    dft::VerifiedKsFinalState rejected;
+    require(
+        plan.read_final_state(token, false, rejected, detail) == VIBEQC_STATUS_NUMERICAL_FAILURE,
+        "incomplete WB97M-V composition escaped the final-state fail-closed gate");
+    return result;
+  };
+
+  const auto device = solve(scf::ScfOptions::XcExecutionSchedule::DeviceFused);
+  const auto host = solve(scf::ScfOptions::XcExecutionSchedule::HostUnfused);
+  require(std::abs(device.energy - host.energy) < 1e-8,
+          "CUDA WB97M-V semilocal live KS endpoint disagrees with the host semilocal oracle");
+  require(
+      std::abs(device.dft_diagnostic.components.xc - host.dft_diagnostic.components.xc) < 1e-8 &&
+          std::abs(device.dft_diagnostic.components.exact_exchange -
+                   host.dft_diagnostic.components.exact_exchange) < 1e-10,
+      "CUDA WB97M-V semilocal/RSH components disagree with the host-unfused route");
+}
+
+std::unique_ptr<dft::nlc::Vv10Plan> prepare_wb97mv_nonlocal(vibeqc_backend backend, int device,
+                                                            std::size_t points,
+                                                            std::size_t tile_points) {
+  std::string detail;
+  vibeqc_status status = VIBEQC_STATUS_INTERNAL_ERROR;
+  auto plan = dft::nlc::Vv10Plan::prepare(
+      backend, device, static_cast<std::uint32_t>(points), static_cast<std::uint32_t>(tile_points),
+      {dft::nlc::Vv10Variant::vv10, 6.0, 0.01, 1.0}, 16ULL * 1024ULL * 1024ULL, detail, status);
+  require(plan != nullptr && status == VIBEQC_STATUS_SUCCESS,
+          detail.empty() ? "WB97M-V nonlocal plan preparation failed" : detail);
+  return plan;
+}
+
+void run_wb97mv_nonlocal_composition_case(bool restricted) {
+  const auto system = hydrogens(restricted ? 2U : 3U, restricted);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 12, 4, 8, 3, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  constexpr std::size_t tile_points = 64;
+
+  const auto cpu_model = wb97mv_rsh_strategies(restricted, scf::FockBackend::Cpu);
+  const auto gpu_model = wb97mv_rsh_strategies(restricted, scf::FockBackend::Cuda);
+  const scf::PreparedFockPlan cpu_primary(system, nullptr, cpu_model.primary);
+  const scf::PreparedFockPlan cpu_correction(system, nullptr, cpu_model.correction);
+  const scf::PreparedFockPlan gpu_primary(system, nullptr, gpu_model.primary, 0);
+  auto cpu_nonlocal =
+      prepare_wb97mv_nonlocal(VIBEQC_BACKEND_CPU_REFERENCE, -1, grid.point_count(), tile_points);
+  auto gpu_nonlocal =
+      prepare_wb97mv_nonlocal(VIBEQC_BACKEND_CUDA, 0, grid.point_count(), tile_points);
+
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-10;
+  options.density_tolerance = 1e-8;
+  options.max_iterations = 250;
+  options.xc_tile_points = tile_points;
+
+  const auto reference =
+      restricted
+          ? scf::run_wb97mv_rks(cpu_primary, cpu_correction, basis, grid, options, *cpu_nonlocal)
+          : scf::run_wb97mv_uks(cpu_primary, cpu_correction, basis, grid, options, *cpu_nonlocal);
+  require(reference.converged, "CPU WB97M-V composition reference did not converge");
+
+  struct Endpoint {
+    scf::ScfResult result;
+    dft::CudaKsTransfers transfers;
+    dft::CudaKsResources resources;
+    dft::VerifiedKsFinalState snapshot;
+  };
+  const auto solve = [&](scf::ScfOptions::XcExecutionSchedule schedule) {
+    auto configured = options;
+    configured.xc_execution_schedule = schedule;
+    dft::CudaKsPlan plan(gpu_primary, basis, grid, configured, dft::SemilocalFamily::Wb97mv,
+                         tile_points, &gpu_model.correction, gpu_nonlocal.get(),
+                         dft::nlc::Vv10DensityDomain::MolecularV1);
+    auto result = plan.run(nullptr, false);
+    require(result.converged && !plan.failed(),
+            "CUDA WB97M-V nonlocal composition did not converge");
+    dft::CudaKsFinalStateToken token;
+    std::string detail;
+    require(plan.final_state_token(token, detail) == VIBEQC_STATUS_SUCCESS, detail);
+    dft::VerifiedKsFinalState snapshot;
+    require(plan.read_final_state(token, false, snapshot, detail) == VIBEQC_STATUS_SUCCESS, detail);
+    return Endpoint{std::move(result), plan.transfers(), plan.resources(), std::move(snapshot)};
+  };
+
+  const auto host = solve(scf::ScfOptions::XcExecutionSchedule::HostUnfused);
+  const auto device = solve(scf::ScfOptions::XcExecutionSchedule::DeviceFused);
+  for (const auto* endpoint : {&host, &device}) {
+    require(std::abs(reference.energy - endpoint->result.energy) < 2e-8,
+            "CUDA WB97M-V complete composition endpoint disagrees with CPU");
+    require(endpoint->result.dft_diagnostic.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
+                std::abs(reference.dft_diagnostic.components.xc -
+                         endpoint->result.dft_diagnostic.components.xc) < 2e-8 &&
+                std::abs(reference.dft_diagnostic.components.exact_exchange -
+                         endpoint->result.dft_diagnostic.components.exact_exchange) < 1e-10,
+            "CUDA WB97M-V diagnostic domain or physical components disagree with CPU");
+    const auto& snapshot = endpoint->snapshot;
+    require(snapshot.identity.model.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv) &&
+                snapshot.identity.model.range_correction &&
+                *snapshot.identity.model.range_correction == gpu_model.correction &&
+                snapshot.identity.model.nonlocal_correlation &&
+                *snapshot.identity.model.nonlocal_correlation == gpu_nonlocal->parameters() &&
+                snapshot.identity.model.nonlocal_density_domain ==
+                    dft::nlc::Vv10DensityDomain::MolecularV1 &&
+                std::abs(snapshot.components.total() - endpoint->result.energy) < 1e-10,
+            "CUDA WB97M-V final state lost domain, RSH, VV10 or energy identity");
+  }
+  require(std::abs(host.result.energy - device.result.energy) < 2e-8,
+          "resident and host-unfused CUDA WB97M-V endpoints disagree");
+  require(device.transfers.xc_host_d2h_bytes == 0 && device.transfers.xc_host_h2d_bytes == 0 &&
+              device.transfers.xc_host_synchronizations == 0,
+          "device-fused WB97M-V retained an iteration host XC/nonlocal bridge");
+  require(device.resources.state_device_bytes > host.resources.state_device_bytes,
+          "resident WB97M-V workspace is missing from CUDA KS resource admission");
 }
 
 void compare_rks_chunk_history(bool pbe) {
@@ -309,6 +601,11 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
               cold_execution.submitted_iterations <=
                   cold_execution.iterations + cold_execution.iteration_chunks,
           "CUDA KS speculative work escaped the bounded chunk contract");
+  if (cold_execution.iteration_synchronizations == cold_execution.iterations &&
+      result.iterations > 1) {
+    require(cold_execution.warm_orbital_frames_retained + 1 == result.iterations,
+            "ordinary CUDA KS did not retain one orbital frame per continuing iteration");
+  }
   if (!result.converged || plan.failed()) {
     std::cerr << "failed atoms=" << atoms << " restricted=" << restricted
               << " functional=" << functional << " iter=" << result.iterations
@@ -509,6 +806,157 @@ void run_case(unsigned atoms, bool restricted, std::uint32_t functional) {
 }
 /** Exercise the C validation layer, which can reject a request before the
  * prepared method's execute() invalidation is reached. */
+vibeqc_ks_options public_wb97mv_options(bool unrestricted) {
+  static const std::array<vibeqc_ks_semilocal_component, 2> components{
+      {{"MGGA_X_WB97M_V", 1.0}, {"MGGA_C_WB97M_V", 1.0}}};
+  static const std::array<vibeqc_ks_exchange_term, 2> restricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.075},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -0.5},
+  }};
+  static const std::array<vibeqc_ks_exchange_term, 2> unrestricted_exchange{{
+      {VIBEQC_KS_EXCHANGE_SHORT_RANGE, 0.15, 0.3, -0.15},
+      {VIBEQC_KS_EXCHANGE_LONG_RANGE, 1.0, 0.3, -1.0},
+  }};
+  const auto& exchange = unrestricted ? unrestricted_exchange : restricted_exchange;
+  vibeqc_ks_options ks{};
+  ks.struct_size = sizeof(ks);
+  ks.abi_version = VIBEQC_ABI_VERSION;
+  ks.scf_domain = "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
+  ks.grid_version = 1;
+  ks.radial_points = 12;
+  ks.angular_polar = 4;
+  ks.angular_azimuth = 8;
+  ks.partition_iterations = 3;
+  ks.coincident_tolerance = 1e-12;
+  ks.tile_points = 64;
+  ks.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+  ks.spin_channels = unrestricted ? 2 : 1;
+  ks.semilocal_components = components.data();
+  ks.semilocal_component_count = components.size();
+  ks.semilocal_range_omega = 0.3;
+  ks.exchange_terms = exchange.data();
+  ks.exchange_term_count = exchange.size();
+  ks.has_nonlocal_correlation = 1;
+  ks.nonlocal_variant = VIBEQC_NONLOCAL_VV10;
+  ks.nonlocal_b = 6.0;
+  ks.nonlocal_c = 0.01;
+  ks.nonlocal_coefficient = 1.0;
+  ks.nonlocal_maximum_bytes = 1 << 24;
+  return ks;
+}
+
+vibeqc_method_descriptor public_wb97mv_descriptor(const vibeqc_ks_options& ks) {
+  vibeqc_method_descriptor method{};
+  method.struct_size = sizeof(method);
+  method.abi_version = VIBEQC_ABI_VERSION;
+  method.method = ks.spin_channels == 2 ? VIBEQC_METHOD_WB97M_V_UKS : VIBEQC_METHOD_WB97M_V;
+  method.max_iterations = 250;
+  method.diis_history = 8;
+  method.energy_tolerance = 1e-10;
+  method.density_tolerance = 1e-8;
+  method.screening_tolerance = 1e-12;
+  method.precision_mode = VIBEQC_PRECISION_FP64;
+  method.density_fitting_mode = VIBEQC_DENSITY_FITTING_NONE;
+  method.ks_options = &ks;
+  return method;
+}
+
+void public_wb97mv_cuda_case(bool unrestricted) {
+  vibeqc_system system{hydrogens(unrestricted ? 3U : 2U, !unrestricted)};
+  auto ks = public_wb97mv_options(unrestricted);
+  auto method = public_wb97mv_descriptor(ks);
+  const auto execute = [&](vibeqc_backend backend) {
+    vibeqc_context_descriptor context_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                           backend};
+    vibeqc_context* raw_context{};
+    require(vibeqc_context_create(&context_spec, &raw_context) == VIBEQC_STATUS_SUCCESS,
+            "WB97M-V public context creation failed");
+    std::unique_ptr<vibeqc_context, decltype(&vibeqc_context_destroy)> context(
+        raw_context, vibeqc_context_destroy);
+    vibeqc_calculation* raw_calculation{};
+    require(vibeqc_calculation_prepare(context.get(), &system, &method, &raw_calculation) ==
+                VIBEQC_STATUS_SUCCESS,
+            "WB97M-V public calculation preparation failed");
+    std::unique_ptr<vibeqc_calculation, decltype(&vibeqc_calculation_destroy)> calculation(
+        raw_calculation, vibeqc_calculation_destroy);
+    vibeqc_result_descriptor result{};
+    result.struct_size = sizeof(result);
+    result.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_execute(calculation.get(), &result) == VIBEQC_STATUS_SUCCESS &&
+                std::isfinite(result.energy) && result.converged &&
+                result.executed_backend == backend,
+            "WB97M-V public energy execution failed");
+    vibeqc_ks_diagnostic diagnostic{};
+    diagnostic.struct_size = sizeof(diagnostic);
+    diagnostic.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_get_ks_diagnostic(calculation.get(), &diagnostic, nullptr, 0) ==
+                    VIBEQC_STATUS_SUCCESS &&
+                diagnostic.scf_domain_version ==
+                    dft::semilocal_family_domain_version(dft::SemilocalFamily::Wb97mv),
+            "public WB97M-V diagnostic lost its domain identity");
+    return result.energy;
+  };
+  const auto cpu = execute(VIBEQC_BACKEND_CPU_REFERENCE);
+  const auto gpu = execute(VIBEQC_BACKEND_CUDA);
+  require(std::abs(cpu - gpu) < 2e-8, "public CUDA WB97M-V endpoint disagrees with public CPU");
+
+  auto unfused = ks;
+  unfused.xc_execution_schedule = VIBEQC_XC_EXECUTION_HOST_UNFUSED;
+  auto unfused_method = public_wb97mv_descriptor(unfused);
+  vibeqc_context_descriptor cuda_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
+                                      VIBEQC_BACKEND_CUDA};
+  vibeqc_context* raw_context{};
+  require(vibeqc_context_create(&cuda_spec, &raw_context) == VIBEQC_STATUS_SUCCESS,
+          "WB97M-V rejection context creation failed");
+  std::unique_ptr<vibeqc_context, decltype(&vibeqc_context_destroy)> context(
+      raw_context, vibeqc_context_destroy);
+  vibeqc_calculation* rejected{};
+  require(vibeqc_calculation_prepare(context.get(), &system, &unfused_method, &rejected) ==
+                  VIBEQC_STATUS_NOT_IMPLEMENTED &&
+              rejected == nullptr,
+          "public CUDA WB97M-V accepted the host-unfused nonlocal route");
+
+  vibeqc_calculation* raw_calculation{};
+  require(vibeqc_calculation_prepare(context.get(), &system, &method, &raw_calculation) ==
+              VIBEQC_STATUS_SUCCESS,
+          "WB97M-V force-gate preparation failed");
+  std::unique_ptr<vibeqc_calculation, decltype(&vibeqc_calculation_destroy)> calculation(
+      raw_calculation, vibeqc_calculation_destroy);
+
+  using fail_function = void (*)();
+  const std::array<std::pair<fail_function, vibeqc_status>, 2> failures{{
+      {&xc_cuda_fail_next_nonlocal_runtime_for_test_v1, VIBEQC_STATUS_CUDA_ERROR},
+      {&xc_cuda_fail_next_nonlocal_allocation_for_test_v1, VIBEQC_STATUS_OUT_OF_MEMORY},
+  }};
+  for (const auto& [fail, expected] : failures) {
+    vibeqc_result_descriptor failed{};
+    failed.struct_size = sizeof(failed);
+    failed.abi_version = VIBEQC_ABI_VERSION;
+    fail();
+    require(vibeqc_calculation_execute(calculation.get(), &failed) == expected,
+            "public CUDA WB97M-V nonlocal failure lost its status");
+    vibeqc_ks_diagnostic stale{};
+    stale.struct_size = sizeof(stale);
+    stale.abi_version = VIBEQC_ABI_VERSION;
+    require(vibeqc_calculation_get_ks_diagnostic(calculation.get(), &stale, nullptr, 0) ==
+                VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "failed public CUDA WB97M-V execution retained a stale diagnostic");
+    require(vibeqc_calculation_execute(calculation.get(), &failed) == VIBEQC_STATUS_SUCCESS &&
+                failed.converged,
+            "public CUDA WB97M-V did not recover after a nonlocal failure");
+  }
+
+  std::vector<double> forces(3 * system.data.atoms.size());
+  vibeqc_result_descriptor force_result{};
+  force_result.struct_size = sizeof(force_result);
+  force_result.abi_version = VIBEQC_ABI_VERSION;
+  force_result.forces = forces.data();
+  force_result.force_count = forces.size();
+  require(
+      vibeqc_calculation_execute(calculation.get(), &force_result) == VIBEQC_STATUS_NOT_IMPLEMENTED,
+      "public CUDA WB97M-V force capability was promoted without qualification");
+}
+
 void rejected_api_requests_revoke_tokens() {
   vibeqc_context_descriptor context_spec{sizeof(vibeqc_context_descriptor), VIBEQC_ABI_VERSION, 0,
                                          VIBEQC_BACKEND_CUDA};
@@ -628,7 +1076,17 @@ int main() {
       require(::unsetenv("VIBEQC_CUDA_KS_CHUNK") == 0,
               "could not restore CUDA KS synchronization baseline");
     }
+    public_wb97mv_cuda_case(false);
+    public_wb97mv_cuda_case(true);
     rejected_api_requests_revoke_tokens();
+    run_exact_exchange_case(true);
+    run_exact_exchange_case(false);
+    run_range_exchange_case(true);
+    run_range_exchange_case(false);
+    run_wb97mv_semilocal_rsh_case(true);
+    run_wb97mv_semilocal_rsh_case(false);
+    run_wb97mv_nonlocal_composition_case(true);
+    run_wb97mv_nonlocal_composition_case(false);
     for (bool pbe : {false, true}) {
       run_case(2, true, pbe);
       run_hydroxyl(pbe);

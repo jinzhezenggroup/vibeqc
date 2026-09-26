@@ -43,6 +43,35 @@ def test_cuda_auto_history_and_resource_identity_include_refinement(
         assert inventory[0]["history"] == 256 * expected
 
 
+def test_cuda_retained_force_owner_coexists_with_next_setup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
+
+    library = _inventory_library(monkeypatch)
+    mib = 1 << 20
+    monkeypatch.setattr(
+        resources_ks,
+        "_cuda_item_inventory",
+        lambda *args, **kwargs: {
+            "state": 8 * mib,
+            "xc": 8 * mib,
+            "coulomb": 8 * mib,
+            "setup": 320 * mib,
+        },
+    )
+    request = resources_ks.ks_resource_request([H2], backend="cuda", library=library)
+    plan = plan_resources(
+        [request], ResourceBudget(device_bytes=(320 + 512) * mib)
+    ).require_feasible()
+    assert plan.peak_bytes["device"] == (320 + 512) * mib
+    by_name = {estimate.name: estimate for estimate in plan.estimates}
+    assert "serialized KS transient device phase peak" in by_name
+    assert "KS one-electron setup excess over retired owner" not in by_name
+    force = by_name["serialized generated KS force device staging cap"]
+    assert force.bytes == 512 * mib and force.kind == "persistent"
+
+
 def test_calculator_forwards_mixed_policy_to_ks_capacity_planner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -142,3 +171,25 @@ def test_estimate_resources_materializes_one_shot_charge_spin_inputs(
 def test_unknown_ks_precision_rejected(precision: typing.Any) -> None:
     with pytest.raises(ValueError, match="precision"):
         resources_ks.ks_resource_request([H2], precision=precision)
+
+
+def test_cuda_retained_force_host_arena_is_not_merged_into_scf_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from vibeqc_compiler.common.resources import ResourceBudget, plan_resources
+
+    library = _inventory_library(monkeypatch)
+    original = resources_ks._item_host_inventory
+    mib = 1 << 20
+
+    def inventory(*args: typing.Any, **kwargs: typing.Any) -> dict[str, int]:
+        row = original(*args, **kwargs)
+        return {**row, "setup_workspace": 320 * mib, "scf_workspace": 280 * mib}
+
+    monkeypatch.setattr(resources_ks, "_item_host_inventory", inventory)
+    request = resources_ks.ks_resource_request([H2], backend="cuda", library=library)
+    plan = plan_resources([request], ResourceBudget()).require_feasible()
+    by_name = {estimate.name: estimate for estimate in plan.estimates}
+    assert by_name["serialized KS transient host phase peak"].bytes == 320 * mib
+    force = by_name["serialized generated KS force host staging cap"]
+    assert force.bytes == 256 * mib and force.kind == "persistent"

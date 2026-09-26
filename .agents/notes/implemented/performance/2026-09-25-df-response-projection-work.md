@@ -35,6 +35,17 @@ A host C++20 test compiles with -Wall -Wextra -Werror and passes. It covers
 budgets, ragged dimensions, zero/full ranks and overflow/invalid input.
 No CUDA build, device execution or wall-time improvement is claimed.
 
+Review refresh (2026-09-26): the contracts remain standalone host infrastructure
+after synchronization with master. Preserve the newer fitted-occupied response
+view handling from #1369; clearing that view unconditionally would undo its
+explicit fitted-source path. The census applies only to the repeated fitted
+reader route, not the retained all-fitted or occupied algorithms. Tests now
+compare the closed-form census with independent panel traversal and check
+invalid dimensions, auxiliary-axis limits, cumulative-work overflow and scratch
+sum overflow. The preparation planner test uses `VIBEQC_BUILD_DIR` (default
+`build`); CPU CI supplies its actual binary directory so the generated schedule
+gate no longer skips that regression merely because a CUDA preset is absent.
+
 ## References
 
 #1078, #1334, #445; response audit comment 5832638027.

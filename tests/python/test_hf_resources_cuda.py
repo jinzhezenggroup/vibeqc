@@ -35,9 +35,15 @@ def test_small_direct_cuda_global_budget_covers_all_ragged_caches(
         calculator.prepare_batch(systems) as batch,
         reference.prepare_batch(systems) as ordinary,
     ):
-        for replay in range(2):
-            expected = ordinary.execute(strict=True).items
-            result = batch.execute(strict=True)
+        properties_by_replay = (
+            ("energy",),
+            ("energy",),
+            ("energy", "forces"),
+            ("energy", "forces"),
+        )
+        for replay, properties in enumerate(properties_by_replay):
+            expected = ordinary.execute(strict=True, properties=properties).items
+            result = batch.execute(strict=True, properties=properties)
             observed = batch.resource_diagnostics["observation"]
             assert (
                 0
@@ -53,12 +59,15 @@ def test_small_direct_cuda_global_budget_covers_all_ragged_caches(
                 <= ledger["limit_bytes"]
             )
             assert ledger["rejected_allocations"] == 0
-            assert (ledger["allocations"] == 0) == bool(replay)
+            # The first execution of each property route owns a new native
+            # layout; its immediate warm replay must allocate nothing.
+            assert (ledger["allocations"] == 0) == (replay in (1, 3))
             for actual, target in zip(result.items, expected, strict=True):
                 assert actual.energy == pytest.approx(target.energy, abs=1e-10)
-                np.testing.assert_allclose(
-                    actual.forces, target.forces, atol=1e-9, rtol=1e-8
-                )
+                if "forces" in properties:
+                    np.testing.assert_allclose(
+                        actual.forces, target.forces, atol=1e-9, rtol=1e-8
+                    )
         identity = batch.resource_plan.identity
         moved = [
             [(z, (x, y, zz + 0.01)) for z, (x, y, zz) in atoms] for atoms in systems
