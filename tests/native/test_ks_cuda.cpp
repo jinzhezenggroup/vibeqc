@@ -15,6 +15,7 @@
 #include "api/ks_snapshot.hpp"
 #include "dft/cuda_ks.hpp"
 #include "dft/xc.hpp"
+#include "generated_split_hybrid_registry.cuh"
 #include "methods/dft_method.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_ledger.hpp"
@@ -159,6 +160,36 @@ void physical_check(const scf::PreparedFockPlan& cpu, const dft::AoBasis& basis,
     require(residual < 1e-9, "CUDA reported convergence above the physical gate");
   require(std::abs(energy - (result.energy + xc_energy)) > 0.05,
           "CUDA endpoint gate does not detect XC double counting");
+}
+
+void registered_functional_code_seam() {
+  const auto system = hydrogens(2, true);
+  const dft::AoBasis basis(system);
+  const dft::GridSpec grid_spec{1, 12, 8, 16, 2, 1e-12};
+  const dft::MolecularGrid grid(system, grid_spec);
+  const scf::PreparedFockPlan gpu(system, nullptr,
+                                  exact_exchange_strategy(true, scf::FockBackend::Cuda), 0);
+  scf::ScfOptions options;
+  options.compute_forces = false;
+  options.energy_tolerance = 1e-10;
+  options.density_tolerance = 1e-8;
+  options.max_iterations = 4;
+
+  for (const auto functional :
+       {dft::generated::kM062XFunctionalCode, dft::generated::kMN15FunctionalCode}) {
+    dft::CudaKsPlan registered(gpu, basis, grid, options, functional, 128);
+    require(registered.resources().xc_device_bytes > 0,
+            "registered split-hybrid CUDA code did not construct an XC owner");
+  }
+
+  bool rejected = false;
+  try {
+    dft::CudaKsPlan unknown(gpu, basis, grid, options,
+                            dft::generated::kSplitHybridMggaCodeBase | 0xffffU, 128);
+  } catch (const std::invalid_argument&) {
+    rejected = true;
+  }
+  require(rejected, "unregistered split-hybrid CUDA code was admitted by KS");
 }
 
 void run_exact_exchange_case(bool restricted) {
@@ -1066,6 +1097,7 @@ int main() {
   if (cudaGetDeviceCount(&devices) != cudaSuccess || devices == 0) return 77;
   try {
     prepared_cuda_fock_seam();
+    registered_functional_code_seam();
     if (std::getenv("VIBEQC_CUDA_KS_CHUNK") == nullptr) {
       require(::setenv("VIBEQC_CUDA_KS_CHUNK", "2", 1) == 0,
               "could not enable CUDA RKS chunk qualification");
