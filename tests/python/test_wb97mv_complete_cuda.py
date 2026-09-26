@@ -69,6 +69,7 @@ def test_complete_cuda_force_matches_independent_engine(
         assert warm.iterations == 1
         work = batch._stationary_cuda_execution.last_work
         assert work["prepared_execution_reused"]
+        assert work["ao_collocation_point_visits"] == 2 * work["grid_points"]
         assert work["nonlocal_pair_evaluations"] > 0
         assert len(work["source_names"]) == 12
         energy_only = batch.execute(strict=True, properties=("energy",)).items[0]
