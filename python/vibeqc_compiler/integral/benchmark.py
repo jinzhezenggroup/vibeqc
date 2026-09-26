@@ -414,7 +414,6 @@ VIBEQC_AO_OFFSETS
     task.shell_pair[0] = 0U;
     task.shell_pair[1] = 1U;
     task.reversed_shell_pair_mask = 0U;
-    task.fock_consumer = GeneratedDpppFockConsumer::HartreeFock;
   }
 
   GeneratedDpppShellTask* device_tasks = nullptr;
@@ -669,7 +668,6 @@ VIBEQC_AO_OFFSETS
     task.shell_pair[0] = 0U;
     task.shell_pair[1] = 1U;
     task.reversed_shell_pair_mask = 0U;
-    task.fock_consumer = GeneratedDpppFockConsumer::HartreeFock;
   }
 
   GeneratedDpppShellTask* device_tasks = nullptr;

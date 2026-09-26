@@ -570,9 +570,6 @@ struct GeneratedDpppPrimitivePairData {{
   double second_product_scale;
 }};
 
-/** Serialized value consumer shared with the native task ABI. */
-enum class GeneratedDpppFockConsumer : std::uint32_t {{ HartreeFock = 0, Coulomb = 1 }};
-
 /** Canonical task ABI kept independent of the production DeviceBatch layout. */
 struct GeneratedDpppShellTask {{
   std::uint64_t primitive_begin[4];
@@ -586,8 +583,9 @@ struct GeneratedDpppShellTask {{
   std::uint32_t reversed_shell_pair_mask;
   std::uint32_t shell[4];
   std::uint32_t atom[4];
-  GeneratedDpppFockConsumer fock_consumer;
 }};
+
+constexpr std::uint32_t kGeneratedDpppCoulombConsumerBit = 1U << 2U;
 
 struct GeneratedDpppPrimitiveGeometry {{
   double inverse_two_p;

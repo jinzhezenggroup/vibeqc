@@ -91,7 +91,7 @@ def emit_generated_shell_fock_accumulation() -> str:
         matrix_index="generated_dppp_matrix_index",
         density_offset="task.density_offset",
         spin_offset="task.spin_offset",
-        coulomb_only="task.fock_consumer == GeneratedDpppFockConsumer::Coulomb",
+        coulomb_only="(task.reversed_shell_pair_mask & kGeneratedDpppCoulombConsumerBit) != 0U",
         description=(
             "Scatter one canonical integral using VIBEQC's existing RHF/UHF convention."
         ),

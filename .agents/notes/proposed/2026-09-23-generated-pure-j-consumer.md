@@ -18,10 +18,11 @@ native provider prepares bounded shell-pair topology, cached primitive pairs,
 and Cartesian/public transforms, then borrows existing AOT class schedules.
 It never constructs an all-quartet table or subtracts HF matrices to recover J.
 
-The generated value task ABI grows from 192 to 200 bytes. Every producer sets
-the consumer explicitly; value-initialized HF stream aggregates select zero
-(HartreeFock). Shape-sensitive page capacity tests use the charged byte cap and
-the current ABI size. Qualify the HF performance consequence too.
+The pure-J consumer identity is packed into bit 2 of the generated task's
+existing orientation word, preserving the qualified 192-byte task ABI. HF is
+the zero-valued encoding; pure-J streaming sets the consumer bit explicitly.
+Shape-sensitive page capacity tests charge the current ABI size and therefore
+retain the full 8M-task page under the 1.5-GiB bounded arena.
 
 Generated classes cover spd except dddd; dddd keeps the established exact
 native integral consumer with the same compiler-emitted scatter. Unavailable
