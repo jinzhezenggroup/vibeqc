@@ -27,6 +27,7 @@ from pathlib import Path
 import numpy as np
 
 from vibeqc_compiler.common.cuda_runtime import _Metrics
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import (
     atomic_json,
@@ -339,18 +340,16 @@ class PreparedResident(PreparedCuda):
                 self._validate(self._inputs[slot], node)
             self._invalidate()
             for name in feeds:
-                slot, error = self._names[name], ctypes.create_string_buffer(2048)
+                slot = self._names[name]
                 array = self._inputs[slot]
                 self._loaded.discard(name)
-                if self._library.resident_upload(
+                checked_native_call(
+                    self._library.resident_upload,
                     self._pointer,
                     slot,
                     array.ctypes.data,
                     array.nbytes,
-                    error,
-                    len(error),
-                ):
-                    raise RuntimeError(error.value.decode())
+                )
                 self._loaded.add(name)
                 self.transfers["h2d_bytes"] += array.nbytes
                 self.transfers["synchronizations"] += 1
@@ -413,16 +412,13 @@ class PreparedResident(PreparedCuda):
                 raise ValueError("unknown resident output")
             step = self.plan.steps[dict(self.plan.outputs)[target]]
             output = np.empty(step.node.spec.shape, dtype=step.node.spec.dtype)
-            error = ctypes.create_string_buffer(2048)
-            if self._library.resident_download(
+            checked_native_call(
+                self._library.resident_download,
                 self._pointer,
                 slot,
                 output.ctypes.data,
                 output.nbytes,
-                error,
-                len(error),
-            ):
-                raise RuntimeError(error.value.decode())
+            )
             self.transfers["d2h_bytes"] += output.nbytes
             self.transfers["synchronizations"] += 1
             return output
