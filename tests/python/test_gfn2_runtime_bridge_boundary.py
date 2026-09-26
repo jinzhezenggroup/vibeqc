@@ -158,15 +158,15 @@ def test_cuda_public_runtime_is_fresh_only() -> None:
         "reset_gfn2_warm_scc_trace_kernel",
     ):
         assert retired not in source
-    inference = source.split("vibeqc_xtb_status_t execute_inference_locked(", 1)[1].split(
-        "vibeqc_xtb_status_t settle_public_submissions_locked(", 1
-    )[0]
+    inference = source.split("vibeqc_xtb_status_t execute_inference_locked(", 1)[
+        1
+    ].split("vibeqc_xtb_status_t settle_public_submissions_locked(", 1)[0]
     assert "Gfn2CudaSccStartMode" not in inference
     assert "upload_if_admitted_async" in inference
     public = source.split("execute_restricted_gfn2_cuda_impl(", 1)[1]
-    assert public.index("validate_molecular_request(batch, options, error)") < public.index(
-        "execute_inference_locked"
-    )
+    assert public.index(
+        "validate_molecular_request(batch, options, error)"
+    ) < public.index("execute_inference_locked")
     assert "execute_inference_locked(*working, error)" in public
 
 
