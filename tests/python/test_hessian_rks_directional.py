@@ -2,6 +2,7 @@
 
 import typing
 from dataclasses import replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from tools.vibeqc_hessian import (
     directional_rks_response,
     directional_rks_responses,
     native_rks_xc_hvp_components,
+    rks_hessian,
     rks_hvp,
     rks_hvp_many,
 )
@@ -427,4 +429,72 @@ def test_complete_rks_hvp_many_reuses_one_multi_rhs_response(
             item.value,
             atol=2e-13,
             rtol=0,
+        )
+
+
+def test_rks_hessian_assembles_raw_columns_in_blocks(
+    case: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Full assembly must preserve raw HVP columns without symmetrization."""
+    import tools.vibeqc_hessian.rks_molecular as rks_molecular_module
+
+    _, operator, _, _ = case
+    coordinates = 3 * operator.xc_kernel.basis.natom
+    expected = np.arange(coordinates * coordinates, dtype=np.float64).reshape(
+        coordinates, coordinates
+    )
+    calls = []
+
+    def fake_many(
+        _operator: typing.Any, directions: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
+        vectors = np.asarray(directions).reshape(len(directions), coordinates)
+        values = (vectors @ expected.T).reshape(len(directions), -1, 3)
+        calls.append((np.array(directions, copy=True), kwargs))
+        return SimpleNamespace(
+            values=values,
+            identity=f"block-{len(calls)}",
+            diagnostics={"multi_rhs_calls": 1, "nrhs": len(directions)},
+        )
+
+    monkeypatch.setattr(rks_molecular_module, "rks_hvp_many", fake_many)
+    result = rks_hessian(
+        operator,
+        block_size=2,
+        strategy="blocked",
+        output_budget_bytes=1 << 20,
+    )
+
+    np.testing.assert_array_equal(result.matrix, expected)
+    assert len(calls) == (coordinates + 1) // 2
+    assert result.diagnostics["block_size"] == 2
+    assert result.diagnostics["block_count"] == len(calls)
+    assert result.diagnostics["strategy"] == "blocked"
+    assert not result.diagnostics["posthoc_symmetrization"]
+    assert not result.diagnostics["public_calculator_endpoint"]
+    assert not result.diagnostics["complete_resource_bound"]
+    assert result.diagnostics["raw_symmetry_error"] == float(
+        np.max(np.abs(expected - expected.T))
+    )
+
+
+def test_rks_hessian_output_budget_fails_before_hvp(
+    case: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Insufficient full-output storage must fail before any HVP is evaluated."""
+    import tools.vibeqc_hessian.rks_molecular as rks_molecular_module
+
+    _, operator, _, _ = case
+    coordinates = 3 * operator.xc_kernel.basis.natom
+    output_bytes = coordinates * coordinates * np.dtype(np.float64).itemsize
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        raise AssertionError("HVP work started before the output-budget gate")
+
+    monkeypatch.setattr(rks_molecular_module, "rks_hvp_many", forbidden)
+    with pytest.raises(ValueError, match="output_budget_bytes"):
+        rks_hessian(
+            operator,
+            block_size=2,
+            output_budget_bytes=2 * output_bytes - 1,
         )
