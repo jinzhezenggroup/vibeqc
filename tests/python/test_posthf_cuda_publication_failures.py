@@ -122,8 +122,31 @@ int main(int argc,char**argv){
     if(add()||posthf_cuda_pointer_v1(&p)!=p.result||scans!=1)return 24;
     if(posthf_cuda_pointer_v1(&p)!=p.result||scans!=1)return 25;
     if(posthf_cuda_pointer_v1(nullptr)!=nullptr)return 26;
+  }else if(mode==10||mode==11){
+    BatchTransform batch;
+    batch.nbf=1; batch.tile.fill(1); batch.states.resize(2); batch.context.error=&invalid;
+    double raw=0,coeff[8]{1,1,1,1,1,1,1,1};
+    double first[2]{},second_batch[2]{},result_batch[2]{};
+    batch.raw=&raw;
+    for(std::size_t request=0;request<2;++request){
+      auto& state=batch.states[request];
+      state.stage=state.output=1; state.coefficients=4; state.m.fill(1);
+      state.c_offset={0,1,2,3}; state.c=coeff+4*request;
+      state.first=&first[request];state.second=&second_batch[request];
+      state.result=&result_batch[request];
+    }
+    double batch_value=mode==11?std::numeric_limits<double>::quiet_NaN():2;
+    double out0=12345,out1=12345; double* outs[2]{&out0,&out1};
+    std::size_t sizes[2]{1,1};
+    if(posthf_cuda_batch_add_v1(&batch,&batch_value,begin,count,error,sizeof(error)))return 28;
+    int status=posthf_cuda_batch_download_v1(&batch,outs,sizes,2,error,sizeof(error));
+    if(mode==10){
+      if(status||scans!=2||out0!=2||out1!=2)return 29;
+    }else{
+      if(status==0||scans!=2||out0!=12345||out1!=12345)return 30;
+    }
   }else return 98;
-  return pending.empty()?0:27;
+  return pending.empty()?0:31;
 }
 """
 
@@ -143,8 +166,15 @@ def executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "int posthf_cuda_versions_v1"
         )
     ]
+    batch_actions = text[
+        text.index("int posthf_cuda_batch_add_v1") : text.index(
+            "int posthf_cuda_batch_metrics_v1"
+        )
+    ]
     # Only erase the CUDA launch syntax; actual validation/guard/add bodies run.
-    code = re.sub(r"<<<.*?>>>", "", helpers + actions + pointer, flags=re.DOTALL)
+    code = re.sub(
+        r"<<<.*?>>>", "", helpers + actions + pointer + batch_actions, flags=re.DOTALL
+    )
     directory = tmp_path_factory.mktemp("mo-publication")
     source = directory / "publication.cpp"
     source.write_text(_SHIM + code + _MAIN)
@@ -157,6 +187,6 @@ def executable(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return output
 
 
-@pytest.mark.parametrize("mode", range(10))
+@pytest.mark.parametrize("mode", range(12))
 def test_actual_native_publication_boundaries(executable: Path, mode: int) -> None:
     subprocess.run([str(executable), str(mode)], check=True, timeout=10)
