@@ -44,10 +44,27 @@ def test_pbesol_reaches_exact_molecular_scf_evidence() -> None:
         evidence="test://libxc-pbesol/molecular-scf",
     )
 
-    artifact = Path(".artifacts/libxc-pbesol-molecular-scf.json")
+    bundle = {
+        "schema": "vibeqc.libxc-public-promotion-bundle/v1",
+        "functional": NAME,
+        "compiled_cpu": {
+            "result": compiled["result"],
+            "stage_evidence": compiled["stage_evidence"],
+        },
+        "production_domain": {
+            "receipt": production["receipt"],
+            "stage_evidence": production["stage_evidence"],
+        },
+        "molecular_scf": {
+            "receipt": molecular["receipt"],
+            "stage_evidence": molecular["stage_evidence"],
+        },
+        "point_binding": molecular["point_binding"],
+    }
+    artifact = Path(".artifacts/libxc-pbesol-promotion-bundle.json")
     artifact.parent.mkdir(parents=True, exist_ok=True)
     artifact.write_text(
-        json.dumps(molecular, indent=2, sort_keys=True, allow_nan=False) + "\n",
+        json.dumps(bundle, indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 
