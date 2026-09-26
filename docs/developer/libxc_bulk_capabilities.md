@@ -46,11 +46,13 @@ failed, malformed, cross-functional, or out-of-order evidence never promotes a
 stage.
 
 A `production-domain` pass has one additional hard requirement. It must attach
-the exact `vibeqc.libxc-production-domain-profile.v1` qualification payload
+the exact `vibeqc.libxc-production-domain-profile.v2` qualification payload
 computed from the registration family and required ingredients. The current
-`semilocal-boundary-matrix/v1` profile requires both spin layouts, energy/vxc/fxc,
-and named density/spin/gradient/tau/control boundary groups as applicable. The
-profile has its own identity, so dropping a case, changing the matrix version, or
+`semilocal-boundary-matrix/v2` profile requires both spin layouts and
+energy/vxc/fxc. Density, gradient, tau, and control cases apply to both layouts,
+while alpha/beta zero-spin and full-polarization cases apply only to the polarized
+layout. The exact cases-by-spin matrix is part of the profile identity, so dropping
+or moving a case, changing the matrix version, or
 changing an ingredient invalidates the admission proof. Registrations requiring
 ingredients outside the current generic `rho/sigma/tau` domain (for example,
 Laplacian-dependent meta-GGAs) carry an explicit structural blocker and do not
@@ -141,7 +143,7 @@ satisfy the `production-domain` stage. A finite value by itself is not a
 correctness claim. Oracle-nonfinite points remain unqualified instead of being
 coerced into a pass. The existing probe/oracle machinery is the numerical
 producer; the profile introduced for #1120 is the admission contract. Expanding
-that producer to every v1 matrix case is tracked as subsequent #1120 work and
+that producer to every v2 matrix case is tracked as subsequent #1120 work and
 does not grant any new production capability in this slice.
 
 The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
