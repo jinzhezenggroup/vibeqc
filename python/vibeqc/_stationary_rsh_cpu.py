@@ -1,9 +1,11 @@
-"""CPU binding for generated range-separated exchange first derivatives."""
+"""CPU/CUDA binding for generated range-separated exchange first derivatives."""
 
 import typing
 from pathlib import Path
 
 import numpy as np
+from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.integral.ir import four_center_eri_operator
 from vibeqc_compiler.integral.range_separation import CoulombKernel
 from vibeqc_compiler.integral.shell_spec import cartesian_components
@@ -18,9 +20,12 @@ from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
 class RangeExchangeExecutor:
     """Bind generated SR/LR ERI derivatives to native AO tuples.
 
-    This stationary-consumer binding admits only s/p public AOs. For l < 2
-    Cartesian and real-spherical public functions are identical, so each packed
-    NativeAO record maps one-to-one to a normalized Cartesian component.
+    The mathematical path is backend-neutral: the selected explicit compiler
+    adapter determines whether the generated weighted-ERI provider executes on
+    CPU or CUDA. This stationary-consumer binding currently admits only s/p
+    public AOs. For l < 2 Cartesian and real-spherical public functions are
+    identical, so each packed NativeAO record maps one-to-one to a normalized
+    Cartesian component.
     """
 
     def __init__(
@@ -29,10 +34,24 @@ class RangeExchangeExecutor:
         cache: typing.Any,
         primitive_tile: typing.Any,
         compiler: typing.Any,
+        *,
+        device_id: int = 0,
     ) -> None:
+        if isinstance(compiler, CppCompilerAdapter):
+            backend = "cpu"
+        elif isinstance(compiler, CudaCompilerAdapter):
+            backend = "cuda"
+        else:
+            raise TypeError(
+                "RSH stationary gradients require an explicit CPU C++ or CUDA compiler adapter"
+            )
+        if type(device_id) is not int or not 0 <= device_id < 2**31:
+            raise ValueError("RSH stationary CUDA device ordinal must fit int32")
+        if backend == "cpu" and device_id != 0:
+            raise ValueError("CPU RSH stationary gradients require device_id=0")
         if any(shell.angular_momentum > 1 for shell in basis.shells):
             raise NotImplementedError(
-                "CPU RSH stationary gradients currently support s/p bases only"
+                "RSH stationary gradients currently support s/p bases only"
             )
         start = 3 * basis.natom
         self.primitives = basis.packed[start : start + 2 * basis.nprimitive].reshape(
@@ -42,12 +61,14 @@ class RangeExchangeExecutor:
         self.centers = basis.packed[:start].reshape(-1, 3)
         if any(int(row[3]) != 1 for row in self.aos):
             raise NotImplementedError(
-                "CPU RSH stationary gradients require one Cartesian component "
+                "RSH stationary gradients require one Cartesian component "
                 "per public AO"
             )
         self.cache = Path(cache)
         self.primitive_tile = primitive_tile
         self.compiler = compiler
+        self.backend = backend
+        self.device_id = device_id
         self._plans: dict[tuple[typing.Any, ...], PreparedWeightedEri] = {}
         self.records = 0
 
@@ -107,10 +128,13 @@ class RangeExchangeExecutor:
                 self.cache,
                 component_indices=(component,),
             )
+            if artifact.backend != self.backend:
+                raise ValueError("range exchange compiled backend identity mismatch")
             plan = PreparedWeightedEri(
                 artifact,
                 record_capacity=self.primitive_tile,
                 tile_capacity=1,
+                device_id=self.device_id,
             )
             self._plans[key] = plan
         owners = [int(row[0]) for row in rows]
