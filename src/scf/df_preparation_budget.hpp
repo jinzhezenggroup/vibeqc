@@ -79,6 +79,8 @@ struct DfResolvedBudget {
   std::size_t total_bytes{};
   std::size_t value_bytes{};
   std::size_t response_bytes{};
+  /** Diagnostic response cap captured in this owner; zero means no override. */
+  std::size_t response_override_bytes{};
   std::size_t reserved_headroom_bytes{};
   std::size_t observed_free_bytes{};
   std::size_t observed_total_bytes{};
