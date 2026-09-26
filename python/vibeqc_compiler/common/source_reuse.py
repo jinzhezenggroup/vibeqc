@@ -176,7 +176,7 @@ def source_reads_per_scan(nbf: int, axis_tile: int) -> int:
     checked_bytes(axis_tile, "source axis tile")
     if not nbf or not axis_tile or axis_tile > nbf:
         raise ValueError("invalid source-tile dimensions")
-    tiles = (nbf + axis_tile - 1) // axis_tile
+    tiles = 1 + (nbf - 1) // axis_tile
     squared = _mul(tiles, tiles)
     return _mul(squared, squared)
 
@@ -308,7 +308,7 @@ struct SourceTilePlan {
 inline std::size_t source_reads_per_scan(std::size_t nbf, std::size_t axis_tile) {
   if (!nbf || !axis_tile || axis_tile > nbf)
     throw std::invalid_argument("invalid source-tile dimensions");
-  const auto tiles = (nbf + axis_tile - 1) / axis_tile;
+  const auto tiles = 1 + (nbf - 1) / axis_tile;
   const auto squared = posthf::checked_mul(tiles, tiles);
   return posthf::checked_mul(squared, squared);
 }
