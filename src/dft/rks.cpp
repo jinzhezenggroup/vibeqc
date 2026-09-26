@@ -1032,9 +1032,9 @@ ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBa
       return unrestricted ? run_lda_uks(plan, basis, grid, options, initial_density)
                           : run_lda_rks(plan, basis, grid, options, initial_density);
     case dft::SemilocalFamily::Pbe:
-      return unrestricted ? run_pbe_uks(plan, basis, grid, options, initial_density)
-                          : run_pbe_rks(plan, basis, grid, options, initial_density,
-                                        prepared_rks_ao_cache);
+      return unrestricted
+                 ? run_pbe_uks(plan, basis, grid, options, initial_density)
+                 : run_pbe_rks(plan, basis, grid, options, initial_density, prepared_rks_ao_cache);
     case dft::SemilocalFamily::R2scan:
       return unrestricted ? run_r2scan_uks(plan, basis, grid, options, initial_density)
                           : run_r2scan_rks(plan, basis, grid, options, initial_density);

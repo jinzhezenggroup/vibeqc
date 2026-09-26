@@ -35,4 +35,6 @@ def test_prepared_cpu_pbe_owner_reuses_the_bounded_ao_cache() -> None:
     assert "std::optional<dft::RksAoCache> cpu_rks_ao_cache_" in METHOD
     assert "cpu_rks_ao_cache_.emplace(dft::prepare_rks_ao_cache" in METHOD
     assert "cpu_rks_ao_cache_ ? &*cpu_rks_ao_cache_ : nullptr" in METHOD
-    assert "cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0" in METHOD
+    assert (
+        "cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0" in METHOD
+    )

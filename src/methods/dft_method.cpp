@@ -16,9 +16,9 @@
 #include "dft/ao_grid.hpp"
 #include "dft/dispersion/d4_runtime.hpp"
 #include "dft/grid.hpp"
-#include "dft/xc.hpp"
 #include "dft/nonlocal_correlation/vv10_runtime.hpp"
 #include "dft/semilocal_family.hpp"
+#include "dft/xc.hpp"
 #include "generated_method_parameters.hpp"
 #include "molecule/basis.hpp"
 #include "runtime/resource_usage.hpp"
@@ -685,13 +685,11 @@ class KsPreparedCalculation final : public PreparedCalculation {
   /** Explicit retained vectors; object metadata and transient setup are not
    * inferred from this lower-bound observation. Grid/basis buffers are owned. */
   std::size_t host_numeric_capacity() const noexcept {
-    auto bytes =
-        runtime::add_capacity(
-            fock_.cpu_observation_capacity(),
-            runtime::add_capacity(
-                runtime::vector_capacities(basis_.packed, grid_.points(), grid_.weights(),
-                                           grid_.owners(), warm_),
-                cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0));
+    auto bytes = runtime::add_capacity(
+        fock_.cpu_observation_capacity(),
+        runtime::add_capacity(runtime::vector_capacities(basis_.packed, grid_.points(),
+                                                         grid_.weights(), grid_.owners(), warm_),
+                              cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0));
     if (range_correction_)
       bytes = runtime::add_capacity(bytes, range_correction_->cpu_observation_capacity());
     if (cpu_physical_)
@@ -922,8 +920,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
     else
       native = scf::run_curated_semilocal_ks(
           fock_, basis_, grid_, options_, execution_plan_.semilocal_family,
-          execution_plan_.spin_channels, seed,
-          cpu_rks_ao_cache_ ? &*cpu_rks_ao_cache_ : nullptr);
+          execution_plan_.spin_channels, seed, cpu_rks_ao_cache_ ? &*cpu_rks_ao_cache_ : nullptr);
     // This owner has immutable model/geometry/spin identity. Only successful
     // executions may replace its compatible last-good density; DIIS is fresh.
     if (native.converged && options_.retain_ks_state) {
