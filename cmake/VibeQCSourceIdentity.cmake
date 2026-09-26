@@ -11,6 +11,11 @@ function(vibeqc_collect_source_identity_inputs output_variable)
     message(FATAL_ERROR "VibeQC source identity manifest is missing: ${_manifest_path}")
   endif()
 
+  # The manifest defines the configure-time membership graph itself. Re-run
+  # CMake when that graph changes, while ordinary member content remains a
+  # build-time dependency handled by generate_build_identity.py.
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_manifest_path}")
+
   file(READ "${_manifest_path}" _manifest_json)
   string(JSON _schema GET "${_manifest_json}" schema_version)
   if(NOT _schema STREQUAL "1")

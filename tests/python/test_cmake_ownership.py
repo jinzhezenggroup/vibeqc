@@ -154,6 +154,10 @@ def test_source_identity_hashing_runs_at_build_time(tmp_path: typing.Any) -> Non
     assert "CMAKE_CONFIGURE_DEPENDS" not in cmake
     assert "tools/generate_build_identity.py" in cmake
     assert "CONFIGURE_DEPENDS" in identity_cmake
+    assert (
+        'set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_manifest_path}")'
+        in identity_cmake
+    )
     assert "tools/generate_build_identity.py" in manifest["files"]
 
     output = tmp_path / "build_identity.hpp"
