@@ -55,7 +55,15 @@ Adding a scientifically relevant source family now requires one manifest edit
 rather than coordinated CMake and Python changes. The two consumers still own
 their environment-specific mechanics, but not separate inventory policy.
 
+## Superseded in part
+
+#1382 keeps this single-inventory and CMake membership-discovery contract but
+moves identity byte hashing and header rendering from configure time into the
+normal build graph. See
+`../performance/2026-09-26-build-time-source-identity.md`.
+
 ## References
 
 - #349
 - #353
+- #1382
