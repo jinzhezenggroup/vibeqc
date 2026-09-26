@@ -9,6 +9,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 
+from vibeqc_compiler.common.source_reuse import native_header as source_reuse_header
 from vibeqc_compiler.method.mp2_schedule import native_header as mp2_schedule_header
 from vibeqc_compiler.tensor.cpu_emit import emit_cpu
 
@@ -66,6 +67,9 @@ def main() -> None:
         )
         args.cpu_header.with_name("mp2_schedule_generated.hpp").write_text(
             mp2_schedule_header(), encoding="utf-8"
+        )
+        args.cpu_header.with_name("source_reuse_schedule_generated.hpp").write_text(
+            source_reuse_header(), encoding="utf-8"
         )
     if args.cuda_dir:
         cuda_sources(args.cuda_dir, args.architectures)
