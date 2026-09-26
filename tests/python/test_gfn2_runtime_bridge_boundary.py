@@ -117,6 +117,38 @@ def test_cuda_runtime_ingress_matches_molecular_contract() -> None:
     assert "refresh_numerical_locked(*working, batch.positions, error)" in public
 
 
+def test_cuda_runtime_retires_unreachable_host_attachment_staging() -> None:
+    source = (ROOT / "src/xtb/native/src/runtime/gfn2_cuda_execution.cu").read_text()
+    state = source.split("struct NumericalRefreshState {", 1)[1].split(
+        "struct NumericalHostUploadCompletion", 1
+    )[0]
+    assert "double* host_positions = nullptr;" in state
+    assert "double* owned_host_positions = nullptr;" in state
+    for retired in (
+        "host_point_positions",
+        "host_point_values",
+        "host_point_gammas",
+        "host_periodic_shifts",
+        "host_periodic_response",
+        "host_requested",
+        "owned_host_point_positions",
+        "owned_host_point_values",
+        "owned_host_point_gammas",
+        "owned_host_periodic_shifts",
+        "owned_host_periodic_response",
+        "owned_host_requested",
+        "owned_host_interaction_descriptors",
+        "owned_host_interaction_payload",
+        "owned_host_interaction_descriptor_snapshot",
+        "interaction_descriptor_capacity_bytes",
+        "interaction_payload_capacity_bytes",
+    ):
+        assert retired not in state
+    assert "InteractionStagingLayout" not in source
+    assert "interaction_device_staging_arena" not in source
+    assert "interaction_host_staging_arena" not in source
+
+
 def test_retired_runtime_and_external_api_cannot_reenter_production() -> None:
     assert not (ROOT / "src/xtb/gfn2_runtime").exists()
     native = ROOT / "src/xtb/native"

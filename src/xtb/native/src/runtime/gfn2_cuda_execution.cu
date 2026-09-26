@@ -430,42 +430,6 @@ class ArenaLayout {
   bool valid_ = true;
 };
 
-struct InteractionStagingLayout {
-  std::size_t descriptor_offset = 0u;
-  std::size_t payload_offset = 0u;
-  std::size_t descriptor_snapshot_offset = 0u;
-  std::size_t descriptor_capacity_bytes = 0u;
-  std::size_t payload_capacity_bytes = 0u;
-  std::size_t arena_bytes = 0u;
-  bool valid = false;
-};
-
-InteractionStagingLayout make_interaction_staging_layout(
-    std::size_t descriptor_capacity_bytes, std::size_t payload_capacity_bytes) noexcept {
-  ArenaLayout layout;
-  InteractionStagingLayout result{};
-  constexpr std::size_t kPayloadAlignmentSlack = alignof(double) - 1u;
-  if (payload_capacity_bytes >
-      std::numeric_limits<std::size_t>::max() - 2u * kPayloadAlignmentSlack) {
-    return result;
-  }
-  result.descriptor_offset = layout.append<std::byte>(descriptor_capacity_bytes);
-  /* Reverse-mixed staging preserves the caller payload base modulo double
-   * alignment. Reserve the maximum displacement without increasing the
-   * released one-block-per-system capacity reported to callers. */
-  result.payload_offset =
-      layout.append<std::byte>(payload_capacity_bytes + 2u * kPayloadAlignmentSlack);
-  /* Device-descriptor/host-payload submissions need a bounded D2H snapshot
-   * before the caller's host payload may be released.  Keep that readback
-   * image separate from the compact descriptor image built for the H2D. */
-  result.descriptor_snapshot_offset = layout.append<std::byte>(descriptor_capacity_bytes);
-  result.descriptor_capacity_bytes = descriptor_capacity_bytes;
-  result.payload_capacity_bytes = payload_capacity_bytes;
-  result.arena_bytes = layout.bytes();
-  result.valid = layout.valid();
-  return result;
-}
-
 template <typename T>
 T* arena_pointer(void* arena, std::size_t offset) noexcept {
   return reinterpret_cast<T*>(static_cast<std::byte*>(arena) + offset);
@@ -1833,53 +1797,18 @@ struct NumericalRefreshState {
   Gfn2ElectricFieldDevicePotentialView field_potential_view{};
 
   double* host_positions = nullptr;
-  double* host_point_positions = nullptr;
-  double* host_point_values = nullptr;
-  double* host_point_gammas = nullptr;
-  double* host_periodic_shifts = nullptr;
-  double* host_periodic_response = nullptr;
-  std::uint8_t* host_requested = nullptr;
-  vibeqc_xtb_interaction_t* host_interaction_descriptors = nullptr;
-  std::byte* host_interaction_payload = nullptr;
 
   /*
-   * Host submissions first copy synchronously into this packed, pinned image.
-   * The fixed device staging leaves above are then populated asynchronously,
-   * so no queued CUDA work retains a caller-owned host pointer after return.
+   * Host position submissions first copy synchronously into this pinned image.
+   * The device staging leaf is then populated asynchronously, so queued CUDA
+   * work never retains a caller-owned host pointer after return.
    */
   double* owned_host_positions = nullptr;
-  double* owned_host_point_positions = nullptr;
-  double* owned_host_point_values = nullptr;
-  double* owned_host_point_gammas = nullptr;
-  double* owned_host_periodic_shifts = nullptr;
-  double* owned_host_periodic_response = nullptr;
-  std::uint8_t* owned_host_requested = nullptr;
-  vibeqc_xtb_interaction_t* owned_host_interaction_descriptors = nullptr;
-  std::byte* owned_host_interaction_payload = nullptr;
-  vibeqc_xtb_interaction_t* owned_host_interaction_descriptor_snapshot = nullptr;
-
-  std::size_t interaction_descriptor_capacity_bytes = 0u;
-  std::size_t interaction_payload_capacity_bytes = 0u;
 
   bool host_staging_poisoned = false;
 
   bool ready = false;
 };
-
-void project_interaction_staging(const InteractionStagingLayout& layout, void* device_arena,
-                                 void* host_arena, NumericalRefreshState& state) noexcept {
-  state.host_interaction_descriptors = reinterpret_cast<vibeqc_xtb_interaction_t*>(
-      static_cast<std::byte*>(device_arena) + layout.descriptor_offset);
-  state.host_interaction_payload = static_cast<std::byte*>(device_arena) + layout.payload_offset;
-  state.owned_host_interaction_descriptors = reinterpret_cast<vibeqc_xtb_interaction_t*>(
-      static_cast<std::byte*>(host_arena) + layout.descriptor_offset);
-  state.owned_host_interaction_payload =
-      static_cast<std::byte*>(host_arena) + layout.payload_offset;
-  state.owned_host_interaction_descriptor_snapshot = reinterpret_cast<vibeqc_xtb_interaction_t*>(
-      static_cast<std::byte*>(host_arena) + layout.descriptor_snapshot_offset);
-  state.interaction_descriptor_capacity_bytes = layout.descriptor_capacity_bytes;
-  state.interaction_payload_capacity_bytes = layout.payload_capacity_bytes;
-}
 
 /*
  * The host-owned pinned snapshot is a single-flight resource.  A host function
@@ -2052,8 +1981,6 @@ struct Gfn2CudaExecutionCache::Impl {
     DeviceArena eigensolver_setup_arena;
     PinnedArena provider_host_workspace;
     PinnedArena numerical_host_staging_arena;
-    DeviceArena interaction_device_staging_arena;
-    PinnedArena interaction_host_staging_arena;
     CudaStream numerical_host_completion_stream;
     CudaEvent numerical_host_upload_complete;
     CudaEvent numerical_host_release_complete;
@@ -2142,7 +2069,6 @@ struct Gfn2CudaExecutionCache::Impl {
     if (reject_arena("SCC iteration", candidate.iteration_arena) ||
         reject_arena("eigensolver cache", candidate.eigensolver_setup_arena) ||
         reject_arena("numerical refresh", candidate.numerical_refresh_arena) ||
-        reject_arena("interaction staging", candidate.interaction_device_staging_arena) ||
         reject_arena("energy/force execution", candidate.force_execution_arena) ||
         reject_arena("inference", candidate.inference_arena)) {
       return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
@@ -2624,13 +2550,7 @@ struct Gfn2CudaExecutionCache::Impl {
       std::size_t candidate_periodic_shifts = 0u;
       std::size_t candidate_periodic_response = 0u;
       std::size_t host_positions = 0u;
-      std::size_t host_point_positions = 0u;
-      std::size_t host_point_values = 0u;
-      std::size_t host_point_gammas = 0u;
-      std::size_t host_periodic_shifts = 0u;
-      std::size_t host_periodic_response = 0u;
       std::size_t requested = 0u;
-      std::size_t host_requested = 0u;
       std::size_t eligible = 0u;
       std::size_t committed_generations = 0u;
       std::size_t refresh_predecessor_generations = 0u;
@@ -2725,12 +2645,6 @@ struct Gfn2CudaExecutionCache::Impl {
 
     struct HostStagingOffsets {
       std::size_t positions = 0u;
-      std::size_t point_positions = 0u;
-      std::size_t point_values = 0u;
-      std::size_t point_gammas = 0u;
-      std::size_t periodic_shifts = 0u;
-      std::size_t periodic_response = 0u;
-      std::size_t requested = 0u;
     } host_offset;
 
     ArenaLayout layout;
@@ -2765,9 +2679,7 @@ struct Gfn2CudaExecutionCache::Impl {
     append_numerical(offset.candidate_positions, offset.candidate_point_positions,
                      offset.candidate_point_values, offset.candidate_point_gammas,
                      offset.candidate_periodic_shifts, offset.candidate_periodic_response);
-    append_numerical(offset.host_positions, offset.host_point_positions, offset.host_point_values,
-                     offset.host_point_gammas, offset.host_periodic_shifts,
-                     offset.host_periodic_response);
+    offset.host_positions = layout.append<double>(coordinates);
     offset.committed_field_attached = layout.append<std::uint8_t>(batch);
     offset.committed_field_vectors = layout.append<double>(3 * batch);
     offset.candidate_field_attached = layout.append<std::uint8_t>(batch);
@@ -2780,7 +2692,6 @@ struct Gfn2CudaExecutionCache::Impl {
     offset.field_plan_error = layout.append<std::uint32_t>(1);
     offset.interaction_request_error = layout.append<std::uint32_t>(1);
     offset.requested = layout.append<std::uint8_t>(batch);
-    offset.host_requested = layout.append<std::uint8_t>(batch);
     offset.eligible = layout.append<std::uint8_t>(batch);
     offset.committed_generations = layout.append<std::uint64_t>(batch);
     offset.refresh_predecessor_generations = layout.append<std::uint64_t>(batch);
@@ -2888,30 +2799,8 @@ struct Gfn2CudaExecutionCache::Impl {
 
     ArenaLayout host_layout;
     host_offset.positions = host_layout.append<double>(coordinates);
-    host_offset.point_positions = host_layout.append<double>(point_coordinates);
-    host_offset.point_values = host_layout.append<double>(points);
-    host_offset.point_gammas = host_layout.append<double>(points);
-    host_offset.periodic_shifts =
-        host_layout.append<double>(candidate.host.periodic_enabled ? atoms : 0);
-    host_offset.periodic_response =
-        host_layout.append<double>(candidate.host.periodic_enabled ? response : 0);
-    host_offset.requested = host_layout.append<std::uint8_t>(batch);
     if (!host_layout.valid()) {
       error = "numerical host-staging arena layout overflows size_t";
-      return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
-    }
-
-    std::size_t interaction_descriptor_capacity = 0u;
-    std::size_t interaction_payload_capacity = 0u;
-    if (!checked_bytes(batch, sizeof(vibeqc_xtb_interaction_t), interaction_descriptor_capacity) ||
-        !checked_bytes(batch, 32u, interaction_payload_capacity)) {
-      error = "released interaction staging capacity overflows size_t";
-      return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
-    }
-    const InteractionStagingLayout interaction_layout = make_interaction_staging_layout(
-        interaction_descriptor_capacity, interaction_payload_capacity);
-    if (!interaction_layout.valid) {
-      error = "released interaction staging layout overflows size_t";
       return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
     }
 
@@ -2923,16 +2812,6 @@ struct Gfn2CudaExecutionCache::Impl {
     cuda_status = candidate.numerical_host_staging_arena.allocate(host_layout.bytes());
     if (cuda_status != cudaSuccess) {
       error = cuda_error_message("CUDA numerical pinned host-staging allocation", cuda_status);
-      return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
-    }
-    cuda_status =
-        candidate.interaction_device_staging_arena.allocate(interaction_layout.arena_bytes);
-    if (cuda_status == cudaSuccess) {
-      cuda_status =
-          candidate.interaction_host_staging_arena.allocate(interaction_layout.arena_bytes);
-    }
-    if (cuda_status != cudaSuccess) {
-      error = cuda_error_message("CUDA released interaction staging allocation", cuda_status);
       return VIBEQC_XTB_STATUS_ALLOCATION_FAILED;
     }
     cuda_status = candidate.numerical_host_completion_stream.create(cudaStreamNonBlocking);
@@ -3017,31 +2896,8 @@ struct Gfn2CudaExecutionCache::Impl {
     auto& numerical = candidate.numerical;
     numerical = {};
     numerical.host_positions = arena_pointer<double>(arena, offset.host_positions);
-    numerical.host_point_positions =
-        arena_pointer_if<double>(arena, offset.host_point_positions, point_coordinates);
-    numerical.host_point_values = arena_pointer_if<double>(arena, offset.host_point_values, points);
-    numerical.host_point_gammas = arena_pointer_if<double>(arena, offset.host_point_gammas, points);
-    numerical.host_periodic_shifts = arena_pointer_if<double>(
-        arena, offset.host_periodic_shifts, candidate.host.periodic_enabled ? atoms : 0);
-    numerical.host_periodic_response = arena_pointer_if<double>(
-        arena, offset.host_periodic_response, candidate.host.periodic_enabled ? response : 0);
-    numerical.host_requested = arena_pointer<std::uint8_t>(arena, offset.host_requested);
     void* const host_arena = candidate.numerical_host_staging_arena.get();
     numerical.owned_host_positions = arena_pointer<double>(host_arena, host_offset.positions);
-    numerical.owned_host_point_positions =
-        arena_pointer_if<double>(host_arena, host_offset.point_positions, point_coordinates);
-    numerical.owned_host_point_values =
-        arena_pointer_if<double>(host_arena, host_offset.point_values, points);
-    numerical.owned_host_point_gammas =
-        arena_pointer_if<double>(host_arena, host_offset.point_gammas, points);
-    numerical.owned_host_periodic_shifts = arena_pointer_if<double>(
-        host_arena, host_offset.periodic_shifts, candidate.host.periodic_enabled ? atoms : 0);
-    numerical.owned_host_periodic_response = arena_pointer_if<double>(
-        host_arena, host_offset.periodic_response, candidate.host.periodic_enabled ? response : 0);
-    numerical.owned_host_requested = arena_pointer<std::uint8_t>(host_arena, host_offset.requested);
-    project_interaction_staging(interaction_layout,
-                                candidate.interaction_device_staging_arena.get(),
-                                candidate.interaction_host_staging_arena.get(), numerical);
     auto& binding = numerical.preprocessing;
     binding = {};
     binding.plan.abi_version = kGfn2PreprocessingAbiVersion;
