@@ -527,6 +527,7 @@ def rks_hvp_many(
         _diagnostics=diagnostics,
     )
 
+
 def rks_hessian(
     operator: typing.Any,
     *,
