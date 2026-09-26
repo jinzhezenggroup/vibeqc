@@ -49,8 +49,7 @@ result = ri.singlepoint(
 CPU RI-MP2 analytic forces complete C2 by composing the native MP2 adjoint and
 true-residual RHF response with the shared fixed-rank inverse-square-root VJP and
 the bounded #143 raw three-center/metric derivative consumers. No coordinate-major
-DF derivative tensor is materialized. CUDA RI-MP2 analytic forces remain
-unsupported: the public request fails explicitly before force publication and
+DF derivative tensor is materialized. CUDA RI-MP2 analytic forces remain unsupported: the public request fails explicitly before force publication and
 never returns RHF-only forces or silently delegates the RI response/derivative
 chain to the CPU. The C ABI publishes the energy, complete force array, and
 correlation/response diagnostic as one transaction; any reference, denominator,
