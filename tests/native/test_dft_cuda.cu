@@ -499,6 +499,39 @@ void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
   mixed.canary();
 }
 
+/** omegaB97M-V has no mixed-density qualification. Reject that request without
+ * invalidating an existing FP64 result or consuming the next generation. */
+void mixed_density_rejection(const AoBasis& basis, const MolecularGrid& grid, bool uks) {
+  Fixture test(basis, grid, 4U, uks, 13);
+  const auto d = density(basis.nao, uks ? 2 : 1);
+  compare(test, basis, grid, d);
+  const auto previous = test.scalars();
+  const auto potential = test.potential();
+  const auto before = test.plan->transfers();
+  bool rejected = false;
+  try {
+    test.plan->enqueue(test.density, d.size(), test.generation + 1,
+                       CudaXcDensityPrecision::Fp32ComputeFp64Accumulate);
+  } catch (const std::invalid_argument& error) {
+    rejected =
+        std::string(error.what()).find("not qualified for this functional") != std::string::npos;
+  }
+  require(rejected, "unqualified omegaB97M-V mixed density was not rejected");
+  const auto after = test.plan->transfers();
+  require(after.setup_h2d_bytes == before.setup_h2d_bytes &&
+              after.output_d2h_bytes == before.output_d2h_bytes &&
+              after.synchronizations == before.synchronizations &&
+              after.evaluations == before.evaluations,
+          "rejected mixed density request submitted XC work");
+  const auto retained = test.scalars();
+  require(retained.energy == previous.energy && retained.electrons == previous.electrons &&
+              retained.error == previous.error && test.potential() == potential,
+          "rejected mixed density request changed the published FP64 result");
+  // Fixture's generation was not advanced by the rejected direct call. This
+  // retries the same generation in FP64 and checks against the CPU integrator.
+  compare(test, basis, grid, d);
+}
+
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
                            std::uint32_t functional, std::size_t tile = 7) {
   Fixture good(basis, grid, functional, true, tile), bad(basis, grid, functional, true, tile + 4);
@@ -795,7 +828,12 @@ int main(int argc, char** argv) {
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
-      for (bool uks : {false, true}) mixed_density_contraction(basis, grid, functional, uks);
+      for (bool uks : {false, true}) {
+        if (functional == 4U)
+          mixed_density_rejection(basis, grid, uks);
+        else
+          mixed_density_contraction(basis, grid, functional, uks);
+      }
       variational_and_state(basis, grid, functional);
       const MolecularGrid tail_grid(molecule);
       Fixture tail(basis, tail_grid, functional, true, 257);
