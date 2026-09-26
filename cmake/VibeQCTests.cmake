@@ -109,9 +109,30 @@ macro(vibeqc_add_native_tests)
   target_include_directories(vibeqc_cpu_linalg_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
   vibeqc_native_test(vibeqc_cosx_reference_tests tests/native/test_cosx_reference.cpp)
 
+  # These host-side DFT support sources are compiled with identical settings by
+  # several standalone native/CUDA tests. Reuse their objects instead of
+  # reparsing the same translation units for every test executable.
+  add_library(vibeqc_dft_grid_test_objects OBJECT
+    src/dft/ao_grid.cpp
+    src/dft/grid.cpp
+    src/molecule/basis.cpp)
+  target_include_directories(vibeqc_dft_grid_test_objects PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+  add_library(vibeqc_dft_xc_test_objects OBJECT
+    src/scf/density_factor.cpp
+    src/dft/xc.cpp)
+  add_dependencies(vibeqc_dft_xc_test_objects
+    vibeqc_xc_cpu_codegen vibeqc_scf_array_cpu_codegen)
+  target_include_directories(vibeqc_dft_xc_test_objects PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
   add_executable(vibeqc_dft_tests
-    tests/native/test_dft.cpp src/scf/density_factor.cpp src/dft/ao_grid.cpp
-    src/dft/grid.cpp src/dft/xc.cpp src/molecule/basis.cpp)
+    tests/native/test_dft.cpp
+    $<TARGET_OBJECTS:vibeqc_dft_grid_test_objects>
+    $<TARGET_OBJECTS:vibeqc_dft_xc_test_objects>)
   add_dependencies(vibeqc_dft_tests vibeqc_xc_cpu_codegen vibeqc_scf_array_cpu_codegen)
   target_include_directories(vibeqc_dft_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -244,8 +265,9 @@ macro(vibeqc_add_native_tests)
     set_target_properties(vibeqc_xc_point_cuda_tests PROPERTIES CUDA_STANDARD 20)
 
     add_executable(vibeqc_dft_cuda_tests tests/native/test_dft_cuda.cu
-      src/dft/cuda_xc.cpp "${VIBEQC_GRID_SOURCE}" src/dft/ao_grid.cpp
-      src/dft/grid.cpp src/dft/xc.cpp src/scf/density_factor.cpp src/molecule/basis.cpp)
+      src/dft/cuda_xc.cpp "${VIBEQC_GRID_SOURCE}"
+      $<TARGET_OBJECTS:vibeqc_dft_grid_test_objects>
+      $<TARGET_OBJECTS:vibeqc_dft_xc_test_objects>)
     add_dependencies(vibeqc_dft_cuda_tests vibeqc_xc_cpu_codegen vibeqc_scf_array_cpu_codegen)
     target_include_directories(vibeqc_dft_cuda_tests PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -269,13 +291,11 @@ macro(vibeqc_add_native_tests)
       "${VIBEQC_DF_VALUE_CPU_HEADER}"
       "${VIBEQC_DF_DERIVATIVE_CPU_HEADER}"
       "${VIBEQC_GRID_SOURCE}"
-      src/dft/ao_grid.cpp
-      src/dft/grid.cpp
+      $<TARGET_OBJECTS:vibeqc_dft_grid_test_objects>
       src/dft/cosx_reference.cpp
       src/integrals/s_integrals.cpp
       src/integrals/generated_df_cpu.cpp
-      src/integrals/ecp.cpp
-      src/molecule/basis.cpp)
+      src/integrals/ecp.cpp)
     add_dependencies(vibeqc_cosx_cuda_tests vibeqc_ecp_codegen)
     target_include_directories(vibeqc_cosx_cuda_tests PRIVATE
       "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src"

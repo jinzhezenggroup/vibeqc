@@ -24,7 +24,8 @@ enum class CudaXcAoPrecision : std::uint8_t {
 };
 
 /** Density-times-AO arithmetic. Mixed evaluates products in explicit RN FP32
- * while keeping storage, the long reduction, point XC, Vxc and scalar reductions FP64. */
+ * while keeping storage, the long reduction, point XC, Vxc and scalar reductions FP64.
+ * Mixed is qualified for LDA, PBE and r2SCAN; omegaB97M-V requires Fp64. */
 enum class CudaXcDensityPrecision : std::uint8_t {
   Fp64 = 0,
   Fp32ComputeFp64Accumulate = 1,

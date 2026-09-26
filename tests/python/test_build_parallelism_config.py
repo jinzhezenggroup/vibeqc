@@ -88,3 +88,24 @@ def test_fock_benchmark_records_aot_split_compile_identity() -> None:
         encoding="utf-8"
     )
     assert '"VIBEQC_AOT_SPLIT_COMPILE_THREADS"' in benchmark
+
+
+def test_dft_test_support_reuses_object_targets() -> None:
+    tests = (ROOT / "cmake" / "VibeQCTests.cmake").read_text(encoding="utf-8")
+
+    assert "add_library(vibeqc_dft_grid_test_objects OBJECT" in tests
+    assert "add_library(vibeqc_dft_xc_test_objects OBJECT" in tests
+    assert tests.count("$<TARGET_OBJECTS:vibeqc_dft_grid_test_objects>") == 3
+    assert tests.count("$<TARGET_OBJECTS:vibeqc_dft_xc_test_objects>") == 2
+
+    # Three grid/basis sources formerly compiled in three executables and two
+    # XC/density sources in two executables. The object targets reduce those
+    # 13 compile actions to five without changing test-only compile definitions.
+    for source in (
+        "src/dft/ao_grid.cpp",
+        "src/dft/grid.cpp",
+        "src/molecule/basis.cpp",
+    ):
+        assert tests.count(source) == 1
+    for source in ("src/scf/density_factor.cpp", "src/dft/xc.cpp"):
+        assert tests.count(source) == 1
