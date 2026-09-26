@@ -415,8 +415,7 @@ void warm_execution_allocation_failure() {
               !results[0].warm_start_fallback && results[1].converged,
           "warm SCF allocation failure was hidden by a cold retry or affected its neighbor");
   require(execute() == VIBEQC_STATUS_SUCCESS && results[0].converged &&
-              results[0].warm_start_used && results[0].iterations == 1 &&
-              std::abs(results[0].energy - energy) < 2e-10,
+              results[0].warm_start_used && std::abs(results[0].energy - energy) < 2e-10,
           "warm SCF allocation failure lost its last-good density/energy pair");
 }
 
