@@ -194,6 +194,100 @@ __global__ void independent_jk_derivative_kernel(DeviceBatch batch, std::size_t 
   }
 }
 
+
+/** One RSH force pass: J uses the full Coulomb derivative, while SR/LR K
+ * share Full = Short + Long. Evaluate Full and Long once per participating
+ * center and form Short by subtraction.
+ */
+__global__ void independent_rsh_derivative_kernel(
+    DeviceBatch batch, std::size_t system_begin, std::size_t system_count,
+    std::size_t source_stride, double cj, double short_ck, double long_ck, bool unrestricted,
+    double omega, double screening, const double* bounds, const double* density,
+    const double* beta, double* out) {
+  const std::size_t n = batch.nbf, matrix = n * n, quartets = matrix * matrix;
+  const std::size_t work_count = system_count * quartets;
+  const std::size_t stride = static_cast<std::size_t>(blockDim.x) * gridDim.x;
+  for (std::size_t work = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+       work < work_count; work += stride) {
+    const std::size_t local_system = work / quartets;
+    const auto system = static_cast<std::int32_t>(system_begin + local_system);
+    const std::size_t quartet = work % quartets;
+    const std::size_t offset = static_cast<std::size_t>(system) * matrix;
+    const std::size_t ij = quartet / matrix, kl = quartet % matrix;
+    if (bounds[offset + ij] * bounds[offset + kl] < screening) continue;
+
+    const auto i = static_cast<std::int32_t>(ij / n), j = static_cast<std::int32_t>(ij % n);
+    const auto k = static_cast<std::int32_t>(kl / n), l = static_cast<std::int32_t>(kl % n);
+    const double total_ij = density[offset + ij] + (unrestricted ? beta[offset + ij] : 0.0);
+    const double total_kl = density[offset + kl] + (unrestricted ? beta[offset + kl] : 0.0);
+    const double j_weight = 0.5 * cj * total_ij * total_kl;
+    const std::size_t ik = static_cast<std::size_t>(i) * n + k;
+    const std::size_t jl = static_cast<std::size_t>(j) * n + l;
+    const double exchange = density[offset + ik] * density[offset + jl] +
+                            (unrestricted ? beta[offset + ik] * beta[offset + jl] : 0.0);
+    const double short_weight = 0.5 * short_ck * exchange;
+    const double long_weight = 0.5 * long_ck * exchange;
+    if (j_weight == 0.0 && short_weight == 0.0 && long_weight == 0.0) continue;
+
+    const std::size_t base = static_cast<std::size_t>(system) * n;
+    const std::int32_t center_atoms[4] = {
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(i)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(j)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(k)]],
+        batch.shell_atoms[batch.ao_shells[base + static_cast<std::size_t>(l)]],
+    };
+    std::int32_t unique_atoms[4];
+    unsigned unique_count = 0;
+    for (unsigned center = 0; center < 4; ++center) {
+      bool duplicate = false;
+      for (unsigned previous = 0; previous < unique_count; ++previous)
+        duplicate = duplicate || unique_atoms[previous] == center_atoms[center];
+      if (!duplicate) unique_atoms[unique_count++] = center_atoms[center];
+    }
+    if (unique_count <= 1) continue;
+
+    double reconstructed[3][3]{};
+    for (unsigned center = 0; center + 1 < unique_count; ++center) {
+      const std::int64_t coordinate = static_cast<std::int64_t>(unique_atoms[center]) * 3;
+      double full[3]{}, long_range[3]{};
+      if (j_weight != 0.0 || short_weight != 0.0) {
+        const Dual3 value = contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate);
+        full[0] = value.derivative_x;
+        full[1] = value.derivative_y;
+        full[2] = value.derivative_z;
+      }
+      if (short_weight != 0.0 || long_weight != 0.0) {
+        const Dual3 value =
+            contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate,
+                                  vibeqc::integrals::CoulombRange::Long, omega);
+        long_range[0] = value.derivative_x;
+        long_range[1] = value.derivative_y;
+        long_range[2] = value.derivative_z;
+      }
+      for (unsigned axis = 0; axis < 3; ++axis) {
+        const double source[3] = {
+            j_weight * full[axis],
+            short_weight * (full[axis] - long_range[axis]),
+            long_weight * long_range[axis],
+        };
+        for (unsigned term = 0; term < 3; ++term) {
+          reconstructed[term][axis] += source[term];
+          if (source[term] != 0.0)
+            atomicAdd(out + term * source_stride + static_cast<std::size_t>(coordinate) + axis,
+                      source[term]);
+        }
+      }
+    }
+    const std::size_t final_coordinate =
+        static_cast<std::size_t>(unique_atoms[unique_count - 1]) * 3;
+    for (unsigned term = 0; term < 3; ++term)
+      for (unsigned axis = 0; axis < 3; ++axis)
+        if (reconstructed[term][axis] != 0.0)
+          atomicAdd(out + term * source_stride + final_coordinate + axis,
+                    -reconstructed[term][axis]);
+  }
+}
+
 }  // namespace
 
 namespace cuda_execution {
@@ -242,6 +336,23 @@ void launch_independent_jk_derivative_kernel(
   independent_jk_derivative_kernel<<<blocks, block, shared_bytes, stream>>>(
       batch, system_begin, system_count, cj, ck, unrestricted, integral_range(exchange_range),
       exchange_omega, screening, bounds, density, beta, out);
+}
+
+void launch_independent_rsh_derivative_kernel(
+    dim3 grid, dim3 block, std::size_t shared_bytes, cudaStream_t stream, DeviceBatch batch,
+    std::size_t coordinates_per_item, std::size_t system_begin, std::size_t source_stride,
+    double cj, double short_ck, double long_ck, bool unrestricted, double omega, double screening,
+    const double* bounds, const double* density, const double* beta, double* out) {
+  const std::size_t matrix = static_cast<std::size_t>(batch.nbf) * batch.nbf;
+  const std::size_t system_count =
+      coordinates_per_item == 0 ? 0 : static_cast<std::size_t>(grid.x) / coordinates_per_item;
+  const std::size_t quartet_count = system_count * matrix * matrix;
+  const unsigned blocks =
+      static_cast<unsigned>(std::min<std::size_t>((quartet_count + block.x - 1) / block.x, 65535));
+  if (blocks == 0) return;
+  independent_rsh_derivative_kernel<<<blocks, block, shared_bytes, stream>>>(
+      batch, system_begin, system_count, source_stride, cj, short_ck, long_ck, unrestricted, omega,
+      screening, bounds, density, beta, out);
 }
 
 }  // namespace cuda_execution
