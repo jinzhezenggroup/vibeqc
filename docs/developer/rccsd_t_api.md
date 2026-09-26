@@ -18,11 +18,11 @@ composition's `energy` and `forces`; `"ccsd(t)"` is an alias.
 the public native registry exposes qualified conventional small-system
 `RCCSD(T)` energy and analytic forces on CPU and CUDA through
 `VIBEQC_METHOD_RCCSD_T` / `Calculator("ccsd(t)")`. Homogeneous prepared
-batches follow the selected backend capability. The CUDA force route executes
-the generated corrected-Lambda RHS/J^T actions and fixed-orbital parameter VJPs
-on one shared CUDA state with host Lambda GMRES control, retains later
-Hamiltonian and Z response stages on host, and uses the
-CUDA conventional nuclear-derivative consumer for final contraction.
+batches follow the selected backend capability. The CUDA force route executes the generated corrected-Lambda RHS/J^T actions and
+fixed-orbital parameter VJPs on CUDA, then routes Hamiltonian/Fock pullbacks and
+the orbital JVP through one reusable CUDA response owner. Lambda GMRES and the
+physical Z-vector Krylov control flow remain host-owned. The final conventional
+nuclear-derivative contraction also runs on CUDA.
 
 `rccsd_t_energy(...)` remains energy-only and rejects `compute_forces=True`.
 `rccsd_t_force(source, ...)` delegates directly to the qualified #746 endpoint,

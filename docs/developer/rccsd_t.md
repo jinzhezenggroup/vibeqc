@@ -5,13 +5,12 @@ non-iterative (T) energy definition used by RCCSD(T). Bounded CUDA triples, the
 generated native CPU energy evaluator, and generated response paths share that
 definition. `VIBEQC_METHOD_RCCSD_T` has native/public CPU and CUDA energy
 ownership and qualified analytic forces for the conventional closed-shell
-small-system domain, with homogeneous prepared-batch support. The CUDA force
-path executes the generated corrected-Lambda RHS/J^T actions and fixed-orbital
-parameter VJPs on one shared CUDA state while retaining host GMRES orchestration
-for Lambda; later Hamiltonian and physical Z response stages remain host-owned,
-and the final conventional
-nuclear derivative contraction runs on CUDA. This is not yet a fully resident
-response chain.
+small-system domain, with homogeneous prepared-batch support. The CUDA force path executes the generated corrected-Lambda RHS/J^T actions and
+fixed-orbital parameter VJPs on CUDA, then reuses one native CUDA owner for the
+Hamiltonian/Fock pullbacks and orbital JVP. Lambda GMRES and the physical Z-vector
+Krylov control flow remain host-owned, while the final conventional nuclear
+derivative contraction runs on CUDA. This is not yet a fully resident response
+chain.
 PySCF is used only by pinned validation tooling and is never a runtime dependency.
 
 ## Mathematical contract
