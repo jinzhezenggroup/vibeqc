@@ -158,10 +158,6 @@ inline constexpr std::size_t kMixedFockShellKernelCount =
 inline constexpr std::uint64_t kPreferredStreamingFockShellClassMask =
     {preferred_streaming_fock_mask}ULL;
 
-inline constexpr std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {{
-  return kPreferredStreamingFockShellClassMask;
-}}
-
 /** Return the exact-class bit mask selected by VIBEQC_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
 
@@ -368,6 +364,10 @@ bool selected(const char* list, const char* name) noexcept {{
 
 }}  // namespace
 
+std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {{
+  return kPreferredStreamingFockShellClassMask;
+}}
+
 std::uint64_t enabled_shell_class_mask() noexcept {{
   const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
   const bool all = selection == nullptr || *selection == '\\0' ||
@@ -547,9 +547,6 @@ inline constexpr std::array<CompiledKernelMetadata, {len(kernel_rows)}>
 }}}};
 inline constexpr std::size_t kCompiledShellKernelCount =
     kCompiledShellKernels.size();
-
-/** Compiler-profiled classes that prefer no-materialization Fock streaming. */
-std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept;
 
 }}  // namespace vibeqc::scf::generated
 
