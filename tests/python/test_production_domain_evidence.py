@@ -25,7 +25,7 @@ NAME = "GGA_X_PBE_SOL"
 def _execution(name: str = NAME) -> dict:
     capability = functional_capability(name)
     programs = {
-        spin: build_bulk_runtime_program(capability.name, spin=spin, order=2)
+        spin: build_bulk_runtime_program(capability.name, spin=spin, order=1)
         for spin in capability.production_domain_profile.spin_layouts
     }
     return build_execution_binding(capability.name, programs)
@@ -122,7 +122,7 @@ def test_partial_or_tampered_matrix_cannot_be_promoted() -> None:
         validate_result(NAME, tampered)
 
     wrong_outputs = _cases()
-    wrong_outputs[0]["outputs"] = ["energy", "vxc"]
+    wrong_outputs[0]["outputs"] = ["energy"]
     with pytest.raises(ValueError, match="exact profile outputs"):
         build_result(
             NAME,
@@ -203,10 +203,10 @@ def test_receipt_binds_exact_execution_identity() -> None:
         execution=execution,
     )
 
-    assert result["schema"] == "vibeqc.libxc-production-domain-result.v2"
+    assert result["schema"] == "vibeqc.libxc-production-domain-result.v3"
     assert result["execution"] == execution
     assert result["execution"]["schema"] == (
-        "vibeqc.libxc-production-domain-execution/v1"
+        "vibeqc.libxc-production-domain-execution/v2"
     )
     assert [item["spin"] for item in execution["programs"]] == [
         "polarized",
@@ -223,16 +223,16 @@ def test_receipt_binds_exact_execution_identity() -> None:
         validate_result(NAME, tampered)
 
 
-def test_execution_binding_requires_complete_order2_spin_programs() -> None:
+def test_execution_binding_requires_complete_first_order_spin_programs() -> None:
     capability = functional_capability(NAME)
-    polarized = build_bulk_runtime_program(NAME, spin="polarized", order=2)
+    polarized = build_bulk_runtime_program(NAME, spin="polarized", order=1)
 
     with pytest.raises(ValueError, match="every exact spin layout"):
         build_execution_binding(NAME, {"polarized": polarized})
 
     wrong_order = {
-        spin: build_bulk_runtime_program(NAME, spin=spin, order=1)
+        spin: build_bulk_runtime_program(NAME, spin=spin, order=2)
         for spin in capability.production_domain_profile.spin_layouts
     }
-    with pytest.raises(ValueError, match="complete E/vxc/fxc"):
+    with pytest.raises(ValueError, match="complete E/vxc"):
         build_execution_binding(NAME, wrong_order)

@@ -46,17 +46,24 @@ failed, malformed, cross-functional, or out-of-order evidence never promotes a
 stage.
 
 A `production-domain` pass has one additional hard requirement. It must attach
-the exact `vibeqc.libxc-production-domain-profile.v2` qualification payload
+the exact `vibeqc.libxc-production-domain-profile.v3` qualification payload
 computed from the registration family and required ingredients. The current
-`semilocal-boundary-matrix/v2` profile requires both spin layouts and
-energy/vxc/fxc. Density, gradient, tau, and control cases apply to both layouts,
-while alpha/beta zero-spin and full-polarization cases apply only to the polarized
-layout. The exact cases-by-spin matrix is part of the profile identity, so dropping
-or moving a case, changing the matrix version, or
+`semilocal-boundary-matrix/v3` profile requires both spin layouts and
+first-order energy/vxc coverage. Density, gradient, tau, and control cases apply
+to both layouts, while alpha/beta zero-spin and full-polarization cases apply
+only to the polarized layout. The exact cases-by-spin matrix is part of the
+profile identity, so dropping or moving a case, changing the matrix version, or
 changing an ingredient invalidates the admission proof. Registrations requiring
 ingredients outside the current generic `rho/sigma/tau` domain (for example,
 Laplacian-dependent meta-GGAs) carry an explicit structural blocker and do not
 appear as `production-domain` ready.
+
+This first-order scope is deliberate. The intrinsic `pointwise-validated`
+claim still includes packed fxc on the audited interior domain, but exact
+vacuum/full-spin endpoints need not possess a finite full feature Hessian.
+Production energy, SCF, public-method, and stationary first-gradient admission
+therefore do not infer response capability. Endpoint fxc/CPKS qualification
+remains an independent `response` stage with its own evidence.
 
 ## Query
 
@@ -143,40 +150,40 @@ satisfy the `production-domain` stage. A finite value by itself is not a
 correctness claim. Oracle-nonfinite points remain unqualified instead of being
 coerced into a pass.
 
-The receipt additionally binds the exact order-2 execution programs used by the
-campaign for both spin layouts: executor kind, runtime domain, imported source
-identity, expression identity, optimization mode, feature ABI, and the complete
-energy/vxc/fxc output contract. This binding is content-addressed and included in
-the receipt hash. A matrix cannot be retained as production-domain evidence
-without naming the exact mathematical execution that produced its candidate
-values. Backend compilation/runtime qualification remains a separate stage; the
-current B1 campaign explicitly records the shared array-Graph executor rather
-than pretending that interpreted evidence is a compiled-CPU or CUDA result.
+The receipt additionally binds the exact first-order execution programs used by
+the campaign for both spin layouts: executor kind, runtime domain, imported
+source identity, expression identity, optimization mode, feature ABI, and the
+complete energy/vxc output contract. This binding is content-addressed and
+included in the receipt hash. A matrix cannot be retained as production-domain
+evidence without naming the exact mathematical execution that produced its
+candidate values. Backend compilation/runtime qualification remains a separate
+stage; the current B1 campaign explicitly records the shared array-Graph
+executor rather than pretending that interpreted evidence is a compiled-CPU or
+CUDA result.
 
 The B1 campaign uses the explicit
 `libxc-bulk-production-candidate/v1` runtime domain. It differs from the default
 `libxc-bulk-interior/v1` only by admitting physical zero sigma into candidate
 evaluation. Negative sigma, non-positive density, non-positive tau, non-PSD
 polarized sigma Gram matrices, and nonfinite inputs remain rejected. Admission of
-zero sigma is **not** a generic pass: the imported order-2 Graph must still
-produce finite E/vxc/fxc and match the independent Libxc oracle for that exact
+zero sigma is **not** a generic pass: the imported first-order Graph must still
+produce finite E/vxc and match the independent Libxc oracle for that exact
 functional. Functionals whose imported algebra has a true or unresolved
-zero-gradient derivative singularity therefore remain blocked by their numerical
-matrix row.
+zero-gradient first-derivative singularity therefore remain blocked by their
+numerical matrix row.
 
 Ordinary bulk runtime consumers continue to default to the original interior
 domain; the production-candidate domain is selected explicitly by the evidence
 campaign and is part of its execution identity.
 
 `vibeqc_compiler.xc.production_domain_cases` instantiates every numerical
-rho/sigma/tau row in the exact v2 cases-by-spin matrix from finite physical
+rho/sigma/tau row in the exact v3 cases-by-spin matrix from finite physical
 density, Cartesian-gradient, and kinetic-density coordinates.
 `tools/qualify_libxc_production_domain.py` evaluates those rows through the
-generic order-2 bulk candidate and compares energy, vxc, and packed fxc against
-the independent PySCF 2.14.0 / Libxc 7.0.0 oracle. The tool always writes a
-complete identity-bound receipt; zero-density/zero-gradient points rejected by
-the current interior-only candidate remain explicit failures rather than being
-silently clipped or skipped.
+generic first-order bulk candidate and compares energy and vxc against the
+independent PySCF 2.14.0 / Libxc 7.0.0 oracle. The tool always writes a complete
+identity-bound receipt; numerical rows rejected by the versioned candidate
+remain explicit failures rather than being silently clipped or skipped.
 
 The two generic control rows are evaluated by the shared
 `production_domain_controls` owner. `control/invalid-nonfinite` requires every

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from itertools import combinations_with_replacement
 from types import SimpleNamespace
 
 import pytest
@@ -16,7 +15,6 @@ def outputs(size: int) -> tuple[tuple[int, ...], ...]:
     return (
         (),
         *((i,) for i in range(size)),
-        *combinations_with_replacement(range(size), 2),
     )
 
 
@@ -24,7 +22,7 @@ def outputs(size: int) -> tuple[tuple[int, ...], ...]:
 def capability(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     profile = SimpleNamespace(
         spin_layouts=SPINS,
-        outputs=("energy", "vxc", "fxc"),
+        outputs=("energy", "vxc"),
         case_ids_for_spin=lambda _: ("density/near-zero",),
         identity="c" * 64,
         eligible=True,
@@ -62,7 +60,7 @@ def programs(capability: SimpleNamespace) -> dict[str, SimpleNamespace]:
             ),
             expression_hash="e" * 64,
             optimization="after",
-            order=2,
+            order=1,
             outputs=outputs(len(features)),
         )
     return result
@@ -75,7 +73,7 @@ def receipt(capability: SimpleNamespace) -> dict:
             "spin": spin,
             "case_id": "density/near-zero",
             "status": "pass",
-            "outputs": ["energy", "vxc", "fxc"],
+            "outputs": ["energy", "vxc"],
             "reason": None,
         }
         for spin in SPINS
