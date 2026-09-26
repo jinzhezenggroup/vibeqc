@@ -1298,6 +1298,33 @@ vibeqc_status execute_cuda_df_hf_gradient(
                                            packed_raw->pair_count * a * sizeof(double));
         runtime::cuda_trace::trace_counter("raw_value_owner_identity", packed_raw->owner_identity);
       }
+      std::function<void(std::size_t, std::size_t, double*, double*)> source_panel_reader;
+      const char* source_projection_control = std::getenv("VIBEQC_DF_SOURCE_PROJECTION");
+      const std::string_view source_projection =
+          source_projection_control ? source_projection_control : "auto";
+      if (source_projection != "auto" && source_projection != "batched")
+        throw std::invalid_argument("VIBEQC_DF_SOURCE_PROJECTION requires auto or batched");
+      if (source_projection == "batched") {
+        if (!source || !owned_occupied || whitened)
+          throw std::invalid_argument(
+              "batched source projection requires an admitted raw occupied response");
+        source_panel_reader = [&](std::size_t begin, std::size_t count, double* panels,
+                                  double* staging) {
+          const auto status = generate_cuda_density_fitting_raw_tile(
+              source, source_index, 0, n * n, begin, count, -1, stream_handle, staging, detail);
+          if (status == VIBEQC_STATUS_OUT_OF_MEMORY) throw std::bad_alloc();
+          if (status != VIBEQC_STATUS_SUCCESS) throw std::runtime_error(detail);
+          cuda_df::launch_gather_auxiliary_tile_kernel(dim3(cuda_df::blocks_for(n * n * count)),
+                                                       dim3(cuda_df::kThreads), 0, arena.stream,
+                                                       n * n, count, 0, 0, count, staging, panels);
+          check(cudaGetLastError());
+          arena.stats.recomputed_value_bytes += n * n * count * sizeof(double);
+          arena.stats.value_slices += count;
+          runtime::cuda_trace::trace_counter("response_batched_raw_source_calls", 1);
+          runtime::cuda_trace::trace_counter("response_batched_raw_source_values", n * n * count);
+        };
+        owned_buffers.read_occupied_panels = &source_panel_reader;
+      }
       std::function<void(std::size_t, std::size_t, double*)> read_fitted;
       if (whitened && !borrowed && !owned_occupied) {
         // The forward plan already owns this immutable tensor. Reading it is
