@@ -237,6 +237,15 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
         }
   flush();
 
+  if (result.provider_work.source_scans != source_tile_plan.source_scans ||
+      result.provider_work.source_reads != source_tile_plan.source_reads)
+    throw std::logic_error("MP2 source execution disagrees with compiler tile schedule");
+  const auto ao2 = posthf::checked_mul(ref.nbf, ref.nbf);
+  const auto ao4 = posthf::checked_mul(ao2, ao2);
+  if (result.provider_work.source_values !=
+      posthf::checked_mul(ao4, result.provider_work.source_scans))
+    throw std::logic_error("MP2 AO source value count disagrees with compiler tile schedule");
+
   result.opposite_spin = sum[0];
   result.same_spin = sum[1];
   if (cuda)
