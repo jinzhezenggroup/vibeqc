@@ -50,6 +50,21 @@ struct DeviceScope {
   }
 };
 
+/** Drain queued host transfers before their borrowed buffers leave scope.
+ * Successful paths dismiss this after their existing fence; only unwinding
+ * adds a best-effort drain. Declare after every local transfer destination.
+ */
+struct HostTransferFence {
+  explicit HostTransferFence(cudaStream_t value) : stream(value) {}
+  ~HostTransferFence() noexcept {
+    if (stream) (void)cudaStreamSynchronize(stream);
+  }
+  HostTransferFence(const HostTransferFence&) = delete;
+  HostTransferFence& operator=(const HostTransferFence&) = delete;
+  void complete() noexcept { stream = nullptr; }
+  cudaStream_t stream;
+};
+
 struct AmplitudeLayout {
   std::size_t o{}, v{}, n1{}, n2{};
   std::vector<std::size_t> representatives;
@@ -167,8 +182,7 @@ class CudaLambdaActions {
                   generated::lambda_independent_transpose_arena_elements(p.nocc, p.nvir)});
     if (with_parameters)
       response_elements =
-          std::max({response_elements,
-                    generated::parameter_foo_arena_elements(p.nocc, p.nvir),
+          std::max({response_elements, generated::parameter_foo_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fov_arena_elements(p.nocc, p.nvir),
                     generated::parameter_fvv_arena_elements(p.nocc, p.nvir),
                     generated::parameter_ovov_arena_elements(p.nocc, p.nvir),
@@ -241,6 +255,7 @@ class CudaLambdaActions {
     r1.resize(layout_.n1);
     r2.resize(layout_.n2);
     int error = 0;
+    HostTransferFence transfers(stream_);
     cuda_check(
         cudaMemcpyAsync(&energy, output.energy, sizeof(double), cudaMemcpyDeviceToHost, stream_));
     cuda_check(
@@ -249,6 +264,7 @@ class CudaLambdaActions {
         cudaMemcpyAsync(r2.data(), output.r2, bytes(layout_.n2), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaStreamSynchronize(stream_));
+    transfers.complete();
     d2h_bytes_ = checked_add(
         d2h_bytes_, checked_add(sizeof(double) + sizeof(int), bytes(layout_.n1 + layout_.n2)));
     ++synchronizations_;
@@ -257,18 +273,21 @@ class CudaLambdaActions {
 
   void rhs(bool independent, std::vector<double>& one, std::vector<double>& two) {
     const double seed = -1.0;
+    HostTransferFence transfers(stream_);
     cuda_check(cudaMemcpyAsync(state_.bar_correlation_energy, &seed, sizeof(double),
                                cudaMemcpyHostToDevice, stream_));
     h2d_bytes_ = checked_add(h2d_bytes_, sizeof(double));
     copy_output(independent ? generated::run_lambda_independent_rhs_cuda(state_)
                             : generated::run_lambda_rhs_cuda(state_),
                 one, two);
+    transfers.complete();
   }
 
   void transpose(bool independent, std::span<const double> one, std::span<const double> two,
                  std::vector<double>& out_one, std::vector<double>& out_two) {
     if (one.size() != layout_.n1 || two.size() != layout_.n2)
       throw std::invalid_argument("RCCSD CUDA Lambda transpose seed shape mismatch");
+    HostTransferFence transfers(stream_);
     cuda_check(cudaMemcpyAsync(state_.bar_singles_residual, one.data(), bytes(layout_.n1),
                                cudaMemcpyHostToDevice, stream_));
     cuda_check(cudaMemcpyAsync(state_.bar_doubles_residual, two.data(), bytes(layout_.n2),
@@ -277,20 +296,28 @@ class CudaLambdaActions {
     copy_output(independent ? generated::run_lambda_independent_transpose_cuda(state_)
                             : generated::run_lambda_transpose_cuda(state_),
                 out_one, out_two);
+    transfers.complete();
   }
 
   void set_parameter_seeds(std::span<const double> lambda1, std::span<const double> lambda2) {
     if (lambda1.size() != layout_.n1 || lambda2.size() != layout_.n2)
       throw std::invalid_argument("RCCSD CUDA parameter-response seed shape mismatch");
     const double energy_seed = 1.0;
+    HostTransferFence transfers(stream_);
     cuda_check(cudaMemcpyAsync(state_.bar_correlation_energy, &energy_seed, sizeof(double),
                                cudaMemcpyHostToDevice, stream_));
     cuda_check(cudaMemcpyAsync(state_.bar_singles_residual, lambda1.data(), bytes(layout_.n1),
                                cudaMemcpyHostToDevice, stream_));
     cuda_check(cudaMemcpyAsync(state_.bar_doubles_residual, lambda2.data(), bytes(layout_.n2),
                                cudaMemcpyHostToDevice, stream_));
-    h2d_bytes_ = checked_add(
-        h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
+    h2d_bytes_ =
+        checked_add(h2d_bytes_, checked_add(sizeof(double), bytes(layout_.n1 + layout_.n2)));
+    // End all three host borrows at this boundary, including the stack scalar.
+    // This single setup fence precedes all ten parameter VJPs; their device
+    // seeds remain resident and are not reuploaded for each parameter block.
+    cuda_check(cudaStreamSynchronize(stream_));
+    transfers.complete();
+    ++synchronizations_;
   }
 
   using ParameterRunner = generated::DeviceParameterOutput (*)(generated::CudaState&);
@@ -299,10 +326,12 @@ class CudaLambdaActions {
     const auto output = run(state_);
     std::vector<double> values(count);
     int error = 0;
-    cuda_check(
-        cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost, stream_));
+    HostTransferFence transfers(stream_);
+    cuda_check(cudaMemcpyAsync(values.data(), output.values, bytes(count), cudaMemcpyDeviceToHost,
+                               stream_));
     cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaStreamSynchronize(stream_));
+    transfers.complete();
     d2h_bytes_ = checked_add(d2h_bytes_, checked_add(bytes(count), sizeof(int)));
     ++synchronizations_;
     check_error(error);
@@ -315,12 +344,14 @@ class CudaLambdaActions {
     one.resize(layout_.n1);
     two.resize(layout_.n2);
     int error = 0;
+    HostTransferFence transfers(stream_);
     cuda_check(
         cudaMemcpyAsync(one.data(), output.t1, bytes(layout_.n1), cudaMemcpyDeviceToHost, stream_));
     cuda_check(
         cudaMemcpyAsync(two.data(), output.t2, bytes(layout_.n2), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaMemcpyAsync(&error, state_.error, sizeof(int), cudaMemcpyDeviceToHost, stream_));
     cuda_check(cudaStreamSynchronize(stream_));
+    transfers.complete();
     d2h_bytes_ = checked_add(d2h_bytes_, checked_add(bytes(layout_.n1 + layout_.n2), sizeof(int)));
     ++synchronizations_;
     check_error(error);
@@ -362,8 +393,7 @@ double max_abs(std::span<const double> values) {
 }
 
 LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<const double> t1_source,
-                        std::span<const double> t2_source, int device,
-                        const LambdaOptions& options,
+                        std::span<const double> t2_source, int device, const LambdaOptions& options,
                         CudaFixedOrbitalResponseResult* fixed_orbital) {
   validate_problem(p);
   validate_lambda_options(options);
@@ -475,16 +505,13 @@ LambdaResult solve_impl(const Problem& p, const SolverResult& cc, std::span<cons
                         checked_mul(p.nocc, checked_mul(p.nvir, checked_mul(p.nvir, p.nvir))));
     fixed_orbital->ovoo =
         owner.parameter(generated::run_parameter_ovoo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nvir),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nvir), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->oooo =
         owner.parameter(generated::run_parameter_oooo_cuda,
-                        checked_mul(checked_mul(p.nocc, p.nocc),
-                                    checked_mul(p.nocc, p.nocc)));
+                        checked_mul(checked_mul(p.nocc, p.nocc), checked_mul(p.nocc, p.nocc)));
     fixed_orbital->vvvv =
         owner.parameter(generated::run_parameter_vvvv_cuda,
-                        checked_mul(checked_mul(p.nvir, p.nvir),
-                                    checked_mul(p.nvir, p.nvir)));
+                        checked_mul(checked_mul(p.nvir, p.nvir), checked_mul(p.nvir, p.nvir)));
   }
   result.diagnostic.numeric_capacity_bytes = owner.numeric_capacity_bytes();
   result.diagnostic.owned_device_bytes = owner.owned_device_bytes();
@@ -516,8 +543,7 @@ CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_
     const Problem& problem, const SolverResult& cc_result, std::span<const double> t1_source,
     std::span<const double> t2_source, int device, const LambdaOptions& options) {
   CudaFixedOrbitalResponseResult result;
-  result.lambda =
-      solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
+  result.lambda = solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
   return result;
 }
 
