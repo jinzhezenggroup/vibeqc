@@ -61,8 +61,7 @@ class RangeExchangeExecutor:
         self.centers = basis.packed[:start].reshape(-1, 3)
         if any(int(row[3]) != 1 for row in self.aos):
             raise NotImplementedError(
-                "RSH stationary gradients require one Cartesian component "
-                "per public AO"
+                "RSH stationary gradients require one Cartesian component per public AO"
             )
         self.cache = Path(cache)
         self.primitive_tile = primitive_tile

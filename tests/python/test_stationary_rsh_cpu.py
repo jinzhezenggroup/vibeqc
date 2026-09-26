@@ -1,5 +1,6 @@
 """CPU RSH stationary exchange binding against an independent integral oracle."""
 
+import os
 import shutil
 from itertools import product
 from pathlib import Path
@@ -10,6 +11,8 @@ import pytest
 from vibeqc._stationary_cpu import _PrimitiveExecutor
 from vibeqc._stationary_rsh_cpu import RangeExchangeExecutor
 from vibeqc_compiler.common.cpp_adapter import CppCompilerAdapter
+from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.cuda_target import cuda_target_info
 from vibeqc_compiler.dft import NativeAO
 from vibeqc_compiler.method import resolve_method
 from vibeqc_compiler.method.spec import RangeSeparatedExchangePrimitive
@@ -117,15 +120,28 @@ def _pyscf_energy(
 
 
 @pytest.mark.parametrize("operator", ("short-range", "long-range"))
+@pytest.mark.parametrize("backend", ("cpu", "cuda"))
 def test_range_exchange_executor_matches_fixed_density_finite_difference(
-    tmp_path: Path, operator: str
+    tmp_path: Path, operator: str, backend: str
 ) -> None:
+    # Compare the CUDA provider directly with independent libcint energy
+    # differences; agreement with the generated CPU provider alone is weaker.
+    if backend == "cuda":
+        if os.environ.get("VIBEQC_TEST_RANGE_CUDA") != "1":
+            pytest.skip("set VIBEQC_TEST_RANGE_CUDA=1 inside a Slurm GPU job")
+        if not os.environ.get("SLURM_JOB_ID"):
+            pytest.fail("native CUDA validation requires a Slurm allocation")
     pytest.importorskip(
         "pyscf", reason="independent RSH integral oracle requires PySCF"
     )
-    compiler = shutil.which("c++")
+    compiler = shutil.which("nvcc" if backend == "cuda" else "c++")
     if compiler is None:
-        pytest.skip("native C++ compiler unavailable")
+        pytest.skip(f"native {backend} compiler unavailable")
+    adapter = (
+        CudaCompilerAdapter(Path(compiler), cuda_target_info("sm_120"))
+        if backend == "cuda"
+        else CppCompilerAdapter(Path(compiler))
+    )
 
     with NativeAO(ATOMS, basis="sto-3g") as basis:
         method = resolve_method("CAM-B3LYP", spin="unpolarized")
@@ -154,9 +170,7 @@ def test_range_exchange_executor_matches_fixed_density_finite_difference(
         ).outputs["weights"]
 
         actual = np.zeros((basis.natom, 3))
-        executor = RangeExchangeExecutor(
-            basis, tmp_path, 32, CppCompilerAdapter(Path(compiler))
-        )
+        executor = RangeExchangeExecutor(basis, tmp_path, 32, adapter)
         try:
             for indices, weight in zip(tuples, weights, strict=True):
                 owners, values = executor.integral(primitive, indices, weight)
