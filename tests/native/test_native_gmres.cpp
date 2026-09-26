@@ -6,6 +6,7 @@
 #include <limits>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "response/native_gmres.hpp"
@@ -207,8 +208,9 @@ void resident_krylov_contract() {
   const auto plan = vibeqc::response::prepare_gmres(11, options);
   const auto workspace = vibeqc::response::resident_gmres_workspace(plan);
   require(workspace.vector_slots == 24, "resident GMRES vector-slot inventory is wrong");
-  require(workspace.host_scalar_bytes == (7 * 7 + 5 * 7 + 1) * sizeof(double),
-          "resident GMRES host-scalar workspace is wrong");
+  require(workspace.host_scalar_bytes == (7 * 7 + 5 * 7 + 1) * sizeof(double) &&
+              workspace.host_result_bytes == 11 * sizeof(double),
+          "resident GMRES host workspace is wrong");
 
   ContractResidentBackend backend{11, workspace.vector_slots, 4096};
   const auto admitted = vibeqc::response::validate_resident_gmres_backend(plan, backend);
