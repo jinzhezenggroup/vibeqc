@@ -12,6 +12,8 @@ This does not change the default DF storage/response planner. It qualifies safe 
 - Five forward/reverse control cycles from one frozen post-cold or post-move DF density. Direct uses its own frozen density and five repeats. The controls are same-binary ablations, not a separate historical build. Clean timings exclude tracing; diagnostic replays retain actual source/GEMM/byte work.
 - Cold includes `prepare_batch` plus first execution; imports, library/probe loading are outside timing. Cold and geometry updates are single observations from independent owners, not repeated paired speedup estimates. Iterations are retained; the public CUDA HF Fock-count API returns `null`, so DF Fock work is reported only from separate traces.
 
+The common tolerances above are public inputs; effective warm convergence policies differ. Direct retains a density/geometry-qualified energy baseline and uses a FP64 energy comparison guard (about `8.64e-12 Eh` here). DF resets that baseline to infinity and uses the unguarded `1e-12 Eh` comparison. A [subsequent iteration diagnosis](../../../.agents/notes/proposed/2026-09-26-df-warm-convergence-parity.md) reproduces five DF iterations despite satisfying the density-step criterion in the first iteration. These timings include that implementation difference; they do not isolate equal-work J/K performance. The warm-convergence difference is not fixed by this PR.
+
 ## Clean warm medians (seconds)
 
 | AO | Phase | Dense final, spectral | Occupied final, spectral | Occupied final, root | Direct | DF / direct SCF iterations |
