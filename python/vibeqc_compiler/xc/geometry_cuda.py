@@ -11,7 +11,8 @@ from .coefficients import jet_pullback_program
 from .grid_native import emit_grid_adjoint, emit_grid_partials
 from .semilocal_codegen import emit_polarized_semilocal
 from .semilocal_family import energy_expression
-from .spec import FunctionalSpec, WB97MV_COMPONENTS, functional as resolve_functional
+from .spec import WB97MV_COMPONENTS, FunctionalSpec
+from .spec import functional as resolve_functional
 from .wb97mv_maple import DENSITY_THRESHOLD, SIGMA_THRESHOLD, TAU_THRESHOLD
 
 
@@ -65,9 +66,7 @@ def _emit_stationary_point(
             raise ValueError(
                 "omegaB97M-V stationary geometry requires its polarized FunctionalSpec"
             )
-        active = {
-            name for name, coefficient in semilocal.components if coefficient
-        }
+        active = {name for name, coefficient in semilocal.components if coefficient}
         if active != set(WB97MV_COMPONENTS):
             raise ValueError(
                 "functional=4 stationary geometry requires canonical omegaB97M-V semilocal components"
