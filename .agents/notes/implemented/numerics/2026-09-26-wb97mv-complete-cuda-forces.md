@@ -16,11 +16,13 @@ Use a retained native integral source for hcore, overlap/Pulay, J, short-range
 K and long-range K. Carry nuclear coordinate dual seeds through the shared
 bounded range-moment recurrence, using `dM_n(T)/dT = -M_(n+1)(T)` at fixed
 exponents and omega. Keep existing full-range value arithmetic unchanged.
-The generic direct derivative fallback traverses each ordered public-AO quartet
-once per integral source. Dual3 carries x/y/z together for only the unique
-participating nuclear centers, and translational invariance reconstructs the
-final center. This removes the coordinate-by-quartet work multiplier while
-preserving the same FP64 screening and radial operators.
+The direct stationary derivative now traverses only 8-fold symmetry-unique
+public-AO quartets. One fused pass produces J, short-range K and long-range K;
+it evaluates Full and Long radial Dual3 derivatives once per participating
+center and forms Short = Full - Long. Dual3 carries x/y/z together and
+translational invariance reconstructs the final center. Final-state alpha/beta
+densities are explicitly required to be symmetric before this schedule is used.
+The generic derivative API remains available for nonsymmetric inputs.
 
 Reuse compiler-owned semilocal geometry pullbacks for VV10 total-rho/sigma,
 explicit pair-coordinate and partition-weight adjoints. Pack both VV10 domains
@@ -54,8 +56,12 @@ The paired benchmark enforces the HF README's energy/force gates and retains
 timeouts. Default-grid reference-only water timings and all attempt outcomes
 are retained in `.artifacts/readme-wb97mv-20260926` during development.
 
-The complete CUDA RKS H2, UKS H3, and spherical water/def2-SVP cases pass
-independent GPU4PySCF energy/force and reconverged finite-difference gates.
+The retained complete CUDA RKS H2, UKS H3, and spherical water/def2-SVP
+cases pass independent GPU4PySCF energy/force and reconverged finite-difference
+gates for the pre-optimization implementation. The current optimized head adds
+independent fused-vs-single-source J/SR/LR derivative gates and a one-iteration
+same-geometry RKS warm-replay gate; real-GPU requalification remains required
+before replacing the retained performance numbers.
 Geometry rebuild, per-item failure isolation and stale-token recovery also pass.
 The first public attempt exposed a CPU-only guard in the existing WB97M-V native model
 proof; the proof now accepts the same token-bound complete model on CUDA.
@@ -80,8 +86,8 @@ water test protects this boundary, which H2/H3 alone cannot exercise.
 
 ## Revisit when
 
-The direct derivative fallback shares the HF shell-quartet symmetry/compaction
-scheduler instead of its remaining ordered public-AO traversal; native retained
-AO/grid leases avoid feature downloads and duplicate collocation; or a shared
-complete C-native stationary consumer replaces Python composition.
+The symmetry-reduced public-AO derivative path is promoted onto the HF
+shell-quartet compaction/persistent-queue scheduler; native retained AO/grid
+leases avoid feature downloads and duplicate collocation; or a shared complete
+C-native stationary consumer replaces Python composition.
 The native public C registry stays energy-only in this implementation.
