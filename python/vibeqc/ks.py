@@ -7,8 +7,8 @@ interior-only reference contract. Unsupported compositions fail before prepare.
 
 import math
 import typing
-from enum import IntEnum
 from dataclasses import asdict, dataclass, field, replace
+from enum import IntEnum
 from fractions import Fraction
 
 from vibeqc_compiler.common.provenance import canonical_hash
@@ -523,7 +523,10 @@ def resolve_ks_options(method: typing.Any, options: typing.Any = None) -> typing
 
     grid = options.grid
     if grid is None:
-        if _native_semilocal_family(named_ir) == _NativeSemilocalFamily.R2SCAN:
+        if (
+            _native_semilocal_family(named_ir)
+            == _NativeSemilocalFamily.R2SCAN
+        ):
             # The v2 policy has no qualified meta-GGA profile. Preserve the
             # existing explicit v1 default rather than assigning a GGA grid.
             if options.grid_accuracy != "standard":
