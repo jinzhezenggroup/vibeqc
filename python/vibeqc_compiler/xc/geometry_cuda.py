@@ -1,6 +1,7 @@
 """CUDA AO translation pullback and Becke local partials from shared graphs."""
 
 import typing
+from dataclasses import replace
 
 from vibeqc_compiler.dft.ao import jet_indices
 from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
@@ -9,8 +10,11 @@ from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
 from .coefficients import jet_pullback_program
 from .grid_native import emit_grid_adjoint, emit_grid_partials
+from .semilocal_codegen import emit_polarized_semilocal
 from .semilocal_family import energy_expression
+from .spec import WB97MV_COMPONENTS, FunctionalSpec
 from .spec import functional as resolve_functional
+from .wb97mv_maple import DENSITY_THRESHOLD, SIGMA_THRESHOLD, TAU_THRESHOLD
 
 
 def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
@@ -18,19 +22,22 @@ def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
     if functional is None:
         if type(pbe) is not bool:
             raise TypeError(
-                "geometry lowering requires functional=0/1/2 or a boolean PBE flag"
+                "geometry lowering requires functional=0/1/2/4 or a boolean PBE flag"
             )
         return int(pbe)
     if pbe is not None:
         raise ValueError("specify functional or pbe, not both")
-    if type(functional) is not int or functional not in (0, 1, 2):
+    if type(functional) is not int or functional not in (0, 1, 2, 4):
         raise ValueError(
-            "geometry lowering functional must be 0 (LDA), 1 (PBE), or 2 (r2SCAN)"
+            "geometry lowering functional must be 0 (LDA), 1 (PBE), 2 (r2SCAN), "
+            "or 4 (omegaB97M-V semilocal)"
         )
     return functional
 
 
-def _emit_stationary_point(functional: int) -> str:
+def _emit_stationary_point(
+    functional: int, *, semilocal: FunctionalSpec | None = None
+) -> str:
     """Emit the exact SCF-domain point differential consumed by geometry CUDA."""
     if functional < 2:
         pbe = "true" if functional == 1 else "false"
@@ -50,6 +57,90 @@ def _emit_stationary_point(functional: int) -> str:
                 "    out.rho[s] = raw.rho[s];",
                 "    for (unsigned k = 0; k < 3; ++k) out.gradient[s][k] = raw.gradient[s][k];",
                 "  }",
+                "  return out;",
+                "}",
+            ]
+        )
+
+    if functional == 4:
+        if not isinstance(semilocal, FunctionalSpec):
+            raise ValueError(
+                "omegaB97M-V stationary geometry requires its FunctionalSpec"
+            )
+        active = {name for name, coefficient in semilocal.components if coefficient}
+        if active != set(WB97MV_COMPONENTS):
+            raise ValueError(
+                "functional=4 stationary geometry requires canonical omegaB97M-V semilocal components"
+            )
+        # GridTaskView always supplies alpha/beta features, splitting an RKS
+        # density equally. Change only that ABI convention: the MethodIR owns
+        # the exact component weights and range parameter for both spin modes.
+        polarized_semilocal = (
+            semilocal
+            if semilocal.spin == "polarized"
+            else replace(semilocal, spin="polarized")
+        )
+        raw = emit_polarized_semilocal(
+            polarized_semilocal,
+            value_type="StationaryWb97mvRaw",
+            function_name="stationary_wb97mv_raw",
+            identity_constant="kStationaryWb97mvExpressionIdentity",
+            production=True,
+            function_qualifier="__device__ inline",
+        )
+        return "\n".join(
+            [
+                raw.rstrip("\n"),
+                "struct StationaryPointValue {",
+                "  double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};",
+                "  bool valid{true};",
+                "};",
+                "__device__ inline StationaryPointValue stationary_evaluate_point(",
+                "    const double rho[2], const double gradient[2][3], const double tau[2]) {",
+                "  StationaryPointValue out;",
+                "  for (unsigned s = 0; s < 2; ++s) {",
+                "    if (!isfinite(rho[s]) || rho[s] < 0.0 || !isfinite(tau[s]) || tau[s] < 0.0) {",
+                "      out.valid = false;",
+                "      return out;",
+                "    }",
+                "    for (unsigned k = 0; k < 3; ++k)",
+                "      if (!isfinite(gradient[s][k])) { out.valid = false; return out; }",
+                "  }",
+                "  const double total = rho[0] + rho[1];",
+                f"  constexpr double density_threshold = {float(DENSITY_THRESHOLD).hex()};",
+                f"  constexpr double sigma_threshold = {float(SIGMA_THRESHOLD).hex()};",
+                f"  constexpr double tau_threshold = {float(TAU_THRESHOLD).hex()};",
+                "  if (total < density_threshold) return out;",
+                "  double sigma[3]{};",
+                "  for (unsigned k = 0; k < 3; ++k) {",
+                "    sigma[0] += gradient[0][k] * gradient[0][k];",
+                "    sigma[1] += gradient[0][k] * gradient[1][k];",
+                "    sigma[2] += gradient[1][k] * gradient[1][k];",
+                "  }",
+                "  const double sigma_floor = sigma_threshold * sigma_threshold;",
+                "  double work_rho[2]{fmax(density_threshold, rho[0]), fmax(density_threshold, rho[1])};",
+                "  double work_sigma[3]{fmax(sigma_floor, sigma[0]), sigma[1], fmax(sigma_floor, sigma[2])};",
+                "  const double sigma_average = 0.5 * (work_sigma[0] + work_sigma[2]);",
+                "  work_sigma[1] = fmax(-sigma_average, fmin(sigma_average, work_sigma[1]));",
+                "  double work_tau[2]{fmax(tau_threshold, tau[0]), fmax(tau_threshold, tau[1])};",
+                "  const auto raw = stationary_wb97mv_raw(",
+                "      work_rho[0], work_rho[1], work_sigma[0], work_sigma[1], work_sigma[2],",
+                "      work_tau[0], work_tau[1]);",
+                "  out.valid = isfinite(raw.energy_density);",
+                "  for (double value : raw.feature_derivative)",
+                "    out.valid = out.valid && isfinite(value);",
+                "  if (!out.valid) return out;",
+                "  out.energy = raw.energy_density;",
+                "  out.rho[0] = raw.feature_derivative[0];",
+                "  out.rho[1] = raw.feature_derivative[1];",
+                "  for (unsigned k = 0; k < 3; ++k) {",
+                "    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] +",
+                "                         raw.feature_derivative[3] * gradient[1][k];",
+                "    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] +",
+                "                         2.0 * raw.feature_derivative[4] * gradient[1][k];",
+                "  }",
+                "  out.kinetic[0] = 0.5 * raw.feature_derivative[5];",
+                "  out.kinetic[1] = 0.5 * raw.feature_derivative[6];",
                 "  return out;",
                 "}",
             ]
@@ -127,11 +218,15 @@ def _emit_stationary_point(functional: int) -> str:
 
 
 def emit_geometry_cuda(
-    *, functional: typing.Any = None, pbe: typing.Any = None, iterations: typing.Any = 3
+    *,
+    functional: typing.Any = None,
+    pbe: typing.Any = None,
+    iterations: typing.Any = 3,
+    semilocal: FunctionalSpec | None = None,
 ) -> typing.Any:
     """Lower AO bilinear AD; the caller supplies one exact semilocal selector."""
     code = _functional_code(functional, pbe)
-    family = ("lda", "gga", "mgga")[code]
+    family = {0: "lda", 1: "gga", 2: "mgga", 4: "mgga"}[code]
     program = jet_pullback_program(family)
     coefficient_count = {"lda": 1, "gga": 4, "mgga": 5}[family]
     variables = {
@@ -160,7 +255,7 @@ def emit_geometry_cuda(
             f"constexpr unsigned stationary_jets = {len(domain)};",
             f"constexpr unsigned stationary_ao_jets = {len(lookup)};",
             f"constexpr unsigned stationary_coefficients = {coefficient_count};",
-            _emit_stationary_point(code),
+            _emit_stationary_point(code, semilocal=semilocal),
             f"__device__ __constant__ unsigned stationary_shift[{len(domain)}][3] = {{{','.join(shifts)}}};",
             "__device__ void ao_pullback(const double* c, const double* w, double* out) {",
             *emitter.lines,
