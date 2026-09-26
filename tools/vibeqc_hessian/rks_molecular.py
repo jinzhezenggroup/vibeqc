@@ -132,9 +132,7 @@ def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
     return plan
 
 
-def _checked_integral_budget(
-    operator: NativeRKSResponse, budget_bytes: int
-) -> int:
+def _checked_integral_budget(operator: NativeRKSResponse, budget_bytes: int) -> int:
     """Bound HVP plan-weight numerics before response/provider work starts."""
     if type(budget_bytes) is not int or not 0 < budget_bytes < 2**63:
         raise ValueError("integral_budget_bytes must be a positive int64 byte count")
@@ -447,9 +445,7 @@ def rks_hvp(
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
     plan = _checked_plan(operator)
-    plan_weight_workspace = _checked_integral_budget(
-        operator, integral_budget_bytes
-    )
+    plan_weight_workspace = _checked_integral_budget(operator, integral_budget_bytes)
     vector = checked_direction(direction, operator.xc_kernel.basis.natom)
     cache_path = Path(cache)
     directional = directional_rks_response(
@@ -489,9 +485,7 @@ def rks_hvp_many(
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
     plan = _checked_plan(operator)
-    plan_weight_workspace = _checked_integral_budget(
-        operator, integral_budget_bytes
-    )
+    plan_weight_workspace = _checked_integral_budget(operator, integral_budget_bytes)
     natom = operator.xc_kernel.basis.natom
     raw = np.asarray(directions)
     if (

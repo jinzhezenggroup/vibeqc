@@ -505,6 +505,7 @@ def test_rks_hessian_output_budget_fails_before_hvp(
             output_budget_bytes=2 * output_bytes - 1,
         )
 
+
 def test_rks_hvp_integral_budget_fails_before_response(
     case: typing.Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -562,4 +563,3 @@ def test_rks_hvp_admits_resource_bounded_domain_above_12_aos(
     for diagnostic in result.diagnostics["integral_providers"].values():
         assert diagnostic["budget_bytes"] == 64 << 20
         assert diagnostic["output_accumulator_bytes"] <= diagnostic["budget_bytes"]
-
