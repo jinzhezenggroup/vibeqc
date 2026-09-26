@@ -6,9 +6,9 @@ from pathlib import Path
 
 from vibeqc_compiler.integral.cuda_schedule import ScheduleIR, ScheduleKind
 from vibeqc_compiler.integral.production import (
-    emit_multi_registry_header,
     emit_multi_registry_source,
     emit_registry_header,
+    emit_registry_source,
     resolve_production_profile,
 )
 
@@ -67,10 +67,18 @@ def test_profiled_fock_materialization_reaches_generated_registry(
         "    2ULL;"
     ) in header
 
+    single_source = emit_registry_source((psss,))
+    assert (
+        "std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {"
+        in single_source
+    )
+
     selected_profile = replace(resolved, selections=(psss,))
-    multi_header = emit_multi_registry_header((selected_profile,))
     multi_source = emit_multi_registry_source((selected_profile,))
-    assert "preferred_streaming_fock_shell_class_mask() noexcept" in multi_header
+    assert (
+        "std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {"
+        in multi_source
+    )
     assert (
         "{kCompiledProfiles[0], UINT64_C(0),\n"
         "      UINT64_C(2), UINT64_C(0),\n"
