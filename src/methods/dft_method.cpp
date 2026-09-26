@@ -638,7 +638,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
         basis_(system_),
         grid_(ks_molecular_grid(system_, grid, backend_, device)) {
     options_.retain_ks_state = backend_ != VIBEQC_BACKEND_CUDA;
-    if (backend_ == VIBEQC_BACKEND_CPU && !unrestricted(execution_plan_) &&
+    if (backend_ == VIBEQC_BACKEND_CPU_REFERENCE && !unrestricted(execution_plan_) &&
         execution_plan_.semilocal_family == dft::SemilocalFamily::Pbe &&
         !execution_plan_.range_exchange && !execution_plan_.nonlocal_correlation &&
         !options_.experimental_incremental_xc) {
