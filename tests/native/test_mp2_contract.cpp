@@ -277,7 +277,8 @@ void provider_and_reference() {
   } catch (const std::invalid_argument&) {
     invalid_rejected = true;
   }
-  require(invalid_rejected && rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
+  require(invalid_rejected && rejected_work.source_scans == 0 && rejected_work.source_reads == 0 &&
+              rejected_work.mo_blocks == 0,
           "invalid later MO request reached AO traversal or published work");
 
   bool overflow = false;
@@ -315,30 +316,38 @@ void conventional_energy_batch_fallback_matches() {
   require(hf.converged && hf.reference, "p-shell MP2 reference");
   const auto& ref = *hf.reference;
   vibeqc::posthf::RawSource source(system);
-  vibeqc::posthf::NativeBlockProvider provider(source, ref, 256ULL << 20);
   constexpr unsigned tile = 2;
   const auto kernel = vibeqc::mp2::generated::cpu_plan(tile);
   const auto reserve = kernel.numeric_bytes + 32ULL * tile * tile + 16ULL * tile + 64;
-  const auto tight_budget = provider.batch_bytes({1, tile, 1, tile}, 1) + reserve;
+  vibeqc::posthf::NativeBlockProvider widest_provider(source, ref, 256ULL << 20,
+                                                      std::numeric_limits<unsigned>::max());
+  std::size_t minimum_provider_bytes = std::numeric_limits<std::size_t>::max();
+  for (std::size_t axis_tile = 1; axis_tile <= widest_provider.tile_shape()[0]; ++axis_tile) {
+    vibeqc::posthf::NativeBlockProvider candidate(source, ref, 256ULL << 20,
+                                                  static_cast<unsigned>(axis_tile));
+    minimum_provider_bytes =
+        std::min(minimum_provider_bytes, candidate.batch_bytes({1, tile, 1, tile}, 1));
+  }
+  const auto minimum_budget = minimum_provider_bytes + reserve;
   const auto roomy =
       vibeqc::mp2::conventional_energy(ref, source, 256ULL << 20, 1e-10, tile, false, 0);
   const auto tight =
-      vibeqc::mp2::conventional_energy(ref, source, tight_budget, 1e-10, tile, false, 0);
+      vibeqc::mp2::conventional_energy(ref, source, minimum_budget, 1e-10, tile, false, 0);
   require(roomy.tiles > 1 && roomy.tiles == tight.tiles, "complete MP2 tile sequence changed");
   require(std::abs(roomy.opposite_spin - tight.opposite_spin) < 1e-13 &&
               std::abs(roomy.same_spin - tight.same_spin) < 1e-13,
           "memory-bounded fallback changed MP2 energy");
   require(roomy.provider_work.source_reads < tight.provider_work.source_reads &&
-              roomy.provider_work.transform_fmas == tight.provider_work.transform_fmas,
-          "batching did not reduce source work while retaining transforms");
-  require(tight.numeric_capacity_bytes <= tight_budget, "tight numeric budget exceeded");
+              roomy.provider_work.transform_fmas <= tight.provider_work.transform_fmas,
+          "source-tile scheduling did not reduce provider work");
+  require(tight.numeric_capacity_bytes <= minimum_budget, "tight numeric budget exceeded");
   bool rejected = false;
   try {
-    (void)vibeqc::mp2::conventional_energy(ref, source, tight_budget - 1, 1e-10, tile, false, 0);
+    (void)vibeqc::mp2::conventional_energy(ref, source, minimum_budget - 1, 1e-10, tile, false, 0);
   } catch (const std::length_error&) {
     rejected = true;
   }
-  require(rejected, "one-byte-below the single-request budget was accepted");
+  require(rejected, "one-byte-below the minimum source-tile budget was accepted");
 }
 
 void conventional_energy_reuses_ao_scans() {
@@ -354,8 +363,9 @@ void conventional_energy_reuses_ao_scans() {
   vibeqc::posthf::RawSource source(system);
   const auto energy =
       vibeqc::mp2::conventional_energy(*hf.reference, source, 256ULL << 20, 1e-10, 1, false, 0);
-  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2,
-          "batched MP2 energy request count");
+  require(energy.tiles == 1 && energy.provider_work.mo_blocks == 2 &&
+              energy.provider_work.source_scans == 1,
+          "batched MP2 energy request/source-scan count");
   std::size_t full_ao_values = 1;
   for (unsigned k = 0; k < 4; ++k) full_ao_values *= hf.reference->nbf;
   require(energy.provider_work.source_values == full_ao_values,

@@ -71,4 +71,48 @@ inline OrderedSourceReusePlan ordered_source_reuse_plan(
   }
   return result;
 }
+
+struct SourceTileCandidate {
+  std::size_t axis_tile;
+  std::size_t source_scans;
+  std::size_t peak_bytes;
+};
+struct SourceTilePlan {
+  std::size_t axis_tile;
+  std::size_t source_reads;
+  std::size_t source_scans;
+  std::size_t peak_bytes;
+};
+inline std::size_t source_reads_per_scan(std::size_t nbf, std::size_t axis_tile) {
+  if (!nbf || !axis_tile || axis_tile > nbf)
+    throw std::invalid_argument("invalid source-tile dimensions");
+  const auto tiles = 1 + (nbf - 1) / axis_tile;
+  const auto squared = posthf::checked_mul(tiles, tiles);
+  return posthf::checked_mul(squared, squared);
+}
+inline SourceTilePlan select_source_tile(std::size_t nbf,
+                                         const std::vector<SourceTileCandidate>& candidates) {
+  if (!nbf || candidates.empty())
+    throw std::invalid_argument("source-tile selection requires AO count and candidates");
+  SourceTilePlan best{};
+  bool selected = false;
+  for (const auto& candidate : candidates) {
+    if (!candidate.axis_tile || !candidate.source_scans || candidate.axis_tile > nbf)
+      throw std::invalid_argument("invalid source-tile candidate");
+    const auto reads = posthf::checked_mul(source_reads_per_scan(nbf, candidate.axis_tile),
+                                           candidate.source_scans);
+    const bool better =
+        !selected || reads < best.source_reads ||
+        (reads == best.source_reads && candidate.source_scans < best.source_scans) ||
+        (reads == best.source_reads && candidate.source_scans == best.source_scans &&
+         candidate.peak_bytes < best.peak_bytes) ||
+        (reads == best.source_reads && candidate.source_scans == best.source_scans &&
+         candidate.peak_bytes == best.peak_bytes && candidate.axis_tile > best.axis_tile);
+    if (better) {
+      best = {candidate.axis_tile, reads, candidate.source_scans, candidate.peak_bytes};
+      selected = true;
+    }
+  }
+  return best;
+}
 }  // namespace vibeqc::posthf::generated

@@ -166,6 +166,9 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
       check(posthf_cuda_create_v1(device, ref_.nbf, state.shape.data(), tile_.data(), panels.data(),
                                   state.plan.allocation_bytes, &device_blocks.pointers[request],
                                   error, sizeof(error)));
+      if (work)
+        work->h2d_bytes = checked_add(work->h2d_bytes,
+                                      checked_mul(state.plan.coefficient_elements, sizeof(double)));
     }
 #else
     (void)device;
@@ -176,7 +179,10 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
   std::size_t raw_elements = 1;
   for (const auto extent : tile_) raw_elements = checked_mul(raw_elements, extent);
   std::vector<double> raw(raw_elements);
-  if (work) work->mo_blocks = checked_add(work->mo_blocks, requests.size());
+  if (work) {
+    work->source_scans = checked_add(work->source_scans, 1);
+    work->mo_blocks = checked_add(work->mo_blocks, requests.size());
+  }
   for (std::size_t u = 0; u < ref_.nbf; u += tile_[0])
     for (std::size_t v = 0; v < ref_.nbf; v += tile_[1])
       for (std::size_t w = 0; w < ref_.nbf; w += tile_[2])
@@ -210,6 +216,13 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
           }
           if (cuda) {
 #if VIBEQC_HAS_CUDA
+            if (work) {
+              work->cuda_transform_calls =
+                  checked_add(work->cuda_transform_calls, device_blocks.pointers.size());
+              work->h2d_bytes =
+                  checked_add(work->h2d_bytes, checked_mul(checked_mul(elements, sizeof(double)),
+                                                           device_blocks.pointers.size()));
+            }
             for (auto* pointer : device_blocks.pointers)
               check(posthf_cuda_add_v1(pointer, raw.data(), begin.data(), current.data(), error,
                                        sizeof(error)));
@@ -256,6 +269,9 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
       auto& state = states[request];
       check(posthf_cuda_download_v1(device_blocks.pointers[request], state.output.data(),
                                     state.output.size(), error, sizeof(error)));
+      if (work)
+        work->d2h_bytes =
+            checked_add(work->d2h_bytes, checked_mul(state.output.size(), sizeof(double)));
       if (metrics) {
         vibeqc_tensor::Metrics measured;
         check(posthf_cuda_metrics_v1(device_blocks.pointers[request], &measured, error,

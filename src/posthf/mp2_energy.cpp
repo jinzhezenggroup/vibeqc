@@ -1,6 +1,7 @@
 #include "posthf/mp2_energy.hpp"
 
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 
 #include "posthf/mp2_cpu_generated.hpp"
@@ -71,19 +72,49 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
                                                   32ULL * tile * tile + 16ULL * tile + 64);
   if (kernel_reserve >= budget)
     throw std::length_error("MP2 energy phase exceeds numeric memory budget");
-  posthf::NativeBlockProvider provider(source, ref, budget - kernel_reserve);
   const std::array<std::size_t, 4> block_shape{1, tile, 1, tile};
-  const auto request_capacity = provider.batch_capacity(block_shape, cuda);
   const auto virtual_tiles = (nv + tile - 1) / tile;
   const auto total_jobs = posthf::checked_mul(posthf::checked_mul(ref.nocc, ref.nocc),
                                               posthf::checked_mul(virtual_tiles, virtual_tiles));
+  const auto provider_budget = budget - kernel_reserve;
+  posthf::NativeBlockProvider widest_provider(source, ref, provider_budget,
+                                              std::numeric_limits<unsigned>::max());
+  const auto maximum_axis_tile = widest_provider.tile_shape()[0];
+
+  std::vector<posthf::generated::SourceTileCandidate> tile_candidates;
+  tile_candidates.reserve(maximum_axis_tile);
+  for (std::size_t axis_tile = 1; axis_tile <= maximum_axis_tile; ++axis_tile) {
+    try {
+      posthf::NativeBlockProvider candidate(source, ref, provider_budget,
+                                            static_cast<unsigned>(axis_tile));
+      const auto request_capacity = candidate.batch_capacity(block_shape, cuda);
+      const auto candidate_reuse = generated::conventional_reuse_plan(request_capacity, total_jobs);
+      const auto provider_requests = candidate_reuse.provider_requests;
+      const auto peak = posthf::checked_add(
+          candidate.batch_bytes(block_shape, provider_requests, cuda), kernel_reserve);
+      if (peak > budget) continue;
+      const auto source_scans =
+          candidate_reuse.shared_scan
+              ? (total_jobs + candidate_reuse.jobs_per_batch - 1) / candidate_reuse.jobs_per_batch
+              : posthf::checked_mul(2, total_jobs);
+      tile_candidates.push_back({candidate.tile_shape()[0], source_scans, peak});
+    } catch (const std::length_error&) {
+      continue;
+    }
+  }
+  if (tile_candidates.empty())
+    throw std::length_error("MP2 energy phase exceeds numeric memory budget");
+  const auto source_tile_plan = posthf::generated::select_source_tile(ref.nbf, tile_candidates);
+  posthf::NativeBlockProvider provider(source, ref, provider_budget,
+                                       static_cast<unsigned>(source_tile_plan.axis_tile));
+  const auto request_capacity = provider.batch_capacity(block_shape, cuda);
   const auto reuse = generated::conventional_reuse_plan(request_capacity, total_jobs);
   const bool shared_scan = reuse.shared_scan;
   const auto jobs_per_batch = reuse.jobs_per_batch;
   const auto provider_requests = reuse.provider_requests;
   const auto peak = posthf::checked_add(provider.batch_bytes(block_shape, provider_requests, cuda),
                                         kernel_reserve);
-  if (peak > budget) throw std::length_error("MP2 energy phase exceeds numeric memory budget");
+  if (peak > budget) throw std::logic_error("selected MP2 source tile exceeds admitted peak");
 
   Energy result;
   result.minimum_denominator = minimum_denominator;
@@ -201,6 +232,15 @@ Energy conventional_energy(const scf::PhysicalReference& ref, const posthf::RawS
           if (jobs.size() == jobs_per_batch) flush();
         }
   flush();
+
+  if (result.provider_work.source_scans != source_tile_plan.source_scans ||
+      result.provider_work.source_reads != source_tile_plan.source_reads)
+    throw std::logic_error("MP2 source execution disagrees with compiler tile schedule");
+  const auto ao2 = posthf::checked_mul(ref.nbf, ref.nbf);
+  const auto ao4 = posthf::checked_mul(ao2, ao2);
+  if (result.provider_work.source_values !=
+      posthf::checked_mul(ao4, result.provider_work.source_scans))
+    throw std::logic_error("MP2 AO source value count disagrees with compiler tile schedule");
 
   result.opposite_spin = sum[0];
   result.same_spin = sum[1];
