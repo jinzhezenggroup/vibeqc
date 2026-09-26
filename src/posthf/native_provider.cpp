@@ -57,6 +57,7 @@ NumericBlockPlan NativeBlockProvider::plan(const std::array<std::size_t, 4>& sha
 
 std::size_t NativeBlockProvider::batch_bytes(const std::array<std::size_t, 4>& shape,
                                              std::size_t requests, bool cuda) const {
+  if (!requests && !cuda) return common_host_bytes();
   const auto p = plan(shape, cuda);
   const auto host_common = common_host_bytes();
   if (p.host_bytes < host_common)
