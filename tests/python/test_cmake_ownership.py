@@ -142,3 +142,45 @@ def test_top_level_is_composition_only_for_sources_and_codegen() -> None:
     assert "vibeqc_add_component_sources(vibeqc)" in cmake
     assert "vibeqc_register_host_generated_sources(vibeqc)" in cmake
     assert "vibeqc_register_cuda_generated_sources(vibeqc)" in cmake
+
+
+def test_source_identity_hashing_runs_at_build_time(tmp_path: typing.Any) -> None:
+    """Source edits should rebuild the identity header without reconfiguring CMake."""
+    cmake = _read("CMakeLists.txt")
+    identity_cmake = _read("cmake/VibeQCSourceIdentity.cmake")
+    manifest = json.loads(_read("cmake/VibeQCSourceIdentity.json"))
+
+    assert "file(SHA256" not in cmake
+    assert "CMAKE_CONFIGURE_DEPENDS" not in cmake
+    assert "tools/generate_build_identity.py" in cmake
+    assert "CONFIGURE_DEPENDS" in identity_cmake
+    assert (
+        'set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_manifest_path}")'
+        in identity_cmake
+    )
+    assert "tools/generate_build_identity.py" in manifest["files"]
+
+    output = tmp_path / "build_identity.hpp"
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools/generate_build_identity.py"),
+            "--source-root",
+            str(ROOT),
+            "--manifest",
+            str(ROOT / "cmake/VibeQCSourceIdentity.json"),
+            "--template",
+            str(ROOT / "src/api/build_identity.hpp.in"),
+            "--output",
+            str(output),
+            "--cuda-fast-compile",
+            "OFF",
+            "--release-build",
+            "ON",
+        ],
+        check=True,
+    )
+    rendered = output.read_text()
+    assert 'kVibeqcSourceIdentity = "' in rendered
+    assert "#define VIBEQC_CUDA_FAST_COMPILE 0" in rendered
+    assert "#define VIBEQC_TUNING_RELEASE_BUILD 1" in rendered

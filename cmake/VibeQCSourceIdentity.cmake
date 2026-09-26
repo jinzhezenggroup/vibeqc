@@ -1,14 +1,20 @@
 include_guard(GLOBAL)
 
 # Expand the source-identity inventory from one repository-owned manifest.
-# CMake keeps CONFIGURE_DEPENDS here so adding/removing a file covered by a
-# recursive group invalidates the configured source identity automatically.
+# CONFIGURE_DEPENDS is intentionally limited to inventory membership: adding or
+# removing a covered file regenerates the build graph, while ordinary content
+# edits are handled by the build-time identity generator.
 function(vibeqc_collect_source_identity_inputs output_variable)
   set(_manifest_relative "cmake/VibeQCSourceIdentity.json")
   set(_manifest_path "${CMAKE_CURRENT_SOURCE_DIR}/${_manifest_relative}")
   if(NOT EXISTS "${_manifest_path}")
     message(FATAL_ERROR "VibeQC source identity manifest is missing: ${_manifest_path}")
   endif()
+
+  # The manifest defines the configure-time membership graph itself. Re-run
+  # CMake when that graph changes, while ordinary member content remains a
+  # build-time dependency handled by generate_build_identity.py.
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_manifest_path}")
 
   file(READ "${_manifest_path}" _manifest_json)
   string(JSON _schema GET "${_manifest_json}" schema_version)

@@ -20,9 +20,9 @@ were actually loaded and publishes them as a Make/Ninja depfile. CMake keeps the
 generator script, runner, manifests, parameter files and other explicit inputs as
 ordinary dependencies.
 
-The complete `VibeQCSourceIdentity.json` inventory remains unchanged in scope
-and still drives compatibility identity and configure-time invalidation. Rebuild
-dependency discovery and compatibility identity are deliberately separate.
+The complete `VibeQCSourceIdentity.json` inventory remains unchanged in scope.
+Rebuild dependency discovery and compatibility identity are deliberately
+separate.
 
 ## Rejected alternatives
 
@@ -47,8 +47,6 @@ the unnecessary fan-out this change is intended to remove.
   implementation worktree.
 - Real `vibeqc_xc_cpu_codegen` generation recorded 9 repository-local Python
   dependencies in its depfile on node3.
-- Touching `python/vibeqc_compiler/tensor/layout.py` caused the expected CMake
-  source-identity reconfigure but no XC generator work.
 - Touching the loaded `python/vibeqc_compiler/xc/spec.py` reran the XC generator.
 - `ruff check tools/run_codegen.py tests/python/test_cmake_ownership.py` passed.
 
@@ -59,10 +57,18 @@ Python dependency graph changed, while complete compatibility identity remains
 conservative. The first successful generator invocation creates its depfile; the
 generator script and runner remain explicit bootstrap dependencies.
 
+## Superseded in part
+
+#1382 removes configure-time content hashing from source identity while preserving
+the complete compatibility inventory and CMake file-membership discovery. Existing
+identity inputs now regenerate the build-identity header through the build graph.
+See `2026-09-26-build-time-source-identity.md`.
+
 ## References
 
 - `cmake/VibeQCGenerated.cmake`
 - `tests/python/test_cmake_ownership.py`
+- #1382
 
 ---
 
