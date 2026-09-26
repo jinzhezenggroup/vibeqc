@@ -626,6 +626,24 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/method/spec.py"
     ARGS --output "${VIBEQC_WB97MV_CUDA_HEADER}")
 
+  set(VIBEQC_SPLIT_HYBRID_CUDA_HEADER
+      "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_split_hybrid_registry.cuh")
+  vibeqc_register_generated_sources(
+    TARGET ${target}
+    ADD_TO_TARGET
+    GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_split_hybrid_registry.py"
+    OUTPUTS "${VIBEQC_SPLIT_HYBRID_CUDA_HEADER}"
+    DEPENDS
+      "${CMAKE_CURRENT_SOURCE_DIR}/manifests/cuda_split_hybrids.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_xc_split_hybrid_cuda.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/libxc_split_hybrid.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/libxc_bulk_metadata.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tools/libxc_method_metadata.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/libxc_bulk.py"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/libxc_bulk_catalog.json"
+      "${CMAKE_CURRENT_SOURCE_DIR}/python/vibeqc_compiler/xc/libxc_maple.py"
+    ARGS --output "${VIBEQC_SPLIT_HYBRID_CUDA_HEADER}")
+
   set(VIBEQC_GRID_SOURCE
       "${CMAKE_CURRENT_BINARY_DIR}/generated/generated_grid_policy.cu")
   # The r2SCAN minority-spin derivative is sensitive to contraction of 1-zeta
@@ -647,6 +665,7 @@ macro(vibeqc_register_cuda_generated_sources target)
       "${VIBEQC_B3LYP_CUDA_HEADER}"
       "${VIBEQC_R2SCAN_CUDA_HEADER}"
       "${VIBEQC_WB97MV_CUDA_HEADER}"
+      "${VIBEQC_SPLIT_HYBRID_CUDA_HEADER}"
     COMPILE_OPTIONS "${_vibeqc_grid_fp_contract_option}"
     ARGS --output "${VIBEQC_GRID_SOURCE}")
 

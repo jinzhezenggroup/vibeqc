@@ -9,10 +9,11 @@ from vibeqc_compiler.dft.ao_cuda import emit_native_xc_point_dispatch
 
 
 def test_admitted_point_consumers(tmp_path: Path) -> None:
-    """Every admitted key chooses its own consumer; unsupported keys must fail.
+    """Admitted legacy and split keys resolve; unsupported keys must fail.
 
     Stub launchers record template arguments, so this tests the emitted host
     dispatch itself without duplicating its conditional implementation in Python.
+    The split registry stub admits the two qualified MGGA codes without CUDA.
     Spin, AO precision and point counts are deliberately absent from the AOT key:
     they remain validated data/layout arguments rather than extra code variants.
     """
@@ -26,6 +27,13 @@ def test_admitted_point_consumers(tmp_path: Path) -> None:
         "unsigned selected_functional; bool selected_response;\n"
         "template <unsigned F, bool R> void launch_points() {\n"
         "  selected_functional = F; selected_response = R;\n}\n"
+        "namespace generated {\n"
+        "bool split_hybrid_registered(std::uint32_t functional) {\n"
+        "  return functional == 0x201c2U || functional == 0x2010cU;\n}\n"
+        "bool split_hybrid_is_mgga(std::uint32_t functional) {\n"
+        "  return split_hybrid_registered(functional);\n}\n}\n"
+        "template <unsigned F> void launch_split_hybrid_points() {\n"
+        "  selected_functional = F; selected_response = false;\n}\n"
         + emit_native_xc_point_dispatch()
         + r"""
 int main() {
@@ -48,6 +56,14 @@ int main() {
     }
   }
   if (count != 7) return 5;
+  auto split = resolve_point_launcher(0x201c2U, false);
+  if (!split || split != resolve_point_launcher(0x2010cU, false)) return 7;
+  split();
+  if (selected_functional != 5U || selected_response) return 8;
+  try {
+    resolve_point_launcher(0x201c2U, true);
+    return 9;
+  } catch (const std::invalid_argument&) {}
   try {
     resolve_point_launcher(std::numeric_limits<std::uint32_t>::max(), false);
     return 6;

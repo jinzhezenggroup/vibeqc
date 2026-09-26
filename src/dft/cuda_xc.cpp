@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "generated_split_hybrid_registry.cuh"
 #include "tensor/cuda_error.hpp"
 #include "vibeqc/vibeqc.hpp"
 
@@ -64,7 +65,8 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
                                   std::size_t tile_points, bool response,
                                   CudaXcAoPrecision ao_precision, double exchange_scale,
                                   double correlation_scale) {
-  const bool supported_functional = functional <= 4U;
+  const bool generated_split_hybrid = generated::split_hybrid_registered(functional);
+  const bool supported_functional = functional <= 4U || generated_split_hybrid;
   if (!atoms || !primitives || !nao || !points || !tile_points || tile_points > INT_MAX ||
       atoms > INT_MAX || primitives > INT_MAX || nao > INT_MAX || !supported_functional)
     throw std::invalid_argument("invalid CUDA XC resource shape");
@@ -81,14 +83,15 @@ CudaXcLayout cuda_xc_layout_shape(std::size_t atoms, std::size_t primitives, std
       ao_precision != CudaXcAoPrecision::Fp32ComputeFp64Storage)
     throw std::invalid_argument("unknown CUDA XC AO precision");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && functional > 1U)
-    throw std::invalid_argument("meta-GGA CUDA XC currently requires strict FP64 AO evaluation");
+    throw std::invalid_argument("non-LDA/PBE CUDA XC currently requires strict FP64 AO evaluation");
   if (ao_precision == CudaXcAoPrecision::Fp32ComputeFp64Storage && response)
     throw std::invalid_argument("CUDA XC response currently requires strict FP64 AO evaluation");
   constexpr auto overflow = "CUDA XC storage overflow";
   const auto packed =
       size_add(size_add(size_mul(3, atoms, overflow), size_mul(2, primitives, overflow), overflow),
                size_mul(16, nao, overflow), overflow);
-  const bool meta_gga = functional == 2U || functional == 4U;
+  const bool meta_gga = functional == 2U || functional == 4U ||
+                        (generated_split_hybrid && generated::split_hybrid_is_mgga(functional));
   const auto ao_jets = functional == 0U ? 1U : 4U;
   const auto work_jets = meta_gga ? 4U : 1U;
   const auto feature_terms = functional == 0U ? 1U : (meta_gga ? 5U : 4U);

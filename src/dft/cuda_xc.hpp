@@ -35,8 +35,8 @@ enum class CudaXcDensityPrecision : std::uint8_t {
  * resolved at preparation; runtime execution only binds validated device data.
  * Spin remains a layout argument and every entry uses the same FP64 contract. */
 using CudaXcPointLauncher = void (*)(cudaStream_t, const double*, const double*, std::size_t,
-                                     std::size_t, double*, double*, int*, double, double,
-                                     const double*);
+                                     std::size_t, double*, double*, int*, std::uint32_t, double,
+                                     double, const double*);
 
 struct CudaXcLayout {
   std::size_t natom{}, nprimitive{}, nao{}, npoint{}, tile_points{}, spins{}, jets{};
