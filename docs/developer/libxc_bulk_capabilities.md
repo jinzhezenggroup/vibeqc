@@ -192,6 +192,31 @@ production-qualified: unresolved numerical boundary rows remain explicit
 failures. Use `--require-pass` only when the caller intends a fully qualified
 matrix to be a hard gate.
 
+### Catalog campaign
+
+`tools/qualify_libxc_production_catalog.py` applies the same single-functional
+campaign to a deterministic sorted inventory or shard. Use an artifact/scratch
+directory rather than writing raw runs directly under `benchmarks/results/`:
+
+```bash
+python tools/qualify_libxc_production_catalog.py \
+  --output .artifacts/libxc-domain/shard-0 \
+  --evidence-prefix artifact://libxc-domain/shard-0 \
+  --shard-count 4 --shard-index 0
+```
+
+Each eligible registration gets its own campaign JSON with exact receipt and
+execution identities. Structurally unsupported registrations are summarized
+without a fabricated receipt. `summary.json` reports pass/fail/not-run,
+structural blockers, runner errors, family counts, and counts of blocked matrix
+case IDs. Sharding is deterministic by sorted registration name, so shards are
+disjoint and reconstruct the same selected inventory.
+
+The catalog command is evidence collection, not publication or admission.
+`--require-all-pass` turns any non-pass selected registration into a nonzero
+command result; without it, negative results are retained for diagnosis and
+later B2 aggregation.
+
 The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
 machine-readable status `pass` for the compiled CPU FP64 production entry point,
 including its shared Libxc work-MGGA boundary wrapper. Its acceptance oracle uses
