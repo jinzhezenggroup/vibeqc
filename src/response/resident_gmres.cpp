@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 namespace vibeqc::response {
 namespace {
@@ -62,7 +63,7 @@ struct Slots {
   std::size_t best_x, best_residual, count;
 };
 
-ResidentGmresResult make_result(const GmresPlan& plan, const ResidentGmresWorkspace& workspace,
+ResidentGmresResult make_result(const ResidentGmresWorkspace& workspace,
                                 std::size_t resident_bytes, WorkspaceVector solution,
                                 GmresStatus status, double residual, double rhs_norm,
                                 std::size_t iterations, std::size_t restarts,
@@ -105,7 +106,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
   if (rhs.size() != n || !finite(rhs) ||
       (!initial_guess.empty() && (initial_guess.size() != n || !finite(initial_guess)))) {
     WorkspaceVector solution(n, 0.0, allocator);
-    return make_result(plan, workspace, 0, std::move(solution), GmresStatus::nonfinite_input,
+    return make_result(workspace, 0, std::move(solution), GmresStatus::nonfinite_input,
                        std::numeric_limits<double>::infinity(), 0.0, 0, 0, 0);
   }
 
@@ -119,7 +120,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
       std::max(plan.options.absolute_tolerance, plan.options.relative_tolerance * rhs_norm);
   if (initial_guess.empty() && rhs_norm <= target) {
     WorkspaceVector solution(n, 0.0, allocator);
-    return make_result(plan, workspace, backend.owned_resident_bytes(), std::move(solution),
+    return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
                        GmresStatus::initial_residual, rhs_norm, rhs_norm, 0, 0, 0);
   }
 
@@ -140,14 +141,14 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
   if (!std::isfinite(beta)) {
     WorkspaceVector solution(n, 0.0, allocator);
     backend.download(Slots::x, solution);
-    return make_result(plan, workspace, backend.owned_resident_bytes(), std::move(solution),
+    return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
                        GmresStatus::nonfinite_operator,
                        std::numeric_limits<double>::infinity(), rhs_norm, 0, 0, operator_actions);
   }
   if (beta <= target) {
     WorkspaceVector solution(n, 0.0, allocator);
     backend.download(Slots::x, solution);
-    return make_result(plan, workspace, backend.owned_resident_bytes(), std::move(solution),
+    return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
                        GmresStatus::initial_residual, beta, rhs_norm, 0, 0, operator_actions);
   }
 
@@ -163,7 +164,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
   auto finish = [&](std::size_t solution_slot, GmresStatus status, double residual) {
     WorkspaceVector solution(n, 0.0, allocator);
     backend.download(solution_slot, solution);
-    return make_result(plan, workspace, backend.owned_resident_bytes(), std::move(solution), status,
+    return make_result(workspace, backend.owned_resident_bytes(), std::move(solution), status,
                        residual, rhs_norm, iterations, restarts, operator_actions);
   };
 
