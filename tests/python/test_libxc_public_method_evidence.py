@@ -175,7 +175,9 @@ def test_public_admission_fails_when_prerequisite_stage_disappears() -> None:
         )
 
 
-def test_public_endpoint_rejects_forged_generic_coverage_without_exact_admission() -> None:
+def test_public_endpoint_rejects_forged_generic_coverage_without_exact_admission() -> (
+    None
+):
     prerequisites = _prerequisites()
     capability = libxc_bulk_capabilities.functional_capability(
         NAME, evidence=prerequisites

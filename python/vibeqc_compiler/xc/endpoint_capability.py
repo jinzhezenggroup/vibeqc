@@ -208,7 +208,11 @@ def _public_admission_reason(
         return "public admission endpoint resolutions must be a sequence"
 
     prerequisites = (
-        {stage: payload for stage, payload in evidence.items() if stage != "public-method"}
+        {
+            stage: payload
+            for stage, payload in evidence.items()
+            if stage != "public-method"
+        }
         if isinstance(evidence, Mapping)
         else {}
     )
@@ -224,7 +228,9 @@ def _public_admission_reason(
         for spin in SPIN_LAYOUTS
     ]
     if list(raw_resolutions) != expected_resolutions:
-        return "public admission endpoint resolutions do not match current prerequisites"
+        return (
+            "public admission endpoint resolutions do not match current prerequisites"
+        )
 
     result_payload = {
         "schema": _PUBLIC_METHOD_RESULT_SCHEMA,
