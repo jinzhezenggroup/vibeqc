@@ -52,6 +52,15 @@ def _artifact_selector(function_name: str, artifact_name: str) -> ast.IfExp:
         )
     ]
     assert eager_sources == []
+    component_compiler_guards = [
+        node
+        for node in ast.walk(function)
+        if isinstance(node, ast.If)
+        and {"component_mode", "compiler"}
+        <= {child.id for child in ast.walk(node.test) if isinstance(child, ast.Name)}
+        and any(isinstance(child, ast.Raise) for child in node.body)
+    ]
+    assert component_compiler_guards == []
     assignments = [
         node
         for node in ast.walk(function)

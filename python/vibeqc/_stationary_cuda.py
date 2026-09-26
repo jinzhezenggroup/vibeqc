@@ -1204,10 +1204,6 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("CUDA diagnostic primitive-topology cap exceeded")
     _, aos, expansions, requests = _layout(basis)
     component_mode = _component_mode(expansions)
-    if component_mode and compiler is None:
-        raise TypeError(
-            "d-shell stationary CUDA requires an explicit CUDA compiler adapter"
-        )
     primitive_sum = sum(
         int(row[2]) * len(expansion)
         for row, expansion in zip(aos, expansions, strict=True)
