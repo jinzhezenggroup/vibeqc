@@ -36,6 +36,9 @@ struct DeviceLambdaOutputs {
   double* t1{};
   double* t2{};
 };
+struct DeviceParameterOutput {
+  double* values{};
+};
 
 DeviceIterationOutputs run_iteration_cuda(CudaState& state);
 DeviceReplayOutputs run_replay_cuda(CudaState& state);
@@ -43,5 +46,15 @@ DeviceLambdaOutputs run_lambda_rhs_cuda(CudaState& state);
 DeviceLambdaOutputs run_lambda_transpose_cuda(CudaState& state);
 DeviceLambdaOutputs run_lambda_independent_rhs_cuda(CudaState& state);
 DeviceLambdaOutputs run_lambda_independent_transpose_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_foo_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_fov_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_fvv_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_ovov_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_ovvo_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_oovv_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_ovvv_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_ovoo_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_oooo_cuda(CudaState& state);
+DeviceParameterOutput run_parameter_vvvv_cuda(CudaState& state);
 
 }  // namespace vibeqc::cc::generated
