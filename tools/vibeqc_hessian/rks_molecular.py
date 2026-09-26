@@ -10,6 +10,7 @@ capability inferred.
 
 from __future__ import annotations
 
+import time
 import typing
 from copy import deepcopy
 from dataclasses import dataclass
@@ -82,6 +83,18 @@ class RKSHVPBatchResult:
     def diagnostics(self) -> dict[str, typing.Any]:
         return deepcopy(dict(self._diagnostics))
 
+
+@dataclass(frozen=True, eq=False)
+class RKSHessianResult:
+    """Raw bounded Cartesian RKS Hessian assembled from complete block HVPs."""
+
+    matrix: np.ndarray
+    identity: str
+    _diagnostics: typing.Mapping[str, typing.Any]
+
+    @property
+    def diagnostics(self) -> dict[str, typing.Any]:
+        return deepcopy(dict(self._diagnostics))
 
 def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
     operator.validate_current()
@@ -513,3 +526,102 @@ def rks_hvp_many(
         identity=identity,
         _diagnostics=diagnostics,
     )
+
+def rks_hessian(
+    operator: typing.Any,
+    *,
+    block_size: int | None = None,
+    cache: typing.Any = ".artifacts",
+    strategy: str = "recycled",
+    output_budget_bytes: int = 64 << 20,
+    solver_options: typing.Any = None,
+) -> RKSHessianResult:
+    """Assemble the raw bounded semilocal RKS Hessian from block HVP columns.
+
+    The output is never symmetrized. output_budget_bytes covers the dense
+    result plus its final immutable publication; response/provider work keeps
+    the existing independently bounded contracts and is reported per block.
+    """
+    if not isinstance(operator, NativeRKSResponse):
+        raise TypeError("RKS Hessian requires NativeRKSResponse")
+    _checked_plan(operator)
+    if strategy not in ("sequential", "blocked", "recycled"):
+        raise ValueError("strategy must be sequential, blocked or recycled")
+    if solver_options is not None and not isinstance(solver_options, GMRESOptions):
+        raise TypeError("solver_options must be GMRESOptions")
+    if type(output_budget_bytes) is not int or not 0 < output_budget_bytes < 2**63:
+        raise ValueError("output_budget_bytes must be a positive int64 byte count")
+
+    natom = operator.xc_kernel.basis.natom
+    coordinates = 3 * natom
+    if block_size is None:
+        block_size = min(4, coordinates)
+    if type(block_size) is not int or not 1 <= block_size <= coordinates:
+        raise ValueError("block_size must be between 1 and 3*natoms")
+
+    output_bytes = coordinates * coordinates * np.dtype(np.float64).itemsize
+    output_peak_bound = 2 * output_bytes
+    if output_peak_bound > output_budget_bytes:
+        raise ValueError(
+            "full RKS Hessian output and immutable publication exceed "
+            "output_budget_bytes"
+        )
+
+    matrix = np.empty((coordinates, coordinates), dtype=np.float64)
+    cache_path = Path(cache)
+    blocks: list[dict[str, typing.Any]] = []
+    started = time.perf_counter()
+    for begin in range(0, coordinates, block_size):
+        end = min(coordinates, begin + block_size)
+        directions = np.zeros((end - begin, coordinates), dtype=np.float64)
+        for local, column in enumerate(range(begin, end)):
+            directions[local, column] = 1.0
+        result = rks_hvp_many(
+            operator,
+            directions.reshape(end - begin, natom, 3),
+            cache=cache_path,
+            strategy=strategy,
+            solver_options=solver_options,
+        )
+        matrix[:, begin:end] = result.values.reshape(end - begin, coordinates).T
+        blocks.append(
+            {
+                "begin": begin,
+                "end": end,
+                "identity": result.identity,
+                "diagnostics": result.diagnostics,
+            }
+        )
+        del result, directions
+
+    operator.validate_current()
+    if not np.isfinite(matrix).all():
+        raise FloatingPointError("nonfinite RKS Hessian; no result published")
+    symmetry_error = float(np.max(np.abs(matrix - matrix.T), initial=0.0))
+    identity = canonical_hash(
+        {
+            "schema": "vibeqc.rks-hessian-block/v1",
+            "state": operator.state.identity.to_payload(),
+            "block_size": block_size,
+            "strategy": strategy,
+            "blocks": tuple(item["identity"] for item in blocks),
+        }
+    )
+    diagnostics = MappingProxyType(
+        {
+            "method": operator.state.identity.method,
+            "block_size": block_size,
+            "block_count": len(blocks),
+            "strategy": strategy,
+            "output_bytes": output_bytes,
+            "output_peak_bound_bytes": output_peak_bound,
+            "output_budget_bytes": output_budget_bytes,
+            "raw_symmetry_error": symmetry_error,
+            "posthoc_symmetrization": False,
+            "blocks": tuple(blocks),
+            "seconds": time.perf_counter() - started,
+            "public_calculator_endpoint": False,
+            "complete_resource_bound": False,
+        }
+    )
+    return RKSHessianResult(immutable(matrix), identity, diagnostics)
