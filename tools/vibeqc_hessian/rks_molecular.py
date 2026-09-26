@@ -105,12 +105,12 @@ def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
     if (
         operator._source.representation != "cartesian"
         or operator._source.auxiliary_shells
-        or not 1 <= operator._source.nbf <= 12
-        or not 1 <= len(operator._source.atoms) <= 4
+        or operator._source.nbf < 1
+        or len(operator._source.atoms) < 1
     ):
         raise ValueError(
-            "semilocal RKS molecular HVP requires direct Cartesian all-electron "
-            "sources bounded to 12 AOs and four atoms"
+            "semilocal RKS molecular HVP requires a nonempty direct Cartesian "
+            "all-electron source"
         )
     plan = StationaryHVPPlan(
         state._source.method_ir,
@@ -130,6 +130,26 @@ def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
             "semilocal RKS HVP source inventory is not the qualified slice"
         )
     return plan
+
+
+def _checked_integral_budget(
+    operator: NativeRKSResponse, budget_bytes: int
+) -> int:
+    """Bound HVP plan-weight numerics before response/provider work starts."""
+    if type(budget_bytes) is not int or not 0 < budget_bytes < 2**63:
+        raise ValueError("integral_budget_bytes must be a positive int64 byte count")
+    nbf = operator._source.nbf
+    largest_shell = max(operator._source.shell_sizes, default=0)
+    # Pair plans retain index/feed/fixed/moving buffers; shell-local Coulomb
+    # plans retain four-index feeds and outputs. 128 bytes per scalar term is a
+    # conservative numeric-only envelope; Python/compiler metadata is excluded.
+    terms = max(nbf * nbf, largest_shell**4)
+    plan_weight_workspace = 128 * terms
+    if plan_weight_workspace > budget_bytes:
+        raise MemoryError(
+            "RKS Hessian plan-weight numerics exceed integral_budget_bytes"
+        )
+    return plan_weight_workspace
 
 
 def _pair_plan_weights(
@@ -209,6 +229,7 @@ def _integral_source_hvp(
     response: DirectionalRKSResponse,
     direction: np.ndarray,
     cache: Path,
+    integral_budget_bytes: int,
 ) -> tuple[np.ndarray, dict[str, typing.Any]]:
     """Apply one plan-owned integral source as d(weight)dI + weight d2I(v)."""
     if source_name in ("one_electron", "overlap_pulay"):
@@ -225,6 +246,7 @@ def _integral_source_hvp(
             direction,
             pair_weights=fixed,
             cache=cache,
+            budget_bytes=integral_budget_bytes,
         )
     elif source_name == "coulomb":
 
@@ -246,6 +268,7 @@ def _integral_source_hvp(
             direction,
             eri_shell_weights=fixed_weights,
             cache=cache,
+            budget_bytes=integral_budget_bytes,
         )
     else:
         raise ValueError("unknown semilocal RKS integral HVP source")
@@ -282,6 +305,8 @@ def _rks_hvp_with_response(
     response_driver_identity: str,
     nuclear_response_solves: int,
     execution: str,
+    integral_budget_bytes: int,
+    plan_weight_workspace_bytes: int,
 ) -> RKSHVPResult:
     """Assemble one complete HVP from an already solved directional response."""
     if not np.array_equal(directional.direction, vector):
@@ -298,6 +323,7 @@ def _rks_hvp_with_response(
                 context.response,
                 context.direction,
                 cache,
+                integral_budget_bytes,
             )
             provider_diagnostics[source_name] = diagnostic
             return value
@@ -388,6 +414,8 @@ def _rks_hvp_with_response(
             "response_iterations": directional.response.solve_result.iterations,
             "response_residual_norm": directional.response.solve_result.residual_norm,
             "integral_providers": deepcopy(provider_diagnostics),
+            "integral_budget_bytes": integral_budget_bytes,
+            "plan_weight_workspace_bound_bytes": plan_weight_workspace_bytes,
             "xc_second_order": "native-scf-point-response/analytic-grid-mixed",
             "full_molecular_hessian_allocated": False,
             "full_ao_rank_four_weights": False,
@@ -410,6 +438,7 @@ def rks_hvp(
     direction: typing.Any,
     *,
     cache: typing.Any = ".artifacts",
+    integral_budget_bytes: int = 64 << 20,
     solver_options: typing.Any = None,
 ) -> RKSHVPResult:
     """Apply the complete bounded direct LDA/PBE RKS molecular Hessian once."""
@@ -418,6 +447,9 @@ def rks_hvp(
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
     plan = _checked_plan(operator)
+    plan_weight_workspace = _checked_integral_budget(
+        operator, integral_budget_bytes
+    )
     vector = checked_direction(direction, operator.xc_kernel.basis.natom)
     cache_path = Path(cache)
     directional = directional_rks_response(
@@ -435,6 +467,8 @@ def rks_hvp(
         response_driver_identity="native-rks-shared-cpks-direction-v1",
         nuclear_response_solves=1,
         execution="bounded-cpu-native-rks-hvp-v2",
+        integral_budget_bytes=integral_budget_bytes,
+        plan_weight_workspace_bytes=plan_weight_workspace,
     )
 
 
@@ -444,6 +478,7 @@ def rks_hvp_many(
     *,
     cache: typing.Any = ".artifacts",
     strategy: str = "recycled",
+    integral_budget_bytes: int = 64 << 20,
     solver_options: typing.Any = None,
 ) -> RKSHVPBatchResult:
     """Apply complete RKS HVPs after one shared sequential/blocked/recycled solve."""
@@ -454,6 +489,9 @@ def rks_hvp_many(
     if solver_options is not None and not isinstance(solver_options, GMRESOptions):
         raise TypeError("solver_options must be GMRESOptions")
     plan = _checked_plan(operator)
+    plan_weight_workspace = _checked_integral_budget(
+        operator, integral_budget_bytes
+    )
     natom = operator.xc_kernel.basis.natom
     raw = np.asarray(directions)
     if (
@@ -486,6 +524,8 @@ def rks_hvp_many(
             response_driver_identity="native-rks-shared-cpks-multi-rhs-v1",
             nuclear_response_solves=0,
             execution="bounded-cpu-native-rks-hvp-multi-rhs-v1",
+            integral_budget_bytes=integral_budget_bytes,
+            plan_weight_workspace_bytes=plan_weight_workspace,
         )
         for vector, response in zip(vectors, directional.responses, strict=True)
     )
@@ -513,6 +553,8 @@ def rks_hvp_many(
             ),
             "rhs_rank": directional.solve_result.rhs_rank,
             "rank_deficient_rhs": directional.solve_result.rank_deficient_rhs,
+            "integral_budget_bytes": integral_budget_bytes,
+            "plan_weight_workspace_bound_bytes": plan_weight_workspace,
             "full_molecular_hessian_allocated": False,
             "full_ao_rank_four_weights": False,
             "execution": "bounded-cpu-native-rks-hvp-multi-rhs-v1",
@@ -536,6 +578,7 @@ def rks_hessian(
     cache: typing.Any = ".artifacts",
     strategy: str = "recycled",
     output_budget_bytes: int = 64 << 20,
+    integral_budget_bytes: int = 64 << 20,
     solver_options: typing.Any = None,
 ) -> RKSHessianResult:
     """Assemble the raw bounded semilocal RKS Hessian from block HVP columns.
@@ -583,6 +626,7 @@ def rks_hessian(
             directions.reshape(end - begin, natom, 3),
             cache=cache_path,
             strategy=strategy,
+            integral_budget_bytes=integral_budget_bytes,
             solver_options=solver_options,
         )
         matrix[:, begin:end] = result.values.reshape(end - begin, coordinates).T
@@ -618,6 +662,7 @@ def rks_hessian(
             "output_bytes": output_bytes,
             "output_peak_bound_bytes": output_peak_bound,
             "output_budget_bytes": output_budget_bytes,
+            "integral_budget_bytes": integral_budget_bytes,
             "raw_symmetry_error": symmetry_error,
             "posthoc_symmetrization": False,
             "blocks": tuple(blocks),
