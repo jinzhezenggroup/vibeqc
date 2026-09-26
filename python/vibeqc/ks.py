@@ -375,9 +375,7 @@ def ks_coefficients(method_ir: typing.Any) -> typing.Any:
             _NativeSemilocalFamily.R2SCAN,
         ):
             if len(method_ir.primitives) != 1:
-                raise NotImplementedError(
-                    "unsupported native KS semilocal composition"
-                )
+                raise NotImplementedError("unsupported native KS semilocal composition")
             exchange_scale = correlation_scale = Fraction(1)
         else:
             # B3LYP/WB97M-V point programs own their internal component
