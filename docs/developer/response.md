@@ -1,10 +1,14 @@
 # Shared orbital response and bounded Krylov solves
 
-`tools/vibeqc_response` is the shared response-solver tooling for RHF and
-semilocal-KS orbital response. Its Krylov controller is Python/host-controlled;
-the operator backends include native J/K execution. It separates the problem snapshot, the
-matrix-free operator, and the linear-solver/recycling state so downstream
-property, Hessian, and correlated-gradient code can reuse one implementation.
+The installed `vibeqc.response` package owns the method-neutral response
+problem identity and matrix-free RHF/CPKS operator equations. The repository
+`tools/vibeqc_response` package still owns the current Krylov controller,
+native provider adapters and validation oracles; its `problem` and `operators`
+modules are compatibility re-exports of the installed owners. Krylov execution
+is Python/host-controlled while selected operator backends use native J/K
+execution. The architecture separates the problem snapshot, matrix-free
+operator and linear-solver/recycling state so downstream property, Hessian and
+correlated-gradient code can reuse one implementation.
 This slice is partial: the RHF response layer and the direct-CPU UHF response
 layer (including `export_uhf`), host-orchestrated spin CUDA exact/DF J/K, and
 native CPU/CUDA LDA/PBE RKS/UKS CPKS handoffs are delivered. Exact-RHF resident
