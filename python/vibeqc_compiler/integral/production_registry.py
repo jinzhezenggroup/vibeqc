@@ -66,6 +66,12 @@ def emit_registry_header(
     """Emit production metadata and the host launch API consumed by cuda_rhf."""
 
     selections = _stable_selection_order(specifications)
+    preferred_streaming_fock_mask = sum(
+        1 << shell_class_index(selection.spec)
+        for selection in selections
+        if KernelConsumer.FOCK in selection.consumers
+        and selection.fock_route == "streaming"
+    )
     rows = []
     for selection in selections:
         if KernelConsumer.FORCE not in selection.consumers:
@@ -147,6 +153,10 @@ inline constexpr std::array<ShellKernelMetadata, {len(mixed_fock_rows)}>
 }}}};
 inline constexpr std::size_t kMixedFockShellKernelCount =
     kMixedFockShellKernels.size();
+
+/** Compiler-profiled classes that prefer no-materialization Fock streaming. */
+inline constexpr std::uint64_t kPreferredStreamingFockShellClassMask =
+    {preferred_streaming_fock_mask}ULL;
 
 /** Return the exact-class bit mask selected by VIBEQC_AOT_SHELL_CLASSES. */
 std::uint64_t enabled_shell_class_mask() noexcept;
@@ -354,6 +364,10 @@ bool selected(const char* list, const char* name) noexcept {{
 
 }}  // namespace
 
+std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {{
+  return kPreferredStreamingFockShellClassMask;
+}}
+
 std::uint64_t enabled_shell_class_mask() noexcept {{
   const char* selection = std::getenv("VIBEQC_AOT_SHELL_CLASSES");
   const bool all = selection == nullptr || *selection == '\\0' ||
@@ -508,6 +522,7 @@ def emit_multi_registry_header(
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 
 namespace vibeqc::scf::generated {{
 
@@ -629,6 +644,7 @@ def emit_multi_registry_source(
         force_mask = 0
         fock_mask = 0
         mixed_fock_mask = 0
+        preferred_streaming_fock_mask = 0
         for selection in _stable_selection_order(profile.selections):
             shell_class = shell_class_index(selection.spec)
             integral = _selection_integral(selection)
@@ -722,6 +738,8 @@ def emit_multi_registry_source(
                     f"{_fock_tasks_per_claim(selection)}U}},"
                 )
                 fock_mask |= 1 << shell_class
+                if selection.fock_route == "streaming":
+                    preferred_streaming_fock_mask |= 1 << shell_class
             if selection.resident_force_recurrence is not None:
                 resident_symbol = f"vibeqc_launch_{identifier}_ppps_resident"
                 declarations.append(
@@ -785,6 +803,7 @@ constexpr std::array<ShellKernelMetadata, {len(mixed_fock_names)}> kMixedFockNam
         kernel_sets.append(
             f"""    {{kCompiledProfiles[{index}], UINT64_C({force_mask}),
       UINT64_C({fock_mask}), UINT64_C({mixed_fock_mask}),
+      UINT64_C({preferred_streaming_fock_mask}),
       kForceNames{index}.data(), kForceNames{index}.size(),
       kFockNames{index}.data(), kFockNames{index}.size(),
       kMixedFockNames{index}.data(), kMixedFockNames{index}.size(),
@@ -815,6 +834,7 @@ struct KernelSet {{
   std::uint64_t force_mask;
   std::uint64_t fock_mask;
   std::uint64_t mixed_fock_mask;
+  std::uint64_t preferred_streaming_fock_mask;
   const ShellKernelMetadata* force_names;
   std::size_t force_name_count;
   const ShellKernelMetadata* fock_names;
@@ -933,6 +953,11 @@ const ShellKernelMetadata* selected_fock_shell_kernels(
   }}
   count = kernels->fock_name_count;
   return kernels->fock_names;
+}}
+
+std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {{
+  const KernelSet* kernels = current_kernel_set();
+  return kernels == nullptr ? 0 : kernels->preferred_streaming_fock_mask;
 }}
 
 std::uint64_t enabled_shell_class_mask() noexcept {{

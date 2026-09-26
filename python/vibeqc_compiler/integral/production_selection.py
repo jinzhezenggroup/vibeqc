@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from vibeqc_compiler.common.cuda_target import cuda_target_info
 
-from .capabilities import normalize_capabilities
+from .capabilities import CAPABILITY_STREAMING_FOCK, normalize_capabilities
 from .cuda_lowering import supports_component_lane_rys
 from .cuda_schedule import ScheduleIR, ScheduleKind
 from .fused_schedule import build_fused_shell_plan
@@ -79,6 +79,10 @@ class KernelSelection:
     recurrence: str = "subset_wick"
     resident_force_recurrence: str | None = None
     fock_schedule: ScheduleIR | None = None
+    # Materialization is a compiler schedule choice separate from kernel geometry.
+    # Existing profiles remain paged unless measured evidence explicitly promotes
+    # the generated no-materialization streaming consumer.
+    fock_route: str = "paged"
     # Optional production code-shape capabilities are measured per profile
     # and persisted in the manifest.  An omitted list intentionally disables
     # optional wrappers for legacy/custom manifests.
@@ -112,6 +116,15 @@ class KernelSelection:
             "capabilities",
             normalize_capabilities(self.spec.name, list(self.capabilities)),
         )
+        if self.fock_route not in ("paged", "streaming"):
+            raise ValueError("production Fock route must be paged or streaming")
+        if self.fock_route == "streaming":
+            if KernelConsumer.FOCK not in self.consumers:
+                raise ValueError("streaming Fock route requires a Fock consumer")
+            if CAPABILITY_STREAMING_FOCK not in self.capabilities:
+                raise ValueError(
+                    "streaming Fock route requires generated streaming capability"
+                )
         if (
             not isinstance(self.recurrence, str)
             or self.recurrence not in _SUPPORTED_RECURRENCES

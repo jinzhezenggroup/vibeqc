@@ -8,10 +8,11 @@ autotune/profile vocabulary.
 
 from __future__ import annotations
 
+import math
 import typing
 from dataclasses import asdict, dataclass
 
-from .gpu_profitability import GpuProfitability
+from .gpu_profitability import ENDPOINT_NOISE_FRACTION, GpuProfitability
 from .provenance import canonical_hash
 
 SCHEDULE_CONTRACT_SCHEMA = "vibeqc.compiler.schedule-contract.v1"
@@ -373,6 +374,118 @@ def rank_schedule_contracts(
     if maximum is not None:
         ranked = ranked[:maximum]
     return tuple(contract for _, _, contract in ranked)
+
+
+def select_measured_schedule_contract(
+    contracts: typing.Iterable[ScheduleContract],
+    *,
+    minimum_speedup: float,
+    endpoint_noise_fraction: float = ENDPOINT_NOISE_FRACTION,
+) -> ScheduleContract:
+    """Select one measured legal schedule, failing closed to the declared fallback.
+
+    Domain owners still define scientific legality and the measurement protocol.
+    This shared layer only compares schedules for the same consumer/workload/
+    target/precision identity. A candidate without complete endpoint timing is
+    never promoted. Measured candidates must clear both the caller's speedup gate
+    and the shared resource-regression gate; schedules inside the timing-noise
+    band are ordered by compiled resource pressure.
+    """
+
+    materialized = tuple(contracts)
+    if not materialized:
+        raise ValueError("measured schedule selection requires candidates")
+    if any(not isinstance(contract, ScheduleContract) for contract in materialized):
+        raise TypeError("measured schedule selection requires ScheduleContract records")
+    for value, label, lower, upper in (
+        (minimum_speedup, "minimum_speedup", 1.0, None),
+        (
+            endpoint_noise_fraction,
+            "endpoint_noise_fraction",
+            0.0,
+            1.0,
+        ),
+    ):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{label} must be a finite number")
+        numeric = float(value)
+        if (
+            not math.isfinite(numeric)
+            or numeric < lower
+            or (upper is not None and numeric > upper)
+        ):
+            if upper is None:
+                raise ValueError(f"{label} must be finite and at least {lower}")
+            raise ValueError(f"{label} must be finite and in [{lower}, {upper}]")
+
+    fallbacks = tuple(contract for contract in materialized if contract.fallback)
+    if len(fallbacks) != 1:
+        raise ValueError("measured schedule selection requires exactly one fallback")
+    baseline = fallbacks[0]
+    if not baseline.legal:
+        raise ValueError("measured schedule fallback must be legal")
+
+    comparison_identity = (
+        baseline.consumer,
+        baseline.workload_hash,
+        baseline.profile_key,
+        baseline.target_hash,
+        baseline.precision_schedule_hash,
+    )
+    for contract in materialized:
+        if not contract.legal:
+            continue
+        candidate_identity = (
+            contract.consumer,
+            contract.workload_hash,
+            contract.profile_key,
+            contract.target_hash,
+            contract.precision_schedule_hash,
+        )
+        if candidate_identity != comparison_identity:
+            raise ValueError(
+                "measured schedule candidates must share consumer/workload/profile/"
+                "target/precision identity"
+            )
+
+    if baseline.profitability.endpoint_seconds is None:
+        return baseline
+
+    admitted: list[ScheduleContract] = []
+    for contract in materialized:
+        if contract is baseline or not contract.legal:
+            continue
+        if contract.profitability.endpoint_seconds is None:
+            continue
+        if contract.profitability.endpoint_regressions_against(
+            baseline.profitability,
+            minimum_speedup=float(minimum_speedup),
+        ):
+            continue
+        if contract.profitability.resource_regressions_against(
+            baseline.profitability,
+            endpoint_noise_fraction=float(endpoint_noise_fraction),
+        ):
+            continue
+        admitted.append(contract)
+
+    if not admitted:
+        return baseline
+
+    fastest = min(
+        typing.cast("float", contract.profitability.endpoint_seconds)
+        for contract in admitted
+    )
+    tied = tuple(
+        contract
+        for contract in admitted
+        if typing.cast("float", contract.profitability.endpoint_seconds)
+        <= fastest * (1.0 + float(endpoint_noise_fraction))
+    )
+    return min(
+        tied,
+        key=lambda contract: contract.profitability.compiled_resource_priority(),
+    )
 
 
 def schedule_diagnostics(

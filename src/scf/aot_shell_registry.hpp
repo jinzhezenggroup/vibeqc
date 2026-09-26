@@ -50,6 +50,9 @@ std::uint64_t enabled_shell_class_mask() noexcept;
 /** Return the enabled exact-class Fock mask for the selected profile. */
 std::uint64_t enabled_fock_shell_class_mask() noexcept;
 
+/** Return compiler-profiled classes that prefer no-materialization Fock streaming. */
+std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept;
+
 /**
  * Return generated mixed-Fock classes selected by
  * VIBEQC_AOT_MIXED_FOCK_SHELL_CLASSES (default: all compiled classes).
