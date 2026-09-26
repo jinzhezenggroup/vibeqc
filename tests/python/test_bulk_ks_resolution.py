@@ -235,6 +235,7 @@ def test_bulk_ks_requires_canonical_compiled_cpu_qualification(
         stage="compiled-cpu",
         status="pass",
         qualification={"sentinel": True},
+        evidence="test://compiled-cpu#sha256=" + "b" * 64,
     )
     capability = SimpleNamespace(
         name="GGA_X_PBE_SOL",

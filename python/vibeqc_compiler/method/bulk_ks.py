@@ -78,7 +78,14 @@ def _require_exact_compiled_cpu(
             "automatic bulk Libxc KS requires passing compiled-CPU evidence"
         )
     try:
-        return validate_qualification(capability.name, stage.qualification)
+        qualification = validate_qualification(capability.name, stage.qualification)
+        evidence = stage.evidence
+        expected_anchor = f"#sha256={qualification['result_identity']}"
+        if not isinstance(evidence, str) or not evidence.strip().endswith(
+            expected_anchor
+        ):
+            raise ValueError("compiled-CPU stage evidence result identity mismatch")
+        return qualification
     except (TypeError, ValueError) as exc:
         raise UnsupportedMethod(
             "automatic bulk Libxc KS requires exact compiled-CPU qualification"
