@@ -31,7 +31,7 @@ from vibeqc_compiler.tensor.cuda_inline import (
 )
 from vibeqc_compiler.xc.geometry_cuda import emit_geometry_cuda
 
-from .spec import resolve_method
+from .spec import SemilocalXCPrimitive, resolve_method
 from .stationary_gradient import (
     SCF_POINT_MODEL,
     StationaryGradientPlan,
@@ -321,7 +321,7 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
     if (stationary_functional != 0)
       for (size_t s = 0; s < 2; ++s)
         for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
-    if (stationary_functional == 2)
+    if (stationary_functional == 2 || stationary_functional == 4)
       for (size_t s = 0; s < 2; ++s) tau[s] = view.features[(5 * s + 4) * np + p];
     // The exact shared SCF point model, including vacuum/spin boundaries.
     const auto xc = stationary_evaluate_point(rho, g, tau);
@@ -346,7 +346,7 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
           w[j] = work[(4 * s + j) * stride + p * n + mu];
           if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
         }
-        if (stationary_functional == 2) c[4] = weights[p] * xc.kinetic[s];
+        if (stationary_functional == 2 || stationary_functional == 4) c[4] = weights[p] * xc.kinetic[s];
         double local[4]{};
         ao_pullback(c, w, local);
         for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
@@ -831,9 +831,22 @@ def emit_stationary_wrapper_cuda(
         primitive_declaration = (
             _FIRST_DERIVATIVE_DECLARATION if declare_primitive else ""
         )
+    semilocal = next(
+        (
+            primitive.functional
+            for primitive in plan.method.primitives
+            if type(primitive) is SemilocalXCPrimitive
+        ),
+        None,
+    )
     return (
         primitive_declaration
-        + emit_geometry_cuda(functional=functional, pbe=pbe, iterations=iterations)
+        + emit_geometry_cuda(
+            functional=functional,
+            pbe=pbe,
+            iterations=iterations,
+            semilocal=semilocal,
+        )
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
         + "constexpr bool stationary_native_reduction_supported = "
