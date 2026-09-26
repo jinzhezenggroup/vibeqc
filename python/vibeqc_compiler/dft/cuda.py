@@ -702,8 +702,10 @@ class CudaGrid:
         stamp: typing.Any = None,
     ) -> typing.Any:
         """Lend the minimal prepared feature layout required by native CUDA XC."""
-        if functional not in ("LDA_XC_PW", "PBE", "R2SCAN"):
-            raise ValueError("native CUDA XC task supports LDA_XC_PW, PBE, or R2SCAN")
+        if functional not in ("LDA_XC_PW", "PBE", "R2SCAN", "WB97M-V"):
+            raise ValueError(
+                "native CUDA XC task supports LDA_XC_PW, PBE, R2SCAN, or WB97M-V"
+            )
         required = (
             {"rho"}
             if functional == "LDA_XC_PW"
