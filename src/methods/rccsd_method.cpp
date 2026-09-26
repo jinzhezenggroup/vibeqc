@@ -351,7 +351,7 @@ RccsdNativeState execute_rccsd_prepared(runtime::ExecutionContext& execution,
     state.eps_v.assign(reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o),
                        reference->orbital_energies.end());
     posthf::ProviderWork provider_work;
-    vibeqc_tensor::Metrics provider_metrics;
+    vibeqc_tensor::Metrics provider_metrics{};
     state.problem = build_problem(system, *reference, solver_options, cuda, execution.device_id(),
                                   provider_work, provider_metrics);
     allocation_stage = "CC resident solve";
