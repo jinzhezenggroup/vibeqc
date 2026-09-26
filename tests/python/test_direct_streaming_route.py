@@ -12,16 +12,31 @@ def test_primary_streaming_route_partitions_paged_generated_classes() -> None:
 
     source = (REPOSITORY_ROOT / "src/scf/cuda_rhf.cpp").read_text()
     assert "host_primary_streaming_fock_shell_class_mask" in source
-    assert "host_primary_streaming_fock_flags" in source
-    assert "cudaMemcpyAsync(" in source
+    assert "host_primary_streaming_fock_flags" not in source
 
     page_begin = source.index("const auto launch_bounded_paged_generated_fock")
     page_end = source.index("const auto launch_bounded_generic_fock", page_begin)
     page_source = source[page_begin:page_end]
     assert "host_primary_streaming_fock_shell_class_mask" in page_source
     assert "host_generated_streaming_fock_shell_class_mask" in source
+    mask_begin = source.index(
+        "const std::uint64_t host_primary_streaming_fock_shell_class_mask"
+    )
+    mask_end = source.index(";", mask_begin)
+    assert "!mixed_precision_fock" in source[mask_begin:mask_end]
+
+    route_begin = source.index("if (!bounded_direct_count_diagnostic)")
+    route_end = source.index("cudaError_t paged_error", route_begin)
+    reset = source[route_begin:route_end]
+    assert "launch_reset_bounded_generated_streaming_flags_kernel(" in reset
+    assert "cudaMemcpyAsync" not in reset
+
+    # Both the cache owner and its defensive driver guard must agree that
+    # changing a selector requires recapturing the paged/streaming partition.
+    owner = (REPOSITORY_ROOT / "src/scf/cuda/rhf_bucket.cpp").read_text()
+    assert "(*plan)->primary_streaming_fock_mask !=" in owner
     assert (
-        "!mixed_precision_fock && requested_primary_streaming_fock_mask.has_value()"
+        "plan.primary_streaming_fock_mask != requested_primary_streaming_fock_mask"
         in source
     )
 

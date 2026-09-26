@@ -1,6 +1,7 @@
 #include "scf/cuda/rhf_policy.hpp"
 
 #include <algorithm>
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -394,9 +395,14 @@ std::optional<std::uint64_t> bounded_direct_primary_streaming_fock_mask_requeste
   if (std::strcmp(selection, "all") == 0) {
     return std::numeric_limits<std::uint64_t>::max();
   }
+  // strtoull accepts leading whitespace and signs, wrapping negative values
+  // into the unsigned range. Diagnostic selection must reject those spellings.
+  if (*selection < '0' || *selection > '9') return std::nullopt;
   char* end = nullptr;
+  errno = 0;
   const unsigned long long value = std::strtoull(selection, &end, 0);
-  if (end == selection || end == nullptr || *end != '\0' || value == 0ULL) {
+  if (errno == ERANGE || end == selection || *end != '\0' || value == 0ULL ||
+      value > std::numeric_limits<std::uint64_t>::max()) {
     return std::nullopt;
   }
   return static_cast<std::uint64_t>(value);

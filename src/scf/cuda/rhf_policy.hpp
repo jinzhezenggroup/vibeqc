@@ -229,7 +229,7 @@ bool bounded_direct_streaming_override_requested() noexcept;
 bool bounded_direct_count_diagnostic_requested() noexcept;
 bool bounded_direct_aot_only_diagnostic_requested() noexcept;
 bool bounded_direct_fock_only_diagnostic_requested() noexcept;
-/** Optional exact-class mask for diagnostic primary generated streaming. */
+/** Unsigned integer literal or "all"; zero, signs, whitespace and overflow disable selection. */
 std::optional<std::uint64_t> bounded_direct_primary_streaming_fock_mask_requested() noexcept;
 bool bounded_fock_class_timing_requested() noexcept;
 /** True when force AOT classes are explicitly narrowed for a diagnostic replay. */

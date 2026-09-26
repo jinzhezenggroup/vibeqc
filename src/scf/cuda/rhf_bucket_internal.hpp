@@ -87,6 +87,8 @@ struct CudaRhfBucketPlan {
   // These switches change captured work even when topology and arithmetic match.
   bool bounded_streaming_override{};
   bool fock_only_diagnostic{};
+  // Changing this diagnostic changes both captured pages and streaming flags.
+  std::uint64_t primary_streaming_fock_mask{};
   bool graph_native_eigensolver_override{};
   bool reuse_converged_fock{};
   bool mixed_precision_fock{};

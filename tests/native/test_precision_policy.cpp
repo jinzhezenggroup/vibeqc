@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -102,21 +103,24 @@ void verify_direct_jk_target_policy() {
   require(fallback.persistent_quartet_warps_per_sm == 4U,
           "unknown occupancy uses the conservative four-worker fallback");
 
-  {
-    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "0x15");
+  for (const char* value : {"0x15", "21", "025"}) {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", value);
+    errno = ERANGE;  // A previous conversion must not poison a valid selection.
     const auto selected_mask = bounded_direct_primary_streaming_fock_mask_requested();
     require(selected_mask.has_value() && *selected_mask == 0x15U,
             "primary streaming diagnostic accepts an explicit class mask");
   }
-  {
-    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "all");
+  for (const char* value : {"all", "18446744073709551615", "0xffffffffffffffff"}) {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", value);
     const auto selected_mask = bounded_direct_primary_streaming_fock_mask_requested();
     require(
         selected_mask.has_value() && *selected_mask == std::numeric_limits<std::uint64_t>::max(),
         "primary streaming diagnostic accepts all generated classes");
   }
-  {
-    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", "invalid");
+  for (const char* value :
+       {static_cast<const char*>(nullptr), "", "0", "0x0", "none", "invalid", "-1", " -1", "\t-2",
+        "+1", " 1", "1 ", "0x", "21junk", "18446744073709551616", "0x10000000000000000"}) {
+    ScopedEnv mask("VIBEQC_BOUNDED_DIRECT_PRIMARY_STREAMING_MASK", value);
     require(!bounded_direct_primary_streaming_fock_mask_requested().has_value(),
             "malformed primary streaming masks fail closed");
   }
