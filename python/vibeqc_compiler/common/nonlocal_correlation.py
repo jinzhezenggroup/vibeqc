@@ -38,8 +38,12 @@ class NonlocalCorrelationSpec:
             raise UnsupportedNonlocalCorrelation(
                 "unsupported nonlocal-correlation definition version"
             )
-        require_fraction(self.b, "VV10 b", UnsupportedNonlocalCorrelation, role="parameter")
-        require_fraction(self.c, "VV10 C", UnsupportedNonlocalCorrelation, role="parameter")
+        require_fraction(
+            self.b, "VV10 b", UnsupportedNonlocalCorrelation, role="parameter"
+        )
+        require_fraction(
+            self.c, "VV10 C", UnsupportedNonlocalCorrelation, role="parameter"
+        )
         if self.b <= 0 or self.c <= 0:
             raise UnsupportedNonlocalCorrelation(
                 "VV10 b and C parameters must be positive"
