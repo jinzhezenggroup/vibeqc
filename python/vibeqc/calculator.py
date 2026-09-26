@@ -3,31 +3,41 @@
 from __future__ import annotations
 
 import ctypes
-import json
-import math
 import os
 import typing
-from dataclasses import dataclass, field, replace
-from functools import cache, lru_cache
-from importlib import resources
-from pathlib import Path
+from dataclasses import replace
+from functools import cache
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from . import _generated_methods as _method_manifest
-from . import _native
+from . import _model_resolution, _native
+from ._api_types import (
+    Atom,
+    CorrelationResult,  # noqa: F401 - legacy public import path
+    MethodCapabilities,
+    Primitive,
+    Result,
+    Shell,
+)
+from ._model_resolution import (
+    ModelResolutionInput,
+    resolve_model_identity,
+)
+from ._model_resolution import (
+    snapshot_basis as _snapshot_basis,
+)
+from ._result_translation import read_correlation_result as _read_correlation_result
 from .accuracy import AccuracyAssessment, ResolvedModel, TargetAccuracy
-from .basis import BasisProvenance, BasisSet, BasisShell, ElementBasis, load_basis
+from .basis import BasisSet
 from .basis_capabilities import require_basis, resolved_basis_metadata
-from .elements import atomic_number as element_number
 from .elements import checked_integer
 from .profiles import canonical_hash
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-
-    from .ks_diagnostics import KsDiagnostic, KsTransportDiagnostic
+    from pathlib import Path
 
 _METHODS = _method_manifest.METHOD_NAME_TO_ID
 _COMPOSITE_METHOD_ALIASES = {
@@ -39,179 +49,12 @@ _HF_METHODS = _method_manifest.HF_METHOD_IDS
 _COUPLED_CLUSTER_METHODS = frozenset((_native.METHOD_RCCSD, _native.METHOD_RCCSD_T))
 _CORRELATED_METHODS = frozenset((_native.METHOD_MP2, *_COUPLED_CLUSTER_METHODS))
 
+# Private aliases retain long-standing benchmark/tool imports while the actual
+# implementations live behind the model-resolution owner.
+_basis_pack = _model_resolution._basis_pack
+_named_basis_record = _model_resolution._named_basis_record
+_named_basis_shells = _model_resolution._named_basis_shells
 
-@dataclass(frozen=True)
-class Atom:
-    atomic_number: int
-    position: tuple[float, float, float]
-
-    def __post_init__(self) -> None:
-        """Own finite coordinates and validate nuclei independently of basis data."""
-        z = element_number(self.atomic_number)
-        xyz = tuple(float(v) for v in self.position)
-        if len(xyz) != 3 or not all(math.isfinite(v) for v in xyz):
-            raise ValueError("atom coordinates must be three finite Bohr values")
-        object.__setattr__(self, "atomic_number", z)
-        object.__setattr__(self, "position", xyz)
-
-    @classmethod
-    def from_value(cls, value: Atom | tuple[str | int, Sequence[float]]) -> Atom:
-        if isinstance(value, cls):
-            return value
-        element, position = value
-        atomic_number = element_number(element)
-        xyz = tuple(float(component) for component in position)
-        if len(xyz) != 3:
-            raise ValueError("atom coordinates must have three components")
-        return cls(atomic_number, xyz)  # type: ignore[arg-type]
-
-
-@dataclass(frozen=True)
-class Primitive:
-    exponent: float
-    coefficient: float
-
-
-@dataclass(frozen=True)
-class Shell:
-    atom_index: int
-    angular_momentum: int
-    primitives: tuple[Primitive, ...]
-
-
-@dataclass(frozen=True)
-class CorrelationResult:
-    """Canonical MP2 components and the completed native phase diagnostics.
-
-    Energies and denominator magnitudes are Hartree; timings are milliseconds.
-    Numeric capacity counts the largest phase, excluding allocator/object
-    overhead. Transfer fields describe the disclosed CUDA staging path.
-    """
-
-    reference_energy: float
-    opposite_spin_energy: float
-    same_spin_energy: float
-    minimum_absolute_denominator: float
-    reference_residual: float
-    numeric_capacity_bytes: int
-    energy_tile_count: int
-    mo_host_staging: bool
-    correlation_owned_device_bytes: int
-    correlation_provider_retained_bytes: int
-    mo_transfer_bytes: int
-    host_to_device_ms: float
-    device_to_host_ms: float
-    transform_library_ms: float
-    tensor_kernel_ms: float
-    equation_hash: str
-    response_iterations: int
-    response_restarts: int
-    response_absolute_residual: float
-    response_relative_residual: float
-    response_workspace_bytes: int
-    derivative_workspace_bytes: int
-    planned_endpoint_peak_bytes: int
-    measured_endpoint_peak_bytes: int
-    force_provenance_flags: int
-    response_operator_hash: str
-    measured_response_workspace_peak_bytes: int
-    response_workspace_allocation_count: int
-    ccsd_iterations: int
-    ccsd_diis_restarts: int
-    ccsd_correlation_energy: float
-    ccsd_energy_change: float
-    ccsd_singles_residual_max: float
-    ccsd_doubles_residual_max: float
-    ccsd_replay_singles_residual_max: float
-    ccsd_replay_doubles_residual_max: float
-    ccsd_setup_h2d_bytes: int
-    ccsd_scalar_d2h_bytes: int
-    ccsd_amplitude_d2h_bytes: int
-    ccsd_synchronizations: int
-    ccsd_replay_equation_hash: str
-    ccsd_t_triples_energy: float
-    ccsd_t_virtual_triples: int
-    ccsd_t_workspace_bytes: int
-    ccsd_t_equation_hash: str
-
-
-def _read_correlation_result(
-    library: ctypes.CDLL,
-    owner: ctypes.c_void_p,
-    *,
-    index: int | None = None,
-    context: ctypes.c_void_p | None = None,
-) -> CorrelationResult | None:
-    name = (
-        "vibeqc_calculation_get_correlation_diagnostic"
-        if index is None
-        else "vibeqc_batch_get_correlation_diagnostic"
-    )
-    getter = getattr(library, name)
-    diag = _native.CorrelationDiagnostic()
-    diag.struct_size = ctypes.sizeof(diag)
-    diag.abi_version = _native.ABI_VERSION
-    args = (
-        (owner, ctypes.byref(diag))
-        if index is None
-        else (owner, index, ctypes.byref(diag))
-    )
-    status = getter(*args)
-    if status == _native.STATUS_NOT_IMPLEMENTED:
-        return None
-    _native.check(library, status, context=context)
-    values = {
-        name: getattr(diag, name)
-        for name, _ in diag._fields_
-        if name not in ("struct_size", "abi_version")
-    }
-    values["mo_host_staging"] = bool(values["mo_host_staging"])
-    for key in (
-        "equation_hash",
-        "response_operator_hash",
-        "ccsd_replay_equation_hash",
-        "ccsd_t_equation_hash",
-    ):
-        values[key] = values[key].decode("ascii")
-    return CorrelationResult(**values)
-
-
-@dataclass(frozen=True)
-class Result:
-    """Calculation outputs with distinct SCF update and stationarity measures.
-
-    ``density_rms`` retains the density-update convergence measure.
-    ``physical_residual_rms`` is optional: unsupported methods or older native
-    libraries report None, rather than reusing the density-update value.
-    """
-
-    energy: float
-    forces: np.ndarray | None
-    converged: bool
-    iterations: int
-    energy_change: float
-    density_rms: float
-    executed_backend: str
-    basis_metadata: dict = field(default_factory=dict)
-    accuracy: AccuracyAssessment | None = None
-    resource_diagnostics: dict | None = None
-    precision: dict | None = None
-    correlation: CorrelationResult | None = None
-    physical_residual_rms: float | None = None
-    ks_diagnostic: KsDiagnostic | None = None
-    ks_transport_diagnostic: KsTransportDiagnostic | None = None
-    dispersion: object | None = None
-
-
-@dataclass(frozen=True)
-class MethodCapabilities:
-    """Executable properties reported by the native method registry."""
-
-    method: str
-    family: str
-    available: bool
-    supports_batch: bool
-    supported_properties: frozenset[str]
 
 
 @cache
@@ -260,116 +103,6 @@ def method_capabilities(method: str) -> MethodCapabilities:
         available=bool(native.available),
         supports_batch=bool(native.supports_batch),
         supported_properties=frozenset(properties),
-    )
-
-
-@lru_cache(maxsize=1)
-def _basis_pack() -> dict[str, object]:
-    """Load the generated, data-only Basis Set Exchange subset once."""
-
-    path = resources.files("vibeqc").joinpath("data/basis_pack.json")
-    with path.open("r", encoding="utf-8") as handle:
-        pack = json.load(handle)
-    if pack.get("schema_version") != 1:
-        raise RuntimeError("unsupported bundled basis-pack schema")
-    return pack
-
-
-def _named_basis_shells(name: str, atoms: Sequence[Atom]) -> tuple[Shell, ...]:
-    canonical_name = name.lower().replace("_", "-")
-    bases = _basis_pack()["bases"]
-    assert isinstance(bases, dict)
-    try:
-        basis = bases[canonical_name]
-    except KeyError as error:
-        supported = ", ".join(sorted(str(key) for key in bases))
-        raise NotImplementedError(
-            f"bundled basis {name!r} is unavailable; choose one of: {supported}"
-        ) from error
-    assert isinstance(basis, dict)
-    elements = basis["elements"]
-    assert isinstance(elements, dict)
-
-    shells: list[Shell] = []
-    for atom_index, atom in enumerate(atoms):
-        try:
-            element_shells = elements[str(atom.atomic_number)]
-        except KeyError as error:
-            raise NotImplementedError(
-                f"{canonical_name} is not bundled for atomic number "
-                f"{atom.atomic_number}"
-            ) from error
-        assert isinstance(element_shells, list)
-        for packed_shell in element_shells:
-            angular_momentum = int(packed_shell["angular_momentum"])
-            exponents = packed_shell["exponents"]
-            coefficients = packed_shell["coefficients"]
-            primitives = tuple(
-                Primitive(float(exponent), float(coefficient))
-                for exponent, coefficient in zip(exponents, coefficients, strict=True)
-            )
-            shells.append(Shell(atom_index, angular_momentum, primitives))
-    return tuple(shells)
-
-
-@lru_cache(maxsize=8)
-def _named_basis_record(name: typing.Any, representation: typing.Any) -> typing.Any:
-    """Wrap the unchanged bundled decimal tables in the public record schema."""
-    canonical = name.lower().replace("_", "-")
-    pack = _basis_pack()
-    if canonical not in pack["bases"]:
-        raise NotImplementedError(f"bundled basis {name!r} is unavailable")
-    elements = []
-    for z, shells in pack["bases"][canonical]["elements"].items():
-        elements.append(
-            ElementBasis(
-                int(z),
-                tuple(
-                    BasisShell(
-                        s["angular_momentum"], s["exponents"], (s["coefficients"],), i
-                    )
-                    for i, s in enumerate(shells)
-                ),
-            )
-        )
-    return BasisSet(
-        canonical,
-        tuple(elements),
-        BasisProvenance(
-            "vibeqc/data/basis_pack.json; Basis Set Exchange",
-            str(pack["source"]),
-            "BSD-3-Clause",
-            canonical_hash(pack),
-        ),
-        representation,
-    )
-
-
-def _snapshot_basis(basis: typing.Any, representation: typing.Any = None) -> typing.Any:
-    """Load local records once and detach all caller-owned primitive storage."""
-    if isinstance(basis, os.PathLike) or (
-        isinstance(basis, str) and basis.endswith(".json")
-    ):
-        basis = load_basis(Path(basis))
-    if isinstance(basis, BasisSet):
-        if representation is not None and basis.representation != representation:
-            raise ValueError(
-                "basis representation conflicts with the loaded record; create an explicitly reinterpreted record"
-            )
-        return basis
-    if isinstance(basis, str):
-        return _named_basis_record(basis, representation or "cartesian")
-    return tuple(
-        Shell(
-            checked_integer(s.atom_index, "shell atom index", high=2**32 - 1),
-            checked_integer(
-                s.angular_momentum, "shell angular momentum", high=2**32 - 1
-            ),
-            tuple(
-                Primitive(float(p.exponent), float(p.coefficient)) for p in s.primitives
-            ),
-        )
-        for s in basis
     )
 
 
@@ -1348,7 +1081,6 @@ class Calculator:
         atoms = tuple(Atom.from_value(atom) for atom in atoms)
         self._preflight_hf_basis(atoms)
         metadata = self.basis_metadata(atoms, charge=charge, multiplicity=multiplicity)
-        orbital = metadata["orbital"]
         from .ecp import resolve_ecp
 
         if any(resolve_ecp(self._basis, atoms)[0]):
@@ -1357,41 +1089,21 @@ class Calculator:
             raise NotImplementedError(
                 "ECP accuracy model resolution is not implemented"
             )
-        fitted = self._density_fitting_mode != _native.DENSITY_FITTING_NONE
-        # HF's native default uses the orbital system as the auxiliary system.
-        # An AUTO provider may choose a backend, but never changes this model.
-        auxiliary = metadata.get("auxiliary", orbital) if fitted else None
-        try:
-            resolved_method = _method_manifest.METHOD_ID_TO_NAME[self._method]
-        except KeyError as error:
-            raise NotImplementedError(
-                "accuracy model is unavailable for this method"
-            ) from error
-        return ResolvedModel(
-            method=resolved_method,
-            geometry_hash=canonical_hash(
-                [
-                    (
-                        a.atomic_number,
-                        tuple(float(x).hex() if x else "0x0.0p+0" for x in a.position),
-                    )
-                    for a in atoms
-                ]
-            ),
-            basis_hash=orbital["mathematical_identity"],
-            electron_count=orbital["electrons"]["electron_count"],
-            charge=charge,
-            multiplicity=multiplicity,
-            representation="real_spherical"
-            if self._representation_name == "spherical"
-            else "cartesian",
-            approximation="density_fitting" if fitted else "conventional",
-            auxiliary_basis_hash=auxiliary["mathematical_identity"]
-            if auxiliary
-            else None,
-            metric_relative_threshold=self._density_fitting_relative_threshold
-            if fitted
-            else None,
+        return resolve_model_identity(
+            ModelResolutionInput(
+                method_id=self._method,
+                representation=self._representation_name,
+                basis_metadata=metadata,
+                geometry=atoms,
+                charge=int(charge),
+                multiplicity=int(multiplicity),
+                density_fitting=(
+                    self._density_fitting_mode != _native.DENSITY_FITTING_NONE
+                ),
+                density_fitting_relative_threshold=(
+                    self._density_fitting_relative_threshold
+                ),
+            )
         )
 
     def _accuracy_assessment(

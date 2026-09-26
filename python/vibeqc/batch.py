@@ -14,6 +14,7 @@ from typing import Self
 import numpy as np
 
 from . import _native
+from ._api_types import Atom
 from ._batch_diagnostics import (
     DensityFittingMetricDiagnostic,
     EigensolverDiagnostic,
@@ -26,7 +27,15 @@ from ._batch_diagnostics import (
     read_ppps_queue_profile,
     read_shell_class_profile,
 )
-from .calculator import Atom, Calculator, _read_correlation_result
+from ._result_translation import (
+    backend_name,
+    copy_force_array,
+    status_message,
+)
+from ._result_translation import (
+    read_correlation_result as _read_correlation_result,
+)
+from ._warm_state import WarmStartState
 from .ks_diagnostics import (
     KsDiagnostic,
     KsTransportDiagnostic,
@@ -37,8 +46,9 @@ from .ks_diagnostics import (
 if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
+    from ._api_types import CorrelationResult
     from .accuracy import AccuracyAssessment
-    from .calculator import CorrelationResult
+    from .calculator import Calculator
 
 
 @dataclass(frozen=True)
@@ -113,6 +123,66 @@ class PreparedBatch:
     execution when reproducible replays from one fixed dm0 are required.
     """
 
+    # Compatibility views preserve the private attributes used by checkpoint
+    # and progressive helpers while making WarmStartState their single owner.
+    @property
+    def _warm_enabled(self) -> bool:
+        return self._warm_state.enabled
+
+    @_warm_enabled.setter
+    def _warm_enabled(self, value: bool) -> None:
+        self._warm_state.enabled = bool(value)
+
+    @property
+    def _warm_updates(self) -> bool:
+        return self._warm_state.updates
+
+    @_warm_updates.setter
+    def _warm_updates(self, value: bool) -> None:
+        self._warm_state.updates = bool(value)
+
+    @property
+    def _warm_metadata(self) -> list[dict[str, typing.Any] | None]:
+        return self._warm_state.metadata
+
+    @_warm_metadata.setter
+    def _warm_metadata(self, value: list[dict[str, typing.Any] | None]) -> None:
+        if len(value) != self._warm_state.item_count:
+            raise ValueError("warm-start metadata must match the batch size")
+        self._warm_state.metadata = value
+
+    @property
+    def _restart_indices(self) -> set[int]:
+        return self._warm_state.restart_indices
+
+    @_restart_indices.setter
+    def _restart_indices(self, value: set[int]) -> None:
+        self._warm_state.restart_indices = value
+
+    @property
+    def _projection_indices(self) -> set[int]:
+        return self._warm_state.projection_indices
+
+    @_projection_indices.setter
+    def _projection_indices(self, value: set[int]) -> None:
+        self._warm_state.projection_indices = value
+
+    @property
+    def projection_diagnostics(self) -> dict[str, typing.Any] | None:
+        return self._warm_state.projection_diagnostics
+
+    @projection_diagnostics.setter
+    def projection_diagnostics(self, value: dict[str, typing.Any] | None) -> None:
+        self._warm_state.projection_diagnostics = value
+
+    @property
+    def checkpoint_diagnostics(self) -> dict[str, typing.Any] | None:
+        return self._warm_state.checkpoint_diagnostics
+
+    @checkpoint_diagnostics.setter
+    def checkpoint_diagnostics(self, value: dict[str, typing.Any] | None) -> None:
+        self._warm_state.checkpoint_diagnostics = value
+
     def __init__(
         self,
         calculator: Calculator,
@@ -135,10 +205,6 @@ class PreparedBatch:
         # The KS ResourcePlan reserves one serialized generated-force staging cap.
         # Keep one retained execution per PreparedBatch and reprepare on topology drift.
         self._stationary_cuda_execution: typing.Any = None
-        self._restart_indices = set()
-        self._projection_indices = set()
-        self.projection_diagnostics = None
-        self.checkpoint_diagnostics = None
         self._calculator = calculator
         self._library = calculator._library
         self._systems = tuple(
@@ -147,9 +213,7 @@ class PreparedBatch:
         if any(not system for system in self._systems):
             raise ValueError("every batch item requires at least one atom")
         count = len(self._systems)
-        self._warm_enabled = warm_start
-        self._warm_updates = True
-        self._warm_metadata = [None] * count
+        self._warm_state = WarmStartState(count, enabled=warm_start)
         self._charges = (
             tuple(0 for _ in range(count)) if charges is None else tuple(charges)
         )
@@ -990,7 +1054,7 @@ class PreparedBatch:
             forces = (
                 public_force
                 if succeeded and public_dft_forces
-                else np.ctypeslib.as_array(force_storage[index]).copy().reshape(-1, 3)
+                else copy_force_array(force_storage[index], self._atom_counts[index])
                 if succeeded and native_compute_forces
                 else None
             )
@@ -1009,7 +1073,7 @@ class PreparedBatch:
                 if dispersion_failure_message is not None
                 else force_failure_message
                 if force_failure_message is not None
-                else self._library.vibeqc_status_message(output.status).decode("utf-8")
+                else status_message(self._library, output.status)
             )
             total_energy = output.energy
             if (
@@ -1072,11 +1136,7 @@ class PreparedBatch:
                     else None,
                     correlation=correlation,
                     dispersion=dispersion if succeeded else None,
-                    executed_backend={
-                        _native.BACKEND_CPU_REFERENCE: "cpu_reference",
-                        _native.BACKEND_CUDA: "cuda",
-                        _native.BACKEND_HYBRID_CUDA: "hybrid_cuda",
-                    }.get(output.executed_backend, "unknown"),
+                    executed_backend=backend_name(output.executed_backend),
                     bucket_id=output.bucket_id,
                     warm_start_used=bool(output.warm_start_used),
                     warm_start_fallback=bool(output.warm_start_fallback),
@@ -1085,32 +1145,25 @@ class PreparedBatch:
                         self._batch, index
                     ),
                     accuracy=accuracy,
-                    restart_origin=(
-                        "cold_fallback"
-                        if output.warm_start_fallback
-                        else "basis_projection"
-                        if output.warm_start_used and index in self._projection_indices
-                        else "persistent_restart"
-                        if output.warm_start_used and index in self._restart_indices
-                        else "in_process_warm"
-                        if output.warm_start_used
-                        else "cold"
+                    restart_origin=self._warm_state.origin(
+                        index,
+                        warm_start_used=bool(output.warm_start_used),
+                        warm_start_fallback=bool(output.warm_start_fallback),
                     ),
                 )
             )
         result = BatchResult(tuple(items))
         self._last_statuses = tuple(item.status for item in result.items)
         for index, item in enumerate(result.items):
-            if item.succeeded and self._warm_enabled and self._warm_updates:
-                self._warm_metadata[index] = {
-                    "controls": deepcopy(controls),
-                    "backend": "cuda" if item.executed_backend == "cuda" else "cpu",
-                }
-                self._restart_indices.discard(index)
-                self._projection_indices.discard(index)
-        if self.projection_diagnostics:
-            self.projection_diagnostics["target_verification"] = "executed"
-            self.projection_diagnostics["target_results"] = [
+            if item.succeeded:
+                self._warm_state.record_success(
+                    index,
+                    controls=deepcopy(controls),
+                    backend="cuda" if item.executed_backend == "cuda" else "cpu",
+                )
+        if self._warm_state.projection_diagnostics:
+            self._warm_state.projection_diagnostics["target_verification"] = "executed"
+            self._warm_state.projection_diagnostics["target_results"] = [
                 {
                     "index": i.index,
                     "converged": i.converged,
@@ -1124,11 +1177,11 @@ class PreparedBatch:
                 for i in result.items
             ]
         if (
-            self.checkpoint_diagnostics
-            and "target_verification" in self.checkpoint_diagnostics
+            self._warm_state.checkpoint_diagnostics
+            and "target_verification" in self._warm_state.checkpoint_diagnostics
         ):
-            self.checkpoint_diagnostics["target_verification"] = "executed"
-            self.checkpoint_diagnostics["target_results"] = [
+            self._warm_state.checkpoint_diagnostics["target_verification"] = "executed"
+            self._warm_state.checkpoint_diagnostics["target_results"] = [
                 {
                     "index": i.index,
                     "converged": i.converged,
@@ -1187,10 +1240,7 @@ class PreparedBatch:
             self._library,
             self._library.vibeqc_batch_clear_warm_starts(self._batch),
         )
-        self._restart_indices.clear()
-        self._projection_indices.clear()
-        self.projection_diagnostics = None
-        self._warm_metadata = [None] * len(self._systems)
+        self._warm_state.clear()
 
     def initialize_from(
         self,
@@ -1230,7 +1280,7 @@ class PreparedBatch:
                 self._batch, int(bool(enabled))
             ),
         )
-        self._warm_updates = bool(enabled)
+        self._warm_state.updates = bool(enabled)
 
     def last_shell_class_profile(self) -> tuple[ShellClassProfileEntry, ...]:
         """Return work surviving the most recent final-density CUDA screening.

@@ -63,7 +63,7 @@ def initialize_from(
         raise ProjectionRejected(
             "distinct source/target fleets with matching item count required"
         )
-    if not target._warm_enabled:
+    if not target._warm_state.enabled:
         raise ProjectionRejected("target initialization requires warm starts enabled")
     if source._calculator._method != target._calculator._method:
         raise ProjectionRejected("source/target HF spin methods must match")
@@ -74,7 +74,7 @@ def initialize_from(
     count = target.system_count
     states = (_native.HfWarmState * count)(*(_descriptor() for _ in range(count)))
     storage, reports = [], []
-    metadata = list(target._warm_metadata)
+    metadata = list(target._warm_state.metadata)
     for index in range(count):
         current = _descriptor()
         _native.check(
@@ -108,7 +108,7 @@ def initialize_from(
             if (
                 source._last_statuses is None
                 or source._last_statuses[index] != _native.STATUS_SUCCESS
-                or index in source._projection_indices
+                or index in source._warm_state.projection_indices
             ):
                 raise ProjectionRejected(
                     "source item has no successful current SCF result"
@@ -217,8 +217,8 @@ def initialize_from(
             raise ProjectionRejected(
                 f"native target seed validation failed: {detail or status}"
             )
-    target._warm_metadata = metadata
-    target._projection_indices = accepted
+    target._warm_state.metadata = metadata
+    target._warm_state.projection_indices = accepted
     report = {
         "schema": "vibeqc.basis_projection",
         "version": 1,
@@ -228,7 +228,7 @@ def initialize_from(
         "placement": "native CPU cross-overlap and NumPy metric projection; native target seed import",
         "target_verification": "pending_execute",
     }
-    target.projection_diagnostics = report
+    target._warm_state.projection_diagnostics = report
     return deepcopy(report)
 
 
@@ -307,7 +307,7 @@ def projected_singlepoint(
             result = target_batch.execute(strict=True).items[0]
             density = _retained_density(target_batch)
             target_seconds = time.perf_counter() - execution
-            diagnostics = deepcopy(target_batch.projection_diagnostics)
+            diagnostics = deepcopy(target_batch._warm_state.projection_diagnostics)
     diagnostics.update(
         source_seconds=source_seconds,
         projection_seconds=projection["seconds"],
