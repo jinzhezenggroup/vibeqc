@@ -903,11 +903,12 @@ struct CudaKsPlan::Impl : KsStateStorage {
     }
   }
 
-  CudaXcView stage_xc(std::uint64_t next_generation) {
+  CudaXcView stage_xc(std::uint64_t next_generation,
+                      CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     if (options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused) {
       if (!xc) throw std::logic_error("device-fused XC owner is unavailable");
       if (!device_nonlocal) {
-        xc->enqueue(density, elements, next_generation);
+        xc->enqueue(density, elements, next_generation, precision);
         return xc->view(next_generation);
       }
       xc->enqueue_density_features(density, elements, next_generation, nonlocal_raw_density,
@@ -1038,7 +1039,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
                   range_jk_error, detail),
               detail);
       mixed_j_executed = mixed_j_executed || pending_mixed_j;
-      const auto potential = stage_xc(++generation);
+      const auto potential =
+          stage_xc(++generation, pending_mixed_j ? CudaXcDensityPrecision::Fp32ComputeFp64Accumulate
+                                                 : CudaXcDensityPrecision::Fp64);
       pending_generations[0] = generation;
       ++movement.submitted_iterations;
       pending_iterations = 1;

@@ -37,8 +37,8 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
              const double* basis, const double* points, const double* weights,
              const double* density, double* ao, double* work, double* features,
              double* coefficients, double* point_totals, double* potential, double* totals,
-             int* error, const double* direction, double* delta_features, double* total_density,
-             double* total_gradient) {
+             int* error, CudaXcDensityPrecision precision, const double* direction,
+             double* delta_features, double* total_density, double* total_gradient) {
   const I matrices = l.spins * l.nao * l.nao;
   if ((total_density == nullptr) != (total_gradient == nullptr))
     throw std::invalid_argument("CUDA XC total-density capture requires rho and gradient together");
@@ -64,7 +64,9 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
           basis, l.natom, l.nprimitive, l.nao, points + 3 * begin, count, l.jets, ao, error,
           nullptr);
     cuda_check(cudaGetLastError());
-    scheduled_density_product(stream, density, ao, l.nao, count, l.spins, l.work_jets, work, error);
+    scheduled_density_product(stream, density, ao, l.nao, count, l.spins, l.work_jets,
+                              precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate, work,
+                              error);
     cuda_check(cudaGetLastError());
     scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
                                l.feature_terms, l.functional, features, error);
@@ -77,8 +79,9 @@ void enqueue(const CudaXcLayout& l, CudaXcPointLauncher point_launcher, cudaStre
     if (direction) {
       // AO panels are shared; work is scratch and can be reused after the
       // reference features are retained. No host AO/feature staging occurs.
-      scheduled_density_product(stream, direction, ao, l.nao, count, l.spins, l.work_jets, work,
-                                error);
+      scheduled_density_product(stream, direction, ao, l.nao, count, l.spins, l.work_jets,
+                                precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate,
+                                work, error);
       cuda_check(cudaGetLastError());
       scheduled_density_features(stream, ao, work, l.nao, count, l.spins, l.jets, l.work_jets,
                                  l.feature_terms, l.functional, delta_features, error);

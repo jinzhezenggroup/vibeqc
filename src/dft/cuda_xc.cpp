@@ -210,9 +210,10 @@ CudaXcGridView CudaXcPlan::grid_view() const {
   return {points_, weights_, layout_.npoint, stream_};
 }
 
-void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation) {
+void CudaXcPlan::enqueue(const double* density, std::size_t elements, std::uint64_t generation,
+                         CudaXcDensityPrecision precision) {
   if (layout_.response) throw std::invalid_argument("XC response plan requires a direction");
-  enqueue_impl(density, nullptr, elements, generation);
+  enqueue_impl(density, nullptr, elements, generation, precision);
 }
 
 void CudaXcPlan::enqueue_density_features(const double* density, std::size_t elements,
@@ -222,13 +223,14 @@ void CudaXcPlan::enqueue_density_features(const double* density, std::size_t ele
     throw std::invalid_argument("XC response plan cannot publish physical features");
   if (total_density == nullptr || total_gradient == nullptr)
     throw std::invalid_argument("CUDA XC density-feature export requires both output buffers");
-  enqueue_impl(density, nullptr, elements, generation, total_density, total_gradient);
+  enqueue_impl(density, nullptr, elements, generation, CudaXcDensityPrecision::Fp64, total_density,
+               total_gradient);
 }
 
 void CudaXcPlan::enqueue_response(const double* density, const double* direction,
                                   std::size_t elements, std::uint64_t generation) {
   if (!layout_.response) throw std::invalid_argument("XC plan was not prepared for response");
-  enqueue_impl(density, direction, elements, generation);
+  enqueue_impl(density, direction, elements, generation, CudaXcDensityPrecision::Fp64);
 }
 
 void CudaXcPlan::enqueue_nonlocal_potential(std::uint64_t generation,
@@ -286,12 +288,18 @@ void CudaXcPlan::enqueue_nonlocal_potential(std::uint64_t generation,
 }
 
 void CudaXcPlan::enqueue_impl(const double* density, const double* direction, std::size_t elements,
-                              std::uint64_t generation, double* total_density,
-                              double* total_gradient) {
+                              std::uint64_t generation, CudaXcDensityPrecision precision,
+                              double* total_density, double* total_gradient) {
   check_device();
   const auto matrix = size_mul(layout_.nao, layout_.nao, "CUDA XC density size overflow");
   const auto count = size_mul(layout_.spins, matrix, "CUDA XC density size overflow");
   if (elements != count) throw std::invalid_argument("CUDA XC density size is invalid");
+  if (precision != CudaXcDensityPrecision::Fp64 &&
+      precision != CudaXcDensityPrecision::Fp32ComputeFp64Accumulate)
+    throw std::invalid_argument("unknown CUDA XC density precision");
+  if (precision == CudaXcDensityPrecision::Fp32ComputeFp64Accumulate && layout_.functional > 2U)
+    throw std::invalid_argument(
+        "mixed CUDA XC density precision is not qualified for this functional");
   if (!generation || generation <= generations_.submitted())
     throw std::invalid_argument("CUDA XC density generation is stale");
   device_pointer(density, device_);
@@ -334,7 +342,7 @@ void CudaXcPlan::enqueue_impl(const double* density, const double* direction, st
 #endif
     cuda_xc_detail::enqueue(layout_, point_launcher_, stream_, basis_, points_, weights_, density,
                             ao_, work_, features_, coefficients_, point_totals_, potential_,
-                            totals_, error_, direction, delta_features_, total_density,
+                            totals_, error_, precision, direction, delta_features_, total_density,
                             total_gradient);
   } catch (const vibeqc_tensor::DeviceAllocationError&) {
     // The generated executor has a separate exception vocabulary. Translate at

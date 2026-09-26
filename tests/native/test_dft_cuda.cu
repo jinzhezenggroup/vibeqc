@@ -91,14 +91,15 @@ struct Fixture {
     if (stream) cudaStreamDestroy(stream);
   }
   ~Fixture() { cleanup(); }
-  void submit(const std::vector<double>& d) {
+  void submit(const std::vector<double>& d,
+              CudaXcDensityPrecision precision = CudaXcDensityPrecision::Fp64) {
     check(cudaMemcpyAsync(density, d.data(), d.size() * sizeof(double), cudaMemcpyHostToDevice,
                           stream));
     // Reference input transfer is an explicit test stage. Complete it before
     // a temporary host density can die; the measured native enqueue follows.
     check(cudaStreamSynchronize(stream));
     const auto before = plan->transfers();
-    plan->enqueue(density, d.size(), ++generation);
+    plan->enqueue(density, d.size(), ++generation, precision);
     const auto after = plan->transfers();
     require(after.output_d2h_bytes == before.output_d2h_bytes &&
                 after.setup_h2d_bytes == before.setup_h2d_bytes &&
@@ -472,6 +473,32 @@ __global__ void halve_density(double* d, std::size_t n) {
   for (std::size_t i = threadIdx.x; i < n; i += blockDim.x) d[i] *= 0.5;
 }
 
+void mixed_density_contraction(const AoBasis& basis, const MolecularGrid& grid,
+                               std::uint32_t functional, bool uks, std::size_t tile = 13) {
+  // Keep the strict reference on the scalar schedule; the candidate also
+  // exercises tiled mixed arithmetic when the caller supplies a large tile.
+  Fixture strict(basis, grid, functional, uks, 13), mixed(basis, grid, functional, uks, tile);
+  if (tile >= 16)
+    require(basis.nao >= 16 && mixed.layout.tile_points >= 16,
+            "mixed tiled qualification must admit its target schedule");
+  const auto d = density(basis.nao, uks ? 2 : 1);
+  strict.submit(d);
+  mixed.submit(d, CudaXcDensityPrecision::Fp32ComputeFp64Accumulate);
+  const auto reference = strict.scalars(), candidate = mixed.scalars();
+  require(reference.error == 0 && candidate.error == 0, "mixed-density XC rejected finite input");
+  const auto tol = [](double x) { return 2e-6 + 2e-6 * std::abs(x); };
+  close(candidate.energy, reference.energy, "mixed-density XC energy", tol(reference.energy));
+  for (unsigned spin = 0; spin < 2; ++spin)
+    close(candidate.electrons[spin], reference.electrons[spin], "mixed-density XC electrons",
+          tol(reference.electrons[spin]));
+  const auto expected = strict.potential(), actual = mixed.potential();
+  require(expected.size() == actual.size(), "mixed-density XC potential shape changed");
+  for (std::size_t i = 0; i < expected.size(); ++i)
+    close(actual[i], expected[i], "mixed-density XC potential", tol(expected[i]));
+  strict.canary();
+  mixed.canary();
+}
+
 void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
                            std::uint32_t functional, std::size_t tile = 7) {
   Fixture good(basis, grid, functional, true, tile), bad(basis, grid, functional, true, tile + 4);
@@ -673,6 +700,7 @@ void matrix_schedule_cases() {
           for (std::size_t tile : {17U, 31U, 64U}) {
             Fixture test(large_basis, large_grid, functional, uks, tile);
             compare(test, large_basis, large_grid, density(large_basis.nao, uks ? 2 : 1));
+            mixed_density_contraction(large_basis, large_grid, functional, uks, tile);
           }
       graph_capture(large_basis, large_grid, 1U, false, 33);
       for (unsigned functional : {0U, 1U})
@@ -767,6 +795,7 @@ int main(int argc, char** argv) {
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
+      for (bool uks : {false, true}) mixed_density_contraction(basis, grid, functional, uks);
       variational_and_state(basis, grid, functional);
       const MolecularGrid tail_grid(molecule);
       Fixture tail(basis, tail_grid, functional, true, 257);

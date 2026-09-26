@@ -256,6 +256,7 @@ using vibeqc_tensor::I;
 
 // r2SCAN additionally keeps D*grad(phi) so tau is formed from the same
 // density matrix as rho/gradient; LDA/GGA retain the one-panel fast path.
+template <bool Mixed>
 __global__ void density_product(const double* density, const double* ao, I n, I count, I spins,
                                 I work_jets, double* work, int* error) {
   const I panel = count * n;
@@ -266,8 +267,18 @@ __global__ void density_product(const double* density, const double* ao, I n, I 
     const double* d = density + spin * n * n;
     const double* source = ao + jet * panel;
     double value = 0.0;
-    for (I nu = 0; nu < n; ++nu)
-      value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
+    for (I nu = 0; nu < n; ++nu) {
+      if constexpr (Mixed) {
+        // AUTO uses binary32 products while retaining the long AO reduction in binary64.
+        const float left = __double2float_rn(d[mu * n + nu]);
+        const float right = __double2float_rn(d[nu * n + mu]);
+        const float symmetric = __fadd_rn(__fmul_rn(0.5f, left), __fmul_rn(0.5f, right));
+        const float orbital = __double2float_rn(source[point * n + nu]);
+        value = __dadd_rn(value, static_cast<double>(__fmul_rn(symmetric, orbital)));
+      } else {
+        value += (0.5 * d[mu * n + nu] + 0.5 * d[nu * n + mu]) * source[point * n + nu];
+      }
+    }
     work[i] = finite(value, error, 1);
   }
 }

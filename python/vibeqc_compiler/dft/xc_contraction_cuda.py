@@ -223,6 +223,7 @@ __global__ void compact_potential_panels(const double* ao, const double* coeffic
 _TILED_TEMPLATE = r"""
 // Padding avoids bank conflicts when the AO lane reads a transposed panel.
 // Partial tiles still participate in both barriers and load exact zero padding.
+template <bool Mixed>
 __global__ void tiled_density_product(const double* density, const double* ao, I n, I count,
                                       I work_jets, double* work, int* error) {
   __shared__ double d[@TILE@][@PAD@], a[@TILE@][@PAD@];
@@ -235,10 +236,31 @@ __global__ void tiled_density_product(const double* density, const double* ao, I
   double value = 0.0;
   for (I begin = 0; begin < n; begin += @TILE@) {
     const I row = I(blockIdx.x)*@TILE@+y, col = begin+x;
-    d[y][x] = row < n && col < n ? 0.5*matrix[row*n+col]+0.5*matrix[col*n+row] : 0.0;
-    a[y][x] = point < count && col < n ? source[point*n+col] : 0.0;
+    if constexpr (Mixed) {
+      if (row < n && col < n) {
+        const float left = __double2float_rn(matrix[row*n+col]);
+        const float right = __double2float_rn(matrix[col*n+row]);
+        d[y][x] = static_cast<double>(
+            __fadd_rn(__fmul_rn(0.5f, left), __fmul_rn(0.5f, right)));
+      } else {
+        d[y][x] = 0.0;
+      }
+      a[y][x] = point < count && col < n
+                    ? static_cast<double>(__double2float_rn(source[point*n+col]))
+                    : 0.0;
+    } else {
+      d[y][x] = row < n && col < n ? 0.5*matrix[row*n+col]+0.5*matrix[col*n+row] : 0.0;
+      a[y][x] = point < count && col < n ? source[point*n+col] : 0.0;
+    }
     __syncthreads();
-    for (I k = 0; k < @TILE@; ++k) value += d[x][k]*a[y][k];
+    for (I k = 0; k < @TILE@; ++k) {
+      if constexpr (Mixed)
+        value = __dadd_rn(
+            value, static_cast<double>(__fmul_rn(__double2float_rn(d[x][k]),
+                                                  __double2float_rn(a[y][k]))));
+      else
+        value += d[x][k]*a[y][k];
+    }
     __syncthreads();
   }
   if (mu < n && point < count)
@@ -320,13 +342,24 @@ inline bool tiled_xc_admitted(I n, I count, I spins, I work_jets) {
   return tile_pairs <= 65535;
 }
 inline void scheduled_density_product(cudaStream_t stream, const double* density,
-    const double* ao, I n, I count, I spins, I work_jets, double* work, int* error) {
+    const double* ao, I n, I count, I spins, I work_jets, bool mixed,
+    double* work, int* error) {
   if (tiled_xc_admitted(n, count, spins, work_jets)) {
-    tiled_density_product<<<dim3((n+@TILE_MINUS_ONE@)/@TILE@, (count+@TILE_MINUS_ONE@)/@TILE@, spins*work_jets),
-                            dim3(@TILE@,@TILE@), 0, stream>>>(density, ao, n, count, work_jets, work, error);
+    const dim3 grid((n+@TILE_MINUS_ONE@)/@TILE@, (count+@TILE_MINUS_ONE@)/@TILE@,
+                    spins*work_jets), block(@TILE@,@TILE@);
+    if (mixed)
+      tiled_density_product<true><<<grid, block, 0, stream>>>(
+          density, ao, n, count, work_jets, work, error);
+    else
+      tiled_density_product<false><<<grid, block, 0, stream>>>(
+          density, ao, n, count, work_jets, work, error);
   } else {
-    density_product<<<vibeqc_tensor::blocks(spins*work_jets*count*n,128),128,0,stream>>>(
-        density,ao,n,count,spins,work_jets,work,error);
+    if (mixed)
+      density_product<true><<<vibeqc_tensor::blocks(spins*work_jets*count*n,128),128,0,stream>>>(
+          density,ao,n,count,spins,work_jets,work,error);
+    else
+      density_product<false><<<vibeqc_tensor::blocks(spins*work_jets*count*n,128),128,0,stream>>>(
+          density,ao,n,count,spins,work_jets,work,error);
   }
 }
 inline void scheduled_potential(cudaStream_t stream, const double* ao,
