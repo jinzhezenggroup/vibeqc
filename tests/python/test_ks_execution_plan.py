@@ -97,7 +97,7 @@ def test_execution_plan_rejects_cross_primitive_omega_drift() -> None:
 
 def test_native_projection_carries_wb97mv_range_exchange_from_methodir() -> None:
     cam = resolve_method("CAM-B3LYP")
-    with pytest.raises(NotImplementedError, match="semilocal composition"):
+    with pytest.raises(NotImplementedError, match="qualified lowerer"):
         ks_coefficients(cam)
 
     wb97mv = resolve_method("WB97M-V")
@@ -105,7 +105,7 @@ def test_native_projection_carries_wb97mv_range_exchange_from_methodir() -> None
     assert ks_range_exchange_parameters(wb97mv) == pytest.approx((0.15, 1.0, 0.3))
 
 
-@pytest.mark.parametrize("method", ("LDA", "R2SCAN"))
+@pytest.mark.parametrize("method", ("LDA_XC_PW", "R2SCAN"))
 def test_unqualified_hybridized_pure_family_stays_rejected(method: str) -> None:
     base = resolve_method(method)
     hybrid = MethodIR(
