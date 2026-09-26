@@ -26,7 +26,7 @@ struct vibeqc_fock_plan {
 };
 
 struct vibeqc_rhf_response_resident {
-  vibeqc_fock_plan* parent{};
+  vibeqc::scf::PreparedFockPlan* parent{};
   std::string detail;
 #if VIBEQC_HAS_CUDA
   vibeqc::scf::CudaDirectJkPlan* direct{};
@@ -497,7 +497,7 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_create(
             "resident RHF response device budget is insufficient");
 
     auto owner = std::make_unique<vibeqc_rhf_response_resident>();
-    owner->parent = plan;
+    owner->parent = plan->source.get();
     owner->direct = direct;
     owner->device_id = vibeqc::scf::cuda_direct_jk_device(direct);
     owner->stream = vibeqc::scf::cuda_direct_jk_stream(direct);
@@ -811,7 +811,7 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_apply(vibeqc_rhf_response_
                               owner->transform_one, n, &one, owner->density, n));
     ++owner->blas_calls;
 
-    auto spec = owner->parent->source->strategy().spec;
+    auto spec = owner->parent->strategy().spec;
     spec.derivative_order = 0;
     std::string detail;
     const auto status = vibeqc::scf::enqueue_cuda_direct_jk_device(
@@ -904,7 +904,7 @@ extern "C" vibeqc_status vibeqc_rhf_response_resident_reconstruct_v1(
                               owner->transform_two, n, &one, owner->density, n));
     ++owner->blas_calls;
 
-    auto spec = owner->parent->source->strategy().spec;
+    auto spec = owner->parent->strategy().spec;
     spec.derivative_order = 0;
     std::string detail;
     const auto status = vibeqc::scf::enqueue_cuda_direct_jk_device(
