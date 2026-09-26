@@ -1251,6 +1251,13 @@ def _complete_rks_cuda_gradient_diagnostic(
             hamiltonian="scalar-semilocal-ecp" if ecp else "all-electron",
         ),
     )
+    range_primitive_records = (
+        len(plan.range_exchange_primitives) * primitive_sum**4
+        if wb97mv_candidate
+        else 0
+    )
+    if records + range_primitive_records > max_primitive_records:
+        raise ValueError("combined stationary primitive work budget exceeded")
     density = state.density if contract.spin == "polarized" else state.density[0]
     base_sources = tuple(name for name in plan.source_names if name in _SOURCE_NAMES)
     if base_sources != _SOURCE_NAMES:
@@ -1298,7 +1305,7 @@ def _complete_rks_cuda_gradient_diagnostic(
     if available <= 0:
         raise ValueError("stationary additional-device budget exceeded")
     tensor_plans = {}
-    if ecp:
+    if ecp or wb97mv_candidate:
         tensor_plans["reduction"] = plan_cuda(
             plan.reduction_program(atoms=na), target, max_bytes=available
         )
@@ -1406,7 +1413,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                         CUDA_REQUESTS_PER_UNIT if component_mode else None
                     ),
                 )
-                if aot_directory is None or ecp or component_mode
+                if aot_directory is None or ecp or component_mode or wb97mv_candidate
                 else load_stationary_aot_artifact(
                     aot_directory,
                     functional=functional,
