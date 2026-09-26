@@ -167,7 +167,9 @@ std::size_t retained_reference_bytes(const scf::PhysicalReference& ref) {
 }
 
 cc::Problem build_problem(const core::System& system, const scf::PhysicalReference& ref,
-                          const cc::SolverOptions& options, bool cuda, int device) {
+                          const cc::SolverOptions& options, bool cuda, int device,
+                          posthf::ProviderWork& provider_work,
+                          vibeqc_tensor::Metrics& provider_metrics) {
   cc::Problem p;
   p.nocc = ref.nocc;
   p.reference_retained_bytes = retained_reference_bytes(ref);
@@ -217,7 +219,6 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
 
   p.minimum_absolute_denominator = minimum;
   posthf::RawSource source(system);
-  posthf::NativeBlockProvider provider(source, ref, options.max_bytes, 2);
   const auto occ = range(0, o), vir = range(o, n);
   const std::array<posthf::MOSlots, 7> requests{{
       {occ, vir, occ, vir},
@@ -240,20 +241,46 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
   const std::array<std::vector<double>*, 7> targets{&p.ovov, &p.ovvo, &p.oovv, &p.ovvv,
                                                     &p.ovoo, &p.oooo, &p.vvvv};
 
-  const auto common_bytes = provider.batch_bytes(shapes.front(), 0, cuda);
-  std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
-  schedule_requests.reserve(requests.size());
-  for (const auto& shape : shapes) {
-    const auto single_bytes = provider.batch_bytes(shape, 1, cuda);
-    if (single_bytes < common_bytes)
-      throw std::logic_error("RCCSD provider request accounting underflow");
-    std::size_t output_elements = 1;
-    for (const auto extent : shape) output_elements = posthf::checked_mul(output_elements, extent);
-    schedule_requests.push_back(
-        {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
+  auto schedule_for = [&](const posthf::NativeBlockProvider& candidate) {
+    const auto common_bytes = candidate.batch_bytes(shapes.front(), 0, cuda);
+    std::vector<posthf::generated::SourceReuseRequest> schedule_requests;
+    schedule_requests.reserve(requests.size());
+    for (const auto& shape : shapes) {
+      const auto single_bytes = candidate.batch_bytes(shape, 1, cuda);
+      if (single_bytes < common_bytes)
+        throw std::logic_error("RCCSD provider request accounting underflow");
+      std::size_t output_elements = 1;
+      for (const auto extent : shape)
+        output_elements = posthf::checked_mul(output_elements, extent);
+      schedule_requests.push_back(
+          {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
+    }
+    return posthf::generated::ordered_source_reuse_plan(
+        common_bytes, p.reference_retained_bytes, options.max_bytes, schedule_requests);
+  };
+
+  posthf::NativeBlockProvider widest_provider(
+      source, ref, options.max_bytes, std::numeric_limits<unsigned>::max());
+  const auto maximum_axis_tile = widest_provider.tile_shape()[0];
+  std::vector<posthf::generated::SourceTileCandidate> tile_candidates;
+  tile_candidates.reserve(maximum_axis_tile);
+  for (std::size_t axis_tile = 1; axis_tile <= maximum_axis_tile; ++axis_tile) {
+    try {
+      posthf::NativeBlockProvider candidate(source, ref, options.max_bytes,
+                                            static_cast<unsigned>(axis_tile));
+      const auto candidate_reuse = schedule_for(candidate);
+      tile_candidates.push_back(
+          {candidate.tile_shape()[0], candidate_reuse.batches.size(), candidate_reuse.peak_bytes});
+    } catch (const std::length_error&) {
+      continue;
+    }
   }
-  const auto reuse = posthf::generated::ordered_source_reuse_plan(
-      common_bytes, p.reference_retained_bytes, options.max_bytes, schedule_requests);
+  if (tile_candidates.empty())
+    throw std::length_error("RCCSD MO provider exceeds numeric memory budget");
+  const auto source_tile_plan = posthf::generated::select_source_tile(n, tile_candidates);
+  posthf::NativeBlockProvider provider(source, ref, options.max_bytes,
+                                       static_cast<unsigned>(source_tile_plan.axis_tile));
+  const auto reuse = schedule_for(provider);
 
   std::size_t retained = 0;
   for (const auto& batch : reuse.batches) {
@@ -261,7 +288,8 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
     batch_requests.reserve(batch.end - batch.begin);
     for (std::size_t request = batch.begin; request < batch.end; ++request)
       batch_requests.push_back(requests[request]);
-    auto outputs = provider.get_many(batch_requests, cuda, device);
+    auto outputs =
+        provider.get_many(batch_requests, cuda, device, &provider_metrics, &provider_work);
     if (outputs.size() != batch_requests.size())
       throw std::runtime_error("RCCSD MO provider returned an invalid batch");
     for (std::size_t local = 0; local < outputs.size(); ++local) {
@@ -271,6 +299,15 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
       *targets[request] = std::move(outputs[local]);
     }
   }
+  if (provider_work.source_scans != reuse.batches.size() ||
+      provider_work.source_reads != source_tile_plan.source_reads)
+    throw std::logic_error("RCCSD source-reuse execution disagrees with compiler schedule");
+  const auto ao2 = posthf::checked_mul(n, n);
+  const auto ao4 = posthf::checked_mul(ao2, ao2);
+  const auto expected_source_values =
+      posthf::checked_mul(ao4, provider_work.source_scans);
+  if (provider_work.source_values != expected_source_values)
+    throw std::logic_error("RCCSD AO source value count disagrees with compiler schedule");
   p.provider_peak_bytes = reuse.peak_bytes;
   p.provider_host_bytes = retained;
 
@@ -313,7 +350,10 @@ RccsdNativeState execute_rccsd_prepared(runtime::ExecutionContext& execution,
                        reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o));
     state.eps_v.assign(reference->orbital_energies.begin() + static_cast<std::ptrdiff_t>(o),
                        reference->orbital_energies.end());
-    state.problem = build_problem(system, *reference, solver_options, cuda, execution.device_id());
+    posthf::ProviderWork provider_work;
+    vibeqc_tensor::Metrics provider_metrics;
+    state.problem = build_problem(system, *reference, solver_options, cuda, execution.device_id(),
+                                  provider_work, provider_metrics);
     allocation_stage = "CC resident solve";
     state.solved = cuda ? cc::solve_cuda(state.problem, solver_options, execution.device_id())
                         : cc::solve_cpu(state.problem, solver_options);
@@ -326,12 +366,19 @@ RccsdNativeState execute_rccsd_prepared(runtime::ExecutionContext& execution,
     diagnostic.reference_residual = reference->commutator_residual;
     diagnostic.minimum_absolute_denominator = state.problem.minimum_absolute_denominator;
     diagnostic.numeric_capacity_bytes =
-        std::max(reference_capacity, state.solved.diagnostic.numeric_capacity_bytes);
+        std::max({reference_capacity, state.problem.provider_peak_bytes,
+                  state.solved.diagnostic.numeric_capacity_bytes});
     diagnostic.mo_host_staging = cuda ? 1 : 0;
-    diagnostic.correlation_owned_device_bytes = state.solved.diagnostic.owned_device_bytes;
+    diagnostic.correlation_owned_device_bytes =
+        std::max<std::size_t>(provider_metrics.owned_device_bytes,
+                              state.solved.diagnostic.owned_device_bytes);
     diagnostic.correlation_provider_retained_bytes = state.problem.provider_host_bytes;
-    diagnostic.mo_transfer_bytes = 0;
-    diagnostic.tensor_kernel_ms = 0.0;
+    diagnostic.mo_transfer_bytes =
+        posthf::checked_add(provider_work.h2d_bytes, provider_work.d2h_bytes);
+    diagnostic.host_to_device_ms = provider_metrics.input_ms;
+    diagnostic.device_to_host_ms = provider_metrics.output_ms;
+    diagnostic.transform_library_ms = provider_metrics.library_ms;
+    diagnostic.tensor_kernel_ms = provider_metrics.kernel_ms;
     std::copy_n(cc::generated::iteration_equation_hash,
                 std::min<std::size_t>(64, std::strlen(cc::generated::iteration_equation_hash)),
                 diagnostic.equation_hash);
