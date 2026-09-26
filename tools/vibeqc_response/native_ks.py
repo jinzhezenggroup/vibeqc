@@ -22,8 +22,11 @@ from tools.vibeqc_posthf.reference import ReferenceSnapshot
 from tools.vibeqc_posthf.sources import NativeSource
 
 from .backends import NativeJKBackend, _checked_density
-from .operators import CPKSResponseOperator, cpks_operator_identity
-from .problem import ResponseUnsupported
+from vibeqc.response import (
+    CPKSResponseOperator,
+    ResponseUnsupported,
+    cpks_operator_identity,
+)
 from .spin_cuda import CudaSpinJKBackend
 from .uhf import UHFReferenceSnapshot, UKSResponseOperator, uks_operator_identity
 from .xc import FixedDensityXCDerivativeKernel
