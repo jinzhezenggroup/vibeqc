@@ -20,6 +20,7 @@ from vibeqc_compiler.xc.compiled_cpu_evidence import (
     RESULT_SCHEMA,
     build_result,
     stage_evidence,
+    validate_qualification,
     validate_result,
 )
 
@@ -82,6 +83,27 @@ def test_compiled_cpu_result_promotes_exact_binding_evidence() -> None:
     assert envelope["qualification"]["binding"]["domain_version"] == 3
     assert envelope["qualification"]["binding"]["density_threshold"] is not None
     assert result["identity"] in envelope["evidence"]
+
+
+def test_compiled_cpu_qualification_is_exact_and_canonical() -> None:
+    result = build_result(
+        NAME,
+        _binding(),
+        _outcome(),
+        evidence="test://qualification",
+    )
+    qualification = stage_evidence(NAME, result)["qualification"]
+
+    assert validate_qualification(NAME, qualification) == qualification
+
+    # Keep the binding canonical so this reaches digest validation rather than
+    # the earlier pinned-density-threshold check.
+    tampered = {
+        **qualification,
+        "binding_identity": "0" * 64,
+    }
+    with pytest.raises(ValueError, match="binding identity mismatch"):
+        validate_qualification(NAME, tampered)
 
 
 def test_compiled_cpu_result_rejects_wrong_domain_and_tampering() -> None:

@@ -15,13 +15,17 @@ from vibeqc_compiler.xc.capability_resolution import (
     CapabilityResolution,
     resolve_capability,
 )
-from vibeqc_compiler.xc.libxc_bulk_capabilities import functional_capability
+from vibeqc_compiler.xc.compiled_cpu_evidence import validate_qualification
+from vibeqc_compiler.xc.libxc_bulk_capabilities import (
+    BulkFunctionalCapability,
+    functional_capability,
+)
 from vibeqc_compiler.xc.spec import AUTO_BULK_COMPONENTS, functional
 
 from .ks_execution import KsExecutionPlan, compile_ks_execution_plan
 from .spec import MethodIR, SemilocalXCPrimitive, UnsupportedMethod
 
-BULK_KS_RESOLUTION_SCHEMA = "vibeqc.bulk-libxc-ks-resolution.v1"
+BULK_KS_RESOLUTION_SCHEMA = "vibeqc.bulk-libxc-ks-resolution.v2"
 _CPU_EXECUTION_STAGES = ("compiled-cpu", "production-domain")
 _CPU_PROMOTION_STAGES = (*_CPU_EXECUTION_STAGES, "molecular-scf")
 _SUPPORTED_INGREDIENTS = frozenset(("rho", "sigma", "tau"))
@@ -35,6 +39,8 @@ class BulkKsResolution:
     method: MethodIR
     plan: KsExecutionPlan
     required_ingredients: tuple[str, ...]
+    compiled_cpu_binding_identity: str
+    compiled_cpu_result_identity: str
     backend: str = "cpu"
 
     def to_payload(self) -> dict[str, typing.Any]:
@@ -44,6 +50,8 @@ class BulkKsResolution:
             "backend": self.backend,
             "capability": self.capability.to_payload(),
             "required_ingredients": list(self.required_ingredients),
+            "compiled_cpu_binding_identity": self.compiled_cpu_binding_identity,
+            "compiled_cpu_result_identity": self.compiled_cpu_result_identity,
             "method_identity": self.method.identity,
             "method_identifier": self.method.identifier,
             "plan_identity": self.plan.identity,
@@ -52,6 +60,29 @@ class BulkKsResolution:
             "required_lowerers": list(self.plan.required_lowerers),
             "public_dft": self.capability.public_dft,
         }
+
+
+def _require_exact_compiled_cpu(
+    capability: BulkFunctionalCapability,
+) -> dict[str, typing.Any]:
+    stage = next(
+        (
+            item
+            for item in capability.stage_evidence
+            if item.stage == "compiled-cpu" and item.status == "pass"
+        ),
+        None,
+    )
+    if stage is None:
+        raise UnsupportedMethod(
+            "automatic bulk Libxc KS requires passing compiled-CPU evidence"
+        )
+    try:
+        return validate_qualification(capability.name, stage.qualification)
+    except (TypeError, ValueError) as exc:
+        raise UnsupportedMethod(
+            "automatic bulk Libxc KS requires exact compiled-CPU qualification"
+        ) from exc
 
 
 def _resolve_bulk_ks(
@@ -95,6 +126,7 @@ def _resolve_bulk_ks(
         raise RuntimeError(
             "bulk Libxc capability identity changed during KS resolution"
         )
+    compiled_cpu = _require_exact_compiled_cpu(capability)
 
     functional_spec = functional(capability.name, spin=spin)
     method = MethodIR(
@@ -115,6 +147,8 @@ def _resolve_bulk_ks(
         method=method,
         plan=plan,
         required_ingredients=capability.required_ingredients,
+        compiled_cpu_binding_identity=compiled_cpu["binding_identity"],
+        compiled_cpu_result_identity=compiled_cpu["result_identity"],
     )
 
 

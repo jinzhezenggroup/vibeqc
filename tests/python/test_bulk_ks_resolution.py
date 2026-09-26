@@ -51,6 +51,13 @@ def _candidate_resolution(name: str) -> tuple[object, CapabilityResolution]:
     return capability, qualified
 
 
+def _compiled_cpu() -> dict[str, str]:
+    return {
+        "binding_identity": "a" * 64,
+        "result_identity": "b" * 64,
+    }
+
+
 def test_bulk_ks_fails_closed_without_molecular_evidence() -> None:
     with pytest.raises(CapabilityNotQualified) as exc:
         bulk_ks.resolve_bulk_ks("GGA_X_PBE_SOL")
@@ -77,6 +84,9 @@ def test_bulk_ks_candidate_breaks_molecular_scf_evidence_cycle(
         return qualified
 
     monkeypatch.setattr(bulk_ks, "resolve_capability", fake_resolve)
+    monkeypatch.setattr(
+        bulk_ks, "_require_exact_compiled_cpu", lambda capability: _compiled_cpu()
+    )
     result = bulk_ks.resolve_bulk_ks_candidate(capability.name)
 
     assert requests == [("compiled-cpu", "production-domain")]
@@ -115,6 +125,9 @@ def test_bulk_ks_requires_exact_cpu_stages_and_builds_pure_plan(
 
     monkeypatch.setattr(bulk_ks, "functional_capability", fake_capability)
     monkeypatch.setattr(bulk_ks, "resolve_capability", fake_resolve)
+    monkeypatch.setattr(
+        bulk_ks, "_require_exact_compiled_cpu", lambda capability: _compiled_cpu()
+    )
 
     result = bulk_ks.resolve_bulk_ks(
         capability.name,
@@ -149,6 +162,9 @@ def test_bulk_ks_descriptive_identifier_does_not_change_semantic_plan(
     capability, qualified = _qualified_resolution("LDA_C_VWN_4")
     monkeypatch.setattr(
         bulk_ks, "resolve_capability", lambda *args, **kwargs: qualified
+    )
+    monkeypatch.setattr(
+        bulk_ks, "_require_exact_compiled_cpu", lambda capability: _compiled_cpu()
     )
 
     first = bulk_ks.resolve_bulk_ks(capability.name, identifier="candidate-a")
@@ -210,3 +226,54 @@ def test_bulk_ks_detects_capability_identity_drift(
 
     with pytest.raises(RuntimeError, match="identity changed"):
         bulk_ks.resolve_bulk_ks(capability.name)
+
+
+def test_bulk_ks_requires_canonical_compiled_cpu_qualification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stage = SimpleNamespace(
+        stage="compiled-cpu",
+        status="pass",
+        qualification={"sentinel": True},
+    )
+    capability = SimpleNamespace(
+        name="GGA_X_PBE_SOL",
+        stage_evidence=(stage,),
+    )
+    calls: list[tuple[str, object]] = []
+
+    def validate(name: str, qualification: object) -> dict[str, str]:
+        calls.append((name, qualification))
+        return _compiled_cpu()
+
+    monkeypatch.setattr(bulk_ks, "validate_qualification", validate)
+    result = bulk_ks._require_exact_compiled_cpu(capability)
+
+    assert result == _compiled_cpu()
+    assert calls == [("GGA_X_PBE_SOL", {"sentinel": True})]
+
+    monkeypatch.setattr(
+        bulk_ks,
+        "validate_qualification",
+        lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("forged")),
+    )
+    with pytest.raises(UnsupportedMethod, match="exact compiled-CPU"):
+        bulk_ks._require_exact_compiled_cpu(capability)
+
+
+def test_bulk_ks_resolution_retains_compiled_cpu_identities(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    capability, qualified = _candidate_resolution("GGA_X_PBE_SOL")
+    monkeypatch.setattr(
+        bulk_ks, "resolve_capability", lambda *args, **kwargs: qualified
+    )
+    monkeypatch.setattr(
+        bulk_ks, "_require_exact_compiled_cpu", lambda capability: _compiled_cpu()
+    )
+
+    result = bulk_ks.resolve_bulk_ks_candidate(capability.name)
+    payload = result.to_payload()
+
+    assert payload["compiled_cpu_binding_identity"] == "a" * 64
+    assert payload["compiled_cpu_result_identity"] == "b" * 64
