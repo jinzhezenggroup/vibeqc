@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.common.paths import asset_path
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
@@ -174,9 +175,7 @@ class _ResidentCCOwner(PreparedResident):
         lib.resident_cc_download_amplitudes.restype = ctypes.c_int
 
     def _call_cc(self, name: typing.Any, *args: typing.Any) -> None:
-        error = ctypes.create_string_buffer(2048)
-        if getattr(self._library, name)(self._pointer, *args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        checked_native_call(getattr(self._library, name), self._pointer, *args)
 
     def initialize_cc(self) -> None:
         with self._lock:
