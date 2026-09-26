@@ -4,6 +4,7 @@
  */
 #include <array>
 #include <climits>
+#include <vector>
 
 #include "../tensor/cuda_runtime.cuh"
 
@@ -64,6 +65,41 @@ void validate(Transform& p) {
   cuda_check(cudaStreamSynchronize(ctx.stream));
   readback_drain.active = false;
   if (invalid) throw std::runtime_error("nonfinite MO transformation");
+  p.validated = true;
+}
+
+struct BatchState {
+  size_t stage{}, output{}, coefficients{};
+  std::array<size_t, 4> m{}, c_offset{};
+  double *c{}, *first{}, *second{}, *result{};
+};
+struct BatchTransform {
+  Context context;
+  size_t nbf{};
+  std::array<size_t, 4> tile{};
+  std::vector<BatchState> states;
+  double* raw{};
+  bool validated = true;
+  bool failed = false;
+};
+void validate(BatchTransform& p) {
+  if (p.failed) throw std::runtime_error("MO batch accumulation failed; recreate the transform");
+  if (p.validated) return;
+  auto& ctx = p.context;
+  ctx.section(true, ctx.metrics.kernel_ms, [&] {
+    for (size_t request = 0; request < p.states.size(); ++request) {
+      const auto& state = p.states[request];
+      check_scale<<<blocks(state.output, 256), 256, 0, ctx.stream>>>(
+          state.result, state.output, 1, ctx.error, static_cast<int>(request));
+      cuda_check(cudaGetLastError());
+    }
+  });
+  int invalid = 0;
+  StreamDrain readback_drain{ctx.stream};
+  cuda_check(cudaMemcpyAsync(&invalid, ctx.error, sizeof(int), cudaMemcpyDeviceToHost, ctx.stream));
+  cuda_check(cudaStreamSynchronize(ctx.stream));
+  readback_drain.active = false;
+  if (invalid) throw std::runtime_error("nonfinite MO batch transformation");
   p.validated = true;
 }
 }  // namespace
