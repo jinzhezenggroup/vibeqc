@@ -442,8 +442,6 @@ def _fixture_identity(
     name: str,
     spin: str,
     inputs: Mapping[str, Any],
-    points: np.ndarray,
-    weights: np.ndarray,
 ) -> str:
     return canonical_hash(
         {
@@ -451,8 +449,16 @@ def _fixture_identity(
             "functional": name,
             "spin": spin,
             "basis": inputs["shells"],
-            "grid_points_sha256": hashlib.sha256(points.tobytes()).hexdigest(),
-            "grid_weights_sha256": hashlib.sha256(weights.tobytes()).hexdigest(),
+            "charge": inputs["charge"],
+            "multiplicity": inputs["multiplicity"],
+            "grid_spec": {
+                "version": 1,
+                "radial_points": 1,
+                "angular_polar": 2,
+                "angular_azimuth": 4,
+                "partition_iterations": 3,
+                "coincident_tolerance": "1e-12",
+            },
         }
     )
 
@@ -566,7 +572,7 @@ def qualify_molecular_scf(
             reference = _reference(name, spin, inputs, points, weights)
             key = f"{spin}:{phase}"
             references[key] = reference
-            fixtures[key] = _fixture_identity(name, spin, inputs, points, weights)
+            fixtures[key] = _fixture_identity(name, spin, inputs)
 
     rows: list[dict[str, Any]] = []
     details: list[dict[str, Any]] = []
