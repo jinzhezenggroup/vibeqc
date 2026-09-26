@@ -187,6 +187,16 @@ def _public_admission_reason(
     if admission.get("schema") != _PUBLIC_METHOD_QUALIFICATION_SCHEMA:
         return "public admission receipt has unsupported schema"
 
+    # The v1 producer qualifies only dual-spin CPU energy. The surrounding
+    # coverage is not part of result_identity, so require the exact projection
+    # instead of allowing edits to promote forces, response, or CUDA endpoints.
+    expected_coverage = [
+        {"backend": "cpu", "spin": spin, "products": ["energy"]}
+        for spin in SPIN_LAYOUTS
+    ]
+    if qualification.get("coverage") != expected_coverage:
+        return "public admission coverage does not match its exact CPU energy receipt"
+
     result_identity = admission.get("result_identity")
     if (
         not isinstance(result_identity, str)
@@ -252,18 +262,35 @@ def _exact_endpoint_public(
     backend: str,
     spin: str,
     product: str,
+    evidence: Mapping[str, Any] | None,
 ) -> bool:
     evidence_by_stage = {item.stage: item for item in capability.stage_evidence}
-    return (
-        "public-method" in capability.qualified_stages
-        and _endpoint_coverage_reason(
-            evidence_by_stage.get("public-method"),
+    public_evidence = evidence_by_stage.get("public-method")
+    if (
+        "public-method" not in capability.qualified_stages
+        or _endpoint_coverage_reason(
+            public_evidence,
             backend=backend,
             spin=spin,
             product=product,
         )
-        is None
-    )
+        is not None
+    ):
+        return False
+    # A non-public resolution may succeed even with stale public evidence, but
+    # its reported public_dft flag must never bypass exact receipt validation.
+    try:
+        return (
+            _public_admission_reason(
+                public_evidence,
+                name=capability.name,
+                capability_identity=capability.identity,
+                evidence=evidence,
+            )
+            is None
+        )
+    except CapabilityNotQualified:
+        return False
 
 
 def resolve_endpoint_capability(
@@ -358,5 +385,6 @@ def resolve_endpoint_capability(
             backend=backend,
             spin=spin,
             product=product,
+            evidence=evidence,
         ),
     )
