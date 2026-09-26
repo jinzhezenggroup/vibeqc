@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from fractions import Fraction
 from types import MappingProxyType
 
+from .exact import require_fraction
 from .provenance import canonical_hash
 
 NONLOCAL_CORRELATION_VERSION = "vv10-rvv10-2010-2013-v1"
@@ -17,14 +18,6 @@ _VARIANTS = (VV10, RVV10)
 
 class UnsupportedNonlocalCorrelation(ValueError):
     """The requested nonlocal-correlation definition is not audited."""
-
-
-def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
-    if not isinstance(value, Fraction):
-        raise UnsupportedNonlocalCorrelation(
-            f"{label} requires an exact Fraction parameter"
-        )
-    return value
 
 
 @dataclass(frozen=True)
@@ -45,8 +38,8 @@ class NonlocalCorrelationSpec:
             raise UnsupportedNonlocalCorrelation(
                 "unsupported nonlocal-correlation definition version"
             )
-        _require_fraction(self.b, "VV10 b")
-        _require_fraction(self.c, "VV10 C")
+        require_fraction(self.b, "VV10 b", UnsupportedNonlocalCorrelation, role="parameter")
+        require_fraction(self.c, "VV10 C", UnsupportedNonlocalCorrelation, role="parameter")
         if self.b <= 0 or self.c <= 0:
             raise UnsupportedNonlocalCorrelation(
                 "VV10 b and C parameters must be positive"
