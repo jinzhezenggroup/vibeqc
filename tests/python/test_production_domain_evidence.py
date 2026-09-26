@@ -35,6 +35,29 @@ def _cases(name: str = NAME) -> list[dict]:
     ]
 
 
+def test_required_matrix_is_spin_aware() -> None:
+    capability = functional_capability(NAME)
+    matrix = set(required_matrix(capability))
+
+    assert ("polarized", "spin/zero-a") in matrix
+    assert ("polarized", "spin/full-b") in matrix
+    assert ("unpolarized", "spin/zero-a") not in matrix
+    assert ("unpolarized", "spin/full-b") not in matrix
+
+    forged = _cases()
+    forged.append(
+        {
+            "spin": "unpolarized",
+            "case_id": "spin/zero-a",
+            "status": "pass",
+            "outputs": list(capability.production_domain_profile.outputs),
+            "reason": None,
+        }
+    )
+    with pytest.raises(ValueError, match="not valid for spin layout"):
+        build_result(NAME, forged, evidence="test://forged-spin-case")
+
+
 def test_complete_matrix_can_produce_exact_stage_evidence() -> None:
     capability = functional_capability(NAME)
     result = build_result(NAME, _cases(), evidence="test://pbe-sol/domain-matrix")

@@ -28,7 +28,9 @@ def required_matrix(
     """Return the exact spin x case coverage required by the current profile."""
     profile = capability.production_domain_profile
     return tuple(
-        (spin, case_id) for spin in profile.spin_layouts for case_id in profile.case_ids
+        (spin, case_id)
+        for spin in profile.spin_layouts
+        for case_id in profile.case_ids_for_spin(spin)
     )
 
 
@@ -46,8 +48,10 @@ def _normalize_case(
     outputs = value.get("outputs")
     if spin not in profile.spin_layouts:
         raise ValueError(f"production-domain case has unsupported spin {spin!r}")
-    if case_id not in profile.case_ids:
-        raise ValueError(f"production-domain case has unsupported case_id {case_id!r}")
+    if case_id not in profile.case_ids_for_spin(spin):
+        raise ValueError(
+            f"production-domain case is not valid for spin layout: {spin!r}:{case_id!r}"
+        )
     if status not in CASE_STATUSES:
         raise ValueError("production-domain case status must be pass, fail, or not-run")
     if (
