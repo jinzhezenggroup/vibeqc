@@ -22,6 +22,17 @@ bool finite(std::span<const double> values) {
                      [](double value) { return std::isfinite(value); });
 }
 
+double resident_norm(ResidentKrylovBackend& backend, std::size_t slot) {
+  try {
+    return backend.norm(slot);
+  } catch (const std::invalid_argument&) {
+    // stable_norm-based backends reject nonfinite vectors by exception.
+    return std::numeric_limits<double>::infinity();
+  } catch (const std::overflow_error&) {
+    return std::numeric_limits<double>::infinity();
+  }
+}
+
 double relative_residual(double residual, double rhs) {
   if (rhs > 0.0) return residual / rhs;
   return residual == 0.0 ? 0.0 : std::numeric_limits<double>::infinity();
@@ -114,7 +125,17 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
   if (slots.count != workspace.vector_slots)
     throw std::logic_error("resident GMRES slot layout does not match its workspace contract");
 
-  const double rhs_norm = stable_norm(rhs);
+  double rhs_norm = 0.0;
+  try {
+    rhs_norm = stable_norm(rhs);
+  } catch (const std::exception&) {
+    WorkspaceVector solution(n, 0.0, allocator);
+    if (!initial_guess.empty())
+      std::copy(initial_guess.begin(), initial_guess.end(), solution.begin());
+    return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
+                       GmresStatus::nonfinite_input, std::numeric_limits<double>::infinity(),
+                       0.0, 0, 0, 0);
+  }
   const double target =
       std::max(plan.options.absolute_tolerance, plan.options.relative_tolerance * rhs_norm);
   if (initial_guess.empty() && rhs_norm <= target) {
@@ -136,7 +157,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
     ++operator_actions;
     backend.axpy(Slots::residual, -1.0, slots.work);
   }
-  double beta = backend.norm(Slots::residual);
+  double beta = resident_norm(backend, Slots::residual);
   if (!std::isfinite(beta)) {
     WorkspaceVector solution(n, 0.0, allocator);
     backend.download(Slots::x, solution);
@@ -198,7 +219,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
       }
       if (nonfinite) return finish(slots.best_x, GmresStatus::nonfinite_operator, best_norm);
 
-      const double next_norm = backend.norm(slots.work);
+      const double next_norm = resident_norm(backend, slots.work);
       if (!std::isfinite(next_norm))
         return finish(slots.best_x, GmresStatus::nonfinite_operator, best_norm);
       hessenberg[(column + 1) * restart + column] = next_norm;
@@ -246,7 +267,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
       ++operator_actions;
       backend.copy(slots.candidate_residual, Slots::rhs);
       backend.axpy(slots.candidate_residual, -1.0, slots.candidate_image);
-      const double candidate_norm = backend.norm(slots.candidate_residual);
+      const double candidate_norm = resident_norm(backend, slots.candidate_residual);
       if (!std::isfinite(candidate_norm))
         return finish(slots.best_x, GmresStatus::nonfinite_operator, best_norm);
 
