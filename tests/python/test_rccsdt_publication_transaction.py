@@ -68,6 +68,10 @@ struct Force {
     std::uint64_t measured_workspace_peak_bytes{64}, workspace_allocation_count{1};
     double residual_norm{1e-12}, relative_residual{1e-13};
   } orbital_response;
+  struct {
+    bool cuda_actions{};
+    std::uint64_t owned_device_bytes{128};
+  } lambda;
   double independent_orbital_residual{1e-12};
   std::uint64_t numeric_capacity_bytes{256};
   std::string response_operator_hash{"force"};
@@ -84,7 +88,9 @@ template<class... T> Force rccsdt_force_cuda(T&&...) {
   if (failure_mode==3) throw std::bad_alloc();
   if (failure_mode==4) throw std::length_error("force budget");
   if (failure_mode==5) throw std::runtime_error("force solve");
-  return {};
+  Force result;
+  result.lambda.cuda_actions=true;
+  return result;
 }
 }
 namespace runtime { enum class ExecutionMemorySpace { Host, Device }; }
