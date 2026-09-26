@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate the build-identity header from the repository-owned source manifest."""
 
 from __future__ import annotations
