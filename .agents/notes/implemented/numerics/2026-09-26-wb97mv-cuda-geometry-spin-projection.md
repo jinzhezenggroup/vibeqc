@@ -12,10 +12,10 @@ already splits an RKS density into equal spin blocks.
 
 ## Decision
 
-The stationary wrapper projects only the FunctionalSpec spin field to
+The geometry lowerer projects only the FunctionalSpec spin field to
 `polarized` before geometry lowering. The original MethodIR, component weights,
 range omega, provenance and other semantic fields remain intact. Direct
-`functional=4` lowering still requires an explicit polarized FunctionalSpec.
+`functional=4` lowering still requires an explicit FunctionalSpec.
 
 Reconstructing a named WB97M-V spec would erase custom exact weights and omega;
 changing MethodIR itself would break its density and source-weight convention.

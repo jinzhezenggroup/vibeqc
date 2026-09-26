@@ -839,13 +839,6 @@ def emit_stationary_wrapper_cuda(
         ),
         None,
     )
-    if semilocal is not None and semilocal.spin == "unpolarized":
-        # GridTaskView always supplies alpha/beta features, splitting an RKS
-        # density equally. Change only that ABI convention: the MethodIR owns
-        # the exact component weights and range parameter for both spin modes.
-        from dataclasses import replace
-
-        semilocal = replace(semilocal, spin="polarized")
     return (
         primitive_declaration
         + emit_geometry_cuda(
