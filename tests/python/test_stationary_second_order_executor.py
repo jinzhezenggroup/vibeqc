@@ -8,13 +8,6 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 import vibeqc.second_order as production_second_order
-from vibeqc_compiler.method import (
-    StationaryHVPPlan,
-    StationaryMeanField,
-    resolve_method,
-)
-from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
-
 from vibeqc.second_order import (
     StationaryHVPContext,
     StationaryHVPContributor,
@@ -22,9 +15,12 @@ from vibeqc.second_order import (
     StationaryResponseDriver,
     StationarySecondOrderExecutor,
 )
-
-
-
+from vibeqc_compiler.method import (
+    StationaryHVPPlan,
+    StationaryMeanField,
+    resolve_method,
+)
+from vibeqc_compiler.method.stationary_gradient import SCF_POINT_MODEL
 
 
 def test_production_second_order_owner_has_no_tools_dependency() -> None:
@@ -49,8 +45,7 @@ def test_tools_compatibility_shim_reexports_production_owner() -> None:
     assert compatibility.StationaryHVPContext is StationaryHVPContext
     assert compatibility.StationaryHVPContributor is StationaryHVPContributor
     assert (
-        compatibility.StationaryPerturbationProvider
-        is StationaryPerturbationProvider
+        compatibility.StationaryPerturbationProvider is StationaryPerturbationProvider
     )
     assert compatibility.StationaryResponseDriver is StationaryResponseDriver
     assert compatibility.StationarySecondOrderExecutor is StationarySecondOrderExecutor
