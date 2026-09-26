@@ -70,6 +70,24 @@ def test_cpu_scc_uses_shared_method_neutral_iteration_control() -> None:
     assert "while (driver_state.converged[0]" not in source
 
 
+def test_cpu_runtime_does_not_stage_rejected_attachments() -> None:
+    source = (ROOT / "src/xtb/native/src/runtime/gfn2_cpu_execution.cpp").read_text()
+    assert "validate_molecular_request(batch, options, error)" in source
+    for retired in (
+        "stage_electric_fields",
+        "total_point_charges",
+        "point_charge_positions",
+        "periodic_shifts",
+        "periodic_response",
+        "VIBEQC_XTB_COMPUTE_POINT_CHARGE_FORCES",
+        "VIBEQC_XTB_COMPUTE_DIPOLE_MOMENTS",
+        "VIBEQC_XTB_COMPUTE_STRAIN_DERIVATIVES",
+        "ExternalPointChargePlan",
+        "PeriodicEmbeddingPlan",
+    ):
+        assert retired not in source
+
+
 def test_retired_runtime_and_external_api_cannot_reenter_production() -> None:
     assert not (ROOT / "src/xtb/gfn2_runtime").exists()
     native = ROOT / "src/xtb/native"
