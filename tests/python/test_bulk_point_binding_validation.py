@@ -6,8 +6,12 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
+from vibeqc_compiler.xc import libxc_bulk
 from vibeqc_compiler.xc.bulk_aot import SourceVariant
-from vibeqc_compiler.xc.bulk_point_program import SemilocalPointBinding
+from vibeqc_compiler.xc.bulk_point_program import (
+    POINT_PROGRAM_BINDING_SCHEMA,
+    SemilocalPointBinding,
+)
 
 
 def variant() -> SourceVariant:
@@ -74,3 +78,13 @@ def test_valid_binding_payload_is_detached_and_emission_is_stable(
     assert binding.ingredient_mask == mask
     assert (binding.identity, binding.emit_source()) == before
     assert binding.variant.emission_identity in before[1]
+
+
+def test_known_runtime_domain_rejects_forged_native_version() -> None:
+    source = replace(variant(), domain=libxc_bulk.BULK_SEMANTICS)
+    with pytest.raises(ValueError, match="disagrees"):
+        SemilocalPointBinding(source, "capability", "expression", 2)
+
+    binding = SemilocalPointBinding(source, "capability", "expression", 1)
+    assert binding.to_payload()["schema"] == POINT_PROGRAM_BINDING_SCHEMA
+    assert binding.to_payload()["domain_version"] == 1
