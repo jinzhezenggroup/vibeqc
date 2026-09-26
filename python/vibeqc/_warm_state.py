@@ -39,9 +39,7 @@ class WarmStartState:
         self.projection_diagnostics = None
         self.metadata = [None] * self.item_count
 
-    def record_success(
-        self, index: int, *, controls: typing.Any, backend: str
-    ) -> None:
+    def record_success(self, index: int, *, controls: typing.Any, backend: str) -> None:
         """Record a successful execution when update policy is enabled."""
 
         if not self.enabled or not self.updates:
@@ -65,7 +63,9 @@ class WarmStartState:
             return "in_process_warm"
         return "cold"
 
-    def target_report(self, items: typing.Iterable[typing.Any]) -> list[dict[str, typing.Any]]:
+    def target_report(
+        self, items: typing.Iterable[typing.Any]
+    ) -> list[dict[str, typing.Any]]:
         """Build the common checkpoint/projection verification report."""
 
         return [

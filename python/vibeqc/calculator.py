@@ -56,7 +56,6 @@ _named_basis_record = _model_resolution._named_basis_record
 _named_basis_shells = _model_resolution._named_basis_shells
 
 
-
 @cache
 def method_capabilities(method: str) -> MethodCapabilities:
     """Query method support without constructing a calculator or system."""

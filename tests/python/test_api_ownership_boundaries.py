@@ -41,7 +41,7 @@ def test_model_resolution_is_native_free_and_preserves_identity() -> None:
 
 
 def test_result_translation_has_no_calculator_dependency() -> None:
-    force_storage = (np.ctypeslib.as_ctypes(np.arange(6, dtype=np.float64)))
+    force_storage = np.ctypeslib.as_ctypes(np.arange(6, dtype=np.float64))
     forces = copy_force_array(force_storage, 2)
     assert np.array_equal(forces, np.arange(6, dtype=np.float64).reshape(2, 3))
     assert backend_name(0) == "cpu_reference"

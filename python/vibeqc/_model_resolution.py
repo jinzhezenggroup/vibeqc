@@ -111,9 +111,7 @@ def _named_basis_record(name: typing.Any, representation: typing.Any) -> typing.
     )
 
 
-def snapshot_basis(
-    basis: typing.Any, representation: typing.Any = None
-) -> typing.Any:
+def snapshot_basis(basis: typing.Any, representation: typing.Any = None) -> typing.Any:
     """Detach caller-owned basis storage and return a stable basis snapshot."""
 
     if isinstance(basis, os.PathLike) or (
@@ -135,8 +133,7 @@ def snapshot_basis(
                 s.angular_momentum, "shell angular momentum", high=2**32 - 1
             ),
             tuple(
-                Primitive(float(p.exponent), float(p.coefficient))
-                for p in s.primitives
+                Primitive(float(p.exponent), float(p.coefficient)) for p in s.primitives
             ),
         )
         for s in basis
@@ -160,7 +157,10 @@ class ModelResolutionInput:
 def resolve_model_identity(request: ModelResolutionInput) -> typing.Any:
     """Build the mathematical model identity without native execution setup."""
 
-    if request.method_id not in (*_method_manifest.HF_METHOD_IDS, _method_manifest.METHOD_MP2):
+    if request.method_id not in (
+        *_method_manifest.HF_METHOD_IDS,
+        _method_manifest.METHOD_MP2,
+    ):
         raise NotImplementedError("accuracy model is unavailable for this method")
     orbital = request.basis_metadata["orbital"]
     fitted = request.density_fitting
@@ -168,7 +168,9 @@ def resolve_model_identity(request: ModelResolutionInput) -> typing.Any:
     try:
         resolved_method = _method_manifest.METHOD_ID_TO_NAME[request.method_id]
     except KeyError as error:
-        raise NotImplementedError("accuracy model is unavailable for this method") from error
+        raise NotImplementedError(
+            "accuracy model is unavailable for this method"
+        ) from error
     from .accuracy import ResolvedModel
 
     return ResolvedModel(
@@ -177,7 +179,10 @@ def resolve_model_identity(request: ModelResolutionInput) -> typing.Any:
             [
                 (
                     atom.atomic_number,
-                    tuple(float(value).hex() if value else "0x0.0p+0" for value in atom.position),
+                    tuple(
+                        float(value).hex() if value else "0x0.0p+0"
+                        for value in atom.position
+                    ),
                 )
                 for atom in request.geometry
             ]

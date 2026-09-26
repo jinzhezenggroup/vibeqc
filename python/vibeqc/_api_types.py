@@ -38,9 +38,7 @@ class Atom:
         object.__setattr__(self, "position", xyz)
 
     @classmethod
-    def from_value(
-        cls, value: Atom | tuple[str | int, typing.Sequence[float]]
-    ) -> Atom:
+    def from_value(cls, value: Atom | tuple[str | int, typing.Sequence[float]]) -> Atom:
         """Normalize the public ``(element, position)`` tuple form."""
         if isinstance(value, cls):
             return value

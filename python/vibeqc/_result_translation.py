@@ -70,9 +70,7 @@ def backend_name(executed_backend: int) -> str:
     }.get(executed_backend, "unknown")
 
 
-def copy_force_array(
-    force_storage: typing.Any, atom_count: int
-) -> np.ndarray | None:
+def copy_force_array(force_storage: typing.Any, atom_count: int) -> np.ndarray | None:
     """Copy a native ``3*N`` force buffer into the public ``(N, 3)`` shape."""
 
     if force_storage is None:
