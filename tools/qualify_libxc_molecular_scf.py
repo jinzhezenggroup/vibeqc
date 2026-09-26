@@ -336,7 +336,9 @@ def _parse_native(
                 "initial_density_used": fields[7] == "1",
             }
         else:
-            raise ValueError(f"unexpected native molecular-SCF output record {fields[0]!r}")
+            raise ValueError(
+                f"unexpected native molecular-SCF output record {fields[0]!r}"
+            )
     if not metadata_seen:
         raise ValueError("native molecular-SCF output omitted program metadata")
     expected_rows = {f"{spin}:{phase}" for spin in SPINS for phase in PHASES}
@@ -564,9 +566,7 @@ def qualify_molecular_scf(
             reference = _reference(name, spin, inputs, points, weights)
             key = f"{spin}:{phase}"
             references[key] = reference
-            fixtures[key] = _fixture_identity(
-                name, spin, inputs, points, weights
-            )
+            fixtures[key] = _fixture_identity(name, spin, inputs, points, weights)
 
     rows: list[dict[str, Any]] = []
     details: list[dict[str, Any]] = []
@@ -586,9 +586,7 @@ def qualify_molecular_scf(
                 fixture_identity,
                 reference,
             )
-            energy_error = abs(
-                native["energy_hartree"] - reference["energy_hartree"]
-            )
+            energy_error = abs(native["energy_hartree"] - reference["energy_hartree"])
             failures = []
             if not native["converged"]:
                 failures.append("native SCF did not converge")
@@ -607,7 +605,9 @@ def qualify_molecular_scf(
                     "independent physical residual exceeds qualification tolerance"
                 )
             if phase != "cold" and not native["initial_density_used"]:
-                failures.append("native lifecycle phase did not consume its warm density")
+                failures.append(
+                    "native lifecycle phase did not consume its warm density"
+                )
             status = "pass" if not failures else "fail"
             reason = None if not failures else "; ".join(failures)
             rows.append(

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from tools.qualify_libxc_compiled_cpu import qualify_compiled_cpu
 from tools.qualify_libxc_molecular_scf import qualify_molecular_scf
 from tools.qualify_libxc_production_domain import qualify_functional
@@ -50,9 +51,7 @@ def test_pbesol_reaches_exact_molecular_scf_evidence() -> None:
     details = molecular["details"]
     assert len(details) == 6
     assert all(row["status"] == "pass" for row in details)
-    assert {
-        (row["spin"], row["phase"]) for row in details
-    } == {
+    assert {(row["spin"], row["phase"]) for row in details} == {
         (spin, phase)
         for spin in ("polarized", "unpolarized")
         for phase in ("cold", "warm-replay", "changed-geometry")
