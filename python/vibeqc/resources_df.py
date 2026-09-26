@@ -10,6 +10,7 @@ import typing
 from dataclasses import dataclass
 
 from vibeqc_compiler.common.layout import DenseLayout, SymmetricPairLayout
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.common.resources import checked_bytes
 
 
@@ -174,8 +175,8 @@ def density_fitting_tile_plan(
     )
     query.restype = ctypes.c_int
     values = (ctypes.c_uint64 * ((10 if packed else 6) + int(method_aware)))()
-    error = ctypes.create_string_buffer(2048)
-    if query(
+    checked_native_call(
+        query,
         batch,
         nbf,
         naux,
@@ -185,10 +186,8 @@ def density_fitting_tile_plan(
         *extra_values,
         values,
         len(values),
-        error,
-        len(error),
-    ):
-        raise ValueError(error.value.decode())
+        error_type=ValueError,
+    )
 
     layout = density_fitting_value_layout(nbf, naux, pair_storage)
     if isinstance(layout, SymmetricPairLayout):
