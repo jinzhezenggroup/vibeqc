@@ -133,6 +133,16 @@ std::array<double, 5> rks_features(const double* phi,
   return features;
 }
 
+bool exact_first_order_ao_vacuum(const double* phi,
+                                 const std::array<const double*, 3>& derivatives,
+                                 std::size_t n) noexcept {
+  for (std::size_t mu = 0; mu < n; ++mu)
+    if (phi[mu] != 0.0 || derivatives[0][mu] != 0.0 || derivatives[1][mu] != 0.0 ||
+        derivatives[2][mu] != 0.0)
+      return false;
+  return true;
+}
+
 void sample_xc_capacity(XcIntegral& result, const std::vector<double>& ao, std::size_t count) {
   auto& record = result.density_diagnostic;
   record.max_tile_points = std::max(record.max_tile_points, count);
@@ -961,7 +971,12 @@ XcIntegral integrate_pbe_rks_impl(const AoBasis& basis, const MolecularGrid& gri
       const double* grad_x = ao_data + (point_stride + stored_point) * n;
       const double* grad_y = ao_data + (2 * point_stride + stored_point) * n;
       const double* grad_z = ao_data + (3 * point_stride + stored_point) * n;
-      const auto features = rks_features(phi, {grad_x, grad_y, grad_z}, n, density, factor, 7U);
+      const std::array<const double*, 3> gradients{grad_x, grad_y, grad_z};
+      // Exact Gaussian underflow produces an all-zero AO jet. PBE's vacuum
+      // energy, electron count and first derivative are exactly zero there, so
+      // skip the quadratic density contraction, point algebra and Vxc update.
+      if (exact_first_order_ao_vacuum(phi, gradients, n)) continue;
+      const auto features = rks_features(phi, gradients, n, density, factor, 7U);
       const double rho = features[0];
       const std::array<double, 3> gradient{features[1], features[2], features[3]};
       const double sigma =
