@@ -26,6 +26,17 @@ The existing generated weighted-ERI first-derivative mathematics, component subs
 ## Evidence
 At reviewed head `b0d34abcb0b5b2fd95844e829838f7ce6f7f2ae1`, the PR's CI, CuMetal CUDA, Pre-commit, and PR-overlap workflows all passed. The test suite contains an opt-in Slurm/NVIDIA comparison of short- and long-range generated CUDA derivatives against the same generated CPU provider with explicit force tolerances; normal CI does not substitute for executing that real-device gate.
 
+Review acceptance on 2026-09-26 additionally ran both SR/LR providers on the
+Slurm `main` partition with `--gres=gpu:5090:1 --time=00:10:00`, using CUDA 12.9
+and strict FP64 compilation. All eight tests in `test_stationary_rsh_cuda.py`
+and `test_stationary_rsh_cpu.py` passed with `VIBEQC_TEST_RANGE_CUDA=1`.
+The latter now checks the CUDA provider directly against fixed-density energy
+differences from PySCF 2.14.0/libcint, with a `1e-4` Bohr central step and
+`atol=2e-8, rtol=2e-7`; this independently checks derivative signs, exchange
+weights, atom accumulation and contracted primitive streaming. The generated
+CPU/CUDA comparison also retains `atol=3e-12, rtol=3e-11` and a translation
+sum gate. This is provider evidence, not complete WB97M-V force acceptance.
+
 ## Consequences
 The provider can be composed by later CUDA stationary-gradient slices without changing its mathematical owner. Callers must supply the backend and, for CUDA, the device ordinal explicitly.
 
