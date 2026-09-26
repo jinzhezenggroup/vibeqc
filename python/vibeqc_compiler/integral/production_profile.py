@@ -485,6 +485,7 @@ def _selections_from_rows(
                 recurrence=recurrence,
                 resident_force_recurrence=resident_force_recurrence,
                 fock_schedule=fock_schedule,
+                fock_route=cast("str", row.get("fock_route", "paged")),
                 capabilities=capabilities,
                 runtime_seconds=_optional_nonnegative_number(
                     name, row, "runtime_seconds"
