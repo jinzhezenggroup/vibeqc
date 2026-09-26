@@ -3,7 +3,10 @@
 import pytest
 from vibeqc_compiler.common.source_reuse import (
     SourceReuseRequest,
+    SourceTileCandidate,
     ordered_source_reuse_plan,
+    select_source_tile,
+    source_reads_per_scan,
     uniform_source_reuse_plan,
 )
 
@@ -49,3 +52,42 @@ def test_ordered_source_reuse_rejects_request_that_cannot_fit() -> None:
 def test_ordered_source_reuse_requires_live_bytes_to_cover_output() -> None:
     with pytest.raises(ValueError, match="must include its retained output"):
         SourceReuseRequest(live_bytes=7, retained_bytes=8)
+
+
+def test_source_tile_selector_minimizes_complete_source_reads() -> None:
+    assert source_reads_per_scan(14, 2) == 2401
+    assert source_reads_per_scan(14, 3) == 625
+
+    plan = select_source_tile(
+        14,
+        [
+            SourceTileCandidate(axis_tile=2, source_scans=1, peak_bytes=80),
+            SourceTileCandidate(axis_tile=3, source_scans=2, peak_bytes=100),
+        ],
+    )
+    assert plan.axis_tile == 3
+    assert plan.source_reads == 1250
+
+    split = select_source_tile(
+        14,
+        [
+            SourceTileCandidate(axis_tile=2, source_scans=1, peak_bytes=80),
+            SourceTileCandidate(axis_tile=3, source_scans=4, peak_bytes=100),
+        ],
+    )
+    assert split.axis_tile == 2
+    assert split.source_reads == 2401
+
+
+def test_source_tile_selector_uses_peak_only_after_semantic_work() -> None:
+    plan = select_source_tile(
+        8,
+        [
+            SourceTileCandidate(axis_tile=3, source_scans=1, peak_bytes=120),
+            SourceTileCandidate(axis_tile=4, source_scans=1, peak_bytes=140),
+            SourceTileCandidate(axis_tile=4, source_scans=1, peak_bytes=100),
+        ],
+    )
+    assert plan.axis_tile == 4
+    assert plan.source_reads == 16
+    assert plan.peak_bytes == 100
