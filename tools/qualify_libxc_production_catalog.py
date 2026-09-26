@@ -20,6 +20,7 @@ consumed by the normal capability registry.
 from __future__ import annotations
 
 import argparse
+import math
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,15 @@ CATALOG_ROW_STATUSES = (
     "structural-blocked",
     "runner-error",
 )
+
+
+def _validate_tolerances(rtol: float, atol: float) -> None:
+    """Reject nonfinite, negative, and boolean catalog comparison gates."""
+    if any(
+        isinstance(value, bool) or not math.isfinite(value) or value < 0.0
+        for value in (rtol, atol)
+    ):
+        raise ValueError("catalog campaign tolerances must be finite and nonnegative")
 
 
 def select_capabilities(
@@ -153,6 +163,7 @@ def run_catalog(
     atol: float,
 ) -> dict[str, Any]:
     """Run one deterministic shard and retain every eligible campaign result."""
+    _validate_tolerances(rtol, atol)
     if not isinstance(evidence_prefix, str) or not evidence_prefix.strip():
         raise ValueError("catalog campaign requires a nonempty evidence prefix")
     prefix = evidence_prefix.rstrip("/")
@@ -250,8 +261,7 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    if args.rtol < 0.0 or args.atol < 0.0:
-        raise ValueError("catalog campaign tolerances must be nonnegative")
+    _validate_tolerances(args.rtol, args.atol)
 
     import pyscf
     from pyscf.dft import libxc

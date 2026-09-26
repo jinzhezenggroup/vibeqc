@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import shutil
+from copy import deepcopy
 
 import pytest
+from vibeqc_compiler.common.evidence import canonical_hash
 from vibeqc_compiler.xc.bulk_point_program import (
     SemilocalPointBinding,
     bind_runtime_semilocal_point_program,
@@ -126,6 +128,20 @@ def test_compiled_cpu_result_rejects_wrong_domain_and_tampering() -> None:
     }
     with pytest.raises(ValueError, match="result identity mismatch"):
         validate_result(NAME, tampered)
+
+
+def test_rehashed_binding_cannot_change_pinned_density_threshold() -> None:
+    result = build_result(
+        NAME, _binding(), _outcome(), evidence="test://pinned-threshold"
+    )
+    forged = deepcopy(result)
+    forged["binding"]["density_threshold"] *= 2.0
+    forged["binding_identity"] = canonical_hash(forged["binding"])
+    payload = {key: value for key, value in forged.items() if key != "identity"}
+    forged["identity"] = canonical_hash(payload)
+
+    with pytest.raises(ValueError, match="pinned density threshold mismatch"):
+        validate_result(NAME, forged)
 
 
 def test_passing_compiled_cpu_smoke_must_be_numerically_valid() -> None:

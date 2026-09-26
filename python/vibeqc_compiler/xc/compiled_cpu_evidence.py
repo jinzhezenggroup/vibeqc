@@ -14,6 +14,7 @@ from typing import Any
 
 from vibeqc_compiler.common.evidence import canonical_hash
 
+from . import libxc_bulk
 from .bulk_point_program import (
     POINT_PROGRAM_BINDING_SCHEMA,
     SemilocalPointBinding,
@@ -124,6 +125,29 @@ def _smoke(value: Any, *, required: bool) -> dict[str, Any] | None:
     }
 
 
+def _pinned_density_threshold(name: str) -> float:
+    """Return the exact Libxc threshold bound into the current capability source."""
+    record = next(
+        (
+            item
+            for item in libxc_bulk.read_catalog()["registrations"]
+            if item["name"] == name
+        ),
+        None,
+    )
+    if record is None:
+        raise ValueError("compiled-CPU binding registration is unavailable")
+    try:
+        threshold = float(record["bindings"]["p_a_dens_threshold"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "compiled-CPU binding density threshold is unavailable"
+        ) from exc
+    if not math.isfinite(threshold) or threshold < 0.0:
+        raise ValueError("compiled-CPU pinned density threshold is invalid")
+    return threshold
+
+
 def _binding_payload(
     value: Mapping[str, Any],
     *,
@@ -167,13 +191,16 @@ def _binding_payload(
         raise ValueError("compiled-CPU binding ingredient mask mismatch")
     density_threshold = value.get("density_threshold")
     if (
-        not isinstance(density_threshold, (int, float))
+        isinstance(density_threshold, bool)
+        or not isinstance(density_threshold, (int, float))
         or not math.isfinite(float(density_threshold))
         or float(density_threshold) < 0.0
     ):
         raise ValueError(
             "compiled-CPU binding requires finite nonnegative density threshold"
         )
+    if float(density_threshold) != _pinned_density_threshold(capability_name):
+        raise ValueError("compiled-CPU binding pinned density threshold mismatch")
 
     payload = {
         "schema": POINT_PROGRAM_BINDING_SCHEMA,
