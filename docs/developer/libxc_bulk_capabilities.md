@@ -144,6 +144,15 @@ qualification and retains that receipt's point-binding identity and compiled
 result identity in `BulkKsResolution`. This keeps MethodIR/KS composition tied
 to the v2/version-3 executable that the evidence producer actually compiled.
 
+`vibeqc_compiler.xc.molecular_scf_evidence` defines the next promotion
+boundary. One `molecular-scf` pass requires both CPU RKS/UKS layouts and
+cold, warm-replay, and changed-geometry rows for each. Passing rows bind fixture,
+geometry, independent-reference and exact KS-resolution identities, require
+convergence plus independent energy and physical-residual gates, and reject a
+warm replay that changes geometry or a changed-geometry row that reuses the cold
+geometry. Only an all-pass dual-spin receipt emits CPU energy endpoint coverage;
+forces, response and public admission remain separate stages.
+
 ## Bulk inventory queries
 
 ```python
