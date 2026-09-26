@@ -128,3 +128,21 @@ def test_direct_fock_materialization_consumes_shared_schedule_selection() -> Non
         )
         == "paged"
     )
+
+
+def test_direct_fock_illegal_streaming_candidate_falls_back() -> None:
+    """An unavailable route is negative evidence, not a tuning exception."""
+
+    assert (
+        select_direct_fock_route(
+            shell_class=1,
+            paged=GpuProfitability(endpoint_seconds=1.0),
+            streaming=GpuProfitability(endpoint_seconds=0.5),
+            workload_hash="1" * 64,
+            profile_key="2" * 64,
+            target_hash="3" * 64,
+            precision_schedule_hash="4" * 64,
+            streaming_legal=False,
+        )
+        == "paged"
+    )
