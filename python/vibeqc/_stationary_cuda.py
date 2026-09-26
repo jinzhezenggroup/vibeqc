@@ -16,7 +16,7 @@ import typing
 from contextlib import ExitStack, contextmanager, nullcontext
 from dataclasses import asdict
 from hashlib import sha256
-from itertools import product
+from itertools import islice, product
 from pathlib import Path
 from time import perf_counter
 from types import MappingProxyType
@@ -42,6 +42,7 @@ from vibeqc_compiler.dft.cuda import (
 from vibeqc_compiler.dft.cuda import (
     compile_cuda as compile_grid,
 )
+from vibeqc_compiler.dft.nonlocal_integration import FixedDensityNonlocalCorrelation
 from vibeqc_compiler.dft.plan import plan_tiles
 from vibeqc_compiler.integral.first_derivative_native import emit_first_derivative_cuda
 from vibeqc_compiler.integral.first_derivative_schedule import (
@@ -51,6 +52,7 @@ from vibeqc_compiler.integral.first_derivative_schedule import (
     derivative_cuda_sources,
     derivative_requests,
 )
+from vibeqc_compiler.method.nonlocal_correlation import NonlocalCorrelationPrimitive
 from vibeqc_compiler.method.stationary_cuda import (
     STATIONARY_RUNTIME_SOURCE_NAMES,
     compile_stationary_cuda,
@@ -65,6 +67,7 @@ from vibeqc_compiler.method.stationary_gradient import (
 )
 from vibeqc_compiler.tensor.cuda_execute import PreparedCuda, compile_cuda
 from vibeqc_compiler.tensor.cuda_plan import plan_cuda
+from vibeqc_compiler.xc.grid_response import partition_response
 
 from ._dft_gradient import (
     StationaryDerivativeContract,
@@ -72,7 +75,9 @@ from ._dft_gradient import (
     native_ao_geometry_identity,
 )
 from ._stationary_cpu import DiagnosticStationaryGradient
+from ._stationary_rsh_cpu import RangeExchangeExecutor
 from .ks import resolve_ks_method
+from .nonlocal_runtime import NativeNonlocalPairProvider
 
 _DOUBLE = ct.POINTER(ct.c_double)
 _INT = ct.POINTER(ct.c_int64)
