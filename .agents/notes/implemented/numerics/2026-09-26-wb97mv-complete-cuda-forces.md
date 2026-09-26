@@ -25,10 +25,13 @@ densities are explicitly required to be symmetric before this schedule is used.
 The generic derivative API remains available for nonsymmetric inputs.
 
 Reuse compiler-owned semilocal geometry pullbacks for VV10 total-rho/sigma,
-explicit pair-coordinate and partition-weight adjoints. Pack both VV10 domains
-with the SCF molecular cutoff. The same AO/Becke generated operations own both
-local and nonlocal motion. A twelve-source TensorIR reduction owns the sum;
-the public result negates it to obtain forces.
+explicit pair-coordinate and partition-weight adjoints. The semilocal geometry
+consumer now borrows the same evaluated CUDA tile that publishes rho/gradient
+for VV10 active-set construction, reducing AO collocation from three to two
+grid passes. Pack both VV10 domains with the SCF molecular cutoff. The same
+AO/Becke generated operations own both local and nonlocal motion. A
+twelve-source TensorIR reduction owns the sum; the public result negates it to
+obtain forces.
 
 Retain geometry-bound owners across warm replay; rebuild when their identity
 changes. Preserve token checks and transactional output publication. Explicit
