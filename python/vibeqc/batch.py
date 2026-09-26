@@ -499,7 +499,7 @@ class PreparedBatch:
         )
 
         calculator = self._calculator
-        if calculator._method_name.startswith("wb97m-v"):
+        if getattr(calculator, "_method_name", "").startswith("wb97m-v"):
             from ._stationary_wb97mv_cuda import PreparedWb97mvCudaGradient
 
             if self._stationary_cuda_execution is None:
