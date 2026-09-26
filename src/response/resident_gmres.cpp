@@ -133,8 +133,8 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
     if (!initial_guess.empty())
       std::copy(initial_guess.begin(), initial_guess.end(), solution.begin());
     return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
-                       GmresStatus::nonfinite_input, std::numeric_limits<double>::infinity(),
-                       0.0, 0, 0, 0);
+                       GmresStatus::nonfinite_input, std::numeric_limits<double>::infinity(), 0.0,
+                       0, 0, 0);
   }
   const double target =
       std::max(plan.options.absolute_tolerance, plan.options.relative_tolerance * rhs_norm);
