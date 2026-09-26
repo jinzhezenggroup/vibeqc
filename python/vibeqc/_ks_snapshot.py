@@ -196,7 +196,7 @@ class NativeKsSnapshot:
                 native_xc_functional_code(method_name), 1
             )
             if (
-                metadata[0] not in (1, 2, 3, 4, 5, 6, 7)
+                metadata[0] not in (1, 2, 3, 4, 5, 6, 7, 8, 9)
                 or metadata[7] != expected_domain_version
             ):
                 raise NotImplementedError(
@@ -295,7 +295,7 @@ class NativeKsSnapshot:
             take((npoint,)),
             take((npoint,)),
         )
-        if self.metadata[0] in (2, 3, 4, 5, 6, 7):
+        if self.metadata[0] in (2, 3, 4, 5, 6, 7, 8, 9):
             from vibeqc_compiler.dft.grid import GridSpec, grid_policy_provenance
 
             version, radial, polar, azimuth, iterations, tolerance = take((6,))
@@ -319,10 +319,10 @@ class NativeKsSnapshot:
             self.atomic_weights = None
         self.export_work = MappingProxyType(
             dict(zip(("d2h_bytes", "reads", "synchronizations"), map(int, take((3,)))))
-            if self.metadata[0] in (3, 5)
+            if self.metadata[0] in (3, 5, 8, 9)
             else {}
         )
-        if self.metadata[0] in (4, 5, 7):
+        if self.metadata[0] in (4, 5, 7, 9):
             cores = take((natom,))
             count = float(take((1,))[0])
             if not np.isfinite(count) or count < 1 or not count.is_integer():
@@ -360,7 +360,7 @@ class NativeKsSnapshot:
                     hamiltonian = "all-electron"
             self.hamiltonian = hamiltonian
         self.coefficients = (
-            tuple(take((3,))) if self.metadata[0] in (6, 7) else (1.0, 1.0, 0.0)
+            tuple(take((3,))) if self.metadata[0] in (6, 7, 8, 9) else (1.0, 1.0, 0.0)
         )
         options = self._batch._calculator.ks_options
         if (
@@ -515,7 +515,7 @@ class NativeKsSnapshot:
                             "ecp_cores": self.ecp_cores,
                             "ecp_terms": self.ecp_terms,
                         }
-                        if self.metadata[0] in (4, 5, 7)
+                        if self.metadata[0] in (4, 5, 7, 9)
                         else {}
                     ),
                 }

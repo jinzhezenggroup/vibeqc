@@ -345,9 +345,18 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
   const bool cuda_wb97mv = backend == VIBEQC_BACKEND_CUDA && complete_wb97mv;
   const bool scaled_or_hybrid = options.semilocal_exchange_scale != 1.0 ||
                                 options.semilocal_correlation_scale != 1.0 || fock.exchange.present;
-  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_wb97mv)
+  const double pbe0_fock_coefficient = fock.spin == scf::FockSpin::Restricted ? -0.125 : -0.25;
+  const bool cuda_pbe0 = backend == VIBEQC_BACKEND_CUDA &&
+                         execution_plan.semilocal_family == dft::SemilocalFamily::Pbe &&
+                         options.semilocal_exchange_scale == 0.75 &&
+                         options.semilocal_correlation_scale == 1.0 && fock.exchange.present &&
+                         fock.exchange.coefficient == pbe0_fock_coefficient &&
+                         !execution_plan.range_exchange && !execution_plan.nonlocal_correlation &&
+                         options.density_fitting_mode == VIBEQC_DENSITY_FITTING_NONE &&
+                         options.precision_mode != VIBEQC_PRECISION_AUTO;
+  if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_pbe0 && !cuda_wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                      "CUDA scaled/hybrid KS is qualified only for complete WB97M-V");
+                      "CUDA scaled/global-hybrid KS composition is not qualified");
   if (execution_plan.nonlocal_correlation &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Pbe &&
       execution_plan.semilocal_family != dft::SemilocalFamily::Wb97mv)
@@ -511,8 +520,6 @@ void add_transfers(dft::CudaKsTransfers& target, const dft::CudaKsTransfers& val
   add(target.final_state_reads, value.final_state_reads);
   add(target.synchronizations, value.synchronizations);
   add(target.iterations, value.iterations);
-  add(target.warm_orbital_frames_retained, value.warm_orbital_frames_retained);
-  add(target.warm_orbital_frame_invalidations, value.warm_orbital_frame_invalidations);
   add(target.occupation_stabilized_proposals, value.occupation_stabilized_proposals);
 }
 #endif
