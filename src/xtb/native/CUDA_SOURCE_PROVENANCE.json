@@ -603,7 +603,7 @@
     "src/runtime/gfn2_cuda_execution.cu": {
       "adapted": true,
       "upstream_sha256": "593eb50ce83db6f066748a29f41f09438c3cc142b5fc45408fefccf4fed317af",
-      "vendored_sha256": "186d1ab06cca8bf5dd6b93370644d933b8dc737438acdb9009b872c925e2fbb6"
+      "vendored_sha256": "a5bf81a30b22b53f075bad8999e00140fd3a239107ef2eb8072b0410b472e49"
     },
     "src/runtime/gfn2_cuda_execution.hpp": {
       "adapted": true,
