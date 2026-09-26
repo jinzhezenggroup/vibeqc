@@ -13,6 +13,8 @@ def test_primary_streaming_route_partitions_paged_generated_classes() -> None:
     source = (REPOSITORY_ROOT / "src/scf/cuda_rhf.cpp").read_text()
     assert "host_primary_streaming_fock_shell_class_mask" in source
     assert "host_primary_streaming_fock_flags" not in source
+    assert "generated::preferred_streaming_fock_shell_class_mask()" in source
+    assert "primary_streaming_fock_override.value_or(" in source
 
     page_begin = source.index("const auto launch_bounded_paged_generated_fock")
     page_end = source.index("const auto launch_bounded_generic_fock", page_begin)
