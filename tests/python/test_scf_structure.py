@@ -296,6 +296,29 @@ def test_direct_contractions_cannot_acquire_host_resources(
     assert len(audit_scf_structure(tmp_path)["errors"]) == 1
 
 
+def test_direct_low_order_quartet_indexing_is_shared() -> None:
+    root = Path(__file__).resolve().parents[2]
+    queue = (root / "src/scf/cuda/direct_queue_index.cuh").read_text(encoding="utf-8")
+    assert "struct DirectShellAoQuartetLayout" in queue
+    assert "direct_shell_ao_quartet_layout" in queue
+    assert "decode_shell_ao_quartet" in queue
+
+    for owner in (
+        "direct_fock_order2.cuh",
+        "direct_force_order2.cuh",
+        "direct_force_order3.cuh",
+    ):
+        source = (root / "src/scf/cuda" / owner).read_text(encoding="utf-8")
+        assert (
+            "direct_shell_ao_quartet_layout(batch, first_pair, second_pair)" in source
+        )
+        assert "decode_shell_ao_quartet(" in source
+        assert (
+            "decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);"
+            not in source
+        )
+
+
 def test_direct_launch_interface_cannot_import_its_implementation(
     tmp_path: typing.Any,
 ) -> None:

@@ -85,6 +85,43 @@ __device__ inline void decode_shell_ao_pair(const DeviceBatch& batch, std::size_
   second = second_begin + second_component - system_ao_begin;
 }
 
+/** Shared AO-quartet indexing for one pair-of-shell-pairs task. */
+struct DirectShellAoQuartetLayout {
+  std::size_t second_pair_ao_count{};
+  std::size_t quartet_count{};
+  bool same_shell_pair{};
+};
+
+__device__ inline DirectShellAoQuartetLayout direct_shell_ao_quartet_layout(
+    const DeviceBatch& batch, std::size_t first_pair, std::size_t second_pair) {
+  const std::size_t first_pair_ao_count = shell_ao_pair_count(batch, first_pair);
+  const std::size_t second_pair_ao_count = shell_ao_pair_count(batch, second_pair);
+  const bool same_shell_pair = first_pair == second_pair;
+  return {
+      second_pair_ao_count,
+      same_shell_pair ? first_pair_ao_count * (first_pair_ao_count + 1) / 2
+                      : first_pair_ao_count * second_pair_ao_count,
+      same_shell_pair,
+  };
+}
+
+__device__ inline void decode_shell_ao_quartet(const DeviceBatch& batch, std::size_t first_pair,
+                                               std::size_t second_pair,
+                                               const DirectShellAoQuartetLayout& layout,
+                                               std::size_t ordinal, std::size_t system_ao_begin,
+                                               std::size_t (&raw_ao)[4]) {
+  std::size_t first_ao_pair = 0;
+  std::size_t second_ao_pair = 0;
+  if (layout.same_shell_pair) {
+    decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
+  } else {
+    first_ao_pair = ordinal / layout.second_pair_ao_count;
+    second_ao_pair = ordinal % layout.second_pair_ao_count;
+  }
+  decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin, raw_ao[0], raw_ao[1]);
+  decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin, raw_ao[2], raw_ao[3]);
+}
+
 /** Return the packed lower-triangle index for two shells in one system. */
 __device__ inline std::size_t system_shell_pair_index(const DeviceBatch& batch, std::int32_t system,
                                                       std::int32_t first_shell,
