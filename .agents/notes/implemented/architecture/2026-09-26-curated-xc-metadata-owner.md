@@ -5,11 +5,11 @@ Date: 2026-09-26
 
 ## Problem
 
-After the bulk Libxc production/admission stack landed, the native curated KS path still repeated the same execution identity in several places: family code, display name, SCF-domain version, SCF-domain string, and CUDA availability. Python also used bare numeric family codes when selecting the curated work domain. Those copies made adding or changing a native family prone to silent identity drift.
+After the bulk Libxc production/admission stack landed, the native curated KS path still repeated the same execution identity in several places: family code, display name, SCF-domain version, SCF-domain string, CUDA availability, and the curated semilocal component/range signature. Python also used bare numeric family codes when selecting the curated work domain. Those copies made adding or changing a native family prone to silent identity drift.
 
 ## Decision
 
-Keep the existing curated LDA/PBE/r2SCAN/B3LYP/WB97M-V kernels and public method behavior, but give their native execution metadata one C++ owner in `src/dft/semilocal_family.hpp`. Callers query that metadata instead of re-listing families or SCF-domain strings.
+Keep the existing curated LDA/PBE/r2SCAN/B3LYP/WB97M-V kernels and public method behavior, but give their native execution metadata one C++ owner in `src/dft/semilocal_family.hpp`. Callers query that metadata instead of re-listing families, SCF-domain strings, or component/coefficient signatures.
 
 Python keeps the same stable transport codes but names them through `_NativeSemilocalFamily` and a symbolic domain mapping. The MethodIR composition remains authoritative; the refactor does not promote a bulk Libxc registration or infer capability from a numeric code.
 
@@ -22,7 +22,7 @@ The existing curated specialized kernels also remain. #1119/#1121 still own gene
 ## Invariants
 
 - Stable curated codes remain LDA=0, PBE=1, r2SCAN=2, B3LYP=3, WB97M-V=4.
-- Existing SCF-domain strings and domain versions are unchanged.
+- Existing SCF-domain strings, domain versions, component identities/coefficients, and WB97M-V range omega are unchanged.
 - CUDA admission still requires the metadata-backed `cuda_ks` capability; being present in the registry alone is not sufficient.
 - Generated split-hybrid codes remain separately owned by the generated registry.
 - No numerical formula, tolerance, backend, force capability, or public method is changed.
