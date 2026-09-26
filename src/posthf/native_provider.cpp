@@ -80,10 +80,6 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
                                                                vibeqc_tensor::Metrics* metrics,
                                                                ProviderWork* work) const {
   if (requests.empty()) return {};
-  if (work) {
-    work->source_scans = checked_add(work->source_scans, 1);
-    work->mo_blocks = checked_add(work->mo_blocks, requests.size());
-  }
 
   std::vector<std::array<std::size_t, 4>> shapes;
   std::vector<NumericBlockPlan> plans;
@@ -184,6 +180,10 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
   std::size_t raw_elements = 1;
   for (const auto extent : tile_) raw_elements = checked_mul(raw_elements, extent);
   std::vector<double> raw(raw_elements);
+  if (work) {
+    work->source_scans = checked_add(work->source_scans, 1);
+    work->mo_blocks = checked_add(work->mo_blocks, requests.size());
+  }
   for (std::size_t u = 0; u < ref_.nbf; u += tile_[0])
     for (std::size_t v = 0; v < ref_.nbf; v += tile_[1])
       for (std::size_t w = 0; w < ref_.nbf; w += tile_[2])
