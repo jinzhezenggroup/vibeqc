@@ -20,6 +20,9 @@ from tools.libxc_split_hybrid import build_split_global_hybrid
 MANIFEST = ROOT / "manifests" / "cuda_split_hybrids.json"
 GGA_CODE_BASE = 0x10000
 MGGA_CODE_BASE = 0x20000
+PYTHON_OUTPUT = (
+    ROOT / "python" / "vibeqc_compiler" / "xc" / "_generated_split_hybrids.py"
+)
 
 
 def _manifest_methods(path: Path = MANIFEST) -> tuple[str, ...]:
@@ -244,18 +247,80 @@ def emit_registry(path: Path = MANIFEST) -> str:
     )
 
 
+def emit_python_registry(path: Path = MANIFEST) -> str:
+    """Emit typed immutable mappings without changing existing consumer APIs."""
+    rows = []
+    for entry in registry_entries(path):
+        rows.extend(
+            [
+                f'    {json.dumps(entry["identifier"])}: cast("SplitHybridRecord", MappingProxyType({{',
+                f'        "family": {json.dumps(entry["family"])},',
+                f'        "functional_code": {entry["code"]},',
+                '        "components": (',
+                f'            ({json.dumps(entry["exchange_registration"])}, "1"),',
+                f'            ({json.dumps(entry["correlation_registration"])}, "1"),',
+                "        ),",
+                f'        "exact_exchange": "{entry["exact_exchange_numerator"]}/{entry["exact_exchange_denominator"]}",',
+                "    })),",
+            ]
+        )
+    return "\n".join(
+        [
+            '"""Generated qualified split-global-hybrid metadata; do not edit."""',
+            "",
+            "# fmt: off",
+            "from collections.abc import Mapping",
+            "from types import MappingProxyType",
+            "from typing import TypedDict, cast",
+            "",
+            "",
+            "class SplitHybridRecord(TypedDict):",
+            "    family: str",
+            "    functional_code: int",
+            "    components: tuple[tuple[str, str], ...]",
+            "    exact_exchange: str",
+            "",
+            "",
+            "SPLIT_HYBRIDS: Mapping[str, SplitHybridRecord] = MappingProxyType({",
+            *rows,
+            "})",
+            "",
+            "SPLIT_HYBRID_COMPONENTS = frozenset(",
+            "    component",
+            "    for record in SPLIT_HYBRIDS.values()",
+            '    for component, _ in record["components"]',
+            ")",
+            "# fmt: on",
+            "",
+        ]
+    )
+
+
 def write_if_changed(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    if not path.exists() or path.read_text() != text:
-        path.write_text(text)
+    if not path.exists() or path.read_text(encoding="utf-8") != text:
+        path.write_text(text, encoding="utf-8")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--output", type=Path)
     parser.add_argument("--manifest", type=Path, default=MANIFEST)
+    parser.add_argument("--python-output", type=Path)
+    parser.add_argument("--check-python", action="store_true")
     args = parser.parse_args()
-    write_if_changed(args.output, emit_registry(args.manifest))
+    if args.output is None and args.python_output is None and not args.check_python:
+        parser.error("provide --output, --python-output or --check-python")
+    if args.output is not None:
+        write_if_changed(args.output, emit_registry(args.manifest))
+    if args.python_output is not None or args.check_python:
+        output = args.python_output or PYTHON_OUTPUT
+        content = emit_python_registry(args.manifest)
+        if args.check_python:
+            if not output.is_file() or output.read_text(encoding="utf-8") != content:
+                raise SystemExit(f"stale split-hybrid metadata: {output}")
+        else:
+            write_if_changed(output, content)
 
 
 if __name__ == "__main__":

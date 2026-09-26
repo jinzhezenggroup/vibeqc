@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+#include "methods/dft_admission.hpp"
 #include "methods/dft_method.hpp"
 #include "methods/generated_method_manifest.hpp"
 #include "methods/hf_method.hpp"
@@ -135,10 +136,15 @@ void validate_system(const MethodDefinition& definition, const core::System& sys
 }
 
 void validate_option_family(const MethodDefinition& definition,
-                            const vibeqc_method_descriptor& descriptor) {
+                            const vibeqc_method_descriptor& descriptor, vibeqc_backend backend) {
   if (descriptor.ks_options &&
       definition.provider.domain.family != VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "KS options require the DFT method family");
+  if (definition.provider.domain.family == VIBEQC_METHOD_FAMILY_DENSITY_FUNCTIONAL) {
+    std::string detail;
+    const auto status = detail::validate_split_hybrid_descriptor(descriptor, backend, detail);
+    if (status != VIBEQC_STATUS_SUCCESS) throw MethodError(status, detail);
+  }
 }
 
 }  // namespace
@@ -152,7 +158,7 @@ std::unique_ptr<PreparedCalculation> prepare_calculation(
     core::ContextState& context, const core::System& system,
     const vibeqc_method_descriptor& descriptor) {
   const MethodDefinition& definition = require_available(descriptor.method);
-  validate_option_family(definition, descriptor);
+  validate_option_family(definition, descriptor, context.requested_backend);
   validate_system(definition, system);
   return definition.prepare_calculation(definition.provider.domain, context, system, descriptor);
 }
@@ -162,7 +168,7 @@ std::unique_ptr<PreparedBatch> prepare_batch(core::ContextState& context,
                                              const vibeqc_method_descriptor& descriptor,
                                              vibeqc_batch_flags flags) {
   const MethodDefinition& definition = require_available(descriptor.method);
-  validate_option_family(definition, descriptor);
+  validate_option_family(definition, descriptor, context.requested_backend);
   if (!definition.provider.domain.supports_batch || definition.prepare_batch == nullptr) {
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "requested method does not support prepared batches");

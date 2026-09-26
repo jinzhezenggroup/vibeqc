@@ -29,3 +29,7 @@ additional fail-closed constraints at execution time.
 |`b3lyp-uks` | density functional | `energy` | yes | — | available |
 |`pbe-d4-rks` | density functional | `energy` | yes | — | available |
 |`wb97m-v-uks` | density functional | `energy` | yes | — | available |
+|`m06-2x-rks` | density functional | `energy` | yes | — | available |
+|`m06-2x-uks` | density functional | `energy` | yes | — | available |
+|`mn15-rks` | density functional | `energy` | yes | — | available |
+|`mn15-uks` | density functional | `energy` | yes | — | available |

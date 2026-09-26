@@ -888,7 +888,8 @@ typedef struct vibeqc_ks_iteration {
 
 /** Completed KS state, copied without extending legacy result-array strides.
  * Electron counts are Tr(D_s S), not integrated grid densities. Final terms
- * refer to the returned physical state; CPU RKS's post-loop validation can
+ * refer to the returned physical state; xc_energy includes exact exchange for
+ * hybrids. CPU RKS's post-loop validation can
  * make them differ from the last iteration. All energies are in Hartree. */
 typedef struct vibeqc_ks_diagnostic {
   uint32_t struct_size;

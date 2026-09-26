@@ -1065,7 +1065,12 @@ class PreparedBatch:
                     energy_change=output.energy_change,
                     density_rms=output.density_rms,
                     physical_residual_rms=physical_residual_rms,
-                    ks_diagnostic=read_ks_diagnostic(self._library, self._batch, index)
+                    ks_diagnostic=read_ks_diagnostic(
+                        self._library,
+                        self._batch,
+                        index,
+                        expected_domain=self._calculator._ks_options.scf_domain,
+                    )
                     if self._calculator._ks_options is not None
                     else None,
                     correlation=correlation,

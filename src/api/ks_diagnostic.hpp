@@ -41,7 +41,7 @@ inline vibeqc_status copy_ks_diagnostic(const std::optional<dft::ScfDiagnostic>&
             value.components.nuclear,
             value.components.one_electron,
             value.components.hartree,
-            value.components.xc,
+            value.components.xc + value.components.exact_exchange,
             value.density_change,
             value.physical_residual};
   }
@@ -51,7 +51,7 @@ inline vibeqc_status copy_ks_diagnostic(const std::optional<dft::ScfDiagnostic>&
       history[i] = {sizeof(*history),       VIBEQC_ABI_VERSION,
                     row.iteration,          row.occupation_stabilized ? 1 : 0,
                     row.components.nuclear, row.components.one_electron,
-                    row.components.hartree, row.components.xc,
+                    row.components.hartree, row.components.xc + row.components.exact_exchange,
                     row.energy_change,      row.density_change,
                     row.physical_residual,  {row.electrons[0], row.electrons[1]}};
     }

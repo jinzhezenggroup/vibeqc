@@ -192,8 +192,11 @@ class NativeKsSnapshot:
             object.__setattr__(self, "_handle", handle.value)
             self.metadata = tuple(metadata)
             method_name = self._batch._calculator._method_name
-            expected_domain_version = {3: 2, 4: 3}.get(
-                native_xc_functional_code(method_name), 1
+            functional_code = native_xc_functional_code(method_name)
+            expected_domain_version = (
+                4
+                if functional_code >= 0x10000
+                else {3: 2, 4: 3}.get(functional_code, 1)
             )
             if (
                 metadata[0] not in (1, 2, 3, 4, 5, 6, 7, 8, 9)

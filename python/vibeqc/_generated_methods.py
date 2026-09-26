@@ -22,6 +22,10 @@ METHOD_B3LYP_RKS = 16
 METHOD_B3LYP_UKS = 17
 METHOD_PBE_D4_RKS = 18
 METHOD_WB97M_V_UKS = 19
+METHOD_M06_2X_RKS = 20
+METHOD_M06_2X_UKS = 21
+METHOD_MN15_RKS = 22
+METHOD_MN15_UKS = 23
 
 METHOD_CONSTANTS = MappingProxyType({
     "METHOD_RHF": METHOD_RHF,
@@ -43,6 +47,10 @@ METHOD_CONSTANTS = MappingProxyType({
     "METHOD_B3LYP_UKS": METHOD_B3LYP_UKS,
     "METHOD_PBE_D4_RKS": METHOD_PBE_D4_RKS,
     "METHOD_WB97M_V_UKS": METHOD_WB97M_V_UKS,
+    "METHOD_M06_2X_RKS": METHOD_M06_2X_RKS,
+    "METHOD_M06_2X_UKS": METHOD_M06_2X_UKS,
+    "METHOD_MN15_RKS": METHOD_MN15_RKS,
+    "METHOD_MN15_UKS": METHOD_MN15_UKS,
 })
 
 METHOD_METADATA = MappingProxyType({
@@ -65,6 +73,10 @@ METHOD_METADATA = MappingProxyType({
     'b3lyp-uks': MappingProxyType({"abi_id": 17, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'B3LYP', "spin": 'polarized'}),
     'pbe-d4-rks': MappingProxyType({"abi_id": 18, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'PBE-D4(BJ-EEQ-ATM)', "spin": 'unpolarized'}),
     'wb97m-v-uks': MappingProxyType({"abi_id": 19, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'WB97M-V', "spin": 'polarized'}),
+    'm06-2x-rks': MappingProxyType({"abi_id": 20, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'M06-2X', "spin": 'unpolarized'}),
+    'm06-2x-uks': MappingProxyType({"abi_id": 21, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'M06-2X', "spin": 'polarized'}),
+    'mn15-rks': MappingProxyType({"abi_id": 22, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'MN15', "spin": 'unpolarized'}),
+    'mn15-uks': MappingProxyType({"abi_id": 23, "family": 'density_functional', "provider": 'dft', "properties": ('energy',), "supports_batch": True, "aliases": (), "compiler_method": 'MN15', "spin": 'polarized'}),
 })
 
 METHOD_NAME_TO_ID = MappingProxyType({
@@ -90,6 +102,10 @@ METHOD_NAME_TO_ID = MappingProxyType({
     'b3lyp-uks': METHOD_B3LYP_UKS,
     'pbe-d4-rks': METHOD_PBE_D4_RKS,
     'wb97m-v-uks': METHOD_WB97M_V_UKS,
+    'm06-2x-rks': METHOD_M06_2X_RKS,
+    'm06-2x-uks': METHOD_M06_2X_UKS,
+    'mn15-rks': METHOD_MN15_RKS,
+    'mn15-uks': METHOD_MN15_UKS,
 })
 METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_RHF: 'rhf',
@@ -111,8 +127,12 @@ METHOD_ID_TO_NAME = MappingProxyType({
     METHOD_B3LYP_UKS: 'b3lyp-uks',
     METHOD_PBE_D4_RKS: 'pbe-d4-rks',
     METHOD_WB97M_V_UKS: 'wb97m-v-uks',
+    METHOD_M06_2X_RKS: 'm06-2x-rks',
+    METHOD_M06_2X_UKS: 'm06-2x-uks',
+    METHOD_MN15_RKS: 'mn15-rks',
+    METHOD_MN15_UKS: 'mn15-uks',
 })
 
 HF_METHOD_IDS = frozenset((METHOD_RHF, METHOD_UHF,))
-NATIVE_DFT_METHOD_IDS = frozenset((METHOD_WB97M_V, METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS, METHOD_R2SCAN_RKS, METHOD_R2SCAN_UKS, METHOD_PBE0_RKS, METHOD_PBE0_UKS, METHOD_B3LYP_RKS, METHOD_B3LYP_UKS, METHOD_PBE_D4_RKS, METHOD_WB97M_V_UKS,))
+NATIVE_DFT_METHOD_IDS = frozenset((METHOD_WB97M_V, METHOD_LDA_RKS, METHOD_PBE_RKS, METHOD_LDA_UKS, METHOD_PBE_UKS, METHOD_R2SCAN_RKS, METHOD_R2SCAN_UKS, METHOD_PBE0_RKS, METHOD_PBE0_UKS, METHOD_B3LYP_RKS, METHOD_B3LYP_UKS, METHOD_PBE_D4_RKS, METHOD_WB97M_V_UKS, METHOD_M06_2X_RKS, METHOD_M06_2X_UKS, METHOD_MN15_RKS, METHOD_MN15_UKS,))
 # fmt: on

@@ -2111,7 +2111,11 @@ class Calculator:
                     read_ks_transport_diagnostic,
                 )
 
-                ks_diagnostic = read_ks_diagnostic(self._library, calculation)
+                ks_diagnostic = read_ks_diagnostic(
+                    self._library,
+                    calculation,
+                    expected_domain=self._ks_options.scf_domain,
+                )
                 ks_transport_diagnostic = read_ks_transport_diagnostic(
                     self._library, calculation
                 )

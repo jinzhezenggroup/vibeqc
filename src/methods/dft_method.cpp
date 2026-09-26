@@ -30,6 +30,7 @@
 
 #if VIBEQC_HAS_CUDA
 #include "dft/cuda_ks.hpp"
+#include "generated_split_hybrid_registry.cuh"
 #include "scf/cuda_direct_jk.hpp"
 #endif
 
@@ -58,6 +59,8 @@ struct NativeKsExecutionPlan {
   double short_range_exchange{};
   double long_range_exchange{};
   double range_omega{};
+  std::uint32_t functional{};
+  bool generated_split_hybrid{};
 };
 
 std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method method) noexcept {
@@ -94,11 +97,17 @@ std::optional<NativeKsExecutionPlan> legacy_ks_execution_plan(vibeqc_method meth
 bool unrestricted(const NativeKsExecutionPlan& plan) noexcept { return plan.spin_channels == 2; }
 
 std::uint32_t scf_domain_version(const NativeKsExecutionPlan& plan) noexcept {
-  return dft::semilocal_family_domain_version(plan.semilocal_family);
+  return plan.generated_split_hybrid ? 4U
+                                     : dft::semilocal_family_domain_version(plan.semilocal_family);
+}
+
+std::uint32_t xc_functional_code(const NativeKsExecutionPlan& plan) noexcept {
+  return plan.functional ? plan.functional : dft::semilocal_family_code(plan.semilocal_family);
 }
 
 const char* semilocal_family_name(const NativeKsExecutionPlan& plan) noexcept {
-  return dft::semilocal_family_name(plan.semilocal_family);
+  return plan.generated_split_hybrid ? "generated split global hybrid"
+                                     : dft::semilocal_family_name(plan.semilocal_family);
 }
 
 std::optional<double> semilocal_component(const vibeqc_ks_options& input,
@@ -130,6 +139,8 @@ struct SemilocalAdmission {
   dft::SemilocalFamily family{dft::SemilocalFamily::Lda};
   double exchange_scale{1.0};
   double correlation_scale{1.0};
+  std::uint32_t functional{};
+  bool generated_split_hybrid{};
 };
 
 SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
@@ -166,11 +177,25 @@ SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
       *semilocal_component(input, "MGGA_C_WB97M_V") == 1.0 && input.semilocal_range_omega == 0.3)
     return {dft::SemilocalFamily::Wb97mv, 1.0, 1.0};
 
+#if VIBEQC_HAS_CUDA
+  if (input.semilocal_component_count == 2 && input.semilocal_range_omega == 0.0) {
+    const auto& first = input.semilocal_components[0];
+    const auto& second = input.semilocal_components[1];
+    if (first.component_id && second.component_id && *first.component_id && *second.component_id &&
+        first.coefficient == 1.0 && second.coefficient == 1.0) {
+      const auto functional = dft::generated::split_hybrid_functional_code(
+          std::string_view(first.component_id), std::string_view(second.component_id));
+      if (functional) return {dft::SemilocalFamily::R2scan, 1.0, 1.0, functional, true};
+    }
+  }
+#endif
+
   throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                     "KS semilocal primitive graph has no qualified native lowerer");
 }
 
 std::string_view expected_scf_domain(const NativeKsExecutionPlan& plan) noexcept {
+  if (plan.generated_split_hybrid) return "libxc-7.0/split-global-hybrid-v1";
   if (plan.semilocal_family == dft::SemilocalFamily::Wb97mv)
     return "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
   if (plan.semilocal_family == dft::SemilocalFamily::B3lyp)
@@ -207,6 +232,11 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
     semilocal = admit_semilocal(*ks_input);
     execution_plan = {ks_input->spin_channels, semilocal.family, true,
                       descriptor.method == VIBEQC_METHOD_PBE_D4_RKS};
+    execution_plan.functional = semilocal.functional;
+    execution_plan.generated_split_hybrid = semilocal.generated_split_hybrid;
+    if (execution_plan.generated_split_hybrid && backend != VIBEQC_BACKEND_CUDA)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "generated split-global-hybrid KS currently requires CUDA");
   } else {
     if (!legacy_plan)
       throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
@@ -360,8 +390,22 @@ scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_b
       strict_cuda_global_hybrid && execution_plan.semilocal_family == dft::SemilocalFamily::B3lyp &&
       options.semilocal_exchange_scale == 1.0 && options.semilocal_correlation_scale == 1.0 &&
       fock.exchange.coefficient == b3lyp_fock_coefficient;
+  bool cuda_split_hybrid = false;
+#if VIBEQC_HAS_CUDA
+  if (strict_cuda_global_hybrid && execution_plan.generated_split_hybrid &&
+      options.semilocal_exchange_scale == 1.0 && options.semilocal_correlation_scale == 1.0) {
+    const auto composition =
+        dft::generated::split_hybrid_composition(xc_functional_code(execution_plan));
+    if (composition.matched && composition.exact_exchange_denominator) {
+      const double exact_exchange = static_cast<double>(composition.exact_exchange_numerator) /
+                                    static_cast<double>(composition.exact_exchange_denominator);
+      const double divisor = unrestricted(execution_plan) ? 1.0 : 2.0;
+      cuda_split_hybrid = fock.exchange.coefficient == -exact_exchange / divisor;
+    }
+  }
+#endif
   if (scaled_or_hybrid && backend == VIBEQC_BACKEND_CUDA && !cuda_pbe0 && !cuda_b3lyp &&
-      !cuda_wb97mv)
+      !cuda_split_hybrid && !cuda_wb97mv)
     throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                       "CUDA scaled/global-hybrid KS composition is not qualified");
   if (execution_plan.nonlocal_correlation &&
@@ -606,8 +650,8 @@ class KsPreparedCalculation final : public PreparedCalculation {
                               ? dft::nlc::Vv10DensityDomain::MolecularV1
                               : dft::nlc::Vv10DensityDomain::StrictPositive;
       cuda_ = std::make_unique<dft::CudaKsPlan>(
-          fock_, basis_, grid_, options_, execution_plan_.semilocal_family, options_.xc_tile_points,
-          range, nonlocal_.get(), domain);
+          fock_, basis_, grid_, options_, xc_functional_code(execution_plan_),
+          options_.xc_tile_points, range, nonlocal_.get(), domain);
     }
 #endif
     if (execution_plan_.d4_correction) prepare_d4(device);
@@ -828,6 +872,9 @@ class KsPreparedCalculation final : public PreparedCalculation {
     // last-good density, which coexists with its current/proposed densities.
     runtime::CpuRetainedCapacity retained_warm(runtime::vector_bytes(warm_));
     scf::ScfResult native;
+    if (execution_plan_.generated_split_hybrid)
+      throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
+                        "generated split-global-hybrid CPU KS is unavailable");
     if (execution_plan_.semilocal_family == dft::SemilocalFamily::Wb97mv) {
       if (!range_correction_ || !nonlocal_)
         throw std::runtime_error("WB97M-V requires both range-exchange and nonlocal owners");
@@ -888,7 +935,7 @@ class KsPreparedCalculation final : public PreparedCalculation {
                         scf_domain_version(execution_plan_),
                         grid_.spec(),
                         options_.xc_tile_points,
-                        dft::semilocal_family_code(execution_plan_.semilocal_family),
+                        xc_functional_code(execution_plan_),
                         spins,
                         -1,
                         cpu_owner_,

@@ -6,12 +6,17 @@ import typing
 from dataclasses import asdict, dataclass
 
 from . import _native
-from .ks import B3LYP_SCF_DOMAIN, SCF_DOMAIN, WB97MV_SCF_DOMAIN
+from .ks import (
+    B3LYP_SCF_DOMAIN,
+    SCF_DOMAIN,
+    SPLIT_HYBRID_SCF_DOMAIN,
+    WB97MV_SCF_DOMAIN,
+)
 
 
 @dataclass(frozen=True)
 class KsEnergyComponents:
-    """Physical Hartree energy terms, with XC counted exactly once."""
+    """Physical Hartree energy terms; XC includes exact exchange when present."""
 
     nuclear: float
     one_electron: float
@@ -96,9 +101,17 @@ def _components(value: typing.Any) -> typing.Any:
 
 
 def read_ks_diagnostic(
-    library: typing.Any, handle: typing.Any, index: typing.Any = None
+    library: typing.Any,
+    handle: typing.Any,
+    index: typing.Any = None,
+    *,
+    expected_domain: str | None = None,
 ) -> typing.Any:
-    """Copy the current native record; absence never substitutes an old one."""
+    """Copy the current native record and check its resolved work-domain identity.
+
+    Generated split hybrids have a distinct native domain version. Their
+    resolved method is still checked before admitting the diagnostic.
+    """
     name = (
         "vibeqc_calculation_get_ks_diagnostic"
         if index is None
@@ -115,7 +128,13 @@ def read_ks_diagnostic(
     _native.check(library, status)
     # Domain IDs identify numerical policies, independently of method aliases.
     domains = {1: SCF_DOMAIN, 2: B3LYP_SCF_DOMAIN, 3: WB97MV_SCF_DOMAIN}
-    if summary.scf_domain_version not in domains:
+    if expected_domain == SPLIT_HYBRID_SCF_DOMAIN:
+        if summary.scf_domain_version != 4:
+            raise RuntimeError("native split-hybrid diagnostic domain mismatch")
+        domain = SPLIT_HYBRID_SCF_DOMAIN
+    elif summary.scf_domain_version in domains:
+        domain = domains[summary.scf_domain_version]
+    else:
         raise RuntimeError("unsupported native KS diagnostic domain version")
     history = (_native.KsIterationDescriptor * summary.history_count)()
     for row in history:
@@ -144,7 +163,7 @@ def read_ks_diagnostic(
         grid_points=summary.grid_points,
         tile_points=summary.tile_points,
         ao_order=summary.required_ao_order,
-        scf_domain=domains[summary.scf_domain_version],
+        scf_domain=domain,
         initial_density_used=bool(summary.initial_density_used),
         fock_builds=summary.fock_builds,
         components=_components(summary),
