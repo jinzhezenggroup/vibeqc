@@ -406,6 +406,36 @@ void range_exchange_derivatives() {
           }
           gradients.push_back(std::move(gradient));
         }
+        for (std::size_t item = 0; item < 2; ++item) {
+          FockBuildSpec j_spec;
+          j_spec.spin = spin;
+          j_spec.derivative_order = 1;
+          j_spec.coulomb = {true, 1.0};
+          j_spec.exchange.present = false;
+          std::vector<double> j_gradient, fused;
+          require(execute_cuda_direct_energy_derivative_item(
+                      plan.get(), item, j_spec, a,
+                      spin == FockSpin::Unrestricted ? b : std::vector<double>{}, j_gradient,
+                      detail) == VIBEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          require(execute_cuda_direct_rsh_energy_derivatives_item(
+                      plan.get(), item, spin, 1.0, coefficient, coefficient, omega, a,
+                      spin == FockSpin::Unrestricted ? b : std::vector<double>{}, fused,
+                      detail) == VIBEQC_STATUS_SUCCESS,
+                  detail.c_str());
+          require(fused.size() == 18 && j_gradient.size() == 6,
+                  "fused CUDA RSH derivative returned the wrong source shape");
+          for (std::size_t coordinate = 0; coordinate < 6; ++coordinate) {
+            require(std::abs(fused[coordinate] - j_gradient[coordinate]) < 2e-11,
+                    "fused CUDA RSH Coulomb derivative changed");
+            require(std::abs(fused[6 + coordinate] -
+                             gradients[1][item * 6 + coordinate]) < 2e-11,
+                    "fused CUDA short-range derivative changed");
+            require(std::abs(fused[12 + coordinate] -
+                             gradients[2][item * 6 + coordinate]) < 2e-11,
+                    "fused CUDA long-range derivative changed");
+          }
+        }
         for (std::size_t coordinate = 0; coordinate < 12; ++coordinate)
           require(std::abs(gradients[0][coordinate] - gradients[1][coordinate] -
                            gradients[2][coordinate]) < 2e-11,
