@@ -543,6 +543,7 @@ jobs:
       - name: Run Python tests with coverage
         env:
           VIBEQC_LIBRARY: ${{ github.workspace }}/build/libvibeqc.so
+          VIBEQC_BUILD_DIR: ${{ github.workspace }}/build
         run: |
           extra_args=()
           coverage_args=()
