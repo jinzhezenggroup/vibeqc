@@ -39,7 +39,7 @@ from vibeqc_compiler.integral.shell_spec import cartesian_components
 from vibeqc_compiler.integral.weight_pullback import normalized_radial_primitives
 
 from tools.vibeqc_response.backends import NativeJKBackend
-from tools.vibeqc_response.operators import RHFResponseOperator
+from vibeqc.response import RHFResponseOperator
 
 from .first_order import checked_direction
 from .native import NativeRHFState
