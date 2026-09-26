@@ -505,6 +505,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
     if (host_unfused &&
         (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0))
       throw std::invalid_argument("scaled CUDA XC requires device-fused execution");
+    if (host_unfused && functional == SemilocalFamily::B3lyp)
+      throw std::invalid_argument("CUDA B3LYP requires device-fused XC execution");
     if (host_unfused) {
       host_xc_density.resize(elements);
       host_xc_potential.resize(elements);
@@ -631,6 +633,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
     output.dft_diagnostic.grid_points = xc_layout.npoint;
     output.dft_diagnostic.tile_points = xc_layout.tile_points;
     output.dft_diagnostic.ao_order = functional == SemilocalFamily::Lda ? 0 : 1;
+    // Scientific domain identity follows the functional, including B3LYP v2.
     output.dft_diagnostic.scf_domain_version = semilocal_family_domain_version(functional);
     output.initial_density_used = input != nullptr || use_warm;
     is_active = false;

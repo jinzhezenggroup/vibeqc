@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks"))
+@pytest.mark.parametrize("method", ("pbe0-rks", "pbe0-uks", "b3lyp-rks", "b3lyp-uks"))
 def test_cuda_hybrid_snapshot_matches_cpu_composition_and_state(method: str) -> None:
     """Exercise the native writer and Python reader after a converged solve."""
     assert os.environ.get("SLURM_JOB_ID"), "real GPU tests require Slurm"
@@ -45,7 +45,12 @@ def test_cuda_hybrid_snapshot_matches_cpu_composition_and_state(method: str) -> 
                 snapshot = state._source
                 assert snapshot.backend == device
                 assert snapshot.metadata[0] == (6 if device == "cpu" else 8)
-                assert snapshot.metadata[7] == 1
+                assert snapshot.metadata[7] == (2 if method.startswith("b3lyp") else 1)
+                assert item.ks_diagnostic.scf_domain == (
+                    "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
+                    if method.startswith("b3lyp")
+                    else "semilocal-scaled-v1/pbe-spin-c2-1e-18"
+                )
                 assert snapshot.coefficients == calculator.ks_options.coefficients
                 assert state.identity.method == method
                 exported[device] = (
