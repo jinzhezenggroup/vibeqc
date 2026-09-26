@@ -5,7 +5,6 @@
 #include <climits>
 #include <cmath>
 #include <cstddef>
-#include <initializer_list>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -127,14 +126,6 @@ std::optional<double> semilocal_component(const vibeqc_ks_options& input,
   return value;
 }
 
-bool has_only_semilocal_components(const vibeqc_ks_options& input,
-                                   std::initializer_list<std::string_view> ids) {
-  if (input.semilocal_component_count != ids.size()) return false;
-  for (const auto id : ids)
-    if (!semilocal_component(input, id)) return false;
-  return true;
-}
-
 struct SemilocalAdmission {
   dft::SemilocalFamily family{dft::SemilocalFamily::Lda};
   double exchange_scale{1.0};
@@ -143,6 +134,35 @@ struct SemilocalAdmission {
   bool generated_split_hybrid{};
 };
 
+std::optional<SemilocalAdmission> admit_curated_semilocal(const vibeqc_ks_options& input) {
+  for (const auto& metadata : dft::kSemilocalFamilyMetadata) {
+    if (input.semilocal_component_count != metadata.component_count ||
+        input.semilocal_range_omega != metadata.range_omega)
+      continue;
+    double exchange_scale = 1.0;
+    double correlation_scale = 1.0;
+    bool matches = true;
+    for (std::uint32_t i = 0; i < metadata.component_count; ++i) {
+      const auto coefficient = semilocal_component(input, metadata.component_ids[i]);
+      if (!coefficient) {
+        matches = false;
+        break;
+      }
+      if (metadata.component_coefficients_are_native_scales) {
+        if (i == 0)
+          exchange_scale = *coefficient;
+        else if (i == 1)
+          correlation_scale = *coefficient;
+      } else if (*coefficient != metadata.component_coefficients[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return SemilocalAdmission{metadata.family, exchange_scale, correlation_scale};
+  }
+  return std::nullopt;
+}
+
 SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
   if (!input.semilocal_components || !input.semilocal_component_count)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT,
@@ -150,32 +170,7 @@ SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
   if (!std::isfinite(input.semilocal_range_omega) || input.semilocal_range_omega < 0.0)
     throw MethodError(VIBEQC_STATUS_INVALID_ARGUMENT, "invalid semilocal range parameter");
 
-  if (has_only_semilocal_components(input, {"LDA_X", "LDA_C_PW"}) &&
-      *semilocal_component(input, "LDA_X") == 1.0 &&
-      *semilocal_component(input, "LDA_C_PW") == 1.0 && input.semilocal_range_omega == 0.0)
-    return {dft::SemilocalFamily::Lda, 1.0, 1.0};
-
-  if (has_only_semilocal_components(input, {"GGA_X_PBE", "GGA_C_PBE"}) &&
-      input.semilocal_range_omega == 0.0)
-    return {dft::SemilocalFamily::Pbe, *semilocal_component(input, "GGA_X_PBE"),
-            *semilocal_component(input, "GGA_C_PBE")};
-
-  if (has_only_semilocal_components(input, {"MGGA_X_R2SCAN", "MGGA_C_R2SCAN"}) &&
-      *semilocal_component(input, "MGGA_X_R2SCAN") == 1.0 &&
-      *semilocal_component(input, "MGGA_C_R2SCAN") == 1.0 && input.semilocal_range_omega == 0.0)
-    return {dft::SemilocalFamily::R2scan, 1.0, 1.0};
-
-  if (has_only_semilocal_components(input, {"LDA_X", "GGA_X_B88", "LDA_C_VWN_RPA", "GGA_C_LYP"}) &&
-      *semilocal_component(input, "LDA_X") == 0.08 &&
-      *semilocal_component(input, "GGA_X_B88") == 0.72 &&
-      *semilocal_component(input, "LDA_C_VWN_RPA") == 0.19 &&
-      *semilocal_component(input, "GGA_C_LYP") == 0.81 && input.semilocal_range_omega == 0.0)
-    return {dft::SemilocalFamily::B3lyp, 1.0, 1.0};
-
-  if (has_only_semilocal_components(input, {"MGGA_X_WB97M_V", "MGGA_C_WB97M_V"}) &&
-      *semilocal_component(input, "MGGA_X_WB97M_V") == 1.0 &&
-      *semilocal_component(input, "MGGA_C_WB97M_V") == 1.0 && input.semilocal_range_omega == 0.3)
-    return {dft::SemilocalFamily::Wb97mv, 1.0, 1.0};
+  if (auto curated = admit_curated_semilocal(input)) return *curated;
 
 #if VIBEQC_HAS_CUDA
   if (input.semilocal_component_count == 2 && input.semilocal_range_omega == 0.0) {
@@ -196,11 +191,7 @@ SemilocalAdmission admit_semilocal(const vibeqc_ks_options& input) {
 
 std::string_view expected_scf_domain(const NativeKsExecutionPlan& plan) noexcept {
   if (plan.generated_split_hybrid) return "libxc-7.0/split-global-hybrid-v1";
-  if (plan.semilocal_family == dft::SemilocalFamily::Wb97mv)
-    return "libxc-7.0/work-mgga-v1/smooth-lr-a1.35-order16";
-  if (plan.semilocal_family == dft::SemilocalFamily::B3lyp)
-    return "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18";
-  return "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+  return dft::semilocal_family_scf_domain(plan.semilocal_family);
 }
 
 scf::ScfOptions dft_options(const vibeqc_method_descriptor& descriptor, vibeqc_backend backend,

@@ -5,6 +5,7 @@ from fractions import Fraction
 import pytest
 from vibeqc.ks import ks_coefficients, ks_range_exchange_parameters
 from vibeqc_compiler.method import (
+    ExactExchangePrimitive,
     MethodIR,
     RangeSeparatedExchangePrimitive,
     compile_ks_execution_plan,
@@ -96,12 +97,24 @@ def test_execution_plan_rejects_cross_primitive_omega_drift() -> None:
 
 def test_native_projection_carries_wb97mv_range_exchange_from_methodir() -> None:
     cam = resolve_method("CAM-B3LYP")
-    with pytest.raises(NotImplementedError, match="semilocal composition"):
+    with pytest.raises(NotImplementedError, match="qualified lowerer"):
         ks_coefficients(cam)
 
     wb97mv = resolve_method("WB97M-V")
     assert ks_coefficients(wb97mv) == (1.0, 1.0, -0.075)
     assert ks_range_exchange_parameters(wb97mv) == pytest.approx((0.15, 1.0, 0.3))
+
+
+@pytest.mark.parametrize("method", ("LDA_XC_PW", "R2SCAN"))
+def test_unqualified_hybridized_pure_family_stays_rejected(method: str) -> None:
+    base = resolve_method(method)
+    hybrid = MethodIR(
+        f"{method}-with-extra-exchange",
+        base.spin,
+        (*base.primitives, ExactExchangePrimitive(Fraction(1, 4))),
+    )
+    with pytest.raises(NotImplementedError, match="semilocal composition"):
+        ks_coefficients(hybrid)
 
 
 def test_existing_native_full_range_hybrid_uses_compiled_plan_coefficients() -> None:
