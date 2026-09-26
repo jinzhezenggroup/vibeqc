@@ -46,6 +46,12 @@ sum overflow. The preparation planner test uses `VIBEQC_BUILD_DIR` (default
 `build`); CPU CI supplies its actual binary directory so the generated schedule
 gate no longer skips that regression merely because a CUDA preset is absent.
 
+The review refresh passed 106 focused local host tests, including all six
+preparation-budget tests without skips against a fresh CPU build directory.
+PR #1342 at `7d813af191c792ed3dbbf26be6935f83f91f672a` also passed all
+30 reported CI checks (with one optional performance job skipped), including
+the CPU/CUDA builds, CuMetal runtime tests and all five Python shards.
+
 ## References
 
 #1078, #1334, #445; response audit comment 5832638027.
