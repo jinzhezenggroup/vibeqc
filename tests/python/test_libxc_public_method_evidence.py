@@ -173,3 +173,29 @@ def test_public_admission_fails_when_prerequisite_stage_disappears() -> None:
             result,
             prerequisite_evidence=stale,
         )
+
+
+def test_public_endpoint_rejects_forged_generic_coverage_without_exact_admission() -> None:
+    prerequisites = _prerequisites()
+    capability = libxc_bulk_capabilities.functional_capability(
+        NAME, evidence=prerequisites
+    )
+    forged = _stage(
+        capability,
+        "public-method",
+        qualification=_coverage("polarized", "unpolarized"),
+    )
+    evidence = {**prerequisites, "public-method": forged}
+
+    with pytest.raises(CapabilityNotQualified) as caught:
+        resolve_endpoint_capability(
+            NAME,
+            backend="cpu",
+            product="energy",
+            spin="unpolarized",
+            require_public=True,
+            evidence=evidence,
+        )
+    assert caught.value.blockers == (
+        ("public-method", "missing exact public admission receipt"),
+    )

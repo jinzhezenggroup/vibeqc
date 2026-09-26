@@ -12,6 +12,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from vibeqc_compiler.common.evidence import canonical_hash
+
 from .capability_resolution import (
     CapabilityNotQualified,
     resolve_capability,
@@ -30,6 +32,8 @@ ENDPOINT_COVERAGE_SCHEMA = "vibeqc.libxc-endpoint-coverage.v1"
 ENDPOINT_RESOLUTION_SCHEMA = "vibeqc.libxc-endpoint-resolution.v1"
 ENDPOINT_BACKENDS = ("cpu", "cuda")
 ENDPOINT_PRODUCTS = ("energy", "forces", "response")
+_PUBLIC_METHOD_RESULT_SCHEMA = "vibeqc.libxc-public-method-result/v1"
+_PUBLIC_METHOD_QUALIFICATION_SCHEMA = "vibeqc.libxc-public-method-qualification/v1"
 _ENDPOINT_PRODUCT_STAGE = {
     "energy": "molecular-scf",
     "forces": "forces",
@@ -164,6 +168,78 @@ def _endpoint_coverage_reason(
     )
 
 
+def _public_admission_reason(
+    stage_evidence: StageEvidence | None,
+    *,
+    name: str,
+    capability_identity: str,
+    evidence: Mapping[str, Any] | None,
+) -> str | None:
+    """Validate the exact producer receipt before public admission is consumed."""
+    if stage_evidence is None or stage_evidence.status != "pass":
+        return "missing pass evidence"
+    qualification = stage_evidence.qualification
+    if not isinstance(qualification, Mapping):
+        return "missing endpoint coverage qualification"
+    admission = qualification.get("admission")
+    if not isinstance(admission, Mapping):
+        return "missing exact public admission receipt"
+    if admission.get("schema") != _PUBLIC_METHOD_QUALIFICATION_SCHEMA:
+        return "public admission receipt has unsupported schema"
+
+    result_identity = admission.get("result_identity")
+    if (
+        not isinstance(result_identity, str)
+        or len(result_identity) != 64
+        or any(ch not in "0123456789abcdef" for ch in result_identity)
+    ):
+        return "public admission result identity is invalid"
+    evidence_ref = stage_evidence.evidence
+    if not isinstance(evidence_ref, str):
+        return "public admission evidence reference is invalid"
+    evidence_base, marker, anchored_identity = evidence_ref.rpartition("#sha256=")
+    if not marker or not evidence_base or anchored_identity != result_identity:
+        return "public admission evidence is not bound to its result identity"
+
+    raw_resolutions = admission.get("endpoint_resolutions")
+    if isinstance(raw_resolutions, (str, bytes)) or not isinstance(
+        raw_resolutions, Sequence
+    ):
+        return "public admission endpoint resolutions must be a sequence"
+
+    prerequisites = (
+        {stage: payload for stage, payload in evidence.items() if stage != "public-method"}
+        if isinstance(evidence, Mapping)
+        else {}
+    )
+    expected_resolutions = [
+        resolve_endpoint_capability(
+            name,
+            backend="cpu",
+            product="energy",
+            spin=spin,
+            require_public=False,
+            evidence=prerequisites,
+        ).to_payload()
+        for spin in SPIN_LAYOUTS
+    ]
+    if list(raw_resolutions) != expected_resolutions:
+        return "public admission endpoint resolutions do not match current prerequisites"
+
+    result_payload = {
+        "schema": _PUBLIC_METHOD_RESULT_SCHEMA,
+        "subject_identity": capability_identity,
+        "backend": "cpu",
+        "product": "energy",
+        "spins": list(SPIN_LAYOUTS),
+        "endpoint_resolutions": expected_resolutions,
+        "evidence": evidence_base,
+    }
+    if canonical_hash(result_payload) != result_identity:
+        return "public admission result identity does not match its exact receipt"
+    return None
+
+
 def _exact_endpoint_public(
     capability: BulkFunctionalCapability,
     *,
@@ -250,6 +326,15 @@ def resolve_endpoint_capability(
         )
         if reason is not None:
             blockers.append((stage, reason))
+    if require_public and not any(stage == "public-method" for stage, _ in blockers):
+        reason = _public_admission_reason(
+            evidence_by_stage.get("public-method"),
+            name=capability.name,
+            capability_identity=capability.identity,
+            evidence=evidence,
+        )
+        if reason is not None:
+            blockers.append(("public-method", reason))
     if blockers:
         raise CapabilityNotQualified(
             name=capability.name,
