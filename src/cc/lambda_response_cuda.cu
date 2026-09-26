@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <new>
 #include <span>
 #include <stdexcept>
@@ -546,6 +547,276 @@ CudaFixedOrbitalResponseResult solve_lambda_parameter_response_cuda_with_energy_
   result.lambda = solve_impl(problem, cc_result, t1_source, t2_source, device, options, &result);
   return result;
 }
+
+struct CudaHamiltonianResponseOwner::Impl {
+  struct Layout {
+    std::array<std::size_t, 4> raw{};
+    std::array<std::size_t, 10> parameters{};
+    std::size_t reference_seed{};
+    std::size_t fock_seed{};
+    std::size_t rotation_seed{};
+    std::size_t response_arena{};
+    std::size_t error{};
+    std::size_t total{};
+  };
+
+  Impl(std::size_t occupied, std::size_t virtuals, CudaRawHamiltonianView raw, int device,
+       std::size_t max_device_bytes)
+      : device_id(checked_device(device)), o(occupied), v(virtuals), n(checked_add(o, v)) {
+    if (!o || !v || !max_device_bytes)
+      throw std::invalid_argument(
+          "RCCSD CUDA Hamiltonian response requires nonzero dimensions and budget");
+    n2 = checked_mul(n, n);
+    n4 = checked_mul(n2, n2);
+    ov = checked_mul(o, v);
+    const std::array<std::span<const double>, 4> raw_values = {raw.density, raw.g, raw.h,
+                                                               raw.rotation};
+    const std::array<std::size_t, 4> raw_sizes = {n2, n4, n2, n2};
+    for (std::size_t index = 0; index < raw_values.size(); ++index)
+      validate_values(raw_values[index], raw_sizes[index], "raw Hamiltonian");
+
+    const std::array<std::size_t, 10> parameter_sizes = {
+        checked_mul(o, o),
+        ov,
+        checked_mul(v, v),
+        checked_mul(checked_mul(o, o), checked_mul(v, v)),
+        checked_mul(checked_mul(o, o), checked_mul(v, v)),
+        checked_mul(checked_mul(o, o), checked_mul(v, v)),
+        checked_mul(o, checked_mul(v, checked_mul(v, v))),
+        checked_mul(ov, checked_mul(o, o)),
+        checked_mul(checked_mul(o, o), checked_mul(o, o)),
+        checked_mul(checked_mul(v, v), checked_mul(v, v))};
+
+    std::size_t cursor = 0;
+    for (std::size_t index = 0; index < raw_sizes.size(); ++index)
+      layout.raw[index] = reserve(cursor, bytes(raw_sizes[index]));
+    for (std::size_t index = 0; index < parameter_sizes.size(); ++index)
+      layout.parameters[index] = reserve(cursor, bytes(parameter_sizes[index]));
+    layout.reference_seed = reserve(cursor, sizeof(double));
+    layout.fock_seed = reserve(cursor, bytes(n2));
+    layout.rotation_seed = reserve(cursor, bytes(n2));
+    const auto response_elements = std::max({generated::hamiltonian_weights_arena_elements(o, v),
+                                             generated::fock_weights_arena_elements(o, v),
+                                             generated::orbital_jvp_arena_elements(o, v)});
+    layout.response_arena = reserve(cursor, bytes(response_elements));
+    layout.error = reserve(cursor, sizeof(int));
+    layout.total = align256(cursor);
+    if (layout.total > max_device_bytes)
+      throw std::length_error("RCCSD CUDA Hamiltonian response exceeds device budget");
+
+    DeviceScope active_device(device_id);
+    try {
+      cuda_check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+      cuda_check(cudaMalloc(reinterpret_cast<void**>(&base), layout.total));
+      std::array<double**, 4> raw_fields = {&state.density, &state.g, &state.h, &state.rotation};
+      for (std::size_t index = 0; index < raw_values.size(); ++index) {
+        *raw_fields[index] = pointer(layout.raw[index]);
+        upload(raw_values[index], *raw_fields[index]);
+      }
+      std::array<double**, 10> parameter_fields = {
+          &state.bar_foo,  &state.bar_fov,  &state.bar_fvv,  &state.bar_ovov, &state.bar_ovvo,
+          &state.bar_oovv, &state.bar_ovvv, &state.bar_ovoo, &state.bar_oooo, &state.bar_vvvv};
+      for (std::size_t index = 0; index < parameter_fields.size(); ++index)
+        *parameter_fields[index] = pointer(layout.parameters[index]);
+      state.bar_reference_electronic_energy = pointer(layout.reference_seed);
+      state.bar_fock = pointer(layout.fock_seed);
+      state.d_rotation = pointer(layout.rotation_seed);
+      state.response_arena = pointer(layout.response_arena);
+      state.error = reinterpret_cast<int*>(base + layout.error);
+      state.o = o;
+      state.v = v;
+      state.stream = stream;
+      cuda_check(cudaStreamSynchronize(stream));
+      ++syncs;
+    } catch (const vibeqc_tensor::DeviceAllocationError&) {
+      cleanup();
+      throw std::bad_alloc();
+    } catch (...) {
+      cleanup();
+      throw;
+    }
+  }
+
+  ~Impl() { cleanup(); }
+
+  CudaHamiltonianResponseResult hamiltonian(CudaParameterResponseView parameters,
+                                            double reference_seed) {
+    DeviceScope active_device(device_id);
+    if (!std::isfinite(reference_seed))
+      throw std::invalid_argument("nonfinite RCCSD CUDA Hamiltonian reference seed");
+    const std::array<std::span<const double>, 10> values = {
+        parameters.foo,  parameters.fov,  parameters.fvv,  parameters.ovov, parameters.ovvo,
+        parameters.oovv, parameters.ovvv, parameters.ovoo, parameters.oooo, parameters.vvvv};
+    const std::array<std::size_t, 10> sizes = {checked_mul(o, o),
+                                               ov,
+                                               checked_mul(v, v),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(checked_mul(o, o), checked_mul(v, v)),
+                                               checked_mul(o, checked_mul(v, checked_mul(v, v))),
+                                               checked_mul(ov, checked_mul(o, o)),
+                                               checked_mul(checked_mul(o, o), checked_mul(o, o)),
+                                               checked_mul(checked_mul(v, v), checked_mul(v, v))};
+    std::array<double*, 10> fields = {
+        state.bar_foo,  state.bar_fov,  state.bar_fvv,  state.bar_ovov, state.bar_ovvo,
+        state.bar_oovv, state.bar_ovvv, state.bar_ovoo, state.bar_oooo, state.bar_vvvv};
+    for (std::size_t index = 0; index < values.size(); ++index)
+      validate_values(values[index], sizes[index], "parameter response");
+    HostTransferFence transfers(stream);
+    for (std::size_t index = 0; index < values.size(); ++index)
+      upload(values[index], fields[index]);
+    cuda_check(cudaMemcpyAsync(state.bar_reference_electronic_energy, &reference_seed,
+                               sizeof(double), cudaMemcpyHostToDevice, stream));
+    h2d = checked_add(h2d, sizeof(double));
+    clear_error();
+    auto result = detach(generated::run_hamiltonian_weights_cuda(state));
+    transfers.complete();
+    return result;
+  }
+
+  CudaHamiltonianResponseResult fock(std::span<const double> bar_fock) {
+    DeviceScope active_device(device_id);
+    validate_values(bar_fock, n2, "Fock response");
+    HostTransferFence transfers(stream);
+    upload(bar_fock, state.bar_fock);
+    clear_error();
+    auto result = detach(generated::run_fock_weights_cuda(state));
+    transfers.complete();
+    return result;
+  }
+
+  std::vector<double> orbital_jvp(std::span<const double> d_rotation) {
+    DeviceScope active_device(device_id);
+    validate_values(d_rotation, n2, "orbital JVP");
+    std::vector<double> result(ov);
+    int error = 0;
+    HostTransferFence transfers(stream);
+    upload(d_rotation, state.d_rotation);
+    clear_error();
+    const auto output = generated::run_orbital_jvp_cuda(state);
+    cuda_check(
+        cudaMemcpyAsync(result.data(), output.d_fov, bytes(ov), cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaStreamSynchronize(stream));
+    transfers.complete();
+    d2h = checked_add(d2h, checked_add(bytes(ov), sizeof(int)));
+    ++syncs;
+    check_error(error);
+    return result;
+  }
+
+  std::size_t owned_device_bytes() const noexcept { return layout.total; }
+
+  static void validate_values(std::span<const double> values, std::size_t expected,
+                              const char* label) {
+    if (values.size() != expected)
+      throw std::invalid_argument(std::string("RCCSD CUDA ") + label + " shape mismatch");
+    for (double value : values)
+      if (!std::isfinite(value))
+        throw std::invalid_argument(std::string("nonfinite RCCSD CUDA ") + label + " input");
+  }
+
+  double* pointer(std::size_t offset) { return reinterpret_cast<double*>(base + offset); }
+
+  void upload(std::span<const double> values, double* target) {
+    const auto amount = bytes(values.size());
+    if (amount)
+      cuda_check(cudaMemcpyAsync(target, values.data(), amount, cudaMemcpyHostToDevice, stream));
+    h2d = checked_add(h2d, amount);
+  }
+
+  void clear_error() { cuda_check(cudaMemsetAsync(state.error, 0, sizeof(int), stream)); }
+
+  CudaHamiltonianResponseResult detach(const generated::DeviceHamiltonianOutputs& output) {
+    CudaHamiltonianResponseResult result;
+    result.hcore.resize(n2);
+    result.eri.resize(n4);
+    result.overlap.resize(n2);
+    result.rotation_gradient.resize(n2);
+    result.stationarity.resize(n2);
+    result.orbital_rhs.resize(ov);
+    int error = 0;
+    HostTransferFence transfers(stream);
+    cuda_check(cudaMemcpyAsync(result.hcore.data(), output.hcore, bytes(n2), cudaMemcpyDeviceToHost,
+                               stream));
+    cuda_check(
+        cudaMemcpyAsync(result.eri.data(), output.eri, bytes(n4), cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(result.overlap.data(), output.overlap, bytes(n2),
+                               cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(result.rotation_gradient.data(), output.rotation_gradient, bytes(n2),
+                               cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(result.stationarity.data(), output.stationarity, bytes(n2),
+                               cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(result.orbital_rhs.data(), output.orbital_rhs, bytes(ov),
+                               cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaMemcpyAsync(&error, state.error, sizeof(int), cudaMemcpyDeviceToHost, stream));
+    cuda_check(cudaStreamSynchronize(stream));
+    transfers.complete();
+    const auto output_bytes = bytes(checked_add(n4, checked_add(checked_mul(4, n2), ov)));
+    d2h = checked_add(d2h, checked_add(output_bytes, sizeof(int)));
+    ++syncs;
+    check_error(error);
+    return result;
+  }
+
+  static void check_error(int error) {
+    if (error)
+      throw std::runtime_error("nonfinite RCCSD generated CUDA Hamiltonian tensor at node " +
+                               std::to_string(std::abs(error)));
+  }
+
+  void cleanup() noexcept {
+    if (!stream && !base) return;
+    int previous = -1;
+    if (cudaGetDevice(&previous) != cudaSuccess || cudaSetDevice(device_id) != cudaSuccess) return;
+    if (stream) (void)cudaStreamSynchronize(stream);
+    if (base) (void)cudaFree(base);
+    if (stream) (void)cudaStreamDestroy(stream);
+    base = nullptr;
+    stream = nullptr;
+    if (previous >= 0) (void)cudaSetDevice(previous);
+  }
+
+  int device_id;
+  std::size_t o{}, v{}, n{}, n2{}, n4{}, ov{};
+  Layout layout;
+  cudaStream_t stream{};
+  unsigned char* base{};
+  generated::CudaState state{};
+  std::size_t h2d{};
+  std::size_t d2h{};
+  std::size_t syncs{};
+};
+
+CudaHamiltonianResponseOwner::CudaHamiltonianResponseOwner(std::size_t nocc, std::size_t nvir,
+                                                           CudaRawHamiltonianView raw, int device,
+                                                           std::size_t max_device_bytes)
+    : impl_(std::make_unique<Impl>(nocc, nvir, raw, device, max_device_bytes)) {}
+
+CudaHamiltonianResponseOwner::~CudaHamiltonianResponseOwner() = default;
+
+CudaHamiltonianResponseResult CudaHamiltonianResponseOwner::hamiltonian(
+    CudaParameterResponseView parameters, double reference_seed) {
+  return impl_->hamiltonian(parameters, reference_seed);
+}
+
+CudaHamiltonianResponseResult CudaHamiltonianResponseOwner::fock(std::span<const double> bar_fock) {
+  return impl_->fock(bar_fock);
+}
+
+std::vector<double> CudaHamiltonianResponseOwner::orbital_jvp(std::span<const double> d_rotation) {
+  return impl_->orbital_jvp(d_rotation);
+}
+
+std::size_t CudaHamiltonianResponseOwner::owned_device_bytes() const noexcept {
+  return impl_->owned_device_bytes();
+}
+
+std::size_t CudaHamiltonianResponseOwner::h2d_bytes() const noexcept { return impl_->h2d; }
+
+std::size_t CudaHamiltonianResponseOwner::d2h_bytes() const noexcept { return impl_->d2h; }
+
+std::size_t CudaHamiltonianResponseOwner::synchronizations() const noexcept { return impl_->syncs; }
 
 }  // namespace vibeqc::cc
 
