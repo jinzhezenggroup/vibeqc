@@ -3,9 +3,9 @@
 This is the first native LDA/PBE RKS composition of the MethodIR-derived
 StationaryHVPPlan, one real CPKS nuclear response, generated first/second
 integral providers, analytic Becke mixed response and native SCF-domain XC
-Hessian contractions. It remains a tools endpoint: direct all-electron
-Cartesian CPU RKS, at most 12 AOs/four atoms, with no public Calculator Hessian
-capability inferred.
+Hessian contractions. The method-neutral executor is production-owned; this
+method-specific adapter remains a tools endpoint for direct all-electron
+Cartesian CPU RKS, with no public Calculator Hessian capability inferred.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ from .rks_directional import (
     directional_rks_responses,
     native_rks_xc_hvp_components,
 )
-from .stationary_executor import (
+from vibeqc.second_order import (
     StationaryHVPContributor,
     StationaryPerturbationProvider,
     StationaryResponseDriver,
