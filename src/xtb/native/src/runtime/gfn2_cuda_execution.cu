@@ -59,24 +59,6 @@
 #include "runtime/nvidia_host_api.h"
 
 namespace vibeqc::xtb::detail {
-// Private numerical staging view; caller-owned host bytes are copied into
-// retained pinned storage before asynchronous device work can read them.
-struct Gfn2CudaNumericalInputView {
-  vibeqc_xtb_const_buffer_t positions{};
-  vibeqc_xtb_const_buffer_t point_charge_positions{};
-  vibeqc_xtb_const_buffer_t point_charge_values{};
-  vibeqc_xtb_const_buffer_t point_charge_gammas{};
-  vibeqc_xtb_const_buffer_t atomic_potential_shifts{};
-  vibeqc_xtb_const_buffer_t charge_response_matrix{};
-  /* ABI-v3 interaction metadata remains numerical state: FRESH calls may
-   * attach, change, or detach a field without rebuilding the fixed topology.
-   * total_interactions is zero for short-prefix callers. */
-  std::int64_t total_interactions = 0;
-  vibeqc_xtb_const_buffer_t interaction_descriptors{};
-  vibeqc_xtb_const_buffer_t interaction_payload{};
-  vibeqc_xtb_const_buffer_t requested_mask{};
-};
-
 enum class Gfn2CudaSccStartMode : std::uint32_t { kFresh = 1u, kWarm = 2u };
 
 namespace {
@@ -5984,8 +5966,8 @@ struct Gfn2CudaExecutionCache::Impl {
   }
 
   vibeqc_xtb_status_t stage_numerical_ingress_locked(
-      Prepared& current, const Gfn2CudaNumericalInputView& input, bool strict_warm,
-      bool allow_blocking_interaction_readback, bool& host_upload_enqueued, std::string& error) {
+      Prepared& current, const vibeqc_xtb_const_buffer_t& positions, bool& host_upload_enqueued,
+      std::string& error) {
     host_upload_enqueued = false;
     if (!current.numerical.ready) {
       error = "CUDA GFN2 numerical refresh requires a prepared fixed topology";
@@ -6005,164 +5987,25 @@ struct Gfn2CudaExecutionCache::Impl {
       return VIBEQC_XTB_STATUS_BACKEND_UNAVAILABLE;
     }
 
-    std::size_t requested_descriptor_bytes = 0u;
-    if (input.total_interactions < 0 ||
-        !checked_bytes(input.total_interactions, sizeof(vibeqc_xtb_interaction_t),
-                       requested_descriptor_bytes)) {
-      error = "interaction descriptor extent overflows size_t";
+    std::size_t position_bytes = 0u;
+    if (!checked_bytes(device.total_atoms * 3, sizeof(double), position_bytes)) {
+      error = "CUDA GFN2 position extent overflows size_t";
       return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
-    const std::size_t requested_payload_bytes =
-        input.total_interactions == 0 ? 0u : input.interaction_payload.size_bytes;
-    std::size_t released_descriptor_capacity = 0u;
-    std::size_t released_payload_capacity = 0u;
-    if (!checked_bytes(device.batch_size, sizeof(vibeqc_xtb_interaction_t),
-                       released_descriptor_capacity) ||
-        !checked_bytes(device.batch_size, 32u, released_payload_capacity) ||
-        numerical.interaction_descriptor_capacity_bytes < released_descriptor_capacity ||
-        numerical.interaction_payload_capacity_bytes < released_payload_capacity) {
-      error = "CUDA released interaction staging capacity is incomplete";
-      return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
+    const bool supported_space = positions.memory_space == VIBEQC_XTB_MEMORY_HOST ||
+                                 positions.memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE;
+    if (positions.reserved != 0u || positions.data == nullptr ||
+        positions.size_bytes < position_bytes || !supported_space) {
+      error = "positions is not a sufficiently large host/CUDA buffer";
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
     }
 
-    /* Validate the complete view before enqueueing any transfer. A synchronous
-     * descriptor rejection must not leave an earlier asynchronous host read in
-     * flight after the caller is told that the refresh did not start. */
-    const auto validate_source = [&](const char* name, const vibeqc_xtb_const_buffer_t& buffer,
-                                     std::int64_t elements, const double* device_stage,
-                                     const double* owned_host_stage,
-                                     bool allow_absent_zero = false) -> vibeqc_xtb_status_t {
-      std::size_t bytes = 0u;
-      if (!checked_bytes(elements, sizeof(double), bytes)) {
-        error = std::string(name) + " extent overflows size_t";
-        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-      }
-      const bool supported_space = buffer.memory_space == VIBEQC_XTB_MEMORY_HOST ||
-                                   buffer.memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE;
-      const bool absent = buffer.data == nullptr && buffer.size_bytes == 0u;
-      if (elements == 0) {
-        if (buffer.reserved != 0u || !supported_space) {
-          error = std::string(name) + " has malformed empty-buffer metadata";
-          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-        }
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      if (allow_absent_zero && absent) {
-        if (buffer.reserved != 0u || !supported_space || device_stage == nullptr) {
-          error = std::string(name) + " has malformed absent-buffer metadata";
-          return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-        }
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      if (buffer.reserved != 0u || buffer.data == nullptr || buffer.size_bytes < bytes ||
-          !supported_space) {
-        error = std::string(name) + " is not a sufficiently large host/CUDA buffer";
-        return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-      }
-      if (buffer.memory_space == VIBEQC_XTB_MEMORY_HOST &&
-          (device_stage == nullptr || owned_host_stage == nullptr)) {
-        error = std::string(name) + " has no runtime host-staging projection";
+    const bool uses_host_staging = positions.memory_space == VIBEQC_XTB_MEMORY_HOST;
+    if (uses_host_staging) {
+      if (numerical.host_positions == nullptr || numerical.owned_host_positions == nullptr) {
+        error = "positions has no runtime host-staging projection";
         return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
-      return VIBEQC_XTB_STATUS_SUCCESS;
-    };
-
-    vibeqc_xtb_status_t status =
-        validate_source("positions", input.positions, device.total_atoms * 3,
-                        numerical.host_positions, numerical.owned_host_positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-
-    if (input.total_interactions < 0) {
-      error = "total_interactions must be nonnegative";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
-    std::size_t interaction_descriptor_bytes = 0u;
-    if (!checked_bytes(input.total_interactions, sizeof(vibeqc_xtb_interaction_t),
-                       interaction_descriptor_bytes)) {
-      error = "interaction descriptor extent overflows size_t";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
-    const auto validate_byte_source = [&](const char* name, const vibeqc_xtb_const_buffer_t& buffer,
-                                          std::size_t required, bool allow_absent) {
-      const bool absent = buffer.data == nullptr && buffer.size_bytes == 0u;
-      const bool supported_space = buffer.memory_space == VIBEQC_XTB_MEMORY_HOST ||
-                                   buffer.memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE;
-      if ((allow_absent && absent && buffer.reserved == 0u && supported_space) ||
-          (buffer.reserved == 0u && supported_space && buffer.data != nullptr &&
-           buffer.size_bytes >= required)) {
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      error = std::string(name) + " is not a sufficiently large host/CUDA byte buffer";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    };
-    status = validate_byte_source("interaction_descriptors", input.interaction_descriptors,
-                                  interaction_descriptor_bytes, input.total_interactions == 0);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = validate_byte_source("interaction_payload", input.interaction_payload, 1u,
-                                  input.total_interactions == 0);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = validate_source("point_charge_positions", input.point_charge_positions,
-                             device.total_point_charges * 3, numerical.host_point_positions,
-                             numerical.owned_host_point_positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = validate_source("point_charge_values", input.point_charge_values,
-                             device.total_point_charges, numerical.host_point_values,
-                             numerical.owned_host_point_values);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = validate_source("point_charge_gammas", input.point_charge_gammas,
-                             device.total_point_charges, numerical.host_point_gammas,
-                             numerical.owned_host_point_gammas);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status =
-        validate_source("atomic_potential_shifts", input.atomic_potential_shifts,
-                        device.periodic_enabled != 0u ? device.total_atoms : 0,
-                        numerical.host_periodic_shifts, numerical.owned_host_periodic_shifts, true);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = validate_source("charge_response_matrix", input.charge_response_matrix,
-                             device.periodic_enabled != 0u ? device.total_response_elements : 0,
-                             numerical.host_periodic_response,
-                             numerical.owned_host_periodic_response, true);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-
-    std::size_t mask_bytes = 0u;
-    if (!checked_bytes(device.batch_size, sizeof(std::uint8_t), mask_bytes)) {
-      error = "numerical refresh activity extent overflows size_t";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
-    auto* const requested = const_cast<std::uint8_t*>(preprocessing.activity.requested_mask);
-    const bool absent_mask =
-        input.requested_mask.data == nullptr && input.requested_mask.size_bytes == 0u;
-    const bool valid_mask_space =
-        input.requested_mask.memory_space == VIBEQC_XTB_MEMORY_HOST ||
-        input.requested_mask.memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE;
-    if ((absent_mask && (input.requested_mask.reserved != 0u || !valid_mask_space)) ||
-        (!absent_mask &&
-         (input.requested_mask.reserved != 0u || input.requested_mask.data == nullptr ||
-          input.requested_mask.size_bytes < mask_bytes || !valid_mask_space))) {
-      error = "requested_mask is not a sufficiently large host/CUDA uint8 buffer";
-      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
-    }
-
-    const auto is_host_source = [](const vibeqc_xtb_const_buffer_t& buffer,
-                                   std::int64_t elements) noexcept {
-      return elements != 0 && buffer.data != nullptr &&
-             buffer.memory_space == VIBEQC_XTB_MEMORY_HOST;
-    };
-    const bool uses_host_staging =
-        is_host_source(input.positions, device.total_atoms * 3) ||
-        is_host_source(input.point_charge_positions, device.total_point_charges * 3) ||
-        is_host_source(input.point_charge_values, device.total_point_charges) ||
-        is_host_source(input.point_charge_gammas, device.total_point_charges) ||
-        is_host_source(input.atomic_potential_shifts,
-                       device.periodic_enabled != 0u ? device.total_atoms : 0) ||
-        is_host_source(input.charge_response_matrix,
-                       device.periodic_enabled != 0u ? device.total_response_elements : 0) ||
-        (!absent_mask && input.requested_mask.memory_space == VIBEQC_XTB_MEMORY_HOST) ||
-        (input.total_interactions != 0 &&
-         (input.interaction_descriptors.memory_space == VIBEQC_XTB_MEMORY_HOST ||
-          input.interaction_payload.memory_space == VIBEQC_XTB_MEMORY_HOST));
-
-    if (uses_host_staging) {
       cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
       cuda_status = cudaStreamIsCapturing(stream, &capture_status);
       if (cuda_status != cudaSuccess) {
@@ -6181,244 +6024,12 @@ struct Gfn2CudaExecutionCache::Impl {
         error = "a previous CUDA numerical host upload is still in flight";
         return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
       }
+      std::memcpy(numerical.owned_host_positions, positions.data, position_bytes);
     }
 
-    /* HOST payload lifetime and fixed-plan workspace together require a
-     * plan-owned image. Host descriptors can be compacted by system directly.
-     * For device descriptors, a compact payload that fits the released arena
-     * is copied at identical offsets and validated in stream order. Only the
-     * synchronous entry points may use bounded descriptor readback for a
-     * larger sparse caller view. */
-    bool interaction_descriptors_prevalidated = false;
-    bool interaction_payload_compacted = false;
-    bool interaction_payload_staged_at_offsets = false;
-    std::size_t interaction_payload_staging_displacement = 0u;
-    bool prevalidated_reserved_interaction = false;
-    std::uint32_t prevalidated_interaction_error = kGfn2RequestErrorNone;
-    std::int64_t staged_interaction_count = input.total_interactions;
-    std::size_t staged_interaction_descriptor_bytes = requested_descriptor_bytes;
-    if (input.total_interactions != 0 &&
-        (input.interaction_descriptors.memory_space == VIBEQC_XTB_MEMORY_HOST ||
-         input.interaction_payload.memory_space == VIBEQC_XTB_MEMORY_HOST)) {
-      const bool reverse_mixed =
-          input.interaction_descriptors.memory_space == VIBEQC_XTB_MEMORY_CUDA_DEVICE &&
-          input.interaction_payload.memory_space == VIBEQC_XTB_MEMORY_HOST;
-      constexpr std::size_t kPayloadAlignmentSlack = alignof(double) - 1u;
-      const bool compact_reverse_mixed =
-          reverse_mixed &&
-          released_payload_capacity <=
-              std::numeric_limits<std::size_t>::max() - kPayloadAlignmentSlack &&
-          requested_payload_bytes <= released_payload_capacity + kPayloadAlignmentSlack;
-      if (compact_reverse_mixed) {
-        /* Preserve descriptor offsets exactly and let the stream-ordered
-         * admission kernel validate their device contents. Preserve the HOST
-         * base modulo double alignment as well: ABI-valid blocks may be aligned
-         * by a compensating offset even when the payload view base is not. */
-        interaction_payload_staging_displacement =
-            reinterpret_cast<std::uintptr_t>(input.interaction_payload.data) &
-            (alignof(double) - 1u);
-        std::memset(numerical.owned_host_interaction_payload, 0,
-                    released_payload_capacity + 2u * kPayloadAlignmentSlack);
-        std::memcpy(
-            numerical.owned_host_interaction_payload + interaction_payload_staging_displacement,
-            input.interaction_payload.data, requested_payload_bytes);
-        interaction_payload_staged_at_offsets = true;
-      } else {
-        if (reverse_mixed && !allow_blocking_interaction_readback) {
-          error =
-              "asynchronous CUDA interaction staging requires a device descriptor/host payload "
-              "view to fit the fixed released payload capacity";
-          return VIBEQC_XTB_STATUS_NOT_SUPPORTED;
-        }
-        interaction_descriptors_prevalidated = true;
-        interaction_payload_compacted =
-            input.interaction_payload.memory_space == VIBEQC_XTB_MEMORY_HOST;
-        std::memset(numerical.owned_host_interaction_payload, 0, released_payload_capacity);
-
-        const std::size_t descriptor_capacity =
-            numerical.interaction_descriptor_capacity_bytes / sizeof(vibeqc_xtb_interaction_t);
-        if (descriptor_capacity == 0u) {
-          error = "CUDA released interaction descriptor staging has zero capacity";
-          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-        }
-        std::int64_t field_count = 0;
-        bool duplicate = false;
-        const auto inspect = [&](const vibeqc_xtb_interaction_t& item) {
-          if (prevalidated_interaction_error != kGfn2RequestErrorNone) return;
-          const std::uint32_t type_mask = interaction_type_mask_host(item.type);
-          if (item.flags != 0u || item.type == VIBEQC_XTB_INTERACTION_NONE || type_mask == 0u ||
-              item.system_index < 0 || item.system_index >= device.batch_size ||
-              item.payload_offset > requested_payload_bytes ||
-              item.payload_size > requested_payload_bytes - item.payload_offset) {
-            prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-            return;
-          }
-          const std::uintptr_t payload_base =
-              reinterpret_cast<std::uintptr_t>(input.interaction_payload.data);
-          if (item.payload_offset > static_cast<std::uint64_t>(UINTPTR_MAX - payload_base)) {
-            prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-            return;
-          }
-          const std::uintptr_t block_address =
-              payload_base + static_cast<std::uintptr_t>(item.payload_offset);
-          if (item.type == VIBEQC_XTB_INTERACTION_ELECTRIC_FIELD) {
-            if (item.payload_size != 32u || block_address % alignof(double) != 0u) {
-              prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-              return;
-            }
-            if (interaction_payload_compacted) {
-              std::int32_t version = 0;
-              std::int32_t reserved = 0;
-              std::array<double, 3> field{};
-              const auto* block = reinterpret_cast<const std::byte*>(block_address);
-              std::memcpy(&version, block, sizeof(version));
-              std::memcpy(&reserved, block + sizeof(version), sizeof(reserved));
-              std::memcpy(field.data(), block + 2u * sizeof(std::int32_t), sizeof(field));
-              if (version != 1 || reserved != 0 ||
-                  !std::all_of(field.begin(), field.end(),
-                               [](double component) { return std::isfinite(component); })) {
-                prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-                return;
-              }
-            }
-          } else {
-            if (item.payload_size < sizeof(std::int32_t) ||
-                block_address % alignof(std::int32_t) != 0u) {
-              prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-              return;
-            }
-            prevalidated_reserved_interaction = true;
-          }
-
-          auto* seen_masks =
-              reinterpret_cast<std::uint32_t*>(numerical.owned_host_interaction_payload);
-          std::uint32_t& seen = seen_masks[item.system_index];
-          if ((seen & type_mask) != 0u) {
-            duplicate = true;
-            return;
-          }
-          seen |= type_mask;
-          if (item.type == VIBEQC_XTB_INTERACTION_ELECTRIC_FIELD) {
-            if (field_count >= device.batch_size) {
-              prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-              return;
-            }
-            numerical.owned_host_interaction_descriptors[field_count++] = item;
-          }
-        };
-
-        if (input.interaction_descriptors.memory_space == VIBEQC_XTB_MEMORY_HOST) {
-          const auto* descriptor_bytes =
-              static_cast<const std::byte*>(input.interaction_descriptors.data);
-          for (std::int64_t index = 0; index < input.total_interactions; ++index) {
-            vibeqc_xtb_interaction_t item{};
-            std::memcpy(&item, descriptor_bytes + static_cast<std::size_t>(index) * sizeof(item),
-                        sizeof(item));
-            inspect(item);
-            if (prevalidated_interaction_error != kGfn2RequestErrorNone) break;
-          }
-        } else {
-          const auto* descriptor_bytes =
-              static_cast<const std::byte*>(input.interaction_descriptors.data);
-          std::int64_t offset = 0;
-          while (offset < input.total_interactions &&
-                 prevalidated_interaction_error == kGfn2RequestErrorNone) {
-            const std::size_t count = std::min<std::size_t>(
-                descriptor_capacity, static_cast<std::size_t>(input.total_interactions - offset));
-            cuda_status = cudaMemcpyAsync(numerical.owned_host_interaction_descriptor_snapshot,
-                                          descriptor_bytes + static_cast<std::size_t>(offset) *
-                                                                 sizeof(vibeqc_xtb_interaction_t),
-                                          count * sizeof(vibeqc_xtb_interaction_t),
-                                          cudaMemcpyDeviceToHost, stream);
-            if (cuda_status == cudaSuccess) {
-              current.submitted = true;
-              cuda_status = cudaStreamSynchronize(stream);
-            }
-            if (cuda_status != cudaSuccess) {
-              error = cuda_error_message("CUDA interaction descriptor readback", cuda_status);
-              return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-            }
-            current.submitted = false;
-            for (std::size_t index = 0; index < count; ++index) {
-              inspect(numerical.owned_host_interaction_descriptor_snapshot[index]);
-              if (prevalidated_interaction_error != kGfn2RequestErrorNone) break;
-            }
-            offset += static_cast<std::int64_t>(count);
-          }
-        }
-        if (prevalidated_interaction_error == kGfn2RequestErrorNone && duplicate) {
-          prevalidated_interaction_error = kGfn2RequestErrorInvalid;
-        }
-
-        staged_interaction_count =
-            prevalidated_interaction_error == kGfn2RequestErrorNone ? field_count : 0;
-        if (!checked_bytes(staged_interaction_count, sizeof(vibeqc_xtb_interaction_t),
-                           staged_interaction_descriptor_bytes)) {
-          error = "compacted interaction descriptor extent overflows size_t";
-          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-        }
-        if (interaction_payload_compacted &&
-            prevalidated_interaction_error == kGfn2RequestErrorNone) {
-          /* The first pass used this arena as one type bitmask per system.
-           * Replacing it only after duplicate detection preserves exact
-           * duplicate-versus-reserved error priority. */
-          std::memset(numerical.owned_host_interaction_payload, 0, released_payload_capacity);
-          for (std::int64_t index = 0; index < field_count; ++index) {
-            const vibeqc_xtb_interaction_t& item =
-                numerical.owned_host_interaction_descriptors[index];
-            std::memcpy(
-                numerical.owned_host_interaction_payload + 32u * item.system_index,
-                static_cast<const std::byte*>(input.interaction_payload.data) + item.payload_offset,
-                32u);
-          }
-        }
-      }
-    }
-
-    const auto copy_to_owned_host = [&](const char* name, const vibeqc_xtb_const_buffer_t& buffer,
-                                        std::int64_t elements,
-                                        double* destination) -> vibeqc_xtb_status_t {
-      if (elements == 0 || buffer.data == nullptr ||
-          buffer.memory_space != VIBEQC_XTB_MEMORY_HOST) {
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      std::size_t bytes = 0u;
-      if (!checked_bytes(elements, sizeof(double), bytes)) {
-        error = std::string(name) + " extent changed after validation";
-        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-      }
-      std::memcpy(destination, buffer.data, bytes);
-      return VIBEQC_XTB_STATUS_SUCCESS;
-    };
-    status = copy_to_owned_host("positions", input.positions, device.total_atoms * 3,
-                                numerical.owned_host_positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status =
-        copy_to_owned_host("point_charge_positions", input.point_charge_positions,
-                           device.total_point_charges * 3, numerical.owned_host_point_positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = copy_to_owned_host("point_charge_values", input.point_charge_values,
-                                device.total_point_charges, numerical.owned_host_point_values);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = copy_to_owned_host("point_charge_gammas", input.point_charge_gammas,
-                                device.total_point_charges, numerical.owned_host_point_gammas);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = copy_to_owned_host("atomic_potential_shifts", input.atomic_potential_shifts,
-                                device.periodic_enabled != 0u ? device.total_atoms : 0,
-                                numerical.owned_host_periodic_shifts);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = copy_to_owned_host("charge_response_matrix", input.charge_response_matrix,
-                                device.periodic_enabled != 0u ? device.total_response_elements : 0,
-                                numerical.owned_host_periodic_response);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    if (!absent_mask && input.requested_mask.memory_space == VIBEQC_XTB_MEMORY_HOST) {
-      std::memcpy(numerical.owned_host_requested, input.requested_mask.data, mask_bytes);
-    }
     const auto seal_host_uploads = [&]() -> cudaError_t {
       if (!host_upload_enqueued) return cudaSuccess;
       auto& completion = current.numerical_host_upload_completion;
-      /* Publish busy before recording completion: sufficiently short H2Ds may
-       * let the private-stream callback run before this function returns. */
       completion.pending.store(true, std::memory_order_release);
       cudaError_t completion_status =
           cudaEventRecord(current.numerical_host_upload_complete.get(), stream);
@@ -6431,164 +6042,47 @@ struct Gfn2CudaExecutionCache::Impl {
                                                release_numerical_host_upload, &completion);
       }
       if (completion_status == cudaSuccess) {
-        /* Request completion can wait on this event so the public event also
-         * proves that the private callback no longer retains Prepared-owned
-         * state. Ordinary query/wait then needs no second host stream fence. */
         completion_status = cudaEventRecord(current.numerical_host_release_complete.get(),
                                             current.numerical_host_completion_stream.get());
       }
       if (completion_status == cudaSuccess) {
         current.submitted = true;
       } else {
-        /* Earlier H2Ds may already reference the pinned image.  Leave pending
-         * set and poison host staging rather than making an unsafe retry. */
         numerical.host_staging_poisoned = true;
       }
       return completion_status;
     };
 
-    const auto resolve_validated = [&](const char* name, const vibeqc_xtb_const_buffer_t& buffer,
-                                       std::int64_t elements, double* device_stage,
-                                       const double* owned_host_stage, const double*& source,
-                                       bool allow_absent_zero = false) -> vibeqc_xtb_status_t {
-      if (elements == 0) {
-        source = nullptr;
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      std::size_t bytes = 0u;
-      if (!checked_bytes(elements, sizeof(double), bytes)) {
-        error = std::string(name) + " extent changed after validation";
-        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-      }
-      if (allow_absent_zero && buffer.data == nullptr && buffer.size_bytes == 0u) {
-        cuda_status = cudaMemsetAsync(device_stage, 0, bytes, stream);
-        if (cuda_status != cudaSuccess) {
-          error = cuda_error_message(name, cuda_status);
-          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-        }
-        current.submitted = true;
-        source = device_stage;
-        return VIBEQC_XTB_STATUS_SUCCESS;
-      }
-      if (buffer.memory_space == VIBEQC_XTB_MEMORY_HOST) {
-        cuda_status =
-            cudaMemcpyAsync(device_stage, owned_host_stage, bytes, cudaMemcpyHostToDevice, stream);
-        if (cuda_status != cudaSuccess) {
-          const cudaError_t completion_status = seal_host_uploads();
-          error = cuda_error_message(name, cuda_status);
-          if (completion_status != cudaSuccess) {
-            error += "; host-upload completion enqueue also failed";
-          }
-          return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-        }
-        host_upload_enqueued = true;
-        current.submitted = true;
-        source = device_stage;
-      } else {
-        source = static_cast<const double*>(buffer.data);
-      }
-      return VIBEQC_XTB_STATUS_SUCCESS;
-    };
-
     NumericalRefreshDeviceSources sources{};
-    status = resolve_validated("positions", input.positions, device.total_atoms * 3,
-                               numerical.host_positions, numerical.owned_host_positions,
-                               sources.positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-
-    if (input.total_interactions != 0) {
-      if (interaction_descriptors_prevalidated) {
-        cuda_status = cudaMemcpyAsync(
-            numerical.host_interaction_descriptors, numerical.owned_host_interaction_descriptors,
-            staged_interaction_descriptor_bytes, cudaMemcpyHostToDevice, stream);
-        if (cuda_status == cudaSuccess) {
-          host_upload_enqueued = true;
-          current.submitted = true;
-          sources.interaction_descriptors = numerical.host_interaction_descriptors;
-        }
-      } else {
-        sources.interaction_descriptors =
-            static_cast<const vibeqc_xtb_interaction_t*>(input.interaction_descriptors.data);
-      }
-      if (cuda_status == cudaSuccess && interaction_payload_compacted) {
-        cuda_status = cudaMemcpyAsync(numerical.host_interaction_payload,
-                                      numerical.owned_host_interaction_payload,
-                                      released_payload_capacity, cudaMemcpyHostToDevice, stream);
-        if (cuda_status == cudaSuccess) {
-          host_upload_enqueued = true;
-          current.submitted = true;
-          sources.interaction_payload = numerical.host_interaction_payload;
-        }
-      } else if (cuda_status == cudaSuccess && interaction_payload_staged_at_offsets) {
-        cuda_status = cudaMemcpyAsync(
-            numerical.host_interaction_payload + interaction_payload_staging_displacement,
-            numerical.owned_host_interaction_payload + interaction_payload_staging_displacement,
-            requested_payload_bytes, cudaMemcpyHostToDevice, stream);
-        if (cuda_status == cudaSuccess) {
-          host_upload_enqueued = true;
-          current.submitted = true;
-          sources.interaction_payload =
-              numerical.host_interaction_payload + interaction_payload_staging_displacement;
-        }
-      } else if (cuda_status == cudaSuccess) {
-        sources.interaction_payload = static_cast<const std::byte*>(input.interaction_payload.data);
-      }
+    if (uses_host_staging) {
+      cuda_status = cudaMemcpyAsync(numerical.host_positions, numerical.owned_host_positions,
+                                    position_bytes, cudaMemcpyHostToDevice, stream);
       if (cuda_status != cudaSuccess) {
         const cudaError_t completion_status = seal_host_uploads();
-        error = cuda_error_message("CUDA interaction staging", cuda_status);
-        if (completion_status != cudaSuccess)
+        error = cuda_error_message("positions", cuda_status);
+        if (completion_status != cudaSuccess) {
           error += "; host-upload completion enqueue also failed";
+        }
         return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
       }
-    }
-    sources.total_interactions =
-        interaction_descriptors_prevalidated ? staged_interaction_count : input.total_interactions;
-    sources.interaction_payload_address =
-        reinterpret_cast<std::uintptr_t>(input.interaction_payload.data);
-    sources.interaction_payload_bytes = requested_payload_bytes;
-    sources.prevalidated_interaction_error = prevalidated_interaction_error;
-    sources.interaction_payload_compacted_by_system = interaction_payload_compacted ? 1u : 0u;
-    sources.interaction_payload_staged_at_offsets = interaction_payload_staged_at_offsets ? 1u : 0u;
-    sources.prevalidated_reserved_interaction = prevalidated_reserved_interaction ? 1u : 0u;
-    status = resolve_validated("point_charge_positions", input.point_charge_positions,
-                               device.total_point_charges * 3, numerical.host_point_positions,
-                               numerical.owned_host_point_positions, sources.point_positions);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = resolve_validated("point_charge_values", input.point_charge_values,
-                               device.total_point_charges, numerical.host_point_values,
-                               numerical.owned_host_point_values, sources.point_values);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = resolve_validated("point_charge_gammas", input.point_charge_gammas,
-                               device.total_point_charges, numerical.host_point_gammas,
-                               numerical.owned_host_point_gammas, sources.point_gammas);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status = resolve_validated("atomic_potential_shifts", input.atomic_potential_shifts,
-                               device.periodic_enabled != 0u ? device.total_atoms : 0,
-                               numerical.host_periodic_shifts, numerical.owned_host_periodic_shifts,
-                               sources.periodic_shifts, true);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-    status =
-        resolve_validated("charge_response_matrix", input.charge_response_matrix,
-                          device.periodic_enabled != 0u ? device.total_response_elements : 0,
-                          numerical.host_periodic_response, numerical.owned_host_periodic_response,
-                          sources.periodic_response, true);
-    if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
-
-    if (absent_mask) {
-      cuda_status = cudaMemsetAsync(requested, 1, mask_bytes, stream);
-    } else if (input.requested_mask.memory_space == VIBEQC_XTB_MEMORY_HOST) {
-      cuda_status = cudaMemcpyAsync(numerical.host_requested, numerical.owned_host_requested,
-                                    mask_bytes, cudaMemcpyHostToDevice, stream);
-      if (cuda_status == cudaSuccess) {
-        host_upload_enqueued = true;
-        current.submitted = true;
-        cuda_status = cudaMemcpyAsync(requested, numerical.host_requested, mask_bytes,
-                                      cudaMemcpyDeviceToDevice, stream);
-      }
+      host_upload_enqueued = true;
+      current.submitted = true;
+      sources.positions = numerical.host_positions;
     } else {
-      cuda_status = cudaMemcpyAsync(requested, input.requested_mask.data, mask_bytes,
-                                    cudaMemcpyDeviceToDevice, stream);
+      sources.positions = static_cast<const double*>(positions.data);
     }
+
+    std::size_t mask_bytes = 0u;
+    if (!checked_bytes(device.batch_size, sizeof(std::uint8_t), mask_bytes)) {
+      const cudaError_t completion_status = seal_host_uploads();
+      error = "numerical refresh activity extent overflows size_t";
+      if (completion_status != cudaSuccess) {
+        error += "; host-upload completion enqueue also failed";
+      }
+      return VIBEQC_XTB_STATUS_INVALID_ARGUMENT;
+    }
+    auto* const requested = const_cast<std::uint8_t*>(preprocessing.activity.requested_mask);
+    cuda_status = cudaMemsetAsync(requested, 1, mask_bytes, stream);
     if (cuda_status != cudaSuccess) {
       const cudaError_t completion_status = seal_host_uploads();
       error = cuda_error_message("CUDA numerical refresh activity staging", cuda_status);
@@ -6598,6 +6092,7 @@ struct Gfn2CudaExecutionCache::Impl {
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
     }
     current.submitted = true;
+
     cuda_status = seal_host_uploads();
     if (cuda_status != cudaSuccess) {
       error = cuda_error_message("CUDA numerical host-upload completion enqueue", cuda_status);
@@ -6622,21 +6117,6 @@ struct Gfn2CudaExecutionCache::Impl {
     if (cuda_status != cudaSuccess) {
       error = cuda_error_message("CUDA interaction request-gate publication", cuda_status);
       return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-    }
-    if (strict_warm) {
-      constexpr int kWarmIdentityThreads = 256;
-      const auto warm_identity_blocks = static_cast<unsigned int>(
-          (static_cast<std::uint64_t>(device.batch_size) + kWarmIdentityThreads - 1u) /
-          kWarmIdentityThreads);
-      validate_gfn2_warm_field_identity_kernel<<<warm_identity_blocks, kWarmIdentityThreads, 0,
-                                                 stream>>>(
-          device, current.inference.warm_checkpoint_field_attached,
-          current.inference.warm_checkpoint_field_vectors);
-      cuda_status = cudaPeekAtLastError();
-      if (cuda_status != cudaSuccess) {
-        error = cuda_error_message("CUDA strict-WARM field admission", cuda_status);
-        return VIBEQC_XTB_STATUS_INTERNAL_ERROR;
-      }
     }
     stage_gfn2_numerical_inputs_kernel<<<static_cast<unsigned int>(device.batch_size), 256, 0,
                                          stream>>>(device, sources);
@@ -6909,22 +6389,15 @@ struct Gfn2CudaExecutionCache::Impl {
   }
 
   vibeqc_xtb_status_t refresh_numerical_locked(Prepared& current,
-                                               const Gfn2CudaNumericalInputView& input,
-                                               bool strict_warm,
-                                               bool allow_blocking_interaction_readback,
+                                               const vibeqc_xtb_const_buffer_t& positions,
                                                std::string& error) {
     bool host_upload_enqueued = false;
-    vibeqc_xtb_status_t status = stage_numerical_ingress_locked(current, input, strict_warm,
-                                                                allow_blocking_interaction_readback,
-                                                                host_upload_enqueued, error);
+    vibeqc_xtb_status_t status =
+        stage_numerical_ingress_locked(current, positions, host_upload_enqueued, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     status = execute_numerical_body_locked(current, stream, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return status;
     if (host_upload_enqueued) {
-      /* Make owner-stream completion prove that the private callback has
-       * released the pinned snapshot. This preserves allocation-free,
-       * no-polling steady state while preventing a completed refresh from
-       * spuriously rejecting the next host-backed refresh. */
       const cudaError_t release_status =
           cudaStreamWaitEvent(stream, current.numerical_host_release_complete.get(), 0u);
       if (release_status != cudaSuccess) {
@@ -7617,20 +7090,7 @@ vibeqc_xtb_status_t execute_restricted_gfn2_cuda_impl(Gfn2CudaExecutionCache& ca
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return fail_working_transaction(status);
 
     const bool prior_warm_checkpoint_ready = working->inference.warm_checkpoint_ready;
-    Gfn2CudaNumericalInputView numerical{};
-    numerical.positions = batch.positions;
-    numerical.point_charge_positions = batch.point_charge_positions;
-    numerical.point_charge_values = batch.point_charge_values;
-    numerical.point_charge_gammas = batch.point_charge_gammas;
-    numerical.atomic_potential_shifts = batch.atomic_potential_shifts;
-    numerical.charge_response_matrix = batch.charge_response_matrix;
-    if (batch.struct_size >= VIBEQC_XTB_BATCH_V3_SIZE) {
-      numerical.total_interactions = batch.total_interactions;
-      numerical.interaction_descriptors = batch.interaction_descriptors;
-      numerical.interaction_payload = batch.interaction_payload;
-    }
-    status = implementation.refresh_numerical_locked(
-        *working, numerical, start_mode == Gfn2CudaSccStartMode::kWarm, true, error);
+    status = implementation.refresh_numerical_locked(*working, batch.positions, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return fail_working_transaction(status);
     status = implementation.execute_inference_locked(*working, start_mode, error);
     if (status != VIBEQC_XTB_STATUS_SUCCESS) return fail_working_transaction(status);

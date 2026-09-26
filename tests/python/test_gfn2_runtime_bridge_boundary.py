@@ -88,6 +88,35 @@ def test_cpu_runtime_does_not_stage_rejected_attachments() -> None:
         assert retired not in source
 
 
+def test_cuda_runtime_ingress_matches_molecular_contract() -> None:
+    source = (ROOT / "src/xtb/native/src/runtime/gfn2_cuda_execution.cu").read_text()
+    assert "struct Gfn2CudaNumericalInputView" not in source
+    ingress = source.split(
+        "vibeqc_xtb_status_t stage_numerical_ingress_locked(", 1
+    )[1].split("vibeqc_xtb_status_t execute_numerical_body_locked(", 1)[0]
+    assert "const vibeqc_xtb_const_buffer_t& positions" in ingress
+    assert "sources.positions" in ingress
+    for retired in (
+        "input.point_charge_positions",
+        "input.point_charge_values",
+        "input.point_charge_gammas",
+        "input.atomic_potential_shifts",
+        "input.charge_response_matrix",
+        "input.interaction_descriptors",
+        "input.interaction_payload",
+        "input.total_interactions",
+        "input.requested_mask",
+        "strict_warm",
+        "allow_blocking_interaction_readback",
+    ):
+        assert retired not in ingress
+    public = source.split("execute_restricted_gfn2_cuda_impl(", 1)[1]
+    assert public.index("validate_molecular_request(batch, options, error)") < public.index(
+        "refresh_numerical_locked"
+    )
+    assert "refresh_numerical_locked(*working, batch.positions, error)" in public
+
+
 def test_retired_runtime_and_external_api_cannot_reenter_production() -> None:
     assert not (ROOT / "src/xtb/gfn2_runtime").exists()
     native = ROOT / "src/xtb/native"
