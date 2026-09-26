@@ -769,11 +769,14 @@ int main() {
     vibeqc_context* cuda_context = nullptr;
     if (vibeqc_context_create(&cuda_descriptor, &cuda_context) == VIBEQC_STATUS_SUCCESS) {
       for (auto ks : {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
-                      VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS,
-                      VIBEQC_METHOD_R2SCAN_UKS, VIBEQC_METHOD_PBE0_UKS}) {
+                      VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_B3LYP_RKS, VIBEQC_METHOD_LDA_UKS,
+                      VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS, VIBEQC_METHOD_PBE0_UKS,
+                      VIBEQC_METHOD_B3LYP_UKS}) {
         const bool uks = ks == VIBEQC_METHOD_LDA_UKS || ks == VIBEQC_METHOD_PBE_UKS ||
-                         ks == VIBEQC_METHOD_R2SCAN_UKS || ks == VIBEQC_METHOD_PBE0_UKS;
+                         ks == VIBEQC_METHOD_R2SCAN_UKS || ks == VIBEQC_METHOD_PBE0_UKS ||
+                         ks == VIBEQC_METHOD_B3LYP_UKS;
         const bool pbe0 = ks == VIBEQC_METHOD_PBE0_RKS || ks == VIBEQC_METHOD_PBE0_UKS;
+        const bool b3lyp = ks == VIBEQC_METHOD_B3LYP_RKS || ks == VIBEQC_METHOD_B3LYP_UKS;
         Fixture cpu_fixture(VIBEQC_BACKEND_CPU_REFERENCE, uks ? 1 : 0, uks ? 2 : 1);
         vibeqc_system* cuda_system = Fixture::create_system(cuda_context, uks ? 1 : 0, uks ? 2 : 1);
         method = lda_method();
@@ -782,28 +785,38 @@ int main() {
             {"GGA_C_PBE", 1.0},
             {"GGA_X_PBE", 0.75},
         }};
-        std::array<vibeqc_ks_exchange_term, 1> pbe0_exchange{{
-            {VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, uks ? -0.25 : -0.125},
+        const std::array<vibeqc_ks_semilocal_component, 4> b3lyp_components{{
+            {"LDA_X", 0.08},
+            {"GGA_X_B88", 0.72},
+            {"LDA_C_VWN_RPA", 0.19},
+            {"GGA_C_LYP", 0.81},
         }};
-        vibeqc_ks_options pbe0_options{};
-        if (pbe0) {
-          pbe0_options.struct_size = sizeof(pbe0_options);
-          pbe0_options.abi_version = VIBEQC_ABI_VERSION;
-          pbe0_options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
-          pbe0_options.grid_version = 1;
-          pbe0_options.radial_points = 64;
-          pbe0_options.angular_polar = 12;
-          pbe0_options.angular_azimuth = 24;
-          pbe0_options.partition_iterations = 3;
-          pbe0_options.coincident_tolerance = 1e-12;
-          pbe0_options.tile_points = 256;
-          pbe0_options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
-          pbe0_options.spin_channels = uks ? 2 : 1;
-          pbe0_options.semilocal_components = pbe0_components.data();
-          pbe0_options.semilocal_component_count = pbe0_components.size();
-          pbe0_options.exchange_terms = pbe0_exchange.data();
-          pbe0_options.exchange_term_count = pbe0_exchange.size();
-          method.ks_options = &pbe0_options;
+        std::array<vibeqc_ks_exchange_term, 1> hybrid_exchange{{
+            {VIBEQC_KS_EXCHANGE_FULL_RANGE, b3lyp ? 0.20 : 0.25, 0.0,
+             b3lyp ? (uks ? -0.20 : -0.10) : (uks ? -0.25 : -0.125)},
+        }};
+        vibeqc_ks_options hybrid_options{};
+        if (pbe0 || b3lyp) {
+          hybrid_options.struct_size = sizeof(hybrid_options);
+          hybrid_options.abi_version = VIBEQC_ABI_VERSION;
+          hybrid_options.scf_domain = b3lyp ? "b3lyp-vwn-rpa-tail-v1/density-vacuum-1e-18"
+                                            : "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+          hybrid_options.grid_version = 1;
+          hybrid_options.radial_points = 64;
+          hybrid_options.angular_polar = 12;
+          hybrid_options.angular_azimuth = 24;
+          hybrid_options.partition_iterations = 3;
+          hybrid_options.coincident_tolerance = 1e-12;
+          hybrid_options.tile_points = 256;
+          hybrid_options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+          hybrid_options.spin_channels = uks ? 2 : 1;
+          hybrid_options.semilocal_components =
+              b3lyp ? b3lyp_components.data() : pbe0_components.data();
+          hybrid_options.semilocal_component_count =
+              b3lyp ? b3lyp_components.size() : pbe0_components.size();
+          hybrid_options.exchange_terms = hybrid_exchange.data();
+          hybrid_options.exchange_term_count = hybrid_exchange.size();
+          method.ks_options = &hybrid_options;
         }
         vibeqc_calculation *cpu_calculation = nullptr, *cuda_calculation = nullptr;
         require(vibeqc_calculation_prepare(cpu_fixture.context, cpu_fixture.system, &method,
@@ -836,9 +849,9 @@ int main() {
         vibeqc_calculation* auto_calculation = nullptr;
         const auto auto_status =
             vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method, &auto_calculation);
-        // LDA/PBE admit mixed-J acceleration. r2SCAN and exact-exchange PBE0
+        // LDA/PBE admit mixed-J acceleration. r2SCAN and exact-exchange hybrids
         // remain strict FP64 until their independent precision qualifications land.
-        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS || pbe0) {
+        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS || pbe0 || b3lyp) {
           require(auto_status == VIBEQC_STATUS_NOT_IMPLEMENTED && auto_calculation == nullptr,
                   "strict-FP64 CUDA KS method lost its explicit precision rejection");
         } else {

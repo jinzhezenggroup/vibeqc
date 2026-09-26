@@ -174,6 +174,7 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
   const auto& l = fixture.layout;
   if (l.spins == 1) {
     const auto ref = l.functional == 4U   ? integrate_wb97mv_rks(basis, grid, d, 17)
+                     : l.functional == 3U ? integrate_b3lyp_rks(basis, grid, d, 17)
                      : l.functional == 2U ? integrate_r2scan_rks(basis, grid, d, 17)
                      : l.functional == 1U
                          ? integrate_pbe_rks_with_tail_scaled(basis, grid, d, 17, {},
@@ -188,6 +189,7 @@ void compare(Fixture& fixture, const AoBasis& basis, const MolecularGrid& grid,
     const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
     const auto ref =
         l.functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b, 17)
+        : l.functional == 3U ? integrate_b3lyp_uks(basis, grid, a, b, 17)
         : l.functional == 2U ? integrate_r2scan_uks(basis, grid, a, b, 17)
         : l.functional == 1U
             ? integrate_pbe_uks_scaled(basis, grid, a, b, 17, l.exchange_scale, l.correlation_scale)
@@ -580,6 +582,7 @@ void variational_and_state(const AoBasis& basis, const MolecularGrid& grid,
   for (auto& x : d) x *= 0.5;
   const std::vector<double> a(d.begin(), d.begin() + elements), b(d.begin() + elements, d.end());
   const auto ref = functional == 4U   ? integrate_wb97mv_uks(basis, grid, a, b)
+                   : functional == 3U ? integrate_b3lyp_uks(basis, grid, a, b)
                    : functional == 2U ? integrate_r2scan_uks(basis, grid, a, b)
                    : functional == 1U ? integrate_pbe_uks(basis, grid, a, b)
                                       : integrate_lda_xc_pw_uks(basis, grid, a, b);
@@ -764,7 +767,7 @@ int main(int argc, char** argv) {
     const MolecularGrid grid(molecule, {1, 2, 2, 4, 3, 1e-12});
     for (bool unrestricted : {false, true}) density_feature_capture_case(basis, grid, unrestricted);
     for (bool unrestricted : {false, true}) nonlocal_potential_case(basis, grid, unrestricted);
-    for (unsigned functional : {0U, 1U, 2U, 4U})
+    for (unsigned functional : {0U, 1U, 2U, 3U, 4U})
       for (bool unrestricted : {false, true}) {
         graph_capture(basis, grid, functional, unrestricted);
         if (functional < 2U)
@@ -834,7 +837,7 @@ int main(int argc, char** argv) {
     }
     require(scaled_r2scan_rejected, "unqualified scaled meta-GGA CUDA XC was accepted");
 
-    for (std::uint32_t functional : {0U, 1U, 2U, 4U}) {
+    for (std::uint32_t functional : {0U, 1U, 2U, 3U, 4U}) {
       for (bool uks : {false, true}) {
         for (std::size_t tile : {1U, 7U, 64U}) {
           Fixture test(basis, grid, functional, uks, tile);
@@ -842,9 +845,9 @@ int main(int argc, char** argv) {
                   "unused AO jets were allocated");
           require(test.layout.work_jets == ((functional == 2U || functional == 4U) ? 4U : 1U),
                   "unused density-work jets were allocated");
-          require(
-              test.layout.feature_terms == (functional == 0U ? 1U : (functional == 1U ? 4U : 5U)),
-              "CUDA XC feature layout does not match the functional");
+          require(test.layout.feature_terms ==
+                      (functional == 0U ? 1U : ((functional == 2U || functional == 4U) ? 5U : 4U)),
+                  "CUDA XC feature layout does not match the functional");
           compare(test, basis, grid, density(basis.nao, uks ? 2 : 1));
         }
       }
