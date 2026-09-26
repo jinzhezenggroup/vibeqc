@@ -369,27 +369,15 @@ __device__ inline __noinline__ void contract_two_electron_force_psps_task(
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[0]]) - system_ao_begin;
   const std::size_t second_p_ao_begin =
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[2]]) - system_ao_begin;
-  const std::size_t first_ao_pair_count = shell_ao_pair_count(batch, first_pair);
-  const std::size_t second_ao_pair_count = shell_ao_pair_count(batch, second_pair);
-  const bool same_shell_pair = first_pair == second_pair;
-  const std::size_t ao_quartet_count = same_shell_pair
-                                           ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
-                                           : first_ao_pair_count * second_ao_pair_count;
+  const DirectShellAoQuartetLayout ao_quartet_layout =
+      direct_shell_ao_quartet_layout(batch, first_pair, second_pair);
 
   double component_weight[9]{};
   bool any_component = false;
-  for (std::size_t ordinal = 0; ordinal < ao_quartet_count; ++ordinal) {
-    std::size_t first_ao_pair = 0;
-    std::size_t second_ao_pair = 0;
-    if (same_shell_pair) {
-      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
-    } else {
-      first_ao_pair = ordinal / second_ao_pair_count;
-      second_ao_pair = ordinal % second_ao_pair_count;
-    }
+  for (std::size_t ordinal = 0; ordinal < ao_quartet_layout.quartet_count; ++ordinal) {
     std::size_t raw_ao[4];
-    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin, raw_ao[0], raw_ao[1]);
-    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin, raw_ao[2], raw_ao[3]);
+    decode_shell_ao_quartet(batch, first_pair, second_pair, ao_quartet_layout, ordinal,
+                            system_ao_begin, raw_ao);
     if (schwarz_bounds[physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)] *
             schwarz_bounds[physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)] <
         screening_tolerance) {
@@ -531,27 +519,15 @@ __device__ inline __noinline__ void contract_two_electron_force_pair_order2_task
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[0]]) - system_ao_begin;
   const std::size_t second_component_begin =
       static_cast<std::size_t>(batch.shell_direct_ao_offsets[canonical_shell[1]]) - system_ao_begin;
-  const std::size_t first_ao_pair_count = shell_ao_pair_count(batch, first_pair);
-  const std::size_t second_ao_pair_count = shell_ao_pair_count(batch, second_pair);
-  const bool same_shell_pair = first_pair == second_pair;
-  const std::size_t ao_quartet_count = same_shell_pair
-                                           ? first_ao_pair_count * (first_ao_pair_count + 1) / 2
-                                           : first_ao_pair_count * second_ao_pair_count;
+  const DirectShellAoQuartetLayout ao_quartet_layout =
+      direct_shell_ao_quartet_layout(batch, first_pair, second_pair);
 
   double component_weight[9]{};
   bool any_component = false;
-  for (std::size_t ordinal = 0; ordinal < ao_quartet_count; ++ordinal) {
-    std::size_t first_ao_pair = 0;
-    std::size_t second_ao_pair = 0;
-    if (same_shell_pair) {
-      decode_lower_triangle(ordinal, first_ao_pair, second_ao_pair);
-    } else {
-      first_ao_pair = ordinal / second_ao_pair_count;
-      second_ao_pair = ordinal % second_ao_pair_count;
-    }
+  for (std::size_t ordinal = 0; ordinal < ao_quartet_layout.quartet_count; ++ordinal) {
     std::size_t raw_ao[4];
-    decode_shell_ao_pair(batch, first_pair, first_ao_pair, system_ao_begin, raw_ao[0], raw_ao[1]);
-    decode_shell_ao_pair(batch, second_pair, second_ao_pair, system_ao_begin, raw_ao[2], raw_ao[3]);
+    decode_shell_ao_quartet(batch, first_pair, second_pair, ao_quartet_layout, ordinal,
+                            system_ao_begin, raw_ao);
     if (schwarz_bounds[physical_offset + matrix_index(raw_ao[0], raw_ao[1], n)] *
             schwarz_bounds[physical_offset + matrix_index(raw_ao[2], raw_ao[3], n)] <
         screening_tolerance) {
