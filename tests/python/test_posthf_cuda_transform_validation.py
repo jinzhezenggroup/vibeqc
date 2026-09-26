@@ -74,3 +74,26 @@ def test_cuda_mo_validation_work_scales_with_publications_not_source_tiles() -> 
         source_tiles = _source_tiles(nbf)
         measured = (source_tiles, 1, source_tiles * 4, 4)
         assert measured == census
+
+
+def test_native_multi_request_cuda_reuses_one_raw_upload_and_context() -> None:
+    source = NATIVE.read_text(encoding="utf-8")
+    provider = (ROOT / "src/posthf/native_provider.cpp").read_text(encoding="utf-8")
+
+    batch_add = _function_body(
+        source, "posthf_cuda_batch_add_v1", "posthf_cuda_batch_download_v1"
+    )
+    batch_download = _function_body(
+        source, "posthf_cuda_batch_download_v1", "posthf_cuda_batch_metrics_v1"
+    )
+
+    assert batch_add.count("cudaMemcpyAsync(p.raw, values") == 1
+    assert "for (auto& state : p.states)" in batch_add
+    assert batch_add.count("ctx.section(true, ctx.metrics.input_ms") == 1
+    assert batch_add.count("ctx.section(true, ctx.metrics.library_ms") == 1
+    assert batch_download.count("ctx.section(true, ctx.metrics.output_ms") == 1
+
+    assert "posthf_cuda_batch_create_v1(" in provider
+    assert "posthf_cuda_batch_add_v1(" in provider
+    assert "posthf_cuda_batch_download_v1(" in provider
+    assert "device_blocks.pointers" not in provider
