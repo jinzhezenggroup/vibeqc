@@ -810,106 +810,16 @@ R2scanPointValue evaluate_r2scan_point(const double rho[2], const double (&gradi
 XcIntegral integrate_wb97mv_rks(const AoBasis& basis, const MolecularGrid& grid,
                                 const std::vector<double>& density, std::size_t tile_points,
                                 XcDensitySource source) {
-  const std::size_t n = basis.nao;
-  validate_density_matrix(basis, grid, density, tile_points);
-  XcIntegral result;
-  result.potential.assign(n * n, 0.0);
-  result.points = grid.point_count();
-  auto& record = result.density_diagnostic;
-  record.npoint = result.points;
-  record.ingredient_mask = 15U;
-  const auto* factor = resolve_density_source(n, density, source, record);
-  std::vector<double> ao;
-  const auto& points = grid.points();
-  const auto& weights = grid.weights();
-  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
-    const std::size_t count = std::min(tile_points, result.points - begin);
-    ao.resize(4 * count * n);
-    sample_xc_capacity(result, ao, count);
-    basis.evaluate(points.data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
-    for (std::size_t point = 0; point < count; ++point) {
-      const double* phi = ao.data() + point * n;
-      std::array<const double*, 3> jets{};
-      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
-      const auto total = rks_features(phi, jets, n, density, factor, 15U);
-      const double rho[2]{0.5 * total[0], 0.5 * total[0]};
-      const double gradient[2][3]{{0.5 * total[1], 0.5 * total[2], 0.5 * total[3]},
-                                  {0.5 * total[1], 0.5 * total[2], 0.5 * total[3]}};
-      const double tau[2]{0.5 * total[4], 0.5 * total[4]};
-      const auto xc = evaluate_wb97mv_point(rho, gradient, tau);
-      const double weight = weights[begin + point];
-      result.energy += weight * xc.energy;
-      result.electrons += weight * total[0];
-      const double rho_coefficient = 0.5 * (xc.rho[0] + xc.rho[1]);
-      const double kinetic_coefficient = 0.5 * (xc.kinetic[0] + xc.kinetic[1]);
-      double gradient_coefficient[3]{};
-      for (unsigned k = 0; k < 3; ++k)
-        gradient_coefficient[k] = 0.5 * (xc.gradient[0][k] + xc.gradient[1][k]);
-      for (std::size_t mu = 0; mu < n; ++mu) {
-        for (std::size_t nu = 0; nu < n; ++nu) {
-          double value = rho_coefficient * phi[mu] * phi[nu];
-          for (unsigned k = 0; k < 3; ++k) {
-            value += gradient_coefficient[k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
-            value += kinetic_coefficient * jets[k][mu] * jets[k][nu];
-          }
-          result.potential[mu * n + nu] += weight * value;
-        }
-      }
-    }
-  }
-  if (!std::isfinite(result.energy))
-    throw std::runtime_error("nonfinite omegaB97M-V RKS semilocal energy");
-  return result;
+  return integrate_semilocal_rks(basis, grid, density, tile_points, source, 15U,
+                                 evaluate_wb97mv_point, "omegaB97M-V");
 }
 
 SpinXcIntegral integrate_wb97mv_uks(const AoBasis& basis, const MolecularGrid& grid,
                                     const std::vector<double>& alpha_density,
                                     const std::vector<double>& beta_density,
                                     std::size_t tile_points) {
-  validate_density_matrix(basis, grid, alpha_density, tile_points);
-  validate_density_matrix(basis, grid, beta_density, tile_points);
-  const std::size_t n = basis.nao;
-  SpinXcIntegral result;
-  for (auto& potential : result.potential) potential.assign(n * n, 0.0);
-  result.points = grid.point_count();
-  const std::vector<double>* densities[2]{&alpha_density, &beta_density};
-  std::vector<double> ao;
-  for (std::size_t begin = 0; begin < result.points; begin += tile_points) {
-    const std::size_t count = std::min(tile_points, result.points - begin);
-    ao.resize(4 * count * n);
-    basis.evaluate(grid.points().data() + 3 * begin, count, 1, 0, n, ao.data(), ao.size());
-    for (std::size_t point = 0; point < count; ++point) {
-      const double* phi = ao.data() + point * n;
-      std::array<const double*, 3> jets{};
-      for (unsigned k = 0; k < 3; ++k) jets[k] = ao.data() + ((k + 1) * count + point) * n;
-      double rho[2]{}, gradient[2][3]{}, tau[2]{};
-      for (unsigned spin = 0; spin < 2; ++spin) {
-        const auto features = rks_features(phi, jets, n, *densities[spin], nullptr, 15U);
-        rho[spin] = features[0];
-        for (unsigned k = 0; k < 3; ++k) gradient[spin][k] = features[k + 1];
-        tau[spin] = features[4];
-      }
-      const auto xc = evaluate_wb97mv_point(rho, gradient, tau);
-      const double weight = grid.weights()[begin + point];
-      result.energy += weight * xc.energy;
-      for (unsigned spin = 0; spin < 2; ++spin) {
-        result.electrons[spin] += weight * rho[spin];
-        for (std::size_t mu = 0; mu < n; ++mu) {
-          for (std::size_t nu = 0; nu < n; ++nu) {
-            double value = xc.rho[spin] * phi[mu] * phi[nu];
-            for (unsigned k = 0; k < 3; ++k) {
-              value += xc.gradient[spin][k] * (jets[k][mu] * phi[nu] + phi[mu] * jets[k][nu]);
-              value += xc.kinetic[spin] * jets[k][mu] * jets[k][nu];
-            }
-            result.potential[spin][mu * n + nu] += weight * value;
-          }
-        }
-      }
-    }
-  }
-  if (!std::isfinite(result.energy))
-    throw std::runtime_error("nonfinite omegaB97M-V UKS semilocal energy");
-  return result;
+  return integrate_semilocal_uks(basis, grid, alpha_density, beta_density, tile_points, 15U,
+                                 evaluate_wb97mv_point, "omegaB97M-V");
 }
 
 XcIntegral integrate_r2scan_rks(const AoBasis& basis, const MolecularGrid& grid,
