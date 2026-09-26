@@ -277,8 +277,8 @@ void provider_and_reference() {
   } catch (const std::invalid_argument&) {
     invalid_rejected = true;
   }
-  require(invalid_rejected && rejected_work.source_scans == 0 &&
-              rejected_work.source_reads == 0 && rejected_work.mo_blocks == 0,
+  require(invalid_rejected && rejected_work.source_scans == 0 && rejected_work.source_reads == 0 &&
+              rejected_work.mo_blocks == 0,
           "invalid later MO request reached AO traversal or published work");
 
   bool overflow = false;
@@ -319,8 +319,8 @@ void conventional_energy_batch_fallback_matches() {
   constexpr unsigned tile = 2;
   const auto kernel = vibeqc::mp2::generated::cpu_plan(tile);
   const auto reserve = kernel.numeric_bytes + 32ULL * tile * tile + 16ULL * tile + 64;
-  vibeqc::posthf::NativeBlockProvider widest_provider(
-      source, ref, 256ULL << 20, std::numeric_limits<unsigned>::max());
+  vibeqc::posthf::NativeBlockProvider widest_provider(source, ref, 256ULL << 20,
+                                                      std::numeric_limits<unsigned>::max());
   std::size_t minimum_provider_bytes = std::numeric_limits<std::size_t>::max();
   for (std::size_t axis_tile = 1; axis_tile <= widest_provider.tile_shape()[0]; ++axis_tile) {
     vibeqc::posthf::NativeBlockProvider candidate(source, ref, 256ULL << 20,

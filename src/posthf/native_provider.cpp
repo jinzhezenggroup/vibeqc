@@ -167,9 +167,8 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
                                   state.plan.allocation_bytes, &device_blocks.pointers[request],
                                   error, sizeof(error)));
       if (work)
-        work->h2d_bytes =
-            checked_add(work->h2d_bytes,
-                        checked_mul(state.plan.coefficient_elements, sizeof(double)));
+        work->h2d_bytes = checked_add(work->h2d_bytes,
+                                      checked_mul(state.plan.coefficient_elements, sizeof(double)));
     }
 #else
     (void)device;
@@ -221,9 +220,8 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
               work->cuda_transform_calls =
                   checked_add(work->cuda_transform_calls, device_blocks.pointers.size());
               work->h2d_bytes =
-                  checked_add(work->h2d_bytes,
-                              checked_mul(checked_mul(elements, sizeof(double)),
-                                          device_blocks.pointers.size()));
+                  checked_add(work->h2d_bytes, checked_mul(checked_mul(elements, sizeof(double)),
+                                                           device_blocks.pointers.size()));
             }
             for (auto* pointer : device_blocks.pointers)
               check(posthf_cuda_add_v1(pointer, raw.data(), begin.data(), current.data(), error,

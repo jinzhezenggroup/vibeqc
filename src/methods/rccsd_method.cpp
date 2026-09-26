@@ -255,12 +255,12 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
       schedule_requests.push_back(
           {single_bytes - common_bytes, posthf::checked_mul(output_elements, sizeof(double))});
     }
-    return posthf::generated::ordered_source_reuse_plan(
-        common_bytes, p.reference_retained_bytes, options.max_bytes, schedule_requests);
+    return posthf::generated::ordered_source_reuse_plan(common_bytes, p.reference_retained_bytes,
+                                                        options.max_bytes, schedule_requests);
   };
 
-  posthf::NativeBlockProvider widest_provider(
-      source, ref, options.max_bytes, std::numeric_limits<unsigned>::max());
+  posthf::NativeBlockProvider widest_provider(source, ref, options.max_bytes,
+                                              std::numeric_limits<unsigned>::max());
   const auto maximum_axis_tile = widest_provider.tile_shape()[0];
   std::vector<posthf::generated::SourceTileCandidate> tile_candidates;
   tile_candidates.reserve(maximum_axis_tile);
@@ -304,8 +304,7 @@ cc::Problem build_problem(const core::System& system, const scf::PhysicalReferen
     throw std::logic_error("RCCSD source-reuse execution disagrees with compiler schedule");
   const auto ao2 = posthf::checked_mul(n, n);
   const auto ao4 = posthf::checked_mul(ao2, ao2);
-  const auto expected_source_values =
-      posthf::checked_mul(ao4, provider_work.source_scans);
+  const auto expected_source_values = posthf::checked_mul(ao4, provider_work.source_scans);
   if (provider_work.source_values != expected_source_values)
     throw std::logic_error("RCCSD AO source value count disagrees with compiler schedule");
   p.provider_peak_bytes = reuse.peak_bytes;
@@ -369,9 +368,8 @@ RccsdNativeState execute_rccsd_prepared(runtime::ExecutionContext& execution,
         std::max({reference_capacity, state.problem.provider_peak_bytes,
                   state.solved.diagnostic.numeric_capacity_bytes});
     diagnostic.mo_host_staging = cuda ? 1 : 0;
-    diagnostic.correlation_owned_device_bytes =
-        std::max<std::size_t>(provider_metrics.owned_device_bytes,
-                              state.solved.diagnostic.owned_device_bytes);
+    diagnostic.correlation_owned_device_bytes = std::max<std::size_t>(
+        provider_metrics.owned_device_bytes, state.solved.diagnostic.owned_device_bytes);
     diagnostic.correlation_provider_retained_bytes = state.problem.provider_host_bytes;
     diagnostic.mo_transfer_bytes =
         posthf::checked_add(provider_work.h2d_bytes, provider_work.d2h_bytes);

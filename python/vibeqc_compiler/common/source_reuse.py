@@ -144,7 +144,6 @@ def ordered_source_reuse_plan(
     return OrderedSourceReusePlan(tuple(batches), peak)
 
 
-
 @dataclass(frozen=True)
 class SourceTileCandidate:
     """One feasible AO source-tile choice and its complete scan count."""
@@ -158,7 +157,9 @@ class SourceTileCandidate:
         checked_bytes(self.source_scans, "source scan count")
         checked_bytes(self.peak_bytes, "source-tile peak bytes")
         if not self.axis_tile or not self.source_scans:
-            raise ValueError("source-tile candidate requires nonzero tile and scan count")
+            raise ValueError(
+                "source-tile candidate requires nonzero tile and scan count"
+            )
 
 
 @dataclass(frozen=True)
@@ -213,6 +214,7 @@ def select_source_tile(
             )
         )
     return min(scored, key=lambda item: item[0])[1]
+
 
 def native_header() -> str:
     """Emit the native runtime transcription of the generic schedule."""
