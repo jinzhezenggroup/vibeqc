@@ -38,8 +38,14 @@ def test_tools_problem_shim_reexports_production_classes() -> None:
         is production_problem.ResponseCompatibilityError
     )
     assert compatibility_problem.ResponseProblem is production_problem.ResponseProblem
-    assert compatibility_problem.ResponseSolveError is production_problem.ResponseSolveError
-    assert compatibility_problem.ResponseUnsupported is production_problem.ResponseUnsupported
+    assert (
+        compatibility_problem.ResponseSolveError
+        is production_problem.ResponseSolveError
+    )
+    assert (
+        compatibility_problem.ResponseUnsupported
+        is production_problem.ResponseUnsupported
+    )
     assert compatibility_problem.RotationLayout is production_problem.RotationLayout
 
 
@@ -56,8 +62,14 @@ def test_tools_operator_shim_reexports_production_classes() -> None:
         compatibility_operators.RHFResponseOperator
         is production_operators.RHFResponseOperator
     )
-    assert compatibility_operators.cpks_operator_identity is production_operators.cpks_operator_identity
-    assert compatibility_operators.rhf_operator_identity is production_operators.rhf_operator_identity
+    assert (
+        compatibility_operators.cpks_operator_identity
+        is production_operators.cpks_operator_identity
+    )
+    assert (
+        compatibility_operators.rhf_operator_identity
+        is production_operators.rhf_operator_identity
+    )
 
 
 def test_native_rks_adapter_consumes_production_cpks_operator() -> None:
