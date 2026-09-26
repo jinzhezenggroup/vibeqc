@@ -120,8 +120,4 @@ def select_direct_fock_route(
         minimum_speedup=minimum_speedup,
         endpoint_noise_fraction=endpoint_noise_fraction,
     )
-    return (
-        "streaming"
-        if selected.topology.materialization == "stream"
-        else "paged"
-    )
+    return "streaming" if selected.topology.materialization == "stream" else "paged"

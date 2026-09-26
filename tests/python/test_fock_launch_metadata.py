@@ -75,8 +75,7 @@ def test_profiled_fock_materialization_reaches_generated_registry(tmp_path) -> N
         "      UINT64_C(2),"
     ) in multi_source
     assert (
-        "return kernels == nullptr ? 0 : "
-        "kernels->preferred_streaming_fock_mask;"
+        "return kernels == nullptr ? 0 : kernels->preferred_streaming_fock_mask;"
     ) in multi_source
 
     baseline = resolve_production_profile(source, "sm_120")

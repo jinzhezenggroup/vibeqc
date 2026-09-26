@@ -376,7 +376,6 @@ def rank_schedule_contracts(
     return tuple(contract for _, _, contract in ranked)
 
 
-
 def select_measured_schedule_contract(
     contracts: typing.Iterable[ScheduleContract],
     *,
@@ -410,8 +409,10 @@ def select_measured_schedule_contract(
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError(f"{label} must be a finite number")
         numeric = float(value)
-        if not math.isfinite(numeric) or numeric < lower or (
-            upper is not None and numeric > upper
+        if (
+            not math.isfinite(numeric)
+            or numeric < lower
+            or (upper is not None and numeric > upper)
         ):
             if upper is None:
                 raise ValueError(f"{label} must be finite and at least {lower}")
@@ -472,13 +473,13 @@ def select_measured_schedule_contract(
         return baseline
 
     fastest = min(
-        typing.cast(float, contract.profitability.endpoint_seconds)
+        typing.cast("float", contract.profitability.endpoint_seconds)
         for contract in admitted
     )
     tied = tuple(
         contract
         for contract in admitted
-        if typing.cast(float, contract.profitability.endpoint_seconds)
+        if typing.cast("float", contract.profitability.endpoint_seconds)
         <= fastest * (1.0 + float(endpoint_noise_fraction))
     )
     return min(

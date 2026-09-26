@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from vibeqc_compiler.common.gpu_profitability import GpuProfitability
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.common.schedule import (
