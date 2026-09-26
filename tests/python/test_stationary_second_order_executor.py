@@ -37,7 +37,7 @@ def test_production_second_order_owner_has_no_tools_dependency() -> None:
             imported.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module is not None:
             imported.append(node.module)
-    assert not tuple(name for name in imported if name == "tools" or name.startswith("tools."))
+    assert not tuple(\n        name for name in imported if name == "tools" or name.startswith("tools.")\n    )
 
 
 def test_tools_compatibility_shim_reexports_production_owner() -> None:
@@ -46,7 +46,7 @@ def test_tools_compatibility_shim_reexports_production_owner() -> None:
 
     assert compatibility.StationaryHVPContext is StationaryHVPContext
     assert compatibility.StationaryHVPContributor is StationaryHVPContributor
-    assert compatibility.StationaryPerturbationProvider is StationaryPerturbationProvider
+    assert (\n        compatibility.StationaryPerturbationProvider\n        is StationaryPerturbationProvider\n    )
     assert compatibility.StationaryResponseDriver is StationaryResponseDriver
     assert compatibility.StationarySecondOrderExecutor is StationarySecondOrderExecutor
 
