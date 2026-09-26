@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from vibeqc_compiler.common.cuda_runtime import _PREPARATION_LOCK, _Metrics
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.common.native_runtime import compile_runtime
 from vibeqc_compiler.common.provenance import canonical_hash, file_hash
 from vibeqc_compiler.dft.grid import checked_int
@@ -177,9 +178,7 @@ class CudaXC:
             )
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
-        error = ct.create_string_buffer(2048)
-        if getattr(self._library, name)(*args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        checked_native_call(getattr(self._library, name), *args)
 
     def _check_open(self) -> None:
         if not self._handle:
