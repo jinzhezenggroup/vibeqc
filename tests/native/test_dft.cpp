@@ -226,6 +226,29 @@ int main() {
       }
     }
 
+    {
+      const double rho[2]{0.25, 0.25};
+      const double gradient[2][3]{{0.04, -0.03, 0.02}, {0.04, -0.03, 0.02}};
+      const auto expected = vibeqc::dft::point::evaluate(true, rho, gradient, 0.73, 0.61);
+      const auto actual =
+          vibeqc::dft::generated::pbe_polarized_production(rho[0], rho[1], gradient, 0.73, 0.61);
+      const double generated[]{
+          actual.energy_density, actual.rho[0],         actual.rho[1],
+          actual.gradient[0][0], actual.gradient[0][1], actual.gradient[0][2],
+          actual.gradient[1][0], actual.gradient[1][1], actual.gradient[1][2],
+      };
+      const double reference[]{
+          expected.energy,         expected.rho[0],         expected.rho[1],
+          expected.gradient[0][0], expected.gradient[0][1], expected.gradient[0][2],
+          expected.gradient[1][0], expected.gradient[1][1], expected.gradient[1][2],
+      };
+      require(expected.valid, "independent equal-spin PBE oracle rejected an interior point");
+      for (unsigned i = 0; i < 9; ++i)
+        require(std::abs(generated[i] - reference[i]) <
+                    3.0e-13 * std::max(1.0, std::abs(reference[i])),
+                "equal-spin PBE specialization differs from the independent point oracle");
+    }
+
     const auto cam_point =
         vibeqc::dft::generated::cam_b3lyp_polarized(0.3, 0.2, 0.015, 0.003, 0.01);
     const std::array<double, 6> cam_oracle{-0.22534883092171914, -0.6376091098611569,
