@@ -438,7 +438,7 @@ def save_checkpoint(
     """Write, fsync, verify and atomically replace a single portable HF file."""
     start = time.perf_counter()
     _check_batch(batch)
-    if batch._projection_indices:
+    if batch._warm_state.projection_indices:
         raise CheckpointError(
             "projected seeds require a successful target solve before checkpoint export"
         )
@@ -478,7 +478,7 @@ def save_checkpoint(
             "seed": None,
         }
         if state.present:
-            provenance = batch._warm_metadata[index]
+            provenance = batch._warm_state.metadata[index]
             if provenance is None:
                 raise CheckpointError("retained seed is missing its source provenance")
             item.update(deepcopy(provenance))
@@ -695,8 +695,8 @@ def load_checkpoint(
     # Allocate Python ownership/provenance before the native no-throw commit,
     # so a failed staging allocation cannot strand an imported seed without
     # its source controls or restart origin.
-    origins = batch._restart_indices | accepted_indices
-    metadata = list(batch._warm_metadata)
+    origins = batch._warm_state.restart_indices | accepted_indices
+    metadata = list(batch._warm_state.metadata)
     for index in accepted_indices:
         source = manifest.items[index]
         metadata[index] = {
@@ -723,9 +723,9 @@ def load_checkpoint(
             raise CheckpointError(
                 f"native checkpoint validation failed: {detail or status}"
             )
-    batch._restart_indices = origins
-    batch._projection_indices.difference_update(accepted_indices)
-    batch._warm_metadata = metadata
+    batch._warm_state.restart_indices = origins
+    batch._warm_state.projection_indices.difference_update(accepted_indices)
+    batch._warm_state.metadata = metadata
     report["read_seconds"] = time.perf_counter() - start
-    batch.checkpoint_diagnostics = report
+    batch._warm_state.checkpoint_diagnostics = report
     return report
