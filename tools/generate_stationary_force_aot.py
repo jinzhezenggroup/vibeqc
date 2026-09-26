@@ -1,4 +1,4 @@
-"""Emit one qualified stationary CUDA force translation unit or primitive shard."""
+"""Emit stationary CUDA force wrappers or the qualified primitive inventory."""
 
 from __future__ import annotations
 
@@ -38,13 +38,43 @@ def _component_aot_sources() -> tuple[str, ...]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        required=True,
+        help="Output source file, or destination directory with --all-shards",
+    )
     parser.add_argument("--functional", type=int, choices=(0, 1, 2))
     parser.add_argument("--spin", choices=("unpolarized", "polarized"))
     parser.add_argument("--iterations", type=int, default=3)
     parser.add_argument("--component-domain", choices=("sp", "spd"), default="sp")
     parser.add_argument("--shard-index", type=int)
+    parser.add_argument(
+        "--all-shards",
+        action="store_true",
+        help="Emit all shared s/p/d primitive shards in one generation pass",
+    )
     args = parser.parse_args()
+
+    if args.all_shards:
+        if (
+            args.component_domain != "spd"
+            or args.shard_index is not None
+            or args.functional is not None
+            or args.spin is not None
+        ):
+            parser.error(
+                "--all-shards requires --component-domain spd without "
+                "--shard-index, --functional, or --spin"
+            )
+        # CMake owns all outputs in one command so the full inventory is lowered
+        # once, with the existing per-unit and aggregate source budgets intact.
+        for shard_index, source in enumerate(_component_aot_sources()):
+            write_if_changed(
+                args.output / f"vibeqc_stationary_spd_primitive_{shard_index}.cu",
+                source,
+            )
+        return
 
     if args.component_domain == "sp":
         if args.shard_index is not None:
@@ -63,9 +93,9 @@ def main() -> None:
             parser.error(
                 "component primitive shards are shared across functionals/spins"
             )
-        sources = _component_aot_sources()
         if not 0 <= args.shard_index < QUALIFIED_SPD_AOT_SHARDS:
             parser.error(f"--shard-index must be in [0,{QUALIFIED_SPD_AOT_SHARDS - 1}]")
+        sources = _component_aot_sources()
         source = sources[args.shard_index]
     else:
         if args.functional is None or args.spin is None:

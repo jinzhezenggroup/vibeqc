@@ -349,7 +349,6 @@ macro(vibeqc_configure_cuda_backend target)
     # artifact contract and is checked again by the Python manifest writer.
     set(_vibeqc_stationary_spd_primitive_sources)
     set(_vibeqc_stationary_spd_primitive_args)
-    set(_vibeqc_stationary_spd_codegen_targets)
     foreach(_vibeqc_stationary_shard RANGE 0 22)
       set(_vibeqc_stationary_shard_source
           "${VIBEQC_STATIONARY_AOT_DIRECTORY}/vibeqc_stationary_spd_primitive_${_vibeqc_stationary_shard}.cu")
@@ -357,27 +356,24 @@ macro(vibeqc_configure_cuda_backend target)
            "${_vibeqc_stationary_shard_source}")
       list(APPEND _vibeqc_stationary_spd_primitive_args
            --primitive-source "${_vibeqc_stationary_shard_source}")
-      set(_vibeqc_stationary_shard_codegen
-          "vibeqc_stationary_spd_primitive_${_vibeqc_stationary_shard}_codegen")
-      list(APPEND _vibeqc_stationary_spd_codegen_targets
-           "${_vibeqc_stationary_shard_codegen}")
-      vibeqc_register_generated_sources(
-        NAME "${_vibeqc_stationary_shard_codegen}"
-        GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_stationary_force_aot.py"
-        OUTPUTS "${_vibeqc_stationary_shard_source}"
-        DEPENDS
-          "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
-        ARGS
-          --output "${_vibeqc_stationary_shard_source}"
-          --component-domain spd
-          --shard-index "${_vibeqc_stationary_shard}"
-        COMMENT
-          "Generating stationary CUDA s/p/d primitive shard ${_vibeqc_stationary_shard}")
     endforeach()
+    # One command owns every shard: separate Python processes cannot reuse the
+    # compiler's in-process inventory cache and would repeat all lowering work.
+    vibeqc_register_generated_sources(
+      NAME vibeqc_stationary_spd_primitives_codegen
+      GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_stationary_force_aot.py"
+      OUTPUTS ${_vibeqc_stationary_spd_primitive_sources}
+      DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/dft/stationary_gradient_cuda.cuh"
+      ARGS
+        --output "${VIBEQC_STATIONARY_AOT_DIRECTORY}"
+        --component-domain spd
+        --all-shards
+      COMMENT "Generating stationary CUDA s/p/d primitive inventory")
     add_library(vibeqc_stationary_spd_primitives OBJECT
                 ${_vibeqc_stationary_spd_primitive_sources})
     add_dependencies(vibeqc_stationary_spd_primitives
-                     ${_vibeqc_stationary_spd_codegen_targets})
+                     vibeqc_stationary_spd_primitives_codegen)
     target_include_directories(vibeqc_stationary_spd_primitives PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_compile_definitions(vibeqc_stationary_spd_primitives PRIVATE
