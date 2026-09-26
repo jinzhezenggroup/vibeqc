@@ -115,7 +115,6 @@ __device__ __forceinline__ double direct_force_density_coefficient(
 """
 
 
-
 def emit_generated_shell_fock_accumulation() -> str:
     """Emit the scatter helper embedded in compiler-generated shell kernels."""
 

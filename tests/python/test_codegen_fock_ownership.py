@@ -56,7 +56,6 @@ def test_direct_force_density_has_one_compiler_equation_owner() -> None:
     assert "direct_force_density_coefficient" in emit_direct_fock_accumulation_header()
 
 
-
 def test_generated_shell_and_native_scatter_share_spin_semantics() -> None:
     """Render both adapters from the same compiler-owned contraction."""
 
