@@ -153,11 +153,19 @@ complete identity-bound receipt; zero-density/zero-gradient points rejected by
 the current interior-only candidate remain explicit failures rather than being
 silently clipped or skipped.
 
-The two generic control rows are intentionally reported as `not-run` until
-#1120 B3 supplies their shared policy semantics. Therefore running the campaign
-does not by itself imply that any imported registration is production-qualified.
-Use `--require-pass` only when the caller intends a fully qualified matrix to be
-a hard gate.
+The two generic control rows are evaluated by the shared
+`production_domain_controls` owner. `control/invalid-nonfinite` requires every
+nonfinite rho/sigma/tau feature to be rejected before functional mathematics.
+`control/lazy-inactive-branch` verifies value, first derivative, second
+derivative, array interpretation, and C/CUDA lexical branch emission on a
+singular inactive branch. These controls are compiler/runtime invariants rather
+than functional numerical coordinates; the surrounding receipt still binds
+their pass to the exact functional capability identity.
+
+Running the campaign still does not imply that an imported registration is
+production-qualified: unresolved numerical boundary rows remain explicit
+failures. Use `--require-pass` only when the caller intends a fully qualified
+matrix to be a hard gate.
 
 The canonical `tests/data/xc/r2scan-tail-reference.json` fixture has
 machine-readable status `pass` for the compiled CPU FP64 production entry point,
