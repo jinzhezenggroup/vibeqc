@@ -133,8 +133,7 @@ std::array<double, 5> rks_features(const double* phi,
   return features;
 }
 
-bool exact_first_order_ao_vacuum(const double* phi,
-                                 const std::array<const double*, 3>& derivatives,
+bool exact_first_order_ao_vacuum(const double* phi, const std::array<const double*, 3>& derivatives,
                                  std::size_t n) noexcept {
   for (std::size_t mu = 0; mu < n; ++mu)
     if (phi[mu] != 0.0 || derivatives[0][mu] != 0.0 || derivatives[1][mu] != 0.0 ||
