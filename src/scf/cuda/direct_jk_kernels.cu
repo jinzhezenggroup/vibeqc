@@ -105,11 +105,13 @@ __global__ void independent_jk_kernel(DeviceBatch batch, std::size_t system_begi
  * removes the previous coordinate-by-AO^4 scan without changing screening,
  * public-AO spherical expansion, coefficients, or radial operators.
  */
-__global__ void independent_jk_derivative_kernel(
-    DeviceBatch batch, std::size_t system_begin, std::size_t system_count, double cj, double ck,
-    bool unrestricted, vibeqc::integrals::CoulombRange exchange_range, double exchange_omega,
-    double screening, const double* bounds, const double* density, const double* beta,
-    double* out) {
+__global__ void independent_jk_derivative_kernel(DeviceBatch batch, std::size_t system_begin,
+                                                 std::size_t system_count, double cj, double ck,
+                                                 bool unrestricted,
+                                                 vibeqc::integrals::CoulombRange exchange_range,
+                                                 double exchange_omega, double screening,
+                                                 const double* bounds, const double* density,
+                                                 const double* beta, double* out) {
   const std::size_t n = batch.nbf, matrix = n * n, quartets = matrix * matrix;
   const std::size_t work_count = system_count * quartets;
   const std::size_t stride = static_cast<std::size_t>(blockDim.x) * gridDim.x;
@@ -166,8 +168,7 @@ __global__ void independent_jk_derivative_kernel(
       const std::int64_t coordinate = static_cast<std::int64_t>(unique_atoms[center]) * 3;
       double derivative[3]{};
       if (full_weight != 0.0) {
-        const Dual3 value =
-            contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate);
+        const Dual3 value = contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate);
         derivative[0] += full_weight * value.derivative_x;
         derivative[1] += full_weight * value.derivative_y;
         derivative[2] += full_weight * value.derivative_z;
@@ -185,9 +186,11 @@ __global__ void independent_jk_derivative_kernel(
           atomicAdd(out + static_cast<std::size_t>(coordinate) + axis, derivative[axis]);
       }
     }
-    const std::size_t final_coordinate = static_cast<std::size_t>(unique_atoms[unique_count - 1]) * 3;
+    const std::size_t final_coordinate =
+        static_cast<std::size_t>(unique_atoms[unique_count - 1]) * 3;
     for (unsigned axis = 0; axis < 3; ++axis)
-      if (reconstructed[axis] != 0.0) atomicAdd(out + final_coordinate + axis, -reconstructed[axis]);
+      if (reconstructed[axis] != 0.0)
+        atomicAdd(out + final_coordinate + axis, -reconstructed[axis]);
   }
 }
 
@@ -233,8 +236,8 @@ void launch_independent_jk_derivative_kernel(
   const std::size_t system_count =
       coordinates_per_item == 0 ? 0 : static_cast<std::size_t>(grid.x) / coordinates_per_item;
   const std::size_t quartet_count = system_count * matrix * matrix;
-  const unsigned blocks = static_cast<unsigned>(
-      std::min<std::size_t>((quartet_count + block.x - 1) / block.x, 65535));
+  const unsigned blocks =
+      static_cast<unsigned>(std::min<std::size_t>((quartet_count + block.x - 1) / block.x, 65535));
   if (blocks == 0) return;
   independent_jk_derivative_kernel<<<blocks, block, shared_bytes, stream>>>(
       batch, system_begin, system_count, cj, ck, unrestricted, integral_range(exchange_range),
