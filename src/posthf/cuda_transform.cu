@@ -265,15 +265,14 @@ int posthf_cuda_versions_v1(void* pointer, int* values, char* error, size_t size
   });
 }
 
-int posthf_cuda_batch_create_v1(int device, size_t nbf, size_t request_count,
-                                const size_t* shapes, const size_t* tile,
-                                const double* coefficients, size_t maximum_bytes, void** out,
-                                char* error, size_t size) {
+int posthf_cuda_batch_create_v1(int device, size_t nbf, size_t request_count, const size_t* shapes,
+                                const size_t* tile, const double* coefficients,
+                                size_t maximum_bytes, void** out, char* error, size_t size) {
   return guarded(error, size, [&] {
     if (!out) throw std::invalid_argument("null batch output handle");
     *out = nullptr;
-    if (!nbf || !request_count || request_count > static_cast<size_t>(INT_MAX) || !shapes || !tile ||
-        !coefficients || !maximum_bytes)
+    if (!nbf || !request_count || request_count > static_cast<size_t>(INT_MAX) || !shapes ||
+        !tile || !coefficients || !maximum_bytes)
       throw std::invalid_argument("invalid MO batch plan");
     auto p = std::make_unique<BatchTransform>();
     p->nbf = nbf;
@@ -310,8 +309,7 @@ int posthf_cuda_batch_create_v1(int device, size_t nbf, size_t request_count,
         throw std::invalid_argument("MO batch stage exceeds cuBLAS int32 indexing");
       coefficient_elements = size_add(coefficient_elements, state.coefficients);
       numeric_elements =
-          size_add(numeric_elements,
-                   size_add(size_mul(2, state.stage), state.output));
+          size_add(numeric_elements, size_add(size_mul(2, state.stage), state.output));
     }
     numeric_elements = size_add(numeric_elements, coefficient_elements);
     const size_t numeric = size_mul(8, numeric_elements);
@@ -340,8 +338,8 @@ int posthf_cuda_batch_create_v1(int device, size_t nbf, size_t request_count,
     }
     p->raw = p->states.front().second;
     p->context.section(true, p->context.metrics.input_ms, [&] {
-      cuda_check(cudaMemcpyAsync(base, coefficients, coefficient_elements * 8, cudaMemcpyHostToDevice,
-                                 p->context.stream));
+      cuda_check(cudaMemcpyAsync(base, coefficients, coefficient_elements * 8,
+                                 cudaMemcpyHostToDevice, p->context.stream));
       for (const auto& state : p->states)
         cuda_check(cudaMemsetAsync(state.result, 0, state.output * 8, p->context.stream));
       cuda_check(cudaMemsetAsync(p->context.error, 0, sizeof(int), p->context.stream));
@@ -353,8 +351,7 @@ void posthf_cuda_batch_destroy_v1(void* pointer) { delete static_cast<BatchTrans
 int posthf_cuda_batch_add_v1(void* pointer, const double* values, const size_t* begin,
                              const size_t* counts, char* error, size_t size) {
   return guarded(error, size, [&] {
-    if (!pointer || !values || !begin || !counts)
-      throw std::invalid_argument("null MO batch tile");
+    if (!pointer || !values || !begin || !counts) throw std::invalid_argument("null MO batch tile");
     auto& p = *static_cast<BatchTransform*>(pointer);
     auto& ctx = p.context;
     std::lock_guard<std::mutex> lock(ctx.mutex);
@@ -408,8 +405,8 @@ int posthf_cuda_batch_add_v1(void* pointer, const double* values, const size_t* 
           std::swap(in, out_state);
         }
         const double one = 1;
-        blas_check(cublasDaxpy(ctx.handle, static_cast<int>(state.output), &one, in, 1,
-                               state.result, 1));
+        blas_check(
+            cublasDaxpy(ctx.handle, static_cast<int>(state.output), &one, in, 1, state.result, 1));
       }
     });
     p.failed = false;
@@ -419,8 +416,7 @@ int posthf_cuda_batch_add_v1(void* pointer, const double* values, const size_t* 
 int posthf_cuda_batch_download_v1(void* pointer, double* const* outputs, const size_t* elements,
                                   size_t request_count, char* error, size_t size) {
   return guarded(error, size, [&] {
-    if (!pointer || !outputs || !elements)
-      throw std::invalid_argument("null MO batch download");
+    if (!pointer || !outputs || !elements) throw std::invalid_argument("null MO batch download");
     auto& p = *static_cast<BatchTransform*>(pointer);
     auto& ctx = p.context;
     std::lock_guard<std::mutex> lock(ctx.mutex);

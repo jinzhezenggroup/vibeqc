@@ -163,8 +163,7 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
     for (const auto& state : states) {
       batch_shapes.insert(batch_shapes.end(), state.shape.begin(), state.shape.end());
       coefficient_elements = checked_add(coefficient_elements, state.plan.coefficient_elements);
-      maximum_allocation_bytes =
-          checked_add(maximum_allocation_bytes, state.plan.allocation_bytes);
+      maximum_allocation_bytes = checked_add(maximum_allocation_bytes, state.plan.allocation_bytes);
     }
     panels.reserve(coefficient_elements);
     for (const auto& state : states)
@@ -172,9 +171,9 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
         panels.insert(panels.end(), panel.begin(), panel.end());
     if (panels.size() != coefficient_elements)
       throw std::logic_error("native MO batch coefficient accounting mismatch");
-    check(posthf_cuda_batch_create_v1(
-        device, ref_.nbf, states.size(), batch_shapes.data(), tile_.data(), panels.data(),
-        maximum_allocation_bytes, &device_batch.pointer, error, sizeof(error)));
+    check(posthf_cuda_batch_create_v1(device, ref_.nbf, states.size(), batch_shapes.data(),
+                                      tile_.data(), panels.data(), maximum_allocation_bytes,
+                                      &device_batch.pointer, error, sizeof(error)));
     if (work)
       work->h2d_bytes =
           checked_add(work->h2d_bytes, checked_mul(coefficient_elements, sizeof(double)));
@@ -225,11 +224,9 @@ std::vector<std::vector<double>> NativeBlockProvider::get_many(const std::vector
           if (cuda) {
 #if VIBEQC_HAS_CUDA
             if (work) {
-              work->cuda_transform_calls =
-                  checked_add(work->cuda_transform_calls, states.size());
+              work->cuda_transform_calls = checked_add(work->cuda_transform_calls, states.size());
               work->cuda_batch_calls = checked_add(work->cuda_batch_calls, 1);
-              work->h2d_bytes =
-                  checked_add(work->h2d_bytes, checked_mul(elements, sizeof(double)));
+              work->h2d_bytes = checked_add(work->h2d_bytes, checked_mul(elements, sizeof(double)));
             }
             check(posthf_cuda_batch_add_v1(device_batch.pointer, raw.data(), begin.data(),
                                            current.data(), error, sizeof(error)));
