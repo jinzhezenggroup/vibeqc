@@ -1,11 +1,11 @@
-#include "response/resident_krylov.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <utility>
+
+#include "response/resident_krylov.hpp"
 
 namespace vibeqc::response {
 namespace {
@@ -63,10 +63,9 @@ struct Slots {
   std::size_t best_x, best_residual, count;
 };
 
-ResidentGmresResult make_result(const ResidentGmresWorkspace& workspace,
-                                std::size_t resident_bytes, WorkspaceVector solution,
-                                GmresStatus status, double residual, double rhs_norm,
-                                std::size_t iterations, std::size_t restarts,
+ResidentGmresResult make_result(const ResidentGmresWorkspace& workspace, std::size_t resident_bytes,
+                                WorkspaceVector solution, GmresStatus status, double residual,
+                                double rhs_norm, std::size_t iterations, std::size_t restarts,
                                 std::size_t operator_actions) {
   GmresResult result;
   result.solution = std::move(solution);
@@ -142,8 +141,8 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
     WorkspaceVector solution(n, 0.0, allocator);
     backend.download(Slots::x, solution);
     return make_result(workspace, backend.owned_resident_bytes(), std::move(solution),
-                       GmresStatus::nonfinite_operator,
-                       std::numeric_limits<double>::infinity(), rhs_norm, 0, 0, operator_actions);
+                       GmresStatus::nonfinite_operator, std::numeric_limits<double>::infinity(),
+                       rhs_norm, 0, 0, operator_actions);
   }
   if (beta <= target) {
     WorkspaceVector solution(n, 0.0, allocator);
@@ -197,8 +196,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
           backend.axpy(slots.work, -projection, slots.basis + row);
         }
       }
-      if (nonfinite)
-        return finish(slots.best_x, GmresStatus::nonfinite_operator, best_norm);
+      if (nonfinite) return finish(slots.best_x, GmresStatus::nonfinite_operator, best_norm);
 
       const double next_norm = backend.norm(slots.work);
       if (!std::isfinite(next_norm))
@@ -262,8 +260,7 @@ ResidentGmresResult solve_gmres_resident(const GmresPlan& plan, ResidentKrylovBa
       }
       if (candidate_norm <= target)
         return finish(slots.candidate, GmresStatus::converged, candidate_norm);
-      if (broke_down || !solvable)
-        return finish(slots.best_x, GmresStatus::breakdown, best_norm);
+      if (broke_down || !solvable) return finish(slots.best_x, GmresStatus::breakdown, best_norm);
       if (stagnation >= plan.options.stagnation_window)
         return finish(slots.best_x, GmresStatus::stagnation, best_norm);
       if (column + 1 == restart || iterations == plan.options.max_iterations) {

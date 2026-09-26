@@ -74,8 +74,7 @@ inline ResidentGmresWorkspace resident_gmres_workspace(const GmresPlan& plan) {
   if (plan.restart > (maximum - square - 1) / 5)
     throw std::overflow_error("resident GMRES scalar workspace overflow");
   const auto scalar_elements = square + 5 * plan.restart + 1;
-  if (scalar_elements > maximum / sizeof(double) ||
-      plan.dimension > maximum / sizeof(double))
+  if (scalar_elements > maximum / sizeof(double) || plan.dimension > maximum / sizeof(double))
     throw std::overflow_error("resident GMRES host workspace overflow");
   return {slots, scalar_elements * sizeof(double), plan.dimension * sizeof(double)};
 }

@@ -170,8 +170,7 @@ void resident_controller_executes_same_gmres() {
   DenseOperator host_matrix{2, {4.0, 1.0, 2.0, 3.0}};
   const auto host = vibeqc::response::solve_gmres(
       plan, [&](auto input, auto output) { host_matrix(input, output); }, rhs);
-  require(host.converged() &&
-              std::abs(host.solution[0] - solved.result.solution[0]) < 1e-14 &&
+  require(host.converged() && std::abs(host.solution[0] - solved.result.solution[0]) < 1e-14 &&
               std::abs(host.solution[1] - solved.result.solution[1]) < 1e-14,
           "resident and host GMRES disagree on the same operator");
 
@@ -190,8 +189,7 @@ void resident_controller_executes_same_gmres() {
           "resident restart-one solve did not exercise a restart");
 
   auto short_options = options;
-  short_options.max_workspace_bytes =
-      workspace.host_scalar_bytes + workspace.host_result_bytes - 1;
+  short_options.max_workspace_bytes = workspace.host_scalar_bytes + workspace.host_result_bytes - 1;
   const auto short_plan = vibeqc::response::prepare_gmres(2, short_options);
   DenseResidentBackend short_backend{2, workspace.vector_slots, {4.0, 1.0, 2.0, 3.0}};
   const auto refused = vibeqc::response::solve_gmres_resident(short_plan, short_backend, rhs);
