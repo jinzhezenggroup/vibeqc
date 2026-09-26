@@ -51,11 +51,7 @@ constexpr unsigned kMaximumFinalCorrections = 4;
 constexpr unsigned kCudaKsChunkCapacity = 2;
 
 constexpr bool curated_cuda_ks_functional(std::uint32_t functional) noexcept {
-  return functional == semilocal_family_code(SemilocalFamily::Lda) ||
-         functional == semilocal_family_code(SemilocalFamily::Pbe) ||
-         functional == semilocal_family_code(SemilocalFamily::R2scan) ||
-         functional == semilocal_family_code(SemilocalFamily::B3lyp) ||
-         functional == semilocal_family_code(SemilocalFamily::Wb97mv);
+  return curated_semilocal_functional(functional);
 }
 
 constexpr bool is_semilocal_family(std::uint32_t functional, SemilocalFamily family) noexcept {
