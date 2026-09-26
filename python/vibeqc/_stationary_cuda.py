@@ -27,6 +27,7 @@ from vibeqc_compiler.common.cuda_adapter import CudaCompilerAdapter
 from vibeqc_compiler.common.cuda_runtime import CudaArtifact
 from vibeqc_compiler.common.cuda_target import CudaTargetInfo
 from vibeqc_compiler.common.execution import CompiledExecutionIdentity
+from vibeqc_compiler.common.native_call import checked_native_call
 from vibeqc_compiler.common.prepared_execution import (
     PreparedArtifactBinding,
     PreparedExecutionLease,
@@ -373,9 +374,7 @@ class _CudaSources:
         )
 
     def _call(self, name: typing.Any, *args: typing.Any) -> None:
-        error = ct.create_string_buffer(2048)
-        if getattr(self.library, name)(*args, error, len(error)):
-            raise RuntimeError(error.value.decode())
+        checked_native_call(getattr(self.library, name), *args)
 
     def enable_profile(self) -> None:
         if self.profile_device:
