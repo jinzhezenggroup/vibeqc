@@ -19,6 +19,11 @@ from time import perf_counter
 
 import numpy as np
 
+try:
+    from _support import raw_output_path
+except ModuleNotFoundError:
+    from benchmarks._support import raw_output_path
+
 
 def reference_engine(
     atoms: typing.Any, basis: str, spec: typing.Any, *, spin: int = 0
@@ -109,7 +114,7 @@ def main() -> None:
     )
     parser.add_argument("--repeats", type=int, default=3)
     parser.add_argument("--grid", type=int, nargs=3, default=(48, 16, 32))
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=raw_output_path, required=True)
     parser.add_argument("--reference-only", action="store_true")
     args = parser.parse_args()
     if args.repeats < 1:
