@@ -12,7 +12,7 @@ from vibeqc.profiles import canonical_hash
 
 from tools.vibeqc_posthf.reference import immutable
 
-from .problem import ResponseCompatibilityError, ResponseSolveError
+from vibeqc.response import ResponseCompatibilityError, ResponseSolveError
 
 
 def _vector_norm(value: typing.Any) -> typing.Any:
