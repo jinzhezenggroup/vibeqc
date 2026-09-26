@@ -16,8 +16,11 @@ Use a retained native integral source for hcore, overlap/Pulay, J, short-range
 K and long-range K. Carry nuclear coordinate dual seeds through the shared
 bounded range-moment recurrence, using `dM_n(T)/dT = -M_(n+1)(T)` at fixed
 exponents and omega. Keep existing full-range value arithmetic unchanged.
-Several CUDA blocks reduce each coordinate to avoid one-block-per-coordinate
-underutilization; this changes reduction order and therefore needs FP64 gates.
+The generic direct derivative fallback traverses each ordered public-AO quartet
+once per integral source. Dual3 carries x/y/z together for only the unique
+participating nuclear centers, and translational invariance reconstructs the
+final center. This removes the coordinate-by-quartet work multiplier while
+preserving the same FP64 screening and radial operators.
 
 Reuse compiler-owned semilocal geometry pullbacks for VV10 total-rho/sigma,
 explicit pair-coordinate and partition-weight adjoints. Pack both VV10 domains
@@ -77,7 +80,8 @@ water test protects this boundary, which H2/H3 alone cannot exercise.
 
 ## Revisit when
 
-Source-driven shell derivative schedules eliminate repeated coordinate scans;
-native retained AO/grid leases avoid feature downloads and duplicate collocation;
-or a shared complete C-native stationary consumer replaces Python composition.
+The direct derivative fallback shares the HF shell-quartet symmetry/compaction
+scheduler instead of its remaining ordered public-AO traversal; native retained
+AO/grid leases avoid feature downloads and duplicate collocation; or a shared
+complete C-native stationary consumer replaces Python composition.
 The native public C registry stays energy-only in this implementation.
