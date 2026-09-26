@@ -162,10 +162,12 @@ class Mp2Prepared final : public PreparedCalculation {
         last_->force_provenance_flags = density_fitted_ ? 0x5 : 0x7;
         constexpr char conventional_response_hash[] = "rhf-canonical-response-v1";
         constexpr char fitted_response_hash[] = "rhf-df-canonical-response-v1";
-        const char* response_hash =
-            density_fitted_ ? fitted_response_hash : conventional_response_hash;
-        std::copy_n(response_hash, std::char_traits<char>::length(response_hash) + 1,
-                    last_->response_operator_hash);
+        if (density_fitted_)
+          std::copy_n(fitted_response_hash, sizeof(fitted_response_hash),
+                      last_->response_operator_hash);
+        else
+          std::copy_n(conventional_response_hash, sizeof(conventional_response_hash),
+                      last_->response_operator_hash);
       }
       return result;
     } catch (const std::length_error& e) {
