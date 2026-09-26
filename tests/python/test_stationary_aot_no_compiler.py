@@ -11,6 +11,7 @@ from vibeqc import _dft_gradient, _stationary_cuda
 from vibeqc.batch import PreparedBatch
 from vibeqc_compiler import dft
 from vibeqc_compiler.common.cuda_target import cuda_target_info
+from vibeqc_compiler.method import resolve_method
 
 
 def _evaluate_selector(node: ast.expr, values: dict[str, object]) -> object:
@@ -143,7 +144,12 @@ def test_public_aot_force_does_not_probe_nvcc(
             pass
 
     monkeypatch.setattr(dft, "NativeAO", lambda *args, **kwargs: Basis())
-    source = SimpleNamespace(backend="cuda", hamiltonian="all-electron", close=Mock())
+    source = SimpleNamespace(
+        backend="cuda",
+        hamiltonian="all-electron",
+        method_ir=resolve_method("PBE"),
+        close=Mock(),
+    )
     state = SimpleNamespace(_source=source)
     monkeypatch.setattr(
         _dft_gradient.StationaryKsState, "from_native", lambda *args, **kwargs: state
@@ -197,7 +203,12 @@ def test_public_d_shell_force_uses_component_aot_without_nvcc(
             pass
 
     monkeypatch.setattr(dft, "NativeAO", lambda *args, **kwargs: Basis())
-    source = SimpleNamespace(backend="cuda", hamiltonian="all-electron", close=Mock())
+    source = SimpleNamespace(
+        backend="cuda",
+        hamiltonian="all-electron",
+        method_ir=resolve_method("PBE"),
+        close=Mock(),
+    )
     state = SimpleNamespace(_source=source)
     monkeypatch.setattr(
         _dft_gradient.StationaryKsState, "from_native", lambda *args, **kwargs: state

@@ -58,6 +58,7 @@ from vibeqc_compiler.method.stationary_cuda import (
     encode_stationary_derivative_kind,
     load_stationary_aot_artifact,
     qualified_sp_requests,
+    stationary_runtime_sources,
 )
 from vibeqc_compiler.method.stationary_gradient import (
     SCF_POINT_MODEL,
@@ -73,7 +74,7 @@ from ._dft_gradient import (
     native_ao_geometry_identity,
 )
 from ._stationary_cpu import DiagnosticStationaryGradient
-from .ks import resolve_ks_method
+from .ks import SPLIT_HYBRIDS, _native_semilocal_family
 
 _DOUBLE = ct.POINTER(ct.c_double)
 _INT = ct.POINTER(ct.c_int64)
@@ -251,7 +252,9 @@ class _CudaSources:
         work_budget: typing.Any = _DEFAULT_MAX_PRIMITIVE_RECORDS,
         timeline: _ExclusiveWallTimeline | None = None,
         profile_device: bool = False,
+        source_names: tuple[str, ...] = _SOURCE_NAMES,
     ) -> None:
+        self.source_names = source_names
         if file_hash(artifact.library) != artifact.metadata["binary_sha256"]:
             raise ValueError("stationary CUDA binary hash mismatch")
         self.artifact = artifact
@@ -551,12 +554,19 @@ class _CudaSources:
         if functional is None:
             if type(pbe) is not bool:
                 raise TypeError(
-                    "stationary geometry requires functional=0/1/2/4 or pbe bool"
+                    "stationary geometry requires a registered functional code or pbe bool"
                 )
             functional = int(pbe)
         elif pbe is not None:
             raise ValueError("specify functional or pbe, not both")
-        if type(functional) is not int or functional not in (0, 1, 2, 4):
+        if type(functional) is not int or functional not in (
+            0,
+            1,
+            2,
+            3,
+            4,
+            *(record["functional_code"] for record in SPLIT_HYBRIDS.values()),
+        ):
             raise ValueError("unsupported stationary semilocal functional")
         work = task.density_jets(4 if functional else 1)
         self._call(
@@ -571,12 +581,12 @@ class _CudaSources:
 
     def finish(self) -> typing.Any:
         self.flush()
-        out = np.empty((7, self.natom, 3))
+        out = np.empty((len(self.source_names), self.natom, 3))
         self._call("stationary_finish", self.handle, _ptr(out), out.size)
-        return {name: out[i] for i, name in enumerate(_SOURCE_NAMES)}
+        return {name: out[i] for i, name in enumerate(self.source_names)}
 
     def reduced(self) -> typing.Any:
-        """Return the fixed seven-source all-electron sum reduced on CUDA."""
+        """Return the complete plan-ordered all-electron sum reduced on CUDA."""
         out = np.empty((self.natom, 3))
         self._call("stationary_finish_reduced", self.handle, _ptr(out), out.size)
         return out
@@ -942,6 +952,7 @@ class PreparedStationaryCudaExecution:
         }
         stack = ExitStack()
         try:
+            source_names = stationary_runtime_sources(plan)
             sources = stack.enter_context(
                 _CudaSources(
                     basis,
@@ -952,6 +963,7 @@ class PreparedStationaryCudaExecution:
                     primitive_tile,
                     source_bytes,
                     spin_blocks=plan.spin_blocks,
+                    source_names=source_names,
                     target=target,
                     work_budget=work_budget,
                     profile_device=profile_device,
@@ -1173,8 +1185,10 @@ def _complete_rks_cuda_gradient_diagnostic(
     contract.validate(state)
     if state._source.backend != "cuda":
         raise NotImplementedError("CUDA diagnostic requires a native CUDA KS state")
-    if state._source.metadata[0] not in (3, 5) or state._source.grid_spec is None:
-        raise NotImplementedError("CUDA diagnostic requires snapshot v3 raw measures")
+    if state._source.metadata[0] not in (3, 5, 8) or state._source.grid_spec is None:
+        raise NotImplementedError(
+            "CUDA diagnostic requires supported raw-measure/composition snapshots"
+        )
     if (
         basis.identity != state.identity.basis_identity
         or native_ao_geometry_identity(basis) != state.identity.geometry_identity
@@ -1228,7 +1242,12 @@ def _complete_rks_cuda_gradient_diagnostic(
         int(row[2]) * len(expansion)
         for row, expansion in zip(aos, expansions, strict=True)
     )
-    records = primitive_sum**4 + (na + 2) * primitive_sum**2 + na * (na - 1) // 2
+    has_exchange = bool(state._source.method_ir.full_range_exact_exchange)
+    records = (
+        (1 + int(has_exchange)) * primitive_sum**4
+        + (na + 2) * primitive_sum**2
+        + na * (na - 1) // 2
+    )
     pair_visits = (1 + 2 * len(state.grid.points)) * na * (na - 1) // 2
     if records > max_primitive_records:
         raise ValueError("primitive work budget exceeded")
@@ -1236,7 +1255,8 @@ def _complete_rks_cuda_gradient_diagnostic(
         raise ValueError("grid point work budget exceeded")
     if pair_visits > max_grid_pair_visits:
         raise ValueError("grid work budget exceeded")
-    method, _ = resolve_ks_method(state.identity.method)
+    # Preserve the actual composition; the public selector is only a label.
+    method = state._source.method_ir
     plan = StationaryGradientPlan(
         method,
         StationaryMeanField(
@@ -1244,21 +1264,22 @@ def _complete_rks_cuda_gradient_diagnostic(
             hamiltonian="scalar-semilocal-ecp" if ecp else "all-electron",
         ),
     )
+    source_names = stationary_runtime_sources(plan)
     density = state.density if contract.spin == "polarized" else state.density[0]
     if (
         tuple(s for s in plan.source_names if s not in ("ecp_local", "ecp_nonlocal"))
-        != _SOURCE_NAMES
+        != source_names
     ):
         raise ValueError(
             "CUDA runtime source coverage differs from StationaryGradientPlan"
         )
-    functional = {"lda": 0, "gga": 1, "mgga": 2}[contract.family]
+    functional = _native_semilocal_family(method)
     if functional == 2 and ecp:
         raise NotImplementedError(
             "r2SCAN CUDA stationary gradients do not inherit ECP support"
         )
     needs_first = functional != 0
-    functional_name = ("LDA_XC_PW", "PBE", "R2SCAN")[functional]
+    ingredients = state._source.functional.ingredients
     device = int(state._source.metadata[12])
     grid_plan = plan_tiles(
         basis,
@@ -1274,7 +1295,7 @@ def _complete_rks_cuda_gradient_diagnostic(
             22 * primitive_tile
             + 2 * basis.nprimitive
             + 4 * n
-            + 600 * na
+            + (579 + 3 * len(source_names)) * na
             + 3 * tile_points
             + 2 * plan.spin_blocks * n * n
         )
@@ -1300,6 +1321,7 @@ def _complete_rks_cuda_gradient_diagnostic(
             34 * primitive_tile
             + 4 * plan.spin_blocks * n * n
             + 120 * na
+            + 12 * (len(source_names) - len(_SOURCE_NAMES)) * na
             + 26 * integral_terms
             + 3 * tile_points
             + 2 * basis.nprimitive
@@ -1490,6 +1512,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                         primitive_tile,
                         source_bytes,
                         spin_blocks=plan.spin_blocks,
+                        source_names=source_names,
                         target=target,
                         work_budget=records,
                         timeline=timeline,
@@ -1528,11 +1551,12 @@ def _complete_rks_cuda_gradient_diagnostic(
             ("one_electron", 2, "kinetic"),
             ("overlap_pulay", 2, "overlap"),
             ("coulomb", 4, "four_center_eri"),
+            *((("exact_exchange", 4, "four_center_eri"),) if has_exchange else ()),
         ):
             domain = RuntimeTaskDomain.rectangular((n,) * rank)
             for page in domain.pages(integral_terms):
                 for indices in page.coordinates:
-                    sources.integral(_SOURCE_NAMES.index(source), operator, indices)
+                    sources.integral(source_names.index(source), operator, indices)
                     if source == "one_electron":
                         for atom in range(na):
                             sources.integral(
@@ -1551,10 +1575,10 @@ def _complete_rks_cuda_gradient_diagnostic(
         with timeline.phase("xc_geometry_and_sync"):
             for begin in range(0, len(grid.points), tile_points):
                 end = min(begin + tile_points, len(grid.points))
-                with ao.xc_task(
+                with ao.feature_task(
                     grid.points[begin:end],
                     np.arange(n, dtype=np.uintp),
-                    functional_name,
+                    ingredients,
                 ) as task:
                     sources.geometry(
                         task,
@@ -1590,7 +1614,7 @@ def _complete_rks_cuda_gradient_diagnostic(
                     record_tensor(result, feeds)
                     components[name] = result.outputs["gradient"].reshape(na, 3)
         # Validate actual coverage before the complete reduction. All-electron
-        # seven-source work reduces inside the stationary owner; ECP retains the
+        # plan-owned work reduces inside the stationary owner; ECP retains the
         # generated TensorIR sum because its two extra sources are separate owners.
         plan.reduction_program(atoms=na, sources=components)
         if ecp:
@@ -1654,7 +1678,8 @@ def _complete_rks_cuda_gradient_diagnostic(
         ecp_quadrature_pair_samples=ecp_pair_samples,
         ecp_pair_sample_budget=max_ecp_pair_samples,
         ordered_pairs=n * n,
-        ordered_quartets=n**4,
+        ordered_quartets=(1 + int(has_exchange)) * n**4,
+        exchange_ordered_quartets=n**4 if has_exchange else 0,
         additional_device_peak_bound=peak,
         additional_device_budget=max_device_bytes,
         device_ordinal=device,
@@ -1664,12 +1689,23 @@ def _complete_rks_cuda_gradient_diagnostic(
         stationary_weight_plan_identity=plan.identity,
         stationary_weight_programs={
             name: plan.integral_block(name, terms=1).weights.logical_hash
-            for name in ("one_electron", "overlap_pulay", "coulomb")
+            for name in (
+                "one_electron",
+                "overlap_pulay",
+                "coulomb",
+                *(("exact_exchange",) if has_exchange else ()),
+            )
         },
         stationary_weight_tensor_executions=0,
         stationary_weight_roundtrip_bytes=0,
         stationary_final_reduction=(
-            "generated-tensorir-v1" if ecp else "native-seven-source-device-sum-v1"
+            "generated-tensorir-v1"
+            if ecp
+            else (
+                "native-plan-source-device-sum-v1"
+                if has_exchange
+                else "native-seven-source-device-sum-v1"
+            )
         ),
         stationary_state_dw_upload_bytes=(
             state.density.nbytes + state.weighted_density.nbytes
@@ -1728,7 +1764,11 @@ def _complete_rks_cuda_gradient_diagnostic(
         plan.identity,
         state.identity,
         MappingProxyType(work),
-        execution=("cuda-nine-source" if ecp else "cuda-seven-source")
+        execution=(
+            "cuda-nine-source"
+            if ecp
+            else ("cuda-eight-source" if has_exchange else "cuda-seven-source")
+        )
         + "/generated-device-stationary-weights-v1",
     )
 

@@ -138,12 +138,14 @@ scientific branch. The stationary plan adds a same-spin
 CPU hybrid snapshots retain those coefficients so the derivative consumer
 cannot reinterpret PBE0 as pure PBE.
 
-This does **not** promote public Calculator PBE0 forces or CUDA hybrid execution.
-Those remain fail-closed under #163/#165 until their complete endpoint gates are
-satisfied; existing qualified semilocal force paths are unchanged. B3LYP is not
-synthesized from PBE: its audited MethodIR and scalar B88/LYP/VWN-RPA inventory
-already exist, but this slice does not supply their native KS SCF/geometry
-lowering or independent end-to-end qualification.
+Public Python CUDA global-hybrid forces compose this same stationary exchange
+source with the actual semilocal point program. B3LYP uses its audited
+B88/LYP/VWN-RPA composition, and admitted split meta-GGAs reuse their generated
+point programs and tau pullbacks. Eligibility follows primitive coverage and
+the native SCF composition contract. See the
+[stationary CUDA consumer](stationary_cuda_diagnostic.md) for supported execution
+conditions and [hybrid acceptance gates](../maintainer/hybrid_cuda_acceptance.md)
+for independent complete-endpoint qualification.
 
 ## Densities, operators, and coefficients
 

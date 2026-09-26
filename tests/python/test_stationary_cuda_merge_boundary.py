@@ -138,7 +138,6 @@ def test_weight_fusion_orchestration_runs_without_a_device(
     monkeypatch.setattr(runtime, "StationaryGradientPlan", FakePlan)
     monkeypatch.setattr(runtime, "StationaryMeanField", lambda *_a, **_k: object())
     monkeypatch.setattr(runtime, "native_ao_geometry_identity", lambda _basis: "geom")
-    monkeypatch.setattr(runtime, "resolve_ks_method", lambda _method: (object(), None))
     monkeypatch.setattr(
         runtime,
         "_layout",
@@ -215,9 +214,11 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         work_budget: int = 2_000_000,
         timeline: object = None,
         profile_device: bool = False,
+        source_names: tuple[str, ...] = runtime._SOURCE_NAMES,
     ) -> MagicMock:
         assert timeline is not None
         assert profile_device is False
+        assert source_names == runtime._SOURCE_NAMES
         admitted["budget"] = budget
         admitted["spin_blocks"] = spin_blocks
         admitted["work_budget"] = work_budget
@@ -254,7 +255,12 @@ def test_weight_fusion_orchestration_runs_without_a_device(
         owners=np.empty(0, dtype=np.int64),
         weights=np.empty(0),
     )
+    from vibeqc_compiler.method import resolve_method
+
+    method_ir = resolve_method("LDA_XC_PW")
     source = SimpleNamespace(
+        method_ir=method_ir,
+        functional=method_ir.primitives[0].functional,
         backend="cuda",
         metadata=(3,) + (0,) * 12,
         grid_spec=SimpleNamespace(partition_iterations=3, coincident_tolerance=1.0e-12),

@@ -520,9 +520,15 @@ class PreparedBatch:
                     )
                 native_library = Path(str(self._library._name)).resolve()
                 all_electron = state._source.hamiltonian == "all-electron"
+                # Composition-specific hybrid modules use the existing bounded
+                # compiler/cache path; semilocal owners retain their packaged AOT.
+                packaged = (
+                    all_electron
+                    and not state._source.method_ir.full_range_exact_exchange
+                )
                 kwargs = {
                     "compiler": (
-                        None if all_electron else self._stationary_cuda_compiler()
+                        None if packaged else self._stationary_cuda_compiler()
                     ),
                     "target": self._stationary_cuda_target(),
                     "cache": Path(
@@ -530,7 +536,7 @@ class PreparedBatch:
                             "VIBEQC_STATIONARY_CACHE", ".cache/stationary-cuda"
                         )
                     ),
-                    "aot_directory": native_library.parent if all_electron else None,
+                    "aot_directory": native_library.parent if packaged else None,
                     "native_grid_library": native_library,
                 }
                 try:

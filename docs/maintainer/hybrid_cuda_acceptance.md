@@ -1,7 +1,9 @@
 # Split-global-hybrid CUDA acceptance
 
 M06-2X and MN15 expose generated RKS/UKS selectors qualified for CUDA,
-strict-FP64, direct J/K, device-fused XC, and energy-only execution. Their
+strict-FP64, direct J/K and device-fused XC execution. Public all-electron
+forces use the composed global-hybrid stationary consumer and require the
+additional force gates below. Their
 component-level `cuda-point-validated` label does not admit arbitrary bulk XC
 compositions or CPU execution. Source generation, ABI tests, CUDA compilation,
 and interior-point agreement alone are not acceptance: retain every gate below
@@ -45,7 +47,7 @@ visibility assigned by Slurm; do not override `CUDA_VISIBLE_DEVICES`.
 
 - Prepare the public RKS and UKS selectors with explicit matched `GridSpec`,
   CUDA, strict FP64, direct J/K, device-fused XC, and energy-only execution.
-  Reject unsupported CPU/DF, derivatives, range/nonlocal compositions, missing
+  Reject unsupported CPU/DF, range/nonlocal compositions, missing
   or zero K terms, and changed component weights. Exercise both single and
   batch admission, replay, and a later invalid request after successful work.
 - Compare fixed-density semilocal XC and exact K separately to an independent
@@ -89,3 +91,32 @@ srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
 Failure or a skip in any stage blocks scientific qualification; CUDA compile
 success and interior-only parity do not substitute for a passed complete-endpoint
 oracle on the same tested head.
+
+## Public global-hybrid force gate
+
+The common force consumer derives its source inventory and exact-exchange
+weights from MethodIR. Its test matrix includes both GGA and meta-GGA global
+hybrids in RKS and UKS, an admitted hybrid composition under a semilocal public
+method label, and a p-shell molecular case. The test compares the
+public force against an independent PySCF moving-grid analytic gradient and
+two reconverged energy finite differences. It also checks translation
+invariance, prepared replay, changed-geometry reuse, complete primitive work
+counts, and rejection of unqualified execution modes and CUDA SCF compositions
+(including custom PBE50 fractions). CPU derivative paths
+are disabled during native force calls.
+
+```bash
+srun --partition=main --gres=gpu:5090:1 --nodes=1 --ntasks=1 \
+  --time=00:30:00 bash -lc '
+    export VIBEQC_LIBRARY=/absolute/path/to/libvibeqc.so
+    export CUDACXX=/absolute/path/to/nvcc
+    export VIBEQC_HYBRID_FORCE_CUDA_TEST=1 PYTHONPATH=python:.
+    export VIBEQC_HYBRID_FORCE_EVIDENCE=.artifacts/hybrid-force
+    python -m pytest tests/python/test_global_hybrid_cuda_forces.py -q'
+```
+
+Use the same test under Compute Sanitizer with `--error-exitcode` for device
+memory qualification. The current composed wrapper uses the bounded NVCC
+cache path on first use; installed runs therefore require a discoverable
+toolkit. See [the stationary CUDA contract](../developer/stationary_cuda_diagnostic.md)
+for source, storage and work limits.

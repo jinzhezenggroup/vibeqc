@@ -171,19 +171,46 @@ def lower_inline_cuda_output(
             reduced = tuple(
                 label for label in sorted(domains) if label not in node.attrs["output"]
             )
-            if (
-                reduced
-                or node.spec.size != 1
-                or any(len(item) != 1 for item in operands)
+            # Inline only finite, tiny contractions (not a general tensor
+            # executor). In particular the same-spin exchange weight reduces
+            # one or two spin terms while retaining a singleton quartet axis.
+            if prod(domains.values()) > 64 or any(
+                extent < 1 for extent in domains.values()
             ):
-                raise ValueError(
-                    "inline CUDA lowering supports only singleton nonreducing einsum"
-                )
-            factors = [item[0] for item in operands]
+                raise ValueError("inline CUDA einsum exceeds the 64-term work bound")
             coefficient = _fraction(node.attrs["coefficient"])
-            if coefficient != 1:
-                factors.insert(0, exact_cuda_literal(coefficient))
-            values[node] = ("(" + " * ".join(factors) + ")",)
+            outputs = []
+            for linear in range(node.spec.size):
+                fixed = dict(
+                    zip(
+                        node.attrs["output"],
+                        _coordinates(linear, node.spec.shape),
+                        strict=True,
+                    )
+                )
+                terms = []
+                for contracted in product(
+                    *(range(domains[label]) for label in reduced)
+                ):
+                    coordinates = fixed | dict(zip(reduced, contracted, strict=True))
+                    factors = [
+                        operand[
+                            _flat(
+                                (coordinates[label] for label in labels),
+                                child.spec.shape,
+                            )
+                        ]
+                        for operand, child, labels in zip(
+                            operands, node.inputs, node.attrs["labels"], strict=True
+                        )
+                    ]
+                    if coefficient != 1:
+                        factors.insert(0, exact_cuda_literal(coefficient))
+                    terms.append("(" + " * ".join(factors) + ")")
+                outputs.append(
+                    terms[0] if len(terms) == 1 else "(" + " + ".join(terms) + ")"
+                )
+            values[node] = tuple(outputs)
         else:
             raise ValueError(f"unsupported TensorIR inline CUDA op: {node.op}")
 

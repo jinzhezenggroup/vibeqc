@@ -1,5 +1,6 @@
 """A source move must remain usable outside the checkout after wheel projection."""
 
+import hashlib
 import json
 import os
 import shutil
@@ -76,3 +77,42 @@ assert d3.table_sha256 == '9ff932ea598f690c1fb599a67762060ba1907102d5ec132164f2a
         timeout=30,
     )
     assert completed.returncode == 0, completed.stderr or completed.stdout
+
+    # Hybrid force wrappers must be generatable from the installed compiler,
+    # without repository tools or runtime/reference imports. Their scientific
+    # bytes must agree with checkout code generation.
+    from vibeqc_compiler.xc.split_hybrid_codegen import emit_split_hybrid_device
+
+    expected = {
+        name: hashlib.sha256(emit_split_hybrid_device(name).encode()).hexdigest()
+        for name in ("M06-2X", "MN15")
+    }
+    script = """
+import builtins, hashlib, json
+original_import = builtins.__import__
+def guarded_import(name, *args, **kwargs):
+    if name.split('.')[0] in ('tools', 'vibeqc', 'pyscf', 'cupy', 'torch'):
+        raise AssertionError('installed compiler imported ' + name)
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = guarded_import
+from vibeqc_compiler.common.paths import source_root
+from vibeqc_compiler.xc.split_hybrid_codegen import emit_split_hybrid_device
+try:
+    source_root()
+except ValueError:
+    pass
+else:
+    raise AssertionError('test must not resolve a checkout')
+print(json.dumps({name: hashlib.sha256(emit_split_hybrid_device(name).encode()).hexdigest()
+                 for name in ('M06-2X', 'MN15')}))
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        cwd=tmp_path,
+        env={**os.environ, "PYTHONPATH": str(tmp_path)},
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert json.loads(completed.stdout) == expected

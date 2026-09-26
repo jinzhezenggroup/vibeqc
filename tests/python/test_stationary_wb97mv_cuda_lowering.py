@@ -28,7 +28,7 @@ def test_wb97mv_stationary_cuda_uses_methodir_semilocal_graph(spin: str) -> None
     assert "kStationaryWb97mvExpressionIdentity" in source
     assert "work_sigma[1] = fmax(-sigma_average" in source
     assert "out.kinetic[0] = 0.5 * raw.feature_derivative[5]" in source
-    assert "stationary_functional == 2 || stationary_functional == 4" in source
+    assert "stationary_coefficients == 5" in source
     assert "r2scan_device" not in source
 
 
