@@ -1609,15 +1609,16 @@ def _complete_rks_cuda_gradient_diagnostic(
                         range_plan = plan_cuda(
                             block.weights, target, max_bytes=available
                         )
-                        if (
+                        candidate_peak = (
                             grid_plan.peak_bytes
                             + source_bytes
                             + range_plan.peak_bytes
-                            > max_device_bytes
-                        ):
+                        )
+                        if candidate_peak > max_device_bytes:
                             raise ValueError(
                                 "range-exchange CUDA weight workspace exceeds the device budget"
                             )
+                        peak = max(peak, candidate_peak)
                         feeds = {
                             "density_left": np.ascontiguousarray(
                                 state.density[:, ids[:, 0], ids[:, 2]]
@@ -1679,13 +1680,16 @@ def _complete_rks_cuda_gradient_diagnostic(
                 raise RuntimeError(
                     "WB97M-V candidate nonlocal pair provider did not execute on CUDA"
                 )
-            if (
+            nonlocal_peak = (
                 grid_plan.peak_bytes
                 + source_bytes
                 + nonlocal_geometry.device_workspace_bytes
-                > max_device_bytes
-            ):
+            )
+            if nonlocal_peak > max_device_bytes:
                 raise ValueError("WB97M-V nonlocal device workspace exceeds the budget")
+            peak = max(peak, nonlocal_peak)
+            if host_bound + nonlocal_geometry.host_workspace_bytes > max_host_bytes:
+                raise ValueError("WB97M-V nonlocal host workspace exceeds the budget")
             components["nonlocal_ao"] = np.array(
                 nonlocal_geometry.centers, copy=True
             )
@@ -1755,7 +1759,7 @@ def _complete_rks_cuda_gradient_diagnostic(
         # seven-source work reduces inside the stationary owner; ECP retains the
         # generated TensorIR sum because its two extra sources are separate owners.
         plan.reduction_program(atoms=na, sources=components)
-        if ecp:
+        if ecp or wb97mv_candidate:
             tp = tensor_plans["reduction"]
             if prepared is None:
                 peak = max(peak, grid_plan.peak_bytes + source_bytes + tp.peak_bytes)
@@ -1831,7 +1835,9 @@ def _complete_rks_cuda_gradient_diagnostic(
         stationary_weight_tensor_executions=0,
         stationary_weight_roundtrip_bytes=0,
         stationary_final_reduction=(
-            "generated-tensorir-v1" if ecp else "native-seven-source-device-sum-v1"
+            "generated-tensorir-v1"
+            if ecp or wb97mv_candidate
+            else "native-seven-source-device-sum-v1"
         ),
         stationary_state_dw_upload_bytes=(
             state.density.nbytes + state.weighted_density.nbytes
@@ -1890,8 +1896,16 @@ def _complete_rks_cuda_gradient_diagnostic(
         plan.identity,
         state.identity,
         MappingProxyType(work),
-        execution=("cuda-nine-source" if ecp else "cuda-seven-source")
-        + "/generated-device-stationary-weights-v1",
+        execution=(
+            "cuda-wb97mv-candidate"
+            if wb97mv_candidate
+            else ("cuda-nine-source" if ecp else "cuda-seven-source")
+        )
+        + (
+            "/generated-rsh-device-derivatives/native-vv10-cuda-pair-host-pullback-v1"
+            if wb97mv_candidate
+            else "/generated-device-stationary-weights-v1"
+        ),
     )
 
 
