@@ -359,8 +359,81 @@ def test_public_conventional_mp2_force_cpu_matches_resolved_finite_difference() 
     ) / (2 * step)
     assert abs(result.forces[0, 2] + finite) < 2e-6
     np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-9)
-    with pytest.raises(NotImplementedError, match=r"RI-MP2.*force"):
-        Calculator(method="mp2", density_fitting="cpu").singlepoint(
+
+
+def test_public_ri_mp2_force_cpu_matches_resolved_finite_difference() -> None:
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    calc = Calculator(method="mp2", device="cpu", density_fitting="cpu")
+    result = calc.singlepoint(atoms, properties=("energy", "forces"))
+    assert result.converged and result.forces.shape == (2, 3)
+    step = 1e-4
+    plus = [("H", (0, 0, -0.7 + step)), atoms[1]]
+    minus = [("H", (0, 0, -0.7 - step)), atoms[1]]
+    finite = (
+        calc.singlepoint(plus, properties=("energy",)).energy
+        - calc.singlepoint(minus, properties=("energy",)).energy
+    ) / (2 * step)
+    assert abs(result.forces[0, 2] + finite) < 2e-6
+    np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-9)
+    diag = result.correlation
+    assert diag.force_provenance_flags == 0x5
+    assert diag.response_operator_hash == "rhf-df-canonical-response-v1"
+    assert diag.response_workspace_allocation_count > 0
+    assert diag.derivative_workspace_bytes > 0
+    assert diag.planned_endpoint_peak_bytes <= diag.numeric_capacity_bytes
+
+
+def test_public_ri_mp2_force_cpu_water_directional_finite_difference() -> None:
+    meta, _ = load_fixture("water")
+    args = source_arguments(meta)
+    calc = Calculator(
+        method="mp2",
+        basis=args["basis"],
+        auxiliary_basis=args["auxiliary_basis"],
+        basis_representation=args["representation"],
+        density_fitting="cpu",
+        device="cpu",
+    )
+    result = calc.singlepoint(
+        args["atoms"], charge=args["charge"], properties=("energy", "forces")
+    )
+    positions = np.asarray([atom.position for atom in args["atoms"]], dtype=float)
+    atomic_numbers = [atom.atomic_number for atom in args["atoms"]]
+    direction = np.asarray(
+        [[0.4, -0.2, 0.1], [-0.1, 0.3, -0.2], [-0.3, -0.1, 0.1]],
+        dtype=float,
+    )
+    direction /= np.linalg.norm(direction)
+    step = 1e-4
+
+    def displaced(sign: float) -> list[tuple[int, tuple[float, float, float]]]:
+        geometry = positions + sign * step * direction
+        return [
+            (number, tuple(float(value) for value in position))
+            for number, position in zip(atomic_numbers, geometry, strict=True)
+        ]
+
+    finite = (
+        calc.singlepoint(
+            displaced(1.0), charge=args["charge"], properties=("energy",)
+        ).energy
+        - calc.singlepoint(
+            displaced(-1.0), charge=args["charge"], properties=("energy",)
+        ).energy
+    ) / (2 * step)
+    analytic = -float(np.vdot(result.forces, direction))
+    assert abs(analytic - finite) < 2e-6
+    np.testing.assert_allclose(result.forces.sum(axis=0), 0.0, atol=2e-8)
+
+
+@pytest.mark.skipif(
+    os.environ.get("VIBEQC_MP2_CUDA_TEST") != "1",
+    reason="requires explicitly allocated CUDA device and native library",
+)
+def test_public_cuda_ri_mp2_force_rejects_without_host_fallback() -> None:
+    atoms = [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))]
+    with pytest.raises(NotImplementedError, match=r"CUDA RI-MP2 analytic forces"):
+        Calculator(method="mp2", device="cuda", density_fitting="cuda").singlepoint(
             atoms, properties=("energy", "forces")
         )
 

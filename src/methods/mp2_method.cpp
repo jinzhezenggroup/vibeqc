@@ -63,9 +63,10 @@ class Mp2Prepared final : public PreparedCalculation {
       if (!cuda && context_.requested_backend != VIBEQC_BACKEND_CPU_REFERENCE)
         throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
                           "MP2 requires an explicit CPU or CUDA backend");
-      if (compute_forces && density_fitted_)
-        throw MethodError(VIBEQC_STATUS_NOT_IMPLEMENTED,
-                          "RI-MP2 analytic force is C2 work and is not implemented");
+      if (compute_forces && density_fitted_ && fitted_cuda_)
+        throw MethodError(
+            VIBEQC_STATUS_NOT_IMPLEMENTED,
+            "CUDA RI-MP2 analytic forces are not implemented; select the explicit CPU RI route");
 #if VIBEQC_HAS_CUDA
       std::unique_ptr<DeviceScope> device_scope;
       if (execution_cuda) device_scope = std::make_unique<DeviceScope>(context_.device_id);
@@ -106,10 +107,14 @@ class Mp2Prepared final : public PreparedCalculation {
         response_options.max_iterations = 200;
         response_options.max_workspace_bytes = budget_;
         force_diagnostic =
-            cuda ? mp2::conventional_force_cuda(ref, source, budget_, threshold_, 1e-10,
-                                                response_options, context_.device_id)
-                 : mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10,
-                                               response_options);
+            density_fitted_
+                ? mp2::density_fitted_force_cpu(ref, source, budget_, threshold_,
+                                                options_.density_fitting_relative_threshold, 1e-10,
+                                                response_options)
+                : (cuda ? mp2::conventional_force_cuda(ref, source, budget_, threshold_, 1e-10,
+                                                       response_options, context_.device_id)
+                        : mp2::conventional_force_cpu(ref, source, budget_, threshold_, 1e-10,
+                                                      response_options));
         result.forces = force_diagnostic->forces;
       }
       result.convergence = {hf.iterations, hf.energy_change, ref.commutator_residual, true};
@@ -154,9 +159,15 @@ class Mp2Prepared final : public PreparedCalculation {
         last_->measured_endpoint_peak_bytes = force_diagnostic->measured_endpoint_peak_bytes;
         last_->numeric_capacity_bytes =
             std::max(last_->numeric_capacity_bytes, last_->planned_endpoint_peak_bytes);
-        last_->force_provenance_flags = 0x7;
-        constexpr char response_hash[] = "rhf-canonical-response-v1";
-        std::copy_n(response_hash, sizeof(response_hash), last_->response_operator_hash);
+        last_->force_provenance_flags = density_fitted_ ? 0x5 : 0x7;
+        constexpr char conventional_response_hash[] = "rhf-canonical-response-v1";
+        constexpr char fitted_response_hash[] = "rhf-df-canonical-response-v1";
+        if (density_fitted_)
+          std::copy_n(fitted_response_hash, sizeof(fitted_response_hash),
+                      last_->response_operator_hash);
+        else
+          std::copy_n(conventional_response_hash, sizeof(conventional_response_hash),
+                      last_->response_operator_hash);
       }
       return result;
     } catch (const std::length_error& e) {
