@@ -5,13 +5,13 @@ import json
 from pathlib import Path
 
 import pytest
-from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 from tools.check_direct_hf_retirement import (
     DEFAULT_LEDGER,
     validate_retirement_ledger,
 )
 from tools.report_cuda_ownership import load_ledger
+from vibeqc_compiler.integral.weighted_eri_cuda import emit_low_order_weighted_header
 
 ROOT = Path(__file__).resolve().parents[2]
 
