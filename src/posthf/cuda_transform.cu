@@ -223,9 +223,11 @@ int posthf_cuda_download_v1(void* pointer, double* out, size_t elements, char* e
     ctx.check_device();
     if (elements != p.output) throw std::invalid_argument("MO download size mismatch");
     validate(p);
+    StreamDrain download_drain{ctx.stream};
     ctx.section(true, ctx.metrics.output_ms, [&] {
       cuda_check(cudaMemcpyAsync(out, p.result, elements * 8, cudaMemcpyDeviceToHost, ctx.stream));
     });
+    download_drain.active = false;
   });
 }
 int posthf_cuda_metrics_v1(void* pointer, Metrics* out, char* error, size_t size) {
@@ -427,11 +429,13 @@ int posthf_cuda_batch_download_v1(void* pointer, double* const* outputs, const s
       if (!outputs[request] || elements[request] != p.states[request].output)
         throw std::invalid_argument("MO batch download size mismatch");
     validate(p);
+    StreamDrain download_drain{ctx.stream};
     ctx.section(true, ctx.metrics.output_ms, [&] {
       for (size_t request = 0; request < request_count; ++request)
         cuda_check(cudaMemcpyAsync(outputs[request], p.states[request].result,
                                    elements[request] * 8, cudaMemcpyDeviceToHost, ctx.stream));
     });
+    download_drain.active = false;
   });
 }
 int posthf_cuda_batch_metrics_v1(void* pointer, Metrics* out, char* error, size_t size) {
