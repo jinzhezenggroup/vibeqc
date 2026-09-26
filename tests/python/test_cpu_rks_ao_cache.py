@@ -4,13 +4,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 RKS = (ROOT / "src/dft/rks.cpp").read_text(encoding="utf-8")
+METHOD = (ROOT / "src/methods/dft_method.cpp").read_text(encoding="utf-8")
 XC = (ROOT / "src/dft/xc.cpp").read_text(encoding="utf-8")
 
 
 def test_cpu_rks_ao_cache_is_bounded_and_has_streaming_fallback() -> None:
     assert "kCpuRksAoCacheMaximumBytes = 64ULL * 1024ULL * 1024ULL" in RKS
     assert "cache_bytes <= kCpuRksAoCacheMaximumBytes" in RKS
-    assert "ao_cache.emplace(dft::prepare_rks_ao_cache" in RKS
+    assert "owned_ao_cache.emplace(dft::prepare_rks_ao_cache" in RKS
     assert "if (!cache)" in XC
     assert "basis.evaluate(points.data() + 3 * begin" in XC
 
@@ -28,3 +29,10 @@ def test_pbe_rks_binds_cached_and_streamed_evaluators() -> None:
     binding = "RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached)"
     assert RKS.count(binding) >= 3
     assert "integrate_pbe_rks_with_tail_scaled_cached" in XC
+
+
+def test_prepared_cpu_pbe_owner_reuses_the_bounded_ao_cache() -> None:
+    assert "std::optional<dft::RksAoCache> cpu_rks_ao_cache_" in METHOD
+    assert "cpu_rks_ao_cache_.emplace(dft::prepare_rks_ao_cache" in METHOD
+    assert "cpu_rks_ao_cache_ ? &*cpu_rks_ao_cache_ : nullptr" in METHOD
+    assert "cpu_rks_ao_cache_ ? cpu_rks_ao_cache_->numeric_capacity_bytes() : 0" in METHOD
