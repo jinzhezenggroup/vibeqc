@@ -239,6 +239,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
   bool final_state_ready{}, final_frame_ready{};
   std::uint64_t owner{next_ks_owner()}, solve_epoch{}, generation{}, final_generation{};
   double previous_energy{std::numeric_limits<double>::infinity()};
+  double warm_energy{std::numeric_limits<double>::infinity()};
+  bool warm_energy_baseline{};
   unsigned pending_iterations{};
   std::array<std::uint64_t, kCudaKsChunkCapacity> pending_generations{};
   runtime::SolverRegionCudaExecutor solver_region_executor;
@@ -260,6 +262,8 @@ struct CudaKsPlan::Impl : KsStateStorage {
 
   void clear_warm_state() noexcept {
     warm_ready = false;
+    warm_energy = std::numeric_limits<double>::infinity();
+    warm_energy_baseline = false;
     invalidate_warm_orbitals();
   }
 
@@ -714,7 +718,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
         device_chunk_region.mark_failure("CUDA KS device region preparation failed");
       throw;
     }
-    previous_energy = std::numeric_limits<double>::infinity();
+    warm_energy_baseline = use_warm && !device_chunk_mode && std::isfinite(warm_energy);
+    previous_energy =
+        warm_energy_baseline ? warm_energy : std::numeric_limits<double>::infinity();
     is_active = true;
   }
 
@@ -896,7 +902,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
     is_failed = device_control.failed != 0;
     is_active = device_control.active != 0;
     output.converged = device_control.converged != 0;
-    if (output.converged && warm_updates) warm_ready = true;
+    if (output.converged && warm_updates) {
+      warm_ready = true;
+      warm_energy = output.energy;
+    }
     if (output.converged) {
       final_state_ready = true;
       final_generation = pending_generations[completed - 1U];
@@ -1217,7 +1226,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
         physical.residual < std::min(1e-9, options.density_tolerance) &&
         physical.density_change >= options.density_tolerance)
       stabilize_occupations = true;
-    const bool converged = output.iterations > 1 &&
+    const bool has_energy_history =
+        output.iterations > 1 || (output.iterations == 1 && warm_energy_baseline);
+    const bool converged = has_energy_history &&
                            output.energy_change < options.energy_tolerance &&
                            physical.density_change < options.density_tolerance &&
                            physical.residual < std::min(1e-9, options.density_tolerance) &&
@@ -1267,6 +1278,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
         check(cudaMemcpyAsync(warm, density, elements * sizeof(double), cudaMemcpyDeviceToDevice,
                               stream));
         warm_ready = true;
+        warm_energy = output.energy;
       } else if (is_active) {
         check(cudaMemcpyAsync(density, proposal, elements * sizeof(double),
                               cudaMemcpyDeviceToDevice, stream));
