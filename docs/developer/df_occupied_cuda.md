@@ -104,20 +104,23 @@ validation must be disabled for clean endpoint timing.
 
 `VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
 physical Fock evaluation. Unset/`auto` selects occupied K whenever the same
-resident or streamed work/capacity and provenance gates qualify it; `occupied`
+resident, single-fitted-B or streamed work/capacity and provenance gates qualify it; `occupied`
 keeps the explicit comparison override, and `dense` keeps the diagnostic dense
-fallback. For singleton generated streamed RHF, qualified exact final factors
+fallback. For singleton generated streamed or `packed-single` RHF, qualified exact final factors
 use occupied K automatically. A bounded strict-finalization correction may
 reconstruct an algebraic occupied factor after the owner/model/occupation and
-generation-advance checks. The streamed final projection is temporary and never
+generation-advance checks. Reconstruction must pass the same spectral,
+discarded-norm and full-density maximum/RMS gates as algebraic seed exchange.
+These private final projections are temporary and never
 grants a force-response projection lease; failed qualification, insufficient
 capacity or missing source storage retains the original bounded dense fallback.
-The singleton resident RHF route requires
+The exact retained-factor route requires
 an exact current final-state token, matching device generation/solver status,
 and entry-for-entry equality of the supplied and retained densities. It uses
 the full retained coefficients with RHF weight two. The strict physical Fock
-and final-state gates still run; changed densities or correction generations
-use dense K. No previous physical Fock is reused.
+and final-state gates still run. Other resident layouts keep dense K for
+correction generations. Missing/stale provenance and failed reconstruction
+retain the checked dense fallback. No previous physical Fock is reused.
 
 The seed iteration stores
 the exact C that constructs the next D before the convergence update. Each
@@ -349,19 +352,42 @@ the existing source, metric, library and SCF reservations.
 
 The explicit `packed-single` experiment retains only fitted B in the same
 lower-pair order. It generates raw A once in bounded panels during setup, but
-does not retain those panels. J/K reuses B; force response regenerates raw from
-the matching physical source rather than treating B as a raw owner. Validated
-canonical or strictly reconstructed corrected occupied factors can use a
-separately budgeted source-projected force response when explicitly requested
-with `VIBEQC_DF_RESPONSE_SPACE=occupied`. Automatic force response borrows
-fitted B instead: the source-projected occupied route regressed at 768 AOs
-despite reading raw A only once. Otherwise, the bounded general-density
-response remains exact. A constrained value allowance may
+does not retain those panels. J/K, including qualified final physical Fock
+validation, reuses B without claiming a raw-A owner. Validated canonical or
+strictly reconstructed corrected occupied factors can use a separately budgeted
+force response with `VIBEQC_DF_RESPONSE_SPACE=occupied`.
+`VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE=fitted` projects retained B in bounded
+auxiliary panels when the source/metric identity matches and the metric is
+full rank. The `raw` control instead regenerates raw A from the matching source;
+`VIBEQC_DF_SOURCE_PROJECTION=batched` batches its occupied projection.
+Automatic response keeps its bounded general-density route. A constrained value allowance may
 drop optional automatic occupied K scratch without dropping B; explicit
 occupied requests still require their full reservation. The global small-HF
 resource inventory currently supports `packed` but not `packed-single`.
 The [single-owner qualification note](../../.agents/notes/implemented/performance/2026-09-25-single-fitted-df-owner.md)
 records the numerical gates and complete-endpoint evidence.
+
+For the qualified full-rank fitted occupied consumer,
+`VIBEQC_DF_OCCUPIED_METRIC=auto|retained-root|spectral` controls the second
+metric transformation. `auto` and `retained-root` apply the plan's immutable
+symmetric inverse root `X` directly to the projected factors `S = C^T B C`:
+`U = S X`. This uses one GEMM into the existing disjoint retained staging
+interval, with no final factor copy. `spectral` retains the two-GEMM
+eigenvector/scale route for independent comparisons. Raw and rank-truncated
+consumers retain their original spectral response, including discarded-direction
+derivatives; they cannot borrow this root shortcut. The choice adds no device
+allocation and grants no raw final-projection lease. Trace counters report the
+actual root GEMMs, FLOPs, copy bytes and scratch allowance.
+
+`benchmarks/compare_df_direct_endpoint.py` qualifies complete energy/force
+endpoints for direct RHF and explicitly selected DF on identical geometry,
+orbital basis, convergence thresholds and host thread counts. Each method has
+its own independent GPU4PySCF oracle. Cold timing includes preparation; frozen
+post-cold and post-move replays retain iterations and the API's optional Fock
+count (`null` when unavailable); DF traces retain executed J/K work. `--interleave`
+alternates dense-final/spectral, occupied-final/spectral and occupied-final/root
+DF controls on the same density. Diagnostic traces are separate from clean
+timings. These controls are same-binary ablations, not historical-build results.
 
 `density_fitting_tile_plan(..., generated_source=True, pair_storage="packed")`
 queries these capacities without allocating a tensor or creating a CUDA context.

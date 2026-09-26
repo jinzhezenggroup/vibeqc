@@ -1,7 +1,7 @@
 """Compiler-owned batched occupied projection and small metric layout lowering.
 
 The runtime reuses the existing DF occupied adjoint; this module only emits
-three dense contractions. No runtime, oracle or device import is required.
+dense contractions. No runtime, oracle or device import is required.
 """
 
 from __future__ import annotations
@@ -68,6 +68,24 @@ inline cublasStatus_t df_occupied_to_metric_eigenbasis(
                      auxiliary, rank_squared, auxiliary, &one,
                      eigenvectors, auxiliary, projected, rank_squared,
                      &zero, eigenfactors, auxiliary);
+}
+
+/** Full-rank fitted B already contains one inverse root. Apply the immutable
+ * plan's symmetric second root to S[aux,occ,occ] in one contraction. This
+ * never constructs M^-1 or reconstructs a discarded metric direction.
+ * Input and output occupy disjoint, already charged response intervals.
+ */
+inline cublasStatus_t df_occupied_apply_metric_root(
+    cublasHandle_t blas, int auxiliary, int rank_squared,
+    const double* inverse_root, const double* projected, double* fitted) {
+  if (auxiliary <= 0 || rank_squared <= 0 || !inverse_root || !projected ||
+      !fitted || projected == fitted)
+    return CUBLAS_STATUS_INVALID_VALUE;
+  const double one = 1, zero = 0;
+  return cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N,
+                     rank_squared, auxiliary, auxiliary, &one,
+                     projected, rank_squared, inverse_root, auxiliary,
+                     &zero, fitted, rank_squared);
 }
 
 inline cublasStatus_t df_occupied_from_metric_eigenbasis(

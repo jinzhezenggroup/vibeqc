@@ -207,8 +207,12 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
     return VIBEQC_STATUS_SUCCESS;
   };
   // Keep the final-state ablation independent of the seed control.
+  // Final J/K consumes fitted B. A raw-A owner is needed only for the later
+  // response scratch lease, not for rebuilding the physical Fock from exact C.
   const bool packed = plan && df_packed_pairs(plan->value_storage.pairs) && plan->integral_source &&
-                      plan->packed_raw;
+                      plan->three_center;
+  const bool single_fitted =
+      packed && plan->value_storage.pairs == DfPairStorage::SymmetricLowerSingle;
   const bool source_dense_resident = plan && plan->integral_source && !packed &&
                                      plan->resident_raw_valid && plan->row_tile == plan->nbf &&
                                      plan->auxiliary_tile == plan->naux;
@@ -218,6 +222,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   const bool automatic = !policy || std::string(policy) == "auto";
   const bool explicit_occupied = policy && std::string(policy) == "occupied";
   const bool streamed_occupied = plan->streamed && (automatic || explicit_occupied);
+  const bool private_occupied = streamed_occupied || single_fitted;
   if (plan->streamed && !streamed_occupied) return fallback("streamed");
   if (plan->streamed && !plan->integral_source) return fallback("streamed_without_source");
   if (!plan->streamed && plan->integral_source && !packed && !source_dense_resident)
@@ -232,29 +237,29 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   if (!state->occupied_exchange) return fallback("occupied_exchange_disabled");
   if (density.size() != plan->matrix_elements || !finite_values(density))
     return fallback("invalid_density");
-  if (automatic || streamed_occupied) {
+  if (automatic || private_occupied) {
     if (state->final_alpha_occupied.size() != 1 || !state->final_beta_occupied.empty() ||
         state->final_alpha_occupied[0] <= 0)
       return fallback("invalid_final_occupation");
-    // The streamed projection is private to this K build. Exact final C/D
-    // identity is checked below, but it grants no response projection lease.
-    if (streamed_occupied ? !qualified_value_rhf_exchange(*plan, state->final_alpha_occupied[0])
-                          : !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
+    // Single-B and streamed values share value-only capacity qualification.
+    // Neither grants the raw-owner response projection lease below.
+    if (private_occupied ? !qualified_value_rhf_exchange(*plan, state->final_alpha_occupied[0])
+                         : !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
       return fallback("work_or_capacity_policy");
   }
   CudaDfFinalStateToken current;
   auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_INVALID_ARGUMENT) return status;
   const bool exact_retained = status == VIBEQC_STATUS_SUCCESS && expected == current;
-  const bool corrected_streamed = status == VIBEQC_STATUS_SUCCESS && !exact_retained &&
-                                  streamed_occupied &&
-                                  bounded_corrected_final_rhf_identity(current, expected);
-  if (!exact_retained && !corrected_streamed) {
+  const bool corrected_private = status == VIBEQC_STATUS_SUCCESS && !exact_retained &&
+                                 private_occupied &&
+                                 bounded_corrected_final_rhf_identity(current, expected);
+  if (!exact_retained && !corrected_private) {
     detail.clear();
     return fallback("stale_final_state_token");
   }
   const auto bytes = plan->matrix_elements * sizeof(double);
-  if (corrected_streamed) {
+  if (corrected_private) {
     TraceOperation trace(
         "final_state_corrected_jk", plan->stream,
         {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
@@ -380,7 +385,8 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
   trace_counter("explicit_synchronizations", 1);
   // The projection and final coefficients refer to precisely this density
   // generation. Publishing after the successful drain excludes partial K.
-  if (!plan->streamed && plan->resident_exchange_enabled && (plan->resident_raw_valid || packed) &&
+  if (!plan->streamed && !single_fitted && plan->resident_exchange_enabled &&
+      (plan->resident_raw_valid || (packed && plan->packed_raw)) &&
       (!packed || current.identity.occupied[0] <= plan->value_storage.rank_capacity) &&
       plan->metric_full_rank[0] && current.identity.occupied[0] &&
       plan->naux * current.identity.occupied[0] <=

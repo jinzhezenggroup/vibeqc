@@ -1,0 +1,27 @@
+{
+  "schema": "vibeqc.df-direct-independent-reference.v1",
+  "record_parts": {
+    "cases": [
+      {
+        "path": "reference-384-direct.json",
+        "bytes": 30128,
+        "sha256": "879dd26cb2e5f768ba37ea379094459e128f29394ff3065279a3e4c12070e019"
+      },
+      {
+        "path": "reference-384-df.json",
+        "bytes": 30168,
+        "sha256": "95844bd8b7f025bdcccc9949569d85e0c58a6ea69aa0412cc0c27e85c89f4a30"
+      },
+      {
+        "path": "reference-768-direct.json",
+        "bytes": 58651,
+        "sha256": "977a0f8b921275643efe5a57da3d68834170aad087c56de06c235ba80f45a9ee"
+      },
+      {
+        "path": "reference-768-df.json",
+        "bytes": 58676,
+        "sha256": "6471e2768e92087c9af452d36b6ae984bd4ebca0b8f338e8c8315016341632bd"
+      }
+    ]
+  }
+}

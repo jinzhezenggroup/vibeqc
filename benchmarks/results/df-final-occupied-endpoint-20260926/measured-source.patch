@@ -1,0 +1,1158 @@
+diff --git a/.agents/notes/implemented/performance/2026-09-26-df-final-occupied-endpoint.md b/.agents/notes/implemented/performance/2026-09-26-df-final-occupied-endpoint.md
+new file mode 100644
+index 00000000..cc4c83cb
+--- /dev/null
++++ b/.agents/notes/implemented/performance/2026-09-26-df-final-occupied-endpoint.md
+@@ -0,0 +1,95 @@
++# Decision: qualify final occupied K independently of a raw response lease
++
++Status: implemented
++Date: 2026-09-26
++
++## Problem
++
++The single packed fitted-B owner admitted occupied SCF K but its final physical
++Fock validation still required `packed_raw`. This conflated value execution
++with the stronger raw-owner contract needed to lend a final projection to
++force response. An earlier 768-AO/3712-auxiliary moved-warm trace spent 4.04 s
++in one final dense K, compared with about 0.85 s per iterative occupied K.
++
++The fitted occupied force consumer also repeated two spectral products to
++apply a second inverse metric root, although the immutable value plan already
++owned that symmetric root. This did not repeat the expensive AO transform, but
++still performed avoidable rank-squared/auxiliary work and copied the factors.
++
++## Decision
++
++Use value-only work/capacity qualification for single-B final K. Exact retained
++coefficients still require the matching final token, device generation and
++solver status, and entry-for-entry density equality. The existing bounded
++corrected streamed path also admits single-B: owner, model, solve epoch and
++occupation must match, both generations must advance together by at most 16,
++and the reconstructed factor must pass spectral, discarded-norm and complete
++maximum/RMS density checks. Algebraic factors carry occupation once, with
++exchange weight one. Strict physical Fock/final-state validation still runs.
++
++Keep the raw projection lease separate. Single-B final K never publishes it,
++including after successful correction. Every final-K attempt first revokes an
++old lease, and outstanding corrected uploads/contractions drain on failure.
++
++For an already qualified full-rank fitted occupied response, compute `U = S X`
++using the existing symmetric root X and compiler-emitted GEMM. It replaces two
++spectral GEMMs and one device copy with one GEMM into disjoint existing staging.
++Raw and truncated consumers keep the spectral response. The `spectral` control
++retains the old arithmetic for same-binary ablations; controls are included in
++checkpoint/resource provenance. No new response allocation is introduced.
++
++## Rejected alternatives
++
++- Broadening the raw-resident qualification would falsely authorize a raw-A
++  response lease for a plan that owns only B.
++- Reusing the previous physical Fock would omit required final validation.
++- Treating arbitrary corrected generations as current would admit detached
++  factors; the bounded identity and density reconstruction proof remain.
++- Promoting PR #939's factorized derivative fusion has no demonstrated endpoint
++  benefit in its retained practical-auxiliary or 768-AO experiments. It changes
++  the derivative consumer, not final K, and needs requalification on the newer
++  fitted response path before any promotion.
++- Recovering discarded raw metric directions from fitted B is invalid. The
++  shortcut is restricted to the existing full-rank fitted consumer.
++
++## Invariants
++
++All complete endpoint samples, including cold, moved and diagnostic replays,
++pass independent energy/force gates. DF and direct have different Hamiltonians,
++so each is compared with its own independent reference. Timing comparisons use
++identical orbitals, coordinates, convergence controls, properties and host
++threads; they retain actual iteration and Fock counts. Instrumented trace
++replays are excluded from clean timings. Warm DF ablations alternate order
++from one frozen density within one owner.
++
++## Evidence
++
++The reproducible runner is `benchmarks/compare_df_direct_endpoint.py`.
++Host lowering tests compare root layouts and full response adjoints with
++independent dense algebra; native tests inject token, density, generation and
++capacity failures and compare accepted J/K with a CPU raw-integral oracle.
++Molecular GPU tests cover both orbital-sized and practical JKFIT auxiliaries,
++forced correction, dense/spectral controls, cold/warm/moved states and response
++lease/capacity counters. The qualification receipt records measured endpoints,
++source/library identity, independent errors and executed work.
++
++## Consequences
++
++The explicit single-B/fitted route becomes cheaper without broadening the
++default storage or response selector. Its remaining occupied exchange and
++response still contain substantial dense FP64 work; asymptotic DF scaling alone
++is not an endpoint speed guarantee against screened direct J/K.
++
++## Revisit when
++
++A compatible final fitted projection lease can remove repeated occupied
++projection with explicit layout, lifetime and budget ownership, or a derivative
++consumer demonstrates an independently accurate complete-endpoint win. Revisit
++root selection if conditioning gates or measured larger-size performance expose
++a regression; the spectral path remains available.
++
++## References
++
++- [Current occupied CUDA contracts](../../../../docs/developer/df_occupied_cuda.md)
++- [PR #939 assessment](https://github.com/jinzhezenggroup/vibeqc/pull/939#issuecomment-5844952104)
++- [Previous fitted-response acceptance](https://github.com/jinzhezenggroup/vibeqc/pull/1371#pullrequestreview-5324823011)
+diff --git a/benchmarks/compare_df_direct_endpoint.py b/benchmarks/compare_df_direct_endpoint.py
+new file mode 100644
+index 00000000..0be6e434
+--- /dev/null
++++ b/benchmarks/compare_df_direct_endpoint.py
+@@ -0,0 +1,346 @@
++"""Compare complete direct/DF RHF force endpoints under one scientific protocol.
++
++Run reference and native processes separately inside a finite Slurm allocation.
++Each approximation has its own independent GPU4PySCF energy/force oracle. DF
++ablations share one frozen post-cold (or post-move) density and alternate order;
++trace replays are separate from clean wall times. This is an explicit packed-B
++qualification, not a claim about the default DF planner or GPU4PySCF latency.
++"""
++
++from __future__ import annotations
++
++import argparse
++import gc
++import hashlib
++import importlib.metadata
++import json
++import os
++import subprocess
++import time
++from pathlib import Path
++from typing import Any
++
++import numpy as np
++
++from benchmarks._cases import benchmark_cases
++from benchmarks._retention import raw_output_path
++from benchmarks.compare_gpu4pyscf_batch import (
++    _configure_reference_scf,
++    load_comparison_basis,
++    native_build_metadata,
++    require_tuned_native_build,
++    scaled_geometries,
++)
++from benchmarks.df_component_ledger import read_trace
++
++CASES = {
++    96: "water-tetramer-def2-svp-spherical",
++    384: "water-hexadecamer-2s4-def2-svp-spherical",
++    768: "water-32mer-4s4-def2-svp-spherical",
++}
++CONTROLS = {
++    "df-baseline": ("dense", "spectral"),
++    "df-final-k": ("auto", "spectral"),
++    "df": ("auto", "auto"),
++}
++AUXILIARY = Path(
++    "benchmarks/results/issue206-practical-auxiliary/identity/cc-pvdz-jkfit.json"
++)
++
++
++def select_control(route: str) -> None:
++    """Change only final-K/response arithmetic; retain the same value/SCF owner."""
++    if route in CONTROLS:
++        final, metric = CONTROLS[route]
++        os.environ["VIBEQC_DF_FINAL_EXCHANGE"] = final
++        os.environ["VIBEQC_DF_OCCUPIED_METRIC"] = metric
++
++
++def check_endpoint(item: Any, reference: dict) -> dict:
++    """Gate every endpoint, including diagnostic and cold calls, without broadcasting."""
++    actual = np.asarray(item.forces)
++    expected = np.asarray(reference["forces"])
++    valid = (
++        item.succeeded
++        and item.converged
++        and reference["converged"]
++        and actual.shape == expected.shape
++        and np.isfinite(actual).all()
++        and np.isfinite(expected).all()
++        and np.isfinite(item.energy)
++        and np.isfinite(reference["energy"])
++    )
++    energy_error = abs(item.energy - reference["energy"]) if valid else None
++    force_error = float(np.max(np.abs(actual - expected))) if valid else None
++    return {
++        "energy_error": energy_error,
++        "force_error": force_error,
++        "gate": bool(valid and energy_error <= 1e-8 and force_error <= 1e-7),
++    }
++
++
++def main() -> None:
++    """Write each completed endpoint before proceeding, preserving failed evidence."""
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("mode", choices=("reference", "native"))
++    parser.add_argument("--aos", type=int, choices=CASES, required=True)
++    parser.add_argument("--route", choices=("direct", *CONTROLS), required=True)
++    parser.add_argument("--repeats", type=int, default=5)
++    parser.add_argument(
++        "--interleave",
++        action="store_true",
++        help="alternate all DF controls on one frozen density",
++    )
++    parser.add_argument("--reference", type=Path)
++    parser.add_argument("--output", type=raw_output_path, required=True)
++    args = parser.parse_args()
++    if not os.environ.get("SLURM_JOB_ID"):
++        parser.error("GPU work requires a finite Slurm allocation")
++    if args.repeats < 1 or (args.interleave and args.route == "direct"):
++        parser.error("positive repeats and a DF route are required for interleaving")
++    output = Path(args.output)
++    output.mkdir(parents=True, exist_ok=False)
++    is_df = args.route != "direct"
++    case = benchmark_cases()[CASES[args.aos]]
++    native_aux, reference_aux = load_comparison_basis(
++        AUXILIARY, case, role="auxiliary", compute_forces=True
++    )
++    original = scaled_geometries(case.atoms, 1)[0]
++    moved = [
++        (z, tuple(np.asarray(x) + ((0, 0, 0.001) if i == 1 else (0, 0, 0))))
++        for i, (z, x) in enumerate(original)
++    ]
++    geometries = [original, moved]
++    protocol = {
++        "case": CASES[args.aos],
++        "aos": args.aos,
++        "method": "rhf",
++        "orbital_basis": case.pyscf_basis,
++        "representation": "spherical",
++        "geometries_bohr": geometries,
++        "properties": ["energy", "forces"],
++        "density_fitting": is_df,
++        "auxiliary_sha256": hashlib.sha256(AUXILIARY.read_bytes()).hexdigest()
++        if is_df
++        else None,
++        "energy_tolerance": 1e-12,
++        "density_tolerance": 1e-10,
++        "reference_gradient_tolerance": 1e-10,
++        "screening_tolerance": 1e-12,
++        "reference_direct_scf_tolerance": 1e-14,
++        "max_iterations": 100,
++        "energy_gate": 1e-8,
++        "force_gate": 1e-7,
++        "threads": {
++            k: os.environ.get(k)
++            for k in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS")
++        },
++    }
++    # JSON canonicalization also normalizes the geometry's numpy scalar/tuple layout.
++    protocol = json.loads(json.dumps(protocol))
++    identity = {
++        "protocol": protocol,
++        "mode": args.mode,
++        "route": args.route,
++        "slurm_job_id": os.environ["SLURM_JOB_ID"],
++        "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
++        "source_revision": subprocess.check_output(
++            ["git", "rev-parse", "HEAD"], text=True
++        ).strip(),
++        "source_status": subprocess.check_output(
++            ["git", "status", "--porcelain"], text=True
++        ),
++        "packages": {p: importlib.metadata.version(p) for p in ("numpy", "pyscf")},
++        "cold_definition": "prepare_batch plus first complete execute; calculator/library loading excluded",
++        "warm_definition": "fixed engine-local post-cold or post-move density; updates disabled",
++        "fock_build_count_contract": "null means the native API does not export a count; DF diagnostic traces separately retain actual SCF/final-K work",
++        "ablations": CONTROLS,
++    }
++    records = []
++
++    def save(row: dict) -> None:
++        records.append(row)
++        (output / "results.json").write_text(
++            json.dumps({"identity": identity, "records": records}, indent=2) + "\n"
++        )
++        print(
++            json.dumps(
++                {k: v for k, v in row.items() if k not in ("forces", "metric", "trace")}
++            ),
++            flush=True,
++        )
++
++    if args.mode == "reference":
++        import cupy as cp
++        import gpu4pyscf
++        from pyscf import gto, scf
++
++        identity["packages"]["gpu4pyscf"] = gpu4pyscf.__version__
++        for index, geometry in enumerate(geometries):
++            mol = gto.M(
++                atom=geometry,
++                basis=case.pyscf_basis,
++                unit="Bohr",
++                cart=False,
++                verbose=0,
++            )
++            mf = scf.RHF(mol)
++            if is_df:
++                mf = mf.density_fit(auxbasis=reference_aux)
++            mf = mf.to_gpu()
++            _configure_reference_scf(
++                mf,
++                energy_tolerance=1e-12,
++                gradient_tolerance=1e-10,
++                max_iterations=100,
++                full_fock=True,
++                density_fitting=is_df,
++            )
++            energy = float(mf.kernel())
++            gradient = mf.nuc_grad_method()
++            if is_df:
++                gradient.auxbasis_response = True
++            forces = -gradient.kernel()
++            if hasattr(forces, "get"):
++                forces = forces.get()
++            cp.cuda.get_current_stream().synchronize()
++            save(
++                {
++                    "geometry": index,
++                    "energy": energy,
++                    "forces": np.asarray(forces).tolist(),
++                    "converged": bool(mf.converged),
++                    "iterations": int(getattr(mf, "cycles", -1)),
++                }
++            )
++            if (
++                not mf.converged
++                or not np.isfinite(energy)
++                or not np.isfinite(forces).all()
++            ):
++                raise RuntimeError("independent reference failed")
++            del gradient, mf, mol, forces
++            gc.collect()
++            cp.get_default_memory_pool().free_all_blocks()
++        return
++
++    from vibeqc import Calculator
++
++    if args.reference is None:
++        parser.error("native mode requires --reference results.json")
++    oracle = json.loads(args.reference.read_text())
++    if (
++        oracle["identity"]["protocol"] != protocol
++        or oracle["identity"]["mode"] != "reference"
++    ):
++        raise ValueError("reference protocol/geometry differs")
++    identity["reference_sha256"] = hashlib.sha256(
++        args.reference.read_bytes()
++    ).hexdigest()
++    for name in list(os.environ):
++        if name.startswith("VIBEQC_DF_"):
++            del os.environ[name]
++    if is_df:
++        for name, value in {
++            "VALUE_STORAGE": "packed-single",
++            "EXCHANGE": "occupied",
++            "RESPONSE_SPACE": "occupied",
++            "OCCUPIED_RESPONSE_SOURCE": "fitted",
++            "SOURCE_DERIVATIVE_SCHEDULE": "qualify",
++            "RESPONSE_ALGEBRA": "blas",
++            "RESPONSE_BUDGET_BYTES": str(
++                {96: 64 << 20, 384: 1_000_000_000, 768: 5_000_000_000}[args.aos]
++            ),
++        }.items():
++            os.environ["VIBEQC_DF_" + name] = value
++    select_control(args.route)
++    identity["environment"] = {
++        k: v for k, v in os.environ.items() if k.startswith("VIBEQC_")
++    }
++    calc = Calculator(
++        device="cuda",
++        method="rhf",
++        basis=case.vibeqc_basis,
++        basis_representation="spherical",
++        auxiliary_basis=native_aux if is_df else None,
++        density_fitting="cuda" if is_df else "none",
++        density_fitting_memory_budget_bytes=0,
++        energy_tolerance=1e-12,
++        density_tolerance=1e-10,
++        screening_tolerance=1e-12,
++        max_iterations=100,
++    )
++    identity["native_build"] = native_build_metadata(calc)
++    require_tuned_native_build(identity["native_build"])
++    start = time.perf_counter()
++    owner = calc.prepare_batch([original], warm_start=True)
++    prepare_seconds = time.perf_counter() - start
++
++    with owner:
++
++        def execute(
++            phase: str,
++            index: int,
++            route: str,
++            repeat: int = 0,
++            diagnostic: bool = False,
++        ) -> None:
++            select_control(route)
++            coords = None if index == 0 else [np.asarray([x for _, x in moved])]
++            trace = output / f"{phase}-{route}-{repeat}.jsonl"
++            if diagnostic:
++                os.environ["VIBEQC_DF_TRACE"] = str(trace)
++            start = time.perf_counter()
++            item = owner.execute(coords, strict=False).items[0]
++            seconds = time.perf_counter() - start
++            os.environ.pop("VIBEQC_DF_TRACE", None)
++            row = {
++                "phase": phase,
++                "route": route,
++                "repeat": repeat,
++                "diagnostic": diagnostic,
++                "seconds": seconds,
++                "prepare_seconds": prepare_seconds if phase == "cold" else 0,
++                "complete_seconds": seconds
++                + (prepare_seconds if phase == "cold" else 0),
++                "energy": item.energy,
++                "forces": item.forces.tolist() if item.forces is not None else None,
++                "converged": item.converged,
++                "status": item.status,
++                "detail": item.status_message,
++                "iterations": item.iterations,
++                "fock_builds": item.fock_builds,
++                **check_endpoint(item, oracle["records"][index]),
++            }
++            if is_df:
++                row["metric"] = [
++                    d.to_dict() for d in owner.last_density_fitting_metric_diagnostics()
++                ]
++            if diagnostic:
++                row["trace"] = read_trace(trace)
++            save(row)
++            if not row["gate"]:
++                raise RuntimeError(f"independent endpoint gate failed: {phase}/{route}")
++
++        routes = list(CONTROLS) if args.interleave else [args.route]
++        for index, phase in enumerate(("cold", "moved")):
++            owner.set_warm_start_updates(True)
++            execute(phase, index, args.route)
++            owner.set_warm_start_updates(False)
++            for repeat in range(args.repeats):
++                for route in routes if repeat % 2 == 0 else routes[::-1]:
++                    execute(
++                        "warm" if index == 0 else "moved-warm", index, route, repeat
++                    )
++            if is_df:
++                for route in routes:
++                    execute(
++                        "trace-warm" if index == 0 else "trace-moved-warm",
++                        index,
++                        route,
++                        diagnostic=True,
++                    )
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/docs/developer/df_occupied_cuda.md b/docs/developer/df_occupied_cuda.md
+index de13dc61..470340c2 100644
+--- a/docs/developer/df_occupied_cuda.md
++++ b/docs/developer/df_occupied_cuda.md
+@@ -104,20 +104,23 @@ validation must be disabled for clean endpoint timing.
+ 
+ `VIBEQC_DF_FINAL_EXCHANGE=dense|occupied|auto` independently controls final
+ physical Fock evaluation. Unset/`auto` selects occupied K whenever the same
+-resident or streamed work/capacity and provenance gates qualify it; `occupied`
++resident, single-fitted-B or streamed work/capacity and provenance gates qualify it; `occupied`
+ keeps the explicit comparison override, and `dense` keeps the diagnostic dense
+-fallback. For singleton generated streamed RHF, qualified exact final factors
++fallback. For singleton generated streamed or `packed-single` RHF, qualified exact final factors
+ use occupied K automatically. A bounded strict-finalization correction may
+ reconstruct an algebraic occupied factor after the owner/model/occupation and
+-generation-advance checks. The streamed final projection is temporary and never
++generation-advance checks. Reconstruction must pass the same spectral,
++discarded-norm and full-density maximum/RMS gates as algebraic seed exchange.
++These private final projections are temporary and never
+ grants a force-response projection lease; failed qualification, insufficient
+ capacity or missing source storage retains the original bounded dense fallback.
+-The singleton resident RHF route requires
++The exact retained-factor route requires
+ an exact current final-state token, matching device generation/solver status,
+ and entry-for-entry equality of the supplied and retained densities. It uses
+ the full retained coefficients with RHF weight two. The strict physical Fock
+-and final-state gates still run; changed densities or correction generations
+-use dense K. No previous physical Fock is reused.
++and final-state gates still run. Other resident layouts keep dense K for
++correction generations. Missing/stale provenance and failed reconstruction
++retain the checked dense fallback. No previous physical Fock is reused.
+ 
+ The seed iteration stores
+ the exact C that constructs the next D before the convergence update. Each
+@@ -349,20 +352,43 @@ the existing source, metric, library and SCF reservations.
+ 
+ The explicit `packed-single` experiment retains only fitted B in the same
+ lower-pair order. It generates raw A once in bounded panels during setup, but
+-does not retain those panels. J/K reuses B; force response regenerates raw from
+-the matching physical source rather than treating B as a raw owner. Validated
+-canonical or strictly reconstructed corrected occupied factors can use a
+-separately budgeted source-projected force response when explicitly requested
+-with `VIBEQC_DF_RESPONSE_SPACE=occupied`. Automatic force response borrows
+-fitted B instead: the source-projected occupied route regressed at 768 AOs
+-despite reading raw A only once. Otherwise, the bounded general-density
+-response remains exact. A constrained value allowance may
++does not retain those panels. J/K, including qualified final physical Fock
++validation, reuses B without claiming a raw-A owner. Validated canonical or
++strictly reconstructed corrected occupied factors can use a separately budgeted
++force response with `VIBEQC_DF_RESPONSE_SPACE=occupied`.
++`VIBEQC_DF_OCCUPIED_RESPONSE_SOURCE=fitted` projects retained B in bounded
++auxiliary panels when the source/metric identity matches and the metric is
++full rank. The `raw` control instead regenerates raw A from the matching source;
++`VIBEQC_DF_SOURCE_PROJECTION=batched` batches its occupied projection.
++Automatic response keeps its bounded general-density route. A constrained value allowance may
+ drop optional automatic occupied K scratch without dropping B; explicit
+ occupied requests still require their full reservation. The global small-HF
+ resource inventory currently supports `packed` but not `packed-single`.
+ The [single-owner qualification note](../../.agents/notes/implemented/performance/2026-09-25-single-fitted-df-owner.md)
+ records the numerical gates and complete-endpoint evidence.
+ 
++For the qualified full-rank fitted occupied consumer,
++`VIBEQC_DF_OCCUPIED_METRIC=auto|retained-root|spectral` controls the second
++metric transformation. `auto` and `retained-root` apply the plan's immutable
++symmetric inverse root `X` directly to the projected factors `S = C^T B C`:
++`U = S X`. This uses one GEMM into the existing disjoint retained staging
++interval, with no final factor copy. `spectral` retains the two-GEMM
++eigenvector/scale route for independent comparisons. Raw and rank-truncated
++consumers retain their original spectral response, including discarded-direction
++derivatives; they cannot borrow this root shortcut. The choice adds no device
++allocation and grants no raw final-projection lease. Trace counters report the
++actual root GEMMs, FLOPs, copy bytes and scratch allowance.
++
++`benchmarks/compare_df_direct_endpoint.py` qualifies complete energy/force
++endpoints for direct RHF and explicitly selected DF on identical geometry,
++orbital basis, convergence thresholds and host thread counts. Each method has
++its own independent GPU4PySCF oracle. Cold timing includes preparation; frozen
++post-cold and post-move replays retain iterations and the API's optional Fock
++count (`null` when unavailable); DF traces retain executed J/K work. `--interleave`
++alternates dense-final/spectral, occupied-final/spectral and occupied-final/root
++DF controls on the same density. Diagnostic traces are separate from clean
++timings. These controls are same-binary ablations, not historical-build results.
++
+ `density_fitting_tile_plan(..., generated_source=True, pair_storage="packed")`
+ queries these capacities without allocating a tensor or creating a CUDA context.
+ Its `occupied` argument is the complete-U reservation and may be zero for a
+diff --git a/python/vibeqc/resources_hf.py b/python/vibeqc/resources_hf.py
+index e50a9d66..763b1ea4 100644
+--- a/python/vibeqc/resources_hf.py
++++ b/python/vibeqc/resources_hf.py
+@@ -51,6 +51,7 @@ _CUDA_SCHEDULE_EXTENSION_VARIABLES = (
+     "VIBEQC_DF_DIIS_DOTS",
+     "VIBEQC_DF_RESPONSE_STORAGE",
+     "VIBEQC_DF_RESPONSE_SPACE",
++    "VIBEQC_DF_OCCUPIED_METRIC",
+ )
+ 
+ # These runtime switches are read by CUDA HF/DF policy code. Preserve even
+diff --git a/python/vibeqc_compiler/method/df_occupied_response_cuda.py b/python/vibeqc_compiler/method/df_occupied_response_cuda.py
+index 662384a6..1bc880f8 100644
+--- a/python/vibeqc_compiler/method/df_occupied_response_cuda.py
++++ b/python/vibeqc_compiler/method/df_occupied_response_cuda.py
+@@ -1,7 +1,7 @@
+ """Compiler-owned batched occupied projection and small metric layout lowering.
+ 
+ The runtime reuses the existing DF occupied adjoint; this module only emits
+-three dense contractions. No runtime, oracle or device import is required.
++dense contractions. No runtime, oracle or device import is required.
+ """
+ 
+ from __future__ import annotations
+@@ -70,6 +70,24 @@ inline cublasStatus_t df_occupied_to_metric_eigenbasis(
+                      &zero, eigenfactors, auxiliary);
+ }
+ 
++/** Full-rank fitted B already contains one inverse root. Apply the immutable
++ * plan's symmetric second root to S[aux,occ,occ] in one contraction. This
++ * never constructs M^-1 or reconstructs a discarded metric direction.
++ * Input and output occupy disjoint, already charged response intervals.
++ */
++inline cublasStatus_t df_occupied_apply_metric_root(
++    cublasHandle_t blas, int auxiliary, int rank_squared,
++    const double* inverse_root, const double* projected, double* fitted) {
++  if (auxiliary <= 0 || rank_squared <= 0 || !inverse_root || !projected ||
++      !fitted || projected == fitted)
++    return CUBLAS_STATUS_INVALID_VALUE;
++  const double one = 1, zero = 0;
++  return cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N,
++                     rank_squared, auxiliary, auxiliary, &one,
++                     projected, rank_squared, inverse_root, auxiliary,
++                     &zero, fitted, rank_squared);
++}
++
+ inline cublasStatus_t df_occupied_from_metric_eigenbasis(
+     cublasHandle_t blas, int auxiliary, int rank_squared,
+     const double* eigenvectors, const double* eigenfactors, double* projected) {
+diff --git a/src/scf/cuda/df_response_weights.cu b/src/scf/cuda/df_response_weights.cu
+index 37e26a70..3f2acca5 100644
+--- a/src/scf/cuda/df_response_weights.cu
++++ b/src/scf/cuda/df_response_weights.cu
+@@ -1,5 +1,8 @@
+ #include <algorithm>
++#include <cstdlib>
+ #include <limits>
++#include <stdexcept>
++#include <string_view>
+ 
+ #include "generated_df_hf_response.cuh"
+ #include "generated_symmetric_matrix_function.cuh"
+@@ -603,6 +606,16 @@ static cudaError_t contract_occupied_response(
+   auto* transformed_projected = buffers.staging_weights;
+   const auto* packed_raw = buffers.resident_packed_raw.data;
+   const auto* fitted_occupied = buffers.fitted_occupied_source;
++  // The spectral route remains an explicit numerical/performance control.
++  // Only the qualified fitted/full-rank consumer may reuse this forward root;
++  // raw and truncated response retain their original eigenfactor ordering.
++  const char* metric_control = std::getenv("VIBEQC_DF_OCCUPIED_METRIC");
++  const std::string_view metric_policy = metric_control ? metric_control : "auto";
++  if (metric_policy != "auto" && metric_policy != "spectral" && metric_policy != "retained-root")
++    throw std::invalid_argument(
++        "VIBEQC_DF_OCCUPIED_METRIC must be auto, spectral or retained-root");
++  const bool retained_root = fitted_occupied && metric.full_rank && metric.inverse_square_root &&
++                             metric_policy != "spectral";
+   const auto ni = static_cast<int>(n), ai = static_cast<int>(a), mi = static_cast<int>(matrix);
+   const double one = 1, zero = 0;
+   const auto checked = [](cublasStatus_t status) {
+@@ -866,7 +879,12 @@ static cudaError_t contract_occupied_response(
+       runtime::cuda_trace::TraceRegion project("exchange_response_occupied_weight_gemm", stream);
+       if (metric.full_rank) {
+         auto* fitted = transformed_projected + retained;
+-        if (fitted_occupied) {
++        if (retained_root) {
++          checked(generated::df_occupied_apply_metric_root(
++              blas, ai, rri, metric.inverse_square_root, projected, fitted));
++          runtime::cuda_trace::trace_counter("response_fitted_occupied_metric_root_gemms", 1);
++          runtime::cuda_trace::trace_counter("response_retained_metric_root", 1);
++        } else if (fitted_occupied) {
+           checked(generated::df_occupied_to_metric_eigenbasis(blas, ai, rri, metric.eigenvectors,
+                                                               projected, fitted));
+           cuda_df::launch_scale_metric_projection(stream, a, rr, metric.eigenvalues, true, fitted);
+@@ -885,13 +903,17 @@ static cudaError_t contract_occupied_response(
+         }
+         // Retain each spin's final factors in the original disjoint staging
+         // interval. The next spin reuses projected; it cannot overwrite them.
+-        error = cudaMemcpyAsync(fitted, projected, rr * a * sizeof(double),
+-                                cudaMemcpyDeviceToDevice, stream);
+-        if (error != cudaSuccess) return error;
+-        runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms", 2);
+-        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops", 4 * rr * aa);
+-        runtime::cuda_trace::trace_counter("response_occupied_factor_copy_bytes",
+-                                           rr * a * sizeof(double));
++        if (!retained_root) {
++          error = cudaMemcpyAsync(fitted, projected, rr * a * sizeof(double),
++                                  cudaMemcpyDeviceToDevice, stream);
++          if (error != cudaSuccess) return error;
++          runtime::cuda_trace::trace_counter("response_occupied_factor_copy_bytes",
++                                             rr * a * sizeof(double));
++        }
++        runtime::cuda_trace::trace_counter("response_occupied_inverse_gemms",
++                                           retained_root ? 1 : 2);
++        runtime::cuda_trace::trace_counter("response_occupied_inverse_flops",
++                                           (retained_root ? 2 : 4) * rr * aa);
+       } else {
+         checked(cublasDgemm(blas, CUBLAS_OP_N, CUBLAS_OP_N, rri, ai, ai, &one, projected, rri,
+                             inverse, ai, &zero, transformed_projected + retained, rri));
+diff --git a/src/scf/cuda/df_scf_final_state.cpp b/src/scf/cuda/df_scf_final_state.cpp
+index 6c239249..fdb52e9e 100644
+--- a/src/scf/cuda/df_scf_final_state.cpp
++++ b/src/scf/cuda/df_scf_final_state.cpp
+@@ -207,8 +207,12 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+     return VIBEQC_STATUS_SUCCESS;
+   };
+   // Keep the final-state ablation independent of the seed control.
++  // Final J/K consumes fitted B. A raw-A owner is needed only for the later
++  // response scratch lease, not for rebuilding the physical Fock from exact C.
+   const bool packed = plan && df_packed_pairs(plan->value_storage.pairs) && plan->integral_source &&
+-                      plan->packed_raw;
++                      plan->three_center;
++  const bool single_fitted =
++      packed && plan->value_storage.pairs == DfPairStorage::SymmetricLowerSingle;
+   const bool source_dense_resident = plan && plan->integral_source && !packed &&
+                                      plan->resident_raw_valid && plan->row_tile == plan->nbf &&
+                                      plan->auxiliary_tile == plan->naux;
+@@ -218,6 +222,7 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+   const bool automatic = !policy || std::string(policy) == "auto";
+   const bool explicit_occupied = policy && std::string(policy) == "occupied";
+   const bool streamed_occupied = plan->streamed && (automatic || explicit_occupied);
++  const bool private_occupied = streamed_occupied || single_fitted;
+   if (plan->streamed && !streamed_occupied) return fallback("streamed");
+   if (plan->streamed && !plan->integral_source) return fallback("streamed_without_source");
+   if (!plan->streamed && plan->integral_source && !packed && !source_dense_resident)
+@@ -232,29 +237,29 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+   if (!state->occupied_exchange) return fallback("occupied_exchange_disabled");
+   if (density.size() != plan->matrix_elements || !finite_values(density))
+     return fallback("invalid_density");
+-  if (automatic || streamed_occupied) {
++  if (automatic || private_occupied) {
+     if (state->final_alpha_occupied.size() != 1 || !state->final_beta_occupied.empty() ||
+         state->final_alpha_occupied[0] <= 0)
+       return fallback("invalid_final_occupation");
+-    // The streamed projection is private to this K build. Exact final C/D
+-    // identity is checked below, but it grants no response projection lease.
+-    if (streamed_occupied ? !qualified_value_rhf_exchange(*plan, state->final_alpha_occupied[0])
+-                          : !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
++    // Single-B and streamed values share value-only capacity qualification.
++    // Neither grants the raw-owner response projection lease below.
++    if (private_occupied ? !qualified_value_rhf_exchange(*plan, state->final_alpha_occupied[0])
++                         : !qualified_resident_rhf_exchange(*plan, state->final_alpha_occupied[0]))
+       return fallback("work_or_capacity_policy");
+   }
+   CudaDfFinalStateToken current;
+   auto status = cuda_density_fitting_final_state_token(plan, 0, current, detail);
+   if (status != VIBEQC_STATUS_SUCCESS && status != VIBEQC_STATUS_INVALID_ARGUMENT) return status;
+   const bool exact_retained = status == VIBEQC_STATUS_SUCCESS && expected == current;
+-  const bool corrected_streamed = status == VIBEQC_STATUS_SUCCESS && !exact_retained &&
+-                                  streamed_occupied &&
+-                                  bounded_corrected_final_rhf_identity(current, expected);
+-  if (!exact_retained && !corrected_streamed) {
++  const bool corrected_private = status == VIBEQC_STATUS_SUCCESS && !exact_retained &&
++                                 private_occupied &&
++                                 bounded_corrected_final_rhf_identity(current, expected);
++  if (!exact_retained && !corrected_private) {
+     detail.clear();
+     return fallback("stale_final_state_token");
+   }
+   const auto bytes = plan->matrix_elements * sizeof(double);
+-  if (corrected_streamed) {
++  if (corrected_private) {
+     TraceOperation trace(
+         "final_state_corrected_jk", plan->stream,
+         {1, plan->nbf, plan->naux, plan->integral_source != nullptr, plan->streamed});
+@@ -380,7 +385,8 @@ vibeqc_status try_cuda_density_fitting_final_rhf_jk(CudaDensityFittingJkPlan* pl
+   trace_counter("explicit_synchronizations", 1);
+   // The projection and final coefficients refer to precisely this density
+   // generation. Publishing after the successful drain excludes partial K.
+-  if (!plan->streamed && plan->resident_exchange_enabled && (plan->resident_raw_valid || packed) &&
++  if (!plan->streamed && !single_fitted && plan->resident_exchange_enabled &&
++      (plan->resident_raw_valid || (packed && plan->packed_raw)) &&
+       (!packed || current.identity.occupied[0] <= plan->value_storage.rank_capacity) &&
+       plan->metric_full_rank[0] && current.identity.occupied[0] &&
+       plan->naux * current.identity.occupied[0] <=
+diff --git a/tests/native/test_df_occupied_response.cpp b/tests/native/test_df_occupied_response.cpp
+index 989f71b4..e0e4f7cb 100644
+--- a/tests/native/test_df_occupied_response.cpp
++++ b/tests/native/test_df_occupied_response.cpp
+@@ -137,12 +137,95 @@ void lifecycle(bool uhf) {
+   force(&token, false);
+ }
+ 
++/** Single-B final K must prove identity/capacity independently of force parity.
++ * Compare accepted exact/corrected factors against CPU raw-integral J/K and
++ * require every rejected attempt to revoke any preceding raw projection lease.
++ */
++void single_final_exchange(CudaDensityFittingJkPlan& plan, const CudaDfFinalStateToken& token,
++                           const std::vector<double>& density,
++                           const vibeqc::integrals::DensityFittingIntegralData& oracle,
++                           double cutoff) {
++  require(!plan.packed_raw && plan.three_center, "single-B fixture retained raw A");
++  const auto fitted = orthonormalize_density_fitting_three_center(
++      oracle.three_center, plan.nbf,
++      factor_density_fitting_metric(oracle.metric, plan.naux, cutoff));
++  const auto attempt = [&](const CudaDfFinalStateToken& requested, const std::vector<double>& d,
++                           bool expected) {
++    std::vector<double> j, k;
++    bool used = !expected;
++    std::string detail;
++    plan.final_projection_token = token;  // Even rejected calls must revoke stale leases.
++    require(try_cuda_density_fitting_final_rhf_jk(&plan, requested, d, j, k, used, detail) ==
++                    VIBEQC_STATUS_SUCCESS &&
++                used == expected && !plan.final_projection_token,
++            "single-B final qualification: " + detail);
++    if (used) {
++      const auto reference = build_density_fitting_rhf_jk(fitted, d);
++      require(j.size() == d.size() && k.size() == d.size(), "single-B final J/K shape");
++      for (std::size_t i = 0; i < d.size(); ++i)
++        require(std::abs(j[i] - reference.coulomb[i]) < 3e-11 &&
++                    std::abs(k[i] - reference.exchange[i]) < 3e-11,
++                "single-B final J/K differs from the raw-integral oracle");
++    }
++  };
++  for (const char* policy : {"auto", "occupied"}) {
++    setenv("VIBEQC_DF_FINAL_EXCHANGE", policy, 1);
++    attempt(token, density, true);
++    for (unsigned fault = 0; fault < 10; ++fault) {
++      auto stale = token;
++      if (fault == 0) ++stale.version;
++      if (fault == 1) ++stale.identity.factor.basis;
++      if (fault == 2) ++stale.identity.factor.reference;
++      if (fault == 3) ++stale.identity.solve_epoch;
++      if (fault == 4) ++stale.identity.occupied[0];
++      if (fault == 5) ++stale.identity.factor.density_generation;
++      if (fault == 6) ++stale.identity.factor.orbital_generation;
++      if (fault == 7) stale.identity.model.metric_relative_threshold *= 2;
++      if (fault == 8) {
++        stale.identity.factor.density_generation += 17;
++        stale.identity.factor.orbital_generation += 17;
++      }
++      if (fault == 9) {
++        --stale.identity.factor.density_generation;
++        --stale.identity.factor.orbital_generation;
++      }
++      attempt(stale, density, false);
++    }
++    auto changed = density;
++    for (auto& value : changed) value *= .8;
++    attempt(token, changed, false);  // Same token cannot authorize a different D.
++    for (std::uint64_t delta : {1U, 16U}) {
++      auto corrected = token;
++      corrected.identity.factor.density_generation += delta;
++      corrected.identity.factor.orbital_generation += delta;
++      attempt(corrected, changed, true);  // Algebraic L carries the density weight once.
++      auto excessive_rank = changed;
++      excessive_rank.back() += .01;
++      attempt(corrected, excessive_rank, false);
++    }
++    const auto capacity = plan.projection_capacity;
++    plan.projection_capacity = 0;
++    attempt(token, density, false);
++    plan.projection_capacity = capacity;
++    const auto rank_capacity = plan.value_storage.rank_capacity;
++    plan.value_storage.rank_capacity = 0;
++    attempt(token, density, false);
++    plan.value_storage.rank_capacity = rank_capacity;
++  }
++  setenv("VIBEQC_DF_FINAL_EXCHANGE", "dense", 1);
++  attempt(token, density, false);
++  setenv("VIBEQC_DF_FINAL_EXCHANGE", "auto", 1);
++  auto* state = static_cast<cuda_df::PersistentScfState*>(plan.persistent_scf_state);
++  check(cudaMemsetAsync(state->d_final_alpha_generation, 0, sizeof(std::uint64_t), plan.stream));
++  attempt(token, density, false);
++}
++
+ /** Physical raw-integral derivative oracle for packed storage. Unequal AO and
+  * auxiliary counts plus one-Q scratch cover direct raw projection, bounded
+  * projection, empty spin, and discarded metric directions with the same data.
+  */
+ void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, double cutoff,
+-                     std::int32_t occupied = 1, std::size_t qtile = 1) {
++                     std::int32_t occupied = 1, std::size_t qtile = 1, bool single = false) {
+   setenv("VIBEQC_DF_EXCHANGE", "occupied", 1);
+   setenv("VIBEQC_DF_RESPONSE_STORAGE", "auto", 1);
+   setenv("VIBEQC_DF_RESPONSE_SPACE", "occupied", 1);
+@@ -171,7 +254,8 @@ void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, dou
+   std::vector<CudaDensityFittingMetricDiagnostic> diagnostics;
+   require(create_cuda_density_fitting_jk_plan_from_source(
+               0, &source, 1, n, a, metric, cutoff, qtile, n * n, &raw, diagnostics, detail, true,
+-              {DfPairStorage::SymmetricLower, capacity}) == VIBEQC_STATUS_SUCCESS,
++              {single ? DfPairStorage::SymmetricLowerSingle : DfPairStorage::SymmetricLower,
++               capacity}) == VIBEQC_STATUS_SUCCESS,
+           detail);
+   std::unique_ptr<CudaDensityFittingJkPlan, decltype(&destroy_cuda_density_fitting_jk_plan)> plan(
+       raw, destroy_cuda_density_fitting_jk_plan);
+@@ -198,6 +282,10 @@ void packed_response(bool uhf, unsigned beta_occupied, std::size_t capacity, dou
+   require(
+       cuda_density_fitting_final_state_token(plan.get(), 0, token, detail) == VIBEQC_STATUS_SUCCESS,
+       detail);
++  if (single) {
++    single_final_exchange(*plan, token, density, oracle, cutoff);
++    return;
++  }
+   if (!uhf) {
+     std::vector<double> j, k;
+     bool used{};
+@@ -656,6 +744,7 @@ int main() {
+         packed_response(true, 1, capacity, cutoff);
+       }
+     for (double cutoff : {1e-12, .2}) {
++      packed_response(false, 0, 1, cutoff, 1, 1, true);
+       packed_response(false, 0, 2, cutoff, 2, 3);
+       packed_response(true, 1, 2, cutoff, 2, 3);
+       packed_response(false, 0, 2, cutoff, 2, 1);  // Insufficient rank-squared panel.
+diff --git a/tests/python/test_df_corrected_final_lifetime.py b/tests/python/test_df_corrected_final_lifetime.py
+index c57ad889..c07d3b40 100644
+--- a/tests/python/test_df_corrected_final_lifetime.py
++++ b/tests/python/test_df_corrected_final_lifetime.py
+@@ -86,7 +86,7 @@ int build_occupied_exchange(Plan& p,std::size_t,const double*,std::size_t,bool,d
+   return 0;
+ }
+ int run(Plan* plan,State* state,bool& used,std::vector<double>& coulomb,std::vector<double>& exchange) {
+-  const bool corrected_streamed=true, download=mode!=15;
++  const bool corrected_private=true, download=mode!=15;
+   const auto bytes=plan->matrix_elements*sizeof(double);
+   Token current,expected; expected.identity.factor.density_generation=2;
+   std::vector<double> density{1,0,0,1};
+@@ -131,7 +131,7 @@ def final_probe(tmp_path_factory: pytest.TempPathFactory) -> Path:
+     if compiler is None:
+         pytest.skip("requires a host C++ compiler")
+     text = (ROOT / "src/scf/cuda/df_scf_final_state.cpp").read_text(encoding="utf-8")
+-    start = text.index("  if (corrected_streamed) {")
++    start = text.index("  if (corrected_private) {")
+     stop = text.index("\n  TraceOperation trace(", start)
+     directory = tmp_path_factory.mktemp("corrected-final-lifetime")
+     unit, executable = directory / "final.cpp", directory / "final"
+diff --git a/tests/python/test_df_direct_endpoint_protocol.py b/tests/python/test_df_direct_endpoint_protocol.py
+new file mode 100644
+index 00000000..fa1af712
+--- /dev/null
++++ b/tests/python/test_df_direct_endpoint_protocol.py
+@@ -0,0 +1,36 @@
++"""Complete endpoint evidence cannot hide a failed or mismatched force sample."""
++
++from types import SimpleNamespace
++
++import numpy as np
++import pytest
++
++from benchmarks.compare_df_direct_endpoint import check_endpoint
++
++
++@pytest.mark.parametrize(
++    "fault",
++    ["shape", "nonfinite", "energy", "force", "convergence", "status", "oracle"],
++)
++def test_all_endpoint_samples_must_pass(fault: str) -> None:
++    item = SimpleNamespace(
++        energy=-76.0, forces=np.zeros((3, 3)), succeeded=True, converged=True
++    )
++    reference = {"energy": -76.0, "forces": np.zeros((3, 3)), "converged": True}
++    assert check_endpoint(item, reference)["gate"]
++    if fault == "shape":
++        item.forces = np.zeros((1, 3))
++    elif fault == "nonfinite":
++        item.forces[0, 0] = np.nan
++    elif fault == "energy":
++        item.energy += 1e-7
++    elif fault == "force":
++        item.forces[0, 0] = 1e-6
++    elif fault == "convergence":
++        item.converged = False
++    elif fault == "status":
++        item.succeeded = False
++        item.forces = None
++    else:
++        reference["converged"] = False
++    assert not check_endpoint(item, reference)["gate"]
+diff --git a/tests/python/test_df_occupied_projection_lowering.py b/tests/python/test_df_occupied_projection_lowering.py
+index 9571f899..c6b25c90 100644
+--- a/tests/python/test_df_occupied_projection_lowering.py
++++ b/tests/python/test_df_occupied_projection_lowering.py
+@@ -84,6 +84,11 @@ extern "C" int small_metric(int a,int rr,const double* e,const double* eigenvalu
+   return vibeqc::scf::generated::df_occupied_from_metric_eigenbasis(
+       nullptr,a,rr,e,temp,out);
+ }
++extern "C" int retained_metric(int a,int rr,const double* x,const double* s,
++                                 double* out,int fail) {
++  calls=0;fail_on=fail;
++  return vibeqc::scf::generated::df_occupied_apply_metric_root(nullptr,a,rr,x,s,out);
++}
+ """
+ 
+ 
+@@ -134,6 +139,8 @@ def native(tmp_path_factory: pytest.TempPathFactory) -> ct.CDLL:
+     lib.tile_size.restype = ct.c_size_t
+     lib.small_metric.argtypes = [ct.c_int] * 2 + [ptr] * 5 + [ct.c_int]
+     lib.small_metric.restype = ct.c_int
++    lib.retained_metric.argtypes = [ct.c_int] * 2 + [ptr] * 3 + [ct.c_int]
++    lib.retained_metric.restype = ct.c_int
+     return lib
+ 
+ 
+@@ -183,7 +190,10 @@ def test_projected_panel_layout_and_tails(
+ 
+ @pytest.mark.parametrize("a,r", [(1, 1), (3, 2), (9, 3), (17, 5)])
+ @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6, 1e10])
+-def test_small_metric_layout(native: ct.CDLL, a: int, r: int, condition: float) -> None:
++@pytest.mark.parametrize("retained", [False, True])
++def test_small_metric_layout(
++    native: ct.CDLL, a: int, r: int, condition: float, retained: bool
++) -> None:
+     rng = np.random.default_rng(71 + a + r)
+     eigenvectors = np.asfortranarray(np.linalg.qr(rng.normal(size=(a, a)))[0])
+     eigenvalues = np.geomspace(1, condition, a)
+@@ -204,10 +214,27 @@ def test_small_metric_layout(native: ct.CDLL, a: int, r: int, condition: float)
+         == 0
+     )
+     x = (eigenvectors / np.sqrt(eigenvalues)) @ eigenvectors.T
++    if retained:
++        assert (
++            native.retained_metric(
++                a, r * r, pointer(np.asfortranarray(x)), pointer(s), pointer(out), 0
++            )
++            == 0
++        )
+     np.testing.assert_allclose(
+         out, np.einsum("pq,qij->pij", x, s), atol=5e-14, rtol=2e-12
+     )
+-    assert native.call_count() == 2
++    assert native.call_count() == (1 if retained else 2)
++
++
++def test_retained_metric_failure_and_alias_contract(native: ct.CDLL) -> None:
++    """A failed BLAS call leaves output untouched; in-place contraction is invalid."""
++    x = np.eye(3)
++    s = np.arange(12.0)
++    out = np.full_like(s, np.nan)
++    assert native.retained_metric(3, 4, pointer(x), pointer(s), pointer(out), 1) == 13
++    assert np.isnan(out).all()
++    assert native.retained_metric(3, 4, pointer(x), pointer(s), pointer(s), 0) == 7
+ 
+ 
+ def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
+@@ -223,8 +250,15 @@ def test_96_atom_capacity_and_overflow(native: ct.CDLL) -> None:
+ @pytest.mark.parametrize("n,r,a", [(4, 1, 3), (7, 3, 9), (12, 5, 13), (16, 8, 17)])
+ @pytest.mark.parametrize("scale", [1.0, 2.0])
+ @pytest.mark.parametrize("condition", [1.0, 1e3, 1e6])
++@pytest.mark.parametrize("retained", [False, True])
+ def test_full_rank_adjoints_using_emitted_helpers(
+-    native: ct.CDLL, n: int, r: int, a: int, scale: float, condition: float
++    native: ct.CDLL,
++    n: int,
++    r: int,
++    a: int,
++    scale: float,
++    condition: float,
++    retained: bool,
+ ) -> None:
+     rng = np.random.default_rng(800 + n + r + a)
+     c = np.asfortranarray(np.linalg.qr(rng.normal(size=(n, r)))[0])
+@@ -278,6 +312,13 @@ def test_full_rank_adjoints_using_emitted_helpers(
+         == 0
+     )
+     qb = np.ascontiguousarray(np.einsum("qmn,mn->q", b, d))
++    if retained:
++        assert (
++            native.retained_metric(
++                a, r * r, pointer(np.asfortranarray(x)), pointer(s), pointer(u), 0
++            )
++            == 0
++        )
+     q = np.empty_like(qb)
+     qt = np.empty_like(qb)
+     assert (
+diff --git a/tests/python/test_df_single_final_exchange_cuda.py b/tests/python/test_df_single_final_exchange_cuda.py
+new file mode 100644
+index 00000000..9a36bf12
+--- /dev/null
++++ b/tests/python/test_df_single_final_exchange_cuda.py
+@@ -0,0 +1,127 @@
++"""Single-B final K and fitted response preserve independent molecular forces."""
++
++import os
++from pathlib import Path
++
++import numpy as np
++import pytest
++
++pytestmark = pytest.mark.skipif(
++    os.environ.get("VIBEQC_RESOURCE_CUDA_TEST") != "1",
++    reason="requires an explicitly Slurm-allocated GPU",
++)
++
++
++@pytest.mark.parametrize("auxiliary", ["def2-svp", "cc-pvdz-jkfit"])
++@pytest.mark.parametrize(
++    "final_exchange,metric,corrected",
++    [
++        ("auto", "auto", False),
++        ("occupied", "spectral", False),
++        ("auto", "auto", True),
++        ("dense", "spectral", True),
++    ],
++)
++def test_single_final_k_and_response_replay(
++    monkeypatch: pytest.MonkeyPatch,
++    tmp_path: Path,
++    auxiliary: str,
++    final_exchange: str,
++    metric: str,
++    corrected: bool,
++) -> None:
++    """Final K accepts exact/corrected factors without lending an absent raw owner."""
++    assert os.environ.get("SLURM_JOB_ID")
++    from pyscf import gto, scf
++    from vibeqc import Calculator
++
++    from benchmarks._cases import benchmark_cases
++    from benchmarks.df_component_ledger import read_trace
++
++    atoms = benchmark_cases()["water-tetramer-def2-svp-spherical"].atoms
++    moved = [
++        (z, tuple(np.asarray(x) + ((0, 0, 0.001) if i == 1 else (0, 0, 0))))
++        for i, (z, x) in enumerate(atoms)
++    ]
++    references = []
++    for geometry in (atoms, moved):
++        mol = gto.M(atom=geometry, unit="Bohr", basis="def2-svp", verbose=0)
++        mf = scf.RHF(mol).density_fit(auxbasis=auxiliary)
++        mf.conv_tol, mf.conv_tol_grad, mf.max_cycle = 1e-12, 1e-10, 100
++        mf.kernel()
++        assert mf.converged
++        references.append((mf.e_tot, -mf.nuc_grad_method().kernel()))
++
++    for key in list(os.environ):
++        if key.startswith("VIBEQC_DF_"):
++            monkeypatch.delenv(key)
++    for key, value in {
++        "VALUE_STORAGE": "packed-single",
++        "EXCHANGE": "occupied",
++        "FINAL_EXCHANGE": final_exchange,
++        "RESPONSE_SPACE": "occupied",
++        "OCCUPIED_RESPONSE_SOURCE": "fitted",
++        "OCCUPIED_METRIC": metric,
++        "SOURCE_DERIVATIVE_SCHEDULE": "qualify",
++        "RESPONSE_ALGEBRA": "blas",
++        "RESPONSE_BUDGET_BYTES": str(64 << 20),
++    }.items():
++        monkeypatch.setenv("VIBEQC_DF_" + key, value)
++    if corrected:
++        monkeypatch.setenv("VIBEQC_DF_FORCE_FINAL_REBUILD", "1")
++    record = (
++        auxiliary
++        if auxiliary == "def2-svp"
++        else Path(__file__).resolve().parents[2]
++        / "benchmarks/results/issue206-practical-auxiliary/identity/cc-pvdz-jkfit.json"
++    )
++    calc = Calculator(
++        device="cuda",
++        method="rhf",
++        basis="def2-svp",
++        basis_representation="spherical",
++        auxiliary_basis=record,
++        density_fitting="cuda",
++        energy_tolerance=1e-12,
++        density_tolerance=1e-10,
++        max_iterations=100,
++    )
++    with calc.prepare_batch([atoms], warm_start=True) as owner:
++        for phase, geometry in enumerate((None, None, moved, moved)):
++            trace = tmp_path / f"phase-{phase}.jsonl"
++            monkeypatch.setenv("VIBEQC_DF_TRACE", str(trace))
++            coords = (
++                None if geometry is None else [np.asarray([x for _, x in geometry])]
++            )
++            item = owner.execute(coords, strict=True).items[0]
++            energy, force = references[int(phase >= 2)]
++            assert item.energy == pytest.approx(energy, abs=1e-9, rel=0)
++            np.testing.assert_allclose(item.forces, force, atol=1e-8, rtol=0)
++            rows = read_trace(trace)
++            accepted = [
++                r
++                for r in rows
++                if r["operation"]
++                in ("final_state_retained_jk", "final_state_corrected_jk")
++                and r["counters"].get("accepted")
++            ]
++            if final_exchange == "dense":
++                assert not accepted
++            else:
++                assert accepted
++                if corrected:
++                    assert any(
++                        r["operation"] == "final_state_corrected_jk" for r in accepted
++                    )
++            response = [r for r in rows if r["operation"] == "force_response"]
++            assert len(response) == 1
++            counters = response[0]["counters"]
++            assert counters.get("response_final_projection_reused", 0) == 0
++            assert counters.get("response_retained_fitted_projection_passes") == 1
++            assert counters.get("response_fitted_occupied_metric_root_gemms") == (
++                2 if metric == "spectral" else 1
++            )
++            assert counters.get("response_retained_metric_root", 0) == (
++                metric != "spectral"
++            )
++            assert counters.get("response_scratch_bytes", 0) <= 64 << 20
