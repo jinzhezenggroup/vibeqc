@@ -10,6 +10,7 @@ from vibeqc_compiler.xc.endpoint_capability import (
     ENDPOINT_RESOLUTION_SCHEMA,
     resolve_endpoint_capability,
 )
+from vibeqc_compiler.xc.public_method_evidence import build_result, stage_evidence
 
 
 def _coverage(
@@ -202,10 +203,23 @@ def test_public_force_requires_exact_public_product_coverage() -> None:
 def test_matching_public_energy_coverage_is_admitted_exactly() -> None:
     base = libxc_bulk_capabilities.functional_capability("GGA_X_PBE_SOL")
     evidence = _cpu_energy_evidence(base)
-    evidence["public-method"] = _stage_evidence(
+    evidence["molecular-scf"] = _stage_evidence(
         base,
-        "public-method",
-        qualification=_coverage(("cpu", "unpolarized", ("energy",))),
+        "molecular-scf",
+        qualification=_coverage(
+            ("cpu", "polarized", ("energy",)),
+            ("cpu", "unpolarized", ("energy",)),
+        ),
+    )
+    result = build_result(
+        base.name,
+        prerequisite_evidence=evidence,
+        evidence="test://GGA_X_PBE_SOL/public-method",
+    )
+    evidence["public-method"] = stage_evidence(
+        base.name,
+        result,
+        prerequisite_evidence=evidence,
     )
 
     resolved = resolve_endpoint_capability(
