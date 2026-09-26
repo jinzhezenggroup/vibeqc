@@ -96,6 +96,7 @@ function(vibeqc_add_posthf_cc_sources target)
     src/posthf/mp2_gradient.cpp
     src/posthf/native_provider.cpp
     src/response/native_gmres.cpp
+    src/response/resident_gmres.cpp
     src/methods/gfn2_runtime_bridge.cpp
     src/methods/xtb_method.cpp)
   if(VIBEQC_ENABLE_CUDA)
