@@ -5,6 +5,7 @@
 #include <numeric>
 #include <stdexcept>
 
+#include "molecule/basis.hpp"
 #include "posthf/capacity.hpp"
 #include "posthf/mp2_derivative.hpp"
 #include "posthf/mp2_gradient.hpp"
@@ -171,6 +172,67 @@ ConventionalForceResult conventional_force_cuda(
     const response::GmresOptions& response_options, int device_id) {
   return conventional_force_impl(reference, source, budget_bytes, denominator_threshold,
                                  same_space_threshold, response_options, true, device_id);
+}
+
+ConventionalForceResult density_fitted_force_cpu(
+    const scf::PhysicalReference& reference, const posthf::RawSource& source,
+    std::size_t budget_bytes, double denominator_threshold, double metric_relative_threshold,
+    double same_space_threshold, const response::GmresOptions& response_options) {
+  if (!reference.nocc || reference.nocc >= reference.nbf || source.nbf() != reference.nbf ||
+      !source.naux() || !budget_bytes || !std::isfinite(denominator_threshold) ||
+      denominator_threshold <= 0.0 || !std::isfinite(metric_relative_threshold) ||
+      metric_relative_threshold <= 0.0 || metric_relative_threshold >= 1.0 ||
+      !std::isfinite(same_space_threshold) || same_space_threshold <= 0.0)
+    throw std::invalid_argument("invalid RI-MP2 force request");
+
+  posthf::DensityFittedBlockProvider provider(source, reference, budget_bytes,
+                                              metric_relative_threshold);
+  const auto problem = response_problem(reference, provider, false, 0);
+  const auto response_plan = response::prepare_response(problem, response_options);
+  const auto coordinate_count = posthf::checked_mul(source.orbital().atoms.size(), std::size_t{3});
+  const auto candidate_output_bytes = posthf::checked_mul(coordinate_count, sizeof(double));
+  const auto resources = density_fitted_gradient_plan(
+      reference.nbf, reference.nocc, provider.auxiliary_count(), provider.provider_bytes(),
+      response_plan, molecule::cartesian_ao_count(source.orbital()),
+      molecule::cartesian_ao_count(source.auxiliary()), coordinate_count, candidate_output_bytes,
+      budget_bytes);
+
+  const auto h = hcore_mo(reference);
+  const auto adjoint = energy_adjoint(reference, provider, denominator_threshold, false, 0);
+  const auto orbital = canonical_orbital_rhs_streamed(reference, h, provider, adjoint,
+                                                      same_space_threshold, false, 0);
+  const auto virtuals = reference.nbf - reference.nocc;
+  std::vector<double> diagonal(posthf::checked_mul(reference.nocc, virtuals));
+  for (std::size_t i = 0; i < reference.nocc; ++i)
+    for (std::size_t a = 0; a < virtuals; ++a)
+      diagonal[i * virtuals + a] =
+          reference.orbital_energies[reference.nocc + a] - reference.orbital_energies[i];
+  auto response_result =
+      response::solve_response(response_plan, problem, orbital.response_rhs, {}, diagonal);
+  if (!response_result.converged())
+    throw std::runtime_error("RI-MP2 orbital response did not converge");
+
+  auto weights = canonical_lagrangian_weights_streamed(
+      reference, h, provider, adjoint, response_result.solution, same_space_threshold, false, 0);
+  if (!std::isfinite(weights.stationarity_residual) || weights.stationarity_residual > 1e-7)
+    throw std::runtime_error("RI-MP2 relaxed Lagrangian is not stationary");
+  auto fitted = density_fitted_lagrangian_weights(reference, provider, weights, budget_bytes);
+  if (fitted.planned_peak_bytes > resources.peak_bytes)
+    throw std::runtime_error("RI-MP2 reverse exceeded its composed resource plan");
+
+  auto derivative = density_fitted_derivative_cpu(source.orbital(), source.auxiliary(), fitted,
+                                                  resources.derivative_staging_bytes);
+  for (double& value : derivative) value = -value;
+
+  ConventionalForceResult result;
+  result.forces = std::move(derivative);
+  result.response = std::move(response_result);
+  result.stationarity_residual = weights.stationarity_residual;
+  result.derivative_workspace_bytes =
+      posthf::checked_add(fitted.workspace_bytes, resources.derivative_staging_bytes);
+  result.planned_endpoint_peak_bytes = resources.peak_bytes;
+  result.measured_endpoint_peak_bytes = 0;
+  return result;
 }
 
 }  // namespace vibeqc::mp2

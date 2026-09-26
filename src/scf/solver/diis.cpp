@@ -1,15 +1,11 @@
 #include "scf/solver/diis.hpp"
 
-#include <algorithm>
-#include <cmath>
-#include <utility>
+#include <vector>
 
 #include "generated_scf_array_native.hpp"
-#include "runtime/resource_usage.hpp"
-#include "solver/dense_linear.hpp"
+#include "solver/diis_coefficients.hpp"
 
 namespace vibeqc::scf::solver {
-using reference::index;
 Diis::Diis(std::size_t capacity, bool normalize_metric)
     : history_(capacity), normalize_metric_(normalize_metric) {}
 
@@ -25,30 +21,22 @@ Matrix Diis::update(const Matrix& fock, const Matrix& residual) {
 
   for (;;) {
     const std::size_t m = history_.size();
-    const std::size_t dim = m + 1;
-    Matrix b(dim * dim, 0.0);
-    std::vector<double> rhs(dim, 0.0);
-    rhs[m] = -1.0;
-    generated::diis_gram(b.data(), dim, history_.errors(), m, residual.size());
-    for (std::size_t i = 0; i < m; ++i) {
-      b[index(i, m, dim)] = -1.0;
-      b[index(m, i, dim)] = -1.0;
-    }
+    Matrix gram(m * m, 0.0);
+    generated::diis_gram(gram.data(), m, history_.errors(), m, residual.size());
+
+    ::vibeqc::solver::detail::DiisCoefficientPolicy policy;
     if (normalize_metric_) {
-      double scale = 0.0;
-      for (std::size_t i = 0; i < m; ++i) scale = std::max(scale, std::abs(b[index(i, i, dim)]));
-      if (!(scale > 0.0) || !std::isfinite(scale)) return fock;
-      for (std::size_t i = 0; i < m; ++i)
-        for (std::size_t j = 0; j < m; ++j) b[index(i, j, dim)] /= scale;
+      policy.metric_scaling = ::vibeqc::solver::detail::DiisMetricScaling::MaximumDiagonal;
+      policy.failure_retirement_floor = 2;
     }
     std::vector<double> coefficients;
-    if (!::vibeqc::solver::solve_dense_linear(std::move(b), std::move(rhs), coefficients)) {
-      if (!normalize_metric_ || m <= 2) return fock;
-      // Keep the most recent physical states when old, nearly dependent errors
-      // make the augmented solve singular. Both spin blocks retire together.
+    const auto action =
+        ::vibeqc::solver::detail::solve_diis_coefficients(gram, m, policy, coefficients);
+    if (action == ::vibeqc::solver::detail::DiisCoefficientAction::RetireOldest) {
       history_.retire_oldest();
       continue;
     }
+    if (action == ::vibeqc::solver::detail::DiisCoefficientAction::RetainCurrent) return fock;
 
     Matrix extrapolated(fock.size());
     generated::diis_extrapolate(extrapolated.data(), history_.vectors(), coefficients.data(), m,

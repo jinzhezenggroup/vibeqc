@@ -12,7 +12,8 @@ def test_mp2_documentation_states_exact_force_and_batch_boundary() -> None:
         "Hartree/Bohr",
         "conventional canonical RHF-MP2",
         "CPU and CUDA",
-        "RI-MP2 forces remain unsupported",
+        "CPU RI-MP2 analytic forces",
+        "CUDA RI-MP2 analytic forces remain unsupported",
         "per-item",
         "measured_endpoint_peak_bytes",
         "measured_response_workspace_peak_bytes",
@@ -38,4 +39,5 @@ def test_method_table_no_longer_calls_conventional_mp2_forces_planned() -> None:
     assert mp2[0][3] == "yes" and mp2[0][5] == "available"
     contract = (ROOT / "docs/developer/mp2.md").read_text(encoding="utf-8")
     assert "CPU and CUDA" in contract
-    assert "RI-MP2 forces remain unsupported" in contract
+    assert "CPU RI-MP2 analytic forces" in contract
+    assert "CUDA RI-MP2 analytic forces remain unsupported" in contract

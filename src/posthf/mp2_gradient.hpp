@@ -65,6 +65,18 @@ struct GradientResourcePlan {
   std::size_t peak_bytes{};
 };
 
+struct DensityFittedGradientResourcePlan {
+  std::size_t provider_bytes{};
+  std::size_t adjoint_bytes{};
+  std::size_t response_bytes{};
+  std::size_t relaxed_weight_bytes{};
+  std::size_t reverse_result_bytes{};
+  std::size_t reverse_workspace_bytes{};
+  std::size_t derivative_staging_bytes{};
+  std::size_t candidate_output_bytes{};
+  std::size_t peak_bytes{};
+};
+
 EnergyAdjoint canonical_energy_adjoint(std::span<const double> integrals_iajb,
                                        std::span<const double> orbital_energies,
                                        std::size_t occupied, double denominator_threshold);
@@ -102,5 +114,11 @@ GradientResourcePlan conventional_gradient_plan(
     const response::GmresPlan& response_plan, std::size_t maximum_shell_ao_count,
     std::size_t coordinate_count, std::size_t candidate_output_bytes, std::size_t budget_bytes,
     std::size_t derivative_backend_staging_bytes = 0);
+
+DensityFittedGradientResourcePlan density_fitted_gradient_plan(
+    std::size_t orbitals, std::size_t occupied, std::size_t auxiliaries, std::size_t provider_bytes,
+    const response::GmresPlan& response_plan, std::size_t cartesian_orbitals,
+    std::size_t cartesian_auxiliaries, std::size_t coordinate_count,
+    std::size_t candidate_output_bytes, std::size_t budget_bytes);
 
 }  // namespace vibeqc::mp2
