@@ -377,7 +377,8 @@ void warm_preparation_failure(bool retained_plan) {
               std::abs(results[1].energy - expected) < 2e-10,
           "warm preparation failure corrupted its neighbor");
   require(execute(target, true) == VIBEQC_STATUS_SUCCESS && results[0].converged &&
-              results[0].warm_start_used && std::abs(results[0].energy - expected) < 2e-10,
+              results[0].warm_start_used && results[0].iterations > 1 &&
+              std::abs(results[0].energy - expected) < 2e-10,
           "warm preparation failure lost the imported seed or target geometry");
 }
 
@@ -414,8 +415,9 @@ void warm_execution_allocation_failure() {
               !results[0].warm_start_fallback && results[1].converged,
           "warm SCF allocation failure was hidden by a cold retry or affected its neighbor");
   require(execute() == VIBEQC_STATUS_SUCCESS && results[0].converged &&
-              results[0].warm_start_used && std::abs(results[0].energy - energy) < 2e-10,
-          "warm SCF allocation failure lost its last-good seed");
+              results[0].warm_start_used && results[0].iterations == 1 &&
+              std::abs(results[0].energy - energy) < 2e-10,
+          "warm SCF allocation failure lost its last-good density/energy pair");
 }
 
 }  // namespace
