@@ -150,3 +150,23 @@ def test_catalog_run_retains_campaign_and_structural_blocker(
     assert campaign_path.is_file()
     assert json.loads(campaign_path.read_text())["receipt"]["identity"] == "b" * 64
     assert (tmp_path / "summary.json").is_file()
+
+
+@pytest.mark.parametrize("field", ("rtol", "atol"))
+@pytest.mark.parametrize("value", (float("nan"), float("inf"), -1.0, True))
+def test_catalog_rejects_invalid_tolerances_before_any_functional_runs(
+    tmp_path: Path, field: str, value: float
+) -> None:
+    kwargs = {"rtol": 2.0e-6, "atol": 1.0e-8}
+    kwargs[field] = value
+    with pytest.raises(ValueError, match="finite and nonnegative"):
+        catalog.run_catalog(
+            (),
+            output=tmp_path,
+            evidence_prefix="artifact://test/libxc-domain",
+            pyscf_version="2.14.0",
+            libxc=SimpleNamespace(__version__="7.0.0"),
+            shard_count=1,
+            shard_index=0,
+            **kwargs,
+        )
