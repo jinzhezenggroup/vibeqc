@@ -1,5 +1,5 @@
 {
-  "current_default": "Generated interior scalar expressions and compact CPU contractions; compiler spatial CUDA potentials enforce interior-v1. Resident native KS uses the shared scaled-domain point evaluator and ordinary-stream SCF.",
+  "current_default": "Resident native KS uses the shared production point evaluators and ordinary-stream SCF. Qualified semilocal and admitted global-hybrid CUDA forces use compiler-owned stationary plans, production XC point programs and bounded native source arenas.",
   "evidence": [
     "docs/developer/xc_expressions.md",
     "docs/developer/xc_contractions.md",
@@ -10,11 +10,14 @@
     "tools/validate_dft_endpoints.py",
     "docs/developer/xc_native_cuda.md",
     "tests/python/test_ks_resources.py",
-    "tests/native/test_dft_api.cpp"
+    "tests/native/test_dft_api.cpp",
+    "docs/developer/stationary_cuda_diagnostic.md",
+    "tests/python/test_global_hybrid_cuda_forces.py",
+    "tests/python/test_global_hybrid_cuda_force_lowering.py"
   ],
-  "generated_capability": "audited scalar XC derivatives and compact native CPU LDA/GGA E/V, spin response and fixed-D geometric partials; compiler-owned AO/feature policies feed canonical prepared CUDA LDA/PBE contractions",
-  "missing_capability": "Resident CPU/CUDA energy-only RKS/UKS, prepared replay, model options and resource planning are implemented. Complete timing/transport and source-bound workload evidence remain #162; stationary forces, generated device contraction replacement and performance promotion remain #163/#168.",
+  "generated_capability": "audited scalar XC derivatives and compact native CPU LDA/GGA E/V, spin response and fixed-D geometric partials; compiler-owned AO/feature policies feed prepared CUDA contractions; MethodIR-derived same-spin full-range exchange weights, GGA/meta-GGA geometry and tau pullbacks, and complete plan-source reduction support admitted CUDA RKS/UKS global-hybrid forces",
+  "missing_capability": "Public density-fitted, range-separated/nonlocal, ECP-hybrid and mixed-precision hybrid forces remain outside this contract. Global-hybrid wrappers currently require first-use NVCC rather than packaged AOT. Complete timing/transport and source-bound workload evidence for performance promotion and replacement of retained native contraction glue remain separate gates.",
   "owner": "xc",
   "retirement_condition": "Retain external/formula oracles. The compiler spatial contraction owns sparse local AO maps and interior-v1 validation; the resident KS contraction owns dense borrowed buffers and the SCF tail/spin domain. They share point algebra and AO/ingredient policies. Retire native contraction glue after an equivalent compiler-owned device consumer passes independent numerical, resource and full endpoint gates. The superseded host-controlled method driver and its RKS LDA-fallback entry point are removed.",
-  "status": "resident_prepared_cuda_energy_only"
+  "status": "resident_prepared_cuda_with_qualified_stationary_forces"
 }

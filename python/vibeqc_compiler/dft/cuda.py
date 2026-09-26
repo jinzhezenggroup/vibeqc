@@ -713,6 +713,35 @@ class CudaGrid:
             if functional == "PBE"
             else {"rho", "gradient", "tau"}
         )
+        # Legacy names describe only the input feature layout of this lease;
+        # scientific XC evaluation belongs to its downstream consumer.
+        with self.feature_task(points, ao_ids, tuple(required), stamp=stamp) as lease:
+            yield lease
+
+    @contextmanager
+    def feature_task(
+        self,
+        points: typing.Any,
+        ao_ids: typing.Any,
+        ingredients: typing.Iterable[str],
+        *,
+        stamp: typing.Any = None,
+    ) -> typing.Any:
+        """Lend AO/features for a composed consumer without a functional alias.
+
+        FunctionalSpec sigma requires Cartesian gradients. The consumer builds
+        sigma locally while preserving the native fixed feature-buffer layout.
+        """
+        required = set(ingredients)
+        if (
+            not required
+            or not required <= {"rho", "sigma", "gradient", "tau"}
+            or "rho" not in required
+        ):
+            raise ValueError("unsupported CUDA task ingredient contract")
+        if "sigma" in required:
+            required.remove("sigma")
+            required.add("gradient")
         with self._lock:
             self._check_open()
             if self.plan.active_ao_capacity is None:

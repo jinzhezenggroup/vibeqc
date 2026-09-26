@@ -287,6 +287,28 @@ def _split_hybrid_record(method_ir: typing.Any) -> typing.Any:
     return None
 
 
+def cuda_global_hybrid_force_eligible(method_ir: MethodIR) -> bool:
+    """Check derivative source coverage for an already admitted CUDA KS graph.
+
+    Native preparation still enforces the SCF point-domain and composition
+    contract. This adds no name-based method admission: only one semilocal
+    source plus positive full-range exchange has a complete CUDA pullback.
+    Range separation, dispersion and nonlocal correlation need other providers.
+    """
+    plan = compile_ks_execution_plan(method_ir)
+    return (
+        len(method_ir.primitives) == 2
+        and plan.semilocal is not None
+        and plan.semilocal.functional.ingredients
+        in (("rho",), ("rho", "sigma"), ("rho", "sigma", "tau"))
+        and len(plan.exchange) == 1
+        and plan.exchange[0].operator == "full-range"
+        and plan.exchange[0].coefficient > 0
+        and plan.exchange[0].omega == 0
+        and plan.nonlocal_correlation is None
+    )
+
+
 def _native_semilocal_family(method_ir: typing.Any) -> int:
     """Return the primitive-family selector consumed by native KS execution."""
     # The named PBE-D4 ABI retains its separately qualified native correction

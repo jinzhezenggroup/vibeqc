@@ -22,6 +22,36 @@ public method registration. Planned families and development directions are
 listed in the [implementation roadmap](../maintainer/roadmap.md), which does not
 promise release dates or a fixed implementation order.
 
+## CUDA global-hybrid forces
+
+The Python `Calculator` exposes analytic forces for admitted all-electron
+global-hybrid RKS/UKS compositions with direct J/K, FP64, an explicit `GridSpec`,
+and device-fused XC. Force eligibility follows the actual MethodIR primitives;
+the SCF owner still validates the semilocal composition. Request forces through
+the ordinary single-point or prepared-batch interface:
+
+```python
+from vibeqc import Calculator, GridSpec, KsOptions
+
+calc = Calculator(
+    method="b3lyp-rks", device="cuda", precision="fp64", basis="sto-3g",
+    ks_options=KsOptions(
+        grid=GridSpec(radial_points=32, angular_polar=10, angular_azimuth=20),
+        xc_schedule="device_fused",
+    ),
+)
+result = calc.singlepoint(
+    [("H", (0, 0, -0.7)), ("H", (0, 0, 0.7))], properties=("energy", "forces")
+)
+```
+
+The first call compiles a method-specific CUDA wrapper and requires a
+discoverable NVCC toolkit (`CUDACXX` or `CUDA_PATH` can select it). Later calls
+reuse the compiler cache. There is no CPU scientific fallback. Density-fitted,
+range-separated, nonlocal, ECP and mixed-precision hybrid forces remain outside
+this contract. See the [execution and resource limits](../developer/stationary_cuda_diagnostic.md)
+and [independent force acceptance gate](../maintainer/hybrid_cuda_acceptance.md#public-global-hybrid-force-gate).
+
 ## Direct CUDA HF force state
 
 Direct RHF/UHF force solves require the maximum physical AO commutator

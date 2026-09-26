@@ -51,6 +51,44 @@ _FUSED_WEIGHT_SOURCES = ("one_electron", "coulomb", "overlap_pulay")
 _SPLIT_COMPILE_THREADS_ENV = "VIBEQC_STATIONARY_CUDA_SPLIT_COMPILE_THREADS"
 
 
+def stationary_runtime_sources(plan: StationaryGradientPlan) -> tuple[str, ...]:
+    """Retain plan order for contributions owned by the bounded CUDA arena.
+
+    ECP and range/nonlocal providers retain separate ownership. Full-range
+    exchange uses the same ERI derivative provider as Coulomb, with its own
+    same-spin density pairing and compiler-derived weight.
+    """
+    return tuple(
+        source
+        for source in plan.source_names
+        if source in (*STATIONARY_RUNTIME_SOURCE_NAMES, "exact_exchange")
+    )
+
+
+def _runtime_layout_cuda(plan: StationaryGradientPlan) -> str:
+    sources = stationary_runtime_sources(plan)
+    integral_slots = [
+        sources.index(s)
+        for s in (*_FUSED_WEIGHT_SOURCES, "exact_exchange")
+        if s in sources
+    ]
+    return "\n".join(
+        (
+            "namespace vibeqc_stationary_cuda {",
+            f"constexpr unsigned stationary_source_count = {len(sources)};",
+            f"constexpr unsigned stationary_nuclear_source = {sources.index('nuclear')};",
+            f"constexpr unsigned stationary_xc_source = {sources.index('xc_ao')};",
+            "__host__ __device__ inline bool stationary_integral_source(int64_t source) {",
+            "  return "
+            + " || ".join(f"source == {slot}" for slot in integral_slots)
+            + ";",
+            "}",
+            "}",
+            "",
+        )
+    )
+
+
 def _split_compile_options(
     environment: typing.Mapping[str, str] | None = None,
 ) -> tuple[str, ...]:
@@ -77,6 +115,11 @@ def _weight_expression(
         "density_right": ("density", 2, 3),
         "weighted_density": ("weighted_density", 0, 1),
     }
+    if source == "exact_exchange":
+        # Ordered (ab|cd) derivatives contract D[a,c] D[b,d], independently
+        # in each spin channel. Coulomb instead uses D[a,b] D[c,d].
+        locations["density_left"] = ("density", 0, 2)
+        locations["density_right"] = ("density", 1, 3)
     bindings = {
         name: tuple(
             f"{pointer}[{spin} * n * n + size_t(ao[{left}]) * n + size_t(ao[{right}])]"
@@ -102,10 +145,13 @@ def emit_stationary_weight_cuda(plan: typing.Any) -> str:
     functions = [
         "namespace vibeqc_stationary_cuda {",
         f"// stationary-plan: {plan.identity}",
-        f"constexpr unsigned stationary_nuclear_source = {STATIONARY_RUNTIME_SOURCE_NAMES.index('nuclear')};",
     ]
     dispatch: list[str] = []
-    for source in _FUSED_WEIGHT_SOURCES:
+    sources = stationary_runtime_sources(plan)
+    for source in (
+        *_FUSED_WEIGHT_SOURCES,
+        *(("exact_exchange",) if plan.exchange is not None else ()),
+    ):
         lowered, arity = _weight_expression(plan, source)
         symbol = f"stationary_weight_{source}"
         functions.extend(
@@ -119,7 +165,7 @@ def emit_stationary_weight_cuda(plan: typing.Any) -> str:
                 "}",
             )
         )
-        slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(source)
+        slot = sources.index(source)
         checks = " || ".join(
             f"ao[{i}] < 0 || ao[{i}] >= int64_t(n)" for i in range(arity)
         )
@@ -158,7 +204,7 @@ __global__ void task_kernel(
     const auto source = task[1];
     const auto rank = task[2];
     const auto nucleus = task[3];
-    if ((source != 0 && source != 1 && source != 5) || (rank != 2 && rank != 4) ||
+    if (!stationary_integral_source(source) || (rank != 2 && rank != 4) ||
         (nucleus >= 0 && (rank != 2 || nucleus >= int64_t(na)))) {
       atomicExch(error, 1);
       return;
@@ -243,9 +289,9 @@ __global__ void task_reduce(const double* input, const int64_t* tasks, size_t co
                             const int64_t* ao_atoms, size_t na, double* output, int* error) {
   if (*error) return;
   const size_t slot = blockIdx.x * blockDim.x + threadIdx.x;
-  if (slot >= 21 * na) return;
+  if (slot >= 3 * stationary_source_count * na) return;
   const size_t source = slot / (3 * na);
-  if (source != 0 && source != 1 && source != 5) return;
+  if (!stationary_integral_source(int64_t(source))) return;
   const size_t coord = slot % (3 * na);
   double sum = 0;
   for (size_t i = 0; i < count; ++i) {
@@ -283,10 +329,10 @@ __global__ void nuclear_kernel(unsigned kind, int64_t a, int64_t b, double za, d
     return;
   }
   for (size_t k = 0; k < 3; ++k) {
-    output[18 * na + 3 * a + k] =
-        finite(output[18 * na + 3 * a + k] + v[k], error, 0);
-    output[18 * na + 3 * b + k] =
-        finite(output[18 * na + 3 * b + k] + v[3 + k], error, 0);
+    output[3 * stationary_nuclear_source * na + 3 * a + k] =
+        finite(output[3 * stationary_nuclear_source * na + 3 * a + k] + v[k], error, 0);
+    output[3 * stationary_nuclear_source * na + 3 * b + k] =
+        finite(output[3 * stationary_nuclear_source * na + 3 * b + k] + v[3 + k], error, 0);
   }
 }
 __global__ void validate_centers(const double* centers, size_t na, double tolerance, int* error) {
@@ -321,7 +367,7 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
     if (stationary_functional != 0)
       for (size_t s = 0; s < 2; ++s)
         for (size_t k = 0; k < 3; ++k) g[s][k] = view.features[(5 * s + k + 1) * np + p];
-    if (stationary_functional == 2 || stationary_functional == 4)
+    if (stationary_coefficients == 5)
       for (size_t s = 0; s < 2; ++s) tau[s] = view.features[(5 * s + 4) * np + p];
     // The exact shared SCF point model, including vacuum/spin boundaries.
     const auto xc = stationary_evaluate_point(rho, g, tau);
@@ -346,7 +392,7 @@ __global__ void geometry_kernel(vibeqc::dft::GridTaskView view, const double* wo
           w[j] = work[(4 * s + j) * stride + p * n + mu];
           if (j) c[j] = weights[p] * xc.gradient[s][j - 1];
         }
-        if (stationary_functional == 2 || stationary_functional == 4) c[4] = weights[p] * xc.kinetic[s];
+        if (stationary_coefficients == 5) c[4] = weights[p] * xc.kinetic[s];
         double local[4]{};
         ao_pullback(c, w, local);
         for (size_t j = 0; j < stationary_jets; ++j) pullback[j] += local[j];
@@ -389,8 +435,9 @@ def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
         "__global__ void source_reduce(const double* input, size_t na, double* output, int* error) {",
         "  if (*error) return;",
     ]
-    if plan.source_names != STATIONARY_RUNTIME_SOURCE_NAMES:
-        # ECP/hybrid/nonlocal sources are not all owned by this seven-source arena.
+    sources = stationary_runtime_sources(plan)
+    if plan.source_names != sources:
+        # ECP/range/nonlocal sources still have separately owned providers.
         lines += ["  atomicExch(error, 1);", "}", "}", ""]
         return "\n".join(lines)
     program = plan.reduction_program(atoms=1)
@@ -399,8 +446,7 @@ def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
         result.op != "add"
         or result.spec.shape != (1, 3)
         or result.spec.dtype != "float64"
-        or tuple(node.attrs.get("name") for node in result.inputs)
-        != STATIONARY_RUNTIME_SOURCE_NAMES
+        or tuple(node.attrs.get("name") for node in result.inputs) != sources
         or any(
             node.op != "input" or node.spec.shape != (1, 3) for node in result.inputs
         )
@@ -415,7 +461,7 @@ def emit_stationary_reduction_cuda(plan: StationaryGradientPlan) -> str:
     for node, coefficient in zip(
         result.inputs, result.attrs["coefficients"], strict=True
     ):
-        slot = STATIONARY_RUNTIME_SOURCE_NAMES.index(node.attrs["name"])
+        slot = sources.index(node.attrs["name"])
         lines.append(
             f"  sum += {exact_cuda_literal(coefficient)} * input[{slot} * 3 * na + i];"
         )
@@ -936,9 +982,10 @@ def emit_stationary_wrapper_cuda(
         + "namespace vibeqc_stationary_cuda {\n"
         + f"constexpr unsigned stationary_spin_blocks = {plan.spin_blocks};\n"
         + "constexpr bool stationary_native_reduction_supported = "
-        + str(plan.source_names == STATIONARY_RUNTIME_SOURCE_NAMES).lower()
+        + str(plan.source_names == stationary_runtime_sources(plan)).lower()
         + ";\n"
         + "}\n"
+        + _runtime_layout_cuda(plan)
         + '#include "dft/stationary_gradient_cuda.cuh"\n'
         + emit_stationary_scientific_kernels(plan)
     )

@@ -962,10 +962,20 @@ class Calculator:
                 or (self._device_name == "cpu" and qualified_basis(self._basis))
             )
         )
+        from .ks import cuda_global_hybrid_force_eligible
+
+        cuda_hybrid_force = (
+            self._device_name == "cuda"
+            and not basis_has_ecp
+            and self._precision_mode == _native.PRECISION_FP64
+            and self._ks_options is not None
+            and self._ks_options.xc_schedule == "device_fused"
+            and cuda_global_hybrid_force_eligible(self._ks_options.method_ir)
+        )
         if (
             self._capabilities.family == "density_functional"
             and density_fitting_mode == _native.DENSITY_FITTING_NONE
-            and (semilocal_force or named_cpu_all_electron_force)
+            and (semilocal_force or named_cpu_all_electron_force or cuda_hybrid_force)
             and not (
                 self._device_name == "cuda"
                 and basis_has_ecp

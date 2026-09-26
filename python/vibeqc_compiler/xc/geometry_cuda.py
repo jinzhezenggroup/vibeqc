@@ -8,6 +8,7 @@ from vibeqc_compiler.dft.ao_cuda import emit_grid_policy
 from vibeqc_compiler.integral.expr import AlgebraForm
 from vibeqc_compiler.integral.scalar_c import ScalarCEmitter
 
+from ._generated_split_hybrids import SPLIT_HYBRIDS
 from .coefficients import jet_pullback_program
 from .grid_native import emit_grid_adjoint, emit_grid_partials
 from .semilocal_codegen import emit_polarized_semilocal
@@ -22,25 +23,128 @@ def _functional_code(functional: typing.Any, pbe: typing.Any) -> int:
     if functional is None:
         if type(pbe) is not bool:
             raise TypeError(
-                "geometry lowering requires functional=0/1/2/4 or a boolean PBE flag"
+                "geometry lowering requires a registered functional code or a boolean PBE flag"
             )
         return int(pbe)
     if pbe is not None:
         raise ValueError("specify functional or pbe, not both")
-    if type(functional) is not int or functional not in (0, 1, 2, 4):
+    if type(functional) is not int or functional not in (
+        0,
+        1,
+        2,
+        3,
+        4,
+        *(record["functional_code"] for record in SPLIT_HYBRIDS.values()),
+    ):
         raise ValueError(
-            "geometry lowering functional must be 0 (LDA), 1 (PBE), 2 (r2SCAN), "
-            "or 4 (omegaB97M-V semilocal)"
+            "geometry lowering requires a registered semilocal functional code"
         )
     return functional
+
+
+def _emit_composed_point(code: int, semilocal: FunctionalSpec) -> str:
+    """Reuse the energy consumer's exact generated graph and boundary policy.
+
+    The force consumer changes only the rho/sigma/tau-to-Cartesian ABI; it
+    never differentiates clipping or substitutes an interior point formula.
+    """
+    polarized = replace(semilocal, spin="polarized")
+    if code == 3:
+        raw_name = "stationary_semilocal_raw"
+        body = emit_polarized_semilocal(
+            polarized,
+            value_type="StationarySemilocalRaw",
+            function_name=raw_name,
+            identity_constant="kStationarySemilocalIdentity",
+            production=True,
+            function_qualifier="__device__ inline",
+        )
+        features = 5
+    else:
+        from fractions import Fraction
+
+        from .split_hybrid_codegen import emit_split_hybrid_device_body
+
+        identifier, record = next(
+            (name, record)
+            for name, record in SPLIT_HYBRIDS.items()
+            if record["functional_code"] == code
+        )
+        if dict(polarized.components) != {
+            name: Fraction(weight) for name, weight in record["components"]
+        }:
+            raise ValueError("stationary split-hybrid point composition mismatch")
+        body, _, selected = emit_split_hybrid_device_body(identifier)
+        # The generated symbol follows the same canonical registry convention.
+        import re
+
+        raw_name = re.sub(r"[^a-z0-9]+", "_", identifier.lower()).strip("_") + "_device"
+        features = len(selected)
+    arguments = "rho[0], rho[1], sigma[0], sigma[1], sigma[2]"
+    if features == 7:
+        arguments += ", tau[0], tau[1]"
+    return "\n".join(
+        (
+            body,
+            "struct StationaryPointValue {",
+            "  double energy{}, rho[2]{}, gradient[2][3]{}, kinetic[2]{};",
+            "  bool valid{true};",
+            "};",
+            "__device__ inline StationaryPointValue stationary_evaluate_point(",
+            "    const double rho[2], const double gradient[2][3], const double tau[2]) {",
+            "  StationaryPointValue out;",
+            "  double sigma[3]{};",
+            "  for (unsigned k = 0; k < 3; ++k) {",
+            "    sigma[0] += gradient[0][k] * gradient[0][k];",
+            "    sigma[1] += gradient[0][k] * gradient[1][k];",
+            "    sigma[2] += gradient[1][k] * gradient[1][k];",
+            "  }",
+            f"  const auto raw = {raw_name}({arguments});",
+            "  out.valid = isfinite(raw.energy_density);",
+            "  for (double value : raw.feature_derivative) out.valid = out.valid && isfinite(value);",
+            "  out.energy = raw.energy_density;",
+            "  for (unsigned s = 0; s < 2; ++s) out.rho[s] = raw.feature_derivative[s];",
+            "  for (unsigned k = 0; k < 3; ++k) {",
+            "    out.gradient[0][k] = 2.0 * raw.feature_derivative[2] * gradient[0][k] + raw.feature_derivative[3] * gradient[1][k];",
+            "    out.gradient[1][k] = raw.feature_derivative[3] * gradient[0][k] + 2.0 * raw.feature_derivative[4] * gradient[1][k];",
+            "  }",
+            *(
+                (
+                    "  for (unsigned s = 0; s < 2; ++s) out.kinetic[s] = 0.5 * raw.feature_derivative[5 + s];",
+                )
+                if features == 7
+                else ()
+            ),
+            "  return out;",
+            "}",
+            "",
+        )
+    )
 
 
 def _emit_stationary_point(
     functional: int, *, semilocal: FunctionalSpec | None = None
 ) -> str:
     """Emit the exact SCF-domain point differential consumed by geometry CUDA."""
+    if functional == 3 or functional >= 0x10000:
+        if not isinstance(semilocal, FunctionalSpec):
+            raise ValueError("composed stationary point requires its FunctionalSpec")
+        return _emit_composed_point(functional, semilocal)
     if functional < 2:
         pbe = "true" if functional == 1 else "false"
+        scales = ""
+        if semilocal is not None:
+            components = dict(semilocal.components)
+            x_name, c_name = (
+                ("GGA_X_PBE", "GGA_C_PBE") if functional else ("LDA_X", "LDA_C_PW")
+            )
+            if not set(components) <= {x_name, c_name}:
+                raise ValueError(
+                    "stationary point selector disagrees with semilocal components"
+                )
+            x, c = float(components.get(x_name, 0)), float(components.get(c_name, 0))
+            if (x, c) != (1.0, 1.0):
+                scales = f", {x.hex()}, {c.hex()}"
         return "\n".join(
             [
                 "struct StationaryPointValue {",
@@ -49,7 +153,7 @@ def _emit_stationary_point(
                 "};",
                 "__device__ inline StationaryPointValue stationary_evaluate_point(",
                 "    const double rho[2], const double gradient[2][3], const double tau[2]) {",
-                f"  const auto raw = vibeqc::dft::point::evaluate({pbe}, rho, gradient);",
+                f"  const auto raw = vibeqc::dft::point::evaluate({pbe}, rho, gradient{scales});",
                 "  StationaryPointValue out;",
                 "  out.energy = raw.energy;",
                 "  out.valid = raw.valid;",
@@ -226,7 +330,17 @@ def emit_geometry_cuda(
 ) -> typing.Any:
     """Lower AO bilinear AD; the caller supplies one exact semilocal selector."""
     code = _functional_code(functional, pbe)
-    family = {0: "lda", 1: "gga", 2: "mgga", 4: "mgga"}[code]
+    family = (
+        (
+            "mgga"
+            if "tau" in semilocal.ingredients
+            else "gga"
+            if "sigma" in semilocal.ingredients
+            else "lda"
+        )
+        if semilocal is not None
+        else {0: "lda", 1: "gga", 2: "mgga", 4: "mgga"}[code]
+    )
     program = jet_pullback_program(family)
     coefficient_count = {"lda": 1, "gga": 4, "mgga": 5}[family]
     variables = {

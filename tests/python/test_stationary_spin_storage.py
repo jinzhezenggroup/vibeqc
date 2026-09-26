@@ -33,6 +33,7 @@ def test_storage_rejects_a_different_spin_specialization(
 using std::size_t;
 constexpr size_t workers=32, record_stride=26, map_stride=8;
 constexpr unsigned stationary_spin_blocks={blocks};
+constexpr unsigned stationary_source_count=7;
 {function.group()}
 int main() {{
   if (allocation(2, 3, 8, 4, 4, {blocks}) == 0) return 1;

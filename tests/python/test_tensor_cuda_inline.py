@@ -9,6 +9,7 @@ from vibeqc_compiler.tensor import (
     IndexSpace,
     Program,
     TensorSpec,
+    einsum,
     exp,
     input_tensor,
     reduce_sum,
@@ -30,6 +31,33 @@ def _optional_diagnostic_program() -> Program:
             "diagnostic": reduce_sum(exp(diagnostic), axes=(0,)),
         }
     )
+
+
+def test_inline_spin_contraction_is_bounded_and_keeps_pairing() -> None:
+    for size in (2, 65):
+        spin = Index("s", IndexSpace("spin", "spin", size))
+        spec = TensorSpec((spin,), role="input")
+        left, right = input_tensor("left", spec), input_tensor("right", spec)
+        program = Program(
+            {"weight": einsum("s,s->", left, right, coefficient=Fraction(-3, 7))}
+        )
+        bindings = {
+            "left": tuple(f"a{i}" for i in range(size)),
+            "right": tuple(f"b{i}" for i in range(size)),
+        }
+        if size > 64:
+            with pytest.raises(ValueError, match="64-term work bound"):
+                lower_inline_cuda_output(program, output="weight", bindings=bindings)
+        else:
+            lowered = lower_inline_cuda_output(
+                program, output="weight", bindings=bindings
+            )
+            # Only arithmetic emitted above from this fixed, trusted test graph.
+            assert eval(  # noqa: S307
+                lowered.expression,
+                {"__builtins__": {}},
+                {"a0": 2, "a1": 3, "b0": 5, "b1": 7},
+            ) == pytest.approx(-93 / 7)
 
 
 def test_inline_cuda_applies_output_demand_before_consumer_lowering() -> None:

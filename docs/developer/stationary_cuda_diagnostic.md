@@ -3,26 +3,48 @@
 `vibeqc._stationary_cuda.complete_rks_cuda_gradient_diagnostic` executes all
 `StationaryGradientPlan` sources on CUDA: one-electron, Coulomb, XC AO motion,
 XC point motion, XC partition response, overlap/Pulay, and nuclear repulsion.
+Full-range global hybrids add an exact-exchange contribution from the same
+ordered ERI derivative provider, with MethodIR-owned coefficients and same-spin
+`D[a,c] D[b,d]` weights. Source storage and final reduction follow the gradient
+plan, including its order and complete source inventory.
 The result is an energy gradient in Eh/bohr; force is its negative. The public
 Python C2 endpoint reuses this consumer for qualified CUDA LDA/PBE/r2SCAN RKS/UKS
-forces. All-electron execution admits Cartesian and real-spherical s/p/d public
-AOs; scalar ECP execution remains s/p. Public ECP scope and
+forces, and admitted direct global-hybrid RKS/UKS graphs. All-electron execution
+admits Cartesian and real-spherical s/p/d public AOs; scalar ECP execution remains
+s/p. Public ECP scope and
 resource/work limits are described in [ecp.md](../user/ecp.md#public-cuda-semilocal-ecp-forces).
 The native C and CPU DFT force capabilities are unchanged.
 
 The admitted domain is direct, all-electron, real FP64 integer RKS/UKS with canonical
-LDA/PBE/r2SCAN, s/p/d public AOs and the native unpruned version-one grid.
+semilocal or global-hybrid compositions, s/p/d public AOs and the native unpruned
+version-one grid.
 Distinct nuclei and no point/center collisions are required, including at zero
-weights. Density fitting, hybrids, angular momentum above d and Hessians are
-outside this contract.
+weights. Global hybrids require an explicit grid, device-fused XC, FP64 and
+an all-electron Hamiltonian. Their public force capability comes from complete
+primitive coverage; native SCF preparation still enforces the admitted point
+program and exact composition. Merely resolving a MethodIR does not grant SCF
+or derivative execution. Density fitting, range-separated/nonlocal hybrids,
+angular momentum above d and Hessians are outside this contract.
 Ordinary stationary first derivatives require no CPKS/Hessian solve.
+
+All-electron semilocal public forces retain packaged AOT modules. Composed global-hybrid
+forces compile a bounded plan-specific wrapper using NVCC on first use and
+reuse it through the ordinary compiler cache and prepared owner. Set `CUDACXX`
+or `CUDA_PATH` to the toolkit when it is not discoverable. Primitive derivative
+objects are cached independently of functional/spin wrappers. There is no CPU
+scientific fallback. The semilocal point graph, work-domain treatment and
+exchange fraction are shared with energy evaluation; meta-GGA consumers carry
+the tau pullback through the same AO geometry path.
+The [global-hybrid force decision](../../.agents/notes/implemented/architecture/2026-09-26-generic-cuda-global-hybrid-forces.md)
+records the composition, ownership and qualification rationale.
 
 ## Execution and ownership
 
 CUDA snapshot wire v3 appends the actual owner's GridSpec, raw atomic measures
 and measured snapshot-export D2H/read/synchronization counters. CPU wire v2 is
 unchanged. Legacy CUDA v1 snapshots remain readable, but cannot enter this
-complete diagnostic. Neither Python labels nor copied matrices can manufacture
+complete diagnostic. CUDA hybrid wire v8 additionally binds the full semilocal
+and exact-exchange composition. Neither Python labels nor copied matrices can manufacture
 the live opaque native token. Replay, closure, replacement and rejected updates
 revoke the old snapshot; the token is checked again before publication.
 
@@ -66,10 +88,16 @@ Preparation admits at most 32 atoms, 128 AOs, 4096 points per tile, 4096 primiti
 records per tile, and 128 source-weight terms. Defaults cap total primitive work
 at 16,000,000 records, grid points at 1,000,000 and grid pair visits at 100,000,000.
 For `A` atoms, `N` AOs, point capacity `P` and primitive capacity `R`, the new
-source arena owns exactly `8*(42*R + 600*A + 3*P + N) + 256` bytes. The Becke
+source arena owns exactly
+`8*(22*R + 2*Kp + 4*N + (579+3*S)*A + 3*P + 2*Ns*N*N) + 256`
+bytes, where `Kp` is the primitive-table length, `Ns` is the number of density
+spin blocks and `S` is the plan-owned source count (seven or eight). The Becke
 scratch has 32 atom-sized worker slices; there is no coordinate/grid/AO tensor.
-Ordered primitive work is `K**4 + (A+2)*K**2 + A*(A-1)/2`, where `K` sums each
-public AO's primitive count once per normalized Cartesian expansion term. Pair
+Ordered primitive work is `(1+H)*K**4 + (A+2)*K**2 + A*(A-1)/2`, where
+`H=1` when full-range exchange is present and `H=0` otherwise, and `K` sums each
+public AO's primitive count once per normalized Cartesian expansion term. The
+bounded implementation currently traverses ERI derivative tasks once per
+Coulomb/exchange contribution; it does not claim a fused-J/K speedup. Pair
 visits are `(1+2*grid_points)*A*(A-1)/2`.
 
 All TensorIR programs and the grid/source capacities are admitted before device

@@ -132,7 +132,9 @@ def test_complete_cuda_independent_analytic(
     calc = _calculator(method)
     started = perf_counter()
     with calc.prepare_batch([atoms]) as batch, NativeAO(atoms) as basis:
-        energy = batch.execute(strict=True).items[0].energy
+        # This gate executes the diagnostic explicitly below. Request only SCF
+        # here so it neither runs a duplicate force nor requires packaged AOT.
+        energy = batch.execute(properties=("energy",), strict=True).items[0].energy
         state = StationaryKsState.from_native(batch, basis)
         assert state._source.metadata[0] == 3
         assert state._source.grid_spec is not None

@@ -24,7 +24,10 @@ def _block(source: str, marker: str) -> str:
     raise AssertionError(f"unterminated native block: {marker}")
 
 
-def test_native_task_budget_is_per_reset_not_cumulative(tmp_path: Path) -> None:
+@pytest.mark.parametrize("method", ("PBE", "PBE0"))
+def test_native_task_budget_is_per_reset_not_cumulative(
+    tmp_path: Path, method: str
+) -> None:
     compiler = shutil.which("c++")
     if compiler is None:
         pytest.skip("C++ compiler required")
@@ -46,7 +49,19 @@ def test_native_task_budget_is_per_reset_not_cumulative(tmp_path: Path) -> None:
         pieces.append(body)
     assert launches == 4
     source = tmp_path / "admission.cpp"
-    source.write_text(PREAMBLE + "\n".join(pieces) + MAIN)
+    from vibeqc_compiler.method import resolve_method
+    from vibeqc_compiler.method.stationary_cuda import _runtime_layout_cuda
+    from vibeqc_compiler.method.stationary_gradient import (
+        SCF_POINT_MODEL,
+        StationaryGradientPlan,
+        StationaryMeanField,
+    )
+
+    plan = StationaryGradientPlan(
+        resolve_method(method), StationaryMeanField(SCF_POINT_MODEL)
+    )
+    layout = _runtime_layout_cuda(plan).replace("__host__ __device__", "")
+    source.write_text(PREAMBLE + layout + "\n".join(pieces) + MAIN)
     binary = tmp_path / "admission"
     subprocess.run(
         [compiler, "-std=c++17", "-O2", str(source), "-o", str(binary)],
@@ -148,5 +163,14 @@ int main() {
   if(reset()) return 11;
   task[8]=2;
   if(page()==0 || p.primitive_count!=std::numeric_limits<uint64_t>::max()-1) return 12;
+  // Descriptor source IDs are signed 64-bit values. Narrowing before admission
+  // would alias these invalid values to the valid one-electron source.
+  p.primitive_count=0;
+  task[8]=1;
+  for(int64_t source : {int64_t(1)<<32, -(int64_t(1)<<32), int64_t(-1)}) {
+    if(reset()) return 13;
+    task[1]=source;
+    if(page()==0 || !p.failed || p.primitive_count!=0) return 14;
+  }
 }
 """
