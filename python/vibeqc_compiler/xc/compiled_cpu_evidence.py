@@ -140,7 +140,9 @@ def _pinned_density_threshold(name: str) -> float:
     try:
         threshold = float(record["bindings"]["p_a_dens_threshold"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError("compiled-CPU binding density threshold is unavailable") from exc
+        raise ValueError(
+            "compiled-CPU binding density threshold is unavailable"
+        ) from exc
     if not math.isfinite(threshold) or threshold < 0.0:
         raise ValueError("compiled-CPU pinned density threshold is invalid")
     return threshold

@@ -108,7 +108,9 @@ def test_compiled_cpu_result_rejects_wrong_domain_and_tampering() -> None:
 
 
 def test_rehashed_binding_cannot_change_pinned_density_threshold() -> None:
-    result = build_result(NAME, _binding(), _outcome(), evidence="test://pinned-threshold")
+    result = build_result(
+        NAME, _binding(), _outcome(), evidence="test://pinned-threshold"
+    )
     forged = deepcopy(result)
     forged["binding"]["density_threshold"] *= 2.0
     forged["binding_identity"] = canonical_hash(forged["binding"])
