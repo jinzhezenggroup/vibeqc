@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from tools.vibeqc_hessian.stationary_executor import (
+from vibeqc.second_order import (
     StationaryHVPContributor,
     StationaryPerturbationProvider,
     StationaryResponseDriver,
