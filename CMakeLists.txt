@@ -234,20 +234,39 @@ vibeqc_register_host_generated_sources(vibeqc)
 # A local tuned library may replace this build only when its scientific source
 # and generator are identical. Paths and Git metadata are deliberately excluded
 # so the same installed build can be reused across homogeneous cluster nodes.
+#
+# Keep inventory discovery at configure time so additions/removals regenerate
+# the build graph, but hash file contents only when the generated identity
+# header is actually out of date. Ordinary source edits therefore do not force
+# a CMake reconfigure before compilation can resume.
 vibeqc_collect_source_identity_inputs(_vibeqc_identity_inputs)
-set(_vibeqc_identity_text "")
+set(_vibeqc_identity_dependencies)
 foreach(_vibeqc_identity_path IN LISTS _vibeqc_identity_inputs)
-  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}" _vibeqc_file_hash)
-  string(APPEND _vibeqc_identity_text "${_vibeqc_identity_path}:${_vibeqc_file_hash}\n")
-  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-               "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
+  list(APPEND _vibeqc_identity_dependencies
+       "${CMAKE_CURRENT_SOURCE_DIR}/${_vibeqc_identity_path}")
 endforeach()
-string(SHA256 VIBEQC_SOURCE_IDENTITY "${_vibeqc_identity_text}")
 set(VIBEQC_TUNING_RELEASE_BUILD OFF)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(VIBEQC_TUNING_RELEASE_BUILD ON)
 endif()
-configure_file(src/api/build_identity.hpp.in generated/build_identity.hpp @ONLY)
+set(VIBEQC_BUILD_IDENTITY_HEADER
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/build_identity.hpp")
+vibeqc_register_generated_sources(
+  NAME vibeqc_build_identity_codegen
+  TARGET vibeqc
+  GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_build_identity.py"
+  OUTPUTS "${VIBEQC_BUILD_IDENTITY_HEADER}"
+  DEPENDS
+    ${_vibeqc_identity_dependencies}
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/api/build_identity.hpp.in"
+  ARGS
+    --source-root "${CMAKE_CURRENT_SOURCE_DIR}"
+    --manifest "${CMAKE_CURRENT_SOURCE_DIR}/cmake/VibeQCSourceIdentity.json"
+    --template "${CMAKE_CURRENT_SOURCE_DIR}/src/api/build_identity.hpp.in"
+    --output "${VIBEQC_BUILD_IDENTITY_HEADER}"
+    --cuda-fast-compile "${VIBEQC_CUDA_FAST_COMPILE}"
+    --release-build "${VIBEQC_TUNING_RELEASE_BUILD}"
+  COMMENT "Generating VibeQC build identity")
 target_include_directories(vibeqc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
 target_include_directories(vibeqc
