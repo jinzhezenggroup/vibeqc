@@ -168,7 +168,7 @@ std::size_t cuda_direct_jk_device_bytes(std::size_t batch, std::size_t nao, std:
   add(aos, sizeof(std::int32_t) + 10 * sizeof(std::uint8_t) + 3 * sizeof(double));
   add(primitives, 2 * sizeof(double));
   add(matrices, 6 * sizeof(double));
-  if (derivative_order) add(atoms, 3 * sizeof(double));
+  if (derivative_order) add(atoms, 9 * sizeof(double));
   return bytes;
 }
 
@@ -267,7 +267,8 @@ vibeqc_status create_cuda_direct_jk_plan(int device_id, const std::vector<core::
 #undef VIBEQC_DIRECT_COUNT
     const auto matrix_bytes = direct_jk_product(elements, sizeof(double));
     const auto gradient_bytes =
-        derivative_order ? direct_jk_product(coord_elements, sizeof(double)) : 0;
+        derivative_order ? direct_jk_product(direct_jk_product(coord_elements, 3), sizeof(double))
+                         : 0;
     std::size_t required = direct_jk_product(matrix_bytes, 6);
     if (!vibeqc::runtime::checked_add(required, gradient_bytes, required) ||
         !vibeqc::runtime::checked_add(required, sizeof(int), required) ||
@@ -595,6 +596,60 @@ vibeqc_status execute_cuda_direct_energy_derivative_item(CudaDirectJkPlan* plan,
                                                          std::string& detail) {
   return execute_cuda_direct_energy_derivative_range(plan, item, 1, spec, density, beta, derivative,
                                                      detail);
+}
+
+vibeqc_status execute_cuda_direct_rsh_energy_derivatives_item(
+    CudaDirectJkPlan* plan, std::size_t item, FockSpin spin, double coulomb_coefficient,
+    double short_exchange_coefficient, double long_exchange_coefficient, double omega,
+    const std::vector<double>& density, const std::vector<double>& beta,
+    std::vector<double>& derivatives, std::string& detail) {
+  return direct_jk_guard(plan, detail, [&] {
+    direct_jk_require(plan != nullptr && item < plan->diagnostic.batch_size,
+                      "invalid fused RSH derivative item");
+    direct_jk_require(std::isfinite(coulomb_coefficient) &&
+                          std::isfinite(short_exchange_coefficient) &&
+                          std::isfinite(long_exchange_coefficient) && std::isfinite(omega) &&
+                          omega >= 0.0,
+                      "nonfinite fused RSH derivative coefficient");
+    FockBuildSpec spec;
+    spec.spin = spin;
+    spec.derivative_order = 1;
+    spec.coulomb = {true, coulomb_coefficient};
+    spec.exchange = {true, short_exchange_coefficient, FockOperator::ShortRange, omega,
+                     FockApproximation::Exact};
+    spec = direct_jk_spec(plan, spec, density, beta, item, 1);
+    direct_jk_require(spec.derivative_order == 1,
+                      "direct J/K first derivatives were not requested");
+
+    const std::size_t coordinates = plan->coordinates_per_item;
+    const std::size_t coordinate_offset = item * coordinates;
+    const std::size_t matrix_offset = item * plan->diagnostic.nbf * plan->diagnostic.nbf;
+    std::vector<double> result(3 * coordinates);
+    if (coulomb_coefficient != 0.0 || short_exchange_coefficient != 0.0 ||
+        long_exchange_coefficient != 0.0) {
+      DirectJkDownloadFence fence{plan->stream};
+      direct_jk_upload_density(*plan, density, beta, matrix_offset);
+      for (unsigned source = 0; source < 3; ++source)
+        direct_jk_check(cudaMemsetAsync(
+            plan->derivative + source * plan->coordinate_elements + coordinate_offset, 0,
+            coordinates * sizeof(double), plan->stream));
+      launch_independent_rsh_derivative_kernel(
+          static_cast<unsigned>(coordinates), kIndependentJkThreads, 0, plan->stream, plan->batch,
+          coordinates, item, plan->coordinate_elements, coulomb_coefficient,
+          short_exchange_coefficient, long_exchange_coefficient,
+          spec.spin == FockSpin::Unrestricted, omega, plan->screening_tolerance, plan->bounds,
+          plan->density, plan->beta, plan->derivative);
+      direct_jk_check(cudaGetLastError());
+      for (unsigned source = 0; source < 3; ++source)
+        direct_jk_check(cudaMemcpyAsync(
+            result.data() + source * coordinates,
+            plan->derivative + source * plan->coordinate_elements + coordinate_offset,
+            coordinates * sizeof(double), cudaMemcpyDeviceToHost, plan->stream));
+      fence.complete();
+      direct_jk_finite_result(result);
+    }
+    derivatives = std::move(result);
+  });
 }
 
 }  // namespace vibeqc::scf
