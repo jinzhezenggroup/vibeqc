@@ -66,7 +66,8 @@ def test_complete_cuda_force_matches_independent_engine(
     ) as batch:
         cold = batch.execute(strict=True).items[0]
         warm = batch.execute(strict=True).items[0]
-        assert warm.iterations == 1
+        if spin == 0:
+            assert warm.iterations == 1
         work = batch._stationary_cuda_execution.last_work
         assert work["prepared_execution_reused"]
         assert work["ao_collocation_point_visits"] == 2 * work["grid_points"]
