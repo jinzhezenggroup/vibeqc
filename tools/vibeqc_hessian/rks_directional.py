@@ -30,6 +30,7 @@ from .first_order import (
 from .perturbation import (
     StationaryNuclearResponse,
     solve_stationary_nuclear_perturbation,
+    solve_stationary_nuclear_perturbations,
 )
 
 
@@ -57,6 +58,28 @@ class DirectionalRKSResponse:
             "response_operator": "shared-native-rks-cpks",
             "response_iterations": self.response.solve_result.iterations,
             "response_residual_norm": self.response.solve_result.residual_norm,
+        }
+
+
+@dataclass(frozen=True, eq=False)
+class DirectionalRKSBatchResponse:
+    """Ordered RKS nuclear responses produced by one shared multi-RHS solve."""
+
+    identity: str
+    responses: tuple[DirectionalRKSResponse, ...]
+    solve_result: typing.Any
+    strategy: str
+
+    @property
+    def diagnostics(self) -> dict[str, typing.Any]:
+        return {
+            "nrhs": len(self.responses),
+            "strategy": self.strategy,
+            "multi_rhs_calls": 1,
+            "response_operator_actions": self.solve_result.operator_actions,
+            "response_peak_workspace_bytes": self.solve_result.peak_workspace_bytes,
+            "rhs_rank": self.solve_result.rhs_rank,
+            "rank_deficient_rhs": self.solve_result.rank_deficient_rhs,
         }
 
 
@@ -459,6 +482,139 @@ def native_rks_xc_hvp_components(
     )
 
 
+def _assemble_directional_rks_response(
+    operator: NativeRKSResponse,
+    vector: np.ndarray,
+    integral: np.ndarray,
+    xc: np.ndarray,
+    overlap: np.ndarray,
+    solved: StationaryNuclearResponse,
+    branch_identity: str,
+) -> DirectionalRKSResponse:
+    """Publish one immutable directional response from an already solved RHS."""
+    identity = canonical_hash(
+        {
+            "schema": "vibeqc.directional-rks-nuclear-response/v1",
+            "state": operator.state.identity.to_payload(),
+            "response_operator": operator.problem.operator_identity,
+            "direction": vector.tolist(),
+            "grid_branch": branch_identity,
+            "sources": (
+                "one-electron",
+                "direct-coulomb",
+                "native-xc-geometry",
+                "overlap-metric",
+                "cpks-density-response",
+            ),
+        }
+    )
+    frozen = immutable(np.asarray(integral) + np.asarray(xc))
+    return DirectionalRKSResponse(
+        identity=identity,
+        direction=immutable(vector),
+        integral_frozen_fock_derivative=immutable(integral),
+        xc_frozen_fock_derivative=immutable(xc),
+        frozen_fock_derivative=frozen,
+        overlap_derivative=immutable(overlap),
+        response=solved,
+        grid_branch_identity=branch_identity,
+    )
+
+
+def directional_rks_responses(
+    operator: typing.Any,
+    directions: typing.Any,
+    *,
+    cache: typing.Any = ".artifacts",
+    strategy: str = "recycled",
+    solver_options: typing.Any = None,
+) -> DirectionalRKSBatchResponse:
+    """Solve multiple direct LDA/PBE RKS nuclear directions in one shared call."""
+    if not isinstance(operator, NativeRKSResponse):
+        raise TypeError("directional RKS responses require NativeRKSResponse")
+    if strategy not in ("sequential", "blocked", "recycled"):
+        raise ValueError("strategy must be sequential, blocked or recycled")
+    if solver_options is not None and not isinstance(solver_options, GMRESOptions):
+        raise TypeError("solver_options must be GMRESOptions")
+    operator.validate_current()
+    basis = operator.xc_kernel.basis
+    raw = np.asarray(directions)
+    if (
+        raw.ndim != 3
+        or raw.shape[0] < 1
+        or raw.shape[1:] != (basis.natom, 3)
+        or raw.dtype.kind not in "iuf"
+        or np.iscomplexobj(raw)
+        or not np.isfinite(raw).all()
+    ):
+        raise ValueError(
+            "RKS multi-RHS directions must be finite real with shape (nrhs, natoms, 3)"
+        )
+    vectors = tuple(checked_direction(item, basis.natom) for item in raw)
+    integrals = []
+    overlaps = []
+    xcs = []
+    frozen = []
+    branches = []
+    for vector in vectors:
+        integral, overlap = generated_directional_semilocal_rks_integral_first_order(
+            operator._source,
+            operator.state.density[0],
+            vector,
+            cache=cache,
+        )
+        xc, branch_identity = _native_rks_xc_geometry_direction(operator, vector)
+        integrals.append(immutable(integral))
+        overlaps.append(immutable(overlap))
+        xcs.append(immutable(xc))
+        frozen.append(immutable(np.asarray(integral) + np.asarray(xc)))
+        branches.append(branch_identity)
+
+    batch = solve_stationary_nuclear_perturbations(
+        operator,
+        np.stack(frozen),
+        np.stack(overlaps),
+        strategy=strategy,
+        options=solver_options,
+    )
+    operator.validate_current()
+    responses = tuple(
+        _assemble_directional_rks_response(
+            operator,
+            vector,
+            integral,
+            xc,
+            overlap,
+            solved,
+            branch_identity,
+        )
+        for vector, integral, xc, overlap, solved, branch_identity in zip(
+            vectors,
+            integrals,
+            xcs,
+            overlaps,
+            batch.responses,
+            branches,
+            strict=True,
+        )
+    )
+    identity = canonical_hash(
+        {
+            "schema": "vibeqc.directional-rks-nuclear-response-batch/v1",
+            "state": operator.state.identity.to_payload(),
+            "response_operator": operator.problem.operator_identity,
+            "strategy": strategy,
+            "responses": tuple(item.identity for item in responses),
+        }
+    )
+    return DirectionalRKSBatchResponse(
+        identity=identity,
+        responses=responses,
+        solve_result=batch.solve_result,
+        strategy=strategy,
+    )
+
+
 def directional_rks_response(
     operator: typing.Any,
     direction: typing.Any,
@@ -495,29 +651,12 @@ def directional_rks_response(
         options=solver_options,
     )
     operator.validate_current()
-    identity = canonical_hash(
-        {
-            "schema": "vibeqc.directional-rks-nuclear-response/v1",
-            "state": state.identity.to_payload(),
-            "response_operator": operator.problem.operator_identity,
-            "direction": vector.tolist(),
-            "grid_branch": branch_identity,
-            "sources": (
-                "one-electron",
-                "direct-coulomb",
-                "native-xc-geometry",
-                "overlap-metric",
-                "cpks-density-response",
-            ),
-        }
-    )
-    return DirectionalRKSResponse(
-        identity=identity,
-        direction=immutable(vector),
-        integral_frozen_fock_derivative=immutable(integral),
-        xc_frozen_fock_derivative=xc,
-        frozen_fock_derivative=frozen,
-        overlap_derivative=immutable(overlap),
-        response=solved,
-        grid_branch_identity=branch_identity,
+    return _assemble_directional_rks_response(
+        operator,
+        vector,
+        integral,
+        xc,
+        overlap,
+        solved,
+        branch_identity,
     )
