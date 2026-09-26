@@ -14,6 +14,7 @@ from fractions import Fraction
 from types import MappingProxyType
 from typing import ClassVar
 
+from vibeqc_compiler.common.exact import require_fraction
 from vibeqc_compiler.common.provenance import canonical_hash
 from vibeqc_compiler.xc._generated_split_hybrids import SPLIT_HYBRIDS
 from vibeqc_compiler.xc.spec import COMPONENTS, FunctionalSpec
@@ -56,12 +57,6 @@ _INGREDIENT_ORDER = ("rho", "sigma", "tau")
 
 class UnsupportedMethod(ValueError):
     """The requested method composition cannot be represented by this IR."""
-
-
-def _require_fraction(value: typing.Any, label: typing.Any) -> typing.Any:
-    if not isinstance(value, Fraction):
-        raise UnsupportedMethod(f"{label} requires an exact Fraction coefficient")
-    return value
 
 
 def _canonical_components(components: typing.Any) -> typing.Any:
@@ -112,7 +107,12 @@ class MethodSpec:
             name, coefficient = item
             if name not in COMPONENTS:
                 raise UnsupportedMethod(f"unsupported semilocal component {name!r}")
-            _require_fraction(coefficient, f"component {name}")
+            require_fraction(
+                coefficient,
+                f"component {name}",
+                UnsupportedMethod,
+                role="coefficient",
+            )
             if not coefficient:
                 raise UnsupportedMethod("zero-valued manifest components are ambiguous")
         if self.nonlocal_correlation is not None and not isinstance(
@@ -141,7 +141,7 @@ class MethodSpec:
             ("long-range exchange", self.long_range_exchange),
             ("range omega", self.range_omega),
         ):
-            _require_fraction(value, label)
+            require_fraction(value, label, UnsupportedMethod, role="coefficient")
             if value < 0:
                 raise UnsupportedMethod(f"{label} must be nonnegative")
         has_range_exchange = bool(self.short_range_exchange or self.long_range_exchange)
@@ -249,8 +249,18 @@ class RangeSeparatedExchangePrimitive:
     kind: ClassVar[str] = "range_separated_exchange"
 
     def __post_init__(self) -> None:
-        _require_fraction(self.coefficient, "range-separated exchange")
-        _require_fraction(self.omega, "range omega")
+        require_fraction(
+            self.coefficient,
+            "range-separated exchange",
+            UnsupportedMethod,
+            role="coefficient",
+        )
+        require_fraction(
+            self.omega,
+            "range omega",
+            UnsupportedMethod,
+            role="coefficient",
+        )
         if self.coefficient <= 0 or self.omega <= 0:
             raise UnsupportedMethod(
                 "range-separated exchange requires positive coefficient and omega"
@@ -289,7 +299,12 @@ class ExactExchangePrimitive:
     kind: ClassVar[str] = "exact_exchange"
 
     def __post_init__(self) -> None:
-        _require_fraction(self.coefficient, "exact exchange")
+        require_fraction(
+            self.coefficient,
+            "exact exchange",
+            UnsupportedMethod,
+            role="coefficient",
+        )
         if self.coefficient <= 0:
             raise UnsupportedMethod(
                 "exact-exchange primitive requires a positive weight"
