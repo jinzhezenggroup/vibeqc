@@ -494,18 +494,23 @@ def _provider_data_from_source(
     if (
         source.representation != "cartesian"
         or source.auxiliary_shells
-        or not 1 <= source.nbf <= 12
-        or not 1 <= len(source.atoms) <= 4
+        or source.nbf < 1
+        or len(source.atoms) < 1
     ):
         raise ValueError(
-            "weighted second derivatives require direct Cartesian all-electron "
-            "sources bounded to 12 AOs and four atoms"
+            "weighted second derivatives require a nonempty direct Cartesian "
+            "all-electron source"
         )
     if any(shell.angular_momentum > 3 for shell in source.shells):
         raise ValueError("second-derivative providers support s/p/d/f shells")
     adapter, provider_device, resource_budget = _checked_second_hvp_options(
         backend, compiler, device_id, budget_bytes
     )
+    output_accumulator_bytes = len(source.atoms) * 3 * np.dtype(np.float64).itemsize
+    if output_accumulator_bytes > budget_bytes:
+        raise MemoryError(
+            "weighted second-derivative HVP output exceeds the provider budget"
+        )
     geometry = SimpleNamespace(
         nat=len(source.atoms),
         offsets=np.cumsum((0, *source.shell_sizes)),
@@ -528,6 +533,7 @@ def _provider_data_from_source(
         "backend": backend,
         "device_id": provider_device,
         "budget_bytes": budget_bytes,
+        "output_accumulator_bytes": output_accumulator_bytes,
         "resource_budget": resource_budget,
         "second_executions": [],
     }
@@ -550,6 +556,7 @@ def _second_provider_diagnostics(data: dict[str, object]) -> dict[str, object]:
         "provider_backend": data["backend"],
         "device_id": data["device_id"] if cuda else None,
         "budget_bytes": data["budget_bytes"],
+        "output_accumulator_bytes": data.get("output_accumulator_bytes", 0),
         "program_identities": tuple(
             sorted({item["program_identity"] for item in executions})
         ),

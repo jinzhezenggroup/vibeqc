@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from vibeqc import Calculator, GridSpec, KsOptions
+from vibeqc import Calculator, GridSpec, KsOptions, Primitive, Shell
 from vibeqc._dft_gradient import _native_ao_atoms
 from vibeqc._stationary_cpu import complete_rks_gradient_diagnostic
 from vibeqc_compiler.dft import NativeAO
@@ -24,6 +24,12 @@ from tools.vibeqc_hessian import (
 from tools.vibeqc_response import GMRESOptions, NativeRKSResponse
 
 H2 = [("H", (0.0, 0.0, -0.72)), ("H", (0.08, -0.03, 0.71))]
+LARGE_HE = [("He", (0.13, -0.21, 0.17))]
+LARGE_HE_BASIS = (
+    Shell(0, 0, (Primitive(1.5, 1.0),)),
+    Shell(0, 2, (Primitive(0.8, 1.0),)),
+    Shell(0, 2, (Primitive(0.35, 1.0),)),
+)
 GRID = GridSpec(radial_points=10, angular_polar=4, angular_azimuth=8)
 
 
@@ -498,3 +504,62 @@ def test_rks_hessian_output_budget_fails_before_hvp(
             block_size=2,
             output_budget_bytes=2 * output_bytes - 1,
         )
+
+
+def test_rks_hvp_integral_budget_fails_before_response(
+    case: typing.Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An undersized integral budget must reject work before CPKS starts."""
+    import tools.vibeqc_hessian.rks_molecular as rks_molecular_module
+
+    _, operator, direction, _ = case
+
+    def forbidden(*args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        raise AssertionError("CPKS started before the integral-budget gate")
+
+    monkeypatch.setattr(rks_molecular_module, "directional_rks_response", forbidden)
+    with pytest.raises(MemoryError, match="integral_budget_bytes"):
+        rks_hvp(operator, direction, integral_budget_bytes=1)
+
+
+def test_rks_hvp_admits_resource_bounded_domain_above_12_aos(
+    tmp_path: typing.Any,
+) -> None:
+    """The former 12-AO admission limit is replaced by explicit resource gates."""
+    calculator = Calculator(
+        method="lda-rks",
+        basis=LARGE_HE_BASIS,
+        device="cpu",
+        ks_options=KsOptions(grid=GRID),
+        max_iterations=200,
+        energy_tolerance=1e-13,
+        density_tolerance=1e-11,
+    )
+    direction = np.array([[0.31, -0.27, 0.19]])
+    direction /= np.linalg.norm(direction)
+    with (
+        calculator.prepare_batch([LARGE_HE]) as batch,
+        NativeAO(LARGE_HE, basis=LARGE_HE_BASIS) as basis,
+    ):
+        assert basis.nao == 13
+        batch.execute(strict=True)
+        with NativeRKSResponse.from_native(batch, basis, tile_points=257) as operator:
+            result = rks_hvp(
+                operator,
+                direction,
+                cache=tmp_path / "large-hvp",
+                integral_budget_bytes=64 << 20,
+                solver_options=GMRESOptions(atol=1e-12, rtol=1e-11),
+            )
+
+    assert result.diagnostics["complete_source_coverage"]
+    assert result.diagnostics["integral_budget_bytes"] == 64 << 20
+    assert (
+        result.diagnostics["plan_weight_workspace_bound_bytes"]
+        < result.diagnostics["integral_budget_bytes"]
+    )
+    assert np.isfinite(result.value).all()
+    np.testing.assert_allclose(result.value, 0.0, atol=2e-7, rtol=0)
+    for diagnostic in result.diagnostics["integral_providers"].values():
+        assert diagnostic["budget_bytes"] == 64 << 20
+        assert diagnostic["output_accumulator_bytes"] <= diagnostic["budget_bytes"]
