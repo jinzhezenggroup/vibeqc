@@ -11,7 +11,15 @@ from vibeqc_compiler.common.schedule import (
     ScheduleTopology,
     select_measured_schedule_contract,
 )
-from vibeqc_compiler.integral.direct_fock_schedule import select_direct_fock_route
+from vibeqc_compiler.integral.direct_fock_schedule import (
+    DIRECT_FOCK_ROUTE_SCHEMA,
+    direct_fock_route_contract,
+    select_direct_fock_route,
+)
+from vibeqc_compiler.integral.operator_route_schedule import (
+    operator_route_contract,
+    select_operator_route,
+)
 
 
 def _contract(
@@ -45,6 +53,36 @@ def _contract(
             spill_load_bytes=0,
             endpoint_seconds=seconds,
         ),
+    )
+
+
+def _operator_route(
+    consumer: str,
+    route: str,
+    seconds: float | None,
+    *,
+    fallback: bool = False,
+    legal: bool = True,
+    reasons: tuple[str, ...] = (),
+) -> ScheduleContract:
+    return operator_route_contract(
+        route,
+        consumer=consumer,
+        profitability=GpuProfitability(endpoint_seconds=seconds),
+        workload_hash="1" * 64,
+        profile_key="2" * 64,
+        target_hash="3" * 64,
+        precision_schedule_hash="4" * 64,
+        fallback=fallback,
+        legal=legal,
+        reasons=reasons,
+        topology=ScheduleTopology(
+            materialization="stream" if "streaming" in route else "materialize",
+            residency="direct-device" if "streaming" in route else "device",
+            bucket=consumer,
+        ),
+        identity_fields=(("operator", consumer),),
+        provenance=(("operator_route", route),),
     )
 
 
@@ -101,7 +139,30 @@ def test_measured_schedule_selection_rejects_cross_workload_comparison() -> None
         )
 
 
-def test_direct_fock_materialization_consumes_shared_schedule_selection() -> None:
+def test_direct_fock_adapter_preserves_profile_schedule_identity() -> None:
+    """Compiler absorption must not invalidate existing #1403 profiles."""
+
+    contract = direct_fock_route_contract(
+        "paged",
+        shell_class=1,
+        profitability=GpuProfitability(endpoint_seconds=1.0),
+        workload_hash="1" * 64,
+        profile_key="2" * 64,
+        target_hash="3" * 64,
+        precision_schedule_hash="4" * 64,
+        page_size=8_388_608,
+    )
+    assert contract.schedule_hash == canonical_hash(
+        {
+            "schema": DIRECT_FOCK_ROUTE_SCHEMA,
+            "route": "paged",
+            "shell_class": 1,
+            "page_size": 8_388_608,
+        }
+    )
+
+
+def test_direct_fock_materialization_consumes_shared_operator_selection() -> None:
     """The Direct-J/K adapter must not implement a second promotion policy."""
 
     common = {
@@ -146,3 +207,57 @@ def test_direct_fock_illegal_streaming_candidate_falls_back() -> None:
         )
         == "paged"
     )
+
+
+def test_dft_pure_j_can_reuse_measured_operator_route_selection() -> None:
+    """Generated KS Coulomb may reuse the HF compiler promotion machinery."""
+
+    generic = _operator_route("integral.coulomb", "generic", 1.0, fallback=True)
+    generated = _operator_route(
+        "integral.coulomb",
+        "generated-streaming",
+        0.70,
+    )
+    assert (
+        select_operator_route(
+            {"generic": generic, "generated-streaming": generated},
+            minimum_speedup=1.02,
+        )
+        == "generated-streaming"
+    )
+
+
+def test_unimplemented_dft_exchange_route_stays_fail_closed() -> None:
+    """Shared representation must not grant an unqualified exchange capability."""
+
+    generic = _operator_route("integral.exact-exchange", "generic", 1.0, fallback=True)
+    generated = _operator_route(
+        "integral.exact-exchange",
+        "generated-streaming",
+        0.50,
+        legal=False,
+        reasons=("generated exact-exchange consumer is not qualified",),
+    )
+    assert (
+        select_operator_route(
+            {"generic": generic, "generated-streaming": generated},
+            minimum_speedup=1.02,
+        )
+        == "generic"
+    )
+
+
+def test_operator_route_selection_rejects_cross_consumer_evidence() -> None:
+    """Pure-J timing must never promote an exact-exchange implementation."""
+
+    coulomb = _operator_route("integral.coulomb", "generic", 1.0, fallback=True)
+    exchange = _operator_route(
+        "integral.exact-exchange",
+        "generated-streaming",
+        0.50,
+    )
+    with pytest.raises(ValueError, match="share consumer/workload"):
+        select_operator_route(
+            {"generic": coulomb, "generated-streaming": exchange},
+            minimum_speedup=1.02,
+        )
