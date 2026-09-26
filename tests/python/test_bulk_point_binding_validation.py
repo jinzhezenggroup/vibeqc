@@ -12,6 +12,7 @@ from vibeqc_compiler.xc.bulk_point_program import (
     POINT_PROGRAM_BINDING_SCHEMA,
     SemilocalPointBinding,
 )
+from vibeqc_compiler.xc.bulk_runtime import PRODUCTION_DENSITY_CANDIDATE_DOMAIN
 
 
 def variant() -> SourceVariant:
@@ -88,3 +89,30 @@ def test_known_runtime_domain_rejects_forged_native_version() -> None:
     binding = SemilocalPointBinding(source, "capability", "expression", 1)
     assert binding.to_payload()["schema"] == POINT_PROGRAM_BINDING_SCHEMA
     assert binding.to_payload()["domain_version"] == 1
+
+
+def test_density_screened_binding_requires_exact_threshold_and_version() -> None:
+    source = replace(variant(), domain=PRODUCTION_DENSITY_CANDIDATE_DOMAIN)
+
+    with pytest.raises(ValueError, match="density_threshold"):
+        SemilocalPointBinding(source, "capability", "expression", 3)
+
+    with pytest.raises(ValueError, match="disagrees"):
+        SemilocalPointBinding(
+            source,
+            "capability",
+            "expression",
+            2,
+            density_threshold=1.0e-15,
+        )
+
+    binding = SemilocalPointBinding(
+        source,
+        "capability",
+        "expression",
+        3,
+        density_threshold=1.0e-15,
+    )
+    payload = binding.to_payload()
+    assert payload["domain_version"] == 3
+    assert payload["density_threshold"] == 1.0e-15

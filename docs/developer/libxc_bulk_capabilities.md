@@ -105,20 +105,28 @@ itself remains a pure, deterministic admission evaluator.
 
 `tools/qualify_libxc_compiled_cpu.py` produces the concrete
 `compiled-cpu` evidence used by the automatic semilocal path. It builds the
-polarized first-order `libxc-bulk-production-candidate/v1` Graph, binds it to
-the native `SemilocalPointProgram` ABI, derives native domain version 2 from
-that compiler-owned domain, then compiles and executes one C++ translation unit.
+polarized first-order `libxc-bulk-production-candidate/v2` Graph, binds it to
+the native `SemilocalPointProgram` ABI, derives native domain version 3 from
+that compiler-owned domain, compiles the same total-density screening into the
+point wrapper, then compiles and executes one C++ translation unit.
 
 A pass binds all of the following into
-`vibeqc.libxc-compiled-cpu-result/v1`:
+`vibeqc.libxc-compiled-cpu-result/v2`:
 
 - exact functional capability identity;
-- `vibeqc.libxc-bulk-point-program-binding/v3` identity and payload;
+- `vibeqc.libxc-bulk-point-program-binding/v4` identity and payload, including
+  the pinned density threshold;
 - point-expression and emitted-artifact identities;
 - compiler executable hash and version;
 - generated translation-unit hash;
 - compiled executable hash; and
-- a deterministic native point smoke input plus expected/observed output vectors.
+- deterministic **interior and vacuum** native smoke cases plus their
+  expected/observed output vectors.
+
+The vacuum smoke requires the compiled wrapper to return the same exact zero
+`SemilocalPointValue` as the v2 array-Graph candidate when total density is
+screened. This prevents a receipt from claiming the v2 domain while executing a
+v1 binary that lacks the outer Libxc density boundary.
 
 The smoke comparison is an **artifact execution** check against the exact bound
 Graph. It is not the independent scientific oracle: boundary correctness remains

@@ -11,6 +11,7 @@ import pytest
 from vibeqc_compiler.xc import bulk_point_program
 from vibeqc_compiler.xc.bulk_runtime import (
     PRODUCTION_CANDIDATE_DOMAIN,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
     build_bulk_runtime_program,
 )
 
@@ -85,6 +86,25 @@ def test_native_domain_version_is_derived_from_runtime_domain() -> None:
 
     with pytest.raises(ValueError, match="unsupported native XC domain"):
         bulk_point_program.native_domain_version("unknown-domain")
+
+
+def test_density_screened_native_domain_is_versioned_and_emitted() -> None:
+    program = build_bulk_runtime_program(
+        "GGA_X_PBE_SOL",
+        spin="polarized",
+        order=1,
+        domain=PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
+    )
+    binding = bulk_point_program.bind_runtime_semilocal_point_program(program)
+    source = binding.emit_source()
+
+    assert binding.domain_version == 3
+    assert binding.density_threshold == program.spec.density_threshold
+    assert binding.to_payload()["density_threshold"] == program.spec.density_threshold
+    assert "kDensityThreshold" in source
+    assert "rho[0] + rho[1] < kDensityThreshold" in source
+    assert "return {};" in source
+    assert ", 7U, 3U, evaluate_point};" in source
 
 
 def test_adapter_source_binds_all_identities_and_tau_convention() -> None:

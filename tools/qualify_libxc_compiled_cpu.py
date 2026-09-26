@@ -21,20 +21,31 @@ from vibeqc_compiler.xc.bulk_point_program import (
     bind_runtime_semilocal_point_program,
 )
 from vibeqc_compiler.xc.bulk_runtime import (
-    PRODUCTION_CANDIDATE_DOMAIN,
+    PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
     build_bulk_runtime_program,
 )
 from vibeqc_compiler.xc.compiled_cpu_evidence import build_result, stage_evidence
 
 ROOT = Path(__file__).resolve().parents[1]
-SMOKE_SCHEMA = "vibeqc.libxc-compiled-cpu-smoke-input/v1"
+SMOKE_SCHEMA = "vibeqc.libxc-compiled-cpu-smoke-input/v2"
+SMOKE_CASE_LABELS = ("interior", "vacuum")
 
 
-def _smoke_input() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    rho = np.asarray([0.7, 0.4], dtype=np.float64)
-    gradient = np.asarray([[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64)
-    tau = np.asarray([0.35, 0.21], dtype=np.float64)
-    return rho, gradient, tau
+def _smoke_inputs() -> tuple[tuple[str, np.ndarray, np.ndarray, np.ndarray], ...]:
+    interior_rho = np.asarray([0.7, 0.4], dtype=np.float64)
+    interior_gradient = np.asarray(
+        [[0.1, 0.2, 0.05], [0.05, -0.1, 0.15]], dtype=np.float64
+    )
+    interior_tau = np.asarray([0.35, 0.21], dtype=np.float64)
+    return (
+        ("interior", interior_rho, interior_gradient, interior_tau),
+        (
+            "vacuum",
+            np.zeros(2, dtype=np.float64),
+            np.zeros((2, 3), dtype=np.float64),
+            np.zeros(2, dtype=np.float64),
+        ),
+    )
 
 
 def _feature_values(
@@ -86,36 +97,48 @@ def _translation_unit(
     binding_source: str,
     binding_identity: str,
     domain_version: int,
-    rho: np.ndarray,
-    gradient: np.ndarray,
-    tau: np.ndarray,
+    cases: tuple[tuple[str, np.ndarray, np.ndarray, np.ndarray], ...],
 ) -> str:
-    return (
-        binding_source
-        + """
-#include <iomanip>
-#include <iostream>
-
-int main() {
-"""
-        + f'  std::cout << "{binding_identity}" << " {domain_version}\\n";\n'
-        + f"  const double rho[2]{{{_cpp_array(rho)}}};\n"
-        + "  const double gradient[2][3]{{"
-        + _cpp_array(gradient[0])
-        + "}, {"
-        + _cpp_array(gradient[1])
-        + "}};\n"
-        + f"  const double tau[2]{{{_cpp_array(tau)}}};\n"
-        + """  const auto value = vibeqc::dft::bulk_generated::evaluate_point(
-      rho, gradient, tau);
-  std::cout << std::setprecision(17)
-            << value.energy << ' ' << value.rho[0] << ' ' << value.rho[1];
-  for (const auto& spin : value.gradient)
-    for (double item : spin) std::cout << ' ' << item;
-  std::cout << ' ' << value.kinetic[0] << ' ' << value.kinetic[1] << '\\n';
-}
-"""
-    )
+    lines = [
+        binding_source,
+        "#include <iomanip>",
+        "#include <iostream>",
+        "",
+        "int main() {",
+        f'  std::cout << "{binding_identity}" << " {domain_version}\\n";',
+    ]
+    for index, (_, rho, gradient, tau) in enumerate(cases):
+        evaluate_line = (
+            f"  const auto value_{index} = "
+            f"vibeqc::dft::bulk_generated::evaluate_point("
+            f"rho_{index}, gradient_{index}, tau_{index});"
+        )
+        header_line = (
+            f"  std::cout << std::setprecision(17) << value_{index}.energy "
+            f"<< ' ' << value_{index}.rho[0] << ' ' << value_{index}.rho[1];"
+        )
+        kinetic_line = (
+            f"  std::cout << ' ' << value_{index}.kinetic[0] << ' ' "
+            f"<< value_{index}.kinetic[1] << '\\n';"
+        )
+        lines.extend(
+            [
+                f"  const double rho_{index}[2]{{{_cpp_array(rho)}}};",
+                f"  const double gradient_{index}[2][3]{{{{"
+                + _cpp_array(gradient[0])
+                + "}, {"
+                + _cpp_array(gradient[1])
+                + "}};",
+                f"  const double tau_{index}[2]{{{_cpp_array(tau)}}};",
+                evaluate_line,
+                header_line,
+                f"  for (const auto& spin : value_{index}.gradient)",
+                "    for (double item : spin) std::cout << ' ' << item;",
+                kinetic_line,
+            ]
+        )
+    lines.extend(["}", ""])
+    return "\n".join(lines)
 
 
 def _compiler_identity(path: Path, timeout: float) -> tuple[dict, str | None]:
@@ -153,19 +176,28 @@ def qualify_compiled_cpu(
         name,
         spin="polarized",
         order=1,
-        domain=PRODUCTION_CANDIDATE_DOMAIN,
+        domain=PRODUCTION_DENSITY_CANDIDATE_DOMAIN,
     )
     binding = bind_runtime_semilocal_point_program(program)
-    rho, gradient, tau = _smoke_input()
-    features = _feature_values(program.spec.features, rho, gradient, tau)
-    raw = program.evaluate(features.reshape(-1, 1))[:, 0]
-    expected = _native_expected(raw, binding.ingredient_mask, gradient)
+    cases = _smoke_inputs()
+    expected: list[float] = []
+    input_cases = []
+    for label, rho, gradient, tau in cases:
+        features = _feature_values(program.spec.features, rho, gradient, tau)
+        raw = program.evaluate(features.reshape(-1, 1))[:, 0]
+        expected.extend(_native_expected(raw, binding.ingredient_mask, gradient))
+        input_cases.append(
+            {
+                "label": label,
+                "rho": rho.tolist(),
+                "gradient": gradient.tolist(),
+                "tau": tau.tolist(),
+            }
+        )
     input_payload = {
         "schema": SMOKE_SCHEMA,
         "features": list(program.spec.features),
-        "rho": rho.tolist(),
-        "gradient": gradient.tolist(),
-        "tau": tau.tolist(),
+        "cases": input_cases,
     }
     input_identity = canonical_hash(input_payload)
 
@@ -204,9 +236,7 @@ def qualify_compiled_cpu(
         binding.emit_source(),
         binding.identity,
         binding.domain_version,
-        rho,
-        gradient,
-        tau,
+        cases,
     )
     translation_sha = hashlib.sha256(source.encode("utf-8")).hexdigest()
 
@@ -285,14 +315,12 @@ def qualify_compiled_cpu(
                     and len(metadata) == 2
                     and metadata[0] == binding.identity
                     and metadata[1] == str(binding.domain_version)
-                    and len(lines) >= 2
+                    and len(lines) == 1 + len(SMOKE_CASE_LABELS)
                 )
                 try:
-                    observed = (
-                        [float(value) for value in lines[1].split()]
-                        if len(lines) >= 2
-                        else []
-                    )
+                    observed = [
+                        float(value) for line in lines[1:] for value in line.split()
+                    ]
                 except ValueError:
                     observed = []
                 execution_reason = None
@@ -317,6 +345,7 @@ def qualify_compiled_cpu(
             finite_error = max_error if np.isfinite(max_error) else 1.0e300
             smoke = {
                 "status": "pass" if smoke_pass else "fail",
+                "case_labels": list(SMOKE_CASE_LABELS),
                 "input_identity": input_identity,
                 "expected": expected,
                 "observed": observed if finite_observed else [],
