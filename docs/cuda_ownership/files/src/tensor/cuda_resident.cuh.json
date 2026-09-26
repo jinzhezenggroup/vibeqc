@@ -1,7 +1,0 @@
-{
-  "path": "src/tensor/cuda_resident.cuh",
-  "reason": "Resident span transfer and checked device-to-device copy over the existing tensor Context owner; host-side allocation-bound and lock contracts with no scientific equations.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

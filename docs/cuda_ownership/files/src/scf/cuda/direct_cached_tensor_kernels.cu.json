@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_cached_tensor_kernels.cu",
-  "role": "scientific",
-  "subsystem": "direct_integrals",
-  "reason": "Separately compiled native direct consumer with unchanged equations, fused bounded work, launch bounds and instantiation set. Conservatively retains the original scientific classification.",
-  "regions": []
-}

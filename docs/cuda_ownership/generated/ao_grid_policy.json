@@ -1,8 +1,0 @@
-{
-  "name": "ao_grid_policy",
-  "outputs": [
-    "generated/generated_grid_policy.cu"
-  ],
-  "owner": "python/vibeqc_compiler/dft/ao_cuda.py",
-  "scope": "Shared CMake/JIT through-f/order-three AO polynomials, spin-density feature algebra, bounded AO/feature traversal, and local LDA/PBE grid XC contractions. Native cuda_grid.cu retains plan/arena, maps, packing/scatter, stream/launch and ABI orchestration."
-}

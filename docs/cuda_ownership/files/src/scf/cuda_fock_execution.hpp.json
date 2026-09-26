@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda_fock_execution.hpp",
-  "role": "runtime",
-  "subsystem": "runtime",
-  "reason": "Prepared Fock provider binding owns borrowed CUDA stream and execution metadata; J/K mathematics remain with the existing provider.",
-  "regions": []
-}

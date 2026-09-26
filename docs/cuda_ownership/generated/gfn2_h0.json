@@ -1,7 +1,0 @@
-{
-  "name": "gfn2_h0",
-  "outputs": [
-    "generated/generated_gfn2_h0_native.hpp"
-  ],
-  "owner": "python/vibeqc_compiler/method/gfn2_h0_force_runtime.py"
-}

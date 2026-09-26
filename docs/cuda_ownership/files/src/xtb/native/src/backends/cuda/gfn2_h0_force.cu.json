@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/native/src/backends/cuda/gfn2_h0_force.cu",
-  "reason": "GFN2 H0-force CUDA runtime owns ragged shell/AO traversal, validation, coincident-atom thresholding, reductions, atomics and failure-atomic publication; Pulay seed, Cartesian norm/pullback, pair factors, CN/radial reverse response and AO contraction arithmetic are compiler-generated TensorIR products.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

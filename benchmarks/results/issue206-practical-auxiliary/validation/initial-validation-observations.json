@@ -1,9 +1,0 @@
-{
-  "scope": "Development failures retained before any scientific campaign; none is a timed sample.",
-  "observations": [
-    "GPU reference venv has no pytest; used existing test venv without modifying the pinned GPU stack.",
-    "Initial ECP rejection test fixture was invalid because core count lacked potential metadata; supplied valid ECP metadata and verified early rejection.",
-    "Initial full benchmark host suite had43pass1fail: missing native library in fresh checkout. Retained diagnostic shows missing-library error; all44 passed under finite Slurm with frozen final-production library.",
-    "Ruff reformatted the two new/edited source files before measurement."
-  ]
-}

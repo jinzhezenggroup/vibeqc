@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/coulomb_auxiliary.cuh",
-  "reason": "Shared retained numerical recurrence and workspace, formerly in cuda_rhf.cu. Extraction preserves the existing scientific classification; no formula is retired.",
-  "regions": [],
-  "role": "scientific",
-  "subsystem": "direct_integrals"
-}

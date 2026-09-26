@@ -1,9 +1,0 @@
-{
-  "name": "df_shell_class_units",
-  "outputs": [
-    "generated/df_shells/*.cu",
-    "generated/df_shells/*.cuh",
-    "generated/df_shells/*.hpp"
-  ],
-  "owner": "python/vibeqc_compiler/integral/df_shell_units.py"
-}

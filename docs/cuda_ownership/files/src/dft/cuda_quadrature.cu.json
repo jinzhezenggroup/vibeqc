@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/cuda_quadrature.cu",
-  "role": "runtime",
-  "subsystem": "ao_grid",
-  "reason": "Molecular quadrature allocation, shared rule upload, bounded launches and host export. Coordinates, Becke scalar algebra, distance reuse and tile/resource layout are compiler-owned in xc/quadrature_cuda.py.",
-  "regions": []
-}

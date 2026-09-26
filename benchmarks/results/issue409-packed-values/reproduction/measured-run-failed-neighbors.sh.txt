@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-test -n "${SLURM_JOB_ID:-}"
-export PYTHONPATH=python:. OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-export VIBEQC_LIBRARY="$PWD/.artifacts/issue409/stage2/frozen/libvibeqc.so"
-export VIBEQC_DF_DERIVATIVE_CUDA_TEST=1 VIBEQC_DF_VALUE_STORAGE=packed
-export LD_LIBRARY_PATH="/group/software/cuda-12.9.1/lib64:${LD_LIBRARY_PATH:-}"
-printf 'slurm_job_id=%s\n' "$SLURM_JOB_ID"
-/tmp/vibeqc-pr-review-env/bin/python -m pytest -q tests/python/test_df_derivatives_cuda.py::test_df_generated_failed_item_preserves_successful_neighbor

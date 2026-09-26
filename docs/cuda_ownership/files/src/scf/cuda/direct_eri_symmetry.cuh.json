@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_eri_symmetry.cuh",
-  "role": "runtime",
-  "subsystem": "runtime",
-  "reason": "Generic tensor indexing or symmetry permutation/duplicate handling, preserving its original runtime classification.",
-  "regions": []
-}

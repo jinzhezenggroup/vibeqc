@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/matrix_index.cuh",
-  "role": "runtime",
-  "subsystem": "runtime",
-  "reason": "Extracted generic eigensolver, native launch or index/timing boundary; no molecular integral arithmetic. Host dispatch now compiles separately.",
-  "regions": []
-}

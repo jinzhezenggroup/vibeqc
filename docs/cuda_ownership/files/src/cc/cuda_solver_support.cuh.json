@@ -1,7 +1,0 @@
-{
-  "path": "src/cc/cuda_solver_support.cuh",
-  "reason": "Runtime-shaped device state and generated TensorIR evaluator interface for the native RCCSD owner.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

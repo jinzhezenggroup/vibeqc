@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/dispersion/d4_reference.hpp",
-  "role": "oracle",
-  "subsystem": "d4_dispersion",
-  "reason": "Explicit xTBloom-derived CPU/device qualification baseline: supplied-charge GFN2 D4/CN/ATM mathematics and first derivatives. Not a public DFT-D4 implementation or a production-promoted schedule; independent upstream dftd4 fixtures validate the shared mathematics.",
-  "regions": []
-}

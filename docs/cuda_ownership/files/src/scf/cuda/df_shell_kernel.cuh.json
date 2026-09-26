@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_shell_kernel.cuh",
-  "reason": "Shared production shell-packet execution templates, instantiated without scientific duplication by the derivative batch tuner. Normalized AO projection, compact task indexing, primitive traversal and reductions call compiler-owned polynomial/Rys mathematics.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "df_derivatives"
-}

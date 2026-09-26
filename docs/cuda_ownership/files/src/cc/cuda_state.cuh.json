@@ -1,7 +1,0 @@
-{
-  "path": "src/cc/cuda_state.cuh",
-  "reason": "Persistent tensor-state buffers and generic copy/validation; CC equations live in TensorIR.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

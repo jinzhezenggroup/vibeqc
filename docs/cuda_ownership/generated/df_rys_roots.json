@@ -1,7 +1,0 @@
-{
-  "name": "df_rys_roots",
-  "outputs": [
-    "generated/generated_df_rys.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/df_rys.py"
-}

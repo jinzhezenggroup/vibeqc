@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/dispersion/d3_zero.hpp",
-  "role": "oracle",
-  "subsystem": "d3_dispersion",
-  "reason": "Standalone CPU/device original D3(0) two-body scientific owner, including CN response and cutoff gradients. The same independently qualified arithmetic is admitted by production only through the explicit d3.zero-two-body capability.",
-  "regions": []
-}

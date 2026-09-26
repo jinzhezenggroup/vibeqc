@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/xc_runtime.cuh",
-  "reason": "Generic scalar XC plan allocation, transport, launch, metrics and failure ABI; functional/ingredient kernels are generated before inclusion.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "xc"
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/mean_field_setup.hpp",
-  "role": "runtime",
-  "subsystem": "scf_tensor",
-  "reason": "Borrowed-buffer execution declarations for generated shared mean-field setup; no scientific arithmetic or allocation.",
-  "regions": []
-}

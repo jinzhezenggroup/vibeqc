@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/one_electron_derivatives.cuh",
-  "reason": "First-derivative views and launch declarations.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

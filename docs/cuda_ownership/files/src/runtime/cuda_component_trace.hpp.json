@@ -1,7 +1,0 @@
-{
-  "path": "src/runtime/cuda_component_trace.hpp",
-  "reason": "Opt-in CUDA event/NVTX profiling and logical work accounting; no scientific equations or provider ownership.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

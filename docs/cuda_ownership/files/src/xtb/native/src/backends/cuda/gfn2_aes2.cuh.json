@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/native/src/backends/cuda/gfn2_aes2.cuh",
-  "reason": "GFN2 AES2 runtime descriptors, cache/workspace contracts, stream-safe launch ABI and error/publication state. Scientific AES2 equations are emitted into the generated native consumer header.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

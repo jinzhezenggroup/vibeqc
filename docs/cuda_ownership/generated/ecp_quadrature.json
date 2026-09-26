@@ -1,7 +1,0 @@
-{
-  "name": "ecp_quadrature",
-  "outputs": [
-    "generated/generated_ecp_ao.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/ecp_projector.py"
-}

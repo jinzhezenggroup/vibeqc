@@ -1,8 +1,0 @@
-{
-  "name": "xc_gradient",
-  "outputs": [
-    "generated/generated_xc_gradient.cu"
-  ],
-  "owner": "python/vibeqc_compiler/xc/geometry_cuda.py",
-  "scope": "Build-time LDA/PBE XC gradient lowering, including compiler-emitted AO translation pullbacks and Becke normalized-product adjoint composition. Native CUDA headers retain allocation, stream, ABI and bounded runtime ownership."
-}

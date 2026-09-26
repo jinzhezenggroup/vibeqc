@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_shell_diagnostics.cuh",
-  "reason": "Bounded optional diagnostic counter storage, observer and operation labels; scientific operation counts are defined by the generated lowering.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

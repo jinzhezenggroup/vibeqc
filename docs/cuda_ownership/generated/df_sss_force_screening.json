@@ -1,7 +1,0 @@
-{
-  "name": "df_sss_force_screening",
-  "outputs": [
-    "generated/generated_df_screening.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/df_screening.py"
-}

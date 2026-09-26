@@ -1,7 +1,0 @@
-{
-  "name": "one_electron_values",
-  "outputs": [
-    "generated/generated_one_electron_values.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/one_electron_cuda.py"
-}

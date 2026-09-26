@@ -1,7 +1,0 @@
-{
-  "path": "src/runtime/resource_cuda.cuh",
-  "reason": "Allocation accounting and lifetime guards.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

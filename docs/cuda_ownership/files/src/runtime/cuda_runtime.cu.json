@@ -1,7 +1,0 @@
-{
-  "path": "src/runtime/cuda_runtime.cu",
-  "reason": "Device availability, discovery and stable runtime ABI.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

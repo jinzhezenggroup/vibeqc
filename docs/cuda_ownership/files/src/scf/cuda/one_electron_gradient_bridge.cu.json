@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/one_electron_gradient_bridge.cu",
-  "reason": "Conservative bounded staging and stationary-weight glue around compiler-owned generated derivatives; no independent S/T/V recurrence.",
-  "regions": [],
-  "role": "scientific",
-  "subsystem": "one_electron_derivatives"
-}

@@ -1,8 +1,0 @@
-{
-  "name": "native_rccsdt",
-  "outputs": [
-    "generated/generated_rccsdt_cuda.cu"
-  ],
-  "owner": "tools/generate_rccsdt_cuda.py",
-  "scope": "Native standard triangular RCCSD(T) energy lowering from the shared audited triples permutation inventory, with finite/denominator gates, bounded staged inputs and fixed-order CUDA reduction. Public ownership remains in src/methods/rccsdt_method.cpp."
-}

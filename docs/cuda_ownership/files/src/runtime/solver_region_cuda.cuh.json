@@ -1,7 +1,0 @@
-{
-  "path": "src/runtime/solver_region_cuda.cuh",
-  "reason": "Shared bounded solver-region submission and optional replay lifecycle. No scientific equations.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

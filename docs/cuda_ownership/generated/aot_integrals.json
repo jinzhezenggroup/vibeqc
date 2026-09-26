@@ -1,9 +1,0 @@
-{
-  "name": "aot_integrals",
-  "outputs": [
-    "generated/production_shell_kernels/**/*.cu",
-    "generated/production_shell_kernels/**/*.cuh",
-    "generated/production_shell_kernels/**/*.hpp"
-  ],
-  "owner": "python/vibeqc_compiler/integral/cuda_lowering.py"
-}

@@ -1,2 +1,0 @@
-name, uuid, driver_version, temperature.gpu, power.draw [W], clocks.current.sm [MHz], clocks.current.memory [MHz]
-NVIDIA GeForce RTX 5090, GPU-8e9c9e1a-e183-258c-0b3a-03a5ddebb2f8, 580.95.05, 36, 4.66 W, 180 MHz, 405 MHz

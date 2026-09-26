@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/native/src/backends/cuda/gfn2_scc_free_energy.cu",
-  "reason": "GFN2 SCC activity/error propagation, component admission, diagnostics and publication plumbing around compiler-generated ordered internal/free-energy composition.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

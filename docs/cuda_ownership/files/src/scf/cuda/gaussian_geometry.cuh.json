@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/gaussian_geometry.cuh",
-  "reason": "Unchanged coordinate seeds, distances and Gaussian product geometry extracted from the existing runtime region.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

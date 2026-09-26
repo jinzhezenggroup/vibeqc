@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/native/src/backends/cuda/gfn2_spin.cu",
-  "reason": "Ragged admission, activity masks, scratch publication and launches; ordered spin energy/potential FMA equations are emitted from compiler TensorIR.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

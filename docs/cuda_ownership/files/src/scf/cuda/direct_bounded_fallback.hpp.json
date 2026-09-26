@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_bounded_fallback.hpp",
-  "role": "runtime",
-  "subsystem": "runtime",
-  "reason": "Host launch/dispatch ABI for resolved native consumers, borrowing metadata and buffers without allocation, graph state or numerical definitions.",
-  "regions": []
-}

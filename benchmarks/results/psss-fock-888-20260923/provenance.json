@@ -1,9 +1,0 @@
-{
-  "source_identity": "f8a0daa981ec23a3cf23264c661fd1e424443e1ab04590387c3b08ae38e3b50a",
-  "library_sha256": "71ab08b64ee7c1d6b7906ea935fd896b45fd2765986ae898b97b3199d32ba64d",
-  "head": "2cf3dec31100b0cda0b5267dc4364f75ccad9682",
-  "slurm_job": "11316",
-  "cuda_visible_devices": "0",
-  "device": "NVIDIA GeForce RTX 5090, 580.95.05",
-  "dirty": false
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/integrals/eri_geometry.hpp",
-  "reason": "Shared stable pair geometry numerical primitives for CPU/CUDA; no shell recurrence duplicate.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

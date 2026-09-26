@@ -1,7 +1,0 @@
-{
-  "path": "src/runtime/cuda_architecture.hpp",
-  "reason": "Allocation-free CUDA capability attribute query and error propagation for schedule selection; no scientific arithmetic or cached device ownership.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

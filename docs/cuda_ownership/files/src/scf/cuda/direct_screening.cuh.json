@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_screening.cuh",
-  "reason": "Retained physical density/Schwarz screening or conservative class tails, including queue consumers of those bounds; structural extraction does not retire these semantics.",
-  "regions": [],
-  "role": "scientific",
-  "subsystem": "direct_integrals"
-}

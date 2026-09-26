@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_shell_derivatives.cu",
-  "reason": "Light host-only policy selection and ordered class dispatch. Numerical kernels are instantiated independently by generated per-class CUDA units; policy-only changes do not invalidate those objects.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "df_derivatives"
-}

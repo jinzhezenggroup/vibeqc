@@ -1,6 +1,0 @@
-{
-  "path": "src/scf/cuda/scf_convergence_policy.cuh",
-  "role": "runtime",
-  "subsystem": "scf_tensor",
-  "reason": "Shared direct/DF HF scalar convergence policy and one-warp physical residual reduction, extracted from the convergence kernel owner."
-}

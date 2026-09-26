@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_force_order3.cuh",
-  "role": "scientific",
-  "subsystem": "direct_integrals",
-  "reason": "Order-three force adapters consume generated PPPS/DSPS/DPSS/FSSS roots but retain handwritten Gaussian geometry, prefactors, decay derivatives and coordinate recovery. Generated scalar roots do not retire this operator-specific scientific composition.",
-  "regions": []
-}

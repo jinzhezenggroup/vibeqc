@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/scf_diis_kernels.hpp",
-  "role": "runtime",
-  "subsystem": "scf_tensor",
-  "reason": "DIIS launch declarations and scratch/schedule interface; numerical implementation is classified in scf_diis_kernels.cu.",
-  "regions": []
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_density_bounds.hpp",
-  "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "direct_integrals"
-}

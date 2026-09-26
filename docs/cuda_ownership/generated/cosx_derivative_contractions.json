@@ -1,7 +1,0 @@
-{
-  "name": "cosx_derivative_contractions",
-  "outputs": [
-    "generated/generated_cosx_derivative_contractions.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/method/cosx_derivative_runtime.py"
-}

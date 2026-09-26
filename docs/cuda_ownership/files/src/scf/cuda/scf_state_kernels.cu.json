@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/scf_state_kernels.cu",
-  "role": "runtime",
-  "subsystem": "scf_tensor",
-  "reason": "Separate SCF matrix/state/launch owner; existing arithmetic and launch forwarding preserved.",
-  "regions": []
-}

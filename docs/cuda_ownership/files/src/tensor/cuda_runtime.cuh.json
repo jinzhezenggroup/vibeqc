@@ -1,7 +1,0 @@
-{
-  "path": "src/tensor/cuda_runtime.cuh",
-  "reason": "Shared arena, streams/events, cuBLAS workspace and error/metrics handling.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

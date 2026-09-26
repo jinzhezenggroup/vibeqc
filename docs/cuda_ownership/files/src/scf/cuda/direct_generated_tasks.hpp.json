@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_generated_tasks.hpp",
-  "reason": "Borrowed queue launch ABI; no allocations, synchronization or scientific arithmetic.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "direct_integrals"
-}

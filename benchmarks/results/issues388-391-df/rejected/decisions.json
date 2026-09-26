@@ -1,7 +1,0 @@
-{
-  "panel_reassociation": "Stopped after identifying a three-versus-five iteration mismatch on identical density. Continuing the Q sum across storage panels fixes this. These partial samples are not promotion evidence.",
-  "flat_dense": "Complete five-repeat ablation is retained with final runtime. A long-K flattened dense GEMM regresses total endpoint despite the occupied K improvement.",
-  "candidate2_diis": "An early partial-dot grid treated physical slots as a prefix. It failed the independently accumulated poisoned circular-history regression. Excluded from all accepted final results; the fixed kernel checks the live circular window.",
-  "warp_only_diis": "Insufficient parallelism. Replaced by deterministic block partials using already reserved temporary storage.",
-  "historical_binary_size": "Baseline includes line information; only the three matched derivative variants establish binary-size deltas."
-}

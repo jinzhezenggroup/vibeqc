@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/one_electron_derivatives.cu",
-  "reason": "Production contraction/scheduling glue around compiler-generated S/T/V derivative primitives; primitive derivative mathematics is compiler-owned.",
-  "regions": [],
-  "role": "scientific",
-  "subsystem": "one_electron_derivatives"
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/direct_coulomb.hpp",
-  "role": "runtime",
-  "subsystem": "direct_integrals",
-  "reason": "Optional pure-J geometry owner and borrowed-stream launch ABI; integral and scatter equations remain compiler-owned.",
-  "regions": []
-}

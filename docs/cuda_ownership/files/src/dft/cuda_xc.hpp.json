@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/cuda_xc.hpp",
-  "reason": "Borrowed arena, device-buffer/stream result and density-generation contracts with an exact resource request; no scientific equations.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "xc"
-}

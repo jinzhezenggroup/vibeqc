@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/nonlocal_correlation/vv10_runtime.hpp",
-  "reason": "CUDA-bearing resident VV10 layout and enqueue declarations expose caller-owned device workspace and stream contracts; scientific equations remain owned by the CUDA implementation.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "nonlocal_correlation"
-}

@@ -1,8 +1,0 @@
-{
-  "schema": "vibeqc.cuda-split-global-hybrids",
-  "schema_version": 1,
-  "methods": [
-    "M06-2X",
-    "MN15"
-  ]
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/weighted_eri_kernels.cu",
-  "reason": "Weighted reference/candidate contractions with explicit retained low-order exception selection. Separately compiled against unchanged Cartesian/AD primitives; no scientific path is retired.",
-  "regions": [],
-  "role": "scientific",
-  "subsystem": "direct_integrals"
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/weighted_eri_runtime.hpp",
-  "reason": "Typed weighted-provider task protocol, execution layout and stable numerical helper boundary.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

@@ -1,7 +1,0 @@
-{
-  "path": "src/integrals/ecp_cuda.cu",
-  "reason": "Launch/index/storage adapter around generated AO/projector/weighted-consumer and two-grid admission functions. Shared basis expansion metadata, ordered radial scheduling, symmetry/physical-center scatter, copies, borrowed streams, allocation/OOM fallback and error publication remain native. Reclassification of retained adapter lines is not physical scientific-code deletion; independent CPU ecp.cpp remains oracle/fallback.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "ecp"
-}

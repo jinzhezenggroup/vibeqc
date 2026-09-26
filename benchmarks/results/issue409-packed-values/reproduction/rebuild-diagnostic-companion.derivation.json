@@ -1,5 +1,0 @@
-{
-  "base": ".artifacts/issue409/stage2/rebuild-endpoints.py",
-  "base_sha256": "921a45efc99c6e0121088b7e8cc59fb1076273a6b22e59ceb83d58729cdc80f0",
-  "scope": "Permit zero clean repeats plus diagnostics-after in a separate file; preserve interrupted clean evidence and unchanged geometry/checkpoint/reference/numerical contract."
-}

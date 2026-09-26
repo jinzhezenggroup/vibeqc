@@ -1,7 +1,0 @@
-{
-  "promotion_status": "neither candidate passes the complete-endpoint improvement gate",
-  "clean_timing": "Five samples per size/variant, ABCCBA groups; all builds completed before timing. No compilation overlapped clean timing.",
-  "intrusive_profiles": "Separate Slurm Nsight captures, with disabled/enabled detailed counters. CPU compilation of the later identity candidate overlapped part of these diagnostic captures. Treat class activity as diagnostic observations, not a clean endpoint claim.",
-  "baseline_profile": "The exact baseline binary uses the retained #395 Nsight capture; contemporary baseline clean samples and component observations are in this bundle.",
-  "next_candidate": "Constant s/p public dimensions and unit normalized coefficients are separately built and qualified; no performance inference is transferred from this bundle."
-}

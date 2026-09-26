@@ -1,7 +1,0 @@
-{
-  "name": "df_values",
-  "outputs": [
-    "generated/df_values.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/df_cuda.py"
-}

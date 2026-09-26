@@ -1,7 +1,0 @@
-{
-  "path": "src/xtb/native/src/backends/cuda/gfn2_es3.cuh",
-  "reason": "GFN2 ES3 ragged validation, SCC activity/error propagation, launch/reduction and publication plumbing around compiler-generated shell energy/potential mathematics.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "gfn2"
-}

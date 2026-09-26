@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_derivatives.cuh",
-  "reason": "Stable derivative view and launch ABI declarations.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "runtime"
-}

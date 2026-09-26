@@ -1,7 +1,0 @@
-{
-  "path": "src/dft/dispersion/d3_bj.hpp",
-  "role": "scientific",
-  "subsystem": "d3_dispersion",
-  "reason": "Shared CPU/CUDA production two-body D3(BJ) energy and complete analytic dE/dR including coordination-number response. The arithmetic is maintained scientific code and is independently qualified against simple-dftd3 fixtures.",
-  "regions": []
-}

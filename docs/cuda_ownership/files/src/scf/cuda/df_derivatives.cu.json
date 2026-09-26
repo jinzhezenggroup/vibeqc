@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_derivatives.cu",
-  "reason": "Full dense weight indexing and bounded launch adapter to the shared generated response policy and generic normalized-basis traversal. The explicit distributed-sink diagnostic changes only destination addressing; both specializations call the same generated derivative policy.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "df_derivatives"
-}

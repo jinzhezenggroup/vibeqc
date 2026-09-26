@@ -1,7 +1,0 @@
-{
-  "path": "src/scf/cuda/df_shell_launch.cuh",
-  "reason": "Unchanged generic shell launch, packet preparation, diagnostics and resource queries moved from the monolith. Compile-time schedule/Rys/screening instantiation is independent of production policy; mathematical implementations remain generated.",
-  "regions": [],
-  "role": "runtime",
-  "subsystem": "df_derivatives"
-}

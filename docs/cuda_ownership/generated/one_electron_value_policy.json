@@ -1,7 +1,0 @@
-{
-  "name": "one_electron_value_policy",
-  "outputs": [
-    "generated/generated_one_electron_policy.cuh"
-  ],
-  "owner": "python/vibeqc_compiler/integral/one_electron_policy_cuda.py"
-}
