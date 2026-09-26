@@ -70,6 +70,14 @@ std::size_t cuda_ks_state_bytes(std::size_t nao, unsigned spins, unsigned diis_h
  * isolates pending/active/failed/converged and last-good warm states. */
 class CudaKsPlan {
  public:
+  /** Curated and generated codes share the same owner; keep range-exchange and
+   * nonlocal bindings when adapting an existing curated functional to its code. */
+  CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
+             const scf::ScfOptions& options, std::uint32_t functional_code,
+             std::size_t tile_points = 256,
+             const scf::ResolvedFockBuild* range_correction = nullptr,
+             nlc::Vv10Plan* nonlocal_correlation = nullptr,
+             nlc::Vv10DensityDomain nonlocal_domain = nlc::Vv10DensityDomain::StrictPositive);
   CudaKsPlan(const scf::PreparedFockPlan& fock, const AoBasis& basis, const MolecularGrid& grid,
              const scf::ScfOptions& options, SemilocalFamily functional,
              std::size_t tile_points = 256,

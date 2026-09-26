@@ -34,8 +34,10 @@ def test_host_xc_staging_keeps_copy_sources_alive(tmp_path: Path) -> None:
 #include <iostream>
 #include "dft/semilocal_family.hpp"
 using vibeqc::dft::SemilocalFamily;
-using vibeqc::dft::semilocal_family_from_code;
 int selected_route = -1;
+constexpr bool is_semilocal_family(std::uint32_t functional, SemilocalFamily family) noexcept {
+ return functional == static_cast<std::uint32_t>(family);
+}
 namespace scf { struct ScfOptions {
  enum class XcExecutionSchedule { DeviceFused, HostUnfused };
  XcExecutionSchedule xc_execution_schedule=XcExecutionSchedule::HostUnfused;
@@ -85,7 +87,7 @@ struct Owner {
  int nonlocal_domain=0;
  int basis=0,grid=0,stream=0;
  unsigned spins=1;
- SemilocalFamily functional=SemilocalFamily::Lda;
+ std::uint32_t functional=0;
  std::size_t n=2,matrix=4,elements=4;
  struct { std::size_t tile_points=2; } xc_layout;
  struct { std::uint64_t xc_host_d2h_bytes=0,xc_host_h2d_bytes=0,
@@ -104,7 +106,7 @@ struct Owner {
 int main() {
  for(unsigned spins:{1U,2U}) for(unsigned functional:{0U,1U,2U,4U}) {
   auto owner=std::make_unique<Owner>();
-  owner->spins=spins; owner->elements=4*spins; owner->functional=semilocal_family_from_code(functional);
+  owner->spins=spins; owner->elements=4*spins; owner->functional=functional;
   selected_route=-1;
   owned.clear(); queued.clear();
   owned.push_back({reinterpret_cast<std::uintptr_t>(owner.get()),sizeof(Owner)});
