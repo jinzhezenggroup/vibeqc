@@ -23,6 +23,15 @@ function(vibeqc_register_generated_sources)
     list(APPEND _vibeqc_depfile_targets --target "${_vibeqc_output}")
   endforeach()
 
+  # CMake 3.27+ can tell Ninja that the explicit DEPENDS/DEPFILE edges fully
+  # describe generated-source prerequisites. This avoids inheriting transitive
+  # target dependencies as implicit custom-command dependencies while keeping
+  # the repository's CMake 3.24 minimum supported.
+  set(_vibeqc_explicit_dependency_boundary)
+  if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.27")
+    set(_vibeqc_explicit_dependency_boundary DEPENDS_EXPLICIT_ONLY)
+  endif()
+
   add_custom_command(
     OUTPUT ${VGS_OUTPUTS}
     BYPRODUCTS ${VGS_BYPRODUCTS}
@@ -33,6 +42,7 @@ function(vibeqc_register_generated_sources)
             "${VGS_GENERATOR}" ${VGS_ARGS}
     DEPENDS "${VGS_GENERATOR}" "${_vibeqc_codegen_runner}" ${VGS_DEPENDS}
     DEPFILE "${_vibeqc_depfile}"
+    ${_vibeqc_explicit_dependency_boundary}
     COMMENT "${VGS_COMMENT}"
     VERBATIM)
   set_source_files_properties(${VGS_OUTPUTS} ${VGS_BYPRODUCTS} PROPERTIES GENERATED TRUE)
