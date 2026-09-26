@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from itertools import combinations_with_replacement
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -112,9 +113,27 @@ def _reference(
 
 def _relative_error(
     observed: np.ndarray, expected: np.ndarray, *, atol: float
-) -> float:
+) -> float | None:
+    """Return zero for exact zeros, or null when no finite ratio exists."""
     scale = np.maximum(np.abs(expected), atol)
-    return float(np.max(np.abs(observed - expected) / scale))
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        difference = np.abs(observed - expected)
+        ratios = np.divide(
+            difference, scale, out=np.zeros_like(difference), where=scale != 0.0
+        )
+    if np.any((scale == 0.0) & (difference != 0.0)):
+        return None
+    maximum = float(np.max(ratios))
+    return maximum if math.isfinite(maximum) else None
+
+
+def _validate_tolerances(rtol: float, atol: float) -> None:
+    """Prevent nonfinite comparison gates from admitting arbitrary candidates."""
+    if any(
+        isinstance(value, bool) or not math.isfinite(value) or value < 0.0
+        for value in (rtol, atol)
+    ):
+        raise ValueError("qualification tolerances must be finite and nonnegative")
 
 
 def _run_numeric_case(
@@ -127,6 +146,7 @@ def _run_numeric_case(
     rtol: float,
     atol: float,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    _validate_tolerances(rtol, atol)
     feature_names, feature_values = case.runtime_features(profile)
     detail: dict[str, Any] = {
         "spin": case.spin,
@@ -183,7 +203,10 @@ def _run_numeric_case(
         and finite
         and bool(np.allclose(observed, expected, rtol=rtol, atol=atol))
     )
-    max_abs = float(np.max(np.abs(observed - expected))) if shape_ok else None
+    with np.errstate(over="ignore", invalid="ignore"):
+        max_abs = float(np.max(np.abs(observed - expected))) if shape_ok else None
+    if max_abs is not None and not math.isfinite(max_abs):
+        max_abs = None
     max_rel = _relative_error(observed, expected, atol=atol) if shape_ok else None
     reason = None
     if not finite:
@@ -195,8 +218,7 @@ def _run_numeric_case(
         )
     elif not passed:
         reason = (
-            "candidate/reference mismatch: "
-            f"max_abs={max_abs:.17g}, max_rel={max_rel:.17g}"
+            f"candidate/reference mismatch: max_abs={max_abs!r}, max_rel={max_rel!r}"
         )
 
     status = "pass" if passed else "fail"
@@ -205,7 +227,9 @@ def _run_numeric_case(
         "status": status,
         "reason": reason,
         "reference": expected.tolist(),
-        "observed": observed.tolist(),
+        "observed": [
+            float(value) if np.isfinite(value) else None for value in observed
+        ],
         "max_abs_error": max_abs,
         "max_relative_error": max_rel,
     }
@@ -232,13 +256,12 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    _validate_tolerances(args.rtol, args.atol)
     import pyscf
     from pyscf.dft import libxc
 
     if pyscf.__version__ != "2.14.0" or libxc.__version__ != "7.0.0":
         raise RuntimeError("qualification requires exactly PySCF 2.14.0 / Libxc 7.0.0")
-    if args.rtol < 0.0 or args.atol < 0.0:
-        raise ValueError("qualification tolerances must be nonnegative")
 
     capability = functional_capability(args.name)
     profile = capability.production_domain_profile
