@@ -503,7 +503,8 @@ ScfResult run_rks(
     const dft::AoBasis& basis, const dft::MolecularGrid& grid, const ScfOptions& options,
     const std::vector<double>* initial_density, RksXcEvaluator evaluate_xc, const char* method_name,
     dft::nlc::Vv10Plan* nonlocal_correlation,
-    dft::nlc::Vv10DensityDomain nonlocal_domain = dft::nlc::Vv10DensityDomain::StrictPositive) {
+    dft::nlc::Vv10DensityDomain nonlocal_domain = dft::nlc::Vv10DensityDomain::StrictPositive,
+    const dft::RksAoCache* prepared_ao_cache = nullptr) {
   if (options.xc_density_route != dft::XcDensityRoute::DensityMatrix &&
       options.xc_density_route != dft::XcDensityRoute::OccupiedOrbitals)
     throw std::invalid_argument("unsupported RKS XC density route");
@@ -620,15 +621,19 @@ ScfResult run_rks(
   // order-1 AO grid only when its exact FP64 footprint is bounded; larger
   // workloads keep the existing tile-streaming recomputation path.
   constexpr std::size_t kCpuRksAoCacheMaximumBytes = 64ULL * 1024ULL * 1024ULL;
-  std::optional<dft::RksAoCache> ao_cache;
-  if (!incremental_xc && evaluate_xc.cached_direct) {
+  if (prepared_ao_cache && (incremental_xc || !evaluate_xc.cached_direct))
+    throw std::invalid_argument("prepared RKS AO cache is incompatible with this XC path");
+  std::optional<dft::RksAoCache> owned_ao_cache;
+  const dft::RksAoCache* ao_cache = prepared_ao_cache;
+  if (!incremental_xc && evaluate_xc.cached_direct && !ao_cache) {
     const auto cache_bytes = dft::rks_ao_cache_bytes(basis, grid, ks.ao_order);
     if (cache_bytes <= kCpuRksAoCacheMaximumBytes) {
       try {
-        ao_cache.emplace(dft::prepare_rks_ao_cache(basis, grid, ks.ao_order));
+        owned_ao_cache.emplace(dft::prepare_rks_ao_cache(basis, grid, ks.ao_order));
+        ao_cache = &*owned_ao_cache;
       } catch (const std::bad_alloc&) {
         // Optional retention must not make the existing streamed path unavailable.
-        ao_cache.reset();
+        owned_ao_cache.reset();
       }
     }
   }
@@ -696,7 +701,7 @@ ScfResult run_rks(
                      runtime::add_capacity(retained_capacity(current_density), extra_live_bytes),
                      options.xc_tile_points, options.semilocal_exchange_scale,
                      options.semilocal_correlation_scale, nonlocal_correlation, nonlocal_domain,
-                     ao_cache ? &*ao_cache : nullptr, std::move(xc_override));
+                     ao_cache, std::move(xc_override));
     const auto& record = physical.density_diagnostic;
     if (record.executed == dft::XcDensityRoute::OccupiedOrbitals)
       ++diagnostic.orbital_calls;
@@ -970,9 +975,11 @@ ScfResult run_lda_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
 
 ScfResult run_pbe_rks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                       const dft::MolecularGrid& grid, const ScfOptions& options,
-                      const std::vector<double>* initial_density) {
+                      const std::vector<double>* initial_density,
+                      const dft::RksAoCache* prepared_ao_cache) {
   return run_rks(plan, nullptr, basis, grid, options, initial_density,
-                 RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached), "PBE", nullptr);
+                 RksXcEvaluator(evaluate_pbe_xc_rks, evaluate_pbe_xc_rks_cached), "PBE", nullptr,
+                 dft::nlc::Vv10DensityDomain::StrictPositive, prepared_ao_cache);
 }
 
 ScfResult run_pbe_rks_nonlocal(const PreparedFockPlan& plan, const dft::AoBasis& basis,
@@ -1013,17 +1020,21 @@ ScfResult run_semilocal_rks(const PreparedFockPlan& plan, const dft::AoBasis& ba
 ScfResult run_curated_semilocal_ks(const PreparedFockPlan& plan, const dft::AoBasis& basis,
                                    const dft::MolecularGrid& grid, const ScfOptions& options,
                                    dft::SemilocalFamily family, unsigned spin_channels,
-                                   const std::vector<double>* initial_density) {
+                                   const std::vector<double>* initial_density,
+                                   const dft::RksAoCache* prepared_rks_ao_cache) {
   if (spin_channels != 1U && spin_channels != 2U)
     throw std::invalid_argument("curated semilocal KS requires one or two spin channels");
   const bool unrestricted = spin_channels == 2U;
+  if (prepared_rks_ao_cache && (unrestricted || family != dft::SemilocalFamily::Pbe))
+    throw std::invalid_argument("prepared RKS AO cache requires restricted PBE");
   switch (family) {
     case dft::SemilocalFamily::Lda:
       return unrestricted ? run_lda_uks(plan, basis, grid, options, initial_density)
                           : run_lda_rks(plan, basis, grid, options, initial_density);
     case dft::SemilocalFamily::Pbe:
       return unrestricted ? run_pbe_uks(plan, basis, grid, options, initial_density)
-                          : run_pbe_rks(plan, basis, grid, options, initial_density);
+                          : run_pbe_rks(plan, basis, grid, options, initial_density,
+                                        prepared_rks_ao_cache);
     case dft::SemilocalFamily::R2scan:
       return unrestricted ? run_r2scan_uks(plan, basis, grid, options, initial_density)
                           : run_r2scan_rks(plan, basis, grid, options, initial_density);
