@@ -96,12 +96,11 @@ def test_compiled_cpu_qualification_is_exact_and_canonical() -> None:
 
     assert validate_qualification(NAME, qualification) == qualification
 
+    # Keep the binding canonical so this reaches digest validation rather than
+    # the earlier pinned-density-threshold check.
     tampered = {
         **qualification,
-        "binding": {
-            **qualification["binding"],
-            "density_threshold": qualification["binding"]["density_threshold"] * 2.0,
-        },
+        "binding_identity": "0" * 64,
     }
     with pytest.raises(ValueError, match="binding identity mismatch"):
         validate_qualification(NAME, tampered)
