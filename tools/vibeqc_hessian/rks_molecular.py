@@ -96,6 +96,7 @@ class RKSHessianResult:
     def diagnostics(self) -> dict[str, typing.Any]:
         return deepcopy(dict(self._diagnostics))
 
+
 def _checked_plan(operator: NativeRKSResponse) -> StationaryHVPPlan:
     operator.validate_current()
     state = operator.state
