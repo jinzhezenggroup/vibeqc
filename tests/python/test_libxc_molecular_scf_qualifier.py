@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -46,7 +47,7 @@ def test_pbesol_reaches_exact_molecular_scf_evidence() -> None:
     artifact = Path(".artifacts/libxc-pbesol-molecular-scf.json")
     artifact.parent.mkdir(parents=True, exist_ok=True)
     artifact.write_text(
-        __import__("json").dumps(molecular, indent=2, sort_keys=True, allow_nan=False)
+        json.dumps(molecular, indent=2, sort_keys=True, allow_nan=False)
         + "\n",
         encoding="utf-8",
     )
