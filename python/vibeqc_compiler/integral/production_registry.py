@@ -156,7 +156,7 @@ inline constexpr std::size_t kMixedFockShellKernelCount =
 
 /** Compiler-profiled classes that prefer no-materialization Fock streaming. */
 inline constexpr std::uint64_t kPreferredStreamingFockShellClassMask =
-    ${preferred_streaming_fock_mask}ULL;
+    {preferred_streaming_fock_mask}ULL;
 
 inline constexpr std::uint64_t preferred_streaming_fock_shell_class_mask() noexcept {
   return kPreferredStreamingFockShellClassMask;
