@@ -497,9 +497,14 @@ struct CudaKsPlan::Impl : KsStateStorage {
          nonlocal_correlation->resources().point_count != grid.point_count()))
       throw std::invalid_argument("CUDA KS nonlocal owner is incompatible with the grid or device");
     current_device();
-    xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile);
+    xc_layout = cuda_xc_layout(basis, grid, semilocal_family_code(functional), spins == 2, tile,
+                               CudaXcAoPrecision::Fp64, options.semilocal_exchange_scale,
+                               options.semilocal_correlation_scale);
     const bool host_unfused =
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::HostUnfused;
+    if (host_unfused &&
+        (options.semilocal_exchange_scale != 1.0 || options.semilocal_correlation_scale != 1.0))
+      throw std::invalid_argument("scaled CUDA XC requires device-fused execution");
     if (host_unfused) {
       host_xc_density.resize(elements);
       host_xc_potential.resize(elements);
@@ -558,9 +563,10 @@ struct CudaKsPlan::Impl : KsStateStorage {
       upload(final_enabled, &host_one, sizeof(host_one));
       if (!host_unfused) {
         // Device-fused XC setup drains this same stream.
-        xc =
-            std::make_unique<CudaXcPlan>(basis, grid, semilocal_family_code(functional), spins == 2,
-                                         tile, xc_arena, resource.xc_device_bytes, stream);
+        xc = std::make_unique<CudaXcPlan>(
+            basis, grid, semilocal_family_code(functional), spins == 2, tile, xc_arena,
+            resource.xc_device_bytes, stream, CudaXcAoPrecision::Fp64,
+            options.semilocal_exchange_scale, options.semilocal_correlation_scale);
       }
       // This owner uses ordinary stream execution. Reuse the common provider
       // instead of forcing the graph-safe maximum-pivot fallback at every size.
@@ -647,6 +653,7 @@ struct CudaKsPlan::Impl : KsStateStorage {
         options.xc_execution_schedule == scf::ScfOptions::XcExecutionSchedule::DeviceFused &&
         !fitted && !has_exchange && !has_range_correction && !nonlocal_correlation && !mixed_j &&
         spins == 1 && functional != SemilocalFamily::Wb97mv &&
+        options.semilocal_exchange_scale == 1.0 && options.semilocal_correlation_scale == 1.0 &&
         provider.system().ecp_terms.empty() && configured_chunk_width() == kCudaKsChunkCapacity;
     if (device_chunk_mode) {
       const auto binding = device_chunk_binding();
