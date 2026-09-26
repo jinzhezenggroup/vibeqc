@@ -51,7 +51,8 @@ constexpr unsigned kMaximumFinalCorrections = 4;
 constexpr unsigned kCudaKsChunkCapacity = 2;
 
 constexpr bool curated_cuda_ks_functional(std::uint32_t functional) noexcept {
-  return curated_semilocal_functional(functional);
+  const auto* metadata = semilocal_family_metadata_from_code(functional);
+  return metadata && metadata->cuda_ks;
 }
 
 constexpr bool is_semilocal_family(std::uint32_t functional, SemilocalFamily family) noexcept {
