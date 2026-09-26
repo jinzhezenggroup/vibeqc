@@ -134,8 +134,9 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
       }
     }
     // ECP v4 (CPU) / v5 (CUDA) bind the live Hamiltonian. Hybrid
-    // composition uses CPU v6, or v7 when combined with ECP. CUDA hybrids
-    // remain fail-closed before snapshot publication.
+    // composition uses CPU v6/v7 and CUDA v8/v9, with the latter version
+    // in each pair carrying ECP records. Select this suffix from the actual
+    // composition, independently of the functional's scientific domain.
     const bool ecp = !source.system.ecp_terms.empty();
     if (ecp) {
       for (const auto& atom : source.system.atoms) values.push_back(atom.ecp_core);
@@ -151,8 +152,8 @@ vibeqc_status vibeqc_ks_snapshot_create_v1(vibeqc_batch* batch, std::size_t inde
       values.push_back(identity.model.semilocal_correlation_scale);
       values.push_back(exchange.present ? exchange.coefficient : 0.0);
     }
-    const auto wire_version =
-        cpu ? (composition ? (ecp ? 7U : 6U) : (ecp ? 4U : 2U)) : (ecp ? 5U : 3U);
+    const auto wire_version = cpu ? (composition ? (ecp ? 7U : 6U) : (ecp ? 4U : 2U))
+                                  : (composition ? (ecp ? 9U : 8U) : (ecp ? 5U : 3U));
     const std::array<std::uint64_t, 16> info{
         wire_version,
         n,

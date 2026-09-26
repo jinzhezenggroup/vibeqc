@@ -1294,6 +1294,9 @@ struct CudaKsPlan::Impl : KsStateStorage {
       identity.model.nonlocal_correlation = nonlocal_correlation->parameters();
       identity.model.nonlocal_density_domain = nonlocal_domain;
     }
+    // A snapshot must describe the same XC composition that built its Fock matrix.
+    identity.model.semilocal_exchange_scale = options.semilocal_exchange_scale;
+    identity.model.semilocal_correlation_scale = options.semilocal_correlation_scale;
     return identity;
   }
 

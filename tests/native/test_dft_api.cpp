@@ -769,13 +769,42 @@ int main() {
     vibeqc_context* cuda_context = nullptr;
     if (vibeqc_context_create(&cuda_descriptor, &cuda_context) == VIBEQC_STATUS_SUCCESS) {
       for (auto ks : {VIBEQC_METHOD_LDA_RKS, VIBEQC_METHOD_PBE_RKS, VIBEQC_METHOD_R2SCAN_RKS,
-                      VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS, VIBEQC_METHOD_R2SCAN_UKS}) {
+                      VIBEQC_METHOD_PBE0_RKS, VIBEQC_METHOD_LDA_UKS, VIBEQC_METHOD_PBE_UKS,
+                      VIBEQC_METHOD_R2SCAN_UKS, VIBEQC_METHOD_PBE0_UKS}) {
         const bool uks = ks == VIBEQC_METHOD_LDA_UKS || ks == VIBEQC_METHOD_PBE_UKS ||
-                         ks == VIBEQC_METHOD_R2SCAN_UKS;
+                         ks == VIBEQC_METHOD_R2SCAN_UKS || ks == VIBEQC_METHOD_PBE0_UKS;
+        const bool pbe0 = ks == VIBEQC_METHOD_PBE0_RKS || ks == VIBEQC_METHOD_PBE0_UKS;
         Fixture cpu_fixture(VIBEQC_BACKEND_CPU_REFERENCE, uks ? 1 : 0, uks ? 2 : 1);
         vibeqc_system* cuda_system = Fixture::create_system(cuda_context, uks ? 1 : 0, uks ? 2 : 1);
         method = lda_method();
         method.method = ks;
+        const std::array<vibeqc_ks_semilocal_component, 2> pbe0_components{{
+            {"GGA_C_PBE", 1.0},
+            {"GGA_X_PBE", 0.75},
+        }};
+        std::array<vibeqc_ks_exchange_term, 1> pbe0_exchange{{
+            {VIBEQC_KS_EXCHANGE_FULL_RANGE, 0.25, 0.0, uks ? -0.25 : -0.125},
+        }};
+        vibeqc_ks_options pbe0_options{};
+        if (pbe0) {
+          pbe0_options.struct_size = sizeof(pbe0_options);
+          pbe0_options.abi_version = VIBEQC_ABI_VERSION;
+          pbe0_options.scf_domain = "semilocal-scaled-v1/pbe-spin-c2-1e-18";
+          pbe0_options.grid_version = 1;
+          pbe0_options.radial_points = 64;
+          pbe0_options.angular_polar = 12;
+          pbe0_options.angular_azimuth = 24;
+          pbe0_options.partition_iterations = 3;
+          pbe0_options.coincident_tolerance = 1e-12;
+          pbe0_options.tile_points = 256;
+          pbe0_options.xc_execution_schedule = VIBEQC_XC_EXECUTION_DEVICE_FUSED;
+          pbe0_options.spin_channels = uks ? 2 : 1;
+          pbe0_options.semilocal_components = pbe0_components.data();
+          pbe0_options.semilocal_component_count = pbe0_components.size();
+          pbe0_options.exchange_terms = pbe0_exchange.data();
+          pbe0_options.exchange_term_count = pbe0_exchange.size();
+          method.ks_options = &pbe0_options;
+        }
         vibeqc_calculation *cpu_calculation = nullptr, *cuda_calculation = nullptr;
         require(vibeqc_calculation_prepare(cpu_fixture.context, cpu_fixture.system, &method,
                                            &cpu_calculation) == VIBEQC_STATUS_SUCCESS &&
@@ -807,11 +836,11 @@ int main() {
         vibeqc_calculation* auto_calculation = nullptr;
         const auto auto_status =
             vibeqc_calculation_prepare(cuda_context, cuda_system, &auto_method, &auto_calculation);
-        // LDA/PBE admit mixed-J acceleration. r2SCAN still requires FP64;
-        // its separate precision qualification must precede public promotion.
-        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS) {
+        // LDA/PBE admit mixed-J acceleration. r2SCAN and exact-exchange PBE0
+        // remain strict FP64 until their independent precision qualifications land.
+        if (ks == VIBEQC_METHOD_R2SCAN_RKS || ks == VIBEQC_METHOD_R2SCAN_UKS || pbe0) {
           require(auto_status == VIBEQC_STATUS_NOT_IMPLEMENTED && auto_calculation == nullptr,
-                  "r2SCAN automatic precision lost its explicit capability rejection");
+                  "strict-FP64 CUDA KS method lost its explicit precision rejection");
         } else {
           require(auto_status == VIBEQC_STATUS_SUCCESS && auto_calculation != nullptr,
                   "CUDA KS automatic-precision preparation failed");
