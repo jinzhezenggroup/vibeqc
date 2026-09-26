@@ -194,16 +194,17 @@ __global__ void independent_jk_derivative_kernel(DeviceBatch batch, std::size_t 
   }
 }
 
-
 /** One RSH force pass: J uses the full Coulomb derivative, while SR/LR K
  * share Full = Short + Long. Evaluate Full and Long once per participating
  * center and form Short by subtraction.
  */
-__global__ void independent_rsh_derivative_kernel(
-    DeviceBatch batch, std::size_t system_begin, std::size_t system_count,
-    std::size_t source_stride, double cj, double short_ck, double long_ck, bool unrestricted,
-    double omega, double screening, const double* bounds, const double* density,
-    const double* beta, double* out) {
+__global__ void independent_rsh_derivative_kernel(DeviceBatch batch, std::size_t system_begin,
+                                                  std::size_t system_count,
+                                                  std::size_t source_stride, double cj,
+                                                  double short_ck, double long_ck,
+                                                  bool unrestricted, double omega, double screening,
+                                                  const double* bounds, const double* density,
+                                                  const double* beta, double* out) {
   const std::size_t n = batch.nbf, matrix = n * n, quartets = matrix * matrix;
   const std::size_t work_count = system_count * quartets;
   const std::size_t stride = static_cast<std::size_t>(blockDim.x) * gridDim.x;
@@ -257,9 +258,8 @@ __global__ void independent_rsh_derivative_kernel(
         full[2] = value.derivative_z;
       }
       if (short_weight != 0.0 || long_weight != 0.0) {
-        const Dual3 value =
-            contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate,
-                                  vibeqc::integrals::CoulombRange::Long, omega);
+        const Dual3 value = contracted_eri<Dual3>(batch, system, i, j, k, l, coordinate,
+                                                  vibeqc::integrals::CoulombRange::Long, omega);
         long_range[0] = value.derivative_x;
         long_range[1] = value.derivative_y;
         long_range[2] = value.derivative_z;
